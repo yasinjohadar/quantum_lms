@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\QuestionController;
 use App\Http\Controllers\Admin\QuizController;
 use App\Http\Controllers\Admin\QuizAttemptController;
 use App\Http\Controllers\Admin\EnrollmentController;
+use App\Http\Controllers\Admin\GroupController;
 
 Route::middleware(['auth', 'check.user.active'])
     ->prefix('admin')
@@ -149,4 +150,29 @@ Route::middleware(['auth', 'check.user.active'])
             ->name('enrollments.get-subjects-by-class');
         
         Route::resource('enrollments', EnrollmentController::class)->except(['show', 'edit', 'update']);
+
+        // ===============================================
+        // نظام المجموعات
+        // ===============================================
+        Route::resource('groups', GroupController::class);
+        Route::get('groups/{group}/manage-students', [GroupController::class, 'manageStudents'])
+            ->name('groups.manage-students');
+        Route::post('groups/{group}/add-students', [GroupController::class, 'addStudents'])
+            ->name('groups.add-students');
+        Route::delete('groups/{group}/remove-student/{user}', [GroupController::class, 'removeStudent'])
+            ->name('groups.remove-student');
+
+        Route::get('groups/{group}/manage-classes', [GroupController::class, 'manageClasses'])
+            ->name('groups.manage-classes');
+        Route::post('groups/{group}/add-classes', [GroupController::class, 'addClasses'])
+            ->name('groups.add-classes');
+        Route::delete('groups/{group}/remove-class/{class}', [GroupController::class, 'removeClass'])
+            ->name('groups.remove-class');
+
+        Route::get('groups/{group}/manage-subjects', [GroupController::class, 'manageSubjects'])
+            ->name('groups.manage-subjects');
+        Route::post('groups/{group}/add-subjects', [GroupController::class, 'addSubjects'])
+            ->name('groups.add-subjects');
+        Route::delete('groups/{group}/remove-subject/{subject}', [GroupController::class, 'removeSubject'])
+            ->name('groups.remove-subject');
     });

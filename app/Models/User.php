@@ -81,6 +81,16 @@ class User extends Authenticatable
     }
 
     /**
+     * العلاقة مع المجموعات
+     */
+    public function groups()
+    {
+        return $this->belongsToMany(Group::class, 'group_user')
+                    ->withPivot(['added_by', 'added_at', 'notes'])
+                    ->withTimestamps();
+    }
+
+    /**
      * نطاق الطلاب فقط
      */
     public function scopeStudents($query)

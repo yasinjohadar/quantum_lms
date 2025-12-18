@@ -120,5 +120,15 @@ class SchoolClass extends Model
 
         return $query->where('stage_id', $stageId);
     }
+
+    /**
+     * العلاقة مع المجموعات
+     */
+    public function groups()
+    {
+        return $this->belongsToMany(Group::class, 'group_class', 'class_id', 'group_id')
+                    ->withPivot(['added_by', 'added_at', 'notes'])
+                    ->withTimestamps();
+    }
 }
 

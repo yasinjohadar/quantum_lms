@@ -140,5 +140,15 @@ class Subject extends Model
                     ->withPivot(['enrolled_by', 'enrolled_at', 'status', 'notes'])
                     ->withTimestamps();
     }
+
+    /**
+     * العلاقة مع المجموعات
+     */
+    public function groups()
+    {
+        return $this->belongsToMany(Group::class, 'group_subject')
+                    ->withPivot(['added_by', 'added_at', 'notes'])
+                    ->withTimestamps();
+    }
 }
 
