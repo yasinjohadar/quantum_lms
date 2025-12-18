@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreSubjectRequest;
 use App\Http\Requests\Admin\UpdateSubjectRequest;
+use App\Models\Enrollment;
 use App\Models\SchoolClass;
 use App\Models\Subject;
 use Illuminate\Http\Request;
@@ -250,6 +251,45 @@ class SubjectController extends Controller
             Log::error('Error deleting subject: ' . $e->getMessage());
             return redirect()->route('admin.subjects.index')
                 ->with('error', 'حدث خطأ أثناء حذف المادة: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * عرض الطلاب المنضمين لمادة معينة
+     */
+    public function enrolledStudents(string $id, Request $request)
+    {
+        try {
+            $subject = Subject::with(['schoolClass.stage'])->findOrFail($id);
+            
+            $enrollmentsQuery = Enrollment::with(['user', 'enrolledBy'])
+                ->where('subject_id', $id);
+
+            // فلترة حسب البحث
+            if ($request->filled('search')) {
+                $search = $request->input('search');
+                $enrollmentsQuery->whereHas('user', function ($q) use ($search) {
+                    $q->where('name', 'like', '%' . $search . '%')
+                      ->orWhere('email', 'like', '%' . $search . '%')
+                      ->orWhere('phone', 'like', '%' . $search . '%');
+                });
+            }
+
+            // فلترة حسب الحالة
+            if ($request->filled('status')) {
+                $enrollmentsQuery->where('status', $request->input('status'));
+            }
+
+            $enrollments = $enrollmentsQuery->latest('enrolled_at')->paginate(20);
+
+            return view('admin.pages.subjects.enrolled-students', compact('subject', 'enrollments'));
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return redirect()->route('admin.subjects.index')
+                ->with('error', 'المادة المطلوبة غير موجودة');
+        } catch (\Exception $e) {
+            Log::error('Error showing enrolled students: ' . $e->getMessage());
+            return redirect()->route('admin.subjects.index')
+                ->with('error', 'حدث خطأ أثناء عرض الطلاب: ' . $e->getMessage());
         }
     }
 }

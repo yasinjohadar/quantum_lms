@@ -9,10 +9,13 @@ use App\Models\Question;
 use App\Models\QuestionOption;
 use App\Models\Unit;
 use App\Models\Subject;
+use App\Imports\QuestionsImport;
+use App\Exports\QuestionsTemplateExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
 
 class QuestionController extends Controller
 {
@@ -448,12 +451,143 @@ class QuestionController extends Controller
     }
 
     /**
+     * تصدير ملف Template للاستيراد
+     */
+    public function exportTemplate()
+    {
+        try {
+            $data = [
+                [
+                    'type' => 'single_choice',
+                    'title' => 'ما هي عاصمة مصر؟',
+                    'content' => 'اختر الإجابة الصحيحة',
+                    'difficulty' => 'easy',
+                    'points' => 1,
+                    'category' => 'جغرافيا',
+                    'option1' => 'القاهرة',
+                    'option1_correct' => 'true',
+                    'option2' => 'الإسكندرية',
+                    'option2_correct' => 'false',
+                    'option3' => 'الجيزة',
+                    'option3_correct' => 'false',
+                    'option4' => 'أسوان',
+                    'option4_correct' => 'false',
+                ],
+                [
+                    'type' => 'multiple_choice',
+                    'title' => 'ما هي دول الخليج؟',
+                    'content' => 'اختر جميع الإجابات الصحيحة',
+                    'difficulty' => 'medium',
+                    'points' => 2,
+                    'category' => 'جغرافيا',
+                    'option1' => 'السعودية',
+                    'option1_correct' => 'true',
+                    'option2' => 'الإمارات',
+                    'option2_correct' => 'true',
+                    'option3' => 'مصر',
+                    'option3_correct' => 'false',
+                    'option4' => 'الكويت',
+                    'option4_correct' => 'true',
+                ],
+                [
+                    'type' => 'true_false',
+                    'title' => 'القاهرة هي عاصمة مصر',
+                    'content' => '',
+                    'difficulty' => 'easy',
+                    'points' => 1,
+                    'category' => 'جغرافيا',
+                    'option1' => 'صح',
+                    'option1_correct' => 'true',
+                    'option2' => 'خطأ',
+                    'option2_correct' => 'false',
+                ],
+                [
+                    'type' => 'short_answer',
+                    'title' => 'ما هي عاصمة السعودية؟',
+                    'content' => 'اكتب الإجابة',
+                    'difficulty' => 'easy',
+                    'points' => 1,
+                    'category' => 'جغرافيا',
+                    'case_sensitive' => 'false',
+                ],
+                [
+                    'type' => 'numerical',
+                    'title' => 'ما هو ناتج 5 × 5؟',
+                    'content' => '',
+                    'difficulty' => 'easy',
+                    'points' => 1,
+                    'category' => 'رياضيات',
+                    'correct_answer' => 25,
+                    'tolerance' => 0,
+                ],
+            ];
+
+            return Excel::download(new QuestionsTemplateExport($data), 'questions_template.xlsx');
+            
+        } catch (\Exception $e) {
+            Log::error('Error exporting template: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'حدث خطأ أثناء تصدير الملف');
+        }
+    }
+
+    /**
+     * عرض صفحة الاستيراد
+     */
+    public function showImport()
+    {
+        return view('admin.pages.questions.import');
+    }
+
+    /**
      * استيراد الأسئلة
      */
     public function import(Request $request)
     {
-        // يمكن إضافة وظيفة الاستيراد لاحقاً
-        return redirect()->back()->with('info', 'ميزة الاستيراد قيد التطوير');
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'], // 10MB max
+            'column_mapping' => ['nullable', 'string'], // JSON string
+        ]);
+
+        try {
+            $columnMapping = [];
+            if ($request->filled('column_mapping')) {
+                $columnMapping = json_decode($request->column_mapping, true) ?? [];
+            }
+            
+            $import = new QuestionsImport($columnMapping);
+            
+            Excel::import($import, $request->file('file'));
+            
+            $successCount = $import->getSuccessCount();
+            $errorCount = $import->getErrorCount();
+            $errors = $import->getErrors();
+            
+            $message = "تم استيراد {$successCount} سؤال بنجاح";
+            
+            if ($errorCount > 0) {
+                $message .= "، وحدثت {$errorCount} أخطاء";
+                
+                // حفظ الأخطاء في الجلسة لعرضها
+                session()->flash('import_errors', $errors);
+            }
+            
+            return redirect()
+                ->route('admin.questions.index')
+                ->with('success', $message)
+                ->with('import_summary', [
+                    'success' => $successCount,
+                    'errors' => $errorCount,
+                    'total' => $successCount + $errorCount,
+                ]);
+                
+        } catch (\Exception $e) {
+            Log::error('Error importing questions: ' . $e->getMessage());
+            
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'حدث خطأ أثناء استيراد الملف: ' . $e->getMessage());
+        }
     }
 }
 

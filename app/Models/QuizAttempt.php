@@ -174,7 +174,7 @@ class QuizAttempt extends Model
             return null;
         }
 
-        $endTime = $this->started_at->addMinutes($this->quiz->duration_minutes);
+        $endTime = $this->started_at->copy()->addMinutes($this->quiz->duration_minutes);
         $remaining = now()->diffInSeconds($endTime, false);
 
         return max(0, $remaining);

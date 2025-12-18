@@ -122,5 +122,23 @@ class Subject extends Model
 
         return $query->where('class_id', $classId);
     }
+
+    /**
+     * العلاقة مع الانضمامات
+     */
+    public function enrollments()
+    {
+        return $this->hasMany(Enrollment::class, 'subject_id');
+    }
+
+    /**
+     * العلاقة مع الطلاب (Many-to-Many through enrollments)
+     */
+    public function students()
+    {
+        return $this->belongsToMany(User::class, 'enrollments', 'subject_id', 'user_id')
+                    ->withPivot(['enrolled_by', 'enrolled_at', 'status', 'notes'])
+                    ->withTimestamps();
+    }
 }
 

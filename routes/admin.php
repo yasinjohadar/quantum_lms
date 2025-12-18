@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\LessonAttachmentController;
 use App\Http\Controllers\Admin\QuestionController;
 use App\Http\Controllers\Admin\QuizController;
 use App\Http\Controllers\Admin\QuizAttemptController;
+use App\Http\Controllers\Admin\EnrollmentController;
 
 Route::middleware(['auth', 'check.user.active'])
     ->prefix('admin')
@@ -22,9 +23,13 @@ Route::middleware(['auth', 'check.user.active'])
 
         // الصفوف الدراسية
         Route::resource('classes', ClassController::class);
+        Route::get('classes/{class}/enrolled-students', [ClassController::class, 'enrolledStudents'])
+            ->name('classes.enrolled-students');
 
         // المواد الدراسية
         Route::resource('subjects', SubjectController::class);
+        Route::get('subjects/{subject}/enrolled-students', [SubjectController::class, 'enrolledStudents'])
+            ->name('subjects.enrolled-students');
 
         // أقسام المواد (داخل كل مادة)
         Route::post('subjects/{subject}/sections', [SubjectSectionController::class, 'store'])
@@ -82,6 +87,10 @@ Route::middleware(['auth', 'check.user.active'])
             ->name('questions.toggle-status');
         Route::get('questions-export', [QuestionController::class, 'export'])
             ->name('questions.export');
+        Route::get('questions-export-template', [QuestionController::class, 'exportTemplate'])
+            ->name('questions.export.template');
+        Route::get('questions-import', [QuestionController::class, 'showImport'])
+            ->name('questions.import.show');
         Route::post('questions-import', [QuestionController::class, 'import'])
             ->name('questions.import');
 
@@ -129,4 +138,15 @@ Route::middleware(['auth', 'check.user.active'])
             ->name('quiz-attempts.reset-user');
         Route::get('quizzes/{quiz}/statistics', [QuizAttemptController::class, 'statistics'])
             ->name('quiz-attempts.statistics');
+
+        // ===============================================
+        // نظام الانضمامات
+        // ===============================================
+        // Routes المخصصة يجب أن تكون قبل resource route
+        Route::get('enrollments/search-students', [EnrollmentController::class, 'searchStudents'])
+            ->name('enrollments.search-students');
+        Route::get('enrollments/get-subjects-by-class', [EnrollmentController::class, 'getSubjectsByClass'])
+            ->name('enrollments.get-subjects-by-class');
+        
+        Route::resource('enrollments', EnrollmentController::class)->except(['show', 'edit', 'update']);
     });

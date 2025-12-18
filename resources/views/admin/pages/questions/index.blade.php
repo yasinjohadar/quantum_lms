@@ -43,6 +43,9 @@
                     </nav>
                 </div>
                 <div class="d-flex gap-2">
+                    <a href="{{ route('admin.questions.import.show') }}" class="btn btn-success btn-sm">
+                        <i class="bi bi-upload me-1"></i> استيراد أسئلة
+                    </a>
                     <a href="{{ route('admin.questions.create') }}" class="btn btn-primary btn-sm">
                         <i class="fas fa-plus me-1"></i> إضافة سؤال جديد
                     </a>

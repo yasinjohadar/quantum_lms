@@ -76,19 +76,6 @@
                                             <option value="0" {{ request('is_active') == '0' ? 'selected' : '' }}>غير نشط</option>
                                         </select>
 
-                                        <select name="status" class="form-select">
-                                            <option value="">كل الحالات</option>
-                                            <option value="1" {{ request('status') == '1' ? 'selected' : '' }}>فعال
-                                            </option>
-                                            <option value="2" {{ request('status') == '2' ? 'selected' : '' }}>معلق
-                                            </option>
-                                            <option value="3" {{ request('status') == '3' ? 'selected' : '' }}>محظور
-                                                مؤقتاً
-                                            </option>
-                                            <option value="4" {{ request('status') == '4' ? 'selected' : '' }}>محظور
-                                                نهائياً
-                                            </option>
-                                        </select>
 
                                         <button type="submit" class="btn btn-secondary">بحث</button>
                                         <a href="{{ route('users.index') }}" class="btn btn-danger">مسح </a>

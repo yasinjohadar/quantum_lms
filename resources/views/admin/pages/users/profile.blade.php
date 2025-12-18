@@ -99,14 +99,6 @@
                                     <p class="mb-0 fw-semibold">{{ $user->name }}</p>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label text-muted mb-1">اسم المستخدم</label>
-                                    <p class="mb-0 fw-semibold">{{ $user->username ?? '-' }}</p>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label text-muted mb-1">الحالة</label>
-                                    <p class="mb-0 fw-semibold">{{ $user->status ?? '-' }}</p>
-                                </div>
-                                <div class="col-md-6">
                                     <label class="form-label text-muted mb-1">تاريخ الإنشاء</label>
                                     <p class="mb-0 fw-semibold">{{ $user->created_at?->format('Y-m-d H:i') }}</p>
                                 </div>

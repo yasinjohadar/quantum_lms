@@ -22,11 +22,9 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
-        'username',
         'email',
         'phone',
         'password',
-        'status',
         'is_active',
         'photo',
         'created_by',
@@ -62,5 +60,33 @@ class User extends Authenticatable
      public function sessions()
     {
         return $this->hasMany(\App\Models\Session::class, 'user_id');
+    }
+
+    /**
+     * العلاقة مع الانضمامات
+     */
+    public function enrollments()
+    {
+        return $this->hasMany(Enrollment::class, 'user_id');
+    }
+
+    /**
+     * العلاقة مع المواد (Many-to-Many through enrollments)
+     */
+    public function subjects()
+    {
+        return $this->belongsToMany(Subject::class, 'enrollments', 'user_id', 'subject_id')
+                    ->withPivot(['enrolled_by', 'enrolled_at', 'status', 'notes'])
+                    ->withTimestamps();
+    }
+
+    /**
+     * نطاق الطلاب فقط
+     */
+    public function scopeStudents($query)
+    {
+        return $query->whereHas('roles', function ($q) {
+            $q->where('name', 'student');
+        });
     }
 }

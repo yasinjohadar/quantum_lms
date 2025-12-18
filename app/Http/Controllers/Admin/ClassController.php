@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreClassRequest;
 use App\Http\Requests\Admin\UpdateClassRequest;
+use App\Models\Enrollment;
 use App\Models\SchoolClass;
 use App\Models\Stage;
 use Illuminate\Http\Request;
@@ -231,6 +232,59 @@ class ClassController extends Controller
             Log::error('Error deleting class: ' . $e->getMessage());
             return redirect()->route('admin.classes.index')
                 ->with('error', 'حدث خطأ أثناء حذف الصف: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * عرض الطلاب المنضمين لصف معين
+     */
+    public function enrolledStudents(string $id, Request $request)
+    {
+        try {
+            $class = SchoolClass::with('stage')->findOrFail($id);
+            
+            // جلب enrollments للمواد التابعة لهذا الصف
+            $enrollmentsQuery = Enrollment::with(['user', 'subject', 'enrolledBy'])
+                ->whereHas('subject', function ($q) use ($id) {
+                    $q->where('class_id', $id);
+                });
+
+            // فلترة حسب البحث
+            if ($request->filled('search')) {
+                $search = $request->input('search');
+                $enrollmentsQuery->whereHas('user', function ($q) use ($search) {
+                    $q->where('name', 'like', '%' . $search . '%')
+                      ->orWhere('email', 'like', '%' . $search . '%')
+                      ->orWhere('phone', 'like', '%' . $search . '%');
+                });
+            }
+
+            // فلترة حسب المادة
+            if ($request->filled('subject_id')) {
+                $enrollmentsQuery->where('subject_id', $request->input('subject_id'));
+            }
+
+            // فلترة حسب الحالة
+            if ($request->filled('status')) {
+                $enrollmentsQuery->where('status', $request->input('status'));
+            }
+
+            $enrollments = $enrollmentsQuery->latest('enrolled_at')->paginate(20);
+            
+            // جلب المواد التابعة للصف للفلترة
+            $subjects = \App\Models\Subject::where('class_id', $id)
+                ->active()
+                ->ordered()
+                ->get();
+
+            return view('admin.pages.classes.enrolled-students', compact('class', 'enrollments', 'subjects'));
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return redirect()->route('admin.classes.index')
+                ->with('error', 'الصف المطلوب غير موجود');
+        } catch (\Exception $e) {
+            Log::error('Error showing enrolled students: ' . $e->getMessage());
+            return redirect()->route('admin.classes.index')
+                ->with('error', 'حدث خطأ أثناء عرض الطلاب: ' . $e->getMessage());
         }
     }
 }

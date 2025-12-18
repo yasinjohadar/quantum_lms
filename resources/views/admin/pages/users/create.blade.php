@@ -109,16 +109,6 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input type="text" class="form-control @error('username') is-invalid @enderror" 
-                                           name="username" placeholder="اسم المستخدم" value="{{ old('username') }}">
-                                    <label>اسم المستخدم</label>
-                                    @error('username')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
 
                             <div class="col-md-6">
                                 <div class="form-floating">
@@ -187,19 +177,6 @@
                             </div>
 
                             <!-- حالة المستخدم -->
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <select class="form-select @error('status') is-invalid @enderror" name="status" aria-label="حالة المستخدم">
-                                        <option value="active" {{ old('status') == 'active' ? 'selected' : '' }}>نشط</option>
-                                        <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>غير نشط</option>
-                                        <option value="banned" {{ old('status') == 'banned' ? 'selected' : '' }}>محظور</option>
-                                    </select>
-                                    <label>حالة المستخدم</label>
-                                    @error('status')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
 
                             <!-- تفعيل الحساب -->
                             <div class="col-md-6">

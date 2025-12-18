@@ -68,11 +68,6 @@ public function index(Request $request)
             });
         }
 
-        // فلترة حسب الحالة
-        if ($request->filled('status')) {
-            $usersQuery->where('status', $request->input('status'));
-        }
-
         // فلترة حسب الحالة النشطة
         if ($request->filled('is_active')) {
             $usersQuery->where('is_active', $request->input('is_active'));
@@ -105,11 +100,9 @@ public function index(Request $request)
         // التحقق من صحة البيانات
         $request->validate([
             'name' => 'required|string|max:255',
-            'username' => 'nullable|string|max:255|unique:users,username',
             'email' => 'required|string|email|max:255|unique:users,email',
             'phone' => 'nullable|string|max:20|unique:users,phone',
             'password' => 'required|string|min:8|confirmed',
-            'status' => 'required|in:active,inactive,banned',
             'is_active' => 'boolean',
             'roles' => 'array',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -118,12 +111,10 @@ public function index(Request $request)
             'email.required' => 'البريد الإلكتروني مطلوب',
             'email.email' => 'البريد الإلكتروني غير صحيح',
             'email.unique' => 'البريد الإلكتروني مستخدم بالفعل',
-            'username.unique' => 'اسم المستخدم مستخدم بالفعل',
             'phone.unique' => 'رقم الهاتف مستخدم بالفعل',
             'password.required' => 'كلمة المرور مطلوبة',
             'password.min' => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
             'password.confirmed' => 'تأكيد كلمة المرور غير متطابق',
-            'status.required' => 'حالة المستخدم مطلوبة',
             'photo.image' => 'يجب أن يكون الملف صورة',
             'photo.mimes' => 'نوع الصورة غير مدعوم',
             'photo.max' => 'حجم الصورة يجب أن يكون أقل من 2 ميجابايت',
@@ -140,11 +131,9 @@ public function index(Request $request)
         // إنشاء المستخدم
         $user = User::create([
             'name' => $request->name,
-            'username' => $request->username,
             'email' => $request->email,
             'phone' => $request->phone,
             'password' => Hash::make($request->password),
-            'status' => $request->status,
             'is_active' => $request->has('is_active'),
             'photo' => $photoPath,
             'created_by' => auth()->id(), // المستخدم الذي أنشأ هذا الحساب
@@ -187,11 +176,9 @@ public function index(Request $request)
         // التحقق من صحة البيانات
         $request->validate([
             'name' => 'required|string|max:255',
-            'username' => 'nullable|string|max:255|unique:users,username,' . $id,
             'email' => 'required|string|email|max:255|unique:users,email,' . $id,
             'phone' => 'nullable|string|max:20|unique:users,phone,' . $id,
             'password' => 'nullable|string|min:8|confirmed',
-            'status' => 'required|in:active,inactive,banned',
             'is_active' => 'boolean',
             'roles' => 'array',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -200,11 +187,9 @@ public function index(Request $request)
             'email.required' => 'البريد الإلكتروني مطلوب',
             'email.email' => 'البريد الإلكتروني غير صحيح',
             'email.unique' => 'البريد الإلكتروني مستخدم بالفعل',
-            'username.unique' => 'اسم المستخدم مستخدم بالفعل',
             'phone.unique' => 'رقم الهاتف مستخدم بالفعل',
             'password.min' => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
             'password.confirmed' => 'تأكيد كلمة المرور غير متطابق',
-            'status.required' => 'حالة المستخدم مطلوبة',
             'photo.image' => 'يجب أن يكون الملف صورة',
             'photo.mimes' => 'نوع الصورة غير مدعوم',
             'photo.max' => 'حجم الصورة يجب أن يكون أقل من 2 ميجابايت',
@@ -213,10 +198,8 @@ public function index(Request $request)
         // تجهيز البيانات للتحديث
         $updateData = [
             'name' => $request->name,
-            'username' => $request->username,
             'email' => $request->email,
             'phone' => $request->phone,
-            'status' => $request->status,
             'is_active' => $request->has('is_active'),
         ];
 
