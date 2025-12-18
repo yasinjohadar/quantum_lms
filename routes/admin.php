@@ -14,6 +14,9 @@ use App\Http\Controllers\Admin\QuizController;
 use App\Http\Controllers\Admin\QuizAttemptController;
 use App\Http\Controllers\Admin\EnrollmentController;
 use App\Http\Controllers\Admin\GroupController;
+use App\Http\Controllers\Admin\LoginLogController;
+use App\Http\Controllers\Admin\UserSessionController;
+use App\Http\Controllers\Api\SessionActivityController;
 
 Route::middleware(['auth', 'check.user.active'])
     ->prefix('admin')
@@ -175,4 +178,44 @@ Route::middleware(['auth', 'check.user.active'])
             ->name('groups.add-subjects');
         Route::delete('groups/{group}/remove-subject/{subject}', [GroupController::class, 'removeSubject'])
             ->name('groups.remove-subject');
+
+        // ===============================================
+        // سجلات الدخول
+        // ===============================================
+        Route::get('login-logs', [LoginLogController::class, 'index'])
+            ->name('login-logs.index');
+        Route::get('login-logs/{log}', [LoginLogController::class, 'show'])
+            ->name('login-logs.show');
+        Route::get('login-logs/user/{user}', [LoginLogController::class, 'userLogs'])
+            ->name('login-logs.user');
+        Route::get('login-logs/ip/{ip}', [LoginLogController::class, 'ipLogs'])
+            ->name('login-logs.ip');
+        Route::delete('login-logs/{log}', [LoginLogController::class, 'destroy'])
+            ->name('login-logs.destroy');
+        Route::post('login-logs/clear-old', [LoginLogController::class, 'clearOld'])
+            ->name('login-logs.clear-old');
+
+        // ===============================================
+        // جلسات المستخدمين
+        // ===============================================
+        Route::get('user-sessions', [UserSessionController::class, 'index'])
+            ->name('user-sessions.index');
+        Route::get('user-sessions/{session}', [UserSessionController::class, 'show'])
+            ->name('user-sessions.show');
+        Route::get('user-sessions/{session}/activities', [UserSessionController::class, 'activities'])
+            ->name('user-sessions.activities');
+        Route::get('user-sessions/user/{user}', [UserSessionController::class, 'userSessions'])
+            ->name('user-sessions.user');
+        Route::post('user-sessions/{session}/end', [UserSessionController::class, 'endSession'])
+            ->name('user-sessions.end');
+        Route::delete('user-sessions/{session}', [UserSessionController::class, 'destroy'])
+            ->name('user-sessions.destroy');
+        Route::post('user-sessions/clear-old', [UserSessionController::class, 'clearOld'])
+            ->name('user-sessions.clear-old');
+
+        // ===============================================
+        // API لتسجيل أنشطة الجلسات
+        // ===============================================
+        Route::post('api/session-activities', [SessionActivityController::class, 'store'])
+            ->name('api.session-activities.store'); // سيصبح admin.api.session-activities.store تلقائياً
     });

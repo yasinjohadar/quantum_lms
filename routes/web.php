@@ -20,6 +20,7 @@ Route::middleware(['auth', 'check.user.active'])->group(function () {
 
     // Admin routes
     Route::resource('users', UserController::class);
+    Route::get('users/{user}/login-logs', [UserController::class, 'loginLogs'])->name('users.login-logs');
     Route::resource('roles', RoleController::class);
     Route::put('users/{user}/change-password', [UserController::class, 'updatePassword'])->name('users.update-password');
 });

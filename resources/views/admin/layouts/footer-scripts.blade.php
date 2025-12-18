@@ -47,5 +47,10 @@
 <!-- Custom JS -->
 <script src="{{ asset('assets/js/custom.js') }}"></script>
 
+<!-- Session Activity Tracker -->
+@if(isset($userSessionId))
+<script src="{{ asset('js/session-activity-tracker.js') }}"></script>
+@endif
+
 <!-- Page Specific JS -->
 @yield('js')

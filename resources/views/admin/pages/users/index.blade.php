@@ -193,22 +193,29 @@
                                                     </td>
 
                                                     <td>
-                                                        <a class="btn btn-info btn-sm me-1"
-                                                            href="{{ route('users.edit', $user->id) }}"
-                                                            title="تعديل المستخدم">
-                                                            <i class="fa-solid fa-pen-to-square"></i>
-                                                        </a>
-                                                        <a class="btn btn-danger btn-sm me-1" data-bs-toggle="modal"
-                                                            data-bs-target="#delete{{ $user->id }}"
-                                                            title="حذف المستخدم">
-                                                            <i class="fa-solid fa-trash-can"></i>
-                                                        </a>
-                                                        <a href="#" class="btn btn-warning btn-sm"
-                                                            data-bs-toggle="modal"
-                                                            data-bs-target="#change_password{{ $user->id }}"
-                                                            title="تعديل كلمة السر">
-                                                            <i class="fa-solid fa-key"></i>
-                                                        </a>
+                                                        <div class="d-flex gap-1 flex-wrap">
+                                                            <a class="btn btn-info btn-sm"
+                                                                href="{{ route('users.edit', $user->id) }}"
+                                                                title="تعديل المستخدم">
+                                                                <i class="fa-solid fa-pen-to-square"></i>
+                                                            </a>
+                                                            <a class="btn btn-primary btn-sm"
+                                                                href="{{ route('users.login-logs', $user->id) }}"
+                                                                title="سجلات الدخول">
+                                                                <i class="fa-solid fa-sign-in-alt"></i>
+                                                            </a>
+                                                            <a class="btn btn-danger btn-sm" data-bs-toggle="modal"
+                                                                data-bs-target="#delete{{ $user->id }}"
+                                                                title="حذف المستخدم">
+                                                                <i class="fa-solid fa-trash-can"></i>
+                                                            </a>
+                                                            <a href="#" class="btn btn-warning btn-sm"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#change_password{{ $user->id }}"
+                                                                title="تعديل كلمة السر">
+                                                                <i class="fa-solid fa-key"></i>
+                                                            </a>
+                                                        </div>
                                                     </td>
                                                 </tr>
 

@@ -103,6 +103,42 @@
                             </a>
                         </li>
 
+                        <!-- Start::slide - سجلات الدخول والجلسات -->
+                        <li class="slide has-sub {{ request()->is('admin/login-logs*') || request()->is('admin/user-sessions*') ? 'open' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                                </svg>
+                                <span class="side-menu__label">المراقبة والأمان</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">المراقبة والأمان</a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/login-logs*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.login-logs.index') }}" class="side-menu__item {{ request()->is('admin/login-logs*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                                        </svg>
+                                        <span class="side-menu__label">سجلات الدخول</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/user-sessions*') && !request()->is('admin/user-sessions/*/activities') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.user-sessions.index') }}" class="side-menu__item {{ request()->is('admin/user-sessions*') && !request()->is('admin/user-sessions/*/activities') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
+                                        </svg>
+                                        <span class="side-menu__label">جلسات المستخدمين</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        <!-- End::slide -->
+
                         <!-- Start::slide__category -->
                         <li class="slide__category"><span class="category-name">نظام الاختبارات</span></li>
                         <!-- End::slide__category -->

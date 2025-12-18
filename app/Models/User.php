@@ -91,6 +91,22 @@ class User extends Authenticatable
     }
 
     /**
+     * العلاقة مع سجلات الدخول
+     */
+    public function loginLogs()
+    {
+        return $this->hasMany(LoginLog::class, 'user_id');
+    }
+
+    /**
+     * العلاقة مع جلسات المستخدم
+     */
+    public function userSessions()
+    {
+        return $this->hasMany(UserSession::class, 'user_id');
+    }
+
+    /**
      * نطاق الطلاب فقط
      */
     public function scopeStudents($query)

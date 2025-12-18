@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use HashContext;
 use App\Models\User;
+use App\Models\LoginLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
@@ -290,5 +291,36 @@ public function index(Request $request)
         }
     }
 
+    /**
+     * عرض سجلات الدخول للمستخدم
+     */
+    public function loginLogs(string $id)
+    {
+        try {
+            $user = User::findOrFail($id);
+            
+            $logs = LoginLog::where('user_id', $user->id)
+                ->latest('login_at')
+                ->paginate(20);
+
+            // إحصائيات
+            $stats = [
+                'total' => LoginLog::where('user_id', $user->id)->count(),
+                'successful' => LoginLog::where('user_id', $user->id)->successful()->count(),
+                'failed' => LoginLog::where('user_id', $user->id)->failed()->count(),
+                'total_duration' => LoginLog::where('user_id', $user->id)
+                    ->whereNotNull('session_duration_seconds')
+                    ->sum('session_duration_seconds'),
+            ];
+
+            return view('admin.pages.users.login-logs', compact('user', 'logs', 'stats'));
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return redirect()->route('users.index')
+                ->with('error', 'المستخدم المطلوب غير موجود');
+        } catch (\Exception $e) {
+            return redirect()->route('users.index')
+                ->with('error', 'حدث خطأ أثناء عرض سجلات الدخول: ' . $e->getMessage());
+        }
+    }
 
 }

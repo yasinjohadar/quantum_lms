@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\View;
+use App\Http\View\Composers\SessionComposer;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,5 +26,8 @@ class AppServiceProvider extends ServiceProvider
         
         // تسجيل PermissionServiceProvider
         $this->app->register(PermissionServiceProvider::class);
+        
+        // تسجيل View Composer للجلسات
+        View::composer('admin.layouts.master', SessionComposer::class);
     }
 }

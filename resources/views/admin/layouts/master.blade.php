@@ -9,6 +9,10 @@
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @if(isset($userSessionId))
+        <meta name="session-id" content="{{ $userSessionId }}">
+        <meta name="session-activity-api" content="{{ $sessionActivityApiUrl }}">
+    @endif
     <title> @yield('page-title')</title>
     <meta name="Description" content="أفضل موقع للاعلانات المبوبة">
     <meta name="Author" content="claudSoft">
