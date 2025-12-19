@@ -24,11 +24,13 @@ Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student
     Route::delete('/enrollments/cancel/{subject}', [StudentEnrollmentController::class, 'cancelRequest'])->name('enrollments.cancel');
     
     // الأسئلة المنفصلة
-    Route::get('/questions/{question}/start', [StudentQuestionController::class, 'startAttempt'])->name('questions.start');
+    Route::get('/questions/start', [StudentQuestionController::class, 'startAttempt'])->name('questions.start');
+    Route::get('/questions/{question}/start', [StudentQuestionController::class, 'startAttempt'])->name('questions.start.specific');
     Route::get('/questions/{question}/attempt/{attempt}', [StudentQuestionController::class, 'showQuestion'])->name('questions.show');
     Route::post('/questions/attempt/{attempt}/answer', [StudentQuestionController::class, 'saveAnswer'])->name('questions.save-answer');
     Route::post('/questions/attempt/{attempt}/submit', [StudentQuestionController::class, 'submitAnswer'])->name('questions.submit');
     Route::get('/questions/attempt/{attempt}/time', [StudentQuestionController::class, 'getRemainingTime'])->name('questions.time');
+    Route::get('/lessons/{lesson}/questions/report', [StudentQuestionController::class, 'showReport'])->name('questions.report');
     
     // الاختبارات
     Route::get('/quizzes/{quiz}/start', [StudentQuizController::class, 'startQuiz'])->name('quizzes.start');

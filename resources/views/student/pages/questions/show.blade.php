@@ -113,13 +113,33 @@
         background-color: #f8d7da;
         border-color: #dc3545;
     }
+    
+    /* إصلاح مشكلة السحب */
+    .matching-draggable {
+        pointer-events: auto !important;
+        -webkit-user-drag: element !important;
+        user-select: none !important;
+        touch-action: none !important;
+    }
+    
+    .matching-target {
+        pointer-events: auto !important;
+    }
+    
+    #left-items, #right-items {
+        pointer-events: auto !important;
+    }
+    
+    /* منع التداخل */
+    .question-answer * {
+        pointer-events: auto;
+    }
 </style>
 @endpush
 
 @push('scripts')
 <script src="{{ asset('js/quiz-timer.js') }}"></script>
 <script src="{{ asset('js/auto-save-answer.js') }}"></script>
-<script src="{{ asset('js/question-types.js') }}"></script>
 <script>
     @if($attempt->time_limit)
         // تهيئة العداد
@@ -152,6 +172,25 @@
     // حفظ يدوي
     document.getElementById('save-btn').addEventListener('click', function() {
         autoSave.save();
+    });
+    
+    // إعادة تهيئة matching بعد تحميل المحتوى
+    setTimeout(() => {
+        if (typeof QuestionTypesHandler !== 'undefined') {
+            new QuestionTypesHandler();
+        }
+    }, 300);
+    
+    // إضافة event listener للتأكد من عمل السحب
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(() => {
+            const draggables = document.querySelectorAll('.matching-draggable:not(.d-none)');
+            draggables.forEach(item => {
+                item.draggable = true;
+                item.setAttribute('draggable', 'true');
+                console.log('Draggable item:', item, 'draggable:', item.draggable);
+            });
+        }, 500);
     });
 </script>
 @endpush

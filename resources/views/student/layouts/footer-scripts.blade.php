@@ -70,4 +70,6 @@
     };
 </script>
 
+@stack('scripts')
+@stack('scripts')
 @yield('script')

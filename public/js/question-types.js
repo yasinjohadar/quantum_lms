@@ -5,6 +5,7 @@
 
 class QuestionTypesHandler {
     constructor() {
+        this.draggedElement = null;
         this.init();
     }
 
@@ -26,45 +27,147 @@ class QuestionTypesHandler {
      * Matching Questions
      */
     initMatching() {
-        const leftItems = document.querySelectorAll('#left-items .list-group-item[data-option-id]');
-        const rightItems = document.querySelectorAll('.matching-target');
+        const leftItemsContainer = document.getElementById('left-items');
+        const rightItemsContainer = document.getElementById('right-items');
         const pairsInput = document.getElementById('matching-pairs-input');
         
-        if (!leftItems.length || !rightItems.length || !pairsInput) return;
+        if (!leftItemsContainer || !rightItemsContainer || !pairsInput) {
+            console.log('Matching containers not found');
+            return;
+        }
         
         let pairs = JSON.parse(pairsInput.value || '{}');
-        let draggedElement = null;
         
-        // جعل العناصر اليسرى قابلة للسحب
-        leftItems.forEach(item => {
+        // جعل العناصر اليسرى قابلة للسحب - بدون cloneNode
+        const leftItems = leftItemsContainer.querySelectorAll('.matching-draggable:not(.d-none)');
+        
+        leftItems.forEach((item) => {
+            // التأكد من أن العنصر قابل للسحب
             item.draggable = true;
-            item.addEventListener('dragstart', (e) => {
-                draggedElement = item;
+            item.setAttribute('draggable', 'true');
+            item.style.cursor = 'move';
+            item.style.userSelect = 'none';
+            item.style.pointerEvents = 'auto';
+            item.style.webkitUserDrag = 'element';
+            item.style.touchAction = 'none';
+            
+            // إزالة event listeners السابقة إذا كانت موجودة
+            const newDragStart = (e) => {
+                this.draggedElement = item;
                 e.dataTransfer.effectAllowed = 'move';
-            });
+                e.dataTransfer.setData('text/plain', item.dataset.optionId);
+                e.dataTransfer.setData('application/json', JSON.stringify({
+                    optionId: item.dataset.optionId,
+                    content: item.textContent.trim()
+                }));
+                item.classList.add('dragging');
+                item.style.opacity = '0.5';
+                console.log('Drag started', item.dataset.optionId);
+            };
+            
+            const newDragEnd = (e) => {
+                item.classList.remove('dragging');
+                item.style.opacity = '1';
+                if (this.draggedElement === item) {
+                    this.draggedElement = null;
+                }
+            };
+            
+            // إزالة listeners السابقة
+            item.removeEventListener('dragstart', item._dragStartHandler);
+            item.removeEventListener('dragend', item._dragEndHandler);
+            
+            // إضافة listeners جديدة
+            item._dragStartHandler = newDragStart;
+            item._dragEndHandler = newDragEnd;
+            item.addEventListener('dragstart', newDragStart, false);
+            item.addEventListener('dragend', newDragEnd, false);
         });
         
         // جعل العناصر اليمنى مناطق إفلات
-        rightItems.forEach(target => {
-            target.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-            });
+        const rightItems = rightItemsContainer.querySelectorAll('.matching-target:not([data-matched-option-id])');
+        
+        rightItems.forEach((target) => {
+            target.style.pointerEvents = 'auto';
             
-            target.addEventListener('drop', (e) => {
+            const newDragOver = (e) => {
                 e.preventDefault();
-                if (draggedElement) {
-                    const optionId = draggedElement.dataset.optionId;
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = 'move';
+                target.classList.add('drag-over');
+            };
+            
+            const newDragEnter = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                target.classList.add('drag-over');
+            };
+            
+            const newDragLeave = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                target.classList.remove('drag-over');
+            };
+            
+            const newDrop = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                target.classList.remove('drag-over');
+                
+                if (this.draggedElement) {
+                    const optionId = this.draggedElement.dataset.optionId;
                     const targetContent = target.dataset.content;
+                    const leftContent = this.draggedElement.querySelector('strong')?.textContent.trim() || this.draggedElement.textContent.trim();
                     
                     pairs[optionId] = targetContent;
                     pairsInput.value = JSON.stringify(pairs);
                     
+                    console.log('Match created', { optionId, targetContent, pairs });
+                    
                     // تحديث العرض
-                    target.innerHTML = `<strong>${draggedElement.textContent.trim()}</strong> → ${targetContent}`;
-                    draggedElement = null;
+                    target.innerHTML = `<div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${leftContent}</strong>
+                            <i class="bi bi-arrow-left-right mx-2 text-muted"></i>
+                            <span>${targetContent}</span>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-icon btn-danger-transparent remove-match" onclick="removeMatch('${optionId}')">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>`;
+                    target.dataset.matchedOptionId = optionId;
+                    target.classList.add('border-success');
+                    
+                    // إخفاء العنصر اليسرى المطابق
+                    this.draggedElement.classList.add('d-none');
+                    this.draggedElement.style.display = 'none';
+                    this.draggedElement = null;
+                    
+                    // إعادة تهيئة
+                    setTimeout(() => {
+                        if (typeof QuestionTypesHandler !== 'undefined') {
+                            new QuestionTypesHandler();
+                        }
+                    }, 100);
                 }
-            });
+            };
+            
+            // إزالة listeners السابقة
+            target.removeEventListener('dragover', target._dragOverHandler);
+            target.removeEventListener('dragenter', target._dragEnterHandler);
+            target.removeEventListener('dragleave', target._dragLeaveHandler);
+            target.removeEventListener('drop', target._dropHandler);
+            
+            // إضافة listeners جديدة
+            target._dragOverHandler = newDragOver;
+            target._dragEnterHandler = newDragEnter;
+            target._dragLeaveHandler = newDragLeave;
+            target._dropHandler = newDrop;
+            
+            target.addEventListener('dragover', newDragOver, false);
+            target.addEventListener('dragenter', newDragEnter, false);
+            target.addEventListener('dragleave', newDragLeave, false);
+            target.addEventListener('drop', newDrop, false);
         });
     }
 
@@ -163,6 +266,7 @@ class QuestionTypesHandler {
         let draggedItem = null;
         
         dragItems.forEach(item => {
+            item.draggable = true;
             item.addEventListener('dragstart', (e) => {
                 draggedItem = item;
                 e.dataTransfer.effectAllowed = 'move';
@@ -229,7 +333,22 @@ class QuestionTypesHandler {
 }
 
 // تهيئة عند تحميل الصفحة
-document.addEventListener('DOMContentLoaded', () => {
-    new QuestionTypesHandler();
-});
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            new QuestionTypesHandler();
+        }, 200);
+    });
+} else {
+    // الصفحة محملة بالفعل
+    setTimeout(() => {
+        new QuestionTypesHandler();
+    }, 200);
+}
 
+// تهيئة مرة أخرى بعد تحميل المحتوى الديناميكي
+document.addEventListener('questionContentLoaded', () => {
+    setTimeout(() => {
+        new QuestionTypesHandler();
+    }, 200);
+});

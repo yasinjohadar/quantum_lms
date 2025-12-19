@@ -229,106 +229,81 @@
 
                 <!-- الأسئلة المرتبطة بالدرس -->
                 @if($questions->count() > 0)
+                    @php
+                        $allCompleted = true;
+                        $hasInProgress = false;
+                        $completedCount = 0;
+                        foreach($questions as $question) {
+                            $attempt = $questionAttempts[$question->id] ?? null;
+                            $isCompleted = $attempt && in_array($attempt->status, ['completed', 'timed_out']);
+                            $isInProgress = $attempt && $attempt->status === 'in_progress';
+                            if ($isInProgress) {
+                                $hasInProgress = true;
+                            }
+                            if ($isCompleted) {
+                                $completedCount++;
+                            } else {
+                                $allCompleted = false;
+                            }
+                        }
+                    @endphp
                     <div class="card mt-3">
                         <div class="card-header bg-info text-white">
-                            <h6 class="mb-0">
-                                <i class="bi bi-question-circle me-2"></i>
-                                الأسئلة المرتبطة بهذا الدرس
-                            </h6>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-question-circle me-2"></i>
+                                    الأسئلة المرتبطة بهذا الدرس
+                                </h6>
+                                <span class="badge bg-white text-info">
+                                    {{ $completedCount }} / {{ $questions->count() }}
+                                </span>
+                            </div>
                         </div>
                         <div class="card-body">
-                            <div class="list-group">
-                                @foreach($questions as $question)
-                                    @php
-                                        $attempt = $questionAttempts[$question->id] ?? null;
-                                        $hasAttempt = $attempt !== null;
-                                        $isInProgress = $attempt && $attempt->status === 'in_progress';
-                                        $isCompleted = $attempt && in_array($attempt->status, ['completed', 'timed_out']);
-                                        $answer = $attempt ? $attempt->answer()->first() : null;
-                                    @endphp
-                                    <div class="list-group-item">
-                                        <div class="d-flex align-items-start">
-                                            <div class="flex-shrink-0 me-3">
-                                                <div class="avatar avatar-sm bg-{{ $questionTypeColors[$question->type] ?? 'primary' }}-transparent rounded-circle d-flex align-items-center justify-content-center">
-                                                    <i class="bi {{ $questionTypeIcons[$question->type] ?? 'bi-question' }} text-{{ $questionTypeColors[$question->type] ?? 'primary' }}"></i>
-                                                </div>
-                                            </div>
-                                            <div class="flex-grow-1">
-                                                <div class="d-flex justify-content-between align-items-start mb-1">
-                                                    <h6 class="mb-0">
-                                                        {{ $question->title }}
-                                                    </h6>
-                                                    @if($hasAttempt)
-                                                        @if($isInProgress)
-                                                            <span class="badge bg-warning">
-                                                                <i class="bi bi-clock me-1"></i>
-                                                                جاري
-                                                            </span>
-                                                        @elseif($isCompleted)
-                                                            <span class="badge bg-{{ $attempt->is_correct ? 'success' : 'danger' }}">
-                                                                <i class="bi bi-{{ $attempt->is_correct ? 'check-circle' : 'x-circle' }} me-1"></i>
-                                                                {{ $attempt->is_correct ? 'صحيحة' : 'خاطئة' }}
-                                                            </span>
-                                                        @endif
-                                                    @else
-                                                        <span class="badge bg-secondary">
-                                                            <i class="bi bi-circle me-1"></i>
-                                                            لم يتم الإجابة
-                                                        </span>
-                                                    @endif
-                                                </div>
-                                                @if($question->content)
-                                                    <p class="text-muted small mb-2">{{ \Illuminate\Support\Str::limit(strip_tags($question->content), 100) }}</p>
-                                                @endif
-                                                <div class="d-flex flex-wrap gap-2 mb-2">
-                                                    <span class="badge bg-{{ $questionTypeColors[$question->type] ?? 'primary' }}-transparent text-{{ $questionTypeColors[$question->type] ?? 'primary' }}">
-                                                        {{ $questionTypes[$question->type] ?? $question->type }}
-                                                    </span>
-                                                    @if($question->difficulty)
-                                                        <span class="badge bg-secondary-transparent text-secondary">
-                                                            {{ $questionDifficulties[$question->difficulty] ?? $question->difficulty }}
-                                                        </span>
-                                                    @endif
-                                                    @if($question->default_points)
-                                                        <span class="badge bg-warning-transparent text-warning">
-                                                            <i class="bi bi-star me-1"></i>
-                                                            {{ $question->default_points }} نقطة
-                                                        </span>
-                                                    @endif
-                                                    @if($isCompleted && $answer)
-                                                        <span class="badge bg-info-transparent text-info">
-                                                            <i class="bi bi-star-fill me-1"></i>
-                                                            {{ $answer->points_earned }}/{{ $answer->max_points }}
-                                                        </span>
-                                                    @endif
-                                                </div>
-                                                @if($isInProgress)
-                                                    <a href="{{ route('student.questions.show', ['question' => $question->id, 'attempt' => $attempt->id]) }}" class="btn btn-sm btn-warning">
-                                                        <i class="bi bi-arrow-left-circle me-1"></i>
-                                                        متابعة الإجابة
-                                                    </a>
-                                                @elseif($isCompleted)
-                                                    <div class="d-flex gap-2">
-                                                        <span class="btn btn-sm btn-success" disabled>
-                                                            <i class="bi bi-check-circle me-1"></i>
-                                                            تم الإجابة
-                                                        </span>
-                                                        <a href="{{ route('student.questions.start', ['question' => $question->id, 'lesson_id' => $lesson->id]) }}" class="btn btn-sm btn-outline-primary">
-                                                            <i class="bi bi-arrow-clockwise me-1"></i>
-                                                            محاولة جديدة
-                                                        </a>
-                                                    </div>
-                                                @else
-                                                    <a href="{{ route('student.questions.start', ['question' => $question->id, 'lesson_id' => $lesson->id]) }}" class="btn btn-sm btn-primary">
-                                                        <i class="bi bi-pencil-square me-1"></i>
-                                                        بدء الإجابة
-                                                    </a>
-                                                @endif
-                                            </div>
-                                        </div>
+                            @if($allCompleted)
+                                <div class="alert alert-success mb-3">
+                                    <i class="bi bi-check-circle me-2"></i>
+                                    <strong>تهانينا!</strong> لقد أكملت جميع الأسئلة.
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <a href="{{ route('student.questions.report', $lesson->id) }}" class="btn btn-primary">
+                                        <i class="bi bi-file-text me-2"></i>
+                                        عرض التقرير النهائي
+                                    </a>
+                                    <a href="{{ route('student.questions.start', ['lesson_id' => $lesson->id]) }}" class="btn btn-outline-primary">
+                                        <i class="bi bi-arrow-clockwise me-2"></i>
+                                        إعادة المحاولة
+                                    </a>
+                                </div>
+                            @else
+                                <div class="text-center py-4">
+                                    <div class="mb-3">
+                                        <i class="bi bi-question-circle display-4 text-info"></i>
                                     </div>
-                                @endforeach
-                            </div>
+                                    <h5 class="mb-2">ابدأ الإجابة على الأسئلة</h5>
+                                    <p class="text-muted mb-4">
+                                        سيتم عرض الأسئلة بشكل متسلسل. يجب إكمال كل سؤال قبل الانتقال للسؤال التالي.
+                                    </p>
+                                    @if($hasInProgress)
+                                        <a href="{{ route('student.questions.start', ['lesson_id' => $lesson->id]) }}" class="btn btn-warning btn-lg">
+                                            <i class="bi bi-arrow-left-circle me-2"></i>
+                                            متابعة الأسئلة
+                                        </a>
+                                    @else
+                                        <a href="{{ route('student.questions.start', ['lesson_id' => $lesson->id]) }}" class="btn btn-primary btn-lg">
+                                            <i class="bi bi-play-circle me-2"></i>
+                                            بدء الإجابة على الأسئلة
+                                        </a>
+                                    @endif
+                                    @if($completedCount > 0)
+                                        <div class="mt-3">
+                                            <small class="text-muted">
+                                                تم إكمال {{ $completedCount }} من {{ $questions->count() }} سؤال
+                                            </small>
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                     </div>
                 @endif
