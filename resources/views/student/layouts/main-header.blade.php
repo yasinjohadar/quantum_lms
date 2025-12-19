@@ -164,8 +164,8 @@
                     <div class="header-element headerProfile-dropdown">
                         <!-- Start::header-link|dropdown-toggle -->
                         <a href="javascript:void(0);" class="header-link dropdown-toggle" id="mainHeaderProfile" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                            @if(Auth::user()->photo)
-                                <img src="{{ asset('storage/' . Auth::user()->photo) }}" alt="صورة المستخدم" width="37" height="37" class="rounded-circle">
+                            @if(Auth::user()->avatar)
+                                <img src="{{ asset('storage/' . Auth::user()->avatar) }}" alt="صورة المستخدم" width="37" height="37" class="rounded-circle">
                             @else
                                 <img src="{{ asset('assets/images/faces/default-avatar.jpg') }}" alt="صورة المستخدم" width="37" height="37" class="rounded-circle">
                             @endif
@@ -177,19 +177,16 @@
                                     <div class="my-auto">
                                         <h6 class="mb-0 lh-1 text-fixed-white">{{ Auth::user()->name }}</h6>
                                         <span class="fs-11 op-7 lh-1">{{ Auth::user()->email }}</span>
-                                        @if(Auth::user()->username)
-                                            <br><span class="fs-11 op-7 lh-1">@{{ Auth::user()->username }}</span>
-                                        @endif
                                     </div>
                                 </div>
                             </li>
                             <li>
-                                <a class="dropdown-item d-flex" href="{{ route('profile.edit') }}">
+                                <a class="dropdown-item d-flex" href="{{ route('student.profile') }}">
                                     <i class="bx bx-user-circle fs-18 me-2 op-7"></i>الملف الشخصي
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item d-flex border-block-end" href="{{ route('users.show', Auth::user()->id) }}">
+                                <a class="dropdown-item d-flex border-block-end" href="{{ route('student.profile') }}">
                                     <i class="bx bx-cog fs-18 me-2 op-7"></i>عرض الملف الشخصي
                                 </a>
                             </li>

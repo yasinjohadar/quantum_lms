@@ -57,7 +57,194 @@ class EnrollmentController extends Controller
             $users = User::limit(100)->get();
         }
 
-        return view('admin.pages.enrollments.index', compact('enrollments', 'subjects', 'users'));
+        // إحصائيات طلبات الانضمام المعلقة
+        $pendingCount = Enrollment::pending()->count();
+
+        return view('admin.pages.enrollments.index', compact('enrollments', 'subjects', 'users', 'pendingCount'));
+    }
+    
+    /**
+     * عرض طلبات الانضمام المعلقة
+     */
+    public function pendingRequests(Request $request)
+    {
+        $enrollmentsQuery = Enrollment::with(['user', 'subject.schoolClass.stage', 'enrolledBy'])
+            ->pending();
+
+        // فلترة حسب البحث
+        if ($request->filled('search')) {
+            $enrollmentsQuery->search($request->input('search'));
+        }
+
+        // فلترة حسب الطالب
+        if ($request->filled('user_id')) {
+            $enrollmentsQuery->forUser($request->input('user_id'));
+        }
+
+        // فلترة حسب المادة
+        if ($request->filled('subject_id')) {
+            $enrollmentsQuery->forSubject($request->input('subject_id'));
+        }
+
+        $enrollments = $enrollmentsQuery->latest('enrolled_at')->paginate(20);
+        
+        $subjects = Subject::with('schoolClass')->active()->ordered()->get();
+        
+        // جلب المستخدمين (الطلاب إذا كان role موجود، وإلا جميع المستخدمين)
+        try {
+            $hasStudentRole = \Spatie\Permission\Models\Role::where('name', 'student')->exists();
+            $users = $hasStudentRole ? User::students()->get() : User::limit(100)->get();
+        } catch (\Exception $e) {
+            $users = User::limit(100)->get();
+        }
+
+        // إحصائيات
+        $pendingCount = Enrollment::pending()->count();
+        $activeCount = Enrollment::active()->count();
+
+        return view('admin.pages.enrollments.pending', compact('enrollments', 'subjects', 'users', 'pendingCount', 'activeCount'));
+    }
+    
+    /**
+     * قبول طلب انضمام
+     */
+    public function approve(Enrollment $enrollment, Request $request)
+    {
+        try {
+            if ($enrollment->status !== 'pending') {
+                return redirect()->back()
+                    ->with('error', 'هذا الطلب ليس معلقاً');
+            }
+
+            $enrollment->update([
+                'status' => 'active',
+                'enrolled_by' => auth()->id(),
+                'enrolled_at' => now(),
+                'notes' => $request->input('notes', $enrollment->notes),
+            ]);
+
+            return redirect()->back()
+                ->with('success', 'تم قبول طلب الانضمام بنجاح');
+
+        } catch (\Exception $e) {
+            Log::error('Error approving enrollment: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء قبول الطلب');
+        }
+    }
+    
+    /**
+     * رفض طلب انضمام
+     */
+    public function reject(Enrollment $enrollment, Request $request)
+    {
+        try {
+            if ($enrollment->status !== 'pending') {
+                return redirect()->back()
+                    ->with('error', 'هذا الطلب ليس معلقاً');
+            }
+
+            $enrollment->delete();
+
+            return redirect()->back()
+                ->with('success', 'تم رفض طلب الانضمام بنجاح');
+
+        } catch (\Exception $e) {
+            Log::error('Error rejecting enrollment: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء رفض الطلب');
+        }
+    }
+    
+    /**
+     * قبول عدة طلبات دفعة واحدة
+     */
+    public function approveMultiple(Request $request)
+    {
+        $request->validate([
+            'enrollment_ids' => 'required|array|min:1',
+            'enrollment_ids.*' => 'required|exists:enrollments,id',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $enrollments = Enrollment::whereIn('id', $request->input('enrollment_ids'))
+                ->pending()
+                ->get();
+
+            if ($enrollments->isEmpty()) {
+                DB::rollBack();
+                return redirect()->back()
+                    ->with('error', 'لا توجد طلبات معلقة للقبول');
+            }
+
+            $count = 0;
+            foreach ($enrollments as $enrollment) {
+                $enrollment->update([
+                    'status' => 'active',
+                    'enrolled_by' => auth()->id(),
+                    'enrolled_at' => now(),
+                ]);
+                $count++;
+            }
+
+            DB::commit();
+
+            return redirect()->back()
+                ->with('success', "تم قبول {$count} طلب انضمام بنجاح");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error approving multiple enrollments: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء قبول الطلبات');
+        }
+    }
+    
+    /**
+     * رفض عدة طلبات دفعة واحدة
+     */
+    public function rejectMultiple(Request $request)
+    {
+        $request->validate([
+            'enrollment_ids' => 'required|array|min:1',
+            'enrollment_ids.*' => 'required|exists:enrollments,id',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $enrollments = Enrollment::whereIn('id', $request->input('enrollment_ids'))
+                ->pending()
+                ->get();
+
+            if ($enrollments->isEmpty()) {
+                DB::rollBack();
+                return redirect()->back()
+                    ->with('error', 'لا توجد طلبات معلقة للرفض');
+            }
+
+            $count = $enrollments->count();
+            Enrollment::whereIn('id', $request->input('enrollment_ids'))
+                ->pending()
+                ->delete();
+
+            DB::commit();
+
+            return redirect()->back()
+                ->with('success', "تم رفض {$count} طلب انضمام بنجاح");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error rejecting multiple enrollments: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء رفض الطلبات');
+        }
     }
 
     /**

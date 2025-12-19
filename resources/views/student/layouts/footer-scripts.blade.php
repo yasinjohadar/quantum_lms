@@ -46,3 +46,28 @@
 
 <!-- Custom JS -->
 <script src="{{ asset('assets/js/custom.js') }}"></script>
+
+<!-- CSRF Token Setup for AJAX -->
+<script>
+    // إعداد CSRF token لجميع طلبات AJAX
+    if (typeof axios !== 'undefined') {
+        axios.defaults.headers.common['X-CSRF-TOKEN'] = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    }
+    
+    // إعداد fetch لاستخدام CSRF token
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options = {}) {
+        if (!options.headers) {
+            options.headers = {};
+        }
+        if (!options.headers['X-CSRF-TOKEN']) {
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (token) {
+                options.headers['X-CSRF-TOKEN'] = token;
+            }
+        }
+        return originalFetch(url, options);
+    };
+</script>
+
+@yield('script')

@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             ClassSeeder::class,
             SubjectSeeder::class,
             StudentsSeeder::class,
+            QuestionsSeeder::class,
         ]);
 
         // إنشاء مستخدم تجريبي إضافي (إن لم يكن موجوداً)

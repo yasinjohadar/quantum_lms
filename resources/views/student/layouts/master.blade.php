@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr" data-nav-layout="vertical" data-theme-mode="light" data-header-styles="light"
+<html lang="ar" dir="rtl" data-nav-layout="vertical" data-theme-mode="light" data-header-styles="light"
     data-menu-styles="light" data-toggled="close">
 
 <head>
@@ -10,17 +10,17 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title> @yield('page-title')</title>
-    <meta name="Description" content="أفضل موقع للاعلانات المبوبة">
+    <meta name="Description" content="منصة كوانتم">
     <meta name="Author" content="claudSoft">
-    <meta name="keywords" content="إعلانات , لوحة التحكم">
+    <meta name="keywords" content=" لوحة التحكم">
 
-    @include('admin.layouts.head')
+    @include('student.layouts.head')
 </head>
 
 <body>
 
 
-    @include('admin.layouts.switcher')
+    @include('student.layouts.switcher')
 
 
     <!-- Loader -->
@@ -32,24 +32,24 @@
     <div class="page">
 
 
-        @include('admin.layouts.main-header')
+        @include('student.layouts.main-header')
 
 
 
-        @include('admin.layouts.offcanvas-sidebar')
+        @include('student.layouts.offcanvas-sidebar')
 
 
 
-        @include('admin.layouts.main-sidebar')
+        @include('student.layouts.main-sidebar')
 
 
         @yield('content')
 
 
-        @include('admin.layouts.footer')
+        @include('student.layouts.footer')
 
     </div>
-    @include('admin.layouts.footer-scripts')
+    @include('student.layouts.footer-scripts')
 
 
 </body>

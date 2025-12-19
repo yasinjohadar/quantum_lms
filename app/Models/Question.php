@@ -131,6 +131,16 @@ class Question extends Model
         return $this->hasMany(QuizAnswer::class);
     }
 
+    public function questionAttempts(): HasMany
+    {
+        return $this->hasMany(QuestionAttempt::class);
+    }
+
+    public function questionAnswers(): HasMany
+    {
+        return $this->hasMany(QuestionAnswer::class);
+    }
+
     /**
      * Scopes
      */

@@ -83,14 +83,44 @@
                             </a>
                         </li>
 
-                        <li class="slide {{ request()->is('admin/enrollments*') ? 'active' : '' }}">
-                            <a href="{{ route('admin.enrollments.index') }}" class="side-menu__item {{ request()->is('admin/enrollments*') ? 'active' : '' }}">
+                        <li class="slide has-sub {{ request()->is('admin/enrollments*') ? 'open' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
                                     <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
                                 </svg>
                                 <span class="side-menu__label">الانضمامات</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">الانضمامات</a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/enrollments/pending') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.enrollments.pending') }}" class="side-menu__item {{ request()->is('admin/enrollments/pending') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                        </svg>
+                                        <span class="side-menu__label">طلبات معلقة</span>
+                                        @php
+                                            $pendingCount = \App\Models\Enrollment::pending()->count();
+                                        @endphp
+                                        @if($pendingCount > 0)
+                                            <span class="badge bg-warning-transparent text-warning ms-auto">{{ $pendingCount }}</span>
+                                        @endif
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/enrollments') && !request()->is('admin/enrollments/pending') && !request()->is('admin/enrollments/create') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.enrollments.index') }}" class="side-menu__item {{ request()->is('admin/enrollments') && !request()->is('admin/enrollments/pending') && !request()->is('admin/enrollments/create') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                                        </svg>
+                                        <span class="side-menu__label">جميع الانضمامات</span>
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
 
                         <li class="slide {{ request()->is('admin/groups*') ? 'active' : '' }}">

@@ -22,24 +22,82 @@
                     </div>
                     <ul class="main-menu">
                         <!-- Start::slide__category -->
-                        <li class="slide__category"><span class="category-name">مركز الإدارة</span></li>
+                        <li class="slide__category"><span class="category-name">لوحة التحكم</span></li>
                         <!-- End::slide__category -->
 
                         <!-- Start::slide -->
-                        <li class="slide">
-                            <a href="/" class="side-menu__item">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" ><path d="M0 0h24v24H0V0z" fill="none"/><path d="M5 5h4v6H5zm10 8h4v6h-4zM5 17h4v2H5zM15 5h4v2h-4z" opacity=".3"/><path d="M3 13h8V3H3v10zm2-8h4v6H5V5zm8 16h8V11h-8v10zm2-8h4v6h-4v-6zM13 3v6h8V3h-8zm6 4h-4V5h4v2zM3 21h8v-6H3v6zm2-4h4v2H5v-2z"/></svg>
+                        <li class="slide {{ request()->is('student/dashboard') || request()->is('student') ? 'active' : '' }}">
+                            <a href="{{ route('student.dashboard') }}" class="side-menu__item {{ request()->is('student/dashboard') || request()->is('student') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0V0z" fill="none"/>
+                                    <path d="M4 10v7h3v-4h6v4h3v-7l-6-5z" opacity=".3"/>
+                                    <path d="M12 3 2 12h3v8h6v-6h2v6h6v-8h3z"/>
+                                </svg>
                                 <span class="side-menu__label">الصفحة الرئيسية</span>
-                                <span class="badge bg-success ms-auto menu-badge">1</span>
                             </a>
                         </li>
 
-                              <li class="slide">
-                                    <a href="{{route("roles.index")}}" class="side-menu__item">الصلاحيات</a>
-                                </li>
-                                <li class="slide">
-                                    <a href="{{route("users.index")}}" class="side-menu__item">المستخدمون</a>
-                                </li>
+                        <!-- Start::slide__category -->
+                        <li class="slide__category"><span class="category-name">المواد الدراسية</span></li>
+                        <!-- End::slide__category -->
+
+                        <li class="slide {{ request()->is('student/subjects*') ? 'active' : '' }}">
+                            <a href="{{ route('student.subjects') }}" class="side-menu__item {{ request()->is('student/subjects*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M18 2H8a2 2 0 00-2 2v14a2 2 0 002 2h10l4-4V4a2 2 0 00-2-2zm0 13v3h-3a1 1 0 01-1-1v-2h4zm-6-4H8V9h4zm4-3H8V6h8z"/>
+                                </svg>
+                                <span class="side-menu__label">موادي الدراسية</span>
+                            </a>
+                        </li>
+                        
+                        <li class="slide {{ request()->is('student/enrollments*') ? 'active' : '' }}">
+                            <a href="{{ route('student.enrollments.index') }}" class="side-menu__item {{ request()->is('student/enrollments*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                </svg>
+                                <span class="side-menu__label">طلب الانضمام</span>
+                            </a>
+                        </li>
+
+                        <!-- Start::slide__category -->
+                        <li class="slide__category"><span class="category-name">الاختبارات</span></li>
+                        <!-- End::slide__category -->
+
+                        <li class="slide">
+                            <a href="javascript:void(0);" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l4.59-4.58L18 11l-6 6z"/>
+                                </svg>
+                                <span class="side-menu__label">الاختبارات المتاحة</span>
+                            </a>
+                        </li>
+
+                        <li class="slide">
+                            <a href="javascript:void(0);" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/>
+                                </svg>
+                                <span class="side-menu__label">نتائج الاختبارات</span>
+                            </a>
+                        </li>
+
+                        <!-- Start::slide__category -->
+                        <li class="slide__category"><span class="category-name">الحساب</span></li>
+                        <!-- End::slide__category -->
+
+                        <li class="slide {{ request()->is('student/profile') || request()->is('profile') ? 'active' : '' }}">
+                            <a href="{{ route('student.profile') }}" class="side-menu__item {{ request()->is('student/profile') || request()->is('profile') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                                </svg>
+                                <span class="side-menu__label">الملف الشخصي</span>
+                            </a>
+                        </li>
 
                         <!-- End::slide -->
 

@@ -73,7 +73,23 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // توجيه المستخدم حسب صلاحيته
+        // الحصول على جميع الصلاحيات للمستخدم
+        $roles = $user->getRoleNames();
+        
+        // التحقق من admin أولاً
+        if ($user->hasRole('admin')) {
+            return redirect()->route('admin.dashboard');
+        }
+        
+        // التحقق من student
+        if ($user->hasRole('student')) {
+            return redirect()->route('student.dashboard');
+        }
+
+        // إذا لم يكن لديه صلاحية محددة، يوجه إلى student dashboard كافتراضي
+        // (لأن المستخدمين الجدد يحصلون على صلاحية student تلقائياً)
+        return redirect()->route('student.dashboard');
     }
 
     /**
@@ -106,6 +122,6 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect()->route('login');
     }
 }

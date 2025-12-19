@@ -107,6 +107,22 @@ class User extends Authenticatable
     }
 
     /**
+     * العلاقة مع محاولات الأسئلة المنفصلة
+     */
+    public function questionAttempts()
+    {
+        return $this->hasMany(QuestionAttempt::class);
+    }
+
+    /**
+     * العلاقة مع محاولات الاختبارات
+     */
+    public function quizAttempts()
+    {
+        return $this->hasMany(QuizAttempt::class);
+    }
+
+    /**
      * نطاق الطلاب فقط
      */
     public function scopeStudents($query)

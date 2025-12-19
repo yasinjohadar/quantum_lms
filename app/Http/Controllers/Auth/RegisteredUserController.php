@@ -39,12 +39,17 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'is_active' => true, // تفعيل الحساب تلقائياً
         ]);
+
+        // تعيين صلاحية student تلقائياً
+        $user->assignRole('student');
 
         event(new Registered($user));
 
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        // توجيه الطالب إلى لوحة تحكم الطالب
+        return redirect(route('student.dashboard', absolute: false));
     }
 }

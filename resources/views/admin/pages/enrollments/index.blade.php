@@ -19,6 +19,14 @@
                     </nav>
                 </div>
                 <div class="d-flex gap-2">
+                    @if($pendingCount > 0)
+                        <a href="{{ route('admin.enrollments.pending') }}" class="btn btn-warning btn-sm position-relative">
+                            <i class="bi bi-clock me-1"></i> طلبات الانضمام المعلقة
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                {{ $pendingCount }}
+                            </span>
+                        </a>
+                    @endif
                     <a href="{{ route('admin.enrollments.create') }}" class="btn btn-primary btn-sm">
                         <i class="bi bi-plus-circle me-1"></i> إضافة انضمامات جديدة
                     </a>
@@ -71,6 +79,7 @@
 
                                 <select name="status" class="form-select form-select-sm" style="min-width: 150px;">
                                     <option value="">كل الحالات</option>
+                                    <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>معلق</option>
                                     <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>نشط</option>
                                     <option value="suspended" {{ request('status') === 'suspended' ? 'selected' : '' }}>معلق</option>
                                     <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>مكتمل</option>

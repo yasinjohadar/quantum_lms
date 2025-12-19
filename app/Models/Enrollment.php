@@ -65,6 +65,11 @@ class Enrollment extends Model
         return $query->where('status', 'completed');
     }
 
+    public function scopePending($query)
+    {
+        return $query->where('status', 'pending');
+    }
+
     public function scopeForUser($query, $userId)
     {
         return $query->where('user_id', $userId);

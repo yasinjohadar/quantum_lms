@@ -63,6 +63,14 @@ class Lesson extends Model
     }
 
     /**
+     * العلاقة مع محاولات الأسئلة.
+     */
+    public function questionAttempts()
+    {
+        return $this->hasMany(QuestionAttempt::class);
+    }
+
+    /**
      * الحصول على مدة الفيديو بصيغة مقروءة.
      */
     public function getFormattedDurationAttribute()

@@ -18,7 +18,7 @@ use App\Http\Controllers\Admin\LoginLogController;
 use App\Http\Controllers\Admin\UserSessionController;
 use App\Http\Controllers\Api\SessionActivityController;
 
-Route::middleware(['auth', 'check.user.active'])
+Route::middleware(['auth', 'check.user.active', 'admin'])
     ->prefix('admin')
     ->as('admin.')
     ->group(function () {
@@ -151,7 +151,17 @@ Route::middleware(['auth', 'check.user.active'])
             ->name('enrollments.search-students');
         Route::get('enrollments/get-subjects-by-class', [EnrollmentController::class, 'getSubjectsByClass'])
             ->name('enrollments.get-subjects-by-class');
-        
+        Route::get('enrollments/pending', [EnrollmentController::class, 'pendingRequests'])
+            ->name('enrollments.pending');
+        Route::post('enrollments/{enrollment}/approve', [EnrollmentController::class, 'approve'])
+            ->name('enrollments.approve');
+        Route::post('enrollments/{enrollment}/reject', [EnrollmentController::class, 'reject'])
+            ->name('enrollments.reject');
+        Route::post('enrollments/approve-multiple', [EnrollmentController::class, 'approveMultiple'])
+            ->name('enrollments.approve-multiple');
+        Route::post('enrollments/reject-multiple', [EnrollmentController::class, 'rejectMultiple'])
+            ->name('enrollments.reject-multiple');
+
         Route::resource('enrollments', EnrollmentController::class)->except(['show', 'edit', 'update']);
 
         // ===============================================

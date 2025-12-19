@@ -1,14 +1,10 @@
 
 
-@extends('admin.layouts.master')
+@extends('student.layouts.master')
 
 @section('page-title')
 لوحة التحكم
 @stop
-
-
-
-
 
 
 @section('content')
@@ -18,8 +14,8 @@
                 <!-- Page Header -->
                 <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
                     <div>
-                        <h4 class="mb-0">Hi, welcome back!</h4>
-                        <p class="mb-0 text-muted">Sales monitoring dashboard template.</p>
+                        <h4 class="mb-0">أهلا بكم - لوحة تحكم الطالب</h4>
+                        <p class="mb-0 text-muted">منصة كوانتم ترحب بعودتكم</p>
                     </div>
                     <div class="main-dashboard-header-right">
 						<div>
