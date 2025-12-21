@@ -43,6 +43,14 @@ class Unit extends Model
     }
 
     /**
+     * العلاقة مع الاختبارات.
+     */
+    public function quizzes()
+    {
+        return $this->hasMany(Quiz::class)->orderBy('order');
+    }
+
+    /**
      * العلاقة مع الأسئلة
      */
     public function questions()

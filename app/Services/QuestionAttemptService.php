@@ -6,6 +6,7 @@ use App\Models\QuestionAttempt;
 use App\Models\QuestionAnswer;
 use App\Models\Question;
 use App\Models\QuizAnswer;
+use App\Services\GamificationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -105,6 +106,10 @@ class QuestionAttemptService
             
             // تصحيح الإجابة تلقائياً
             $this->gradeAnswer($attemptId);
+            
+            // ربط مع نظام التحفيز
+            $gamificationService = app(GamificationService::class);
+            $gamificationService->processQuestionCompletion($attempt->fresh());
             
             DB::commit();
             return $attempt->fresh();
@@ -303,4 +308,5 @@ class QuestionAttemptService
         return true;
     }
 }
+
 

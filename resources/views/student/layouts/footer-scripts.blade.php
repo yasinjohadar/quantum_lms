@@ -71,5 +71,12 @@
 </script>
 
 @stack('scripts')
-@stack('scripts')
 @yield('script')
+
+<!-- Real-time Notifications -->
+@auth
+<script>
+    window.currentUserId = {{ auth()->id() }};
+</script>
+<script src="{{ asset('assets/js/realtime-notifications.js') }}"></script>
+@endauth

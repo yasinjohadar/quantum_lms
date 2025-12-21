@@ -84,11 +84,12 @@ class StudentQuestionController extends Controller
 
                     if ($firstIncomplete) {
                         // بدء محاولة للسؤال الأول غير مكتمل
+                        $defaultTimeLimit = 300; // 5 دقائق
                         $attempt = $this->questionAttemptService->createAttempt(
                             $user->id,
                             $firstIncomplete->id,
                             $lessonId,
-                            null
+                            $defaultTimeLimit
                         );
 
                         return redirect()->route('student.questions.show', [
@@ -101,11 +102,14 @@ class StudentQuestionController extends Controller
         }
 
         try {
+            // تحديد وقت افتراضي للسؤال (5 دقائق = 300 ثانية)
+            $defaultTimeLimit = 300; // 5 دقائق
+            
             $attempt = $this->questionAttemptService->createAttempt(
                 $user->id,
                 $questionId,
                 $lessonId,
-                null // time_limit يمكن إضافته لاحقاً
+                $defaultTimeLimit
             );
 
             return redirect()->route('student.questions.show', [
@@ -171,11 +175,12 @@ class StudentQuestionController extends Controller
 
         // بدء محاولة للسؤال الأول غير مكتمل
         try {
+            $defaultTimeLimit = 300; // 5 دقائق
             $attempt = $this->questionAttemptService->createAttempt(
                 $user->id,
                 $firstIncomplete->id,
                 $lessonId,
-                null
+                $defaultTimeLimit
             );
 
             return redirect()->route('student.questions.show', [
@@ -323,11 +328,12 @@ class StudentQuestionController extends Controller
 
                     if ($nextQuestion) {
                         // بدء محاولة للسؤال التالي
+                        $defaultTimeLimit = 300; // 5 دقائق
                         $nextAttempt = $this->questionAttemptService->createAttempt(
                             $user->id,
                             $nextQuestion->id,
                             $lessonId,
-                            null
+                            $defaultTimeLimit
                         );
 
                         return redirect()->route('student.questions.show', [

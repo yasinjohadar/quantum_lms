@@ -7,9 +7,12 @@ use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\QuizAnswer;
 use App\Models\Question;
+use App\Services\GamificationService;
+use App\Events\QuizStarted;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 
 class StudentQuizController extends Controller
@@ -81,6 +84,12 @@ class StudentQuizController extends Controller
             }
             $attempt->question_order = $questionIds;
             $attempt->save();
+
+            // إرسال Event
+            Event::dispatch(new QuizStarted($user, $quiz, [
+                'attempt_id' => $attempt->id,
+                'time_limit' => $quiz->time_limit,
+            ]));
 
             DB::commit();
 
@@ -237,6 +246,10 @@ class StudentQuizController extends Controller
 
             // إنهاء المحاولة
             $attempt->finish();
+
+            // ربط مع نظام التحفيز
+            $gamificationService = app(GamificationService::class);
+            $gamificationService->processQuizCompletion($attempt);
 
             DB::commit();
 

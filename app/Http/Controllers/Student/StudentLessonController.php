@@ -9,11 +9,57 @@ use App\Models\Quiz;
 use App\Models\Question;
 use App\Models\QuestionAttempt;
 use App\Models\QuizAttempt;
+use App\Models\SchoolClass;
+use App\Models\LessonCompletion;
+use App\Services\GamificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class StudentLessonController extends Controller
 {
+    /**
+     * عرض الصفوف المنضم إليها الطالب مع المواد داخل كل صف
+     */
+    public function classes()
+    {
+        $user = Auth::user();
+        
+        // الحصول على المواد المسجل فيها الطالب
+        $subjects = $user->subjects()
+            ->with(['schoolClass.stage', 'enrollments' => function($query) use ($user) {
+                $query->where('user_id', $user->id);
+            }])
+            ->wherePivot('status', 'active')
+            ->orderBy('name')
+            ->get();
+        
+        // تجميع المواد حسب الصف
+        $classes = collect();
+        
+        foreach ($subjects as $subject) {
+            if ($subject->schoolClass) {
+                $classId = $subject->schoolClass->id;
+                
+                if (!$classes->has($classId)) {
+                    $classes->put($classId, [
+                        'class' => $subject->schoolClass,
+                        'subjects' => collect()
+                    ]);
+                }
+                
+                $classes[$classId]['subjects']->push($subject);
+            }
+        }
+        
+        // ترتيب الصفوف حسب order
+        $classes = $classes->sortBy(function($item) {
+            return $item['class']->order ?? 999;
+        });
+        
+        return view('student.pages.lessons.classes', compact('classes'));
+    }
+    
     /**
      * عرض قائمة المواد المسجل فيها الطالب
      */
@@ -174,6 +220,11 @@ class StudentLessonController extends Controller
         $questionTypeColors = \App\Models\Question::TYPE_COLORS;
         $questionDifficulties = \App\Models\Question::DIFFICULTIES;
         
+        // الحصول على حالة الدرس للطالب
+        $lessonCompletion = LessonCompletion::where('user_id', $user->id)
+            ->where('lesson_id', $lesson->id)
+            ->first();
+        
         return view('student.pages.lessons.lesson-show', compact(
             'lesson',
             'unitLessons',
@@ -188,8 +239,73 @@ class StudentLessonController extends Controller
             'questionTypeColors',
             'questionDifficulties',
             'questionAttempts',
-            'quizAttempts'
+            'quizAttempts',
+            'lessonCompletion'
         ));
+    }
+    
+    /**
+     * حفظ/تحديث حالة الدرس (حضور أو إكمال)
+     */
+    public function markLessonStatus(Request $request, $lessonId)
+    {
+        $request->validate([
+            'status' => 'required|in:attended,completed',
+        ]);
+        
+        $user = Auth::user();
+        $lesson = Lesson::findOrFail($lessonId);
+        
+        // التحقق من أن الطالب مسجل في مادة الدرس
+        $subject = $lesson->unit->section->subject;
+        $isEnrolled = $subject->students()
+            ->where('users.id', $user->id)
+            ->where('enrollments.status', 'active')
+            ->exists();
+        
+        if (!$isEnrolled && !$lesson->is_free) {
+            return response()->json([
+                'success' => false,
+                'message' => 'ليس لديك صلاحية للوصول إلى هذا الدرس'
+            ], 403);
+        }
+        
+        try {
+            DB::beginTransaction();
+            
+            $completion = LessonCompletion::updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'lesson_id' => $lessonId,
+                ],
+                [
+                    'status' => $request->status,
+                    'marked_at' => now(),
+                ]
+            );
+            
+            // ربط مع نظام التحفيز
+            $gamificationService = app(GamificationService::class);
+            if ($request->status === 'attended') {
+                $gamificationService->processLessonAttendance($completion);
+            } elseif ($request->status === 'completed') {
+                $gamificationService->processLessonCompletion($completion);
+            }
+            
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'message' => $request->status === 'attended' ? 'تم تحديد الحضور بنجاح' : 'تم تحديد الإكمال بنجاح',
+                'completion' => $completion,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء حفظ الحالة: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
 

@@ -71,6 +71,14 @@ class Lesson extends Model
     }
 
     /**
+     * العلاقة مع إكمالات الدروس.
+     */
+    public function completions()
+    {
+        return $this->hasMany(LessonCompletion::class);
+    }
+
+    /**
      * الحصول على مدة الفيديو بصيغة مقروءة.
      */
     public function getFormattedDurationAttribute()

@@ -2,10 +2,22 @@
 
 namespace App\Providers;
 
-use Illuminate\Pagination\Paginator;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\View;
-use App\Http\View\Composers\SessionComposer;
+use Illuminate\Support\Facades\Event;
+use App\Events\LessonAttended;
+use App\Events\LessonCompleted;
+use App\Events\QuizStarted;
+use App\Events\QuizCompleted;
+use App\Events\QuestionAnswered;
+use App\Events\TaskCompleted;
+use App\Events\PointsAwarded;
+use App\Events\BadgeEarned;
+use App\Events\AchievementUnlocked;
+use App\Events\LevelUp;
+use App\Events\ChallengeCompleted;
+use App\Events\RewardClaimed;
+use App\Events\CustomNotificationSent;
+use App\Listeners\SendRealTimeNotification;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -22,12 +34,19 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Paginator::useBootstrapFive();
-        
-        // تسجيل PermissionServiceProvider
-        $this->app->register(PermissionServiceProvider::class);
-        
-        // تسجيل View Composer للجلسات
-        View::composer('admin.layouts.master', SessionComposer::class);
+        // تسجيل Event Listeners
+        Event::listen(LessonAttended::class, SendRealTimeNotification::class);
+        Event::listen(LessonCompleted::class, SendRealTimeNotification::class);
+        Event::listen(QuizStarted::class, SendRealTimeNotification::class);
+        Event::listen(QuizCompleted::class, SendRealTimeNotification::class);
+        Event::listen(QuestionAnswered::class, SendRealTimeNotification::class);
+        Event::listen(TaskCompleted::class, SendRealTimeNotification::class);
+        Event::listen(PointsAwarded::class, SendRealTimeNotification::class);
+        Event::listen(BadgeEarned::class, SendRealTimeNotification::class);
+        Event::listen(AchievementUnlocked::class, SendRealTimeNotification::class);
+        Event::listen(LevelUp::class, SendRealTimeNotification::class);
+        Event::listen(ChallengeCompleted::class, SendRealTimeNotification::class);
+        Event::listen(RewardClaimed::class, SendRealTimeNotification::class);
+        Event::listen(CustomNotificationSent::class, SendRealTimeNotification::class);
     }
 }

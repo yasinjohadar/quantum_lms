@@ -123,11 +123,11 @@
                                     <h6 class="mb-0 fs-15 fw-semibold text-fixed-white">الإشعارات</h6>
                                     <span class="badge rounded-pill bg-warning pt-1 text-fixed-black">تحديد الكل كمقروء</span>
                                 </div>
-                                <p class="dropdown-title-text subtext mb-0 text-fixed-white op-6 pb-0 fs-12 ">لديك 0 إشعارات جديدة</p>
+                                <p class="dropdown-title-text subtext mb-0 text-fixed-white op-6 pb-0 fs-12 ">لديك <span id="notification-count-text">0</span> إشعارات جديدة</p>
                             </div>
                             <div><hr class="dropdown-divider"></div>
                             <ul class="list-unstyled mb-0" id="header-notification-scroll">
-                                <li class="dropdown-item text-center py-3">
+                                <li class="dropdown-item text-center py-3" id="no-notifications-message">
                                     <p class="text-muted mb-0">لا توجد إشعارات جديدة</p>
                                 </li>
                             </ul>

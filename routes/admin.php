@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\EnrollmentController;
 use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\LoginLogController;
 use App\Http\Controllers\Admin\UserSessionController;
+use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Api\SessionActivityController;
 
 Route::middleware(['auth', 'check.user.active', 'admin'])
@@ -123,6 +124,41 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::get('quizzes-get-units', [QuizController::class, 'getUnits'])
             ->name('quizzes.get-units');
 
+        // مراقبة تقدم الطلاب
+        Route::get('student-progress', [\App\Http\Controllers\Admin\AdminStudentProgressController::class, 'index'])
+            ->name('student-progress.index');
+        Route::get('student-progress/{user}', [\App\Http\Controllers\Admin\AdminStudentProgressController::class, 'showStudent'])
+            ->name('student-progress.show');
+        Route::get('student-progress/{user}/subject/{subject}', [\App\Http\Controllers\Admin\AdminStudentProgressController::class, 'showStudentSubject'])
+            ->name('student-progress.subject');
+
+        // التقارير
+        Route::resource('reports', \App\Http\Controllers\Admin\ReportController::class);
+        Route::get('reports/{id}/export/{format}', [\App\Http\Controllers\Admin\ReportController::class, 'export'])
+            ->name('reports.export');
+        Route::post('reports/{id}/schedule', [\App\Http\Controllers\Admin\ReportController::class, 'schedule'])
+            ->name('reports.schedule');
+        Route::get('reports/templates/list', [\App\Http\Controllers\Admin\ReportController::class, 'templates'])
+            ->name('reports.templates');
+
+        // قوالب التقارير
+        Route::resource('report-templates', \App\Http\Controllers\Admin\ReportTemplateController::class);
+        Route::post('report-templates/{id}/duplicate', [\App\Http\Controllers\Admin\ReportTemplateController::class, 'duplicate'])
+            ->name('report-templates.duplicate');
+        Route::post('report-templates/{id}/set-default', [\App\Http\Controllers\Admin\ReportTemplateController::class, 'setDefault'])
+            ->name('report-templates.set-default');
+
+        // الإعدادات
+        Route::resource('settings', \App\Http\Controllers\Admin\SettingsController::class)->only(['index', 'update']);
+        Route::post('settings/{group}/reset', [\App\Http\Controllers\Admin\SettingsController::class, 'reset'])
+            ->name('settings.reset');
+
+        // لوحة التحكم
+        Route::get('dashboard/widgets', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'widgets'])
+            ->name('dashboard.widgets');
+        Route::post('dashboard/widgets/save', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'saveWidgets'])
+            ->name('dashboard.widgets.save');
+
         // محاولات الاختبارات
         Route::get('quiz-attempts/needs-grading', [QuizAttemptController::class, 'needsGrading'])
             ->name('quiz-attempts.needs-grading');
@@ -228,4 +264,49 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         // ===============================================
         Route::post('api/session-activities', [SessionActivityController::class, 'store'])
             ->name('api.session-activities.store'); // سيصبح admin.api.session-activities.store تلقائياً
+
+        // ===============================================
+        // نظام التحفيز (Gamification)
+        // ===============================================
+        Route::prefix('gamification')->as('gamification.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\GamificationController::class, 'index'])->name('index');
+            Route::get('/settings', [\App\Http\Controllers\Admin\GamificationController::class, 'settings'])->name('settings');
+            Route::post('/settings', [\App\Http\Controllers\Admin\GamificationController::class, 'saveSettings'])->name('settings.save');
+            Route::post('/settings/reset', [\App\Http\Controllers\Admin\GamificationController::class, 'resetSettings'])->name('settings.reset');
+            Route::get('/rules', [\App\Http\Controllers\Admin\GamificationController::class, 'rules'])->name('rules');
+        });
+
+        Route::resource('badges', \App\Http\Controllers\Admin\BadgeController::class);
+        Route::resource('achievements', \App\Http\Controllers\Admin\AchievementController::class);
+        Route::resource('levels', \App\Http\Controllers\Admin\LevelController::class);
+        Route::resource('challenges', \App\Http\Controllers\Admin\ChallengeController::class);
+        Route::resource('rewards', \App\Http\Controllers\Admin\RewardController::class);
+        Route::resource('daily-tasks', \App\Http\Controllers\Admin\DailyTaskController::class);
+        Route::resource('weekly-tasks', \App\Http\Controllers\Admin\WeeklyTaskController::class);
+        
+        Route::prefix('certificates')->as('certificates.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\CertificateController::class, 'index'])->name('index');
+            Route::post('/generate', [\App\Http\Controllers\Admin\CertificateController::class, 'generate'])->name('generate');
+            Route::get('/{certificate}/preview', [\App\Http\Controllers\Admin\CertificateController::class, 'preview'])->name('preview');
+            Route::post('/{certificate}/regenerate', [\App\Http\Controllers\Admin\CertificateController::class, 'regenerate'])->name('regenerate');
+            Route::get('/{certificate}/download', [\App\Http\Controllers\Admin\CertificateController::class, 'download'])->name('download');
+            Route::get('/verify', [\App\Http\Controllers\Admin\CertificateController::class, 'verify'])->name('verify');
+        });
+
+        Route::prefix('leaderboards')->as('leaderboards.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\LeaderboardController::class, 'index'])->name('index');
+            Route::get('/create', [\App\Http\Controllers\Admin\LeaderboardController::class, 'create'])->name('create');
+            Route::post('/', [\App\Http\Controllers\Admin\LeaderboardController::class, 'store'])->name('store');
+            Route::get('/{leaderboard}/edit', [\App\Http\Controllers\Admin\LeaderboardController::class, 'edit'])->name('edit');
+            Route::put('/{leaderboard}', [\App\Http\Controllers\Admin\LeaderboardController::class, 'update'])->name('update');
+            Route::post('/{leaderboard}/refresh', [\App\Http\Controllers\Admin\LeaderboardController::class, 'refresh'])->name('refresh');
+        });
+
+        // الإشعارات المخصصة
+        Route::prefix('notifications')->as('notifications.')->group(function () {
+            Route::get('/create', [NotificationController::class, 'create'])->name('create');
+            Route::post('/', [NotificationController::class, 'store'])->name('store');
+            Route::get('/target-users', [NotificationController::class, 'getTargetUsers'])->name('target-users');
+            Route::get('/all-users', [NotificationController::class, 'getAllUsers'])->name('all-users');
+        });
     });

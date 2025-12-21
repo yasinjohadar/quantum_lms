@@ -135,3 +135,4 @@ class SessionActivity extends Model
     }
 }
 
+

@@ -133,6 +133,141 @@
                             </a>
                         </li>
 
+                        <li class="slide {{ request()->is('admin/student-progress*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.student-progress.index') }}" class="side-menu__item {{ request()->is('admin/student-progress*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                                </svg>
+                                <span class="side-menu__label">مراقبة تقدم الطلاب</span>
+                            </a>
+                        </li>
+
+                        <li class="slide has-sub {{ request()->is('admin/reports*') || request()->is('admin/report-templates*') ? 'open' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                                </svg>
+                                <span class="side-menu__label">التقارير والتحليلات</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">التقارير والتحليلات</a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/reports') && !request()->is('admin/reports/*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.reports.index') }}" class="side-menu__item {{ request()->is('admin/reports') && !request()->is('admin/reports/*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                                        </svg>
+                                        <span class="side-menu__label">التقارير</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/report-templates*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.report-templates.index') }}" class="side-menu__item {{ request()->is('admin/report-templates*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                                        </svg>
+                                        <span class="side-menu__label">قوالب التقارير</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="slide has-sub {{ request()->is('admin/gamification*') || request()->is('admin/badges*') || request()->is('admin/achievements*') || request()->is('admin/levels*') || request()->is('admin/challenges*') || request()->is('admin/rewards*') || request()->is('admin/certificates*') || request()->is('admin/leaderboards*') || request()->is('admin/daily-tasks*') || request()->is('admin/weekly-tasks*') ? 'open' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                </svg>
+                                <span class="side-menu__label">نظام التحفيز</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">نظام التحفيز</a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/gamification*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.gamification.index') }}" class="side-menu__item {{ request()->is('admin/gamification*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">لوحة التحكم</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/badges*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.badges.index') }}" class="side-menu__item {{ request()->is('admin/badges*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">الشارات</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/achievements*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.achievements.index') }}" class="side-menu__item {{ request()->is('admin/achievements*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">الإنجازات</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/levels*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.levels.index') }}" class="side-menu__item {{ request()->is('admin/levels*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">المستويات</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/challenges*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.challenges.index') }}" class="side-menu__item {{ request()->is('admin/challenges*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">التحديات</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/rewards*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.rewards.index') }}" class="side-menu__item {{ request()->is('admin/rewards*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">المكافآت</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/certificates*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.certificates.index') }}" class="side-menu__item {{ request()->is('admin/certificates*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">الشهادات</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/leaderboards*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.leaderboards.index') }}" class="side-menu__item {{ request()->is('admin/leaderboards*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">لوحة المتصدرين</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/daily-tasks*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.daily-tasks.index') }}" class="side-menu__item {{ request()->is('admin/daily-tasks*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">المهام اليومية</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/weekly-tasks*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.weekly-tasks.index') }}" class="side-menu__item {{ request()->is('admin/weekly-tasks*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">المهام الأسبوعية</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/gamification/settings*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.gamification.settings') }}" class="side-menu__item {{ request()->is('admin/gamification/settings*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">إعدادات التحفيز</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        
+                        <!-- الإشعارات المخصصة -->
+                        <li class="slide {{ request()->is('admin/notifications*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.notifications.create') }}" class="side-menu__item {{ request()->is('admin/notifications*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/>
+                                </svg>
+                                <span class="side-menu__label">إرسال إشعار</span>
+                            </a>
+                        </li>
+
+                        <li class="slide {{ request()->is('admin/settings*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.settings.index') }}" class="side-menu__item {{ request()->is('admin/settings*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94L14.4 2.81c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                                </svg>
+                                <span class="side-menu__label">الإعدادات</span>
+                            </a>
+                        </li>
+
                         <!-- Start::slide - سجلات الدخول والجلسات -->
                         <li class="slide has-sub {{ request()->is('admin/login-logs*') || request()->is('admin/user-sessions*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">

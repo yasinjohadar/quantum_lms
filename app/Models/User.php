@@ -123,6 +123,95 @@ class User extends Authenticatable
     }
 
     /**
+     * العلاقة مع إكمالات الدروس
+     */
+    public function lessonCompletions()
+    {
+        return $this->hasMany(LessonCompletion::class);
+    }
+
+    /**
+     * العلاقات مع نظام التحفيز
+     */
+    public function pointTransactions()
+    {
+        return $this->hasMany(PointTransaction::class);
+    }
+
+    public function badges()
+    {
+        return $this->belongsToMany(Badge::class, 'user_badges')
+                    ->withPivot('earned_at', 'metadata')
+                    ->withTimestamps();
+    }
+
+    public function userBadges()
+    {
+        return $this->hasMany(UserBadge::class);
+    }
+
+    public function achievements()
+    {
+        return $this->belongsToMany(Achievement::class, 'user_achievements')
+                    ->withPivot('progress', 'completed_at', 'metadata')
+                    ->withTimestamps();
+    }
+
+    public function userAchievements()
+    {
+        return $this->hasMany(UserAchievement::class);
+    }
+
+    public function userLevel()
+    {
+        return $this->hasOne(UserLevel::class);
+    }
+
+    public function challenges()
+    {
+        return $this->belongsToMany(Challenge::class, 'user_challenges')
+                    ->withPivot('progress', 'completed_at', 'reward_claimed')
+                    ->withTimestamps();
+    }
+
+    public function userChallenges()
+    {
+        return $this->hasMany(UserChallenge::class);
+    }
+
+    public function rewards()
+    {
+        return $this->belongsToMany(Reward::class, 'user_rewards')
+                    ->withPivot('claimed_at', 'status', 'metadata')
+                    ->withTimestamps();
+    }
+
+    public function userRewards()
+    {
+        return $this->hasMany(UserReward::class);
+    }
+
+    public function certificates()
+    {
+        return $this->hasMany(Certificate::class);
+    }
+
+    public function leaderboardEntries()
+    {
+        return $this->hasMany(LeaderboardEntry::class);
+    }
+
+    public function gamificationNotifications()
+    {
+        return $this->hasMany(GamificationNotification::class);
+    }
+
+    public function userTasks()
+    {
+        return $this->hasMany(UserTask::class);
+    }
+
+    /**
      * نطاق الطلاب فقط
      */
     public function scopeStudents($query)

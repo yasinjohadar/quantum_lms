@@ -9,19 +9,17 @@
     <div class="row">
         <div class="col-12">
             <!-- عداد الوقت -->
-            @if($attempt->time_limit)
-                <div class="card mb-3" id="timer-card">
-                    <div class="card-body text-center">
-                        <div class="d-flex align-items-center justify-content-center gap-3">
-                            <i class="bi bi-clock-history fs-4 text-primary"></i>
-                            <div>
-                                <h5 class="mb-0" id="timer-display">--:--</h5>
-                                <small class="text-muted">الوقت المتبقي</small>
-                            </div>
+            <div class="card mb-3" id="timer-card">
+                <div class="card-body text-center">
+                    <div class="d-flex align-items-center justify-content-center gap-3">
+                        <i class="bi bi-clock-history fs-4 text-primary"></i>
+                        <div>
+                            <h5 class="mb-0" id="timer-display">--:--</h5>
+                            <small class="text-muted">الوقت المتبقي</small>
                         </div>
                     </div>
                 </div>
-            @endif
+            </div>
 
             <!-- السؤال -->
             <div class="card">
@@ -141,25 +139,32 @@
 <script src="{{ asset('js/quiz-timer.js') }}"></script>
 <script src="{{ asset('js/auto-save-answer.js') }}"></script>
 <script>
-    @if($attempt->time_limit)
-        // تهيئة العداد
-        const timer = new QuizTimer({
-            remainingTime: {{ $attempt->remaining_time ?? $attempt->time_limit }},
-            updateUrl: '{{ route("student.questions.time", $attempt->id) }}',
-            onTimeout: function() {
-                document.getElementById('answer-form').submit();
-            },
-            onWarning: function(seconds) {
-                const card = document.getElementById('timer-card');
+    // تهيئة العداد - دائماً يعرض العداد
+    @php
+        $timeLimit = $attempt->time_limit ?? 300; // 5 دقائق افتراضية
+        $remainingTime = $attempt->remaining_time ?? $timeLimit;
+    @endphp
+    const timer = new QuizTimer({
+        remainingTime: {{ $remainingTime }},
+        updateUrl: @if($attempt->time_limit) '{{ route("student.questions.time", $attempt->id) }}' @else null @endif,
+        onTimeout: function() {
+            alert('انتهى الوقت! سيتم إرسال إجابتك تلقائياً.');
+            document.getElementById('answer-form').submit();
+        },
+        onWarning: function(seconds) {
+            const card = document.getElementById('timer-card');
+            if (card) {
                 if (seconds <= 60) {
                     card.classList.add('danger');
+                    card.classList.remove('warning');
                 } else if (seconds <= 300) {
                     card.classList.add('warning');
+                    card.classList.remove('danger');
                 }
             }
-        });
-        timer.start();
-    @endif
+        }
+    });
+    timer.start();
 
     // حفظ تلقائي
     const autoSave = new AutoSaveAnswer({

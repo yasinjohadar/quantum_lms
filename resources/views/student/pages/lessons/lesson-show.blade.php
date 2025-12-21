@@ -85,6 +85,46 @@
                                 <p class="text-muted mb-0">{{ $lesson->description }}</p>
                             </div>
                         @endif
+                        
+                        <!-- زر تحديد حالة الدرس -->
+                        <div class="mt-4 pt-3 border-top">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <h6 class="mb-2">حالة الدرس</h6>
+                                    @if($lessonCompletion)
+                                        <span class="badge bg-{{ $lessonCompletion->status === 'completed' ? 'success' : 'info' }} fs-6">
+                                            <i class="bi bi-{{ $lessonCompletion->status === 'completed' ? 'check-circle-fill' : 'calendar-check' }} me-1"></i>
+                                            {{ $lessonCompletion->status === 'completed' ? 'تم الإكمال' : 'تم الحضور' }}
+                                        </span>
+                                        <small class="text-muted d-block mt-1">
+                                            <i class="bi bi-clock me-1"></i>
+                                            {{ $lessonCompletion->marked_at->format('Y-m-d H:i') }}
+                                        </small>
+                                    @else
+                                        <span class="badge bg-secondary fs-6">
+                                            <i class="bi bi-circle me-1"></i>
+                                            لم يتم التحديد
+                                        </span>
+                                    @endif
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="button" 
+                                            class="btn btn-{{ $lessonCompletion && $lessonCompletion->status === 'attended' ? 'info' : 'outline-info' }} btn-sm" 
+                                            id="mark-attended-btn"
+                                            data-status="attended">
+                                        <i class="bi bi-calendar-check me-1"></i>
+                                        تم الحضور
+                                    </button>
+                                    <button type="button" 
+                                            class="btn btn-{{ $lessonCompletion && $lessonCompletion->status === 'completed' ? 'success' : 'outline-success' }} btn-sm" 
+                                            id="mark-completed-btn"
+                                            data-status="completed">
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        تم الإكمال
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -444,12 +484,65 @@
 <!-- main-content closed -->
 @stop
 
-@section('script')
+@push('scripts')
 <script>
-    // تتبع مشاهدة الدرس (يمكن إضافة API call هنا)
     document.addEventListener('DOMContentLoaded', function() {
-        // يمكن إضافة كود لتتبع وقت المشاهدة هنا
+        const markAttendedBtn = document.getElementById('mark-attended-btn');
+        const markCompletedBtn = document.getElementById('mark-completed-btn');
+        const lessonId = {{ $lesson->id }};
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        
+        function markLessonStatus(status) {
+            const btn = status === 'attended' ? markAttendedBtn : markCompletedBtn;
+            const originalText = btn.innerHTML;
+            const originalClass = btn.className;
+            
+            // تعطيل الزر وإظهار التحميل
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>جاري الحفظ...';
+            
+            fetch(`{{ route('student.lessons.mark-status', ':id') }}`.replace(':id', lessonId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ status: status })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // تحديث الواجهة
+                    location.reload(); // إعادة تحميل الصفحة لعرض الحالة الجديدة
+                } else {
+                    alert('حدث خطأ: ' + (data.message || 'فشل في حفظ الحالة'));
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                    btn.className = originalClass;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('حدث خطأ أثناء الاتصال بالخادم');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                btn.className = originalClass;
+            });
+        }
+        
+        if (markAttendedBtn) {
+            markAttendedBtn.addEventListener('click', function() {
+                markLessonStatus('attended');
+            });
+        }
+        
+        if (markCompletedBtn) {
+            markCompletedBtn.addEventListener('click', function() {
+                markLessonStatus('completed');
+            });
+        }
     });
 </script>
-@stop
+@endpush
 
