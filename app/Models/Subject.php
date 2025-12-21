@@ -31,6 +31,8 @@ class Subject extends Model
         'order',
         'is_active',
         'display_in_class',
+        'reviews_enabled',
+        'reviews_require_approval',
     ];
 
     /**
@@ -43,6 +45,8 @@ class Subject extends Model
         'display_in_class' => 'boolean',
         'order' => 'integer',
         'class_id' => 'integer',
+        'reviews_enabled' => 'boolean',
+        'reviews_require_approval' => 'boolean',
     ];
 
     protected static function boot()
@@ -149,6 +153,22 @@ class Subject extends Model
         return $this->belongsToMany(Group::class, 'group_subject')
                     ->withPivot(['added_by', 'added_at', 'notes'])
                     ->withTimestamps();
+    }
+
+    /**
+     * العلاقة مع التقييمات
+     */
+    public function reviews()
+    {
+        return $this->morphMany(Review::class, 'reviewable');
+    }
+
+    /**
+     * التقييمات المعتمدة فقط
+     */
+    public function approvedReviews()
+    {
+        return $this->morphMany(Review::class, 'reviewable')->approved();
     }
 
     /**

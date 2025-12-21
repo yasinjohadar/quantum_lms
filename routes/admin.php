@@ -309,4 +309,17 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             Route::get('/target-users', [NotificationController::class, 'getTargetUsers'])->name('target-users');
             Route::get('/all-users', [NotificationController::class, 'getAllUsers'])->name('all-users');
         });
+
+        // التقييمات
+        Route::prefix('reviews')->as('reviews.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\ReviewController::class, 'index'])->name('index');
+            Route::get('/{review}', [\App\Http\Controllers\Admin\ReviewController::class, 'show'])->name('show');
+            Route::post('/{review}/approve', [\App\Http\Controllers\Admin\ReviewController::class, 'approve'])->name('approve');
+            Route::post('/{review}/reject', [\App\Http\Controllers\Admin\ReviewController::class, 'reject'])->name('reject');
+            Route::delete('/{review}', [\App\Http\Controllers\Admin\ReviewController::class, 'destroy'])->name('destroy');
+            Route::post('/bulk-approve', [\App\Http\Controllers\Admin\ReviewController::class, 'bulkApprove'])->name('bulk-approve');
+            Route::post('/bulk-reject', [\App\Http\Controllers\Admin\ReviewController::class, 'bulkReject'])->name('bulk-reject');
+            Route::get('/settings', [\App\Http\Controllers\Admin\ReviewController::class, 'settings'])->name('settings');
+            Route::post('/settings', [\App\Http\Controllers\Admin\ReviewController::class, 'saveSettings'])->name('settings.save');
+        });
     });

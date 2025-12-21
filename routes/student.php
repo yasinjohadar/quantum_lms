@@ -77,6 +77,16 @@ Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student
         Route::post('/read-all', [\App\Http\Controllers\Student\NotificationController::class, 'markAllAsRead'])->name('read-all');
         Route::get('/unread-count', [\App\Http\Controllers\Student\NotificationController::class, 'getUnreadCount'])->name('unread-count');
     });
+    
+    // التقييمات
+    Route::prefix('reviews')->as('reviews.')->group(function () {
+        Route::get('/create', [\App\Http\Controllers\Student\ReviewController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\Student\ReviewController::class, 'store'])->name('store');
+        Route::get('/{review}/edit', [\App\Http\Controllers\Student\ReviewController::class, 'edit'])->name('edit');
+        Route::put('/{review}', [\App\Http\Controllers\Student\ReviewController::class, 'update'])->name('update');
+        Route::delete('/{review}', [\App\Http\Controllers\Student\ReviewController::class, 'destroy'])->name('destroy');
+        Route::post('/{review}/helpful', [\App\Http\Controllers\Student\ReviewController::class, 'toggleHelpful'])->name('toggle-helpful');
+    });
     Route::post('/quizzes/attempt/{attempt}/answer', [StudentQuizController::class, 'saveAnswer'])->name('quizzes.save-answer');
     Route::post('/quizzes/attempt/{attempt}/submit', [StudentQuizController::class, 'submitQuiz'])->name('quizzes.submit');
     Route::get('/quizzes/{quiz}/attempt/{attempt}/result', [StudentQuizController::class, 'showResult'])->name('quizzes.result');

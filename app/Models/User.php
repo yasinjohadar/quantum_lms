@@ -115,6 +115,14 @@ class User extends Authenticatable
     }
 
     /**
+     * العلاقة مع التقييمات
+     */
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    /**
      * العلاقة مع محاولات الاختبارات
      */
     public function quizAttempts()

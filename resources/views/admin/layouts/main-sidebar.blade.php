@@ -143,6 +143,16 @@
                             </a>
                         </li>
 
+                        <li class="slide {{ request()->is('admin/reviews*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.reviews.index') }}" class="side-menu__item {{ request()->is('admin/reviews*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                </svg>
+                                <span class="side-menu__label">التقييمات</span>
+                            </a>
+                        </li>
+
                         <li class="slide has-sub {{ request()->is('admin/reports*') || request()->is('admin/report-templates*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">

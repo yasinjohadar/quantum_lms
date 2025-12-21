@@ -17,6 +17,9 @@ use App\Events\LevelUp;
 use App\Events\ChallengeCompleted;
 use App\Events\RewardClaimed;
 use App\Events\CustomNotificationSent;
+use App\Events\ReviewCreated;
+use App\Events\ReviewApproved;
+use App\Events\ReviewRejected;
 use App\Listeners\SendRealTimeNotification;
 
 class AppServiceProvider extends ServiceProvider
@@ -48,5 +51,8 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(ChallengeCompleted::class, SendRealTimeNotification::class);
         Event::listen(RewardClaimed::class, SendRealTimeNotification::class);
         Event::listen(CustomNotificationSent::class, SendRealTimeNotification::class);
+        Event::listen(ReviewCreated::class, SendRealTimeNotification::class);
+        Event::listen(ReviewApproved::class, SendRealTimeNotification::class);
+        Event::listen(ReviewRejected::class, SendRealTimeNotification::class);
     }
 }
