@@ -91,6 +91,7 @@ class GamificationNotificationService
     ): int {
         $notifications = [];
         $now = now();
+        $jsonData = json_encode($data); // تحويل البيانات إلى JSON
 
         foreach ($userIds as $userId) {
             $notifications[] = [
@@ -98,7 +99,7 @@ class GamificationNotificationService
                 'type' => $type,
                 'title' => $title,
                 'message' => $message,
-                'data' => $data,
+                'data' => $jsonData, // استخدام JSON string
                 'is_read' => false,
                 'created_at' => $now,
                 'updated_at' => $now,

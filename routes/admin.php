@@ -17,6 +17,9 @@ use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\LoginLogController;
 use App\Http\Controllers\Admin\UserSessionController;
 use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\AssignmentController;
+use App\Http\Controllers\Admin\AssignmentQuestionController;
+use App\Http\Controllers\Admin\AssignmentSubmissionController;
 use App\Http\Controllers\Api\SessionActivityController;
 
 Route::middleware(['auth', 'check.user.active', 'admin'])
@@ -98,6 +101,159 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('questions.import.show');
         Route::post('questions-import', [QuestionController::class, 'import'])
             ->name('questions.import');
+
+        // الواجبات
+        Route::resource('assignments', AssignmentController::class);
+        Route::get('assignments/get-assignable-items', [AssignmentController::class, 'getAssignableItems'])
+            ->name('assignments.get-assignable-items');
+        Route::post('assignments/{assignment}/publish', [AssignmentController::class, 'publish'])
+            ->name('assignments.publish');
+        Route::post('assignments/{assignment}/unpublish', [AssignmentController::class, 'unpublish'])
+            ->name('assignments.unpublish');
+        Route::post('assignments/{assignment}/duplicate', [AssignmentController::class, 'duplicate'])
+            ->name('assignments.duplicate');
+        
+        // أسئلة الواجبات
+        Route::post('assignments/{assignment}/questions', [AssignmentQuestionController::class, 'store'])
+            ->name('assignments.questions.store');
+        Route::put('assignments/{assignment}/questions/{question}', [AssignmentQuestionController::class, 'update'])
+            ->name('assignments.questions.update');
+        Route::delete('assignments/{assignment}/questions/{question}', [AssignmentQuestionController::class, 'destroy'])
+            ->name('assignments.questions.destroy');
+        Route::post('assignments/{assignment}/questions/reorder', [AssignmentQuestionController::class, 'reorder'])
+            ->name('assignments.questions.reorder');
+        
+        // إرسالات الواجبات
+        Route::get('assignments/{assignment}/submissions', [AssignmentSubmissionController::class, 'index'])
+            ->name('assignments.submissions.index');
+        Route::get('assignments/{assignment}/submissions/{submission}', [AssignmentSubmissionController::class, 'show'])
+            ->name('assignments.submissions.show');
+        Route::post('assignments/{assignment}/submissions/{submission}/grade', [AssignmentSubmissionController::class, 'grade'])
+            ->name('assignments.submissions.grade');
+        Route::post('assignments/{assignment}/submissions/{submission}/return', [AssignmentSubmissionController::class, 'return'])
+            ->name('assignments.submissions.return');
+        Route::get('assignments/{assignment}/submissions/export', [AssignmentSubmissionController::class, 'export'])
+            ->name('assignments.submissions.export');
+
+        // ===============================================
+        // المكتبة الرقمية
+        // ===============================================
+        Route::resource('library/categories', \App\Http\Controllers\Admin\LibraryCategoryController::class)->names([
+            'index' => 'library.categories.index',
+            'create' => 'library.categories.create',
+            'store' => 'library.categories.store',
+            'show' => 'library.categories.show',
+            'edit' => 'library.categories.edit',
+            'update' => 'library.categories.update',
+            'destroy' => 'library.categories.destroy',
+        ]);
+        Route::resource('library/items', \App\Http\Controllers\Admin\LibraryItemController::class)->names([
+            'index' => 'library.items.index',
+            'create' => 'library.items.create',
+            'store' => 'library.items.store',
+            'show' => 'library.items.show',
+            'edit' => 'library.items.edit',
+            'update' => 'library.items.update',
+            'destroy' => 'library.items.destroy',
+        ]);
+        Route::get('library/items/{item}/preview', [\App\Http\Controllers\Admin\LibraryItemController::class, 'preview'])
+            ->name('library.items.preview');
+        Route::get('library/items/{item}/download', [\App\Http\Controllers\Admin\LibraryItemController::class, 'download'])
+            ->name('library.items.download');
+        Route::get('library/items/{item}/stats', [\App\Http\Controllers\Admin\LibraryItemController::class, 'stats'])
+            ->name('library.items.stats');
+        Route::resource('library/tags', \App\Http\Controllers\Admin\LibraryTagController::class)->except(['create', 'edit', 'update', 'show'])->names([
+            'index' => 'library.tags.index',
+            'store' => 'library.tags.store',
+            'destroy' => 'library.tags.destroy',
+        ]);
+        
+        // تقارير المكتبة
+        Route::get('library/reports/most-downloaded', [\App\Http\Controllers\Admin\LibraryReportController::class, 'exportMostDownloaded'])
+            ->name('library.reports.most-downloaded');
+        Route::get('library/reports/most-viewed', [\App\Http\Controllers\Admin\LibraryReportController::class, 'exportMostViewed'])
+            ->name('library.reports.most-viewed');
+        Route::get('library/reports/categories-usage', [\App\Http\Controllers\Admin\LibraryReportController::class, 'exportCategoriesUsage'])
+            ->name('library.reports.categories-usage');
+
+        // لوحة إحصائيات المكتبة
+        Route::get('library/dashboard', [\App\Http\Controllers\Admin\LibraryDashboardController::class, 'index'])
+            ->name('library.dashboard');
+
+        // ===============================================
+        // التقويم والجدولة
+        // ===============================================
+        Route::get('calendar', [\App\Http\Controllers\Admin\CalendarController::class, 'index'])
+            ->name('calendar.index');
+        Route::get('calendar/events-api', [\App\Http\Controllers\Admin\CalendarController::class, 'getEvents'])
+            ->name('calendar.events-api');
+        Route::resource('calendar/events', \App\Http\Controllers\Admin\CalendarController::class)->names([
+            'index' => 'calendar.events.index',
+            'create' => 'calendar.events.create',
+            'store' => 'calendar.events.store',
+            'edit' => 'calendar.events.edit',
+            'update' => 'calendar.events.update',
+            'destroy' => 'calendar.events.destroy',
+        ]);
+        Route::resource('calendar/reminders', \App\Http\Controllers\Admin\ReminderController::class)->names([
+            'index' => 'calendar.reminders.index',
+            'create' => 'calendar.reminders.create',
+            'store' => 'calendar.reminders.store',
+            'edit' => 'calendar.reminders.edit',
+            'update' => 'calendar.reminders.update',
+            'destroy' => 'calendar.reminders.destroy',
+        ]);
+
+        // ===============================================
+        // نظام الذكاء الاصطناعي
+        // ===============================================
+        Route::resource('ai/models', \App\Http\Controllers\Admin\AIModelController::class)->names([
+            'index' => 'ai.models.index',
+            'create' => 'ai.models.create',
+            'store' => 'ai.models.store',
+            'edit' => 'ai.models.edit',
+            'update' => 'ai.models.update',
+            'destroy' => 'ai.models.destroy',
+        ]);
+        Route::post('ai/models/{model}/test', [\App\Http\Controllers\Admin\AIModelController::class, 'test'])->name('ai.models.test');
+        Route::post('ai/models/{model}/set-default', [\App\Http\Controllers\Admin\AIModelController::class, 'setDefault'])->name('ai.models.set-default');
+        Route::post('ai/models/{model}/toggle-active', [\App\Http\Controllers\Admin\AIModelController::class, 'toggleActive'])->name('ai.models.toggle-active');
+
+        Route::resource('ai/question-generations', \App\Http\Controllers\Admin\AIQuestionGenerationController::class)->names([
+            'index' => 'ai.question-generations.index',
+            'create' => 'ai.question-generations.create',
+            'store' => 'ai.question-generations.store',
+            'show' => 'ai.question-generations.show',
+        ]);
+        Route::post('ai/question-generations/{generation}/process', [\App\Http\Controllers\Admin\AIQuestionGenerationController::class, 'process'])->name('ai.question-generations.process');
+        Route::post('ai/question-generations/{generation}/save', [\App\Http\Controllers\Admin\AIQuestionGenerationController::class, 'save'])->name('ai.question-generations.save');
+        Route::post('ai/question-generations/{generation}/regenerate', [\App\Http\Controllers\Admin\AIQuestionGenerationController::class, 'regenerate'])->name('ai.question-generations.regenerate');
+
+        Route::resource('ai/question-solutions', \App\Http\Controllers\Admin\AIQuestionSolvingController::class)->names([
+            'index' => 'ai.question-solutions.index',
+            'show' => 'ai.question-solutions.show',
+        ]);
+        Route::post('ai/question-solutions/solve/{question}', [\App\Http\Controllers\Admin\AIQuestionSolvingController::class, 'solve'])->name('ai.question-solutions.solve');
+        Route::post('ai/question-solutions/solve-multiple', [\App\Http\Controllers\Admin\AIQuestionSolvingController::class, 'solveMultiple'])->name('ai.question-solutions.solve-multiple');
+        Route::post('ai/question-solutions/{solution}/verify', [\App\Http\Controllers\Admin\AIQuestionSolvingController::class, 'verify'])->name('ai.question-solutions.verify');
+
+        Route::get('ai/settings', [\App\Http\Controllers\Admin\AISettingsController::class, 'index'])->name('ai.settings.index');
+        Route::put('ai/settings', [\App\Http\Controllers\Admin\AISettingsController::class, 'update'])->name('ai.settings.update');
+
+        // ===============================================
+        // نظام النسخ الاحتياطي
+        // ===============================================
+        Route::resource('backups', \App\Http\Controllers\Admin\BackupController::class);
+        Route::post('backups/{backup}/restore', [\App\Http\Controllers\Admin\BackupController::class, 'restore'])->name('backups.restore');
+        Route::get('backups/{backup}/download', [\App\Http\Controllers\Admin\BackupController::class, 'download'])->name('backups.download');
+        Route::get('backups/stats', [\App\Http\Controllers\Admin\BackupController::class, 'stats'])->name('backups.stats');
+
+        Route::resource('backup-schedules', \App\Http\Controllers\Admin\BackupScheduleController::class);
+        Route::post('backup-schedules/{schedule}/execute', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'execute'])->name('backup-schedules.execute');
+        Route::post('backup-schedules/{schedule}/toggle-active', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'toggleActive'])->name('backup-schedules.toggle-active');
+
+        Route::resource('backup-storage', \App\Http\Controllers\Admin\BackupStorageController::class);
+        Route::post('backup-storage/{config}/test', [\App\Http\Controllers\Admin\BackupStorageController::class, 'test'])->name('backup-storage.test');
 
         // الاختبارات
         Route::resource('quizzes', QuizController::class);

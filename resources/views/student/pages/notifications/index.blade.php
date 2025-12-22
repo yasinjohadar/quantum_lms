@@ -4,6 +4,49 @@
     الإشعارات
 @stop
 
+@php
+// Helper functions for notification display
+function getNotificationIcon($type) {
+    $icons = [
+        'badge_earned' => 'award',
+        'achievement_unlocked' => 'star',
+        'level_up' => 'trending-up',
+        'points_earned' => 'plus-circle',
+        'challenge_completed' => 'target',
+        'reward_claimed' => 'gift',
+        'certificate_earned' => 'file-text',
+        'leaderboard_update' => 'bar-chart-2',
+        'task_completed' => 'check-circle',
+        'custom_notification' => 'bell',
+        'lesson_attended' => 'book-open',
+        'lesson_completed' => 'check-square',
+        'quiz_completed' => 'edit-3',
+        'question_answered' => 'help-circle',
+    ];
+    return $icons[$type] ?? 'bell';
+}
+
+function getNotificationColor($type) {
+    $colors = [
+        'badge_earned' => 'warning',
+        'achievement_unlocked' => 'success',
+        'level_up' => 'primary',
+        'points_earned' => 'info',
+        'challenge_completed' => 'danger',
+        'reward_claimed' => 'purple',
+        'certificate_earned' => 'teal',
+        'leaderboard_update' => 'orange',
+        'task_completed' => 'success',
+        'custom_notification' => 'primary',
+        'lesson_attended' => 'info',
+        'lesson_completed' => 'success',
+        'quiz_completed' => 'warning',
+        'question_answered' => 'secondary',
+    ];
+    return $colors[$type] ?? 'primary';
+}
+@endphp
+
 @section('content')
 <!-- Start::app-content -->
 <div class="main-content app-content">
@@ -128,8 +171,8 @@
                                         <div class="d-flex align-items-start">
                                             <!-- Icon -->
                                             <div class="avatar avatar-md me-3 flex-shrink-0">
-                                                <span class="avatar-initial rounded-circle bg-{{ $this->getNotificationColor($notification->type) }}-transparent">
-                                                    <i class="fe fe-{{ $this->getNotificationIcon($notification->type) }} text-{{ $this->getNotificationColor($notification->type) }}"></i>
+                                                <span class="avatar-initial rounded-circle bg-{{ getNotificationColor($notification->type) }}-transparent">
+                                                    <i class="fe fe-{{ getNotificationIcon($notification->type) }} text-{{ getNotificationColor($notification->type) }}"></i>
                                                 </span>
                                             </div>
                                             
@@ -232,6 +275,63 @@
     </div>
 </div>
 <!-- End::app-content -->
+
+<!-- Modal لتأكيد حذف الإشعار -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="mb-3">
+                    <div class="avatar avatar-xl bg-danger-transparent rounded-circle mx-auto d-flex align-items-center justify-content-center">
+                        <i class="fe fe-trash-2 fs-1 text-danger"></i>
+                    </div>
+                </div>
+                <h5 class="modal-title mb-3" id="confirmDeleteModalLabel">تأكيد الحذف</h5>
+                <p class="text-muted mb-4">هل أنت متأكد من حذف هذا الإشعار؟ لا يمكن التراجع عن هذا الإجراء.</p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fe fe-x me-1"></i> إلغاء
+                    </button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                        <i class="fe fe-trash-2 me-1"></i> حذف
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal لتأكيد تحديد جميع الإشعارات كمقروءة -->
+<div class="modal fade" id="confirmMarkAllReadModal" tabindex="-1" aria-labelledby="confirmMarkAllReadModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="mb-3">
+                    <div class="avatar avatar-xl bg-primary-transparent rounded-circle mx-auto d-flex align-items-center justify-content-center">
+                        <i class="fe fe-check-circle fs-1 text-primary"></i>
+                    </div>
+                </div>
+                <h5 class="modal-title mb-3" id="confirmMarkAllReadModalLabel">تأكيد التحديد</h5>
+                <p class="text-muted mb-4">هل أنت متأكد من تحديد جميع الإشعارات كمقروءة؟</p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fe fe-x me-1"></i> إلغاء
+                    </button>
+                    <button type="button" class="btn btn-primary" id="confirmMarkAllReadBtn">
+                        <i class="fe fe-check-circle me-1"></i> تأكيد
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @stop
 
 @push('scripts')
@@ -382,10 +482,29 @@
         });
     }
 
+    let pendingDeleteNotificationId = null;
+    let pendingDeleteBtn = null;
+
     function deleteNotification(notificationId, btn) {
-        if (!confirm('هل أنت متأكد من حذف هذا الإشعار؟')) {
+        pendingDeleteNotificationId = notificationId;
+        pendingDeleteBtn = btn;
+        
+        // إظهار المودال
+        const modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+        modal.show();
+    }
+    
+    function processDeleteNotification() {
+        if (!pendingDeleteNotificationId || !pendingDeleteBtn) {
             return;
         }
+        
+        const notificationId = pendingDeleteNotificationId;
+        const btn = pendingDeleteBtn;
+        
+        // إغلاق المودال
+        const modal = bootstrap.Modal.getInstance(document.getElementById('confirmDeleteModal'));
+        if (modal) modal.hide();
         
         fetch(`/student/notifications/${notificationId}`, {
             method: 'DELETE',
@@ -409,11 +528,17 @@
                 }, 300);
                 
                 updateNotificationCount();
+            } else {
+                alert('حدث خطأ أثناء حذف الإشعار');
             }
         })
         .catch(error => {
             console.error('Error:', error);
             alert('حدث خطأ أثناء حذف الإشعار');
+        })
+        .finally(() => {
+            pendingDeleteNotificationId = null;
+            pendingDeleteBtn = null;
         });
     }
 
@@ -436,9 +561,25 @@
     // Mark all as read form
     document.getElementById('mark-all-read-form')?.addEventListener('submit', function(e) {
         e.preventDefault();
-        if (confirm('هل أنت متأكد من تحديد جميع الإشعارات كمقروءة؟')) {
-            this.submit();
-        }
+        
+        // إظهار المودال
+        const modal = new bootstrap.Modal(document.getElementById('confirmMarkAllReadModal'));
+        modal.show();
+    });
+    
+    // تأكيد تحديد جميع الإشعارات كمقروءة
+    document.getElementById('confirmMarkAllReadBtn')?.addEventListener('click', function() {
+        // إغلاق المودال
+        const modal = bootstrap.Modal.getInstance(document.getElementById('confirmMarkAllReadModal'));
+        if (modal) modal.hide();
+        
+        // إرسال النموذج
+        document.getElementById('mark-all-read-form').submit();
+    });
+    
+    // تأكيد حذف الإشعار
+    document.getElementById('confirmDeleteBtn')?.addEventListener('click', function() {
+        processDeleteNotification();
     });
 </script>
 @endpush

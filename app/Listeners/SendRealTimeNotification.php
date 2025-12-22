@@ -14,6 +14,7 @@ use App\Events\AchievementUnlocked;
 use App\Events\LevelUp;
 use App\Events\ChallengeCompleted;
 use App\Events\RewardClaimed;
+use App\Events\CustomNotificationSent;
 use App\Models\GamificationNotification;
 use App\Services\GamificationNotificationService;
 use Illuminate\Support\Facades\Cache;
@@ -44,7 +45,16 @@ class SendRealTimeNotification
                 return;
             }
 
-            // حفظ الإشعار في قاعدة البيانات
+            // إذا كان Event من نوع CustomNotificationSent، لا نحفظ الإشعار في قاعدة البيانات
+            // لأنه تم حفظه مسبقاً في sendBulkNotification
+            // فقط نحفظه في Cache للإرسال عبر SSE
+            if ($event instanceof CustomNotificationSent) {
+                // حفظ الإشعار في Cache للإرسال عبر SSE فقط
+                $this->storeNotificationForSSE($user->id, $notificationData);
+                return;
+            }
+
+            // للأحداث الأخرى، نحفظ الإشعار في قاعدة البيانات
             $notification = $this->notificationService->sendNotification(
                 $user,
                 $notificationData['type'],

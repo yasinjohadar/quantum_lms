@@ -142,6 +142,34 @@ class Question extends Model
     }
 
     /**
+     * العلاقة مع حلول AI
+     */
+    public function aiSolutions()
+    {
+        return $this->hasMany(AIQuestionSolution::class, 'question_id');
+    }
+
+    /**
+     * الحصول على نص السؤال
+     */
+    public function getQuestionText(): string
+    {
+        return $this->content ?? $this->title ?? '';
+    }
+
+    /**
+     * الحصول على الإجابة الصحيحة
+     */
+    public function getCorrectAnswer(): string
+    {
+        $correctOptions = $this->correctOptions;
+        if ($correctOptions->count() > 0) {
+            return $correctOptions->pluck('content')->implode(', ');
+        }
+        return '';
+    }
+
+    /**
      * Scopes
      */
     public function scopeActive($query)

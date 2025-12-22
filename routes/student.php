@@ -7,6 +7,7 @@ use App\Http\Controllers\Student\StudentEnrollmentController;
 use App\Http\Controllers\Student\StudentQuestionController;
 use App\Http\Controllers\Student\StudentQuizController;
 use App\Http\Controllers\Student\StudentProgressController;
+use App\Http\Controllers\Student\StudentAssignmentController;
 
 Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student.')->group(function () {
     // لوحة تحكم الطالب
@@ -23,6 +24,47 @@ Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student
     Route::get('/progress', [StudentProgressController::class, 'index'])->name('progress.index');
     Route::get('/progress/subject/{subject}', [StudentProgressController::class, 'showSubject'])->name('progress.subject');
     Route::get('/progress/section/{section}', [StudentProgressController::class, 'showSection'])->name('progress.section');
+    
+    // الواجبات
+    Route::get('/assignments', [StudentAssignmentController::class, 'index'])->name('assignments.index');
+    Route::get('/assignments/{assignment}', [StudentAssignmentController::class, 'show'])->name('assignments.show');
+    Route::post('/assignments/{assignment}/submit', [StudentAssignmentController::class, 'submit'])->name('assignments.submit');
+    Route::post('/assignments/{assignment}/resubmit', [StudentAssignmentController::class, 'resubmit'])->name('assignments.resubmit');
+    Route::get('/assignments/{assignment}/submission', [StudentAssignmentController::class, 'viewSubmission'])->name('assignments.submission');
+    Route::get('/assignments/{assignment}/submissions/{submission}/files/{fileId}/download', [StudentAssignmentController::class, 'downloadFile'])->name('assignments.files.download');
+    
+    // المكتبة الرقمية
+    Route::get('/library', [\App\Http\Controllers\Student\StudentLibraryController::class, 'index'])->name('library.index');
+    Route::get('/library/search', [\App\Http\Controllers\Student\StudentLibraryController::class, 'search'])->name('library.search');
+    Route::get('/library/favorites', [\App\Http\Controllers\Student\StudentLibraryController::class, 'favorites'])->name('library.favorites');
+    Route::get('/library/subject/{subject}', [\App\Http\Controllers\Student\StudentLibraryController::class, 'subjectLibrary'])->name('library.subject');
+    Route::get('/library/{item}', [\App\Http\Controllers\Student\StudentLibraryController::class, 'show'])->name('library.show');
+    Route::get('/library/{item}/preview', [\App\Http\Controllers\Student\StudentLibraryController::class, 'preview'])->name('library.preview');
+    Route::post('/library/{item}/download', [\App\Http\Controllers\Student\StudentLibraryController::class, 'download'])->name('library.download');
+    Route::post('/library/{item}/rate', [\App\Http\Controllers\Student\StudentLibraryController::class, 'rate'])->name('library.rate');
+    Route::post('/library/{item}/toggle-favorite', [\App\Http\Controllers\Student\StudentLibraryController::class, 'toggleFavorite'])->name('library.toggle-favorite');
+    
+    // التقويم
+    Route::get('/calendar', [\App\Http\Controllers\Student\CalendarController::class, 'index'])->name('calendar.index');
+    Route::get('/calendar/events-api', [\App\Http\Controllers\Student\CalendarController::class, 'getEvents'])->name('calendar.events-api');
+    Route::get('/calendar/export', [\App\Http\Controllers\Student\CalendarController::class, 'export'])->name('calendar.export');
+    
+    // المساعد التعليمي (Chatbot)
+    Route::resource('ai/chatbot', \App\Http\Controllers\Student\AIChatbotController::class)->names([
+        'index' => 'ai.chatbot.index',
+        'create' => 'ai.chatbot.create',
+        'store' => 'ai.chatbot.store',
+        'show' => 'ai.chatbot.show',
+        'destroy' => 'ai.chatbot.destroy',
+    ]);
+    Route::post('ai/chatbot/{conversation}/send-message', [\App\Http\Controllers\Student\AIChatbotController::class, 'sendMessage'])->name('ai.chatbot.send-message');
+    Route::get('ai/chatbot/{conversation}/history', [\App\Http\Controllers\Student\AIChatbotController::class, 'getHistory'])->name('ai.chatbot.history');
+    Route::get('subjects/{subject}/lessons', function(\App\Models\Subject $subject) {
+        $lessons = \App\Models\Lesson::whereHas('unit.section', function($q) use ($subject) {
+            $q->where('subject_id', $subject->id);
+        })->active()->get(['id', 'title']);
+        return response()->json($lessons);
+    })->name('subjects.lessons');
     
     // التقارير
     Route::get('/reports', [\App\Http\Controllers\Student\StudentReportController::class, 'index'])->name('reports.index');

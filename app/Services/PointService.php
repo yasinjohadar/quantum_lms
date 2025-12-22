@@ -42,6 +42,10 @@ class PointService
             'task_completion' => 0, // سيتم تحديده من المهمة نفسها
             'reward' => 0,
             'manual' => 0,
+            // أحداث المكتبة
+            'library_item_viewed' => 2,
+            'library_item_downloaded' => 5,
+            'library_item_rated' => 3,
             default => 0,
         };
     }

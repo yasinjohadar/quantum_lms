@@ -53,10 +53,10 @@ class NotificationController extends Controller
             'title' => 'required|string|max:255',
             'message' => 'required|string|max:1000',
             'target_type' => 'required|in:subject,class,group,individual',
-            'subject_id' => 'required_if:target_type,subject|exists:subjects,id',
-            'class_id' => 'required_if:target_type,class|exists:classes,id',
-            'group_id' => 'required_if:target_type,group|exists:groups,id',
-            'user_ids' => 'required_if:target_type,individual|array',
+            'subject_id' => 'nullable|required_if:target_type,subject|exists:subjects,id',
+            'class_id' => 'nullable|required_if:target_type,class|exists:classes,id',
+            'group_id' => 'nullable|required_if:target_type,group|exists:groups,id',
+            'user_ids' => 'nullable|required_if:target_type,individual|array',
             'user_ids.*' => 'exists:users,id',
         ]);
 

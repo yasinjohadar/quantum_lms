@@ -21,6 +21,31 @@ class NotificationController extends Controller
     {
         $user = Auth::user();
         
+        // إذا كان الطلب JSON (للقائمة المنسدلة)
+        if ($request->wantsJson() || $request->get('format') === 'json') {
+            $limit = $request->get('limit', 10);
+            $notifications = GamificationNotification::where('user_id', $user->id)
+                ->where('is_read', false)
+                ->orderBy('created_at', 'desc')
+                ->limit($limit)
+                ->get()
+                ->map(function($notif) {
+                    return [
+                        'id' => $notif->id,
+                        'type' => $notif->type,
+                        'title' => $notif->title,
+                        'message' => $notif->message,
+                        'created_at' => $notif->created_at->toIso8601String(),
+                        'is_read' => $notif->is_read,
+                    ];
+                });
+            
+            return response()->json([
+                'notifications' => $notifications,
+                'count' => $this->notificationService->getUnreadCount($user),
+            ]);
+        }
+        
         // الفلترة
         $type = $request->get('type', 'all');
         $status = $request->get('status', 'all'); // all, read, unread

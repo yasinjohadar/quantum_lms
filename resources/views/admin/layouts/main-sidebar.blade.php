@@ -338,6 +338,150 @@
                             </a>
                         </li>
 
+                        <li class="slide {{ request()->is('admin/assignments*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.assignments.index') }}" class="side-menu__item {{ request()->is('admin/assignments*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                                </svg>
+                                <span class="side-menu__label">الواجبات</span>
+                            </a>
+                        </li>
+
+                        <li class="slide has-sub {{ request()->is('admin/library*') ? 'open' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                                </svg>
+                                <span class="side-menu__label">المكتبة الرقمية</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">المكتبة الرقمية</a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/library/dashboard') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.library.dashboard') }}" class="side-menu__item {{ request()->is('admin/library/dashboard') ? 'active' : '' }}">
+                                        <span class="side-menu__label">لوحة المكتبة</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/library/items*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.library.items.index') }}" class="side-menu__item {{ request()->is('admin/library/items*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">العناصر</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/library/categories*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.library.categories.index') }}" class="side-menu__item {{ request()->is('admin/library/categories*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">التصنيفات</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/library/tags*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.library.tags.index') }}" class="side-menu__item {{ request()->is('admin/library/tags*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">الوسوم</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="slide has-sub {{ request()->is('admin/calendar*') ? 'open' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/>
+                                </svg>
+                                <span class="side-menu__label">التقويم والجدولة</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">التقويم والجدولة</a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/calendar') && !request()->is('admin/calendar/*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.calendar.index') }}" class="side-menu__item {{ request()->is('admin/calendar') && !request()->is('admin/calendar/*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">التقويم</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/calendar/events*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.calendar.events.index') }}" class="side-menu__item {{ request()->is('admin/calendar/events*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">الأحداث</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/calendar/reminders*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.calendar.reminders.index') }}" class="side-menu__item {{ request()->is('admin/calendar/reminders*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">التذكيرات</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="slide has-sub {{ request()->is('admin/ai*') ? 'open' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                </svg>
+                                <span class="side-menu__label">الذكاء الاصطناعي</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">الذكاء الاصطناعي</a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/ai/models*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.ai.models.index') }}" class="side-menu__item {{ request()->is('admin/ai/models*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">موديلات AI</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/ai/question-generations*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.ai.question-generations.index') }}" class="side-menu__item {{ request()->is('admin/ai/question-generations*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">توليد الأسئلة</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/ai/question-solutions*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.ai.question-solutions.index') }}" class="side-menu__item {{ request()->is('admin/ai/question-solutions*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">حلول AI</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/ai/settings*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.ai.settings.index') }}" class="side-menu__item {{ request()->is('admin/ai/settings*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">الإعدادات</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="slide has-sub {{ request()->is('admin/backup*') ? 'open' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+                                </svg>
+                                <span class="side-menu__label">النسخ الاحتياطي</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">النسخ الاحتياطي</a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/backups*') && !request()->is('admin/backup-schedules*') && !request()->is('admin/backup-storage*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.backups.index') }}" class="side-menu__item {{ request()->is('admin/backups*') && !request()->is('admin/backup-schedules*') && !request()->is('admin/backup-storage*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">النسخ الاحتياطية</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/backup-schedules*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.backup-schedules.index') }}" class="side-menu__item {{ request()->is('admin/backup-schedules*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">الجدولة</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/backup-storage*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.backup-storage.index') }}" class="side-menu__item {{ request()->is('admin/backup-storage*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">إعدادات التخزين</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
                         <li class="slide {{ request()->is('admin/quiz-attempts/needs-grading') ? 'active' : '' }}">
                             <a href="{{ route('admin.quiz-attempts.needs-grading') }}" class="side-menu__item {{ request()->is('admin/quiz-attempts/needs-grading') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">

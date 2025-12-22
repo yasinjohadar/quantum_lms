@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             ReportTemplatesSeeder::class,
             SystemSettingsSeeder::class,
             GamificationSeeder::class,
+            AIModelsSeeder::class,
         ]);
 
         // إنشاء مستخدم تجريبي إضافي (إن لم يكن موجوداً)

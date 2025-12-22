@@ -133,8 +133,11 @@ class RealTimeNotifications {
      * Add notification to dropdown
      */
     addToNotificationDropdown(data) {
+        console.log('Adding notification to dropdown:', data);
+        
         const dropdown = document.querySelector('#header-notification-scroll');
         if (!dropdown) {
+            console.warn('Notification dropdown not found');
             return;
         }
 
@@ -144,37 +147,102 @@ class RealTimeNotifications {
             noNotificationsMsg.style.display = 'none';
         }
 
-        // Create notification item
+        // Get icon and color
+        const icon = data.icon || this.getNotificationIcon(data.type);
+        const color = data.color || this.getNotificationColor(data.type);
+        const colorClass = color === 'success' ? 'success' : 
+                          color === 'danger' ? 'danger' : 
+                          color === 'warning' ? 'warning' : 
+                          color === 'info' ? 'info' : 'primary';
+
+        // Create notification item with proper styling
         const notificationItem = document.createElement('li');
         notificationItem.className = 'dropdown-item';
+        notificationItem.style.cssText = 'padding: 0.75rem 1rem; border-bottom: 1px solid rgba(0,0,0,0.1); cursor: pointer;';
         notificationItem.innerHTML = `
-            <div class="d-flex align-items-center">
-                <div class="avatar avatar-sm me-3">
-                    <span class="avatar-initial rounded-circle bg-${data.color || 'primary'}">
-                        <i class="${data.icon || 'fe fe-bell'}"></i>
+            <div class="d-flex align-items-start">
+                <div class="avatar avatar-sm me-3 flex-shrink-0">
+                    <span class="avatar-initial rounded-circle bg-${colorClass}-transparent">
+                        <i class="${icon} text-${colorClass}"></i>
                     </span>
                 </div>
                 <div class="flex-grow-1">
-                    <h6 class="mb-0">${this.escapeHtml(data.title)}</h6>
-                    <p class="mb-0 text-muted">${this.escapeHtml(data.message)}</p>
-                    <small class="text-muted">${this.formatTime(data.timestamp)}</small>
+                    <h6 class="mb-1 fw-semibold">${this.escapeHtml(data.title || '')}</h6>
+                    <p class="mb-1 text-muted small">${this.escapeHtml(data.message || '')}</p>
+                    <small class="text-muted">${this.formatTime(data.timestamp || data.created_at)}</small>
                 </div>
             </div>
         `;
 
-        // Add to top of dropdown
-        const firstItem = dropdown.querySelector('li.dropdown-item');
-        if (firstItem && firstItem.id !== 'no-notifications-message') {
-            dropdown.insertBefore(notificationItem, firstItem);
-        } else {
-            dropdown.appendChild(notificationItem);
+        // Add click handler to navigate to notifications page
+        notificationItem.addEventListener('click', () => {
+            window.location.href = '/student/notifications';
+        });
+
+        // Remove "no notifications" message if exists
+        if (noNotificationsMsg && noNotificationsMsg.parentNode) {
+            noNotificationsMsg.parentNode.removeChild(noNotificationsMsg);
         }
 
+        // Add to top of dropdown
+        dropdown.insertBefore(notificationItem, dropdown.firstChild);
+
         // Limit to 10 notifications
-        const items = dropdown.querySelectorAll('li.dropdown-item:not(#no-notifications-message)');
+        const items = dropdown.querySelectorAll('li.dropdown-item');
         if (items.length > 10) {
-            items[items.length - 1].remove();
+            for (let i = 10; i < items.length; i++) {
+                items[i].remove();
+            }
         }
+
+        // Update notification count immediately
+        this.updateNotificationCount();
+    }
+    
+    /**
+     * Get notification icon by type
+     */
+    getNotificationIcon(type) {
+        const icons = {
+            'badge_earned': 'fe fe-award',
+            'achievement_unlocked': 'fe fe-star',
+            'level_up': 'fe fe-trending-up',
+            'points_earned': 'fe fe-plus-circle',
+            'challenge_completed': 'fe fe-target',
+            'reward_claimed': 'fe fe-gift',
+            'certificate_earned': 'fe fe-file-text',
+            'leaderboard_update': 'fe fe-bar-chart-2',
+            'task_completed': 'fe fe-check-circle',
+            'custom_notification': 'fe fe-bell',
+            'lesson_attended': 'fe fe-book-open',
+            'lesson_completed': 'fe fe-check-square',
+            'quiz_completed': 'fe fe-edit-3',
+            'question_answered': 'fe fe-help-circle',
+        };
+        return icons[type] || 'fe fe-bell';
+    }
+    
+    /**
+     * Get notification color by type
+     */
+    getNotificationColor(type) {
+        const colors = {
+            'badge_earned': 'warning',
+            'achievement_unlocked': 'success',
+            'level_up': 'primary',
+            'points_earned': 'info',
+            'challenge_completed': 'danger',
+            'reward_claimed': 'purple',
+            'certificate_earned': 'teal',
+            'leaderboard_update': 'orange',
+            'task_completed': 'success',
+            'custom_notification': 'primary',
+            'lesson_attended': 'info',
+            'lesson_completed': 'success',
+            'quiz_completed': 'warning',
+            'question_answered': 'secondary',
+        };
+        return colors[type] || 'primary';
     }
 
     /**
@@ -195,16 +263,42 @@ class RealTimeNotifications {
             .then(data => {
                 const count = data.count || 0;
                 
-                // Update count text
+                // Update count text in dropdown
                 const countTextElement = document.getElementById('notification-count-text');
                 if (countTextElement) {
                     countTextElement.textContent = count;
+                    
+                    // Update the text in header
+                    const headerText = countTextElement.closest('.menu-header-content');
+                    if (headerText) {
+                        const subtext = headerText.querySelector('.subtext');
+                        if (subtext) {
+                            subtext.innerHTML = `لديك <span id="notification-count-text">${count}</span> إشعارات جديدة`;
+                        }
+                    }
+                }
+
+                // Update badge count next to bell icon
+                const badgeCountElement = document.getElementById('notification-badge-count');
+                if (badgeCountElement) {
+                    if (count > 0) {
+                        badgeCountElement.textContent = count > 99 ? '99+' : count;
+                        badgeCountElement.style.display = 'block';
+                    } else {
+                        badgeCountElement.style.display = 'none';
+                    }
                 }
 
                 // Update pulse badge
                 const badgeElement = document.querySelector('.main-header-notification .pulse-success');
                 if (badgeElement) {
                     badgeElement.style.display = count > 0 ? 'block' : 'none';
+                }
+
+                // Update "Mark all as read" badge text
+                const markAllBadge = document.querySelector('.main-header-notification .badge.rounded-pill.bg-warning');
+                if (markAllBadge && count > 0) {
+                    markAllBadge.textContent = `تحديد الكل كمقروء (${count})`;
                 }
             })
             .catch(error => {

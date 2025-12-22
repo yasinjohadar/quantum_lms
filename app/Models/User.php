@@ -220,6 +220,60 @@ class User extends Authenticatable
     }
 
     /**
+     * العلاقات مع المكتبة الرقمية
+     */
+    public function libraryItems()
+    {
+        return $this->hasMany(LibraryItem::class, 'uploaded_by');
+    }
+
+    public function libraryDownloads()
+    {
+        return $this->hasMany(LibraryDownload::class, 'user_id');
+    }
+
+    public function libraryViews()
+    {
+        return $this->hasMany(LibraryView::class, 'user_id');
+    }
+
+    public function libraryRatings()
+    {
+        return $this->hasMany(LibraryRating::class, 'user_id');
+    }
+
+    public function libraryFavorites()
+    {
+        return $this->hasMany(LibraryFavorite::class, 'user_id');
+    }
+
+    /**
+     * العلاقات مع التقويم
+     */
+    public function calendarEvents()
+    {
+        return $this->hasMany(CalendarEvent::class, 'created_by');
+    }
+
+    public function eventReminders()
+    {
+        return $this->hasMany(EventReminder::class, 'user_id');
+    }
+
+    /**
+     * العلاقات مع الذكاء الاصطناعي
+     */
+    public function aiConversations()
+    {
+        return $this->hasMany(AIConversation::class, 'user_id');
+    }
+
+    public function aiQuestionGenerations()
+    {
+        return $this->hasMany(AIQuestionGeneration::class, 'user_id');
+    }
+
+    /**
      * نطاق الطلاب فقط
      */
     public function scopeStudents($query)

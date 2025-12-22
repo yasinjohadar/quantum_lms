@@ -22,6 +22,35 @@
         </div>
         <!-- End Page Header -->
 
+        <!-- Success/Error Messages -->
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fe fe-check-circle me-2"></i>
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fe fe-alert-circle me-2"></i>
+                {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        @if($errors->any())
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fe fe-alert-triangle me-2"></i>
+                <ul class="mb-0">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
         <div class="row">
             <div class="col-xl-8">
                 <div class="card">
@@ -32,49 +61,29 @@
                         <form action="{{ route('admin.notifications.store') }}" method="POST" id="notification-form">
                             @csrf
 
-                            <!-- Target Type -->
+                            <!-- Target Type - Now a Dropdown -->
                             <div class="mb-4">
-                                <label class="form-label">اختر الهدف <span class="text-danger">*</span></label>
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="target_type" id="target_subject" value="subject" checked>
-                                            <label class="form-check-label" for="target_subject">
-                                                <i class="fe fe-book me-2"></i> مادة واحدة
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="target_type" id="target_class" value="class">
-                                            <label class="form-check-label" for="target_class">
-                                                <i class="fe fe-users me-2"></i> صف معين
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="target_type" id="target_group" value="group">
-                                            <label class="form-check-label" for="target_group">
-                                                <i class="fe fe-layers me-2"></i> مجموعة
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="target_type" id="target_individual" value="individual">
-                                            <label class="form-check-label" for="target_individual">
-                                                <i class="fe fe-user me-2"></i> طلاب محددين
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
+                                <label class="form-label">اختر نوع الهدف <span class="text-danger">*</span></label>
+                                <select class="form-select" name="target_type" id="target_type" onchange="handleTargetTypeChange()">
+                                    <option value="subject">
+                                        مادة واحدة
+                                    </option>
+                                    <option value="class">
+                                        صف معين
+                                    </option>
+                                    <option value="group">
+                                        مجموعة
+                                    </option>
+                                    <option value="individual">
+                                        طلاب محددين
+                                    </option>
+                                </select>
                             </div>
 
                             <!-- Subject Selection -->
                             <div class="mb-4" id="subject-selection">
                                 <label class="form-label">اختر المادة <span class="text-danger">*</span></label>
-                                <select class="form-select" name="subject_id" id="subject_id">
+                                <select class="form-select" name="subject_id" id="subject_id" onchange="loadTargetStats(); updatePreview();">
                                     <option value="">-- اختر المادة --</option>
                                     @foreach($subjects as $subject)
                                         <option value="{{ $subject->id }}">
@@ -89,9 +98,9 @@
                             </div>
 
                             <!-- Class Selection -->
-                            <div class="mb-4 d-none" id="class-selection">
+                            <div class="mb-4" id="class-selection" style="display: none;">
                                 <label class="form-label">اختر الصف <span class="text-danger">*</span></label>
-                                <select class="form-select" name="class_id" id="class_id">
+                                <select class="form-select" name="class_id" id="class_id" onchange="loadTargetStats(); updatePreview();">
                                     <option value="">-- اختر الصف --</option>
                                     @foreach($classes as $class)
                                         <option value="{{ $class->id }}">
@@ -106,9 +115,9 @@
                             </div>
 
                             <!-- Group Selection -->
-                            <div class="mb-4 d-none" id="group-selection">
+                            <div class="mb-4" id="group-selection" style="display: none;">
                                 <label class="form-label">اختر المجموعة <span class="text-danger">*</span></label>
-                                <select class="form-select" name="group_id" id="group_id">
+                                <select class="form-select" name="group_id" id="group_id" onchange="loadTargetStats(); updatePreview();">
                                     <option value="">-- اختر المجموعة --</option>
                                     @foreach($groups as $group)
                                         <option value="{{ $group->id }}">
@@ -123,9 +132,9 @@
                             </div>
 
                             <!-- Individual Users Selection -->
-                            <div class="mb-4 d-none" id="individual-selection">
+                            <div class="mb-4" id="individual-selection" style="display: none;">
                                 <label class="form-label">اختر الطلاب <span class="text-danger">*</span></label>
-                                <select class="form-select" name="user_ids[]" id="user_ids" multiple size="10">
+                                <select class="form-select" name="user_ids[]" id="user_ids" multiple size="10" onchange="updatePreview();">
                                     <!-- سيتم ملؤها عبر AJAX -->
                                 </select>
                                 <div class="form-text">يمكنك اختيار عدة طلاب باستخدام Ctrl/Cmd</div>
@@ -135,14 +144,14 @@
                             <div class="mb-4">
                                 <label class="form-label">عنوان الإشعار <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" name="title" id="title" 
-                                       placeholder="مثال: إعلان مهم" required maxlength="255">
+                                       placeholder="مثال: إعلان مهم" required maxlength="255" oninput="updatePreview();">
                             </div>
 
                             <!-- Message -->
                             <div class="mb-4">
                                 <label class="form-label">نص الإشعار <span class="text-danger">*</span></label>
                                 <textarea class="form-control" name="message" id="message" rows="5" 
-                                          placeholder="اكتب نص الإشعار هنا..." required maxlength="1000"></textarea>
+                                          placeholder="اكتب نص الإشعار هنا..." required maxlength="1000" oninput="updateCharCount(); updatePreview();"></textarea>
                                 <div class="form-text">
                                     <span id="char-count">0</span> / 1000 حرف
                                 </div>
@@ -207,7 +216,7 @@
                             </li>
                             <li class="mb-2">
                                 <i class="fe fe-layers text-success me-2"></i>
-                                <strong>مجموعة:</strong> سيتم إرسال الإشعار لجميع الطلاب في المجموعة (مباشرين أو من خلال الصفوف/المواد)
+                                <strong>مجموعة:</strong> سيتم إرسال الإشعار لجميع الطلاب في المجموعة
                             </li>
                             <li>
                                 <i class="fe fe-user text-warning me-2"></i>
@@ -221,207 +230,204 @@
     </div>
 </div>
 <!-- End::app-content -->
-@stop
 
-@push('scripts')
 <script>
-    // Handle target type change
-    document.querySelectorAll('input[name="target_type"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            updateSelectionVisibility();
-            loadTargetStats();
+// Global functions - defined in global scope
+function handleTargetTypeChange() {
+    var targetType = document.getElementById('target_type').value;
+    
+    // Get all selection divs
+    var subjectDiv = document.getElementById('subject-selection');
+    var classDiv = document.getElementById('class-selection');
+    var groupDiv = document.getElementById('group-selection');
+    var individualDiv = document.getElementById('individual-selection');
+    
+    // Hide all selection divs
+    if (subjectDiv) subjectDiv.style.display = 'none';
+    if (classDiv) classDiv.style.display = 'none';
+    if (groupDiv) groupDiv.style.display = 'none';
+    if (individualDiv) individualDiv.style.display = 'none';
+    
+    // Reset all select values
+    document.getElementById('subject_id').value = '';
+    document.getElementById('class_id').value = '';
+    document.getElementById('group_id').value = '';
+    
+    var userSelect = document.getElementById('user_ids');
+    for (var i = 0; i < userSelect.options.length; i++) {
+        userSelect.options[i].selected = false;
+    }
+    
+    // Show the selected one
+    if (targetType === 'subject') {
+        if (subjectDiv) subjectDiv.style.display = 'block';
+    } else if (targetType === 'class') {
+        if (classDiv) classDiv.style.display = 'block';
+    } else if (targetType === 'group') {
+        if (groupDiv) groupDiv.style.display = 'block';
+    } else if (targetType === 'individual') {
+        if (individualDiv) individualDiv.style.display = 'block';
+        loadAllUsers();
+    }
+    
+    // Reset stats
+    document.getElementById('target-stats').innerHTML = 
+        '<div class="avatar avatar-xl bg-light rounded-circle mx-auto mb-3">' +
+        '<i class="fe fe-info fs-40 text-muted"></i>' +
+        '</div>' +
+        '<p class="text-muted mb-0">اختر الهدف لعرض الإحصائيات</p>';
+    
+    updatePreview();
+}
+
+function loadTargetStats() {
+    var targetType = document.getElementById('target_type').value;
+    var targetId = getTargetId();
+    
+    if (!targetId) {
+        document.getElementById('target-stats').innerHTML = 
+            '<div class="avatar avatar-xl bg-light rounded-circle mx-auto mb-3">' +
+            '<i class="fe fe-info fs-40 text-muted"></i>' +
+            '</div>' +
+            '<p class="text-muted mb-0">اختر الهدف لعرض الإحصائيات</p>';
+        return;
+    }
+    
+    fetch('/admin/notifications/target-users?target_type=' + targetType + '&target_id=' + targetId)
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                document.getElementById('target-stats').innerHTML = 
+                    '<div class="text-center">' +
+                    '<div class="avatar avatar-xl bg-primary-transparent rounded-circle mx-auto mb-3">' +
+                    '<i class="fe fe-users fs-40 text-primary"></i>' +
+                    '</div>' +
+                    '<h3 class="mb-1">' + data.count + '</h3>' +
+                    '<p class="text-muted mb-0">طالب سيستلم الإشعار</p>' +
+                    '</div>';
+            }
+        })
+        .catch(function(error) {
+            console.error('Error:', error);
         });
-    });
+}
 
-    function updateSelectionVisibility() {
-        const targetType = document.querySelector('input[name="target_type"]:checked').value;
-        
-        // Hide all selections
-        document.getElementById('subject-selection').classList.add('d-none');
-        document.getElementById('class-selection').classList.add('d-none');
-        document.getElementById('group-selection').classList.add('d-none');
-        document.getElementById('individual-selection').classList.add('d-none');
-        
-        // Show selected
-        switch(targetType) {
-            case 'subject':
-                document.getElementById('subject-selection').classList.remove('d-none');
-                break;
-            case 'class':
-                document.getElementById('class-selection').classList.remove('d-none');
-                break;
-            case 'group':
-                document.getElementById('group-selection').classList.remove('d-none');
-                break;
-            case 'individual':
-                document.getElementById('individual-selection').classList.remove('d-none');
-                loadAllUsers();
-                break;
-        }
-        
-        updatePreview();
+function getTargetId() {
+    var targetType = document.getElementById('target_type').value;
+    if (targetType === 'subject') {
+        return document.getElementById('subject_id').value;
+    } else if (targetType === 'class') {
+        return document.getElementById('class_id').value;
+    } else if (targetType === 'group') {
+        return document.getElementById('group_id').value;
     }
+    return null;
+}
 
-    // Load target stats
-    function loadTargetStats() {
-        const targetType = document.querySelector('input[name="target_type"]:checked').value;
-        const targetId = getTargetId();
-        
-        if (!targetId) {
-            document.getElementById('target-stats').innerHTML = `
-                <div class="avatar avatar-xl bg-light rounded-circle mx-auto mb-3">
-                    <i class="fe fe-info fs-40 text-muted"></i>
-                </div>
-                <p class="text-muted mb-0">اختر الهدف لعرض الإحصائيات</p>
-            `;
-            return;
+function loadAllUsers() {
+    fetch('/admin/notifications/all-users')
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            var select = document.getElementById('user_ids');
+            select.innerHTML = '';
+            if (data.success && data.users) {
+                data.users.forEach(function(user) {
+                    var option = document.createElement('option');
+                    option.value = user.id;
+                    option.textContent = user.name + ' (' + user.email + ')';
+                    select.appendChild(option);
+                });
+            }
+        })
+        .catch(function(error) {
+            console.error('Error:', error);
+        });
+}
+
+function updatePreview() {
+    var title = document.getElementById('title').value || 'عنوان الإشعار';
+    var message = document.getElementById('message').value || 'نص الإشعار';
+    var targetType = document.getElementById('target_type').value;
+    
+    var targetText = '--';
+    if (targetType === 'subject') {
+        var subjectSelect = document.getElementById('subject_id');
+        if (subjectSelect.selectedIndex > 0) {
+            targetText = subjectSelect.options[subjectSelect.selectedIndex].text;
         }
-        
-        fetch(`/admin/notifications/target-users?target_type=${targetType}&target_id=${targetId}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('target-stats').innerHTML = `
-                        <div class="text-center">
-                            <div class="avatar avatar-xl bg-primary-transparent rounded-circle mx-auto mb-3">
-                                <i class="fe fe-users fs-40 text-primary"></i>
-                            </div>
-                            <h3 class="mb-1">${data.count}</h3>
-                            <p class="text-muted mb-0">طالب سيستلم الإشعار</p>
-                        </div>
-                    `;
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-    }
-
-    function getTargetId() {
-        const targetType = document.querySelector('input[name="target_type"]:checked').value;
-        switch(targetType) {
-            case 'subject':
-                return document.getElementById('subject_id').value;
-            case 'class':
-                return document.getElementById('class_id').value;
-            case 'group':
-                return document.getElementById('group_id').value;
-            default:
-                return null;
+    } else if (targetType === 'class') {
+        var classSelect = document.getElementById('class_id');
+        if (classSelect.selectedIndex > 0) {
+            targetText = classSelect.options[classSelect.selectedIndex].text;
         }
-    }
-
-    // Load all users for individual selection
-    function loadAllUsers() {
-        fetch('/admin/notifications/all-users')
-            .then(response => response.json())
-            .then(data => {
-                const select = document.getElementById('user_ids');
-                select.innerHTML = '';
-                if (data.success && data.users) {
-                    data.users.forEach(user => {
-                        const option = document.createElement('option');
-                        option.value = user.id;
-                        option.textContent = `${user.name} (${user.email})`;
-                        select.appendChild(option);
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-    }
-
-    // Update preview
-    function updatePreview() {
-        const title = document.getElementById('title').value || 'عنوان الإشعار';
-        const message = document.getElementById('message').value || 'نص الإشعار';
-        const targetType = document.querySelector('input[name="target_type"]:checked').value;
-        
-        let targetText = '--';
-        switch(targetType) {
-            case 'subject':
-                const subjectSelect = document.getElementById('subject_id');
-                targetText = subjectSelect.options[subjectSelect.selectedIndex]?.text || '--';
-                break;
-            case 'class':
-                const classSelect = document.getElementById('class_id');
-                targetText = classSelect.options[classSelect.selectedIndex]?.text || '--';
-                break;
-            case 'group':
-                const groupSelect = document.getElementById('group_id');
-                targetText = groupSelect.options[groupSelect.selectedIndex]?.text || '--';
-                break;
-            case 'individual':
-                const userSelect = document.getElementById('user_ids');
-                targetText = `${userSelect.selectedOptions.length} طالب محدد`;
-                break;
+    } else if (targetType === 'group') {
+        var groupSelect = document.getElementById('group_id');
+        if (groupSelect.selectedIndex > 0) {
+            targetText = groupSelect.options[groupSelect.selectedIndex].text;
         }
-        
-        document.getElementById('preview-title').textContent = title;
-        document.getElementById('preview-message').textContent = message;
-        document.getElementById('preview-target').textContent = `الهدف: ${targetText}`;
-    }
-
-    // Character count
-    document.getElementById('message').addEventListener('input', function() {
-        const count = this.value.length;
-        document.getElementById('char-count').textContent = count;
-        updatePreview();
-    });
-
-    document.getElementById('title').addEventListener('input', updatePreview);
-
-    // Watch for selection changes
-    document.getElementById('subject_id')?.addEventListener('change', function() {
-        loadTargetStats();
-        updatePreview();
-    });
-    document.getElementById('class_id')?.addEventListener('change', function() {
-        loadTargetStats();
-        updatePreview();
-    });
-    document.getElementById('group_id')?.addEventListener('change', function() {
-        loadTargetStats();
-        updatePreview();
-    });
-    document.getElementById('user_ids')?.addEventListener('change', updatePreview);
-
-    // Form submission
-    document.getElementById('notification-form').addEventListener('submit', function(e) {
-        const targetType = document.querySelector('input[name="target_type"]:checked').value;
-        const targetId = getTargetId();
-        
-        if (targetType !== 'individual' && !targetId) {
-            e.preventDefault();
-            alert('يرجى اختيار الهدف');
-            return false;
+    } else if (targetType === 'individual') {
+        var userSelect = document.getElementById('user_ids');
+        var count = 0;
+        for (var i = 0; i < userSelect.options.length; i++) {
+            if (userSelect.options[i].selected) count++;
         }
-        
-        if (targetType === 'individual') {
-            const selectedUsers = Array.from(document.getElementById('user_ids').selectedOptions);
-            if (selectedUsers.length === 0) {
-                e.preventDefault();
-                alert('يرجى اختيار طالب واحد على الأقل');
-                return false;
+        targetText = count + ' طالب محدد';
+    }
+    
+    document.getElementById('preview-title').textContent = title;
+    document.getElementById('preview-message').textContent = message;
+    document.getElementById('preview-target').textContent = 'الهدف: ' + targetText;
+}
+
+function updateCharCount() {
+    var count = document.getElementById('message').value.length;
+    document.getElementById('char-count').textContent = count;
+}
+
+function resetForm() {
+    document.getElementById('notification-form').reset();
+    document.getElementById('target_type').value = 'subject';
+    handleTargetTypeChange();
+    updatePreview();
+    document.getElementById('char-count').textContent = '0';
+}
+
+// Form validation on submit
+document.getElementById('notification-form').onsubmit = function(e) {
+    var targetType = document.getElementById('target_type').value;
+    var targetId = getTargetId();
+    
+    if (targetType !== 'individual' && !targetId) {
+        e.preventDefault();
+        alert('يرجى اختيار الهدف');
+        return false;
+    }
+    
+    if (targetType === 'individual') {
+        var userSelect = document.getElementById('user_ids');
+        var hasSelected = false;
+        for (var i = 0; i < userSelect.options.length; i++) {
+            if (userSelect.options[i].selected) {
+                hasSelected = true;
+                break;
             }
         }
-        
-        if (!confirm('هل أنت متأكد من إرسال هذا الإشعار؟')) {
+        if (!hasSelected) {
             e.preventDefault();
+            alert('يرجى اختيار طالب واحد على الأقل');
             return false;
         }
-    });
-
-    function resetForm() {
-        document.getElementById('notification-form').reset();
-        updateSelectionVisibility();
-        updatePreview();
-        document.getElementById('char-count').textContent = '0';
     }
+    
+    if (!confirm('هل أنت متأكد من إرسال هذا الإشعار؟')) {
+        e.preventDefault();
+        return false;
+    }
+    
+    return true;
+};
 
-    // Initialize
-    updateSelectionVisibility();
+// Initialize on page load
+handleTargetTypeChange();
 </script>
-@endpush
-
+@stop

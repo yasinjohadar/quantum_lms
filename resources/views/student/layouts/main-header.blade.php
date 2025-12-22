@@ -111,9 +111,10 @@
                     <!-- Start::header-element -->
                     <div class="header-element notifications-dropdown main-header-notification">
                         <!-- Start::header-link|dropdown-toggle -->
-                        <a href="javascript:void(0);" class="header-link dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" id="messageDropdown" aria-expanded="false">
+                        <a href="javascript:void(0);" class="header-link dropdown-toggle position-relative" data-bs-toggle="dropdown" data-bs-auto-close="outside" id="messageDropdown" aria-expanded="false">
                             <svg xmlns="http://www.w3.org/2000/svg" class="header-link-icon"  height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
                             <span class="pulse-success"></span>
+                            <span class="badge bg-danger rounded-pill position-absolute" id="notification-badge-count" style="display: none; font-size: 0.6rem; padding: 0.15rem 0.35rem; min-width: 1rem; height: 1rem; line-height: 0.7rem; top: -2px; right: -5px; border: 2px solid var(--default-body-bg-color, #1a1d29);">0</span>
                         </a>
                         <!-- End::header-link|dropdown-toggle -->
                         <!-- Start::main-header-dropdown -->
@@ -121,7 +122,10 @@
                             <div class="menu-header-content bg-primary text-fixed-white">
                                 <div class="d-flex align-items-center justify-content-between">
                                     <h6 class="mb-0 fs-15 fw-semibold text-fixed-white">الإشعارات</h6>
-                                    <span class="badge rounded-pill bg-warning pt-1 text-fixed-black">تحديد الكل كمقروء</span>
+                                    <form action="{{ route('student.notifications.read-all') }}" method="POST" class="d-inline" id="header-mark-all-read-form">
+                                        @csrf
+                                        <button type="submit" class="badge rounded-pill bg-warning pt-1 text-fixed-black border-0" style="cursor: pointer;">تحديد الكل كمقروء</button>
+                                    </form>
                                 </div>
                                 <p class="dropdown-title-text subtext mb-0 text-fixed-white op-6 pb-0 fs-12 ">لديك <span id="notification-count-text">0</span> إشعارات جديدة</p>
                             </div>
@@ -131,8 +135,142 @@
                                     <p class="text-muted mb-0">لا توجد إشعارات جديدة</p>
                                 </li>
                             </ul>
+                            <script>
+                            // تحميل الإشعارات عند فتح القائمة المنسدلة
+                            document.addEventListener('DOMContentLoaded', function() {
+                                const notificationDropdown = document.querySelector('.notifications-dropdown .dropdown-toggle');
+                                const notificationList = document.getElementById('header-notification-scroll');
+                                
+                                if (notificationDropdown && notificationList) {
+                                    notificationDropdown.addEventListener('shown.bs.dropdown', function() {
+                                        loadHeaderNotifications();
+                                    });
+                                    
+                                    // تحميل الإشعارات عند تحميل الصفحة
+                                    loadHeaderNotifications();
+                                }
+                            });
+                            
+                            function loadHeaderNotifications() {
+                                fetch('{{ route("student.notifications.index") }}?limit=10&format=json')
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        // Update badge count
+                                        const badgeCount = document.getElementById('notification-badge-count');
+                                        if (badgeCount) {
+                                            const count = data.count || 0;
+                                            if (count > 0) {
+                                                badgeCount.textContent = count > 99 ? '99+' : count;
+                                                badgeCount.style.display = 'block';
+                                            } else {
+                                                badgeCount.style.display = 'none';
+                                            }
+                                        }
+                                        
+                                        if (data.notifications && data.notifications.length > 0) {
+                                            const list = document.getElementById('header-notification-scroll');
+                                            const noMsg = document.getElementById('no-notifications-message');
+                                            
+                                            if (noMsg) noMsg.style.display = 'none';
+                                            
+                                            list.innerHTML = '';
+                                            
+                                            data.notifications.forEach(notif => {
+                                                const item = document.createElement('li');
+                                                item.className = 'dropdown-item';
+                                                item.style.cssText = 'padding: 0.75rem 1rem; border-bottom: 1px solid rgba(0,0,0,0.1); cursor: pointer;';
+                                                item.onclick = () => window.location.href = '{{ route("student.notifications.index") }}';
+                                                
+                                                const icon = getNotificationIcon(notif.type);
+                                                const color = getNotificationColor(notif.type);
+                                                
+                                                item.innerHTML = `
+                                                    <div class="d-flex align-items-start">
+                                                        <div class="avatar avatar-sm me-3 flex-shrink-0">
+                                                            <span class="avatar-initial rounded-circle bg-${color}-transparent">
+                                                                <i class="${icon} text-${color}"></i>
+                                                            </span>
+                                                        </div>
+                                                        <div class="flex-grow-1">
+                                                            <h6 class="mb-1 fw-semibold">${escapeHtml(notif.title)}</h6>
+                                                            <p class="mb-1 text-muted small">${escapeHtml(notif.message)}</p>
+                                                            <small class="text-muted">${formatTime(notif.created_at)}</small>
+                                                        </div>
+                                                    </div>
+                                                `;
+                                                
+                                                list.appendChild(item);
+                                            });
+                                        }
+                                    })
+                                    .catch(error => console.error('Error loading notifications:', error));
+                            }
+                            
+                            function getNotificationIcon(type) {
+                                const icons = {
+                                    'badge_earned': 'fe fe-award',
+                                    'achievement_unlocked': 'fe fe-star',
+                                    'level_up': 'fe fe-trending-up',
+                                    'points_earned': 'fe fe-plus-circle',
+                                    'challenge_completed': 'fe fe-target',
+                                    'reward_claimed': 'fe fe-gift',
+                                    'certificate_earned': 'fe fe-file-text',
+                                    'leaderboard_update': 'fe fe-bar-chart-2',
+                                    'task_completed': 'fe fe-check-circle',
+                                    'custom_notification': 'fe fe-bell',
+                                    'lesson_attended': 'fe fe-book-open',
+                                    'lesson_completed': 'fe fe-check-square',
+                                    'quiz_completed': 'fe fe-edit-3',
+                                    'question_answered': 'fe fe-help-circle',
+                                };
+                                return icons[type] || 'fe fe-bell';
+                            }
+                            
+                            function getNotificationColor(type) {
+                                const colors = {
+                                    'badge_earned': 'warning',
+                                    'achievement_unlocked': 'success',
+                                    'level_up': 'primary',
+                                    'points_earned': 'info',
+                                    'challenge_completed': 'danger',
+                                    'reward_claimed': 'purple',
+                                    'certificate_earned': 'teal',
+                                    'leaderboard_update': 'orange',
+                                    'task_completed': 'success',
+                                    'custom_notification': 'primary',
+                                    'lesson_attended': 'info',
+                                    'lesson_completed': 'success',
+                                    'quiz_completed': 'warning',
+                                    'question_answered': 'secondary',
+                                };
+                                return colors[type] || 'primary';
+                            }
+                            
+                            function escapeHtml(text) {
+                                const div = document.createElement('div');
+                                div.textContent = text;
+                                return div.innerHTML;
+                            }
+                            
+                            function formatTime(timestamp) {
+                                if (!timestamp) return '';
+                                const date = new Date(timestamp);
+                                const now = new Date();
+                                const diff = now - date;
+                                const seconds = Math.floor(diff / 1000);
+                                const minutes = Math.floor(seconds / 60);
+                                const hours = Math.floor(minutes / 60);
+                                const days = Math.floor(hours / 24);
+                                
+                                if (seconds < 60) return 'الآن';
+                                if (minutes < 60) return `منذ ${minutes} دقيقة`;
+                                if (hours < 24) return `منذ ${hours} ساعة`;
+                                if (days < 7) return `منذ ${days} يوم`;
+                                return date.toLocaleDateString('ar-SA');
+                            }
+                            </script>
                             <div class="text-center dropdown-footer">
-                                <a href="javascript:void(0);" class="text-primary fs-13">عرض الكل</a>
+                                <a href="{{ route('student.notifications.index') }}" class="text-primary fs-13">عرض الكل</a>
                             </div>
                         </div>
                         <!-- End::main-header-dropdown -->

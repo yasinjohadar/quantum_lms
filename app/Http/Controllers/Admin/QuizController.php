@@ -10,6 +10,7 @@ use App\Models\QuizQuestion;
 use App\Models\Question;
 use App\Models\Subject;
 use App\Models\Unit;
+use App\Services\ReminderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -17,6 +18,10 @@ use Illuminate\Support\Facades\Storage;
 
 class QuizController extends Controller
 {
+    public function __construct(
+        private ReminderService $reminderService
+    ) {}
+
     /**
      * عرض قائمة الاختبارات
      */

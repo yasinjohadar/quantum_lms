@@ -190,6 +190,62 @@
                             </a>
                         </li>
 
+                        <li class="slide {{ request()->is('student/assignments*') ? 'active' : '' }}">
+                            <a href="{{ route('student.assignments.index') }}" class="side-menu__item {{ request()->is('student/assignments*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                                </svg>
+                                <span class="side-menu__label">الواجبات</span>
+                            </a>
+                        </li>
+
+                        <li class="slide has-sub {{ request()->is('student/library*') ? 'open' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                                </svg>
+                                <span class="side-menu__label">المكتبة الرقمية</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">المكتبة الرقمية</a>
+                                </li>
+                                <li class="slide {{ request()->is('student/library') && !request()->is('student/library/*') ? 'active' : '' }}">
+                                    <a href="{{ route('student.library.index') }}" class="side-menu__item {{ request()->is('student/library') && !request()->is('student/library/*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">المكتبة</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('student/library/favorites') ? 'active' : '' }}">
+                                    <a href="{{ route('student.library.favorites') }}" class="side-menu__item {{ request()->is('student/library/favorites') ? 'active' : '' }}">
+                                        <span class="side-menu__label">مفضلتي</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="slide {{ request()->is('student/calendar*') ? 'active' : '' }}">
+                            <a href="{{ route('student.calendar.index') }}" class="side-menu__item {{ request()->is('student/calendar*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/>
+                                </svg>
+                                <span class="side-menu__label">التقويم</span>
+                            </a>
+                        </li>
+
+                        <li class="slide {{ request()->is('student/ai/chatbot*') ? 'active' : '' }}">
+                            <a href="{{ route('student.ai.chatbot.index') }}" class="side-menu__item {{ request()->is('student/ai/chatbot*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+                                </svg>
+                                <span class="side-menu__label">المساعد التعليمي</span>
+                            </a>
+                        </li>
+
                         <!-- Start::slide__category -->
                         <li class="slide__category"><span class="category-name">الحساب</span></li>
                         <!-- End::slide__category -->

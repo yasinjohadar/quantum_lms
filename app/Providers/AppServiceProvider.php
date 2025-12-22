@@ -20,7 +20,13 @@ use App\Events\CustomNotificationSent;
 use App\Events\ReviewCreated;
 use App\Events\ReviewApproved;
 use App\Events\ReviewRejected;
+use App\Events\AssignmentSubmitted;
+use App\Events\AssignmentGraded;
+use App\Events\LibraryItemCreated;
+use App\Events\EventReminderSent;
 use App\Listeners\SendRealTimeNotification;
+use App\Listeners\SendLibraryItemNotification;
+use App\Listeners\SendEventReminderNotification;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -54,5 +60,10 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(ReviewCreated::class, SendRealTimeNotification::class);
         Event::listen(ReviewApproved::class, SendRealTimeNotification::class);
         Event::listen(ReviewRejected::class, SendRealTimeNotification::class);
+        Event::listen(AssignmentSubmitted::class, SendRealTimeNotification::class);
+        Event::listen(AssignmentGraded::class, SendRealTimeNotification::class);
+        Event::listen(LibraryItemCreated::class, SendLibraryItemNotification::class);
+        Event::listen(EventReminderSent::class, SendEventReminderNotification::class);
+        Event::listen(EventReminderSent::class, SendRealTimeNotification::class);
     }
 }
