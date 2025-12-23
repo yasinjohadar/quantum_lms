@@ -9,6 +9,7 @@ use App\Models\Lesson;
 use App\Models\Unit;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use App\Helpers\StorageHelper;
 
 class LessonController extends Controller
 {
@@ -103,7 +104,7 @@ class LessonController extends Controller
             if ($request->hasFile('video_file')) {
                 // حذف الفيديو القديم
                 if ($lesson->video_url && $lesson->video_type === 'upload') {
-                    Storage::disk('public')->delete($lesson->video_url);
+                    StorageHelper::delete('videos', $lesson->video_url);
                 }
 
                 $videoFile = $request->file('video_file');
@@ -115,7 +116,7 @@ class LessonController extends Controller
             if ($request->hasFile('thumbnail')) {
                 // حذف الصورة القديمة
                 if ($lesson->thumbnail) {
-                    Storage::disk('public')->delete($lesson->thumbnail);
+                    StorageHelper::delete('images', $lesson->thumbnail);
                 }
 
                 $thumbnail = $request->file('thumbnail');
@@ -150,16 +151,16 @@ class LessonController extends Controller
         try {
             // حذف ملفات الدرس
             if ($lesson->video_url && $lesson->video_type === 'upload') {
-                Storage::disk('public')->delete($lesson->video_url);
+                StorageHelper::delete('videos', $lesson->video_url);
             }
             if ($lesson->thumbnail) {
-                Storage::disk('public')->delete($lesson->thumbnail);
+                StorageHelper::delete('images', $lesson->thumbnail);
             }
 
             // حذف مرفقات الدرس
             foreach ($lesson->attachments as $attachment) {
                 if ($attachment->file_path) {
-                    Storage::disk('public')->delete($attachment->file_path);
+                    StorageHelper::delete('attachments', $attachment->file_path);
                 }
             }
 

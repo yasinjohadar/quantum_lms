@@ -21,6 +21,8 @@ use App\Http\Controllers\Admin\AssignmentController;
 use App\Http\Controllers\Admin\AssignmentQuestionController;
 use App\Http\Controllers\Admin\AssignmentSubmissionController;
 use App\Http\Controllers\Api\SessionActivityController;
+use App\Http\Controllers\Admin\AnalyticsDashboardController;
+use App\Http\Controllers\Admin\NotificationPreferenceController as AdminNotificationPreferenceController;
 
 Route::middleware(['auth', 'check.user.active', 'admin'])
     ->prefix('admin')
@@ -180,6 +182,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::get('library/dashboard', [\App\Http\Controllers\Admin\LibraryDashboardController::class, 'index'])
             ->name('library.dashboard');
 
+        // لوحة تحكم Analytics الموحدة
+        Route::get('analytics-dashboard', [AnalyticsDashboardController::class, 'index'])
+            ->name('analytics.dashboard');
+
         // ===============================================
         // التقويم والجدولة
         // ===============================================
@@ -254,6 +260,20 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
 
         Route::resource('backup-storage', \App\Http\Controllers\Admin\BackupStorageController::class);
         Route::post('backup-storage/{config}/test', [\App\Http\Controllers\Admin\BackupStorageController::class, 'test'])->name('backup-storage.test');
+        Route::get('backup-storage/analytics', [\App\Http\Controllers\Admin\BackupStorageAnalyticsController::class, 'index'])->name('backup-storage.analytics');
+
+        // تفضيلات إشعارات الطلاب (عرض فقط)
+        Route::get('students/{user}/notification-preferences', [AdminNotificationPreferenceController::class, 'show'])
+            ->name('students.notification-preferences.show');
+
+        // App Storage
+        Route::prefix('app-storage')->name('app-storage.')->group(function() {
+            Route::resource('configs', \App\Http\Controllers\Admin\AppStorageController::class);
+            Route::post('configs/{config}/test', [\App\Http\Controllers\Admin\AppStorageController::class, 'test'])->name('configs.test');
+            Route::get('analytics', [\App\Http\Controllers\Admin\AppStorageAnalyticsController::class, 'index'])->name('analytics');
+        });
+
+        Route::resource('storage-disk-mappings', \App\Http\Controllers\Admin\StorageDiskMappingController::class);
 
         // الاختبارات
         Route::resource('quizzes', QuizController::class);

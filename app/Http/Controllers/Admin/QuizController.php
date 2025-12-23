@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use App\Helpers\StorageHelper;
 
 class QuizController extends Controller
 {
@@ -200,12 +201,12 @@ class QuizController extends Controller
             // رفع صورة جديدة
             if ($request->hasFile('image')) {
                 if ($quiz->image) {
-                    Storage::disk('public')->delete($quiz->image);
+                    StorageHelper::delete('images', $quiz->image);
                 }
                 $data['image'] = $request->file('image')->store('quizzes', 'public');
             } elseif ($request->boolean('remove_image')) {
                 if ($quiz->image) {
-                    Storage::disk('public')->delete($quiz->image);
+                    StorageHelper::delete('images', $quiz->image);
                 }
                 $data['image'] = null;
             }
@@ -251,7 +252,7 @@ class QuizController extends Controller
 
             // حذف الصورة
             if ($quiz->image) {
-                Storage::disk('public')->delete($quiz->image);
+                StorageHelper::delete('images', $quiz->image);
             }
 
             $quiz->delete();

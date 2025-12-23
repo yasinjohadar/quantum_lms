@@ -61,6 +61,14 @@ class BackupStorageController extends Controller
                 'max_backups' => $validated['max_backups'] ?? null,
                 'created_by' => Auth::id(),
                 'is_active' => $request->has('is_active'),
+                'redundancy' => $request->has('redundancy'),
+                'pricing_config' => [
+                    'storage_cost_per_gb' => $request->input('pricing_config.storage_cost_per_gb'),
+                    'upload_cost_per_gb' => $request->input('pricing_config.upload_cost_per_gb'),
+                    'download_cost_per_gb' => $request->input('pricing_config.download_cost_per_gb'),
+                ],
+                'monthly_budget' => $request->input('monthly_budget'),
+                'cost_alert_threshold' => $request->input('cost_alert_threshold'),
             ]);
 
             return redirect()->route('admin.backup-storage.index')
@@ -117,6 +125,14 @@ class BackupStorageController extends Controller
                 'priority' => $validated['priority'] ?? 0,
                 'max_backups' => $validated['max_backups'] ?? null,
                 'is_active' => $request->has('is_active'),
+                'redundancy' => $request->has('redundancy'),
+                'pricing_config' => [
+                    'storage_cost_per_gb' => $request->input('pricing_config.storage_cost_per_gb'),
+                    'upload_cost_per_gb' => $request->input('pricing_config.upload_cost_per_gb'),
+                    'download_cost_per_gb' => $request->input('pricing_config.download_cost_per_gb'),
+                ],
+                'monthly_budget' => $request->input('monthly_budget'),
+                'cost_alert_threshold' => $request->input('cost_alert_threshold'),
             ]);
 
             return redirect()->route('admin.backup-storage.index')

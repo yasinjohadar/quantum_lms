@@ -40,17 +40,12 @@ class CalendarService
     {
         $query = CalendarEvent::byDateRange($startDate, $endDate);
 
-        // إذا كان طالب، فقط الأحداث العامة أو المرتبطة بمواده/صفه
+        // إذا كان طالب، فقط الأحداث العامة أو المرتبطة بمواده
         if ($user->hasRole('student')) {
             $query->where(function($q) use ($user) {
                 $q->where('is_public', true)
                   ->orWhereHas('subject', function($subjectQuery) use ($user) {
                       $subjectQuery->whereHas('students', function($studentQuery) use ($user) {
-                          $studentQuery->where('users.id', $user->id);
-                      });
-                  })
-                  ->orWhereHas('class', function($classQuery) use ($user) {
-                      $classQuery->whereHas('students', function($studentQuery) use ($user) {
                           $studentQuery->where('users.id', $user->id);
                       });
                   });

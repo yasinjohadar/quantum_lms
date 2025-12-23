@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use App\Helpers\StorageHelper;
 use Illuminate\Support\Facades\Event;
 
 class LibraryItemController extends Controller
@@ -265,7 +266,7 @@ class LibraryItemController extends Controller
             if ($request->hasFile('file')) {
                 // حذف الملف القديم
                 if ($item->file_path) {
-                    Storage::disk('public')->delete($item->file_path);
+                    StorageHelper::delete('library', $item->file_path);
                 }
                 $this->libraryService->uploadFile($item, $request->file('file'));
             }
@@ -329,8 +330,9 @@ class LibraryItemController extends Controller
             abort(404, 'لا يوجد ملف للتحميل.');
         }
 
-        if (Storage::disk('public')->exists($item->file_path)) {
-            return Storage::disk('public')->download($item->file_path, $item->file_name);
+        $disk = StorageHelper::disk('library');
+        if ($disk->exists($item->file_path)) {
+            return $disk->download($item->file_path, $item->file_name);
         }
 
         abort(404, 'الملف غير موجود.');

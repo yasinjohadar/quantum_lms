@@ -8,6 +8,7 @@ use App\Http\Controllers\Student\StudentQuestionController;
 use App\Http\Controllers\Student\StudentQuizController;
 use App\Http\Controllers\Student\StudentProgressController;
 use App\Http\Controllers\Student\StudentAssignmentController;
+use App\Http\Controllers\Student\NotificationPreferenceController as StudentNotificationPreferenceController;
 
 Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student.')->group(function () {
     // لوحة تحكم الطالب
@@ -88,6 +89,8 @@ Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student
     Route::get('/lessons/{lesson}/questions/report', [StudentQuestionController::class, 'showReport'])->name('questions.report');
     
     // الاختبارات
+    Route::get('/quizzes', [\App\Http\Controllers\Student\StudentQuizListController::class, 'index'])->name('quizzes.index');
+    Route::get('/quizzes/results', [\App\Http\Controllers\Student\StudentQuizListController::class, 'results'])->name('quizzes.results');
     Route::get('/quizzes/{quiz}/start', [StudentQuizController::class, 'startQuiz'])->name('quizzes.start');
     Route::get('/quizzes/{quiz}/attempt/{attempt}', [StudentQuizController::class, 'showQuiz'])->name('quizzes.show');
     
@@ -118,6 +121,10 @@ Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student
         Route::delete('/{notification}', [\App\Http\Controllers\Student\NotificationController::class, 'destroy'])->name('destroy');
         Route::post('/read-all', [\App\Http\Controllers\Student\NotificationController::class, 'markAllAsRead'])->name('read-all');
         Route::get('/unread-count', [\App\Http\Controllers\Student\NotificationController::class, 'getUnreadCount'])->name('unread-count');
+
+        // تفضيلات الإشعارات
+        Route::get('/preferences', [StudentNotificationPreferenceController::class, 'index'])->name('preferences.index');
+        Route::post('/preferences', [StudentNotificationPreferenceController::class, 'update'])->name('preferences.update');
     });
     
     // التقييمات

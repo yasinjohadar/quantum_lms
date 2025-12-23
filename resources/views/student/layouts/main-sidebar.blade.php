@@ -170,8 +170,8 @@
                         <li class="slide__category"><span class="category-name">الاختبارات</span></li>
                         <!-- End::slide__category -->
 
-                        <li class="slide">
-                            <a href="javascript:void(0);" class="side-menu__item">
+                        <li class="slide {{ request()->is('student/quizzes') && !request()->is('student/quizzes/*') ? 'active' : '' }}">
+                            <a href="{{ route('student.quizzes.index') }}" class="side-menu__item {{ request()->is('student/quizzes') && !request()->is('student/quizzes/*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
                                     <path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l4.59-4.58L18 11l-6 6z"/>
@@ -180,8 +180,8 @@
                             </a>
                         </li>
 
-                        <li class="slide">
-                            <a href="javascript:void(0);" class="side-menu__item">
+                        <li class="slide {{ request()->is('student/quizzes/results') ? 'active' : '' }}">
+                            <a href="{{ route('student.quizzes.results') }}" class="side-menu__item {{ request()->is('student/quizzes/results') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
                                     <path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/>

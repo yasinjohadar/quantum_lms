@@ -11,6 +11,7 @@ use App\Models\Subject;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use App\Helpers\StorageHelper;
 
 class SubjectController extends Controller
 {
@@ -168,7 +169,7 @@ class SubjectController extends Controller
             if ($request->hasFile('image')) {
                 try {
                     if ($subject->image) {
-                        Storage::disk('public')->delete($subject->image);
+                        StorageHelper::delete('images', $subject->image);
                     }
 
                     $image = $request->file('image');
@@ -187,7 +188,7 @@ class SubjectController extends Controller
             if ($request->hasFile('og_image')) {
                 try {
                     if ($subject->og_image) {
-                        Storage::disk('public')->delete($subject->og_image);
+                        StorageHelper::delete('images', $subject->og_image);
                     }
 
                     $ogImage = $request->file('og_image');
@@ -231,10 +232,10 @@ class SubjectController extends Controller
 
             try {
                 if ($subject->image) {
-                    Storage::disk('public')->delete($subject->image);
+                    StorageHelper::delete('images', $subject->image);
                 }
                 if ($subject->og_image) {
-                    Storage::disk('public')->delete($subject->og_image);
+                    StorageHelper::delete('images', $subject->og_image);
                 }
             } catch (\Exception $e) {
                 Log::warning('فشل حذف صور المادة: ' . $e->getMessage());

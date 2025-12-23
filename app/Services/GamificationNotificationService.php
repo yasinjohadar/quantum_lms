@@ -5,9 +5,16 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\GamificationNotification;
 use Illuminate\Support\Facades\Mail;
+use App\Services\NotificationPreferenceService;
 
 class GamificationNotificationService
 {
+    protected NotificationPreferenceService $preferenceService;
+
+    public function __construct(NotificationPreferenceService $preferenceService)
+    {
+        $this->preferenceService = $preferenceService;
+    }
     /**
      * إرسال إشعار
      */
@@ -19,6 +26,19 @@ class GamificationNotificationService
         array $data = [],
         bool $sendEmail = false
     ): GamificationNotification {
+        // احترام تفضيلات الإشعارات (قناة قاعدة البيانات)
+        if (!$this->preferenceService->isAllowed($user, $type, 'database')) {
+            // إذا كان نوع الإشعار مكتوماً، لا ننشئ سجلاً
+            return new GamificationNotification([
+                'user_id' => $user->id,
+                'type' => $type,
+                'title' => $title,
+                'message' => $message,
+                'data' => $data,
+                'is_read' => true,
+            ]);
+        }
+
         $notification = GamificationNotification::create([
             'user_id' => $user->id,
             'type' => $type,
@@ -29,7 +49,7 @@ class GamificationNotificationService
         ]);
 
         // إرسال بريد إلكتروني إذا كان مفعلاً
-        if ($sendEmail && $user->email) {
+        if ($sendEmail && $user->email && $this->preferenceService->isAllowed($user, $type, 'email')) {
             // TODO: إنشاء Mailable class للإشعارات
             // Mail::to($user->email)->send(new GamificationNotificationMail($notification));
         }
@@ -94,8 +114,18 @@ class GamificationNotificationService
         $jsonData = json_encode($data); // تحويل البيانات إلى JSON
 
         foreach ($userIds as $userId) {
+            $user = User::find($userId);
+            if (!$user) {
+                continue;
+            }
+
+            // تجاهل المستخدمين الذين أوقفوا هذا النوع من الإشعارات
+            if (!$this->preferenceService->isAllowed($user, $type, 'database')) {
+                continue;
+            }
+
             $notifications[] = [
-                'user_id' => $userId,
+                'user_id' => $user->id,
                 'type' => $type,
                 'title' => $title,
                 'message' => $message,
@@ -107,7 +137,9 @@ class GamificationNotificationService
         }
 
         // إدراج مجمع
-        GamificationNotification::insert($notifications);
+        if (!empty($notifications)) {
+            GamificationNotification::insert($notifications);
+        }
 
         // إرسال Events للإشعارات الفورية
         foreach ($userIds as $userId) {

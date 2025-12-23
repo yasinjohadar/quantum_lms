@@ -8,6 +8,7 @@ use App\Models\QuizAttempt;
 use App\Models\QuizAnswer;
 use App\Models\Question;
 use App\Services\GamificationService;
+use App\Services\AuditLogService;
 use App\Events\QuizStarted;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,9 +18,12 @@ use Illuminate\Support\Facades\Log;
 
 class StudentQuizController extends Controller
 {
-    public function __construct()
+    protected AuditLogService $auditLogService;
+
+    public function __construct(AuditLogService $auditLogService)
     {
         $this->middleware(['auth', 'check.user.active']);
+        $this->auditLogService = $auditLogService;
     }
 
     /**
@@ -303,6 +307,13 @@ class StudentQuizController extends Controller
         // التحقق من انتهاء الوقت
         if ($remaining !== null && $remaining <= 0) {
             $attempt->timeout();
+
+            // تسجيل في AuditLog أن المحاولة انتهت لانتهاء الوقت
+            $this->auditLogService->logQuizSecurity($user, 'quiz_timeout', [
+                'quiz_id' => $attempt->quiz_id,
+                'attempt_id' => $attempt->id,
+            ]);
+
             return response()->json([
                 'success' => false,
                 'timeout' => true,

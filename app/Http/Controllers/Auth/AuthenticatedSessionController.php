@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Services\LoginLogService;
 use App\Services\UserSessionService;
 use App\Services\SessionActivityService;
+use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,11 +17,16 @@ class AuthenticatedSessionController extends Controller
 {
     protected $sessionService;
     protected $activityService;
+    protected AuditLogService $auditLogService;
 
-    public function __construct(UserSessionService $sessionService, SessionActivityService $activityService)
-    {
+    public function __construct(
+        UserSessionService $sessionService,
+        SessionActivityService $activityService,
+        AuditLogService $auditLogService
+    ) {
         $this->sessionService = $sessionService;
         $this->activityService = $activityService;
+        $this->auditLogService = $auditLogService;
     }
 
     /**
@@ -41,6 +47,7 @@ class AuthenticatedSessionController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             // تسجيل محاولة دخول فاشلة
             LoginLogService::logLogin(null, $request, false, 'Invalid credentials');
+            $this->auditLogService->logLoginAttempt(null, false, ['reason' => 'invalid_credentials'], $request);
             throw $e;
         }
 
@@ -49,6 +56,7 @@ class AuthenticatedSessionController extends Controller
         if (!$user->is_active) {
             // تسجيل محاولة دخول فاشلة
             LoginLogService::logLogin($user, $request, false, 'Account is inactive');
+            $this->auditLogService->logLoginAttempt($user, false, ['reason' => 'inactive_account'], $request);
             
             Auth::logout();
             $request->session()->invalidate();
@@ -61,6 +69,7 @@ class AuthenticatedSessionController extends Controller
 
         // تسجيل محاولة دخول ناجحة
         LoginLogService::logLogin($user, $request, true);
+        $this->auditLogService->logLoginAttempt($user, true, [], $request);
 
         // إنشاء جلسة جديدة
         $userSession = $this->sessionService->createSession($user->id, $request);

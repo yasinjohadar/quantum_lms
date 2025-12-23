@@ -11,6 +11,7 @@ use App\Models\Stage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use App\Helpers\StorageHelper;
 
 class ClassController extends Controller
 {
@@ -150,7 +151,7 @@ class ClassController extends Controller
             if ($request->hasFile('image')) {
                 try {
                     if ($class->image) {
-                        Storage::disk('public')->delete($class->image);
+                        StorageHelper::delete('images', $class->image);
                     }
 
                     $image = $request->file('image');
@@ -169,7 +170,7 @@ class ClassController extends Controller
             if ($request->hasFile('og_image')) {
                 try {
                     if ($class->og_image) {
-                        Storage::disk('public')->delete($class->og_image);
+                        StorageHelper::delete('images', $class->og_image);
                     }
 
                     $ogImage = $request->file('og_image');
@@ -212,10 +213,10 @@ class ClassController extends Controller
 
             try {
                 if ($class->image) {
-                    Storage::disk('public')->delete($class->image);
+                    StorageHelper::delete('images', $class->image);
                 }
                 if ($class->og_image) {
-                    Storage::disk('public')->delete($class->og_image);
+                    StorageHelper::delete('images', $class->og_image);
                 }
             } catch (\Exception $e) {
                 Log::warning('فشل حذف صور الصف: ' . $e->getMessage());

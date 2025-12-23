@@ -19,12 +19,20 @@ class BackupStorageConfig extends Model
         'priority',
         'max_backups',
         'created_by',
+        'redundancy',
+        'pricing_config',
+        'monthly_budget',
+        'cost_alert_threshold',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'priority' => 'integer',
         'max_backups' => 'integer',
+        'redundancy' => 'boolean',
+        'pricing_config' => 'array',
+        'monthly_budget' => 'decimal:2',
+        'cost_alert_threshold' => 'decimal:2',
     ];
 
     /**
@@ -35,8 +43,13 @@ class BackupStorageConfig extends Model
         's3' => 'Amazon S3',
         'google_drive' => 'Google Drive',
         'dropbox' => 'Dropbox',
-        'ftp' => 'FTP/SFTP',
+        'ftp' => 'FTP',
+        'sftp' => 'SFTP',
         'azure' => 'Azure Blob Storage',
+        'digitalocean' => 'DigitalOcean Spaces',
+        'wasabi' => 'Wasabi',
+        'backblaze' => 'Backblaze B2',
+        'cloudflare_r2' => 'Cloudflare R2',
     ];
 
     /**
@@ -56,6 +69,14 @@ class BackupStorageConfig extends Model
     }
 
     /**
+     * العلاقة مع الإحصائيات
+     */
+    public function analytics()
+    {
+        return $this->hasMany(StorageAnalytic::class, 'storage_config_id');
+    }
+
+    /**
      * الحصول على instance التخزين
      */
     public function getStorageInstance()
@@ -67,8 +88,9 @@ class BackupStorageConfig extends Model
             's3' => $this->getS3Storage($config),
             'google_drive' => $this->getGoogleDriveStorage($config),
             'dropbox' => $this->getDropboxStorage($config),
-            'ftp' => $this->getFTPStorage($config),
+            'ftp', 'sftp' => $this->getFTPStorage($config),
             'azure' => $this->getAzureStorage($config),
+            'digitalocean', 'wasabi', 'backblaze', 'cloudflare_r2' => $this->getS3Storage($config), // S3-compatible
             default => Storage::disk('local'),
         };
     }
@@ -79,15 +101,12 @@ class BackupStorageConfig extends Model
     public function testConnection(): array
     {
         try {
-            $storage = $this->getStorageInstance();
-            // محاولة كتابة ملف تجريبي
-            $testFile = 'backup_test_' . time() . '.txt';
-            $storage->put($testFile, 'test');
-            $storage->delete($testFile);
+            $driver = \App\Services\Backup\StorageFactory::create($this);
+            $result = $driver->testConnection();
             
             return [
-                'success' => true,
-                'message' => 'الاتصال ناجح',
+                'success' => $result,
+                'message' => $result ? 'الاتصال ناجح' : 'فشل الاتصال',
             ];
         } catch (\Exception $e) {
             return [

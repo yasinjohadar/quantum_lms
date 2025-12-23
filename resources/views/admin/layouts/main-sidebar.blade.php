@@ -451,6 +451,16 @@
                             </ul>
                         </li>
 
+                        <li class="slide {{ request()->is('admin/analytics-dashboard') ? 'active' : '' }}">
+                            <a href="{{ route('admin.analytics.dashboard') }}" class="side-menu__item {{ request()->is('admin/analytics-dashboard') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M3 13h4v8H3zM10 3h4v18h-4zM17 8h4v13h-4z"/>
+                                </svg>
+                                <span class="side-menu__label">لوحة التحليلات</span>
+                            </a>
+                        </li>
+
                         <li class="slide has-sub {{ request()->is('admin/backup*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -474,9 +484,45 @@
                                         <span class="side-menu__label">الجدولة</span>
                                     </a>
                                 </li>
-                                <li class="slide {{ request()->is('admin/backup-storage*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.backup-storage.index') }}" class="side-menu__item {{ request()->is('admin/backup-storage*') ? 'active' : '' }}">
+                                <li class="slide {{ request()->is('admin/backup-storage*') && !request()->is('admin/backup-storage/analytics*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.backup-storage.index') }}" class="side-menu__item {{ request()->is('admin/backup-storage*') && !request()->is('admin/backup-storage/analytics*') ? 'active' : '' }}">
                                         <span class="side-menu__label">إعدادات التخزين</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/backup-storage/analytics*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.backup-storage.analytics') }}" class="side-menu__item {{ request()->is('admin/backup-storage/analytics*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">تحليلات التخزين</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="slide has-sub {{ request()->is('admin/app-storage*') || request()->is('admin/storage-disk-mappings*') ? 'open' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M10 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2h-8l-2-2z"/>
+                                </svg>
+                                <span class="side-menu__label">إعدادات التخزين</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">إعدادات التخزين</a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/app-storage/configs*') && !request()->is('admin/app-storage/analytics*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.app-storage.configs.index') }}" class="side-menu__item {{ request()->is('admin/app-storage/configs*') && !request()->is('admin/app-storage/analytics*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">أماكن التخزين</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/storage-disk-mappings*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.storage-disk-mappings.index') }}" class="side-menu__item {{ request()->is('admin/storage-disk-mappings*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">Disk Mappings</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/app-storage/analytics*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.app-storage.analytics') }}" class="side-menu__item {{ request()->is('admin/app-storage/analytics*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">تحليلات التخزين</span>
                                     </a>
                                 </li>
                             </ul>
@@ -489,6 +535,16 @@
                                     <path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm-8 4H7v2h2v-2zm4 0h-2v2h2v-2z"/>
                                 </svg>
                                 <span class="side-menu__label">بحاجة للتصحيح</span>
+                            </a>
+                        </li>
+
+                        <li class="slide {{ request()->is('admin/analytics-dashboard') ? 'active' : '' }}">
+                            <a href="{{ route('admin.analytics.dashboard') }}" class="side-menu__item {{ request()->is('admin/analytics-dashboard') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M3 13h4v8H3zM10 3h4v18h-4zM17 8h4v13h-4z"/>
+                                </svg>
+                                <span class="side-menu__label">لوحة التحليلات</span>
                             </a>
                         </li>
 

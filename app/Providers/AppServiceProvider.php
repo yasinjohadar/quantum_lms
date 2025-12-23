@@ -43,6 +43,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Register storage helper globally
+        if (!function_exists('storage_disk')) {
+            function storage_disk(string $diskName) {
+                return app(\App\Services\Storage\AppStorageManager::class)->getDisk($diskName);
+            }
+        }
         // تسجيل Event Listeners
         Event::listen(LessonAttended::class, SendRealTimeNotification::class);
         Event::listen(LessonCompleted::class, SendRealTimeNotification::class);

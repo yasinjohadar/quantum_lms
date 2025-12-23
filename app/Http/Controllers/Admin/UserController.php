@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
+use App\Helpers\StorageHelper;
 
 class UserController extends Controller
 {
@@ -213,12 +214,13 @@ public function index(Request $request)
         if ($request->hasFile('photo')) {
             // حذف الصورة القديمة إذا كانت موجودة
             if ($user->photo) {
-                \Storage::disk('public')->delete($user->photo);
+                StorageHelper::delete('avatars', $user->photo);
             }
 
             $photo = $request->file('photo');
             $photoName = time() . '_' . $photo->getClientOriginalName();
-            $photoPath = $photo->storeAs('users/photos', $photoName, 'public');
+            $photoPath = 'users/photos/' . $photoName;
+            $photoPath = StorageHelper::store('avatars', $photoPath, file_get_contents($photo->getRealPath()), 'image') ? $photoPath : $photo->storeAs('users/photos', $photoName, 'public');
             $updateData['photo'] = $photoPath;
         }
 

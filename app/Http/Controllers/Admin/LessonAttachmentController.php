@@ -8,6 +8,7 @@ use App\Models\LessonAttachment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use App\Helpers\StorageHelper;
 
 class LessonAttachmentController extends Controller
 {
@@ -97,7 +98,7 @@ class LessonAttachmentController extends Controller
             if ($request->hasFile('file')) {
                 // حذف الملف القديم
                 if ($attachment->file_path) {
-                    Storage::disk('public')->delete($attachment->file_path);
+                    StorageHelper::delete('attachments', $attachment->file_path);
                 }
 
                 $file = $request->file('file');
@@ -139,7 +140,7 @@ class LessonAttachmentController extends Controller
         try {
             // حذف الملف
             if ($attachment->file_path) {
-                Storage::disk('public')->delete($attachment->file_path);
+                StorageHelper::delete('attachments', $attachment->file_path);
             }
 
             $attachment->delete();

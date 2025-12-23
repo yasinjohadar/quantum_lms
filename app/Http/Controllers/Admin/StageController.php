@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreStageRequest;
 use App\Http\Requests\Admin\UpdateStageRequest;
 use Illuminate\Support\Facades\Storage;
+use App\Helpers\StorageHelper;
 
 class StageController extends Controller
 {
@@ -144,7 +145,7 @@ class StageController extends Controller
                 try {
                     // حذف الصورة القديمة
                     if ($stage->image) {
-                        Storage::disk('public')->delete($stage->image);
+                        StorageHelper::delete('images', $stage->image);
                     }
 
                     $image = $request->file('image');
@@ -165,7 +166,7 @@ class StageController extends Controller
                 try {
                     // حذف الصورة القديمة
                     if ($stage->og_image) {
-                        Storage::disk('public')->delete($stage->og_image);
+                        StorageHelper::delete('images', $stage->og_image);
                     }
 
                     $ogImage = $request->file('og_image');
@@ -212,10 +213,10 @@ class StageController extends Controller
             // حذف الصور
             try {
                 if ($stage->image) {
-                    Storage::disk('public')->delete($stage->image);
+                    StorageHelper::delete('images', $stage->image);
                 }
                 if ($stage->og_image) {
-                    Storage::disk('public')->delete($stage->og_image);
+                    StorageHelper::delete('images', $stage->og_image);
                 }
             } catch (\Exception $e) {
                 // في حالة فشل حذف الصور، نتابع حذف المرحلة

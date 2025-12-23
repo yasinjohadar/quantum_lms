@@ -201,6 +201,12 @@ class ChartDataService
         
         // تحويل daily_active_users إلى صيغة مناسبة للرسم البياني
         $dailyData = $analytics['daily_active_users'] ?? [];
+        
+        // تحويل Collection إلى array إذا لزم الأمر
+        if ($dailyData instanceof \Illuminate\Support\Collection) {
+            $dailyData = $dailyData->toArray();
+        }
+        
         $dates = array_keys($dailyData);
         $values = array_values($dailyData);
         

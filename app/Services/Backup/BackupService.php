@@ -7,6 +7,7 @@ use App\Models\BackupLog;
 use App\Services\Backup\BackupStorageService;
 use App\Services\Backup\BackupCompressionService;
 use App\Services\Backup\BackupNotificationService;
+use App\Services\Backup\StorageManager;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Artisan;
@@ -19,7 +20,8 @@ class BackupService
     public function __construct(
         private BackupStorageService $storageService,
         private BackupCompressionService $compressionService,
-        private BackupNotificationService $notificationService
+        private BackupNotificationService $notificationService,
+        private StorageManager $storageManager
     ) {}
 
     /**
@@ -62,8 +64,13 @@ class BackupService
             // ضغط الملف
             $compressedPath = $this->compressionService->compress($backup, $backup->compression_type);
 
-            // رفع الملف إلى التخزين
-            $storagePath = $this->storageService->storeBackup($backup, $compressedPath);
+            // رفع الملف إلى التخزين مع Auto-failover
+            $this->storageManager->storeWithFailover($backup, $compressedPath);
+            
+            // تخزين في أماكن متعددة إذا كان مفعلاً
+            $this->storageManager->storeToMultipleStorages($backup, $compressedPath);
+            
+            $storagePath = $backup->storage_path;
 
             $duration = now()->diffInSeconds($backup->started_at);
             $fileSize = Storage::disk('local')->size($compressedPath);
@@ -231,7 +238,15 @@ class BackupService
      */
     public function downloadBackup(Backup $backup): BinaryFileResponse
     {
-        $filePath = $this->storageService->getBackupFromStorage($backup);
+        $fileContent = $this->storageManager->retrieve($backup);
+        $tempFilePath = storage_path('app/temp/download_' . $backup->id . '_' . time() . '.' . $backup->compression_type);
+        
+        if (!is_dir(dirname($tempFilePath))) {
+            mkdir(dirname($tempFilePath), 0755, true);
+        }
+        
+        file_put_contents($tempFilePath, $fileContent);
+        $filePath = $tempFilePath;
 
         if (!file_exists($filePath)) {
             throw new \Exception('الملف غير موجود');
@@ -248,7 +263,15 @@ class BackupService
         try {
             $this->log($backup, 'info', 'بدء عملية الاستعادة');
 
-            $filePath = $this->storageService->getBackupFromStorage($backup);
+            $fileContent = $this->storageManager->retrieve($backup);
+            $tempFilePath = storage_path('app/temp/restore_' . $backup->id . '_' . time() . '.zip');
+            
+            if (!is_dir(dirname($tempFilePath))) {
+                mkdir(dirname($tempFilePath), 0755, true);
+            }
+            
+            file_put_contents($tempFilePath, $fileContent);
+            $filePath = $tempFilePath;
 
             // فك الضغط
             $extractedPath = $this->compressionService->decompress($filePath, storage_path('app/backups/restore_' . $backup->id));

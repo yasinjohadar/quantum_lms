@@ -109,7 +109,8 @@ class StudentLibraryController extends Controller
         }
 
         // إذا كان ملف
-        if ($item->file_path && Storage::disk('public')->exists($item->file_path)) {
+        $disk = StorageHelper::disk('library');
+        if ($item->file_path && $disk->exists($item->file_path)) {
             // تسجيل التحميل
             $item->incrementDownload($user);
 
@@ -119,7 +120,7 @@ class StudentLibraryController extends Controller
                 'item_title' => $item->title,
             ]);
 
-            return Storage::disk('public')->download($item->file_path, $item->file_name);
+            return $disk->download($item->file_path, $item->file_name);
         }
 
         abort(404, 'الملف غير موجود.');

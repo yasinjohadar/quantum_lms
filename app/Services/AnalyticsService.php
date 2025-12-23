@@ -101,13 +101,13 @@ class AnalyticsService
                 return $event->created_at->format('Y-m-d');
             })->map(function($dayEvents) {
                 return $dayEvents->pluck('user_id')->unique()->count();
-            });
+            })->toArray();
 
             return [
                 'total_events' => $events->count(),
                 'unique_users' => $uniqueUsers,
                 'daily_active_users' => $dailyActiveUsers,
-                'event_breakdown' => $events->groupBy('event_type')->map->count(),
+                'event_breakdown' => $events->groupBy('event_type')->map->count()->toArray(),
                 'most_active_users' => $this->getMostActiveUsers($events, 10),
             ];
         });
