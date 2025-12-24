@@ -132,12 +132,38 @@
     .question-answer * {
         pointer-events: auto;
     }
+    
+    /* Ordering styles */
+    .sortable-ghost {
+        opacity: 0.4;
+    }
+    
+    .sortable-chosen {
+        cursor: move;
+    }
+    
+    .sortable-drag {
+        opacity: 0.5;
+    }
+    
+    #ordering-list .list-group-item.dragging {
+        opacity: 0.5;
+        background-color: #f0f0f0;
+    }
+    
+    #ordering-list .list-group-item {
+        cursor: move;
+        user-select: none;
+        -webkit-user-drag: element;
+    }
 </style>
 @endpush
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script src="{{ asset('js/quiz-timer.js') }}"></script>
 <script src="{{ asset('js/auto-save-answer.js') }}"></script>
+<script src="{{ asset('js/question-types.js') }}"></script>
 <script>
     // تهيئة العداد - دائماً يعرض العداد
     @php

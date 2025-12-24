@@ -245,7 +245,7 @@
                                             @endif
                                             <small class="text-muted">
                                                 <i class="bi bi-clock me-1"></i>
-                                                {{ $badge->pivot->earned_at->diffForHumans() }}
+                                                {{ $badge->pivot->earned_at ? \Carbon\Carbon::parse($badge->pivot->earned_at)->diffForHumans() : '-' }}
                                             </small>
                                         </div>
                                     </div>
@@ -295,7 +295,7 @@
                                         <div class="text-end">
                                             <small class="text-muted d-block">
                                                 <i class="bi bi-clock me-1"></i>
-                                                {{ $achievement->pivot->completed_at->diffForHumans() }}
+                                                {{ $achievement->pivot->completed_at ? \Carbon\Carbon::parse($achievement->pivot->completed_at)->diffForHumans() : '-' }}
                                             </small>
                                         </div>
                                     </div>

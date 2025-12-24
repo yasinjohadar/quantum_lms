@@ -20,7 +20,9 @@ class StoreQuestionRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $type = $this->input('type');
+        
+        $rules = [
             'type' => ['required', 'string', 'in:' . implode(',', array_keys(Question::TYPES))],
             'title' => ['required', 'string', 'max:500'],
             'content' => ['nullable', 'string'],
@@ -50,11 +52,18 @@ class StoreQuestionRequest extends FormRequest
             
             // للأسئلة الرقمية
             'correct_answer' => ['required_if:type,numerical', 'nullable', 'numeric'],
-            
-            // لملء الفراغات
-            'blank_answers' => ['required_if:type,fill_blanks', 'nullable', 'array'],
-            'blank_answers.*' => ['string'],
         ];
+        
+        // لملء الفراغات - فقط إذا كان نوع السؤال fill_blanks
+        if ($type === 'fill_blanks') {
+            $rules['blank_answers'] = ['required', 'array', 'min:1'];
+            $rules['blank_answers.*'] = ['required', 'string'];
+        } else {
+            // إذا لم يكن fill_blanks، تجاهل blank_answers تماماً
+            $rules['blank_answers'] = ['nullable'];
+        }
+        
+        return $rules;
     }
 
     /**

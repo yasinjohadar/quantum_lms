@@ -84,7 +84,7 @@
                                 @foreach($userRewards as $userReward)
                                 <div class="list-group-item">
                                     <h6 class="mb-1">{{ $userReward->name }}</h6>
-                                    <small class="text-muted">{{ $userReward->pivot->claimed_at->format('Y-m-d') }}</small>
+                                    <small class="text-muted">{{ $userReward->pivot->claimed_at ? \Carbon\Carbon::parse($userReward->pivot->claimed_at)->format('Y-m-d') : '-' }}</small>
                                     <span class="badge bg-{{ $userReward->pivot->status == 'approved' ? 'success' : 'warning' }} float-end">
                                         {{ $userReward->pivot->status_name }}
                                     </span>

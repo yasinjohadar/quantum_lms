@@ -178,45 +178,72 @@ class QuestionTypesHandler {
         const orderingList = document.getElementById('ordering-list');
         const orderingInput = document.getElementById('ordering-input');
         
-        if (!orderingList || !orderingInput) return;
+        if (!orderingList || !orderingInput) {
+            console.log('Ordering list or input not found');
+            return;
+        }
         
-        // استخدام SortableJS إذا كان متاحاً، أو تنفيذ بسيط
+        console.log('Initializing ordering for', orderingList);
+        
+        // استخدام SortableJS إذا كان متاحاً
         if (typeof Sortable !== 'undefined') {
+            console.log('Using SortableJS for ordering');
             new Sortable(orderingList, {
                 animation: 150,
                 handle: '.bi-grip-vertical',
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                dragClass: 'sortable-drag',
                 onEnd: function(evt) {
                     updateOrdering();
                 }
             });
         } else {
+            console.log('SortableJS not available, using native drag and drop');
             // تنفيذ بسيط للسحب والإفلات
             let draggedItem = null;
+            let draggedIndex = null;
             
-            Array.from(orderingList.children).forEach(item => {
+            const items = Array.from(orderingList.children);
+            
+            items.forEach((item, index) => {
                 item.draggable = true;
+                item.style.cursor = 'move';
+                item.style.userSelect = 'none';
                 
                 item.addEventListener('dragstart', (e) => {
                     draggedItem = item;
+                    draggedIndex = index;
                     e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/html', item.innerHTML);
                     item.style.opacity = '0.5';
+                    item.classList.add('dragging');
                 });
                 
                 item.addEventListener('dragend', (e) => {
                     item.style.opacity = '1';
+                    item.classList.remove('dragging');
                     draggedItem = null;
+                    draggedIndex = null;
                 });
                 
                 item.addEventListener('dragover', (e) => {
                     e.preventDefault();
                     e.dataTransfer.dropEffect = 'move';
                     
-                    const afterElement = getDragAfterElement(orderingList, e.clientY);
-                    if (afterElement == null) {
-                        orderingList.appendChild(draggedItem);
-                    } else {
-                        orderingList.insertBefore(draggedItem, afterElement);
+                    if (draggedItem && draggedItem !== item) {
+                        const afterElement = getDragAfterElement(orderingList, e.clientY, draggedItem);
+                        if (afterElement == null) {
+                            orderingList.appendChild(draggedItem);
+                        } else {
+                            orderingList.insertBefore(draggedItem, afterElement);
+                        }
+                        updateOrdering();
                     }
+                });
+                
+                item.addEventListener('drop', (e) => {
+                    e.preventDefault();
                     updateOrdering();
                 });
             });
@@ -234,10 +261,13 @@ class QuestionTypesHandler {
                     badge.textContent = index + 1;
                 }
             });
+            
+            console.log('Order updated:', order);
         }
         
-        function getDragAfterElement(container, y) {
-            const draggableElements = [...container.querySelectorAll('.list-group-item:not(.dragging)')];
+        function getDragAfterElement(container, y, draggedElement) {
+            const draggableElements = [...container.querySelectorAll('.list-group-item')]
+                .filter(el => el !== draggedElement);
             
             return draggableElements.reduce((closest, child) => {
                 const box = child.getBoundingClientRect();

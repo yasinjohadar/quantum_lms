@@ -429,39 +429,61 @@
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Progress Chart
+    // Progress Chart - بناء الخيارات بشكل كامل في JavaScript
     @if(isset($report['data']['charts']['progress']))
         @php
             $chartData = $report['data']['charts']['progress'];
             $chartOptions = $chartData['options'] ?? [];
+            $series = $chartOptions['series'] ?? [];
+            $categories = $chartOptions['xaxis']['categories'] ?? [];
         @endphp
         
-        @if(!empty($chartOptions))
-            var progressOptions = @json($chartOptions);
-            
-            // تحويل formatter strings إلى functions
-            if (progressOptions.dataLabels && typeof progressOptions.dataLabels.formatter === 'string') {
-                var formatterStr = progressOptions.dataLabels.formatter;
-                progressOptions.dataLabels.formatter = eval('(' + formatterStr + ')');
-            }
-            if (progressOptions.tooltip && progressOptions.tooltip.y && typeof progressOptions.tooltip.y.formatter === 'string') {
-                var tooltipFormatterStr = progressOptions.tooltip.y.formatter;
-                progressOptions.tooltip.y.formatter = eval('(' + tooltipFormatterStr + ')');
-            }
-            
-            // التأكد من وجود عنصر الرسم البياني
+        @if(!empty($series) && count($series) > 0 && !empty($categories))
             var chartElement = document.querySelector("#progressChart");
             if (chartElement) {
                 try {
+                    const rawSeries = @json($series);
+                    const categories = @json($categories);
+
+                    // تأكد أن القيم أرقام صحيحة
+                    const normalizedSeries = rawSeries.map(s => ({
+                        name: s.name || 'Series',
+                        data: Array.isArray(s.data) ? s.data.map(v => Number(v) || 0) : []
+                    }));
+
+                    const progressOptions = {
+                        chart: { type: 'bar', height: 400, toolbar: { show: false }, animations: { enabled: false } },
+                        xaxis: { categories, labels: { style: { fontSize: '12px' } } },
+                        yaxis: { max: 100, labels: { formatter: val => `${val}%` } },
+                        series: normalizedSeries,
+                        colors: ['#007bff', '#28a745', '#ffc107', '#17a2b8'],
+                        plotOptions: { bar: { horizontal: false, columnWidth: '55%', borderRadius: 4 } },
+                        dataLabels: { enabled: true, formatter: val => `${(val ?? 0).toFixed(1)}%`, style: { fontSize: '11px', fontWeight: 'bold' } },
+                        legend: { position: 'top', horizontalAlign: 'right' },
+                        tooltip: { shared: true, intersect: false, y: { formatter: val => `${(val ?? 0).toFixed(1)}%` } }
+                    };
+                    
+                    console.log('Rendering progress chart...');
                     var progressChart = new ApexCharts(chartElement, progressOptions);
                     progressChart.render();
+                    console.log('Progress chart rendered successfully');
                 } catch (e) {
-                    console.error('Error rendering chart:', e);
-                    chartElement.innerHTML = '<div class="text-center py-5"><p class="text-muted">حدث خطأ في عرض المخطط</p></div>';
+                    console.error('Error rendering progress chart:', e);
+                    // محاولة مخطط احتياطي مبسط
+                    try {
+                        var fallback = new ApexCharts(chartElement, {
+                            chart: { type: 'bar', height: 300 },
+                            series: [{ name: 'Progress', data: [0] }],
+                            xaxis: { categories: ['-'] }
+                        });
+                        fallback.render();
+                    } catch (e2) {
+                        chartElement.innerHTML = '<div class="text-center py-5"><p class="text-danger">حدث خطأ في عرض المخطط: ' + e2.message + '</p></div>';
+                    }
                 }
             }
         @else
-            console.log('Chart options are empty');
+            console.log('No series data for progress chart');
             var chartElement = document.querySelector("#progressChart");
             if (chartElement) {
                 chartElement.innerHTML = '<div class="text-center py-5"><p class="text-muted">لا توجد بيانات متاحة لعرض المخطط</p></div>';
@@ -472,64 +494,66 @@ document.addEventListener('DOMContentLoaded', function() {
     @endif
 
     // Activity Timeline Chart
-    @if(isset($report['data']['analytics']['activity_timeline']) && count($report['data']['analytics']['activity_timeline']) > 0)
-        var timelineData = @json($report['data']['analytics']['activity_timeline']);
-        var timelineDates = Object.keys(timelineData);
-        var timelineValues = Object.values(timelineData);
+    @if(isset($report['data']['analytics']['activity_timeline']))
+        @php
+            $timeline = $report['data']['analytics']['activity_timeline'];
+            $hasTimeline = is_array($timeline) && count($timeline) > 0;
+        @endphp
         
-        var timelineOptions = {
-            chart: {
-                type: 'area',
-                height: 300,
-                toolbar: {
-                    show: true
-                }
-            },
-            series: [{
-                name: 'الأحداث',
-                data: timelineValues
-            }],
-            xaxis: {
-                categories: timelineDates,
-                labels: {
-                    style: {
-                        fontSize: '11px'
-                    }
-                }
-            },
-            yaxis: {
-                title: {
-                    text: 'عدد الأحداث'
-                }
-            },
-            colors: ['#007bff'],
-            fill: {
-                type: 'gradient',
-                gradient: {
-                    shadeIntensity: 1,
-                    opacityFrom: 0.7,
-                    opacityTo: 0.9,
-                    stops: [0, 90, 100]
-                }
-            },
-            dataLabels: {
-                enabled: false
-            },
-            stroke: {
-                curve: 'smooth',
-                width: 2
-            },
-            tooltip: {
-                y: {
-                    formatter: function(val) {
-                        return val + ' حدث';
-                    }
+        @if($hasTimeline)
+            var timelineElement = document.querySelector("#activityTimelineChart");
+            if (timelineElement) {
+                try {
+                    var timelineData = @json($timeline);
+                    var timelineDates = Object.keys(timelineData);
+                    var timelineValues = Object.values(timelineData).map(function(v) { return parseInt(v) || 0; });
+                    
+                    var timelineOptions = {
+                        chart: {
+                            type: 'area',
+                            height: 300,
+                            toolbar: { show: true }
+                        },
+                        series: [{
+                            name: 'الأحداث',
+                            data: timelineValues
+                        }],
+                        xaxis: {
+                            categories: timelineDates,
+                            labels: { style: { fontSize: '11px' } }
+                        },
+                        yaxis: {
+                            title: { text: 'عدد الأحداث' }
+                        },
+                        colors: ['#007bff'],
+                        fill: {
+                            type: 'gradient',
+                            gradient: {
+                                shadeIntensity: 1,
+                                opacityFrom: 0.7,
+                                opacityTo: 0.9,
+                                stops: [0, 90, 100]
+                            }
+                        },
+                        dataLabels: { enabled: false },
+                        stroke: { curve: 'smooth', width: 2 },
+                        tooltip: {
+                            y: {
+                                formatter: function(val) { return val + ' حدث'; }
+                            }
+                        }
+                    };
+                    
+                    console.log('Rendering timeline chart...');
+                    var timelineChart = new ApexCharts(timelineElement, timelineOptions);
+                    timelineChart.render();
+                    console.log('Timeline chart rendered successfully');
+                } catch (e) {
+                    console.error('Error rendering timeline chart:', e);
+                    timelineElement.innerHTML = '<div class="text-center py-5"><p class="text-danger">حدث خطأ: ' + e.message + '</p></div>';
                 }
             }
-        };
-        
-        var timelineChart = new ApexCharts(document.querySelector("#activityTimelineChart"), timelineOptions);
-        timelineChart.render();
+        @endif
     @endif
 });
 </script>

@@ -99,54 +99,73 @@ public function index(Request $request)
      */
     public function store(Request $request)
     {
-        // التحقق من صحة البيانات
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email',
-            'phone' => 'nullable|string|max:20|unique:users,phone',
-            'password' => 'required|string|min:8|confirmed',
-            'is_active' => 'boolean',
-            'roles' => 'array',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-        ], [
-            'name.required' => 'الاسم مطلوب',
-            'email.required' => 'البريد الإلكتروني مطلوب',
-            'email.email' => 'البريد الإلكتروني غير صحيح',
-            'email.unique' => 'البريد الإلكتروني مستخدم بالفعل',
-            'phone.unique' => 'رقم الهاتف مستخدم بالفعل',
-            'password.required' => 'كلمة المرور مطلوبة',
-            'password.min' => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
-            'password.confirmed' => 'تأكيد كلمة المرور غير متطابق',
-            'photo.image' => 'يجب أن يكون الملف صورة',
-            'photo.mimes' => 'نوع الصورة غير مدعوم',
-            'photo.max' => 'حجم الصورة يجب أن يكون أقل من 2 ميجابايت',
-        ]);
+        try {
+            // التحقق من صحة البيانات
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users,email',
+                'phone' => 'nullable|string|max:20|unique:users,phone',
+                'password' => 'required|string|min:8|confirmed',
+                'is_active' => 'boolean',
+                'roles' => 'array',
+                'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            ], [
+                'name.required' => 'الاسم مطلوب',
+                'email.required' => 'البريد الإلكتروني مطلوب',
+                'email.email' => 'البريد الإلكتروني غير صحيح',
+                'email.unique' => 'البريد الإلكتروني مستخدم بالفعل',
+                'phone.unique' => 'رقم الهاتف مستخدم بالفعل',
+                'password.required' => 'كلمة المرور مطلوبة',
+                'password.min' => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
+                'password.confirmed' => 'تأكيد كلمة المرور غير متطابق',
+                'photo.image' => 'يجب أن يكون الملف صورة',
+                'photo.mimes' => 'نوع الصورة غير مدعوم',
+                'photo.max' => 'حجم الصورة يجب أن يكون أقل من 2 ميجابايت',
+            ]);
 
-        // معالجة الصورة
-        $photoPath = null;
-        if ($request->hasFile('photo')) {
-            $photo = $request->file('photo');
-            $photoName = time() . '_' . $photo->getClientOriginalName();
-            $photoPath = $photo->storeAs('users/photos', $photoName, 'public');
+            // معالجة الصورة
+            $photoPath = null;
+            if ($request->hasFile('photo')) {
+                try {
+                    $photo = $request->file('photo');
+                    $photoName = time() . '_' . $photo->getClientOriginalName();
+                    $photoPath = $photo->storeAs('users/photos', $photoName, 'public');
+                } catch (\Exception $e) {
+                    return redirect()->back()
+                        ->withInput()
+                        ->with('error', 'فشل رفع الصورة: ' . $e->getMessage());
+                }
+            }
+
+            // إنشاء المستخدم
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'password' => Hash::make($request->password),
+                'is_active' => $request->has('is_active'),
+                'photo' => $photoPath,
+                'created_by' => auth()->id(), // المستخدم الذي أنشأ هذا الحساب
+            ]);
+
+            // تعيين الأدوار
+            if ($request->has('roles')) {
+                $user->syncRoles($request->roles);
+            }
+
+            return redirect()->route("users.index")
+                ->with("success", "✅ تم إضافة المستخدم ({$user->name}) بنجاح");
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors($e->errors())
+                ->with('error', '❌ فشل إنشاء المستخدم. يرجى التحقق من البيانات المدخلة.');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', '❌ حدث خطأ أثناء إنشاء المستخدم: ' . $e->getMessage());
         }
-
-        // إنشاء المستخدم
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'password' => Hash::make($request->password),
-            'is_active' => $request->has('is_active'),
-            'photo' => $photoPath,
-            'created_by' => auth()->id(), // المستخدم الذي أنشأ هذا الحساب
-        ]);
-
-        // تعيين الأدوار
-        if ($request->has('roles')) {
-            $user->syncRoles($request->roles);
-        }
-
-        return redirect()->route("users.index")->with("success" , "تم إضافة مستخدم جديد بنجاح");
     }
 
     /**
@@ -173,66 +192,88 @@ public function index(Request $request)
      */
     public function update(Request $request, $id)
     {
-        $user = User::findOrFail($id);
+        try {
+            $user = User::findOrFail($id);
 
-        // التحقق من صحة البيانات
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $id,
-            'phone' => 'nullable|string|max:20|unique:users,phone,' . $id,
-            'password' => 'nullable|string|min:8|confirmed',
-            'is_active' => 'boolean',
-            'roles' => 'array',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-        ], [
-            'name.required' => 'الاسم مطلوب',
-            'email.required' => 'البريد الإلكتروني مطلوب',
-            'email.email' => 'البريد الإلكتروني غير صحيح',
-            'email.unique' => 'البريد الإلكتروني مستخدم بالفعل',
-            'phone.unique' => 'رقم الهاتف مستخدم بالفعل',
-            'password.min' => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
-            'password.confirmed' => 'تأكيد كلمة المرور غير متطابق',
-            'photo.image' => 'يجب أن يكون الملف صورة',
-            'photo.mimes' => 'نوع الصورة غير مدعوم',
-            'photo.max' => 'حجم الصورة يجب أن يكون أقل من 2 ميجابايت',
-        ]);
+            // التحقق من صحة البيانات
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users,email,' . $id,
+                'phone' => 'nullable|string|max:20|unique:users,phone,' . $id,
+                'password' => 'nullable|string|min:8|confirmed',
+                'is_active' => 'boolean',
+                'roles' => 'array',
+                'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            ], [
+                'name.required' => 'الاسم مطلوب',
+                'email.required' => 'البريد الإلكتروني مطلوب',
+                'email.email' => 'البريد الإلكتروني غير صحيح',
+                'email.unique' => 'البريد الإلكتروني مستخدم بالفعل',
+                'phone.unique' => 'رقم الهاتف مستخدم بالفعل',
+                'password.min' => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
+                'password.confirmed' => 'تأكيد كلمة المرور غير متطابق',
+                'photo.image' => 'يجب أن يكون الملف صورة',
+                'photo.mimes' => 'نوع الصورة غير مدعوم',
+                'photo.max' => 'حجم الصورة يجب أن يكون أقل من 2 ميجابايت',
+            ]);
 
-        // تجهيز البيانات للتحديث
-        $updateData = [
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'is_active' => $request->has('is_active'),
-        ];
+            // تجهيز البيانات للتحديث
+            $updateData = [
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'is_active' => $request->has('is_active'),
+            ];
 
-        // تحديث كلمة المرور فقط إذا تم إدخالها
-        if ($request->filled('password')) {
-            $updateData['password'] = Hash::make($request->password);
-        }
-
-        // معالجة الصورة
-        if ($request->hasFile('photo')) {
-            // حذف الصورة القديمة إذا كانت موجودة
-            if ($user->photo) {
-                StorageHelper::delete('avatars', $user->photo);
+            // تحديث كلمة المرور فقط إذا تم إدخالها
+            if ($request->filled('password')) {
+                $updateData['password'] = Hash::make($request->password);
             }
 
-            $photo = $request->file('photo');
-            $photoName = time() . '_' . $photo->getClientOriginalName();
-            $photoPath = 'users/photos/' . $photoName;
-            $photoPath = StorageHelper::store('avatars', $photoPath, file_get_contents($photo->getRealPath()), 'image') ? $photoPath : $photo->storeAs('users/photos', $photoName, 'public');
-            $updateData['photo'] = $photoPath;
+            // معالجة الصورة
+            if ($request->hasFile('photo')) {
+                try {
+                    // حذف الصورة القديمة إذا كانت موجودة
+                    if ($user->photo) {
+                        StorageHelper::delete('avatars', $user->photo);
+                    }
+
+                    $photo = $request->file('photo');
+                    $photoName = time() . '_' . $photo->getClientOriginalName();
+                    $photoPath = 'users/photos/' . $photoName;
+                    $photoPath = StorageHelper::store('avatars', $photoPath, file_get_contents($photo->getRealPath()), 'image') ? $photoPath : $photo->storeAs('users/photos', $photoName, 'public');
+                    $updateData['photo'] = $photoPath;
+                } catch (\Exception $e) {
+                    return redirect()->back()
+                        ->withInput()
+                        ->with('error', 'فشل رفع الصورة: ' . $e->getMessage());
+                }
+            }
+
+            // تحديث المستخدم
+            $user->update($updateData);
+
+            // تحديث الأدوار
+            if ($request->has('roles')) {
+                $user->syncRoles($request->roles);
+            }
+
+            return redirect()->route('users.index')
+                ->with('success', "✅ تم تحديث بيانات المستخدم ({$user->name}) بنجاح");
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return redirect()->route('users.index')
+                ->with('error', '❌ المستخدم المطلوب غير موجود');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors($e->errors())
+                ->with('error', '❌ فشل تحديث المستخدم. يرجى التحقق من البيانات المدخلة.');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', '❌ حدث خطأ أثناء تحديث المستخدم: ' . $e->getMessage());
         }
-
-        // تحديث المستخدم
-        $user->update($updateData);
-
-        // تحديث الأدوار
-        if ($request->has('roles')) {
-            $user->syncRoles($request->roles);
-        }
-
-        return redirect()->route('users.index')->with('success', 'تم تحديث بيانات المستخدم بنجاح');
     }
 
     /**
@@ -240,32 +281,64 @@ public function index(Request $request)
      */
     public function destroy(Request $request)
     {
-        $user = User::findOrFail($request->id);
+        try {
+            $user = User::findOrFail($request->id);
+            $userName = $user->name;
 
-        $user->delete();
+            // حذف الصورة إذا كانت موجودة
+            if ($user->photo) {
+                try {
+                    StorageHelper::delete('avatars', $user->photo);
+                } catch (\Exception $e) {
+                    // لا نوقف العملية إذا فشل حذف الصورة
+                }
+            }
 
-        return redirect()->route("users.index")->with("success" , "تم حذف مستخدم جديد بنجاح");
+            // حذف المستخدم
+            $user->delete();
 
+            return redirect()->route("users.index")
+                ->with("success", "✅ تم حذف المستخدم ({$userName}) بنجاح");
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return redirect()->route('users.index')
+                ->with('error', '❌ المستخدم المطلوب غير موجود');
+        } catch (\Exception $e) {
+            return redirect()->route('users.index')
+                ->with('error', '❌ حدث خطأ أثناء حذف المستخدم: ' . $e->getMessage());
+        }
     }
 
 
 
     public function updatePassword(Request $request, User $user)
-{
-    $request->validate([
-        'password' => 'required|string|min:8|confirmed',
-    ], [
-        'password.required' => 'كلمة المرور مطلوبة',
-        'password.min' => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
-        'password.confirmed' => 'تأكيد كلمة المرور غير متطابق',
-    ]);
+    {
+        try {
+            $request->validate([
+                'password' => 'required|string|min:8|confirmed',
+            ], [
+                'password.required' => 'كلمة المرور مطلوبة',
+                'password.min' => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
+                'password.confirmed' => 'تأكيد كلمة المرور غير متطابق',
+            ]);
 
-    $user->update([
-        'password' => Hash::make($request->password),
-    ]);
+            $user->update([
+                'password' => Hash::make($request->password),
+            ]);
 
-    return redirect()->route('users.index')->with('success', 'تم تحديث كلمة المرور بنجاح');
-}
+            return redirect()->route('users.index')
+                ->with('success', "✅ تم تحديث كلمة مرور المستخدم ({$user->name}) بنجاح");
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors($e->errors())
+                ->with('error', '❌ فشل تحديث كلمة المرور. يرجى التحقق من البيانات المدخلة.');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', '❌ حدث خطأ أثناء تحديث كلمة المرور: ' . $e->getMessage());
+        }
+    }
 
     /**
      * تبديل حالة المستخدم (تفعيل / إلغاء تفعيل) عبر فورم عادي بدون Ajax

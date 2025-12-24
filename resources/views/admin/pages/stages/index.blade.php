@@ -98,10 +98,11 @@
                                             <td>{{ $loop->iteration + ($stages->currentPage() - 1) * $stages->perPage() }}</td>
                                             <td>
                                                 <div class="d-flex justify-content-center">
-                                                    <img src="{{ $stage->image ? asset('storage/' . $stage->image) : asset('assets/images/media/media-22.jpg') }}"
+                                                    <img src="{{ $stage->image_url }}"
                                                          alt="{{ $stage->name }}"
                                                          class="rounded"
-                                                         style="width: 60px; height: 60px; object-fit: cover;">
+                                                         style="width: 60px; height: 60px; object-fit: cover;"
+                                                         onerror="this.src='{{ asset('assets/images/media/media-22.jpg') }}'">
                                                 </div>
                                             </td>
                                             <td>

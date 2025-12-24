@@ -70,9 +70,7 @@ class ChartDataService
                 }
             }
 
-            return [
-                'type' => 'bar',
-                'options' => [
+            $chartOptions = [
                 'chart' => [
                     'type' => 'bar',
                     'height' => 400,
@@ -142,7 +140,6 @@ class ChartDataService
                 ],
                 'dataLabels' => [
                     'enabled' => true,
-                    'formatter' => "function(val) { return val.toFixed(1) + '%'; }",
                     'style' => [
                         'fontSize' => '11px',
                         'fontWeight' => 'bold'
@@ -153,12 +150,21 @@ class ChartDataService
                     'horizontalAlign' => 'right'
                 ],
                 'tooltip' => [
-                    'y' => [
-                        'formatter' => "function(val) { return val.toFixed(1) + '%'; }"
-                    ]
+                    'shared' => true,
+                    'intersect' => false
                 ]
-            ],
-        ];
+            ];
+
+            \Log::info('Chart options generated:', [
+                'subjects_count' => count($subjectNames),
+                'has_series' => !empty($chartOptions['series']),
+                'series_count' => count($chartOptions['series'] ?? [])
+            ]);
+
+            return [
+                'type' => 'bar',
+                'options' => $chartOptions,
+            ];
         } catch (\Exception $e) {
             \Log::error('Error generating student progress chart: ' . $e->getMessage());
             return [

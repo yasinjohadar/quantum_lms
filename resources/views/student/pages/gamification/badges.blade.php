@@ -37,7 +37,7 @@
                                         <i class="fe fe-award" style="font-size: 48px; color: {{ $badge->color ?? '#007bff' }};"></i>
                                         <h5 class="mt-3">{{ $badge->name }}</h5>
                                         <p class="text-muted">{{ $badge->description }}</p>
-                                        <small class="text-muted">حصلت عليها: {{ $badge->pivot->earned_at->format('Y-m-d') }}</small>
+                                        <small class="text-muted">حصلت عليها: {{ $badge->pivot->earned_at ? \Carbon\Carbon::parse($badge->pivot->earned_at)->format('Y-m-d') : '-' }}</small>
                                     </div>
                                 </div>
                             </div>

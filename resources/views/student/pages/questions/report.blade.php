@@ -103,19 +103,50 @@
         <!-- شريط التقدم -->
         <div class="card custom-card mb-4">
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="fw-semibold">التقدم الإجمالي</span>
-                    <span class="text-muted">{{ number_format($percentage, 1) }}%</span>
-                </div>
-                <div class="progress" style="height: 25px;">
-                    <div class="progress-bar {{ $percentage >= 70 ? 'bg-success' : ($percentage >= 50 ? 'bg-warning' : 'bg-danger') }}" 
-                         role="progressbar" 
-                         style="width: {{ $percentage }}%" 
-                         aria-valuenow="{{ $percentage }}" 
-                         aria-valuemin="0" 
-                         aria-valuemax="100">
-                        {{ number_format($percentage, 1) }}%
+                <!-- تقدم الأداء (بناءً على النقاط) -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-semibold">تقدم الأداء (النقاط)</span>
+                        <span class="badge bg-primary">{{ number_format($percentage, 1) }}%</span>
                     </div>
+                    <div class="progress" style="height: 25px;">
+                        <div class="progress-bar {{ $percentage >= 70 ? 'bg-success' : ($percentage >= 50 ? 'bg-warning' : 'bg-danger') }}" 
+                             role="progressbar" 
+                             style="width: {{ $percentage }}%" 
+                             aria-valuenow="{{ $percentage }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                            {{ number_format($percentage, 1) }}%
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 small mt-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        يعتمد على النقاط المكتسبة من إجمالي النقاط ({{ number_format($earnedPoints, 2) }} / {{ number_format($totalPoints, 2) }})
+                    </p>
+                </div>
+                
+                <!-- تقدم الإكمال (بناءً على عدد الأسئلة المجابة) -->
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-semibold">تقدم الإكمال</span>
+                        <span class="badge bg-success">{{ number_format($completionPercentage, 1) }}%</span>
+                    </div>
+                    <div class="progress" style="height: 25px;">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: {{ $completionPercentage }}%" 
+                             aria-valuenow="{{ $completionPercentage }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                            {{ number_format($completionPercentage, 1) }}%
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 small mt-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        يعتمد على عدد الأسئلة التي تمت الإجابة عليها ({{ $answeredQuestions }} / {{ $totalQuestions }})
+                        @if($answeredQuestions < $totalQuestions)
+                            <span class="text-warning">- حتى لو كانت الإجابة خاطئة، يُحتسب تقدم الإكمال</span>
+                        @endif
+                    </p>
                 </div>
             </div>
         </div>
@@ -133,7 +164,7 @@
                     @foreach($questions as $index => $question)
                         @php
                             $attempt = $attempts[$question->id] ?? null;
-                            $answer = $attempt ? $attempt->answer : null;
+                            $answer = $attempt ? $attempt->answer->first() : null;
                             $isCorrect = $attempt ? $attempt->is_correct : false;
                             $pointsEarned = $answer ? $answer->points_earned : 0;
                             $maxPoints = $question->default_points;

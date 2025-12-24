@@ -502,9 +502,20 @@ class StudentQuestionController extends Controller
         })->count();
         $totalPoints = $questions->sum('default_points');
         $earnedPoints = $attempts->sum(function($attempt) {
-            return $attempt->answer ? $attempt->answer->points_earned : 0;
+            $answer = $attempt->answer->first();
+            return $answer ? $answer->points_earned : 0;
         });
+        
+        // حساب التقدم: يعتمد على النقاط المكتسبة (حتى لو كانت الإجابة خاطئة، يحصل على 0 نقطة)
+        // هذا يعكس الأداء الفعلي للطالب
         $percentage = $totalPoints > 0 ? ($earnedPoints / $totalPoints) * 100 : 0;
+        
+        // حساب تقدم الإكمال (كم سؤال تمت الإجابة عليه)
+        $answeredQuestions = $attempts->filter(function($attempt) {
+            $answer = $attempt->answer->first();
+            return $answer && $answer->is_graded;
+        })->count();
+        $completionPercentage = $totalQuestions > 0 ? ($answeredQuestions / $totalQuestions) * 100 : 0;
 
         // تمرير ثوابت الأنواع
         $questionTypes = Question::TYPES;
@@ -522,6 +533,8 @@ class StudentQuestionController extends Controller
             'totalPoints',
             'earnedPoints',
             'percentage',
+            'answeredQuestions',
+            'completionPercentage',
             'questionTypes',
             'questionTypeIcons',
             'questionTypeColors',

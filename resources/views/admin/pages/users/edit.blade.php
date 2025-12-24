@@ -55,37 +55,41 @@
 @stop
 
 @section('content')
-
-    @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-        </div>
-    @endif
-
-    @if (session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-        </div>
-    @endif
-
-    @if ($errors->any())
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <ul class="mb-0">
-                @foreach ($errors->all() as $error)
-                    <li class="small">{{ $error }}</li>
-                @endforeach
-            </ul>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-        </div>
-    @endif
-
     <div class="main-content app-content">
         <div class="container-fluid">
             <div class="page-header d-flex justify-content-between align-items-center my-4">
                 <h5 class="page-title mb-0">تعديل المستخدم: {{ $user->name }}</h5>
             </div>
+
+            <!-- Success/Error Messages -->
+            @if (session('success'))
+                <div class="alert alert-success alert-dismissible fade show" role="alert" style="margin-top: 20px; display: block !important; visibility: visible !important; opacity: 1 !important;">
+                    <i class="bi bi-check-circle me-2"></i>
+                    <strong>نجح!</strong> {!! session('success') !!}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
+
+            @if (session('error'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert" style="margin-top: 20px; display: block !important; visibility: visible !important; opacity: 1 !important;">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>خطأ!</strong> {!! session('error') !!}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
+
+            @if ($errors->any())
+                <div class="alert alert-danger alert-dismissible fade show" role="alert" style="margin-top: 20px; display: block !important; visibility: visible !important; opacity: 1 !important;">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>خطأ في البيانات!</strong>
+                    <ul class="mb-0 mt-2">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
 
             <div class="card">
                 <div class="card-body">
@@ -244,6 +248,25 @@
                 allowClear: true,
                 dir: "rtl"
             });
+        });
+        
+        // إظهار الرسائل تلقائياً
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                alert.style.display = 'block';
+                alert.style.visibility = 'visible';
+                alert.style.opacity = '1';
+            });
+            
+            setTimeout(function() {
+                alerts.forEach(function(alert) {
+                    if (alert.classList.contains('alert-success')) {
+                        const bsAlert = new bootstrap.Alert(alert);
+                        bsAlert.close();
+                    }
+                });
+            }, 5000);
         });
     </script>
 @stop

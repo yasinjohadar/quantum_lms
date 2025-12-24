@@ -10,33 +10,6 @@
 @stop
 
 @section('content')
-    @if (\Session::has('success'))
-        <div class="alert alert-success">
-            <ul>
-                <li>{!! \Session::get('success') !!}</li>
-            </ul>
-        </div>
-    @endif
-
-    @if (\Session::has('error'))
-        <div class="alert alert-danger">
-            <ul>
-                <li>{!! \Session::get('error') !!}</li>
-            </ul>
-        </div>
-    @endif
-
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul>
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
-
     <!-- Start::app-content -->
     <div class="main-content app-content">
         <div class="container-fluid">
@@ -47,6 +20,40 @@
                     <h5 class="page-title fs-21 mb-1">كافة المستخدمين</h5>
 
                 </div>
+            </div>
+            <!-- End Page Header -->
+
+            <!-- Success/Error Messages -->
+            @if (session('success'))
+                <div class="alert alert-success alert-dismissible fade show" role="alert" style="margin-top: 20px; display: block !important; visibility: visible !important; opacity: 1 !important;">
+                    <i class="bi bi-check-circle me-2"></i>
+                    <strong>نجح!</strong> {!! session('success') !!}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
+
+            @if (session('error'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert" style="margin-top: 20px; display: block !important; visibility: visible !important; opacity: 1 !important;">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>خطأ!</strong> {!! session('error') !!}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
+
+            @if ($errors->any())
+                <div class="alert alert-danger alert-dismissible fade show" role="alert" style="margin-top: 20px; display: block !important; visibility: visible !important; opacity: 1 !important;">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>خطأ في البيانات!</strong>
+                    <ul class="mb-0 mt-2">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
+
+            <!-- Start Content -->
 
 
             </div>
@@ -257,4 +264,26 @@
 @stop
 
 @section('js')
+<script>
+    // إظهار الرسائل تلقائياً
+    document.addEventListener('DOMContentLoaded', function() {
+        // إظهار جميع الرسائل
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(function(alert) {
+            alert.style.display = 'block';
+            alert.style.visibility = 'visible';
+            alert.style.opacity = '1';
+        });
+        
+        // إخفاء الرسائل تلقائياً بعد 5 ثواني
+        setTimeout(function() {
+            alerts.forEach(function(alert) {
+                if (alert.classList.contains('alert-success')) {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }
+            });
+        }, 5000);
+    });
+</script>
 @stop

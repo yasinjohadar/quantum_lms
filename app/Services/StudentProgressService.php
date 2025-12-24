@@ -127,8 +127,19 @@ class StudentProgressService
         $questionsCompleted = $questionsCompletedIds;
         $questionsPercentage = $questionsTotal > 0 ? ($questionsCompleted / $questionsTotal) * 100 : 0;
         
-        // النسبة الإجمالية (متوسط النسب الثلاث)
-        $overallPercentage = ($lessonsPercentage + $quizzesPercentage + $questionsPercentage) / 3;
+        // النسبة الإجمالية (متوسط النسب الموجودة فقط)
+        $percentages = [];
+        if ($lessonsTotal > 0) {
+            $percentages[] = $lessonsPercentage;
+        }
+        if ($quizzesTotal > 0) {
+            $percentages[] = $quizzesPercentage;
+        }
+        if ($questionsTotal > 0) {
+            $percentages[] = $questionsPercentage;
+        }
+        
+        $overallPercentage = !empty($percentages) ? array_sum($percentages) / count($percentages) : 0;
         
         return [
             'lessons_percentage' => round($lessonsPercentage, 2),
@@ -220,8 +231,19 @@ class StudentProgressService
         $questionsCompleted = $questionsCompletedIds;
         $questionsPercentage = $questionsTotal > 0 ? ($questionsCompleted / $questionsTotal) * 100 : 0;
         
-        // النسبة الإجمالية (متوسط النسب الثلاث)
-        $overallPercentage = ($lessonsPercentage + $quizzesPercentage + $questionsPercentage) / 3;
+        // النسبة الإجمالية (متوسط النسب الموجودة فقط)
+        $percentages = [];
+        if ($lessonsTotal > 0) {
+            $percentages[] = $lessonsPercentage;
+        }
+        if ($quizzesTotal > 0) {
+            $percentages[] = $quizzesPercentage;
+        }
+        if ($questionsTotal > 0) {
+            $percentages[] = $questionsPercentage;
+        }
+        
+        $overallPercentage = !empty($percentages) ? array_sum($percentages) / count($percentages) : 0;
         
         return [
             'lessons_percentage' => round($lessonsPercentage, 2),

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class Stage extends Model
 {
@@ -95,6 +96,33 @@ class Stage extends Model
               ->orWhere('meta_title', 'like', '%' . $search . '%')
               ->orWhere('meta_description', 'like', '%' . $search . '%');
         });
+    }
+
+    /**
+     * الحصول على رابط الصورة
+     */
+    public function getImageUrlAttribute()
+    {
+        if (!$this->image) {
+            return asset('assets/images/media/media-22.jpg');
+        }
+
+        // استخدام Storage::url() للحصول على الرابط الصحيح
+        try {
+            if (Storage::disk('public')->exists($this->image)) {
+                return Storage::disk('public')->url($this->image);
+            }
+        } catch (\Exception $e) {
+            // في حالة الخطأ، استخدم asset
+        }
+
+        // إذا كان المسار يحتوي على storage/ فهو جاهز
+        if (str_starts_with($this->image, 'storage/')) {
+            return asset($this->image);
+        }
+
+        // إذا كان المسار نسبي فقط
+        return asset('storage/' . $this->image);
     }
 }
 
