@@ -162,7 +162,7 @@ function getNotificationColor($type) {
 
                         <!-- Notifications List -->
                         @if($notifications->count() > 0)
-                            <div class="notifications-list" style="max-height: none; overflow: visible;">
+                            <div class="notifications-list">
                                 @foreach($notifications as $notification)
                                 <div class="notification-item card mb-3 {{ !$notification->is_read ? 'border-primary border-start border-3' : '' }}" 
                                      data-notification-id="{{ $notification->id }}"
@@ -342,44 +342,70 @@ function getNotificationColor($type) {
         overflow: visible !important;
         max-height: none !important;
         min-height: auto;
+        display: block;
+        width: 100%;
     }
     
     .notification-item {
         position: relative;
         z-index: 1;
-        margin-bottom: 1rem;
+        margin-bottom: 1rem !important;
         display: block;
         width: 100%;
+        overflow: visible !important;
+    }
+    
+    .notification-item .card {
+        overflow: visible !important;
+        position: relative;
     }
     
     .notification-item .card-body {
         position: relative;
         overflow: visible !important;
         width: 100%;
+        padding: 1rem;
+    }
+    
+    /* إصلاح الـ card الرئيسية */
+    .card:not(.notification-item) {
+        overflow: visible !important;
+    }
+    
+    .card-body:not(.notification-item .card-body) {
+        overflow: visible !important;
     }
     
     /* التأكد من أن المحتوى لا يخرج من الـ container */
     .main-content.app-content {
         overflow: visible !important;
         position: relative;
+        min-height: auto;
     }
     
     .container-fluid {
         overflow: visible !important;
         position: relative;
+        padding-bottom: 2rem;
     }
     
-    /* إصلاح أي مشاكل في الـ card */
-    .card {
+    /* إصلاح أي مشاكل في الـ row */
+    .row {
         overflow: visible !important;
     }
     
-    .card-body {
+    .col-12 {
         overflow: visible !important;
     }
     
     /* التأكد من أن الـ page container لا يقطع المحتوى */
     .page {
+        overflow: visible !important;
+        position: relative;
+    }
+    
+    /* إصلاح الـ pagination */
+    .mt-4 {
         overflow: visible !important;
     }
 </style>

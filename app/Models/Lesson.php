@@ -184,4 +184,3 @@ class Lesson extends Model
         return $query->orderBy('order');
     }
 }
-

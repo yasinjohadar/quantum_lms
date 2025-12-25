@@ -8,3 +8,19 @@
 a {
     font-weight: bold !important;
 }
+
+/* إصلاح مشكلة ظهور الإشعارات خارج القائمة */
+.notifications-list,
+.notifications-list .notification-item,
+.notifications-list .notification-item .card,
+.notifications-list .notification-item .card-body {
+    overflow: visible !important;
+    max-height: none !important;
+}
+
+/* التأكد من أن صفحة الإشعارات تعرض المحتوى بشكل صحيح */
+body .main-content.app-content,
+body .container-fluid,
+body .page {
+    overflow: visible !important;
+}

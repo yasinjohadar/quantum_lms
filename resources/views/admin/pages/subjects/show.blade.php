@@ -315,9 +315,9 @@
                                                                                                 title="إضافة درس">
                                                                                             <i class="bi bi-play-circle me-1"></i> درس جديد
                                                                                         </button>
-                                                                                        <button type="button" class="btn btn-sm btn-info" title="إضافة اختبار">
+                                                                                        <a href="{{ route('admin.quizzes.create', ['subject_id' => $subject->id, 'unit_id' => $unit->id]) }}" class="btn btn-sm btn-info" title="إضافة اختبار">
                                                                                             <i class="bi bi-clipboard-check me-1"></i> اختبار
-                                                                                        </button>
+                                                                                        </a>
                                                                                         <div class="btn-group">
                                                                                             <button type="button" class="btn btn-sm btn-purple dropdown-toggle" 
                                                                                                     data-bs-toggle="dropdown" aria-expanded="false"
@@ -420,6 +420,57 @@
                                                                                                         <i class="bi bi-x-lg"></i>
                                                                                                     </button>
                                                                                                 </form>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        @endforeach
+                                                                                    </div>
+                                                                                </div>
+                                                                                @endif
+
+                                                                                {{-- الاختبارات المرتبطة بالوحدة --}}
+                                                                                @if($unit->quizzes && $unit->quizzes->count() > 0)
+                                                                                <div class="unit-quizzes mb-3">
+                                                                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                                                                        <h6 class="mb-0 text-info fw-semibold small">
+                                                                                            <i class="bi bi-clipboard-check me-1"></i>
+                                                                                            اختبارات الوحدة ({{ $unit->quizzes->count() }})
+                                                                                        </h6>
+                                                                                    </div>
+                                                                                    <div class="list-group list-group-flush">
+                                                                                        @foreach($unit->quizzes as $quiz)
+                                                                                        <div class="list-group-item d-flex align-items-center justify-content-between px-2 py-2 bg-info-transparent rounded mb-1">
+                                                                                            <div class="d-flex align-items-center flex-grow-1">
+                                                                                                <div class="bg-info rounded-circle d-flex align-items-center justify-content-center me-2" style="width:32px;height:32px;">
+                                                                                                    <i class="bi bi-clipboard-check text-white small"></i>
+                                                                                                </div>
+                                                                                                <div class="flex-grow-1">
+                                                                                                    <p class="mb-0 small fw-medium">{{ $quiz->title }}</p>
+                                                                                                    <div class="d-flex align-items-center gap-2 mt-1">
+                                                                                                        @if($quiz->is_published)
+                                                                                                            <span class="badge bg-success-transparent text-success" style="font-size:0.6rem;">منشور</span>
+                                                                                                        @else
+                                                                                                            <span class="badge bg-warning-transparent text-warning" style="font-size:0.6rem;">غير منشور</span>
+                                                                                                        @endif
+                                                                                                        <span class="text-muted" style="font-size:0.65rem;">
+                                                                                                            <i class="bi bi-question-circle me-1"></i>{{ $quiz->questions_count ?? $quiz->questions->count() }} سؤال
+                                                                                                        </span>
+                                                                                                        @if($quiz->duration_minutes)
+                                                                                                        <span class="text-muted" style="font-size:0.65rem;">
+                                                                                                            <i class="bi bi-clock me-1"></i>{{ $quiz->duration_minutes }} دقيقة
+                                                                                                        </span>
+                                                                                                        @endif
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <div class="d-flex align-items-center gap-1">
+                                                                                                <a href="{{ route('admin.quizzes.show', $quiz->id) }}" 
+                                                                                                   class="btn btn-sm btn-icon btn-info-transparent" title="عرض">
+                                                                                                    <i class="bi bi-eye"></i>
+                                                                                                </a>
+                                                                                                <a href="{{ route('admin.quizzes.edit', $quiz->id) }}" 
+                                                                                                   class="btn btn-sm btn-icon btn-warning-transparent" title="تعديل">
+                                                                                                    <i class="bi bi-pencil"></i>
+                                                                                                </a>
                                                                                             </div>
                                                                                         </div>
                                                                                         @endforeach

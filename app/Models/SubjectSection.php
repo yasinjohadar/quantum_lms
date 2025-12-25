@@ -85,4 +85,3 @@ class SubjectSection extends Model
     }
 }
 
-

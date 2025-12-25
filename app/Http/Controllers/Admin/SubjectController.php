@@ -126,6 +126,9 @@ class SubjectController extends Controller
                 'sections.units.questions' => function ($q) {
                     $q->orderBy('created_at', 'desc');
                 },
+                'sections.units.quizzes' => function ($q) {
+                    $q->orderBy('order')->orderBy('title');
+                },
             ])->findOrFail($id);
             return view('admin.pages.subjects.show', compact('subject'));
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {

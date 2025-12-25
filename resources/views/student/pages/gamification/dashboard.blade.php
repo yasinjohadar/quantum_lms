@@ -55,21 +55,21 @@
                                 </div>
                                 <div class="row g-3">
                                     <div class="col-auto">
-                                        <div class="text-white">
-                                            <h2 class="mb-0">{{ number_format($stats['total_points']) }}</h2>
-                                            <small class="text-white-50">إجمالي النقاط</small>
+                                        <div class="stats-text">
+                                            <h2 class="mb-0 stats-number">{{ number_format($stats['total_points']) }}</h2>
+                                            <small class="stats-label">إجمالي النقاط</small>
                                         </div>
                                     </div>
                                     <div class="col-auto">
-                                        <div class="text-white">
-                                            <h2 class="mb-0">{{ $stats['badges_count'] }}</h2>
-                                            <small class="text-white-50">شارة</small>
+                                        <div class="stats-text">
+                                            <h2 class="mb-0 stats-number">{{ $stats['badges_count'] }}</h2>
+                                            <small class="stats-label">شارة</small>
                                         </div>
                                     </div>
                                     <div class="col-auto">
-                                        <div class="text-white">
-                                            <h2 class="mb-0">{{ $stats['achievements_count'] }}</h2>
-                                            <small class="text-white-50">إنجاز</small>
+                                        <div class="stats-text">
+                                            <h2 class="mb-0 stats-number">{{ $stats['achievements_count'] }}</h2>
+                                            <small class="stats-label">إنجاز</small>
                                         </div>
                                     </div>
                                 </div>
@@ -368,6 +368,51 @@
     </div>
 </div>
 @stop
+
+@push('styles')
+<style>
+    /* إصلاح مشكلة الألوان في الوضع النهاري */
+    [data-theme-mode="light"] .bg-gradient-primary {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    }
+    
+    [data-theme-mode="light"] .stats-text,
+    [data-theme-mode="light"] .stats-number,
+    [data-theme-mode="light"] .stats-label {
+        color: #ffffff !important;
+    }
+    
+    [data-theme-mode="dark"] .stats-text,
+    [data-theme-mode="dark"] .stats-number,
+    [data-theme-mode="dark"] .stats-label {
+        color: #ffffff !important;
+    }
+    
+    /* التأكد من أن النص واضح في جميع الأوضاع */
+    .stats-text {
+        color: #ffffff;
+    }
+    
+    .stats-number {
+        color: #ffffff !important;
+        font-weight: bold;
+    }
+    
+    .stats-label {
+        color: rgba(255, 255, 255, 0.8) !important;
+    }
+    
+    /* إصلاح خلفية الكارد في الوضع النهاري */
+    [data-theme-mode="light"] .card.custom-card.bg-gradient-primary {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    }
+    
+    [data-theme-mode="light"] .card.custom-card.bg-gradient-primary .text-white,
+    [data-theme-mode="light"] .card.custom-card.bg-gradient-primary .text-white-50 {
+        color: #ffffff !important;
+    }
+</style>
+@endpush
 
 @section('scripts')
 @parent

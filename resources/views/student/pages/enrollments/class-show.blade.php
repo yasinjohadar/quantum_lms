@@ -30,6 +30,33 @@
         <!-- End Page Header -->
 
         <!-- معلومات الصف -->
+        @php
+            // التحقق مما إذا كان الطالب مسجل في جميع المواد النشطة
+            $activeSubjectIds = $class->subjects()->where('is_active', true)->pluck('subjects.id')->toArray();
+            $allEnrolled = !empty($activeSubjectIds) && empty(array_diff($activeSubjectIds, $enrolledSubjectIds));
+            $hasNonEnrolledSubjects = count(array_diff($activeSubjectIds, $enrolledSubjectIds)) > 0;
+            
+            // بيانات التقييمات
+            $userClassReview = \App\Models\Review::where('user_id', Auth::id())
+                ->where('reviewable_type', 'App\Models\SchoolClass')
+                ->where('reviewable_id', $class->id)
+                ->whereNull('deleted_at')
+                ->first();
+            $approvedClassReviews = \App\Models\Review::where('reviewable_type', 'App\Models\SchoolClass')
+                ->where('reviewable_id', $class->id)
+                ->where('status', 'approved')
+                ->whereNull('deleted_at')
+                ->with('user')
+                ->latest()
+                ->take(10)
+                ->get();
+            $averageClassRating = \App\Models\Review::where('reviewable_type', 'App\Models\SchoolClass')
+                ->where('reviewable_id', $class->id)
+                ->where('status', 'approved')
+                ->whereNull('deleted_at')
+                ->avg('rating');
+            $totalClassReviews = $approvedClassReviews->count();
+        @endphp
         <div class="card custom-card mb-4">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
@@ -39,11 +66,29 @@
                             <p class="text-muted mb-0">{{ $class->description }}</p>
                         @endif
                     </div>
-                    <div class="text-end">
-                        <button class="btn btn-primary btn-sm" onclick="requestClassEnrollment({{ $class->id }}, '{{ addslashes($class->name) }}')" type="button">
-                            <i class="bi bi-plus-circle me-1"></i>
-                            انضمام للصف كامل
-                        </button>
+                    <div class="text-end d-flex gap-2">
+                        @if($allEnrolled)
+                            <span class="btn btn-success btn-sm disabled">
+                                <i class="bi bi-check-circle me-1"></i>
+                                منضم لجميع المواد
+                            </span>
+                        @elseif($hasNonEnrolledSubjects)
+                            <button class="btn btn-primary btn-sm" onclick="requestClassEnrollment({{ $class->id }}, '{{ addslashes($class->name) }}')" type="button">
+                                <i class="bi bi-plus-circle me-1"></i>
+                                انضمام للصف كامل
+                            </button>
+                        @endif
+                        @if(!$userClassReview)
+                            <a href="{{ route('student.reviews.create', ['type' => 'class', 'id' => $class->id]) }}" class="btn btn-warning btn-sm">
+                                <i class="bi bi-star me-1"></i>
+                                قيّم الصف
+                            </a>
+                        @else
+                            <a href="{{ route('student.reviews.edit', $userClassReview) }}" class="btn btn-outline-warning btn-sm">
+                                <i class="bi bi-pencil me-1"></i>
+                                تعديل التقييم
+                            </a>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -132,6 +177,82 @@
                 </div>
             </div>
         @endif
+
+        <!-- قسم التقييمات -->
+        <div class="card custom-card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-star me-2 text-warning"></i>
+                    تقييمات الصف
+                </h5>
+                @if(!$userClassReview)
+                    <a href="{{ route('student.reviews.create', ['type' => 'class', 'id' => $class->id]) }}" class="btn btn-warning btn-sm">
+                        <i class="bi bi-plus-circle me-1"></i>
+                        أضف تقييمك
+                    </a>
+                @else
+                    <a href="{{ route('student.reviews.edit', $userClassReview) }}" class="btn btn-outline-warning btn-sm">
+                        <i class="bi bi-pencil me-1"></i>
+                        تعديل تقييمك
+                    </a>
+                @endif
+            </div>
+            <div class="card-body">
+                @if($totalClassReviews > 0 || $userClassReview)
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="text-center">
+                                <h2 class="mb-0 text-warning">{{ number_format($averageClassRating, 1) }}</h2>
+                                <div class="d-flex justify-content-center gap-1 mb-2">
+                                    @for($i = 1; $i <= 5; $i++)
+                                        <i class="bi bi-star{{ $i <= round($averageClassRating) ? '-fill' : '' }} text-warning"></i>
+                                    @endfor
+                                </div>
+                                <p class="text-muted mb-0">بناءً على {{ $totalClassReviews }} تقييم</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            @if($userClassReview)
+                                <div class="alert alert-info mb-0">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    لديك تقييم {{ $userClassReview->status === 'approved' ? 'معتمد' : 'قيد المراجعة' }}
+                                    @if($userClassReview->status === 'approved')
+                                        <div class="mt-2">
+                                            <div class="d-flex gap-1">
+                                                @for($i = 1; $i <= 5; $i++)
+                                                    <i class="bi bi-star{{ $i <= $userClassReview->rating ? '-fill' : '' }} text-warning"></i>
+                                                @endfor
+                                            </div>
+                                            @if($userClassReview->title)
+                                                <p class="mb-0 mt-2"><strong>{{ $userClassReview->title }}</strong></p>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
+                @if($approvedClassReviews->count() > 0)
+                    <div class="reviews-list">
+                        <h6 class="mb-3">آخر التقييمات</h6>
+                        @foreach($approvedClassReviews as $review)
+                            @include('student.components.reviews.review-card', ['review' => $review])
+                        @endforeach
+                    </div>
+                @elseif(!$userClassReview)
+                    <div class="text-center py-4">
+                        <i class="bi bi-star fs-1 text-muted mb-3 d-block"></i>
+                        <p class="text-muted mb-3">لا توجد تقييمات بعد</p>
+                        <a href="{{ route('student.reviews.create', ['type' => 'class', 'id' => $class->id]) }}" class="btn btn-warning">
+                            <i class="bi bi-plus-circle me-1"></i>
+                            كن أول من يقيم
+                        </a>
+                    </div>
+                @endif
+            </div>
+        </div>
     </div>
     <!-- Container closed -->
 </div>

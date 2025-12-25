@@ -142,4 +142,3 @@ class AdminStudentProgressController extends Controller
         return view('admin.pages.student-progress.subject', compact('student', 'stats', 'subject'));
     }
 }
-

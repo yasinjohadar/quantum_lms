@@ -65,13 +65,16 @@ class QuizController extends Controller
         $subjects = Subject::with('schoolClass')->orderBy('name')->get();
         $units = collect();
         
-        if ($request->filled('subject_id')) {
-            $units = Unit::whereHas('section', function ($q) use ($request) {
-                $q->where('subject_id', $request->subject_id);
+        $selectedSubjectId = $request->get('subject_id');
+        $selectedUnitId = $request->get('unit_id');
+        
+        if ($selectedSubjectId) {
+            $units = Unit::whereHas('section', function ($q) use ($selectedSubjectId) {
+                $q->where('subject_id', $selectedSubjectId);
             })->orderBy('title')->get();
         }
 
-        return view('admin.pages.quizzes.create', compact('subjects', 'units'));
+        return view('admin.pages.quizzes.create', compact('subjects', 'units', 'selectedSubjectId', 'selectedUnitId'));
     }
 
     /**

@@ -180,7 +180,7 @@
                     </div>
                     <div class="card-body">
                         @if($review->status === 'pending')
-                            <form action="{{ route('admin.reviews.approve', $review) }}" method="POST" class="mb-2">
+                            <form action="{{ route('admin.reviews.approve', $review->id) }}" method="POST" class="mb-2">
                                 @csrf
                                 <button type="submit" class="btn btn-success w-100">
                                     <i class="fe fe-check me-1"></i> الموافقة على التقييم
@@ -192,13 +192,9 @@
                             </button>
                         @endif
 
-                        <form action="{{ route('admin.reviews.destroy', $review) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من الحذف؟')">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-outline-danger w-100">
-                                <i class="fe fe-trash-2 me-1"></i> حذف التقييم
-                            </button>
-                        </form>
+                        <button type="button" class="btn btn-outline-danger w-100" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                            <i class="fe fe-trash-2 me-1"></i> حذف التقييم
+                        </button>
                     </div>
                 </div>
             </div>
@@ -210,7 +206,7 @@
 <div class="modal fade" id="rejectModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form action="{{ route('admin.reviews.reject', $review) }}" method="POST">
+            <form action="{{ route('admin.reviews.reject', $review->id) }}" method="POST">
                 @csrf
                 <div class="modal-header">
                     <h5 class="modal-title">رفض التقييم</h5>
@@ -225,6 +221,38 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
                     <button type="submit" class="btn btn-danger">رفض</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form action="{{ route('admin.reviews.destroy', $review->id) }}" method="POST">
+                @csrf
+                @method('DELETE')
+                <div class="modal-header border-0 pb-0">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <div class="mb-3">
+                        <div class="avatar avatar-xl bg-danger-transparent rounded-circle mx-auto d-flex align-items-center justify-content-center">
+                            <i class="fe fe-trash-2 fs-1 text-danger"></i>
+                        </div>
+                    </div>
+                    <h5 class="modal-title mb-3">تأكيد الحذف</h5>
+                    <p class="text-muted mb-4">هل أنت متأكد من حذف هذا التقييم؟ لا يمكن التراجع عن هذه العملية.</p>
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fe fe-x-circle me-1"></i> إلغاء
+                        </button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fe fe-trash-2 me-1"></i> حذف
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>

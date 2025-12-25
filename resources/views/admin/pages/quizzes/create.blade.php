@@ -56,7 +56,7 @@
                                 <select name="subject_id" class="form-select" id="subjectSelect" required>
                                     <option value="">اختر المادة</option>
                                     @foreach($subjects as $subject)
-                                        <option value="{{ $subject->id }}" {{ old('subject_id') == $subject->id ? 'selected' : '' }}>
+                                        <option value="{{ $subject->id }}" {{ (old('subject_id', $selectedSubjectId ?? '') == $subject->id) ? 'selected' : '' }}>
                                             {{ $subject->name }}
                                             @if($subject->schoolClass)
                                                 ({{ $subject->schoolClass->name }})
@@ -69,6 +69,11 @@
                                 <label class="form-label">الوحدة (اختياري)</label>
                                 <select name="unit_id" class="form-select" id="unitSelect">
                                     <option value="">كل الوحدات</option>
+                                    @foreach($units as $unit)
+                                        <option value="{{ $unit->id }}" {{ (old('unit_id', $selectedUnitId ?? '') == $unit->id) ? 'selected' : '' }}>
+                                            {{ $unit->title }}
+                                        </option>
+                                    @endforeach
                                 </select>
                             </div>
                         </div>
@@ -341,6 +346,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const subjectSelect = document.getElementById('subjectSelect');
     const unitSelect = document.getElementById('unitSelect');
     
+    // الوحدة المحددة مسبقاً من PHP
+    const preselectedUnitId = '{{ $selectedUnitId ?? '' }}';
+    
     subjectSelect.addEventListener('change', function() {
         const subjectId = this.value;
         unitSelect.innerHTML = '<option value="">جاري التحميل...</option>';
@@ -355,7 +363,8 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(units => {
                 unitSelect.innerHTML = '<option value="">كل الوحدات</option>';
                 units.forEach(unit => {
-                    unitSelect.innerHTML += `<option value="${unit.id}">${unit.title}</option>`;
+                    const selected = (unit.id == preselectedUnitId) ? 'selected' : '';
+                    unitSelect.innerHTML += `<option value="${unit.id}" ${selected}>${unit.title}</option>`;
                 });
             })
             .catch(() => {
@@ -363,8 +372,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     });
 
-    // تحميل الوحدات إذا كانت المادة محددة
-    if (subjectSelect.value) {
+    // تحميل الوحدات إذا كانت المادة محددة (فقط إذا لم تكن الوحدات محملة مسبقاً من PHP)
+    if (subjectSelect.value && unitSelect.options.length <= 1) {
         subjectSelect.dispatchEvent(new Event('change'));
     }
 

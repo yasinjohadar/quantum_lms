@@ -74,4 +74,3 @@ class Unit extends Model
         return $query->orderBy('order');
     }
 }
-

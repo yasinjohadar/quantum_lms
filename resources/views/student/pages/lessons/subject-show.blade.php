@@ -134,6 +134,83 @@
                                                         @else
                                                             <p class="text-muted mb-0">لا توجد دروس في هذه الوحدة</p>
                                                         @endif
+                                                        
+                                                        <!-- اختبارات الوحدة -->
+                                                        @if(isset($unit->quizzes) && $unit->quizzes->count() > 0)
+                                                            <div class="mt-4">
+                                                                <h6 class="text-info mb-3">
+                                                                    <i class="bi bi-clipboard-check me-2"></i>
+                                                                    اختبارات الوحدة
+                                                                </h6>
+                                                                <div class="list-group">
+                                                                    @foreach($unit->quizzes->where('is_published', true) as $quiz)
+                                                                        @php
+                                                                            $userAttempt = $quiz->attempts->where('user_id', auth()->id())->sortByDesc('created_at')->first();
+                                                                        @endphp
+                                                                        <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center bg-info-transparent">
+                                                                            <div>
+                                                                                <h6 class="mb-1">
+                                                                                    <i class="bi bi-clipboard-check me-2 text-info"></i>
+                                                                                    {{ $quiz->title }}
+                                                                                </h6>
+                                                                                @if($quiz->description)
+                                                                                    <p class="text-muted mb-1 small">{{ \Illuminate\Support\Str::limit($quiz->description, 60) }}</p>
+                                                                                @endif
+                                                                                <div class="d-flex flex-wrap gap-2">
+                                                                                    @if($quiz->duration_minutes)
+                                                                                        <span class="badge bg-secondary">
+                                                                                            <i class="bi bi-clock me-1"></i>
+                                                                                            {{ $quiz->duration_minutes }} دقيقة
+                                                                                        </span>
+                                                                                    @endif
+                                                                                    <span class="badge bg-primary">
+                                                                                        <i class="bi bi-question-circle me-1"></i>
+                                                                                        {{ $quiz->questions_count ?? $quiz->questions->count() }} سؤال
+                                                                                    </span>
+                                                                                    @if($userAttempt)
+                                                                                        @if($userAttempt->status === 'completed' || $userAttempt->status === 'graded')
+                                                                                            <span class="badge bg-success">
+                                                                                                <i class="bi bi-check-circle me-1"></i>
+                                                                                                تم الاختبار ({{ number_format(($userAttempt->score / max($userAttempt->max_score, 1)) * 100, 0) }}%)
+                                                                                            </span>
+                                                                                        @elseif($userAttempt->status === 'in_progress')
+                                                                                            <span class="badge bg-warning">
+                                                                                                <i class="bi bi-hourglass-split me-1"></i>
+                                                                                                قيد الاختبار
+                                                                                            </span>
+                                                                                        @endif
+                                                                                    @endif
+                                                                                </div>
+                                                                            </div>
+                                                                            <div>
+                                                                                @if($userAttempt && $userAttempt->status === 'in_progress')
+                                                                                    <a href="{{ route('student.quizzes.show', ['quiz' => $quiz->id, 'attempt' => $userAttempt->id]) }}" class="btn btn-sm btn-warning">
+                                                                                        <i class="bi bi-play-fill me-1"></i>
+                                                                                        متابعة
+                                                                                    </a>
+                                                                                @elseif($userAttempt && ($userAttempt->status === 'completed' || $userAttempt->status === 'graded'))
+                                                                                    <a href="{{ route('student.quizzes.result', ['quiz' => $quiz->id, 'attempt' => $userAttempt->id]) }}" class="btn btn-sm btn-info">
+                                                                                        <i class="bi bi-bar-chart me-1"></i>
+                                                                                        النتيجة
+                                                                                    </a>
+                                                                                    @if($quiz->max_attempts == 0 || $userAttempt->attempt_number < $quiz->max_attempts)
+                                                                                        <a href="{{ route('student.quizzes.start', $quiz->id) }}" class="btn btn-sm btn-outline-primary">
+                                                                                            <i class="bi bi-arrow-repeat me-1"></i>
+                                                                                            إعادة
+                                                                                        </a>
+                                                                                    @endif
+                                                                                @else
+                                                                                    <a href="{{ route('student.quizzes.start', $quiz->id) }}" class="btn btn-sm btn-primary">
+                                                                                        <i class="bi bi-play-fill me-1"></i>
+                                                                                        بدء الاختبار
+                                                                                    </a>
+                                                                                @endif
+                                                                            </div>
+                                                                        </div>
+                                                                    @endforeach
+                                                                </div>
+                                                            </div>
+                                                        @endif
                                                     </div>
                                                 </div>
                                             </div>
@@ -156,6 +233,104 @@
                 </div>
             </div>
         @endif
+
+        <!-- قسم التقييمات -->
+        @php
+            $userReview = \App\Models\Review::where('user_id', Auth::id())
+                ->where('reviewable_type', 'App\Models\Subject')
+                ->where('reviewable_id', $subject->id)
+                ->whereNull('deleted_at')
+                ->first();
+            $approvedReviews = \App\Models\Review::where('reviewable_type', 'App\Models\Subject')
+                ->where('reviewable_id', $subject->id)
+                ->where('status', 'approved')
+                ->whereNull('deleted_at')
+                ->with('user')
+                ->latest()
+                ->take(10)
+                ->get();
+            $averageRating = \App\Models\Review::where('reviewable_type', 'App\Models\Subject')
+                ->where('reviewable_id', $subject->id)
+                ->where('status', 'approved')
+                ->whereNull('deleted_at')
+                ->avg('rating');
+            $totalReviews = $approvedReviews->count();
+        @endphp
+        
+        <div class="card mb-4 mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-star me-2 text-warning"></i>
+                    التقييمات
+                </h5>
+                @if(!$userReview)
+                    <a href="{{ route('student.reviews.create', ['type' => 'subject', 'id' => $subject->id]) }}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus-circle me-1"></i>
+                        أضف تقييمك
+                    </a>
+                @else
+                    <a href="{{ route('student.reviews.edit', $userReview) }}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-pencil me-1"></i>
+                        تعديل تقييمك
+                    </a>
+                @endif
+            </div>
+            <div class="card-body">
+                @if($totalReviews > 0 || $userReview)
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="text-center">
+                                <h2 class="mb-0 text-warning">{{ number_format($averageRating, 1) }}</h2>
+                                <div class="d-flex justify-content-center gap-1 mb-2">
+                                    @for($i = 1; $i <= 5; $i++)
+                                        <i class="bi bi-star{{ $i <= round($averageRating) ? '-fill' : '' }} text-warning"></i>
+                                    @endfor
+                                </div>
+                                <p class="text-muted mb-0">بناءً على {{ $totalReviews }} تقييم</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            @if($userReview)
+                                <div class="alert alert-info mb-0">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    لديك تقييم {{ $userReview->status === 'approved' ? 'معتمد' : 'قيد المراجعة' }}
+                                    @if($userReview->status === 'approved')
+                                        <div class="mt-2">
+                                            <div class="d-flex gap-1">
+                                                @for($i = 1; $i <= 5; $i++)
+                                                    <i class="bi bi-star{{ $i <= $userReview->rating ? '-fill' : '' }} text-warning"></i>
+                                                @endfor
+                                            </div>
+                                            @if($userReview->title)
+                                                <p class="mb-0 mt-2"><strong>{{ $userReview->title }}</strong></p>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
+                @if($approvedReviews->count() > 0)
+                    <div class="reviews-list">
+                        <h6 class="mb-3">آخر التقييمات</h6>
+                        @foreach($approvedReviews as $review)
+                            @include('student.components.reviews.review-card', ['review' => $review])
+                        @endforeach
+                    </div>
+                @elseif(!$userReview)
+                    <div class="text-center py-4">
+                        <i class="bi bi-star fs-1 text-muted mb-3 d-block"></i>
+                        <p class="text-muted mb-3">لا توجد تقييمات بعد</p>
+                        <a href="{{ route('student.reviews.create', ['type' => 'subject', 'id' => $subject->id]) }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-1"></i>
+                            كن أول من يقيم
+                        </a>
+                    </div>
+                @endif
+            </div>
+        </div>
     </div>
     <!-- Container closed -->
 </div>

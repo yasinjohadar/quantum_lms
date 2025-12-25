@@ -118,7 +118,7 @@
                         </a>
                         <!-- End::header-link|dropdown-toggle -->
                         <!-- Start::main-header-dropdown -->
-                        <div class="main-header-dropdown dropdown-menu dropdown-menu-end main-header-message" data-popper-placement="none">
+                        <div class="main-header-dropdown dropdown-menu dropdown-menu-end main-header-message" data-popper-placement="none" style="width: 320px; max-width: 90vw;">
                             <div class="menu-header-content bg-primary text-fixed-white">
                                 <div class="d-flex align-items-center justify-content-between">
                                     <h6 class="mb-0 fs-15 fw-semibold text-fixed-white">الإشعارات</h6>
@@ -130,7 +130,7 @@
                                 <p class="dropdown-title-text subtext mb-0 text-fixed-white op-6 pb-0 fs-12 ">لديك <span id="notification-count-text">0</span> إشعارات جديدة</p>
                             </div>
                             <div><hr class="dropdown-divider"></div>
-                            <ul class="list-unstyled mb-0" id="header-notification-scroll">
+                            <ul class="list-unstyled mb-0" id="header-notification-scroll" style="max-height: 350px; overflow-y: auto; overflow-x: hidden;">
                                 <li class="dropdown-item text-center py-3" id="no-notifications-message">
                                     <p class="text-muted mb-0">لا توجد إشعارات جديدة</p>
                                 </li>

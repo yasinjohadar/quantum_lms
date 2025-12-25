@@ -49,7 +49,7 @@
                                 <label class="form-label">التقييم بالنجوم <span class="text-danger">*</span></label>
                                 <div class="rating-input">
                                     <div class="d-flex align-items-center gap-2">
-                                        @for($i = 5; $i >= 1; $i--)
+                                        @for($i = 1; $i <= 5; $i++)
                                             <input type="radio" name="rating" id="rating{{ $i }}" value="{{ $i }}" class="d-none" {{ old('rating', $review->rating) == $i ? 'checked' : '' }} required>
                                             <label for="rating{{ $i }}" class="rating-star cursor-pointer">
                                                 <i class="fe fe-star fs-32 {{ old('rating', $review->rating) >= $i ? 'text-warning fill' : 'text-muted' }}"></i>
@@ -120,10 +120,10 @@
 
 @push('scripts')
 <script>
-    // Rating stars interaction (same as create.blade.php)
+    // Rating stars interaction
     document.querySelectorAll('.rating-star').forEach((star, index) => {
         star.addEventListener('click', function() {
-            const rating = 5 - index;
+            const rating = index + 1;
             document.querySelector(`#rating${rating}`).checked = true;
             
             document.querySelectorAll('.rating-star i').forEach((icon, i) => {
@@ -135,6 +135,27 @@
                     icon.classList.add('text-muted');
                 }
             });
+        });
+
+        star.addEventListener('mouseenter', function() {
+            document.querySelectorAll('.rating-star i').forEach((icon, i) => {
+                if (i <= index) {
+                    icon.classList.add('text-warning');
+                }
+            });
+        });
+    });
+
+    document.querySelector('.rating-input').addEventListener('mouseleave', function() {
+        const checkedRating = parseInt(document.querySelector('input[name="rating"]:checked')?.value || 0);
+        document.querySelectorAll('.rating-star i').forEach((icon, i) => {
+            if (i < checkedRating) {
+                icon.classList.remove('text-muted');
+                icon.classList.add('text-warning', 'fill');
+            } else {
+                icon.classList.remove('text-warning', 'fill');
+                icon.classList.add('text-muted');
+            }
         });
     });
 </script>

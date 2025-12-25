@@ -94,12 +94,22 @@ class StudentLessonController extends Controller
             })
             ->findOrFail($subjectId);
         
-        // تحميل الأقسام مع الوحدات والدروس
+        // تحميل الأقسام مع الوحدات والدروس والاختبارات
         $sections = $subject->sections()
-            ->with(['units.lessons' => function($query) {
-                $query->where('is_active', true)
-                      ->orderBy('order');
-            }])
+            ->with([
+                'units.lessons' => function($query) {
+                    $query->where('is_active', true)
+                          ->orderBy('order');
+                },
+                'units.quizzes' => function($query) {
+                    $query->where('is_published', true)
+                          ->withCount('questions')
+                          ->with(['attempts' => function($q) {
+                              $q->where('user_id', Auth::id());
+                          }])
+                          ->orderBy('order');
+                }
+            ])
             ->where('is_active', true)
             ->orderBy('order')
             ->get();
