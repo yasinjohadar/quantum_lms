@@ -9,6 +9,9 @@ use App\Services\CalendarService;
 use App\Services\PointService;
 use App\Services\LevelService;
 use App\Services\BadgeService;
+use App\Models\QuizAttempt;
+use App\Models\Enrollment;
+use App\Models\UserBadge;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -82,6 +85,25 @@ class StudentController extends Controller
             ->wherePivot('completed_at', '!=', null)
             ->count();
 
+        // إحصائيات الاختبارات
+        $totalQuizAttempts = QuizAttempt::where('user_id', $user->id)->count();
+        $passedQuizAttempts = QuizAttempt::where('user_id', $user->id)->where('passed', true)->count();
+        $avgQuizScore = QuizAttempt::where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->avg('percentage') ?? 0;
+        
+        // إجمالي الكورسات المسجلة
+        $totalEnrollments = Enrollment::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->count();
+
+        // آخر الشارات (5 أحدث)
+        $latestBadges = UserBadge::where('user_id', $user->id)
+            ->with('badge')
+            ->latest('earned_at')
+            ->limit(5)
+            ->get();
+
         return view('student.dashboard', [
             'user' => $user,
             'overallAverage' => round($overallAverage, 1),
@@ -93,6 +115,11 @@ class StudentController extends Controller
             'levelProgress' => $levelProgress,
             'badgesCount' => $badgesCount,
             'achievementsCount' => $achievementsCount,
+            'totalQuizAttempts' => $totalQuizAttempts,
+            'passedQuizAttempts' => $passedQuizAttempts,
+            'avgQuizScore' => round($avgQuizScore, 1),
+            'totalEnrollments' => $totalEnrollments,
+            'latestBadges' => $latestBadges,
         ]);
     }
 }

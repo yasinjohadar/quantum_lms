@@ -330,6 +330,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('settings.reset');
 
         // لوحة التحكم
+        Route::get('dashboard', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'dashboard'])
+            ->name('dashboard');
         Route::get('dashboard/widgets', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'widgets'])
             ->name('dashboard.widgets');
         Route::post('dashboard/widgets/save', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'saveWidgets'])

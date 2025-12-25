@@ -93,63 +93,67 @@
 
         <!-- Stats Cards -->
         <div class="row mb-4">
-            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                <div class="card custom-card overflow-hidden bg-primary-gradient">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
+                <div class="card overflow-hidden sales-card bg-primary-gradient h-100">
+                    <div class="px-3 pt-3 pb-2 pt-0">
+                        <div class="d-flex align-items-center justify-content-between">
                             <div>
-                                <p class="mb-1 text-fixed-white">إجمالي النقاط</p>
-                                <h3 class="mb-0 text-fixed-white">{{ number_format($stats['total_points']) }}</h3>
+                                <h6 class="mb-2 fs-12 text-fixed-white">إجمالي النقاط</h6>
+                                <h3 class="mb-1 text-fixed-white">{{ number_format($stats['total_points']) }}</h3>
+                                <p class="mb-0 fs-11 text-fixed-white op-7">النقاط الكلية المكتسبة</p>
                             </div>
-                            <div class="avatar avatar-md bg-white text-primary">
-                                <i class="bi bi-star-fill fs-4"></i>
+                            <div class="ms-auto">
+                                <i class="fe fe-star fs-32 text-fixed-white op-5"></i>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                <div class="card custom-card overflow-hidden bg-success-gradient">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
+                <div class="card overflow-hidden sales-card bg-success-gradient h-100">
+                    <div class="px-3 pt-3 pb-2 pt-0">
+                        <div class="d-flex align-items-center justify-content-between">
                             <div>
-                                <p class="mb-1 text-fixed-white">الشارات</p>
-                                <h3 class="mb-0 text-fixed-white">{{ $stats['badges_count'] }}</h3>
+                                <h6 class="mb-2 fs-12 text-fixed-white">الشارات</h6>
+                                <h3 class="mb-1 text-fixed-white">{{ number_format($stats['badges_count']) }}</h3>
+                                <p class="mb-0 fs-11 text-fixed-white op-7">الشارات المكتسبة</p>
                             </div>
-                            <div class="avatar avatar-md bg-white text-success">
-                                <i class="bi bi-award fs-4"></i>
+                            <div class="ms-auto">
+                                <i class="fe fe-award fs-32 text-fixed-white op-5"></i>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                <div class="card custom-card overflow-hidden bg-info-gradient">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
+                <div class="card overflow-hidden sales-card bg-info-gradient h-100">
+                    <div class="px-3 pt-3 pb-2 pt-0">
+                        <div class="d-flex align-items-center justify-content-between">
                             <div>
-                                <p class="mb-1 text-fixed-white">الإنجازات</p>
-                                <h3 class="mb-0 text-fixed-white">{{ $stats['achievements_count'] }}</h3>
+                                <h6 class="mb-2 fs-12 text-fixed-white">الإنجازات</h6>
+                                <h3 class="mb-1 text-fixed-white">{{ number_format($stats['achievements_count']) }}</h3>
+                                <p class="mb-0 fs-11 text-fixed-white op-7">الإنجازات المكتملة</p>
                             </div>
-                            <div class="avatar avatar-md bg-white text-info">
-                                <i class="bi bi-trophy fs-4"></i>
+                            <div class="ms-auto">
+                                <i class="fe fe-trophy fs-32 text-fixed-white op-5"></i>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
-                <div class="card custom-card overflow-hidden bg-warning-gradient">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
+                <div class="card overflow-hidden sales-card bg-warning-gradient h-100">
+                    <div class="px-3 pt-3 pb-2 pt-0">
+                        <div class="d-flex align-items-center justify-content-between">
                             <div>
-                                <p class="mb-1 text-fixed-white">المستوى الحالي</p>
-                                <h3 class="mb-0 text-fixed-white" style="font-size: 1.1rem;">
+                                <h6 class="mb-2 fs-12 text-fixed-white">المستوى الحالي</h6>
+                                <h3 class="mb-1 text-fixed-white" style="font-size: 1.25rem; line-height: 1.2;">
                                     {{ $stats['current_level'] ? $stats['current_level']->name : 'لا يوجد' }}
                                 </h3>
+                                <p class="mb-0 fs-11 text-fixed-white op-7">مستواك الحالي</p>
                             </div>
-                            <div class="avatar avatar-md bg-white text-warning">
-                                <i class="bi bi-level-up fs-4"></i>
+                            <div class="ms-auto">
+                                <i class="fe fe-trending-up fs-32 text-fixed-white op-5"></i>
                             </div>
                         </div>
                     </div>

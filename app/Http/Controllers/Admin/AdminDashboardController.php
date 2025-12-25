@@ -22,7 +22,7 @@ class AdminDashboardController extends Controller
     public function dashboard()
     {
         $data = $this->dashboardService->getDashboardData(Auth::id());
-        return view('admin.pages.dashboard', $data);
+        return view('admin.dashboard', $data);
     }
 
     /**

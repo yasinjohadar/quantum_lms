@@ -38,9 +38,9 @@ class ProfileController extends Controller
         
         // تحميل البيانات مع العلاقات
         $user->load([
-            'subjects.class.stage',
+            'subjects.schoolClass.stage',
             'groups',
-            'enrollments.subject.class.stage',
+            'enrollments.subject.schoolClass.stage',
             'loginLogs' => function($query) {
                 $query->latest('login_at')->limit(10);
             },

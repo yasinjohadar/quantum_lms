@@ -7,12 +7,12 @@
 @section('content')
 <div class="main-content app-content">
     <div class="container-fluid">
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
+        <div class="d-md-flex d-block align-items-center justify-content-between my-3 page-header-breadcrumb">
             <div class="my-auto">
                 <h5 class="page-title fs-21 mb-1">التقويم</h5>
             </div>
-            <div>
-                <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addEventModal">
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addEventModal">
                     <i class="fas fa-plus me-1"></i> إضافة حدث
                 </button>
                 <a href="{{ route('student.calendar.export') }}" class="btn btn-outline-primary btn-sm">
@@ -24,7 +24,7 @@
         <div class="row">
             <div class="col-12">
                 <div class="card shadow-sm border-0">
-                    <div class="card-body">
+                    <div class="card-body p-3">
                         <div id="calendar" data-api-url="{{ route('student.calendar.events-api') }}"></div>
                     </div>
                 </div>
@@ -138,10 +138,51 @@
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/main.min.css" rel="stylesheet">
 <style>
     #calendar {
-        min-height: 600px;
+        min-height: calc(100vh - 300px);
+        width: 100%;
     }
     .fc-event {
         cursor: pointer;
+    }
+    .card-body {
+        padding: 1.5rem;
+    }
+    .fc {
+        font-size: 1rem;
+    }
+    .fc-toolbar {
+        flex-wrap: wrap;
+    }
+    .fc-toolbar-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+    .fc-button {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+    .fc-daygrid-day {
+        min-height: 100px;
+    }
+    .fc-event-title {
+        font-weight: 500;
+        padding: 2px 4px;
+    }
+    .fc-event-time {
+        font-weight: 600;
+    }
+    @media (max-width: 768px) {
+        #calendar {
+            min-height: calc(100vh - 250px);
+        }
+        .fc-toolbar {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .fc-toolbar-chunk {
+            width: 100%;
+            text-align: center;
+        }
     }
 </style>
 @endpush
@@ -150,17 +191,58 @@
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/main.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/locales/ar.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const calendarEl = document.getElementById('calendar');
-    const calendar = new FullCalendar.Calendar(calendarEl, {
+// دالة لتنسيق التاريخ والوقت للـ input datetime-local
+function formatDateTimeLocal(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+// دالة لتحويل datetime-local إلى ISO string
+function datetimeLocalToISO(datetimeLocal) {
+    if (!datetimeLocal) return null;
+    return new Date(datetimeLocal).toISOString();
+}
+
+// انتظار تحميل الصفحة بالكامل
+window.addEventListener('load', function() {
+    // إعادة المحاولة بعد تأخير قصير للتأكد من تحميل جميع المكتبات
+    setTimeout(function() {
+        if (typeof FullCalendar === 'undefined') {
+            console.error('FullCalendar is not loaded!');
+            const calendarEl = document.getElementById('calendar');
+            if (calendarEl) {
+                calendarEl.innerHTML = '<div class="alert alert-danger">خطأ في تحميل التقويم. يرجى تحديث الصفحة.</div>';
+            }
+            return;
+        }
+        
+        const calendarEl = document.getElementById('calendar');
+        if (!calendarEl) {
+            console.error('Calendar element not found!');
+            return;
+        }
+        
+        const calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
         locale: 'ar',
         direction: 'rtl',
+        height: 'auto',
+        contentHeight: 'auto',
         headerToolbar: {
             left: 'prev,next today',
             center: 'title',
             right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
         },
+        firstDay: 6, // السبت كأول يوم في الأسبوع
+        weekNumbers: false,
+        weekNumberCalculation: 'ISO',
+        navLinks: true,
+        dayMaxEvents: true,
+        moreLinkClick: 'popover',
         events: function(fetchInfo, successCallback, failureCallback) {
             const apiUrl = document.getElementById('calendar').dataset.apiUrl;
             fetch(apiUrl + '?start=' + fetchInfo.startStr + '&end=' + fetchInfo.endStr, {
@@ -249,28 +331,12 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         eventDisplay: 'block',
         height: 'auto',
-    });
-    
-    calendar.render();
-    
-    // دالة لتنسيق التاريخ والوقت للـ input datetime-local
-    function formatDateTimeLocal(date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        return `${year}-${month}-${day}T${hours}:${minutes}`;
-    }
-    
-    // دالة لتحويل datetime-local إلى ISO string
-    function datetimeLocalToISO(datetimeLocal) {
-        if (!datetimeLocal) return null;
-        return new Date(datetimeLocal).toISOString();
-    }
-    
-    // معالجة form الإضافة/التعديل
-    document.getElementById('eventForm').addEventListener('submit', function(e) {
+        });
+        
+        calendar.render();
+        
+        // معالجة form الإضافة/التعديل
+        document.getElementById('eventForm').addEventListener('submit', function(e) {
         e.preventDefault();
         
         const formData = new FormData(this);
@@ -317,8 +383,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // معالجة تعديل الحدث
-    document.getElementById('editEventBtn').addEventListener('click', function() {
+        // معالجة تعديل الحدث
+        document.getElementById('editEventBtn').addEventListener('click', function() {
         const eventId = this.getAttribute('data-event-id');
         bootstrap.Modal.getInstance(document.getElementById('eventModal')).hide();
         
@@ -345,8 +411,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // معالجة حذف الحدث
-    document.getElementById('deleteEventBtn').addEventListener('click', function() {
+        // معالجة حذف الحدث
+        document.getElementById('deleteEventBtn').addEventListener('click', function() {
         if (!confirm('هل أنت متأكد من حذف هذا الحدث؟')) {
             return;
         }
@@ -373,15 +439,15 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error:', error);
             alert('حدث خطأ أثناء حذف الحدث');
         });
-    });
-    
-    // إعادة تعيين Modal عند الإغلاق
-    document.getElementById('addEventModal').addEventListener('hidden.bs.modal', function() {
-        document.getElementById('eventForm').reset();
-        document.getElementById('eventId').value = '';
-        document.getElementById('addEventModalLabel').textContent = 'إضافة حدث جديد';
-        document.getElementById('eventColor').value = '#10b981';
-    });
+        
+        // إعادة تعيين Modal عند الإغلاق
+        document.getElementById('addEventModal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('eventForm').reset();
+            document.getElementById('eventId').value = '';
+            document.getElementById('addEventModalLabel').textContent = 'إضافة حدث جديد';
+            document.getElementById('eventColor').value = '#10b981';
+        });
+    }, 100); // تأخير 100ms للتأكد من تحميل FullCalendar
 });
 </script>
 @endpush

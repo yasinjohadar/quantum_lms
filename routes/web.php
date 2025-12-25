@@ -16,7 +16,7 @@ Route::get('/', function () {
     
     // التحقق من الصلاحيات
     if ($user->hasRole('admin')) {
-        return view('admin.dashboard');
+        return redirect()->route('admin.dashboard');
     } elseif ($user->hasRole('student')) {
         return redirect()->route('student.dashboard');
     }
