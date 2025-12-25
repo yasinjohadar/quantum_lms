@@ -197,7 +197,7 @@
                                 <div class="list-group list-lg-group list-group-flush">
                                     <div class="list-group-item list-group-item-action">
                                         <div class="d-flex">
-                                            <img class="avatar avatar-md rounded-circle my-auto me-3" src="../assets/images/faces/3.jpg" alt="Image description">
+                                            <span class="avatar avatar-md bg-primary rounded-circle my-auto me-3 d-flex align-items-center justify-content-center">SM</span>
                                             <div class="flex-grow-1">
                                                 <div class="d-flex align-items-center">
                                                     <div class="mt-0">
@@ -213,7 +213,7 @@
                                     </div>
                                     <div class="list-group-item list-group-item-action br-t-1">
                                         <div class="d-flex">
-                                            <img class="avatar avatar-md rounded-circle my-auto me-3" src="../assets/images/faces/11.jpg" alt="Image description">
+                                            <span class="avatar avatar-md bg-info rounded-circle my-auto me-3 d-flex align-items-center justify-content-center">JC</span>
                                             <div class="flex-grow-1">
                                                 <div class="d-flex align-items-center">
                                                     <div class="mt-1">
@@ -229,7 +229,7 @@
                                     </div>
                                     <div class="list-group-item list-group-item-action br-t-1">
                                         <div class="d-flex">
-                                            <img class="avatar avatar-md rounded-circle my-auto me-3" src="../assets/images/faces/17.jpg" alt="Image description">
+                                            <span class="avatar avatar-md bg-warning rounded-circle my-auto me-3 d-flex align-items-center justify-content-center">GL</span>
                                             <div class="flex-grow-1">
                                                 <div class="d-flex align-items-center">
                                                     <div class="mt-1">
@@ -245,7 +245,7 @@
                                     </div>
                                     <div class="list-group-item list-group-item-action br-t-1">
                                         <div class="d-flex">
-                                            <img class="avatar avatar-md rounded-circle my-auto me-3" src="../assets/images/faces/15.jpg" alt="Image description">
+                                            <span class="avatar avatar-md bg-success rounded-circle my-auto me-3 d-flex align-items-center justify-content-center">ML</span>
                                             <div class="flex-grow-1">
                                                 <div class="d-flex align-items-center">
                                                     <div class="mt-1">
@@ -261,7 +261,7 @@
                                     </div>
                                     <div class="list-group-item list-group-item-action br-t-1 br-be-7 br-bs-7">
                                         <div class="d-flex">
-                                            <img class="avatar avatar-md rounded-circle my-auto me-3" src="../assets/images/faces/6.jpg" alt="Image description">
+                                            <span class="avatar avatar-md bg-danger rounded-circle my-auto me-3 d-flex align-items-center justify-content-center">SN</span>
                                             <div class="flex-grow-1">
                                                 <div class="d-flex align-items-center">
                                                     <div class="mt-1">

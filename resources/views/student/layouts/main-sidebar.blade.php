@@ -3,11 +3,11 @@
 
             <!-- Start::main-sidebar-header -->
             <div class="main-sidebar-header">
-                <a href="index.html" class="header-logo">
-                    <img src="../assets/images/brand-logos/desktop-logo.png" alt="logo" class="desktop-logo">
-                    <img src="../assets/images/brand-logos/toggle-logo.png" alt="logo" class="toggle-logo">
-                    <img src="../assets/images/brand-logos/desktop-white.png" alt="logo" class="desktop-white">
-                    <img src="../assets/images/brand-logos/toggle-white.png" alt="logo" class="toggle-white">
+                <a href="{{ route('student.dashboard') }}" class="header-logo">
+                    <img src="{{ asset('assets/images/brand-logos/desktop-logo.png') }}" alt="logo" class="desktop-logo">
+                    <img src="{{ asset('assets/images/brand-logos/toggle-logo.png') }}" alt="logo" class="toggle-logo">
+                    <img src="{{ asset('assets/images/brand-logos/desktop-white.png') }}" alt="logo" class="desktop-white">
+                    <img src="{{ asset('assets/images/brand-logos/toggle-white.png') }}" alt="logo" class="toggle-white">
                 </a>
             </div>
             <!-- End::main-sidebar-header -->
@@ -21,11 +21,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191" width="24" height="24" viewBox="0 0 24 24"> <path d="M13.293 6.293 7.586 12l5.707 5.707 1.414-1.414L10.414 12l4.293-4.293z"></path> </svg>
                     </div>
                     <ul class="main-menu">
-                        <!-- Start::slide__category -->
-                        <li class="slide__category"><span class="category-name">لوحة التحكم</span></li>
-                        <!-- End::slide__category -->
-
-                        <!-- Start::slide -->
+                        <!-- الصفحة الرئيسية -->
                         <li class="slide {{ request()->is('student/dashboard') || request()->is('student') ? 'active' : '' }}">
                             <a href="{{ route('student.dashboard') }}" class="side-menu__item {{ request()->is('student/dashboard') || request()->is('student') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -37,20 +33,18 @@
                             </a>
                         </li>
 
-                        <!-- Start::slide__category -->
-                        <li class="slide__category"><span class="category-name">المواد الدراسية</span></li>
-                        <!-- End::slide__category -->
-
+                        <!-- صفوفي -->
                         <li class="slide {{ request()->is('student/classes*') ? 'active' : '' }}">
                             <a href="{{ route('student.classes') }}" class="side-menu__item {{ request()->is('student/classes*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
-                                    <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
+                                    <path d="M20 6h-2.18c.11-.31.18-.65.18-1a2.996 2.996 0 00-5.5-1.65l-.5.67-.5-.68C10.96 2.54 10 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/>
                                 </svg>
                                 <span class="side-menu__label">صفوفي</span>
                             </a>
                         </li>
 
+                        <!-- موادي الدراسية -->
                         <li class="slide {{ request()->is('student/subjects*') ? 'active' : '' }}">
                             <a href="{{ route('student.subjects') }}" class="side-menu__item {{ request()->is('student/subjects*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -61,6 +55,7 @@
                             </a>
                         </li>
 
+                        <!-- تقدمي الدراسي -->
                         <li class="slide {{ request()->is('student/progress*') ? 'active' : '' }}">
                             <a href="{{ route('student.progress.index') }}" class="side-menu__item {{ request()->is('student/progress*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -71,6 +66,7 @@
                             </a>
                         </li>
 
+                        <!-- تقاريري -->
                         <li class="slide {{ request()->is('student/reports*') ? 'active' : '' }}">
                             <a href="{{ route('student.reports.index') }}" class="side-menu__item {{ request()->is('student/reports*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -81,95 +77,7 @@
                             </a>
                         </li>
 
-                        <!-- Start::slide__category -->
-                        <li class="slide__category"><span class="category-name">نظام التحفيز</span></li>
-                        <!-- End::slide__category -->
-
-                        <li class="slide has-sub {{ request()->is('student/gamification*') || request()->is('student/notifications*') || request()->is('student/tasks*') ? 'open' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
-                                    <path d="M0 0h24v24H0z" fill="none"/>
-                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                                </svg>
-                                <span class="side-menu__label">التحفيز والإنجازات</span>
-                                <i class="fe fe-chevron-right side-menu__angle"></i>
-                            </a>
-                            <ul class="slide-menu child1">
-                                <li class="slide side-menu__label1">
-                                    <a href="javascript:void(0);">التحفيز والإنجازات</a>
-                                </li>
-                                <li class="slide {{ request()->is('student/gamification/dashboard') ? 'active' : '' }}">
-                                    <a href="{{ route('student.gamification.dashboard') }}" class="side-menu__item {{ request()->is('student/gamification/dashboard') ? 'active' : '' }}">
-                                        <span class="side-menu__label">لوحة التحفيز</span>
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->is('student/gamification/badges') ? 'active' : '' }}">
-                                    <a href="{{ route('student.gamification.badges') }}" class="side-menu__item {{ request()->is('student/gamification/badges') ? 'active' : '' }}">
-                                        <span class="side-menu__label">الشارات</span>
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->is('student/gamification/achievements') ? 'active' : '' }}">
-                                    <a href="{{ route('student.gamification.achievements') }}" class="side-menu__item {{ request()->is('student/gamification/achievements') ? 'active' : '' }}">
-                                        <span class="side-menu__label">الإنجازات</span>
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->is('student/gamification/leaderboard') ? 'active' : '' }}">
-                                    <a href="{{ route('student.gamification.leaderboard') }}" class="side-menu__item {{ request()->is('student/gamification/leaderboard') ? 'active' : '' }}">
-                                        <span class="side-menu__label">لوحة المتصدرين</span>
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->is('student/gamification/challenges') ? 'active' : '' }}">
-                                    <a href="{{ route('student.gamification.challenges') }}" class="side-menu__item {{ request()->is('student/gamification/challenges') ? 'active' : '' }}">
-                                        <span class="side-menu__label">التحديات</span>
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->is('student/gamification/rewards') ? 'active' : '' }}">
-                                    <a href="{{ route('student.gamification.rewards') }}" class="side-menu__item {{ request()->is('student/gamification/rewards') ? 'active' : '' }}">
-                                        <span class="side-menu__label">المكافآت</span>
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->is('student/gamification/certificates') ? 'active' : '' }}">
-                                    <a href="{{ route('student.gamification.certificates') }}" class="side-menu__item {{ request()->is('student/gamification/certificates') ? 'active' : '' }}">
-                                        <span class="side-menu__label">الشهادات</span>
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->is('student/gamification/stats') ? 'active' : '' }}">
-                                    <a href="{{ route('student.gamification.stats') }}" class="side-menu__item {{ request()->is('student/gamification/stats') ? 'active' : '' }}">
-                                        <span class="side-menu__label">إحصائياتي</span>
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->is('student/tasks*') ? 'active' : '' }}">
-                                    <a href="{{ route('student.tasks.index') }}" class="side-menu__item {{ request()->is('student/tasks*') ? 'active' : '' }}">
-                                        <span class="side-menu__label">مهامي</span>
-                                    </a>
-                                </li>
-                            </ul>
-                        </li>
-
-                        <li class="slide {{ request()->is('student/notifications*') ? 'active' : '' }}">
-                            <a href="{{ route('student.notifications.index') }}" class="side-menu__item {{ request()->is('student/notifications*') ? 'active' : '' }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
-                                    <path d="M0 0h24v24H0z" fill="none"/>
-                                    <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
-                                </svg>
-                                <span class="side-menu__label">الإشعارات</span>
-                            </a>
-                        </li>
-                        
-                        <li class="slide {{ request()->is('student/enrollments*') ? 'active' : '' }}">
-                            <a href="{{ route('student.enrollments.index') }}" class="side-menu__item {{ request()->is('student/enrollments*') ? 'active' : '' }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
-                                    <path d="M0 0h24v24H0z" fill="none"/>
-                                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                                </svg>
-                                <span class="side-menu__label">طلب الانضمام</span>
-                            </a>
-                        </li>
-
-                        <!-- Start::slide__category -->
-                        <li class="slide__category"><span class="category-name">الاختبارات</span></li>
-                        <!-- End::slide__category -->
-
+                        <!-- الاختبارات المتاحة -->
                         <li class="slide {{ request()->is('student/quizzes') && !request()->is('student/quizzes/*') ? 'active' : '' }}">
                             <a href="{{ route('student.quizzes.index') }}" class="side-menu__item {{ request()->is('student/quizzes') && !request()->is('student/quizzes/*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -180,6 +88,7 @@
                             </a>
                         </li>
 
+                        <!-- نتائج الاختبارات -->
                         <li class="slide {{ request()->is('student/quizzes/results') ? 'active' : '' }}">
                             <a href="{{ route('student.quizzes.results') }}" class="side-menu__item {{ request()->is('student/quizzes/results') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -190,6 +99,7 @@
                             </a>
                         </li>
 
+                        <!-- الواجبات -->
                         <li class="slide {{ request()->is('student/assignments*') ? 'active' : '' }}">
                             <a href="{{ route('student.assignments.index') }}" class="side-menu__item {{ request()->is('student/assignments*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -200,6 +110,103 @@
                             </a>
                         </li>
 
+                        <!-- التحفيز والإنجازات -->
+                        <li class="slide has-sub {{ request()->is('student/gamification*') || request()->is('student/tasks*') ? 'open' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                </svg>
+                                <span class="side-menu__label">التحفيز والإنجازات</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide {{ request()->is('student/gamification/dashboard') ? 'active' : '' }}">
+                                    <a href="{{ route('student.gamification.dashboard') }}" class="side-menu__item {{ request()->is('student/gamification/dashboard') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                                        </svg>
+                                        <span class="side-menu__label">لوحة التحفيز</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('student/gamification/badges') ? 'active' : '' }}">
+                                    <a href="{{ route('student.gamification.badges') }}" class="side-menu__item {{ request()->is('student/gamification/badges') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                                            <path d="M2 17l10 5 10-5"></path>
+                                            <path d="M2 12l10 5 10-5"></path>
+                                        </svg>
+                                        <span class="side-menu__label">الشارات</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('student/gamification/achievements') ? 'active' : '' }}">
+                                    <a href="{{ route('student.gamification.achievements') }}" class="side-menu__item {{ request()->is('student/gamification/achievements') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                                        </svg>
+                                        <span class="side-menu__label">الإنجازات</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('student/gamification/leaderboard') ? 'active' : '' }}">
+                                    <a href="{{ route('student.gamification.leaderboard') }}" class="side-menu__item {{ request()->is('student/gamification/leaderboard') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M3 3v18h18"></path>
+                                            <path d="M18 7l-5 5-4-4-3 3"></path>
+                                        </svg>
+                                        <span class="side-menu__label">لوحة المتصدرين</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('student/gamification/challenges') ? 'active' : '' }}">
+                                    <a href="{{ route('student.gamification.challenges') }}" class="side-menu__item {{ request()->is('student/gamification/challenges') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <path d="M12 6v6l4 2"></path>
+                                        </svg>
+                                        <span class="side-menu__label">التحديات</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('student/gamification/rewards') ? 'active' : '' }}">
+                                    <a href="{{ route('student.gamification.rewards') }}" class="side-menu__item {{ request()->is('student/gamification/rewards') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M20 7h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v3H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V9c0-1.11-.89-2-2-2zm-6 0h-4V4h4v3z"></path>
+                                        </svg>
+                                        <span class="side-menu__label">المكافآت</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('student/gamification/certificates') ? 'active' : '' }}">
+                                    <a href="{{ route('student.gamification.certificates') }}" class="side-menu__item {{ request()->is('student/gamification/certificates') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                                            <polyline points="10 9 9 9 8 9"></polyline>
+                                        </svg>
+                                        <span class="side-menu__label">الشهادات</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('student/gamification/stats') ? 'active' : '' }}">
+                                    <a href="{{ route('student.gamification.stats') }}" class="side-menu__item {{ request()->is('student/gamification/stats') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M3 3v18h18"></path>
+                                            <path d="M18 7l-5 5-4-4-3 3"></path>
+                                        </svg>
+                                        <span class="side-menu__label">إحصائياتي</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('student/tasks*') ? 'active' : '' }}">
+                                    <a href="{{ route('student.tasks.index') }}" class="side-menu__item {{ request()->is('student/tasks*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                        </svg>
+                                        <span class="side-menu__label">مهامي</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <!-- المكتبة الرقمية -->
                         <li class="slide has-sub {{ request()->is('student/library*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -210,22 +217,27 @@
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
                             <ul class="slide-menu child1">
-                                <li class="slide side-menu__label1">
-                                    <a href="javascript:void(0);">المكتبة الرقمية</a>
-                                </li>
                                 <li class="slide {{ request()->is('student/library') && !request()->is('student/library/*') ? 'active' : '' }}">
                                     <a href="{{ route('student.library.index') }}" class="side-menu__item {{ request()->is('student/library') && !request()->is('student/library/*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                        </svg>
                                         <span class="side-menu__label">المكتبة</span>
                                     </a>
                                 </li>
                                 <li class="slide {{ request()->is('student/library/favorites') ? 'active' : '' }}">
                                     <a href="{{ route('student.library.favorites') }}" class="side-menu__item {{ request()->is('student/library/favorites') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                                        </svg>
                                         <span class="side-menu__label">مفضلتي</span>
                                     </a>
                                 </li>
                             </ul>
                         </li>
 
+                        <!-- التقويم -->
                         <li class="slide {{ request()->is('student/calendar*') ? 'active' : '' }}">
                             <a href="{{ route('student.calendar.index') }}" class="side-menu__item {{ request()->is('student/calendar*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -236,6 +248,7 @@
                             </a>
                         </li>
 
+                        <!-- المساعد التعليمي -->
                         <li class="slide {{ request()->is('student/ai/chatbot*') ? 'active' : '' }}">
                             <a href="{{ route('student.ai.chatbot.index') }}" class="side-menu__item {{ request()->is('student/ai/chatbot*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -246,10 +259,29 @@
                             </a>
                         </li>
 
-                        <!-- Start::slide__category -->
-                        <li class="slide__category"><span class="category-name">الحساب</span></li>
-                        <!-- End::slide__category -->
+                        <!-- الإشعارات -->
+                        <li class="slide {{ request()->is('student/notifications*') ? 'active' : '' }}">
+                            <a href="{{ route('student.notifications.index') }}" class="side-menu__item {{ request()->is('student/notifications*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+                                </svg>
+                                <span class="side-menu__label">الإشعارات</span>
+                            </a>
+                        </li>
+                        
+                        <!-- طلب الانضمام -->
+                        <li class="slide {{ request()->is('student/enrollments*') ? 'active' : '' }}">
+                            <a href="{{ route('student.enrollments.index') }}" class="side-menu__item {{ request()->is('student/enrollments*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                </svg>
+                                <span class="side-menu__label">طلب الانضمام</span>
+                            </a>
+                        </li>
 
+                        <!-- الملف الشخصي -->
                         <li class="slide {{ request()->is('student/profile') || request()->is('profile') ? 'active' : '' }}">
                             <a href="{{ route('student.profile') }}" class="side-menu__item {{ request()->is('student/profile') || request()->is('profile') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -259,44 +291,6 @@
                                 <span class="side-menu__label">الملف الشخصي</span>
                             </a>
                         </li>
-
-                        <!-- End::slide -->
-
-
-
-
-
-
-
-
-
-                        {{-- <!-- Start::slide -->
-                        <li class="slide has-sub">
-                            <a href="javascript:void(0);" class="side-menu__item">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M4 12c0 4.08 3.06 7.44 7 7.93V4.07C7.05 4.56 4 7.92 4 12z" opacity=".3"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93s3.05-7.44 7-7.93v15.86zm2-15.86c1.03.13 2 .45 2.87.93H13v-.93zM13 7h5.24c.25.31.48.65.68 1H13V7zm0 3h6.74c.08.33.15.66.19 1H13v-1zm0 9.93V19h2.87c-.87.48-1.84.8-2.87.93zM18.24 17H13v-1h5.92c-.2.35-.43.69-.68 1zm1.5-3H13v-1h6.93c-.04.34-.11.67-.19 1z"/></svg>
-                                <span class="side-menu__label">الاعدادات</span>
-                                <i class="fe fe-chevron-right side-menu__angle"></i>
-                            </a>
-                            <ul class="slide-menu child1">
-                                <li class="slide side-menu__label1">
-                                    <a href="javascript:void(0);">Apps</a>
-                                </li>
-                                <li class="slide">
-                                    <a href="cards.html" class="side-menu__item">الاعدادات العامة</a>
-                                </li>
-                                <li class="slide">
-                                    <a href="{{route("roles.index")}}" class="side-menu__item">الصلاحيات</a>
-                                </li>
-                                <li class="slide">
-                                    <a href="{{route("users.index")}}" class="side-menu__item">المستخدمون</a>
-                                </li>
-
-                                    </ul>
-                                </li>
-                            </ul>
-                        </li>
-                        <!-- End::slide --> --}}
-
 
                     </ul>
                     <div class="slide-right" id="slide-right"><svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191" width="24" height="24" viewBox="0 0 24 24"> <path d="M10.707 17.707 16.414 12l-5.707-5.707-1.414 1.414L13.586 12l-4.293 4.293z"></path> </svg></div>

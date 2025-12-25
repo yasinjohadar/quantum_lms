@@ -78,9 +78,12 @@ var options1 = {
         }
     }
 };
-document.getElementById('Sales-bar').innerHTML = ''
-var chart1 = new ApexCharts(document.querySelector("#Sales-bar"), options1);
-chart1.render();
+var salesBarElement = document.getElementById('Sales-bar');
+if (salesBarElement) {
+    salesBarElement.innerHTML = '';
+    var chart1 = new ApexCharts(document.querySelector("#Sales-bar"), options1);
+    chart1.render();
+}
 function salesReport() {
     chart1.updateOptions({
         colors: ["rgb(" + myVarVal + ")",  "#f93a5a", "#f7a556"],
@@ -560,7 +563,9 @@ function salesReport() {
 })();
 
 function vectormap() {
-	document.querySelector('#us-map1').innerHTML = ""
+	var usMapElement = document.querySelector('#us-map1');
+	if (!usMapElement) return;
+	usMapElement.innerHTML = "";
 		/* us vector map */
 		var map = new jsVectorMap({
 		selector: "#us-map1",
@@ -650,7 +655,9 @@ function vectormap() {
 		labels: [""]
 	};
 
-	document.querySelector('#chart').innerHTML = ""
+	var chartElement = document.querySelector('#chart');
+	if (!chartElement) return;
+	chartElement.innerHTML = "";
 	var chart = new ApexCharts(document.querySelector("#chart"), options);
 	chart.render();
 

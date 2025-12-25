@@ -203,7 +203,15 @@ class StudentQuizController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'تم حفظ الإجابة بنجاح',
-                'answer' => $answer
+                'answer' => [
+                    'selected_options' => $answer->selected_options,
+                    'answer_text' => $answer->answer_text,
+                    'numeric_answer' => $answer->numeric_answer,
+                    'matching_pairs' => $answer->matching_pairs,
+                    'ordering' => $answer->ordering,
+                    'fill_blanks_answers' => $answer->fill_blanks_answers,
+                    'drag_drop_assignments' => $answer->drag_drop_assignments,
+                ]
             ]);
         } catch (\Exception $e) {
             Log::error('Error saving quiz answer: ' . $e->getMessage());
@@ -337,15 +345,49 @@ class StudentQuizController extends Controller
 
         switch ($question->type) {
             case 'single_choice':
-                $data['selected_options'] = [$request->input('option_id')];
+                // Support both option_id (legacy) and selected_options (new)
+                $selectedOptions = $request->input('selected_options', []);
+                if (empty($selectedOptions)) {
+                    $optionId = $request->input('option_id');
+                    $selectedOptions = $optionId ? [$optionId] : [];
+                }
+                if (!is_array($selectedOptions)) {
+                    $selectedOptions = $selectedOptions ? [$selectedOptions] : [];
+                }
+                // Filter out null/empty values
+                $selectedOptions = array_filter($selectedOptions, function($v) {
+                    return $v !== null && $v !== '';
+                });
+                $data['selected_options'] = array_values($selectedOptions);
                 break;
 
             case 'multiple_choice':
-                $data['selected_options'] = $request->input('option_ids', []);
+                $selectedOptions = $request->input('selected_options', []);
+                if (!is_array($selectedOptions)) {
+                    $selectedOptions = $selectedOptions ? [$selectedOptions] : [];
+                }
+                // Filter out null/empty values
+                $selectedOptions = array_filter($selectedOptions, function($v) {
+                    return $v !== null && $v !== '';
+                });
+                $data['selected_options'] = array_values($selectedOptions);
                 break;
 
             case 'true_false':
-                $data['selected_options'] = [$request->input('option_id')];
+                // Support both option_id (legacy) and selected_options (new)
+                $selectedOptions = $request->input('selected_options', []);
+                if (empty($selectedOptions)) {
+                    $optionId = $request->input('option_id');
+                    $selectedOptions = $optionId ? [$optionId] : [];
+                }
+                if (!is_array($selectedOptions)) {
+                    $selectedOptions = $selectedOptions ? [$selectedOptions] : [];
+                }
+                // Filter out null/empty values
+                $selectedOptions = array_filter($selectedOptions, function($v) {
+                    return $v !== null && $v !== '';
+                });
+                $data['selected_options'] = array_values($selectedOptions);
                 break;
 
             case 'short_answer':
@@ -358,7 +400,12 @@ class StudentQuizController extends Controller
                 break;
 
             case 'ordering':
-                $data['ordering'] = $request->input('ordering', []);
+                $ordering = $request->input('ordering');
+                if (is_string($ordering)) {
+                    $ordering = explode(',', $ordering);
+                    $ordering = array_filter(array_map('trim', $ordering));
+                }
+                $data['ordering'] = $ordering ?? [];
                 break;
 
             case 'numerical':
@@ -366,11 +413,25 @@ class StudentQuizController extends Controller
                 break;
 
             case 'fill_blanks':
-                $data['fill_blanks_answers'] = $request->input('fill_blanks_answers', []);
+                $fillBlanksAnswers = $request->input('fill_blanks_answers', []);
+                // Ensure array format and preserve keys
+                if (!is_array($fillBlanksAnswers)) {
+                    $fillBlanksAnswers = [];
+                }
+                // Convert keys to integers for proper indexing
+                $result = [];
+                foreach ($fillBlanksAnswers as $key => $value) {
+                    $result[(int)$key] = $value;
+                }
+                $data['fill_blanks_answers'] = $result;
                 break;
 
             case 'drag_drop':
-                $data['answer'] = $request->input('answer');
+                $dragDropAssignments = $request->input('drag_drop_assignments');
+                if (is_string($dragDropAssignments)) {
+                    $dragDropAssignments = json_decode($dragDropAssignments, true);
+                }
+                $data['drag_drop_assignments'] = $dragDropAssignments ?? [];
                 break;
         }
 

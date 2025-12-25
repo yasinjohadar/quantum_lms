@@ -190,5 +190,44 @@ class NotificationController extends Controller
 
         return response()->json(['count' => $count]);
     }
+
+    /**
+     * جلب آخر الإشعارات (للـ Polling)
+     */
+    public function latest(Request $request)
+    {
+        $user = Auth::user();
+        $afterId = $request->get('after');
+        
+        $query = GamificationNotification::where('user_id', $user->id)
+            ->where('is_read', false)
+            ->orderBy('created_at', 'desc');
+        
+        // إذا تم تحديد after، جلب الإشعارات الأحدث من هذا الـ ID
+        if ($afterId) {
+            $query->where('id', '>', $afterId);
+        } else {
+            // جلب آخر 5 إشعارات فقط
+            $query->limit(5);
+        }
+        
+        $notifications = $query->get()->map(function($notif) {
+            return [
+                'id' => $notif->id,
+                'type' => $notif->type,
+                'title' => $notif->title,
+                'message' => $notif->message,
+                'icon' => $notif->icon ?? 'fe fe-bell',
+                'color' => $notif->color ?? 'primary',
+                'created_at' => $notif->created_at->toIso8601String(),
+                'timestamp' => $notif->created_at->toIso8601String(),
+            ];
+        });
+        
+        return response()->json([
+            'notifications' => $notifications,
+            'count' => $this->notificationService->getUnreadCount($user),
+        ]);
+    }
 }
 

@@ -1,60 +1,100 @@
 /**
- * Real-time Notifications using Server-Sent Events (SSE)
+ * Real-time Notifications using Polling (بديل أخف من SSE)
  */
 class RealTimeNotifications {
     constructor(options = {}) {
         this.userId = options.userId || null;
-        this.streamUrl = options.streamUrl || '/student/notifications/stream';
-        this.eventSource = null;
-        this.reconnectInterval = options.reconnectInterval || 5000;
-        this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = options.maxReconnectAttempts || 10;
+        this.pollUrl = '/student/notifications/latest';
+        this.pollInterval = options.pollInterval || 30000; // 30 ثانية
+        this.pollTimer = null;
         this.onNotificationCallback = options.onNotification || null;
         this.onErrorCallback = options.onError || null;
         this.notificationSound = options.sound || false;
+        this.lastNotificationId = null;
+        this.isEnabled = true;
         
         this.init();
     }
 
     /**
-     * Initialize SSE connection
+     * Initialize polling
      */
     init() {
-        if (this.eventSource && this.eventSource.readyState !== EventSource.CLOSED) {
-            return; // Already connected
+        if (!this.isEnabled) {
+            console.log('Notifications disabled');
+            return;
         }
+        
+        // Load initial notifications
+        this.fetchNotifications();
+        
+        // Start polling
+        this.startPolling();
+        
+        // Update count periodically
+        this.updateNotificationCount();
+        
+        console.log('Notifications initialized (polling mode)');
+    }
 
-        try {
-            this.eventSource = new EventSource(this.streamUrl);
+    /**
+     * Start polling for notifications
+     */
+    startPolling() {
+        if (this.pollTimer) {
+            clearInterval(this.pollTimer);
+        }
+        
+        this.pollTimer = setInterval(() => {
+            this.fetchNotifications();
+        }, this.pollInterval);
+    }
+
+    /**
+     * Stop polling
+     */
+    stopPolling() {
+        if (this.pollTimer) {
+            clearInterval(this.pollTimer);
+            this.pollTimer = null;
+        }
+    }
+
+    /**
+     * Fetch notifications from server
+     */
+    fetchNotifications() {
+        const url = this.lastNotificationId 
+            ? `${this.pollUrl}?after=${this.lastNotificationId}` 
+            : this.pollUrl;
             
-            // Handle incoming notifications
-            this.eventSource.addEventListener('notification', (event) => {
-                const data = JSON.parse(event.data);
-                this.handleNotification(data);
-            });
-
-            // Handle ping messages
-            this.eventSource.addEventListener('ping', (event) => {
-                // Just acknowledge the ping
-                console.debug('SSE Ping received');
-            });
-
-            // Handle connection open
-            this.eventSource.onopen = () => {
-                console.log('SSE Connection opened');
-                this.reconnectAttempts = 0;
-            };
-
-            // Handle errors
-            this.eventSource.onerror = (error) => {
-                console.error('SSE Error:', error);
-                this.handleError(error);
-            };
-
-        } catch (error) {
-            console.error('Failed to initialize SSE:', error);
-            this.handleError(error);
-        }
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.notifications && Array.isArray(data.notifications)) {
+                data.notifications.forEach(notification => {
+                    this.handleNotification(notification);
+                    if (notification.id) {
+                        this.lastNotificationId = notification.id;
+                    }
+                });
+            }
+        })
+        .catch(error => {
+            // Silent fail - don't spam console
+            console.debug('Notification fetch error:', error.message);
+        });
     }
 
     /**
@@ -94,9 +134,6 @@ class RealTimeNotifications {
                 closeButton: true,
                 progressBar: true,
             });
-        } else {
-            // Fallback to browser notification
-            this.showBrowserNotification(data);
         }
 
         // Add to notification dropdown if exists
@@ -104,40 +141,11 @@ class RealTimeNotifications {
     }
 
     /**
-     * Show browser notification (if permission granted)
-     */
-    showBrowserNotification(data) {
-        if (!('Notification' in window)) {
-            return;
-        }
-
-        if (Notification.permission === 'granted') {
-            new Notification(data.title, {
-                body: data.message,
-                icon: '/assets/images/logo.png',
-                badge: '/assets/images/logo.png',
-            });
-        } else if (Notification.permission !== 'denied') {
-            Notification.requestPermission().then(permission => {
-                if (permission === 'granted') {
-                    new Notification(data.title, {
-                        body: data.message,
-                        icon: '/assets/images/logo.png',
-                    });
-                }
-            });
-        }
-    }
-
-    /**
      * Add notification to dropdown
      */
     addToNotificationDropdown(data) {
-        console.log('Adding notification to dropdown:', data);
-        
         const dropdown = document.querySelector('#header-notification-scroll');
         if (!dropdown) {
-            console.warn('Notification dropdown not found');
             return;
         }
 
@@ -155,7 +163,7 @@ class RealTimeNotifications {
                           color === 'warning' ? 'warning' : 
                           color === 'info' ? 'info' : 'primary';
 
-        // Create notification item with proper styling
+        // Create notification item
         const notificationItem = document.createElement('li');
         notificationItem.className = 'dropdown-item';
         notificationItem.style.cssText = 'padding: 0.75rem 1rem; border-bottom: 1px solid rgba(0,0,0,0.1); cursor: pointer;';
@@ -174,15 +182,9 @@ class RealTimeNotifications {
             </div>
         `;
 
-        // Add click handler to navigate to notifications page
         notificationItem.addEventListener('click', () => {
             window.location.href = '/student/notifications';
         });
-
-        // Remove "no notifications" message if exists
-        if (noNotificationsMsg && noNotificationsMsg.parentNode) {
-            noNotificationsMsg.parentNode.removeChild(noNotificationsMsg);
-        }
 
         // Add to top of dropdown
         dropdown.insertBefore(notificationItem, dropdown.firstChild);
@@ -194,9 +196,6 @@ class RealTimeNotifications {
                 items[i].remove();
             }
         }
-
-        // Update notification count immediately
-        this.updateNotificationCount();
     }
     
     /**
@@ -258,52 +257,42 @@ class RealTimeNotifications {
      * Update notification count badge
      */
     updateNotificationCount() {
-        fetch('/student/notifications/unread-count')
-            .then(response => response.json())
-            .then(data => {
-                const count = data.count || 0;
-                
-                // Update count text in dropdown
-                const countTextElement = document.getElementById('notification-count-text');
-                if (countTextElement) {
-                    countTextElement.textContent = count;
-                    
-                    // Update the text in header
-                    const headerText = countTextElement.closest('.menu-header-content');
-                    if (headerText) {
-                        const subtext = headerText.querySelector('.subtext');
-                        if (subtext) {
-                            subtext.innerHTML = `لديك <span id="notification-count-text">${count}</span> إشعارات جديدة`;
-                        }
-                    }
-                }
+        fetch('/student/notifications/unread-count', {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            const count = data.count || 0;
+            
+            // Update count text in dropdown
+            const countTextElement = document.getElementById('notification-count-text');
+            if (countTextElement) {
+                countTextElement.textContent = count;
+            }
 
-                // Update badge count next to bell icon
-                const badgeCountElement = document.getElementById('notification-badge-count');
-                if (badgeCountElement) {
-                    if (count > 0) {
-                        badgeCountElement.textContent = count > 99 ? '99+' : count;
-                        badgeCountElement.style.display = 'block';
-                    } else {
-                        badgeCountElement.style.display = 'none';
-                    }
+            // Update badge count next to bell icon
+            const badgeCountElement = document.getElementById('notification-badge-count');
+            if (badgeCountElement) {
+                if (count > 0) {
+                    badgeCountElement.textContent = count > 99 ? '99+' : count;
+                    badgeCountElement.style.display = 'block';
+                } else {
+                    badgeCountElement.style.display = 'none';
                 }
+            }
 
-                // Update pulse badge
-                const badgeElement = document.querySelector('.main-header-notification .pulse-success');
-                if (badgeElement) {
-                    badgeElement.style.display = count > 0 ? 'block' : 'none';
-                }
-
-                // Update "Mark all as read" badge text
-                const markAllBadge = document.querySelector('.main-header-notification .badge.rounded-pill.bg-warning');
-                if (markAllBadge && count > 0) {
-                    markAllBadge.textContent = `تحديد الكل كمقروء (${count})`;
-                }
-            })
-            .catch(error => {
-                console.error('Error updating notification count:', error);
-            });
+            // Update pulse badge
+            const badgeElement = document.querySelector('.main-header-notification .pulse-success');
+            if (badgeElement) {
+                badgeElement.style.display = count > 0 ? 'block' : 'none';
+            }
+        })
+        .catch(error => {
+            // Silent fail
+        });
     }
 
     /**
@@ -313,39 +302,8 @@ class RealTimeNotifications {
         try {
             const audio = new Audio('/assets/sounds/notification.mp3');
             audio.volume = 0.3;
-            audio.play().catch(e => {
-                // Ignore errors (user might not have interacted with page)
-            });
-        } catch (error) {
-            // Sound file might not exist, ignore
-        }
-    }
-
-    /**
-     * Handle errors and reconnect
-     */
-    handleError(error) {
-        if (this.onErrorCallback && typeof this.onErrorCallback === 'function') {
-            this.onErrorCallback(error);
-        }
-
-        // Close current connection
-        if (this.eventSource) {
-            this.eventSource.close();
-            this.eventSource = null;
-        }
-
-        // Attempt to reconnect
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
-            this.reconnectAttempts++;
-            console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
-            
-            setTimeout(() => {
-                this.init();
-            }, this.reconnectInterval);
-        } else {
-            console.error('Max reconnection attempts reached. Please refresh the page.');
-        }
+            audio.play().catch(e => {});
+        } catch (error) {}
     }
 
     /**
@@ -378,43 +336,32 @@ class RealTimeNotifications {
     }
 
     /**
-     * Close connection
+     * Close/stop notifications
      */
     close() {
-        if (this.eventSource) {
-            this.eventSource.close();
-            this.eventSource = null;
-        }
+        this.stopPolling();
+        this.isEnabled = false;
     }
 
     /**
-     * Reconnect manually
+     * Restart notifications
      */
     reconnect() {
-        this.close();
-        this.reconnectAttempts = 0;
+        this.isEnabled = true;
         this.init();
     }
 }
 
 // Initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
+    // تأخير بسيط لضمان تحميل الصفحة أولاً
+    setTimeout(() => {
         if (typeof window.currentUserId !== 'undefined') {
             window.realtimeNotifications = new RealTimeNotifications({
                 userId: window.currentUserId,
-                streamUrl: '/student/notifications/stream',
-                sound: false, // Enable if you have sound file
+                pollInterval: 60000, // كل دقيقة
+                sound: false,
             });
         }
-    });
-} else {
-    if (typeof window.currentUserId !== 'undefined') {
-        window.realtimeNotifications = new RealTimeNotifications({
-            userId: window.currentUserId,
-            streamUrl: '/student/notifications/stream',
-            sound: false,
-        });
-    }
-}
-
+    }, 3000); // انتظار 3 ثواني بعد تحميل الصفحة
+});

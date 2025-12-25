@@ -214,4 +214,62 @@ class StudentLibraryController extends Controller
 
         return view('student.pages.library.subject', compact('subject', 'items', 'categories'));
     }
+
+    /**
+     * عرض العناصر المفضلة
+     */
+    public function favorites(Request $request)
+    {
+        $user = Auth::user();
+
+        // جلب العناصر المفضلة للمستخدم
+        $favoriteIds = LibraryFavorite::where('user_id', $user->id)
+            ->pluck('library_item_id')
+            ->toArray();
+
+        if (empty($favoriteIds)) {
+            // إنشاء paginator فارغ
+            $items = new \Illuminate\Pagination\LengthAwarePaginator(
+                collect([]),
+                0,
+                20,
+                $request->input('page', 1),
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
+            $categories = LibraryCategory::active()->ordered()->get();
+            return view('student.pages.library.favorites', compact('items', 'categories'));
+        }
+
+        $itemsQuery = LibraryItem::with(['category', 'subject', 'uploader', 'tags'])
+            ->whereIn('id', $favoriteIds);
+
+        // فلترة حسب البحث
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $itemsQuery->where(function ($q) use ($search) {
+                $q->where('title', 'like', '%' . $search . '%')
+                  ->orWhere('description', 'like', '%' . $search . '%');
+            });
+        }
+
+        // فلترة حسب الفئة
+        if ($request->filled('category_id')) {
+            $itemsQuery->where('category_id', $request->input('category_id'));
+        }
+
+        // فلترة حسب النوع
+        if ($request->filled('type')) {
+            $itemsQuery->where('type', $request->input('type'));
+        }
+
+        // ترتيب
+        $orderBy = $request->input('order_by', 'created_at');
+        $orderDir = $request->input('order_dir', 'desc');
+        $itemsQuery->orderBy($orderBy, $orderDir);
+
+        $items = $itemsQuery->paginate(20);
+        $categories = LibraryCategory::active()->ordered()->get();
+
+        return view('student.pages.library.favorites', compact('items', 'categories'));
+    }
 }

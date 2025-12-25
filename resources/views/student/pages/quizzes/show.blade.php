@@ -182,6 +182,38 @@
     .cursor-move {
         cursor: move;
     }
+    
+    .draggable-item {
+        cursor: move;
+        user-select: none;
+        transition: opacity 0.2s;
+    }
+    
+    .draggable-item:hover {
+        opacity: 0.8;
+    }
+    
+    .draggable-item[draggable="true"]:active {
+        cursor: grabbing;
+    }
+    
+    .drop-zone {
+        min-height: 150px;
+        transition: all 0.2s;
+    }
+    
+    .drop-zone.drag-over {
+        border-color: #0d6efd !important;
+        background-color: rgba(13, 110, 253, 0.1) !important;
+    }
+    
+    .dropped-item {
+        display: inline-block;
+    }
+    
+    .min-h-150 {
+        cursor: move;
+    }
     #question-content {
         min-height: 200px;
     }
@@ -190,6 +222,46 @@
     }
     .form-check.p-4:hover {
         transform: scale(1.02);
+    }
+    .draggable-item {
+        user-select: none;
+        transition: opacity 0.2s, transform 0.2s;
+    }
+    .draggable-item:hover {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+    .draggable-item[draggable="true"]:active {
+        cursor: grabbing;
+    }
+    .drop-zone {
+        min-height: 150px;
+        transition: all 0.2s;
+    }
+    .drop-zone.border-primary {
+        border-color: #0d6efd !important;
+        background-color: rgba(13, 110, 253, 0.1) !important;
+    }
+    .dropped-item {
+        display: inline-block;
+        margin: 0.25rem;
+    }
+    .min-h-150 {
+        min-height: 150px;
+    }
+    .ordering-item {
+        transition: background-color 0.2s, transform 0.2s;
+        cursor: move;
+    }
+    .ordering-item:hover {
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+    .ordering-item.drag-over {
+        border-top: 3px solid #0d6efd;
+        background-color: rgba(13, 110, 253, 0.1);
+    }
+    .ordering-item[draggable="true"]:active {
+        cursor: grabbing;
     }
 </style>
 @endpush
@@ -225,6 +297,7 @@
                 'matching_pairs' => $a->matching_pairs,
                 'ordering' => $a->ordering,
                 'fill_blanks_answers' => $a->fill_blanks_answers,
+                'drag_drop_assignments' => $a->drag_drop_assignments,
             ]];
         });
     @endphp
@@ -278,17 +351,33 @@
             html += `<h5 class="mb-3">${escapeHtml(question.title)}</h5>`;
         }
         
-        // محتوى السؤال
-        if (question.content) {
+        // محتوى السؤال (لا نعرضه لـ drag_drop و fill_blanks لأنها تحتاج معالجة خاصة)
+        if (question.content && question.type !== 'drag_drop' && question.type !== 'fill_blank' && question.type !== 'fill_blanks') {
             html += `<div class="mb-4 p-3 bg-light rounded">${escapeHtml(question.content)}</div>`;
+        } else if (question.content && question.type === 'drag_drop') {
+            // Extract text content without drop-zones div for drag_drop
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = question.content;
+            const dropZonesDiv = tempDiv.querySelector('.drop-zones');
+            if (dropZonesDiv) {
+                const textContent = tempDiv.textContent.trim();
+                if (textContent) {
+                    html += `<div class="mb-4 p-3 bg-light rounded">${escapeHtml(textContent)}</div>`;
+                }
+            } else {
+                html += `<div class="mb-4 p-3 bg-light rounded">${escapeHtml(question.content)}</div>`;
+            }
         }
+        // Note: fill_blank/fill_blanks content is handled inside renderFillBlank
         
         // خيارات الإجابة حسب نوع السؤال
         html += '<div class="answer-section">';
         
         switch(question.type) {
-            case 'multiple_choice':
             case 'single_choice':
+                html += renderSingleChoice(question, answer);
+                break;
+            case 'multiple_choice':
                 html += renderMultipleChoice(question, answer);
                 break;
             case 'true_false':
@@ -316,6 +405,9 @@
             case 'multi_select':
                 html += renderMultiSelect(question, answer);
                 break;
+            case 'drag_drop':
+                html += renderDragDrop(question, answer);
+                break;
             default:
                 html += `<p class="text-muted">نوع السؤال غير مدعوم: ${question.type}</p>`;
         }
@@ -334,12 +426,23 @@
         return div.innerHTML;
     }
     
-    function renderMultipleChoice(question, answer) {
+    function renderSingleChoice(question, answer) {
+        // Handle both array and string formats for selected_options
+        let selectedOptions = answer.selected_options || [];
+        if (typeof selectedOptions === 'string') {
+            selectedOptions = [selectedOptions];
+        } else if (!Array.isArray(selectedOptions)) {
+            selectedOptions = [];
+        }
+        // Convert all IDs to strings for comparison
+        selectedOptions = selectedOptions.map(id => String(id));
+        
         let html = '<div class="options-list">';
-        const selectedOptions = answer.selected_options || [];
         
         question.options.forEach((opt, idx) => {
-            const isChecked = selectedOptions.includes(opt.id) ? 'checked' : '';
+            // Convert opt.id to string for comparison
+            const optIdStr = String(opt.id);
+            const isChecked = selectedOptions.includes(optIdStr) || selectedOptions.includes(opt.id) ? 'checked' : '';
             html += `
                 <div class="form-check p-3 mb-2 border rounded option-item ${isChecked ? 'border-primary bg-primary-transparent' : ''}">
                     <input class="form-check-input" type="radio" name="answer_${question.id}" 
@@ -355,12 +458,52 @@
         return html;
     }
     
+    function renderMultipleChoice(question, answer) {
+        // Handle both array and string formats for selected_options
+        let selectedOptions = answer.selected_options || [];
+        if (typeof selectedOptions === 'string') {
+            selectedOptions = [selectedOptions];
+        } else if (!Array.isArray(selectedOptions)) {
+            selectedOptions = [];
+        }
+        // Convert all IDs to strings for comparison
+        selectedOptions = selectedOptions.map(id => String(id));
+        
+        let html = '<p class="text-muted mb-3"><i class="bi bi-info-circle me-1"></i> يمكنك اختيار أكثر من إجابة</p>';
+        html += '<div class="options-list">';
+        
+        question.options.forEach((opt, idx) => {
+            // Convert opt.id to string for comparison
+            const optIdStr = String(opt.id);
+            const isChecked = selectedOptions.includes(optIdStr) || selectedOptions.includes(opt.id) ? 'checked' : '';
+            html += `
+                <div class="form-check p-3 mb-2 border rounded option-item ${isChecked ? 'border-primary bg-primary-transparent' : ''}">
+                    <input class="form-check-input" type="checkbox" name="answer_${question.id}[]" 
+                           id="opt_${opt.id}" value="${opt.id}" ${isChecked}>
+                    <label class="form-check-label w-100 cursor-pointer" for="opt_${opt.id}">
+                        ${escapeHtml(opt.content)}
+                    </label>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        return html;
+    }
+    
     function renderTrueFalse(question, answer) {
-        const selectedOptions = answer.selected_options || [];
+        // Handle both array and string formats
+        let selectedOptions = answer.selected_options || [];
+        if (typeof selectedOptions === 'string') {
+            selectedOptions = [selectedOptions];
+        } else if (!Array.isArray(selectedOptions)) {
+            selectedOptions = [];
+        }
+        
         let html = '<div class="d-flex gap-3">';
         
-        const trueChecked = selectedOptions.includes('true') ? 'checked' : '';
-        const falseChecked = selectedOptions.includes('false') ? 'checked' : '';
+        const trueChecked = selectedOptions.includes('true') || selectedOptions.includes(true) ? 'checked' : '';
+        const falseChecked = selectedOptions.includes('false') || selectedOptions.includes(false) ? 'checked' : '';
         
         html += `
             <div class="form-check p-4 border rounded flex-fill text-center ${trueChecked ? 'border-success bg-success-transparent' : ''}">
@@ -474,19 +617,35 @@
     }
     
     function renderOrdering(question, answer) {
-        const ordering = answer.ordering || question.options.map(o => o.id);
+        let ordering = answer.ordering;
+        if (!ordering || !Array.isArray(ordering)) {
+            // Convert string to array if needed
+            if (typeof ordering === 'string') {
+                ordering = ordering.split(',').filter(id => id.trim());
+            } else {
+                ordering = question.options.map(o => o.id);
+            }
+        }
+        
         let html = '<p class="text-muted mb-3"><i class="bi bi-info-circle me-1"></i> اسحب العناصر لترتيبها بالترتيب الصحيح</p>';
-        html += '<ul class="list-group ordering-list" id="ordering_${question.id}">';
+        html += `<ul class="list-group ordering-list" id="ordering_${question.id}">`;
         
         // Sort options by ordering
         const sortedOptions = [...question.options].sort((a, b) => {
-            return ordering.indexOf(a.id) - ordering.indexOf(b.id);
+            const indexA = ordering.indexOf(a.id);
+            const indexB = ordering.indexOf(b.id);
+            if (indexA === -1 && indexB === -1) return 0;
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            return indexA - indexB;
         });
         
         sortedOptions.forEach((opt, idx) => {
             html += `
-                <li class="list-group-item d-flex align-items-center gap-3" data-id="${opt.id}">
-                    <span class="badge bg-primary rounded-pill">${idx + 1}</span>
+                <li class="list-group-item d-flex align-items-center gap-3 ordering-item" 
+                    data-id="${opt.id}" 
+                    draggable="true">
+                    <span class="badge bg-primary rounded-pill order-number">${idx + 1}</span>
                     <i class="bi bi-grip-vertical text-muted cursor-move"></i>
                     <span class="flex-grow-1">${escapeHtml(opt.content)}</span>
                 </li>
@@ -499,54 +658,370 @@
     }
     
     function renderFillBlank(question, answer) {
-        const blanks = answer.fill_blanks_answers || {};
+        // Handle fill_blanks_answers - can be object with numeric keys or array
+        let blanks = answer.fill_blanks_answers || {};
+        if (Array.isArray(blanks)) {
+            // Convert array to object with numeric keys
+            const blanksObj = {};
+            blanks.forEach((val, idx) => {
+                if (val !== undefined && val !== null) {
+                    blanksObj[idx] = val;
+                }
+            });
+            blanks = blanksObj;
+        }
+        
         let content = question.content || '';
         let blankIndex = 0;
         
-        // Remove HTML tags for clean display
-        content = content.replace(/<\/?[^>]+(>|$)/g, '');
+        // Extract text from HTML safely
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = content;
+        content = tempDiv.textContent || tempDiv.innerText || '';
+        content = content.trim();
         
         // Replace {n} pattern with input fields (e.g., {1}, {2}, {3})
-        content = content.replace(/\{(\d+)\}/g, (match, num) => {
-            const idx = parseInt(num) - 1; // Convert to 0-based index
-            const value = blanks[idx] || '';
-            const input = `<input type="text" class="form-control d-inline-block mx-1" 
-                                  style="width: 120px;" name="blank_${question.id}[${idx}]" 
-                                  value="${escapeHtml(value)}" placeholder="${num}">`;
+        content = content.replace(/\{(\d+)\}/g, function(match, num) {
+            const idx = parseInt(num) - 1; // Convert to 0-based index (1->0, 2->1, 3->2)
+            // Try both string and numeric key access
+            let value = blanks[idx] !== undefined ? blanks[idx] : (blanks[String(idx)] !== undefined ? blanks[String(idx)] : '');
+            value = (value !== undefined && value !== null) ? String(value) : '';
+            const escapedValue = escapeHtml(value);
+            const input = '<input type="text" class="form-control d-inline-block mx-1" ' +
+                         'style="width: 120px;" name="blank_' + question.id + '[' + idx + ']" ' +
+                         'value="' + escapedValue + '" placeholder="' + num + '">';
             return input;
         });
         
         // Also support ___ pattern
-        content = content.replace(/_{3,}/g, () => {
-            const value = blanks[blankIndex] || '';
-            const input = `<input type="text" class="form-control d-inline-block mx-1" 
-                                  style="width: 120px;" name="blank_${question.id}[${blankIndex}]" 
-                                  value="${escapeHtml(value)}" placeholder="...">`;
+        content = content.replace(/_{3,}/g, function() {
+            // Try both string and numeric key access
+            let value = blanks[blankIndex] !== undefined ? blanks[blankIndex] : (blanks[String(blankIndex)] !== undefined ? blanks[String(blankIndex)] : '');
+            value = (value !== undefined && value !== null) ? String(value) : '';
+            const escapedValue = escapeHtml(value);
+            const input = '<input type="text" class="form-control d-inline-block mx-1" ' +
+                         'style="width: 120px;" name="blank_' + question.id + '[' + blankIndex + ']" ' +
+                         'value="' + escapedValue + '" placeholder="...">';
             blankIndex++;
             return input;
         });
         
-        return `
-            <div class="fill-blank-container p-4 border rounded bg-light fs-5 lh-lg text-center">
-                ${content}
-            </div>
-        `;
+        return '<div class="fill-blank-container p-4 border rounded bg-light fs-5 lh-lg">' + content + '</div>';
+    }
+    
+    function renderDragDrop(question, answer) {
+        const dragDropData = answer.drag_drop_assignments || {};
+        let html = '<p class="text-muted mb-3"><i class="bi bi-info-circle me-1"></i> اسحب العناصر إلى المجموعات المناسبة</p>';
+        
+        // Parse drop zones from content if available
+        let dropZones = [];
+        try {
+            if (question.content) {
+                // Try to extract drop-zones from HTML content using regex
+                const zonesMatch = question.content.match(/data-zones='([^']+)'/);
+                if (zonesMatch) {
+                    dropZones = JSON.parse(zonesMatch[1].replace(/\\u([0-9a-f]{4})/gi, (match, code) => {
+                        return String.fromCharCode(parseInt(code, 16));
+                    }));
+                }
+            }
+        } catch(e) {
+            console.error('Error parsing drop zones:', e);
+        }
+        
+        // If no zones in content, create default zones (every 2 options = one zone)
+        if (dropZones.length === 0 && question.options.length > 0) {
+            const zonesCount = Math.ceil(question.options.length / 2);
+            for (let i = 0; i < zonesCount; i++) {
+                dropZones.push({ label: `مجموعة ${i + 1}` });
+            }
+        }
+        
+        html += '<div class="drag-drop-container">';
+        
+        // Render draggable items
+        html += '<div class="draggable-items mb-4">';
+        html += '<h6 class="mb-3">العناصر القابلة للسحب:</h6>';
+        html += '<div class="d-flex flex-wrap gap-2" id="draggable-items-' + question.id + '">';
+        
+        question.options.forEach((opt, idx) => {
+            const zoneId = dragDropData[opt.id] || null;
+            html += `
+                <div class="draggable-item badge bg-primary p-3 cursor-move" 
+                     draggable="true" 
+                     data-item-id="${opt.id}"
+                     data-zone-id="${zoneId || ''}"
+                     id="drag-item-${question.id}-${opt.id}">
+                    <i class="bi bi-grip-vertical me-2"></i>
+                    ${escapeHtml(opt.content)}
+                </div>
+            `;
+        });
+        html += '</div></div>';
+        
+        // Render drop zones
+        html += '<div class="drop-zones-container">';
+        html += '<h6 class="mb-3">مناطق الإفلات:</h6>';
+        html += '<div class="row">';
+        
+        dropZones.forEach((zone, zoneIdx) => {
+            const zoneId = zone.id || zoneIdx;
+            const itemsInZone = Object.keys(dragDropData).filter(itemId => dragDropData[itemId] == zoneId);
+            
+            html += `
+                <div class="col-md-6 mb-4">
+                    <div class="drop-zone border border-2 border-dashed rounded p-4 text-center min-h-150" 
+                         data-zone-id="${zoneId}"
+                         id="drop-zone-${question.id}-${zoneId}"
+                         ondrop="handleDrop(event, ${question.id})" 
+                         ondragover="handleDragOver(event)">
+                        <h6 class="mb-3">${escapeHtml(zone.label || zone.name || `مجموعة ${zoneIdx + 1}`)}</h6>
+                        <div class="dropped-items" id="dropped-items-${question.id}-${zoneId}">
+                            ${itemsInZone.map(itemId => {
+                                const opt = question.options.find(o => o.id == itemId);
+                                if (!opt) return '';
+                                return `
+                                    <div class="dropped-item badge bg-success p-2 mb-2 me-1" data-item-id="${itemId}">
+                                        ${escapeHtml(opt.content)}
+                                        <button type="button" class="btn-close btn-close-white ms-2" onclick="removeFromZone(${question.id}, ${itemId})"></button>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        <p class="text-muted mt-3 mb-0"><small>أسقط العناصر هنا</small></p>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div></div>';
+        html += '</div>';
+        
+        // Hidden input to store the answer
+        const assignmentsJson = JSON.stringify(dragDropData);
+        html += `<input type="hidden" name="drag_drop_${question.id}" id="drag-drop-input-${question.id}" value="${escapeHtml(assignmentsJson)}">`;
+        
+        return html;
+    }
+    
+    // Drag and Drop handlers
+    function handleDragOver(event) {
+        event.preventDefault();
+        event.currentTarget.classList.add('border-primary', 'bg-primary-transparent');
+    }
+    
+    function handleDrop(event, questionId) {
+        event.preventDefault();
+        const zoneEl = event.currentTarget;
+        const zoneId = zoneEl.dataset.zoneId;
+        const itemId = event.dataTransfer.getData('text/plain');
+        
+        // Remove from previous zone
+        removeFromZone(questionId, itemId, false);
+        
+        // Add to new zone
+        const itemEl = document.getElementById('drag-item-' + questionId + '-' + itemId);
+        const question = questions.find(q => q.id == questionId);
+        const opt = question?.options.find(o => o.id == itemId);
+        
+        if (itemEl && opt) {
+            const droppedItemsEl = document.getElementById('dropped-items-' + questionId + '-' + zoneId);
+            if (droppedItemsEl) {
+                const droppedItem = document.createElement('div');
+                droppedItem.className = 'dropped-item badge bg-success p-2 mb-2 me-1';
+                droppedItem.dataset.itemId = itemId;
+                droppedItem.innerHTML = `
+                    ${escapeHtml(opt.content)}
+                    <button type="button" class="btn-close btn-close-white ms-2" onclick="removeFromZone(${questionId}, ${itemId})"></button>
+                `;
+                droppedItemsEl.appendChild(droppedItem);
+            }
+            
+            itemEl.dataset.zoneId = zoneId;
+            itemEl.style.display = 'none';
+        }
+        
+        zoneEl.classList.remove('border-primary', 'bg-primary-transparent');
+        updateDragDropAnswer(questionId);
+        saveCurrentAnswer(questions.find(q => String(q.id) === String(questionId)));
+    }
+    
+    function removeFromZone(questionId, itemId, updateAnswer = true) {
+        const itemEl = document.getElementById('drag-item-' + questionId + '-' + itemId);
+        if (itemEl) {
+            const zoneId = itemEl.dataset.zoneId;
+            if (zoneId) {
+                const droppedItemEl = document.querySelector(`#dropped-items-${questionId}-${zoneId} [data-item-id="${itemId}"]`);
+                if (droppedItemEl) {
+                    droppedItemEl.remove();
+                }
+            }
+            itemEl.dataset.zoneId = '';
+            itemEl.style.display = '';
+        }
+        
+        if (updateAnswer) {
+            updateDragDropAnswer(questionId);
+            saveCurrentAnswer(questions.find(q => String(q.id) === String(questionId)));
+        }
+    }
+    
+    function updateDragDropAnswer(questionId) {
+        const question = questions.find(q => q.id == questionId);
+        if (!question) return;
+        
+        const assignments = {};
+        question.options.forEach(opt => {
+            const itemEl = document.getElementById('drag-item-' + questionId + '-' + opt.id);
+            if (itemEl && itemEl.dataset.zoneId) {
+                assignments[opt.id] = itemEl.dataset.zoneId;
+            }
+        });
+        
+        const inputEl = document.getElementById('drag-drop-input-' + questionId);
+        if (inputEl) {
+            inputEl.value = JSON.stringify(assignments);
+        }
+    }
+    
+    function setupDragDropListeners(question) {
+        // Setup drag start for all draggable items
+        setTimeout(() => {
+            document.querySelectorAll(`#draggable-items-${question.id} .draggable-item`).forEach(item => {
+                item.addEventListener('dragstart', function(e) {
+                    e.dataTransfer.setData('text/plain', this.dataset.itemId);
+                    this.style.opacity = '0.5';
+                });
+                
+                item.addEventListener('dragend', function(e) {
+                    this.style.opacity = '1';
+                    // Remove highlight from all zones
+                    document.querySelectorAll('.drop-zone').forEach(zone => {
+                        zone.classList.remove('border-primary', 'bg-primary-transparent');
+                    });
+                });
+            });
+            
+            // Setup drag leave for drop zones
+            document.querySelectorAll('.drop-zone').forEach(zone => {
+                zone.addEventListener('dragleave', function(e) {
+                    if (!this.contains(e.relatedTarget)) {
+                        this.classList.remove('border-primary', 'bg-primary-transparent');
+                    }
+                });
+            });
+        }, 100);
+    }
+    
+    function setupOrderingListeners(question) {
+        setTimeout(() => {
+            const listEl = document.getElementById(`ordering_${question.id}`);
+            if (!listEl) return;
+            
+            let draggedElement = null;
+            
+            listEl.querySelectorAll('.ordering-item').forEach(item => {
+                item.addEventListener('dragstart', function(e) {
+                    draggedElement = this;
+                    this.style.opacity = '0.5';
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+                
+                item.addEventListener('dragend', function(e) {
+                    this.style.opacity = '1';
+                    listEl.querySelectorAll('.ordering-item').forEach(el => {
+                        el.classList.remove('drag-over');
+                    });
+                });
+                
+                item.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (this !== draggedElement) {
+                        this.classList.add('drag-over');
+                    }
+                });
+                
+                item.addEventListener('dragleave', function(e) {
+                    this.classList.remove('drag-over');
+                });
+                
+                item.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.classList.remove('drag-over');
+                    
+                    if (draggedElement && draggedElement !== this) {
+                        const allItems = Array.from(listEl.querySelectorAll('.ordering-item'));
+                        const draggedIndex = allItems.indexOf(draggedElement);
+                        const targetIndex = allItems.indexOf(this);
+                        
+                        if (draggedIndex < targetIndex) {
+                            listEl.insertBefore(draggedElement, this.nextSibling);
+                        } else {
+                            listEl.insertBefore(draggedElement, this);
+                        }
+                        
+                        // Update order numbers and hidden input
+                        updateOrderingAnswer(question.id);
+                        saveCurrentAnswer(question);
+                    }
+                });
+            });
+        }, 100);
+    }
+    
+    function updateOrderingAnswer(questionId) {
+        const listEl = document.getElementById(`ordering_${questionId}`);
+        if (!listEl) return;
+        
+        const items = listEl.querySelectorAll('.ordering-item');
+        const order = Array.from(items).map(item => item.dataset.id);
+        
+        // Update order numbers
+        items.forEach((item, index) => {
+            const badge = item.querySelector('.order-number');
+            if (badge) {
+                badge.textContent = index + 1;
+            }
+        });
+        
+        // Update hidden input
+        const inputEl = document.getElementById(`ordering_input_${questionId}`);
+        if (inputEl) {
+            inputEl.value = order.join(',');
+        }
     }
     
     function setupAnswerListeners(question) {
+        // Drag and Drop setup
+        if (question.type === 'drag_drop') {
+            setupDragDropListeners(question);
+        }
+        
+        // Ordering setup
+        if (question.type === 'ordering') {
+            setupOrderingListeners(question);
+        }
+        
         // Radio buttons and checkboxes highlighting
         document.querySelectorAll('.option-item input').forEach(input => {
             input.addEventListener('change', function() {
                 const parent = this.closest('.options-list');
                 if (this.type === 'radio') {
+                    // For radio buttons, remove highlight from all and add to selected
                     parent.querySelectorAll('.option-item').forEach(item => {
                         item.classList.remove('border-primary', 'bg-primary-transparent');
                     });
-                }
-                if (this.checked) {
-                    this.closest('.option-item').classList.add('border-primary', 'bg-primary-transparent');
-                } else {
-                    this.closest('.option-item').classList.remove('border-primary', 'bg-primary-transparent');
+                    if (this.checked) {
+                        this.closest('.option-item').classList.add('border-primary', 'bg-primary-transparent');
+                    }
+                } else if (this.type === 'checkbox') {
+                    // For checkboxes, toggle highlight for each item
+                    if (this.checked) {
+                        this.closest('.option-item').classList.add('border-primary', 'bg-primary-transparent');
+                    } else {
+                        this.closest('.option-item').classList.remove('border-primary', 'bg-primary-transparent');
+                    }
                 }
                 
                 // Save answer
@@ -591,13 +1066,17 @@
         
         // Collect answer based on type
         switch(question.type) {
-            case 'multiple_choice':
             case 'single_choice':
             case 'true_false':
                 const radio = document.querySelector(`input[name="answer_${question.id}"]:checked`);
                 if (radio) {
                     formData.append('selected_options[]', radio.value);
                 }
+                break;
+            case 'multiple_choice':
+                document.querySelectorAll(`input[name="answer_${question.id}[]"]:checked`).forEach(checkbox => {
+                    formData.append('selected_options[]', checkbox.value);
+                });
                 break;
             case 'multi_select':
                 document.querySelectorAll(`input[name="answer_${question.id}[]"]:checked`).forEach(cb => {
@@ -618,9 +1097,14 @@
                 }
                 break;
             case 'matching':
-                document.querySelectorAll(`select[name^="matching_${question.id}"]`).forEach(select => {
-                    const key = select.name.match(/\[(\d+)\]/)[1];
-                    formData.append(`matching_pairs[${key}]`, select.value);
+                const matchingSelects = document.querySelectorAll(`select[name^="matching_${question.id}"]`);
+                matchingSelects.forEach(select => {
+                    // Extract key from name like "matching_123[456]" -> "456"
+                    const matchResult = select.name.match(/\[([^\]]+)\]/);
+                    if (matchResult && select.value) {
+                        const key = matchResult[1];
+                        formData.append(`matching_pairs[${key}]`, select.value);
+                    }
                 });
                 break;
             case 'ordering':
@@ -636,6 +1120,12 @@
                     formData.append(`fill_blanks_answers[${key}]`, input.value);
                 });
                 break;
+            case 'drag_drop':
+                const dragDropInput = document.getElementById(`drag-drop-input-${question.id}`);
+                if (dragDropInput) {
+                    formData.append('drag_drop_assignments', dragDropInput.value);
+                }
+                break;
         }
         
         fetch(saveUrl, {
@@ -644,11 +1134,35 @@
         }).then(response => response.json())
           .then(data => {
               if (data.success) {
-                  // Update answers cache
-                  answers[question.id] = data.answer || {};
+                  // Update answers cache with proper structure
+                  if (data.answer) {
+                      answers[question.id] = {
+                          'selected_options': data.answer.selected_options || null,
+                          'answer_text': data.answer.answer_text || null,
+                          'numeric_answer': data.answer.numeric_answer || null,
+                          'matching_pairs': data.answer.matching_pairs || null,
+                          'ordering': data.answer.ordering || null,
+                          'fill_blanks_answers': data.answer.fill_blanks_answers || null,
+                          'drag_drop_assignments': data.answer.drag_drop_assignments || null,
+                      };
+                  } else {
+                      // If no answer data, at least ensure the key exists
+                      answers[question.id] = answers[question.id] || {};
+                  }
                   
                   // Update progress
-                  const answeredCount = Object.keys(answers).filter(k => answers[k] && Object.keys(answers[k]).length > 0).length;
+                  const answeredCount = Object.keys(answers).filter(k => {
+                      const ans = answers[k];
+                      return ans && (
+                          (ans.selected_options && ans.selected_options.length > 0) ||
+                          ans.answer_text ||
+                          ans.numeric_answer !== null ||
+                          (ans.matching_pairs && Object.keys(ans.matching_pairs).length > 0) ||
+                          (ans.ordering && ans.ordering.length > 0) ||
+                          (ans.fill_blanks_answers && Object.keys(ans.fill_blanks_answers).length > 0) ||
+                          (ans.drag_drop_assignments && Object.keys(ans.drag_drop_assignments).length > 0)
+                      );
+                  }).length;
                   const progress = ((answeredCount / questions.length) * 100).toFixed(0);
                   document.getElementById('progress-bar').style.width = progress + '%';
                   document.getElementById('progress-text').textContent = answeredCount + ' / ' + questions.length;
@@ -656,10 +1170,18 @@
                   // Mark question as answered in nav
                   const navBtn = document.querySelectorAll('.question-nav-btn')[currentQuestionIndex];
                   if (navBtn) {
-                      navBtn.classList.add('answered');
+                      navBtn.classList.remove('btn-outline-secondary');
+                      navBtn.classList.add('btn-success', 'answered');
+                      const icon = navBtn.querySelector('i');
+                      if (icon) {
+                          icon.className = 'bi bi-check-circle-fill me-2';
+                      }
                   }
               }
-          }).catch(err => console.error('Save error:', err));
+          }).catch(err => {
+              console.error('Save error:', err);
+              alert('حدث خطأ أثناء حفظ الإجابة');
+          });
     }
     
     // Navigation

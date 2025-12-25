@@ -218,6 +218,79 @@
                                         <span class="{{ $isCorrect ? 'text-success' : 'text-danger' }}">
                                             {{ count($selectedItems) > 0 ? implode('، ', $selectedItems) : 'لم يتم الإجابة' }}
                                         </span>
+                                    @elseif($question->type == 'ordering')
+                                        @php
+                                            $ordering = $answer->ordering ?? [];
+                                            $orderedItems = [];
+                                            if (!empty($ordering)) {
+                                                foreach ($ordering as $index => $optionId) {
+                                                    $option = $question->options->firstWhere('id', $optionId);
+                                                    if ($option) {
+                                                        $orderedItems[] = ($index + 1) . '. ' . $option->content;
+                                                    }
+                                                }
+                                            }
+                                        @endphp
+                                        <span class="{{ $isCorrect ? 'text-success' : 'text-danger' }}">
+                                            @if(count($orderedItems) > 0)
+                                                <br>
+                                                @foreach($orderedItems as $item)
+                                                    {{ $item }}<br>
+                                                @endforeach
+                                            @else
+                                                لم يتم الإجابة
+                                            @endif
+                                        </span>
+                                    @elseif($question->type == 'drag_drop')
+                                        @php
+                                            $assignments = $answer->drag_drop_assignments ?? [];
+                                            // Group items by zone
+                                            $zoneItems = [];
+                                            foreach ($assignments as $itemId => $zoneId) {
+                                                $option = $question->options->firstWhere('id', $itemId);
+                                                if ($option) {
+                                                    $zoneName = 'مجموعة ' . ((int)$zoneId + 1);
+                                                    if (!isset($zoneItems[$zoneName])) {
+                                                        $zoneItems[$zoneName] = [];
+                                                    }
+                                                    $zoneItems[$zoneName][] = $option->content;
+                                                }
+                                            }
+                                        @endphp
+                                        <span class="{{ $isCorrect ? 'text-success' : 'text-danger' }}">
+                                            @if(!empty($zoneItems))
+                                                <br>
+                                                @foreach($zoneItems as $zoneName => $items)
+                                                    <strong>{{ $zoneName }}:</strong>
+                                                    {{ implode('، ', $items) }}
+                                                    <br>
+                                                @endforeach
+                                            @else
+                                                لم يتم الإجابة
+                                            @endif
+                                        </span>
+                                    @elseif($question->type == 'matching')
+                                        @php
+                                            $pairs = $answer->matching_pairs ?? [];
+                                            $pairItems = [];
+                                            foreach ($pairs as $leftId => $rightId) {
+                                                $leftOption = $question->options->firstWhere('id', $leftId);
+                                                $rightOption = $question->options->firstWhere('id', $rightId);
+                                                if ($leftOption && $rightOption) {
+                                                    $pairItems[] = $leftOption->content . ' ← ' . $rightOption->content;
+                                                }
+                                            }
+                                        @endphp
+                                        <span class="{{ $isCorrect ? 'text-success' : 'text-danger' }}">
+                                            @if(!empty($pairItems))
+                                                <br>
+                                                @foreach($pairItems as $pair)
+                                                    {{ $pair }}<br>
+                                                @endforeach
+                                            @else
+                                                لم يتم الإجابة
+                                            @endif
+                                        </span>
                                     @else
                                         <span class="text-muted">{{ $answer->answer_text ?? 'لم يتم الإجابة' }}</span>
                                     @endif
@@ -242,6 +315,71 @@
                                                 $correctItems = $question->options->where('is_correct', true)->pluck('content')->toArray();
                                             @endphp
                                             <span class="text-success">{{ implode('، ', $correctItems) }}</span>
+                                        @elseif($question->type == 'ordering')
+                                            @php
+                                                $correctOrder = $question->options->sortBy('order')->pluck('content')->toArray();
+                                            @endphp
+                                            <span class="text-success">
+                                                <br>
+                                                @foreach($correctOrder as $index => $item)
+                                                    {{ ($index + 1) }}. {{ $item }}<br>
+                                                @endforeach
+                                            </span>
+                                        @elseif($question->type == 'drag_drop')
+                                            @php
+                                                // Get correct assignments from question config or options
+                                                $correctAssignments = [];
+                                                foreach ($question->options as $option) {
+                                                    $zone = $option->zone ?? $option->group ?? 'منطقة';
+                                                    if (!isset($correctAssignments[$zone])) {
+                                                        $correctAssignments[$zone] = [];
+                                                    }
+                                                    $correctAssignments[$zone][] = $option->content;
+                                                }
+                                            @endphp
+                                            <span class="text-success">
+                                                @if(!empty($correctAssignments))
+                                                    <br>
+                                                    @foreach($correctAssignments as $zone => $items)
+                                                        <strong>{{ $zone }}:</strong> {{ implode('، ', $items) }}<br>
+                                                    @endforeach
+                                                @else
+                                                    -
+                                                @endif
+                                            </span>
+                                        @elseif($question->type == 'matching')
+                                            @php
+                                                $correctPairs = [];
+                                                foreach ($question->options as $option) {
+                                                    if ($option->match_pair) {
+                                                        $correctPairs[$option->content] = $option->match_pair;
+                                                    }
+                                                }
+                                            @endphp
+                                            <span class="text-success">
+                                                @if(!empty($correctPairs))
+                                                    <br>
+                                                    @foreach($correctPairs as $left => $right)
+                                                        {{ $left }} ← {{ $right }}<br>
+                                                    @endforeach
+                                                @else
+                                                    -
+                                                @endif
+                                            </span>
+                                        @elseif($question->type == 'fill_blank' || $question->type == 'fill_blanks')
+                                            @php
+                                                // Get correct answers from question options or config
+                                                $correctBlanks = $question->options->pluck('content')->toArray();
+                                            @endphp
+                                            <span class="text-success">
+                                                @if(!empty($correctBlanks))
+                                                    @foreach($correctBlanks as $index => $blank)
+                                                        ({{ $index + 1 }}) {{ $blank }}{{ !$loop->last ? '، ' : '' }}
+                                                    @endforeach
+                                                @else
+                                                    -
+                                                @endif
+                                            </span>
                                         @else
                                             <span class="text-success">-</span>
                                         @endif

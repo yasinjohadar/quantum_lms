@@ -49,6 +49,10 @@ Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student
     Route::get('/calendar', [\App\Http\Controllers\Student\CalendarController::class, 'index'])->name('calendar.index');
     Route::get('/calendar/events-api', [\App\Http\Controllers\Student\CalendarController::class, 'getEvents'])->name('calendar.events-api');
     Route::get('/calendar/export', [\App\Http\Controllers\Student\CalendarController::class, 'export'])->name('calendar.export');
+    Route::post('/calendar/events', [\App\Http\Controllers\Student\CalendarController::class, 'store'])->name('calendar.events.store');
+    Route::get('/calendar/events/{event}', [\App\Http\Controllers\Student\CalendarController::class, 'show'])->name('calendar.events.show');
+    Route::put('/calendar/events/{event}', [\App\Http\Controllers\Student\CalendarController::class, 'update'])->name('calendar.events.update');
+    Route::delete('/calendar/events/{event}', [\App\Http\Controllers\Student\CalendarController::class, 'destroy'])->name('calendar.events.destroy');
     
     // المساعد التعليمي (Chatbot)
     Route::resource('ai/chatbot', \App\Http\Controllers\Student\AIChatbotController::class)->names([
@@ -113,6 +117,7 @@ Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student
     // الإشعارات
     Route::prefix('notifications')->as('notifications.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Student\NotificationController::class, 'index'])->name('index');
+        Route::get('/latest', [\App\Http\Controllers\Student\NotificationController::class, 'latest'])->name('latest');
         Route::get('/stream', [\App\Http\Controllers\Student\NotificationStreamController::class, 'stream'])
             ->middleware('throttle:10,1')
             ->name('stream');

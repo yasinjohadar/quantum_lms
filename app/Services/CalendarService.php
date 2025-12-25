@@ -40,10 +40,11 @@ class CalendarService
     {
         $query = CalendarEvent::byDateRange($startDate, $endDate);
 
-        // إذا كان طالب، فقط الأحداث العامة أو المرتبطة بمواده
+        // إذا كان طالب، الأحداث العامة أو المرتبطة بمواده أو أحداثه الشخصية
         if ($user->hasRole('student')) {
             $query->where(function($q) use ($user) {
                 $q->where('is_public', true)
+                  ->orWhere('created_by', $user->id) // أحداثه الشخصية
                   ->orWhereHas('subject', function($subjectQuery) use ($user) {
                       $subjectQuery->whereHas('students', function($studentQuery) use ($user) {
                           $studentQuery->where('users.id', $user->id);

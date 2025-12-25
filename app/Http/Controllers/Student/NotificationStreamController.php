@@ -24,47 +24,82 @@ class NotificationStreamController extends Controller
         // Rate limiting: 1 connection per user
         $key = "sse:user:{$user->id}";
         if (Cache::has($key)) {
-            abort(429, 'Too many connections');
+            // بدلاً من رفض الاتصال، نرجع إشعارات فورية
+            return $this->getQuickNotifications($user);
         }
-        Cache::put($key, true, now()->addMinutes(5));
 
         return response()->stream(function () use ($user, $key) {
+            // إعدادات مهمة للـ SSE
+            @ini_set('zlib.output_compression', 'Off');
+            @set_time_limit(0);
+            @ignore_user_abort(false);
+            
+            // تعطيل output buffering إذا كان مفعلاً
+            while (ob_get_level() > 0) {
+                ob_end_flush();
+            }
+            
+            Cache::put($key, true, now()->addMinutes(2));
+            
             $lastNotificationId = null;
             $pingInterval = 30; // ثواني
             $lastPing = time();
+            $maxRunTime = 55; // ثواني - أقل من حد PHP
+            $startTime = time();
 
-            while (true) {
-                // التحقق من انقطاع الاتصال
-                if (connection_aborted()) {
-                    Cache::forget($key);
-                    break;
+            try {
+                while (true) {
+                    // التحقق من تجاوز الوقت الأقصى
+                    if ((time() - $startTime) >= $maxRunTime) {
+                        $this->sendSSEMessage('reconnect', ['message' => 'Timeout, please reconnect']);
+                        break;
+                    }
+                    
+                    // التحقق من انقطاع الاتصال
+                    if (connection_aborted()) {
+                        break;
+                    }
+
+                    // جلب الإشعارات الجديدة
+                    $notifications = $this->getNewNotifications($user->id, $lastNotificationId);
+                    
+                    foreach ($notifications as $notification) {
+                        $this->sendSSEMessage('notification', $notification);
+                        $lastNotificationId = $notification['id'] ?? null;
+                    }
+
+                    // إرسال ping كل 30 ثانية للحفاظ على الاتصال
+                    if (time() - $lastPing >= $pingInterval) {
+                        $this->sendSSEMessage('ping', ['timestamp' => now()->toIso8601String()]);
+                        $lastPing = time();
+                    }
+
+                    // انتظار قصير قبل التكرار التالي
+                    usleep(1000000); // 1 ثانية
                 }
-
-                // جلب الإشعارات الجديدة
-                $notifications = $this->getNewNotifications($user->id, $lastNotificationId);
-                
-                foreach ($notifications as $notification) {
-                    $this->sendSSEMessage('notification', $notification);
-                    $lastNotificationId = $notification['id'] ?? null;
-                }
-
-                // إرسال ping كل 30 ثانية للحفاظ على الاتصال
-                if (time() - $lastPing >= $pingInterval) {
-                    $this->sendSSEMessage('ping', ['timestamp' => now()->toIso8601String()]);
-                    $lastPing = time();
-                }
-
-                // انتظار قصير قبل التكرار التالي
-                usleep(500000); // 0.5 ثانية
+            } finally {
+                // تنظيف عند انتهاء الاتصال
+                Cache::forget($key);
             }
-            
-            // تنظيف عند انتهاء الاتصال
-            Cache::forget($key);
         }, 200, [
             'Content-Type' => 'text/event-stream',
-            'Cache-Control' => 'no-cache',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
             'Connection' => 'keep-alive',
             'X-Accel-Buffering' => 'no',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ]);
+    }
+
+    /**
+     * إرجاع إشعارات سريعة بدون stream (للاتصالات المتكررة)
+     */
+    private function getQuickNotifications($user)
+    {
+        $notifications = $this->getNewNotifications($user->id, null);
+        return response()->json([
+            'notifications' => $notifications,
+            'message' => 'Quick response - connection already active'
         ]);
     }
 
@@ -73,12 +108,14 @@ class NotificationStreamController extends Controller
      */
     private function sendSSEMessage(string $event, array $data): void
     {
-        $message = "event: {$event}\n";
-        $message .= "data: " . json_encode($data) . "\n\n";
+        echo "event: {$event}\n";
+        echo "data: " . json_encode($data) . "\n\n";
         
-        echo $message;
-        ob_flush();
-        flush();
+        // Flush output safely
+        if (ob_get_level() > 0) {
+            @ob_flush();
+        }
+        @flush();
     }
 
     /**
