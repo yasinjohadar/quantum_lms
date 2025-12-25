@@ -1,7 +1,7 @@
 @extends('student.layouts.master')
 
 @section('page-title')
-    صفوفي
+    الصفوف المشترك فيها
 @stop
 
 @section('content')
@@ -11,8 +11,8 @@
         <!-- Page Header -->
         <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
             <div>
-                <h4 class="mb-0">صفوفي</h4>
-                <p class="mb-0 text-muted">الصفوف المنضم إليها مع المواد الدراسية</p>
+                <h4 class="mb-0">الصفوف المشترك فيها</h4>
+                <p class="mb-0 text-muted">عرض الصفوف الدراسية التي أنت مشترك فيها مع المواد الدراسية</p>
             </div>
         </div>
         <!-- End Page Header -->
@@ -24,39 +24,6 @@
                     $subjects = $classData['subjects'];
                 @endphp
                 
-                <!-- كارد الصف -->
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="card custom-card">
-                            @if($class->image)
-                                <img src="{{ asset('storage/' . $class->image) }}" class="card-img-top" alt="{{ $class->name }}" style="height: 200px; object-fit: cover;">
-                            @else
-                                <div class="card-img-top bg-primary-gradient d-flex align-items-center justify-content-center" style="height: 200px;">
-                                    <i class="bi bi-building text-white" style="font-size: 4rem;"></i>
-                                </div>
-                            @endif
-                            <div class="card-body">
-                                <h6 class="card-title fw-semibold">{{ $class->name }}</h6>
-                                @if($class->stage)
-                                    <p class="card-text text-muted mb-2">
-                                        <i class="bi bi-mortarboard me-1"></i>
-                                        {{ $class->stage->name }}
-                                    </p>
-                                @endif
-                                @if($class->description)
-                                    <p class="card-text text-muted">{{ \Illuminate\Support\Str::limit($class->description, 150) }}</p>
-                                @endif
-                            </div>
-                            <div class="card-footer">
-                                <span class="card-text">
-                                    <i class="bi bi-book me-1"></i>
-                                    {{ $subjects->count() }} مادة دراسية
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
                 <!-- مواد الصف -->
                 @if($subjects->count() > 0)
                     <div class="row mb-5">
@@ -64,6 +31,9 @@
                             <h5 class="fw-semibold">
                                 <i class="bi bi-book-half me-2 text-primary"></i>
                                 المواد الدراسية في {{ $class->name }}
+                                @if($class->stage)
+                                    <small class="text-muted">({{ $class->stage->name }})</small>
+                                @endif
                             </h5>
                         </div>
                         @foreach($subjects as $subject)

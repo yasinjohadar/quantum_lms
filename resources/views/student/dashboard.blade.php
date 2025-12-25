@@ -187,6 +187,61 @@
                 </div>
             </div>
 
+            <!-- Quick Actions -->
+            <div class="row mb-4">
+                <div class="col-12 mb-3">
+                    <h5 class="mb-0">
+                        <i class="fe fe-zap me-2 text-warning"></i>
+                        إجراءات سريعة
+                    </h5>
+                    <p class="text-muted fs-12 mb-0">الوصول السريع لإجراءات نظام التحفيز</p>
+                </div>
+                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mb-3">
+                    <a href="{{ route('student.gamification.challenges') }}" class="card text-center h-100 text-decoration-none">
+                        <div class="card-body">
+                            <div class="fs-32 mb-2 text-danger">
+                                <i class="fe fe-zap"></i>
+                            </div>
+                            <h6 class="mb-1">التحديات</h6>
+                            <p class="text-muted fs-12 mb-0">عرض التحديات النشطة</p>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mb-3">
+                    <a href="{{ route('student.gamification.rewards') }}" class="card text-center h-100 text-decoration-none">
+                        <div class="card-body">
+                            <div class="fs-32 mb-2 text-primary">
+                                <i class="fe fe-gift"></i>
+                            </div>
+                            <h6 class="mb-1">المكافآت</h6>
+                            <p class="text-muted fs-12 mb-0">استبدل نقاطك بمكافآت</p>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mb-3">
+                    <a href="{{ route('student.gamification.certificates') }}" class="card text-center h-100 text-decoration-none">
+                        <div class="card-body">
+                            <div class="fs-32 mb-2 text-info">
+                                <i class="fe fe-file-text"></i>
+                            </div>
+                            <h6 class="mb-1">الشهادات</h6>
+                            <p class="text-muted fs-12 mb-0">عرض وتحميل الشهادات</p>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mb-3">
+                    <a href="{{ route('student.tasks.index') }}" class="card text-center h-100 text-decoration-none">
+                        <div class="card-body">
+                            <div class="fs-32 mb-2 text-success">
+                                <i class="fe fe-check-square"></i>
+                            </div>
+                            <h6 class="mb-1">المهام</h6>
+                            <p class="text-muted fs-12 mb-0">عرض ومتابعة المهام</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
             <!-- Main Content Row -->
             <div class="row">
                 <!-- Courses in Progress -->
