@@ -35,48 +35,72 @@
         <div class="row">
             <div class="col-xl-12">
                 <div class="card shadow-sm border-0">
-                    <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                    <div class="card-header">
                         <h5 class="mb-0 fw-bold">قائمة العناصر</h5>
+                    </div>
 
-                        <form method="GET" action="{{ route('admin.library.items.index') }}" class="d-flex flex-wrap gap-2 align-items-center">
-                            <input type="text" name="search" class="form-control form-control-sm" placeholder="بحث بالعنوان أو الوصف" value="{{ request('search') }}" style="min-width: 220px;">
+                    <!-- الفلاتر بشكل أفقي -->
+                    <div class="card-body border-bottom">
+                        <form method="GET" action="{{ route('admin.library.items.index') }}">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-3 col-lg-2">
+                                    <label class="form-label small mb-1">البحث</label>
+                                    <input type="text" name="search" class="form-control form-control-sm" placeholder="بحث بالعنوان أو الوصف" value="{{ request('search') }}">
+                                </div>
 
-                            <select name="category_id" class="form-select form-select-sm" style="min-width: 150px;">
-                                <option value="">كل التصنيفات</option>
-                                @foreach($categories as $category)
-                                    <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>
-                                        {{ $category->name }}
-                                    </option>
-                                @endforeach
-                            </select>
+                                <div class="col-md-3 col-lg-2">
+                                    <label class="form-label small mb-1">التصنيف</label>
+                                    <select name="category_id" class="form-select form-select-sm">
+                                        <option value="">كل التصنيفات</option>
+                                        @foreach($categories as $category)
+                                            <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>
+                                                {{ $category->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
 
-                            <select name="type" class="form-select form-select-sm" style="min-width: 150px;">
-                                <option value="">كل الأنواع</option>
-                                <option value="file" {{ request('type') == 'file' ? 'selected' : '' }}>ملف</option>
-                                <option value="link" {{ request('type') == 'link' ? 'selected' : '' }}>رابط</option>
-                                <option value="video" {{ request('type') == 'video' ? 'selected' : '' }}>فيديو</option>
-                                <option value="document" {{ request('type') == 'document' ? 'selected' : '' }}>مستند</option>
-                                <option value="book" {{ request('type') == 'book' ? 'selected' : '' }}>كتاب</option>
-                                <option value="worksheet" {{ request('type') == 'worksheet' ? 'selected' : '' }}>ورقة عمل</option>
-                            </select>
+                                <div class="col-md-3 col-lg-2">
+                                    <label class="form-label small mb-1">النوع</label>
+                                    <select name="type" class="form-select form-select-sm">
+                                        <option value="">كل الأنواع</option>
+                                        <option value="file" {{ request('type') == 'file' ? 'selected' : '' }}>ملف</option>
+                                        <option value="link" {{ request('type') == 'link' ? 'selected' : '' }}>رابط</option>
+                                        <option value="video" {{ request('type') == 'video' ? 'selected' : '' }}>فيديو</option>
+                                        <option value="document" {{ request('type') == 'document' ? 'selected' : '' }}>مستند</option>
+                                        <option value="book" {{ request('type') == 'book' ? 'selected' : '' }}>كتاب</option>
+                                        <option value="worksheet" {{ request('type') == 'worksheet' ? 'selected' : '' }}>ورقة عمل</option>
+                                    </select>
+                                </div>
 
-                            <select name="subject_id" class="form-select form-select-sm" style="min-width: 150px;">
-                                <option value="">كل المواد</option>
-                                @foreach($subjects as $subject)
-                                    <option value="{{ $subject->id }}" {{ request('subject_id') == $subject->id ? 'selected' : '' }}>
-                                        {{ $subject->name }}
-                                    </option>
-                                @endforeach
-                            </select>
+                                <div class="col-md-3 col-lg-2">
+                                    <label class="form-label small mb-1">المادة</label>
+                                    <select name="subject_id" class="form-select form-select-sm">
+                                        <option value="">كل المواد</option>
+                                        @foreach($subjects as $subject)
+                                            <option value="{{ $subject->id }}" {{ request('subject_id') == $subject->id ? 'selected' : '' }}>
+                                                {{ $subject->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
 
-                            <select name="is_public" class="form-select form-select-sm" style="min-width: 150px;">
-                                <option value="">كل الحالات</option>
-                                <option value="1" {{ request('is_public') === '1' ? 'selected' : '' }}>عام</option>
-                                <option value="0" {{ request('is_public') === '0' ? 'selected' : '' }}>خاص</option>
-                            </select>
+                                <div class="col-md-3 col-lg-2">
+                                    <label class="form-label small mb-1">الحالة</label>
+                                    <select name="is_public" class="form-select form-select-sm">
+                                        <option value="">كل الحالات</option>
+                                        <option value="1" {{ request('is_public') === '1' ? 'selected' : '' }}>عام</option>
+                                        <option value="0" {{ request('is_public') === '0' ? 'selected' : '' }}>خاص</option>
+                                    </select>
+                                </div>
 
-                            <button type="submit" class="btn btn-secondary btn-sm">بحث</button>
-                            <a href="{{ route('admin.library.items.index') }}" class="btn btn-outline-danger btn-sm">مسح الفلاتر</a>
+                                <div class="col-md-12 col-lg-2">
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" class="btn btn-secondary btn-sm w-100">بحث</button>
+                                        <a href="{{ route('admin.library.items.index') }}" class="btn btn-outline-danger btn-sm">مسح</a>
+                                    </div>
+                                </div>
+                            </div>
                         </form>
                     </div>
 
@@ -145,13 +169,9 @@
                                                 <a href="{{ route('admin.library.items.stats', $item->id) }}" class="btn btn-sm btn-secondary-light" data-bs-toggle="tooltip" title="إحصائيات">
                                                     <i class="fas fa-chart-bar"></i>
                                                 </a>
-                                                <form action="{{ route('admin.library.items.destroy', $item->id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف هذا العنصر؟');" class="d-inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-sm btn-danger-light" data-bs-toggle="tooltip" title="حذف">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </form>
+                                                <button type="button" class="btn btn-sm btn-danger-light" data-bs-toggle="modal" data-bs-target="#deleteItemModal{{ $item->id }}" title="حذف">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -172,5 +192,129 @@
         </div>
     </div>
 </div>
+
+<!-- Modals for Delete Confirmation -->
+@foreach($items as $item)
+<div class="modal fade" id="deleteItemModal{{ $item->id }}" tabindex="-1" aria-labelledby="deleteItemModalLabel{{ $item->id }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body text-center px-4 pb-4">
+                <div class="mb-4">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger bg-opacity-10" style="width: 80px; height: 80px;">
+                        <i class="bi bi-trash-fill text-danger" style="font-size: 40px;"></i>
+                    </div>
+                </div>
+                <h5 class="modal-title mb-3 fw-bold" id="deleteItemModalLabel{{ $item->id }}">
+                    تأكيد حذف العنصر
+                </h5>
+                <p class="text-muted mb-3">
+                    هل أنت متأكد من حذف العنصر <strong class="text-dark">"{{ $item->title }}"</strong>؟
+                </p>
+                <div class="alert alert-warning mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <small class="m-0">هذه العملية لا يمكن التراجع عنها. سيتم حذف العنصر وجميع البيانات المرتبطة به نهائياً.</small>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 justify-content-center">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i> إلغاء
+                </button>
+                <form action="{{ route('admin.library.items.destroy', $item->id) }}" method="POST" class="d-inline">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i> حذف
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+@endforeach
+@stop
+
+@section('js')
+<script>
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+</script>
+@stop
+
+
+                                @empty
+                                    <tr>
+                                        <td colspan="10" class="text-center">لا توجد عناصر متاحة.</td>
+                                    </tr>
+                                @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-4">
+                            {{ $items->links() }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals for Delete Confirmation -->
+@foreach($items as $item)
+<div class="modal fade" id="deleteItemModal{{ $item->id }}" tabindex="-1" aria-labelledby="deleteItemModalLabel{{ $item->id }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body text-center px-4 pb-4">
+                <div class="mb-4">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger bg-opacity-10" style="width: 80px; height: 80px;">
+                        <i class="bi bi-trash-fill text-danger" style="font-size: 40px;"></i>
+                    </div>
+                </div>
+                <h5 class="modal-title mb-3 fw-bold" id="deleteItemModalLabel{{ $item->id }}">
+                    تأكيد حذف العنصر
+                </h5>
+                <p class="text-muted mb-3">
+                    هل أنت متأكد من حذف العنصر <strong class="text-dark">"{{ $item->title }}"</strong>؟
+                </p>
+                <div class="alert alert-warning mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <small class="m-0">هذه العملية لا يمكن التراجع عنها. سيتم حذف العنصر وجميع البيانات المرتبطة به نهائياً.</small>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 justify-content-center">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i> إلغاء
+                </button>
+                <form action="{{ route('admin.library.items.destroy', $item->id) }}" method="POST" class="d-inline">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i> حذف
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+@endforeach
+@stop
+
+@section('js')
+<script>
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+</script>
 @stop
 

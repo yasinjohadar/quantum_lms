@@ -9,6 +9,7 @@ use App\Models\QuizAnswer;
 use App\Models\Question;
 use App\Services\GamificationService;
 use App\Services\AuditLogService;
+use App\Services\AnalyticsService;
 use App\Events\QuizStarted;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,11 +20,13 @@ use Illuminate\Support\Facades\Log;
 class StudentQuizController extends Controller
 {
     protected AuditLogService $auditLogService;
+    protected AnalyticsService $analyticsService;
 
-    public function __construct(AuditLogService $auditLogService)
+    public function __construct(AuditLogService $auditLogService, AnalyticsService $analyticsService)
     {
         $this->middleware(['auth', 'check.user.active']);
         $this->auditLogService = $auditLogService;
+        $this->analyticsService = $analyticsService;
     }
 
     /**
@@ -94,6 +97,13 @@ class StudentQuizController extends Controller
                 'attempt_id' => $attempt->id,
                 'time_limit' => $quiz->time_limit,
             ]));
+
+            // تسجيل حدث في Analytics
+            $this->analyticsService->trackEvent('start_quiz', $user->id, [
+                'quiz_id' => $quiz->id,
+                'subject_id' => $quiz->subject_id,
+                'attempt_id' => $attempt->id,
+            ]);
 
             DB::commit();
 
@@ -228,7 +238,7 @@ class StudentQuizController extends Controller
     public function submitQuiz(Request $request, $attemptId)
     {
         $user = Auth::user();
-        $attempt = QuizAttempt::where('user_id', $user->id)
+        $attempt = QuizAttempt::with('quiz')->where('user_id', $user->id)
             ->findOrFail($attemptId);
 
         if ($attempt->status !== 'in_progress') {
@@ -262,6 +272,16 @@ class StudentQuizController extends Controller
             // ربط مع نظام التحفيز
             $gamificationService = app(GamificationService::class);
             $gamificationService->processQuizCompletion($attempt);
+
+            // تسجيل حدث في Analytics
+            $this->analyticsService->trackEvent('complete_quiz', $user->id, [
+                'quiz_id' => $attempt->quiz_id,
+                'subject_id' => $attempt->quiz->subject_id ?? null,
+                'attempt_id' => $attempt->id,
+                'score' => $attempt->score,
+                'percentage' => $attempt->percentage,
+                'passed' => $attempt->passed,
+            ]);
 
             DB::commit();
 

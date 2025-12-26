@@ -660,5 +660,3 @@ function vectormap() {
 	chartElement.innerHTML = "";
 	var chart = new ApexCharts(document.querySelector("#chart"), options);
 	chart.render();
-
-/*--- Apex (#chart)closed ---*/

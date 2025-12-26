@@ -120,17 +120,17 @@
                                 </div>
                             @endif
                         </div>
-                        <div class="col-md-6" id="file-upload-section">
+                        <div class="col-md-12" id="file-upload-section">
                             <label class="form-label">رفع ملف جديد (اختياري)</label>
-                            <input type="file" name="file" class="form-control @error('file') is-invalid @enderror" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4,.webm">
+                            <input type="file" name="file" id="file-input" class="form-control @error('file') is-invalid @enderror" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4,.webm">
                             <small class="form-text text-muted">اتركه فارغاً للاحتفاظ بالملف الحالي</small>
                             @error('file')
-                            <div class="invalid-feedback">{{ $message }}</div>
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
-                        <div class="col-md-6" id="external-url-section" style="display: none;">
+                        <div class="col-md-12" id="external-url-section" style="display: none;">
                             <div class="form-floating">
-                                <input type="url" name="external_url" class="form-control @error('external_url') is-invalid @enderror" placeholder="الرابط الخارجي" value="{{ old('external_url', $item->external_url) }}">
+                                <input type="url" name="external_url" id="external-url-input" class="form-control @error('external_url') is-invalid @enderror" placeholder="https://example.com" value="{{ old('external_url', $item->external_url) }}">
                                 <label>الرابط الخارجي</label>
                                 @error('external_url')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -187,25 +187,79 @@
     </div>
 </div>
 
-@push('scripts')
+@section('js')
 <script>
-    document.getElementById('type').addEventListener('change', function() {
-        const type = this.value;
+    document.addEventListener('DOMContentLoaded', function() {
+        const typeSelect = document.getElementById('type');
         const fileSection = document.getElementById('file-upload-section');
         const urlSection = document.getElementById('external-url-section');
+        const fileInput = document.getElementById('file-input');
+        const urlInput = document.getElementById('external-url-input');
         
-        if (type === 'link') {
-            fileSection.style.display = 'none';
-            urlSection.style.display = 'block';
-        } else {
-            fileSection.style.display = 'block';
-            urlSection.style.display = 'none';
+        if (!typeSelect || !fileSection || !urlSection) {
+            console.error('Missing required elements for library item form toggle');
+            return;
         }
+        
+        function toggleSections() {
+            const type = typeSelect.value;
+            
+            console.log('Type changed to:', type); // للتحقق
+            
+            if (type === 'link') {
+                // إظهار حقل الرابط وإخفاء حقل الملف
+                fileSection.style.display = 'none';
+                urlSection.style.display = 'block';
+                
+                // إزالة required من الملف (لأنه في صفحة التعديل اختياري)
+                if (fileInput) {
+                    fileInput.removeAttribute('required');
+                }
+            } else if (type) {
+                // إظهار حقل الملف وإخفاء حقل الرابط
+                fileSection.style.display = 'block';
+                urlSection.style.display = 'none';
+            } else {
+                // إذا لم يتم اختيار نوع، إظهار حقل الملف افتراضياً
+                fileSection.style.display = 'block';
+                urlSection.style.display = 'none';
+            }
+        }
+        
+        // إضافة event listener عند تغيير النوع
+        typeSelect.addEventListener('change', toggleSections);
+        
+        // تنفيذ عند تحميل الصفحة
+        toggleSections();
     });
-    
-    // Trigger on page load
-    document.getElementById('type').dispatchEvent(new Event('change'));
 </script>
-@endpush
+@stop
+@stop
+
+
+                
+                // إزالة required من الملف (لأنه في صفحة التعديل اختياري)
+                if (fileInput) {
+                    fileInput.removeAttribute('required');
+                }
+            } else if (type) {
+                // إظهار حقل الملف وإخفاء حقل الرابط
+                fileSection.style.display = 'block';
+                urlSection.style.display = 'none';
+            } else {
+                // إذا لم يتم اختيار نوع، إظهار حقل الملف افتراضياً
+                fileSection.style.display = 'block';
+                urlSection.style.display = 'none';
+            }
+        }
+        
+        // إضافة event listener عند تغيير النوع
+        typeSelect.addEventListener('change', toggleSections);
+        
+        // تنفيذ عند تحميل الصفحة
+        toggleSections();
+    });
+</script>
+@stop
 @stop
 

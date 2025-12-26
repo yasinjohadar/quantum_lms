@@ -79,12 +79,7 @@ class EventReminder extends Model
      */
     public function scopeDue($query)
     {
-        return $query->where('is_sent', false)
-                    ->where(function($q) {
-                        $q->whereHas('event', function($eventQuery) {
-                            // سيتم التحقق من الوقت في Service
-                        });
-                    });
+        return $query->where('is_sent', false);
     }
 
     /**

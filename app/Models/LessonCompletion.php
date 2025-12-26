@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class LessonCompletion extends Model
 {
@@ -13,19 +14,29 @@ class LessonCompletion extends Model
         'user_id',
         'lesson_id',
         'status',
+        'progress_percentage',
+        'time_spent',
+        'last_position',
         'marked_at',
     ];
 
     protected $casts = [
+        'user_id' => 'integer',
+        'lesson_id' => 'integer',
+        'progress_percentage' => 'decimal:2',
+        'time_spent' => 'integer',
+        'last_position' => 'integer',
         'marked_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     /**
-     * حالات الإكمال المتاحة
+     * حالات الإكمال
      */
-    const STATUSES = [
-        'attended' => 'حضور',
-        'completed' => 'مكتمل',
+    public const STATUSES = [
+        'attended' => 'حضر',
+        'completed' => 'أكمل',
     ];
 
     /**
@@ -45,32 +56,23 @@ class LessonCompletion extends Model
     }
 
     /**
-     * نطاق الدروس المكتملة
-     */
-    public function scopeCompleted($query)
-    {
-        return $query->where('status', 'completed');
-    }
-
-    /**
-     * نطاق الدروس التي تم حضورها
+     * Scopes
      */
     public function scopeAttended($query)
     {
         return $query->where('status', 'attended');
     }
 
-    /**
-     * نطاق الفلترة حسب المستخدم
-     */
+    public function scopeCompleted($query)
+    {
+        return $query->where('status', 'completed');
+    }
+
     public function scopeForUser($query, $userId)
     {
         return $query->where('user_id', $userId);
     }
 
-    /**
-     * نطاق الفلترة حسب الدرس
-     */
     public function scopeForLesson($query, $lessonId)
     {
         return $query->where('lesson_id', $lessonId);

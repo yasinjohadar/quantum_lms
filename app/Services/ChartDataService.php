@@ -213,8 +213,20 @@ class ChartDataService
             $dailyData = $dailyData->toArray();
         }
         
+        // ترتيب البيانات حسب التاريخ
+        ksort($dailyData);
+        
         $dates = array_keys($dailyData);
         $values = array_values($dailyData);
+        
+        // تحويل التواريخ إلى صيغة أكثر قابلية للقراءة
+        $formattedDates = array_map(function($date) {
+            try {
+                return \Carbon\Carbon::parse($date)->format('d/m/Y');
+            } catch (\Exception $e) {
+                return $date;
+            }
+        }, $dates);
         
         return [
             'type' => 'area',
@@ -222,18 +234,65 @@ class ChartDataService
                 'chart' => [
                     'type' => 'area',
                     'height' => 350,
+                    'toolbar' => [
+                        'show' => true
+                    ],
+                    'zoom' => [
+                        'enabled' => true
+                    ]
                 ],
                 'title' => [
-                    'text' => 'استخدام النظام',
+                    'text' => 'استخدام النظام - المستخدمون النشطون يومياً',
+                    'align' => 'right',
+                    'style' => [
+                        'fontSize' => '16px',
+                        'fontWeight' => 'bold'
+                    ]
                 ],
                 'xaxis' => [
-                    'categories' => $dates,
+                    'categories' => $formattedDates,
+                    'labels' => [
+                        'rotate' => -45,
+                        'style' => [
+                            'fontSize' => '12px'
+                        ]
+                    ]
+                ],
+                'yaxis' => [
+                    'title' => [
+                        'text' => 'عدد المستخدمين'
+                    ]
                 ],
                 'series' => [
                     [
                         'name' => 'المستخدمون النشطون',
                         'data' => $values,
                     ],
+                ],
+                'stroke' => [
+                    'curve' => 'smooth',
+                    'width' => 2
+                ],
+                'fill' => [
+                    'type' => 'gradient',
+                    'gradient' => [
+                        'shadeIntensity' => 1,
+                        'opacityFrom' => 0.7,
+                        'opacityTo' => 0.3,
+                        'stops' => [0, 90, 100]
+                    ]
+                ],
+                'colors' => ['#3b82f6'],
+                'tooltip' => [
+                    'enabled' => true,
+                    'y' => [
+                        'formatter' => function($val) {
+                            return $val + ' مستخدم';
+                        }
+                    ]
+                ],
+                'dataLabels' => [
+                    'enabled' => false
                 ],
             ],
         ];
@@ -340,4 +399,3 @@ class ChartDataService
         return [];
     }
 }
-

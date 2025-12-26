@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureUserIsAdmin
@@ -16,14 +15,11 @@ class EnsureUserIsAdmin
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!Auth::check()) {
+        if (!auth()->check()) {
             return redirect()->route('login');
         }
 
-        $user = Auth::user();
-        
-        // التحقق من أن المستخدم لديه دور admin
-        if (!$user->hasRole('admin')) {
+        if (!auth()->user()->hasRole('admin')) {
             abort(403, 'غير مصرح لك بالوصول إلى هذه الصفحة.');
         }
 

@@ -32,7 +32,7 @@
             <div class="col-12">
                 <div class="card shadow-sm border-0">
                     <div class="card-body">
-                        <div id="calendar" data-api-url="{{ route('admin.calendar.events-api') }}"></div>
+                        <div id="calendar" data-events="{{ json_encode($formattedEvents ?? []) }}"></div>
                     </div>
                 </div>
             </div>
@@ -88,23 +88,7 @@ document.addEventListener('DOMContentLoaded', function() {
             center: 'title',
             right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
         },
-        events: function(fetchInfo, successCallback, failureCallback) {
-            const apiUrl = document.getElementById('calendar').dataset.apiUrl;
-            fetch(apiUrl + '?start=' + fetchInfo.startStr + '&end=' + fetchInfo.endStr, {
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                successCallback(data);
-            })
-            .catch(error => {
-                console.error('Error fetching events:', error);
-                failureCallback(error);
-            });
-        },
+        events: JSON.parse(document.getElementById('calendar').dataset.events || '[]'),
         eventClick: function(info) {
             const event = info.event;
             const extendedProps = event.extendedProps;

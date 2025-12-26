@@ -282,4 +282,13 @@ class User extends Authenticatable
             $q->where('name', 'student');
         });
     }
+
+    /**
+     * العلاقة مع المفضلة في المكتبة
+     */
+    public function favorites()
+    {
+        return $this->belongsToMany(LibraryItem::class, 'library_favorites', 'user_id', 'library_item_id')
+                    ->withTimestamps();
+    }
 }

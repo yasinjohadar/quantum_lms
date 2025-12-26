@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
             SystemSettingsSeeder::class,
             GamificationSeeder::class,
             AIModelsSeeder::class,
+            AnalyticsEventsSeeder::class,
         ]);
 
         // إنشاء مستخدم تجريبي إضافي (إن لم يكن موجوداً)
@@ -37,3 +38,4 @@ class DatabaseSeeder extends Seeder
         );
     }
 }
+

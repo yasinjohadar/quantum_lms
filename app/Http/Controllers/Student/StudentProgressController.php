@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
-use App\Services\StudentProgressService;
 use App\Models\Subject;
 use App\Models\SubjectSection;
+use App\Services\StudentProgressService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -15,8 +15,8 @@ class StudentProgressController extends Controller
 
     public function __construct(StudentProgressService $progressService)
     {
-        $this->progressService = $progressService;
         $this->middleware('auth');
+        $this->progressService = $progressService;
     }
 
     /**
@@ -25,78 +25,63 @@ class StudentProgressController extends Controller
     public function index()
     {
         $user = Auth::user();
-        
-        // جلب جميع المواد المسجل بها الطالب
-        $subjects = $user->subjects()
-            ->where('enrollments.status', 'active')
-            ->with(['schoolClass.stage'])
-            ->get();
-        
-        // حساب التقدم لكل مادة
         $progressList = $this->progressService->getAllStudentProgress($user->id);
         
-        return view('student.pages.progress.index', compact('subjects', 'progressList'));
+        return view('student.pages.progress.index', [
+            'progressList' => $progressList,
+        ]);
     }
 
     /**
-     * عرض تقدم طالب في مادة معينة
+     * عرض تقدم في مادة معينة
      */
     public function showSubject(Subject $subject)
     {
         $user = Auth::user();
-        
-        // التحقق من أن الطالب مسجل في هذه المادة
-        $isEnrolled = $user->subjects()
-            ->where('subjects.id', $subject->id)
-            ->where('enrollments.status', 'active')
-            ->exists();
-        
-        if (!$isEnrolled) {
-            abort(403, 'ليس لديك صلاحية للوصول إلى هذه المادة');
+
+        // التحقق من التسجيل في المادة
+        if (!$subject->students()->where('users.id', $user->id)->exists()) {
+            abort(403, 'يجب أن تكون مسجل في هذه المادة لعرض التقدم.');
         }
-        
-        // حساب التقدم في المادة
+
         $progress = $this->progressService->calculateSubjectProgress($user->id, $subject->id);
+        $stats = $this->progressService->getStudentSubjectStats($user->id, $subject->id);
         
-        // جلب الأقسام
-        $sections = $subject->sections()
-            ->with(['units.lessons', 'units.quizzes', 'units.questions'])
-            ->orderBy('order')
-            ->get();
-        
-        // حساب التقدم لكل قسم
+        // جلب الأقسام مع التقدم
+        $sections = $subject->sections()->where('is_active', true)->get();
         $sectionsProgress = [];
         foreach ($sections as $section) {
-            $sectionProgress = $this->progressService->calculateSectionProgress($user->id, $section->id);
-            $sectionsProgress[$section->id] = $sectionProgress;
+            $sectionsProgress[$section->id] = $this->progressService->calculateSectionProgress($user->id, $section->id);
         }
         
-        return view('student.pages.progress.subject', compact('subject', 'progress', 'sections', 'sectionsProgress'));
+        return view('student.pages.progress.subject', [
+            'subject' => $subject,
+            'progress' => $progress,
+            'sections' => $sections,
+            'sectionsProgress' => $sectionsProgress,
+        ]);
     }
 
     /**
-     * عرض تقدم طالب في قسم معين
+     * عرض تقدم في قسم معين
      */
     public function showSection(SubjectSection $section)
     {
         $user = Auth::user();
-        
-        // التحقق من أن الطالب مسجل في مادة هذا القسم
+
+        // التحقق من التسجيل في المادة
         $subject = $section->subject;
-        $isEnrolled = $user->subjects()
-            ->where('subjects.id', $subject->id)
-            ->where('enrollments.status', 'active')
-            ->exists();
-        
-        if (!$isEnrolled) {
-            abort(403, 'ليس لديك صلاحية للوصول إلى هذا القسم');
+        if (!$subject->students()->where('users.id', $user->id)->exists()) {
+            abort(403, 'يجب أن تكون مسجل في هذه المادة لعرض التقدم.');
         }
-        
-        // جلب تفاصيل القسم مع التقدم
-        $sectionDetails = $this->progressService->getSectionDetails($user->id, $section->id);
+
         $progress = $this->progressService->calculateSectionProgress($user->id, $section->id);
         
-        return view('student.pages.progress.section', compact('section', 'progress', 'sectionDetails'));
+        return view('student.pages.progress.section', [
+            'section' => $section,
+            'subject' => $subject,
+            'progress' => $progress,
+        ]);
     }
 }
 

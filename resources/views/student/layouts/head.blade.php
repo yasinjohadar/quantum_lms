@@ -35,5 +35,3 @@
 
 <!-- Custom Css -->
 <link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}">
-
-@stack('styles')

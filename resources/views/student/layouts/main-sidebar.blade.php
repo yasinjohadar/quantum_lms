@@ -302,3 +302,103 @@
 
         </aside>
         <!-- End::app-sidebar -->
+
+        <style>
+            /* جعل الروابط غير النشطة بلون رمادي */
+            .app-sidebar .side-menu__item:not(.active) {
+                color: #6b7280 !important;
+            }
+            
+            .app-sidebar .side-menu__item:not(.active) .side-menu__label,
+            .app-sidebar .side-menu__item:not(.active) .side-menu__icon,
+            .app-sidebar .side-menu__item:not(.active) .side-menu__angle {
+                color: #6b7280 !important;
+                fill: #6b7280 !important;
+            }
+            
+            /* الروابط النشطة فقط باللون الأزرق */
+            .app-sidebar .side-menu__item.active {
+                color: #4f46e5 !important;
+            }
+            
+            .app-sidebar .side-menu__item.active .side-menu__label,
+            .app-sidebar .side-menu__item.active .side-menu__icon,
+            .app-sidebar .side-menu__item.active .side-menu__angle {
+                color: #4f46e5 !important;
+                fill: #4f46e5 !important;
+            }
+            
+            /* عند hover على الروابط غير النشطة */
+            .app-sidebar .side-menu__item:not(.active):hover {
+                color: #4f46e5 !important;
+            }
+            
+            .app-sidebar .side-menu__item:not(.active):hover .side-menu__label,
+            .app-sidebar .side-menu__item:not(.active):hover .side-menu__icon,
+            .app-sidebar .side-menu__item:not(.active):hover .side-menu__angle {
+                color: #4f46e5 !important;
+                fill: #4f46e5 !important;
+            }
+        </style>
+
+        <script>
+            // تحسين السكرول التلقائي للرابط النشط
+            (function() {
+                function scrollToActiveMenuItem() {
+                    const activeMenuItem = document.querySelector('.side-menu__item.active');
+                    if (!activeMenuItem) return;
+                    
+                    const sidebarScroll = document.getElementById('sidebar-scroll');
+                    if (!sidebarScroll) return;
+                    
+                    // التأكد من فتح القوائم الفرعية التي تحتوي على الرابط النشط
+                    let parent = activeMenuItem.closest('.slide-menu');
+                    if (parent) {
+                        let parentSlide = parent.closest('.slide.has-sub');
+                        if (parentSlide && !parentSlide.classList.contains('open')) {
+                            parentSlide.classList.add('open');
+                            parent.style.display = 'block';
+                        }
+                    }
+                    
+                    // الانتظار قليلاً لضمان تحديث العرض
+                    setTimeout(function() {
+                        // الحصول على موقع العنصر النشط
+                        const menuRect = activeMenuItem.getBoundingClientRect();
+                        const sidebarRect = sidebarScroll.getBoundingClientRect();
+                        
+                        // التحقق من أن العنصر مرئي
+                        const isVisible = (
+                            menuRect.top >= sidebarRect.top &&
+                            menuRect.bottom <= sidebarRect.bottom
+                        );
+                        
+                        if (!isVisible) {
+                            // حساب الموقع النسبي
+                            const relativeTop = menuRect.top - sidebarRect.top + sidebarScroll.scrollTop;
+                            
+                            // حساب الوسط المرئي للـ sidebar مع مساحة علوية صغيرة
+                            const sidebarHeight = sidebarRect.height;
+                            const menuItemHeight = menuRect.height;
+                            const offset = 100; // مساحة علوية
+                            const scrollPosition = relativeTop - offset;
+                            
+                            // السكرول بسلاسة للعنصر النشط
+                            sidebarScroll.scrollTo({
+                                top: Math.max(0, scrollPosition),
+                                behavior: 'smooth'
+                            });
+                        }
+                    }, 100);
+                }
+                
+                // تنفيذ السكرول بعد تحميل الصفحة
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', function() {
+                        setTimeout(scrollToActiveMenuItem, 500);
+                    });
+                } else {
+                    setTimeout(scrollToActiveMenuItem, 500);
+                }
+            })();
+        </script>

@@ -26,7 +26,15 @@ class CalendarController extends Controller
         $subjects = Subject::active()->ordered()->get();
         $classes = SchoolClass::active()->ordered()->get();
         
-        return view('admin.pages.calendar.index', compact('subjects', 'classes'));
+        // جلب الأحداث لمدة 12 شهر سابق و 12 شهر قادم
+        $start = Carbon::now()->subMonths(12)->startOfMonth();
+        $end = Carbon::now()->addMonths(12)->endOfMonth();
+        $user = Auth::user();
+        
+        $events = $this->calendarService->getEventsForUser($user, $start, $end);
+        $formattedEvents = $this->calendarService->formatEventsForCalendar($events);
+        
+        return view('admin.pages.calendar.index', compact('subjects', 'classes', 'formattedEvents'));
     }
 
     /**
@@ -34,14 +42,28 @@ class CalendarController extends Controller
      */
     public function getEvents(Request $request)
     {
-        $start = Carbon::parse($request->input('start'));
-        $end = Carbon::parse($request->input('end'));
-        $user = Auth::user();
+        try {
+            $start = Carbon::parse($request->input('start'));
+            $end = Carbon::parse($request->input('end'));
+            $user = Auth::user();
 
-        $events = $this->calendarService->getEventsForUser($user, $start, $end);
-        $formattedEvents = $this->calendarService->formatEventsForCalendar($events);
+            $events = $this->calendarService->getEventsForUser($user, $start, $end);
+            $formattedEvents = $this->calendarService->formatEventsForCalendar($events);
 
-        return response()->json($formattedEvents);
+            Log::info('Calendar events API called', [
+                'user_id' => $user->id,
+                'start' => $start->toDateString(),
+                'end' => $end->toDateString(),
+                'events_count' => count($formattedEvents),
+            ]);
+
+            return response()->json($formattedEvents);
+        } catch (\Exception $e) {
+            Log::error('Error in calendar events API: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     /**

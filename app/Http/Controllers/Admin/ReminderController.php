@@ -20,7 +20,7 @@ class ReminderController extends Controller
      */
     public function index(Request $request)
     {
-        $query = EventReminder::with(['user', 'event']);
+        $query = EventReminder::with(['user']);
 
         if ($request->filled('event_type')) {
             $query->where('event_type', $request->input('event_type'));

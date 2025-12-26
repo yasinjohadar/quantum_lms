@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class AnalyticsEvent extends Model
 {
@@ -21,6 +22,8 @@ class AnalyticsEvent extends Model
 
     protected $casts = [
         'metadata' => 'array',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     /**
@@ -64,38 +67,29 @@ class AnalyticsEvent extends Model
     }
 
     /**
-     * نطاق الفلترة حسب المستخدم
+     * Scopes
      */
     public function scopeForUser($query, $userId)
     {
         return $query->where('user_id', $userId);
     }
 
-    /**
-     * نطاق الفلترة حسب المادة
-     */
     public function scopeForSubject($query, $subjectId)
     {
         return $query->where('subject_id', $subjectId);
     }
 
-    /**
-     * نطاق الفلترة حسب نوع الحدث
-     */
-    public function scopeOfType($query, $eventType)
+    public function scopeForEventType($query, $eventType)
     {
         return $query->where('event_type', $eventType);
     }
 
-    /**
-     * نطاق الفلترة حسب الفترة الزمنية
-     */
-    public function scopeInPeriod($query, $startDate, $endDate = null)
+    public function scopeInPeriod($query, $start, $end = null)
     {
-        $query->where('created_at', '>=', $startDate);
+        $query->where('created_at', '>=', $start);
         
-        if ($endDate) {
-            $query->where('created_at', '<=', $endDate);
+        if ($end) {
+            $query->where('created_at', '<=', $end);
         }
         
         return $query;

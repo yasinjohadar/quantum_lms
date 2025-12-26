@@ -391,6 +391,54 @@
             text-align: center;
             font-weight: 500;
         }
+
+        .demo-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .btn-demo {
+            flex: 1;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            background: var(--bg-light);
+            color: var(--text-main);
+            cursor: pointer;
+            font-family: 'Cairo', sans-serif;
+            border-radius: 0;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-demo:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .btn-demo-admin {
+            border-color: #ef4444;
+        }
+
+        .btn-demo-admin:hover {
+            background: #ef4444;
+            border-color: #ef4444;
+        }
+
+        .btn-demo-student {
+            border-color: #10b981;
+        }
+
+        .btn-demo-student:hover {
+            background: #10b981;
+            border-color: #10b981;
+        }
     </style>
     <script>
         function togglePassword() {
@@ -403,6 +451,19 @@
             } else {
                 passwordInput.type = 'password';
                 toggleIcon.textContent = '👁';
+            }
+        }
+
+        function fillDemoCredentials(type) {
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            
+            if (type === 'admin') {
+                emailInput.value = 'admin@admin.com';
+                passwordInput.value = '123456789';
+            } else if (type === 'student') {
+                emailInput.value = 'student@gmail.com';
+                passwordInput.value = '123456789';
             }
         }
     </script>
@@ -528,6 +589,87 @@
             </div>
 
             <div class="actions">
+                <div class="demo-buttons">
+                    <button type="button" class="btn-demo btn-demo-admin" onclick="fillDemoCredentials('admin')">
+                        <span>👤</span>
+                        <span>تسجيل دخول كمدير</span>
+                    </button>
+                    <button type="button" class="btn-demo btn-demo-student" onclick="fillDemoCredentials('student')">
+                        <span>🎓</span>
+                        <span>تسجيل دخول كطالب</span>
+                    </button>
+                </div>
+                <button type="submit" class="btn-primary">
+                    <span>تسجيل الدخول</span>
+                    <span class="btn-primary-icon">→</span>
+                </button>
+            </div>
+
+            <div class="meta">
+                <span>معلومات الدخول الخاصة بك سرية.</span>
+                @if (Route::has('register'))
+                    <span>
+                        لا تملك حساباً؟
+                        <a href="{{ route('register') }}">إنشاء حساب</a>
+                    </span>
+                @endif
+            </div>
+        </form>
+
+        <div class="footer-note">
+            Quantum LMS &copy; {{ date('Y') }} &mdash; جميع الحقوق محفوظة.
+        </div>
+    </div>
+</div>
+</body>
+</html>
+
+                        type="password"
+                        name="password"
+                        required
+                        autocomplete="current-password"
+                        placeholder="••••••••"
+                    >
+                    <div class="field-icon">🔒</div>
+                    <button type="button" class="password-toggle" onclick="togglePassword()" aria-label="إظهار/إخفاء كلمة المرور">
+                        <span id="password-toggle-icon">👁</span>
+                    </button>
+                </div>
+                @if ($errors->has('password'))
+                    <div class="field-error">
+                        <ul>
+                            @foreach ($errors->get('password') as $message)
+                                <li>{{ $message }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+            </div>
+
+            <div class="row-inline">
+                <label class="remember" for="remember_me">
+                    <input id="remember_me" type="checkbox" name="remember">
+                    <span>تذكرني في هذا الجهاز</span>
+                </label>
+
+                @if (Route::has('password.request'))
+                    <a class="link-muted" href="{{ route('password.request') }}">
+                        نسيت كلمة المرور؟
+                    </a>
+                @endif
+            </div>
+
+            <div class="actions">
+                <div class="demo-buttons">
+                    <button type="button" class="btn-demo btn-demo-admin" onclick="fillDemoCredentials('admin')">
+                        <span>👤</span>
+                        <span>تسجيل دخول كمدير</span>
+                    </button>
+                    <button type="button" class="btn-demo btn-demo-student" onclick="fillDemoCredentials('student')">
+                        <span>🎓</span>
+                        <span>تسجيل دخول كطالب</span>
+                    </button>
+                </div>
                 <button type="submit" class="btn-primary">
                     <span>تسجيل الدخول</span>
                     <span class="btn-primary-icon">→</span>

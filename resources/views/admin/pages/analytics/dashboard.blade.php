@@ -173,32 +173,78 @@
 </div>
 @stop
 
-@section('scripts')
-    @parent
-    <!-- ApexCharts -->
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+@section('js')
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const chartConfig = @json($systemUsageChart);
+            const chartElement = document.getElementById('system-usage-chart');
 
-            if (chartConfig && chartConfig.options && document.getElementById('system-usage-chart')) {
-                const chart = new ApexCharts(
-                    document.querySelector('#system-usage-chart'),
-                    {
-                        chart: chartConfig.options.chart || { type: 'area', height: 350 },
-                        series: chartConfig.options.series || [],
-                        xaxis: chartConfig.options.xaxis || {},
-                        title: chartConfig.options.title || {},
-                        dataLabels: chartConfig.options.dataLabels || { enabled: false },
-                        stroke: chartConfig.options.stroke || { curve: 'smooth' },
-                        colors: chartConfig.options.colors || ['#3b82f6'],
-                        tooltip: chartConfig.options.tooltip || {},
+            if (!chartElement) {
+                console.error('Chart element not found');
+                return;
+            }
+
+            if (!chartConfig || !chartConfig.options) {
+                console.error('Chart config is missing');
+                return;
+            }
+
+            const options = chartConfig.options;
+
+            // التحقق من وجود البيانات
+            if (!options.series || !options.series.length || !options.series[0].data || options.series[0].data.length === 0) {
+                chartElement.innerHTML = '<div class="text-center text-muted p-5"><p>لا توجد بيانات كافية لعرض المخطط</p></div>';
+                return;
+            }
+
+            const chartOptions = {
+                chart: {
+                    type: 'area',
+                    height: 350,
+                    toolbar: {
+                        show: true
+                    },
+                    zoom: {
+                        enabled: true
                     }
-                );
+                },
+                series: options.series || [],
+                xaxis: options.xaxis || {},
+                title: options.title || {},
+                dataLabels: {
+                    enabled: false
+                },
+                stroke: {
+                    curve: 'smooth',
+                    width: 2
+                },
+                colors: ['#3b82f6'],
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shadeIntensity: 1,
+                        opacityFrom: 0.7,
+                        opacityTo: 0.3,
+                        stops: [0, 90, 100]
+                    }
+                },
+                tooltip: {
+                    enabled: true
+                },
+                grid: {
+                    borderColor: '#e7e7e7',
+                    strokeDashArray: 4
+                }
+            };
+
+            try {
+                const chart = new ApexCharts(chartElement, chartOptions);
                 chart.render();
+            } catch (error) {
+                console.error('Error rendering chart:', error);
+                chartElement.innerHTML = '<div class="text-center text-danger p-5"><p>خطأ في تحميل المخطط: ' + error.message + '</p></div>';
             }
         });
     </script>
 @stop
-
 

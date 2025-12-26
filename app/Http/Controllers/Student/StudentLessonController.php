@@ -12,12 +12,21 @@ use App\Models\QuizAttempt;
 use App\Models\SchoolClass;
 use App\Models\LessonCompletion;
 use App\Services\GamificationService;
+use App\Services\AnalyticsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class StudentLessonController extends Controller
 {
+    protected AnalyticsService $analyticsService;
+
+    public function __construct(AnalyticsService $analyticsService)
+    {
+        $this->middleware(['auth', 'check.user.active']);
+        $this->analyticsService = $analyticsService;
+    }
+
     /**
      * عرض الصفوف المنضم إليها الطالب مع المواد داخل كل صف
      */
@@ -234,6 +243,13 @@ class StudentLessonController extends Controller
         $lessonCompletion = LessonCompletion::where('user_id', $user->id)
             ->where('lesson_id', $lesson->id)
             ->first();
+
+        // تسجيل حدث في Analytics
+        $this->analyticsService->trackEvent('view_lesson', $user->id, [
+            'lesson_id' => $lesson->id,
+            'subject_id' => $subject->id,
+            'unit_id' => $lesson->unit_id,
+        ]);
         
         return view('student.pages.lessons.lesson-show', compact(
             'lesson',
@@ -298,8 +314,20 @@ class StudentLessonController extends Controller
             $gamificationService = app(GamificationService::class);
             if ($request->status === 'attended') {
                 $gamificationService->processLessonAttendance($completion);
+                // تسجيل حدث في Analytics
+                $this->analyticsService->trackEvent('attend_lesson', $user->id, [
+                    'lesson_id' => $lesson->id,
+                    'subject_id' => $subject->id,
+                    'unit_id' => $lesson->unit_id,
+                ]);
             } elseif ($request->status === 'completed') {
                 $gamificationService->processLessonCompletion($completion);
+                // تسجيل حدث في Analytics
+                $this->analyticsService->trackEvent('complete_lesson', $user->id, [
+                    'lesson_id' => $lesson->id,
+                    'subject_id' => $subject->id,
+                    'unit_id' => $lesson->unit_id,
+                ]);
             }
             
             DB::commit();
@@ -318,4 +346,3 @@ class StudentLessonController extends Controller
         }
     }
 }
-

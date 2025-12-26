@@ -69,8 +69,13 @@ class StudentLibraryController extends Controller
 
         $item->load(['category', 'subject', 'uploader', 'tags', 'ratings.user']);
         $userRating = $item->ratings()->where('user_id', $user->id)->first();
+        
+        // التحقق من كون العنصر في المفضلة
+        $isFavorited = LibraryFavorite::where('user_id', $user->id)
+            ->where('library_item_id', $item->id)
+            ->exists();
 
-        return view('student.pages.library.show', compact('item', 'userRating'));
+        return view('student.pages.library.show', compact('item', 'userRating', 'isFavorited'));
     }
 
     /**
@@ -271,5 +276,44 @@ class StudentLibraryController extends Controller
         $categories = LibraryCategory::active()->ordered()->get();
 
         return view('student.pages.library.favorites', compact('items', 'categories'));
+    }
+
+    /**
+     * تبديل حالة المفضلة
+     */
+    public function toggleFavorite(Request $request, LibraryItem $item)
+    {
+        $user = Auth::user();
+
+        // التحقق من إمكانية الوصول
+        if (!$this->libraryService->canUserAccess($item, $user)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'ليس لديك صلاحية للوصول إلى هذا العنصر.'
+            ], 403);
+        }
+
+        $favorite = LibraryFavorite::where('user_id', $user->id)
+            ->where('library_item_id', $item->id)
+            ->first();
+
+        if ($favorite) {
+            // إزالة من المفضلة
+            $favorite->delete();
+            $isFavorited = false;
+        } else {
+            // إضافة إلى المفضلة
+            LibraryFavorite::create([
+                'user_id' => $user->id,
+                'library_item_id' => $item->id,
+            ]);
+            $isFavorited = true;
+        }
+
+        return response()->json([
+            'success' => true,
+            'is_favorited' => $isFavorited,
+            'message' => $isFavorited ? 'تمت إضافة العنصر إلى المفضلة.' : 'تمت إزالة العنصر من المفضلة.'
+        ]);
     }
 }

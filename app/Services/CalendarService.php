@@ -20,17 +20,19 @@ class CalendarService
 
         // أحداث التقويم العامة
         $calendarEvents = $this->getCalendarEvents($user, $startDate, $endDate);
-        $events = $events->merge($calendarEvents);
+        $events = $events->concat($calendarEvents);
 
-        // أحداث الاختبارات
-        $quizEvents = $this->getQuizzesEvents($user, $startDate, $endDate);
-        $events = $events->merge($quizEvents);
+        // أحداث الاختبارات (للطلاب فقط)
+        if ($user->hasRole('student')) {
+            $quizEvents = $this->getQuizzesEvents($user, $startDate, $endDate);
+            $events = $events->concat($quizEvents);
 
-        // أحداث الواجبات
-        $assignmentEvents = $this->getAssignmentsEvents($user, $startDate, $endDate);
-        $events = $events->merge($assignmentEvents);
+            // أحداث الواجبات (للطلاب فقط)
+            $assignmentEvents = $this->getAssignmentsEvents($user, $startDate, $endDate);
+            $events = $events->concat($assignmentEvents);
+        }
 
-        return $events->sortBy('start_date');
+        return $events->sortBy('start')->values();
     }
 
     /**
@@ -52,23 +54,28 @@ class CalendarService
                   });
             });
         }
+        // إذا كان admin، يجلب جميع الأحداث (لا فلترة)
 
-        return $query->get()->map(function($event) {
+        $dbEvents = $query->get();
+        
+        $events = $dbEvents->map(function($event) {
             return [
                 'id' => 'calendar_' . $event->id,
                 'title' => $event->title,
-                'description' => $event->description,
+                'description' => $event->description ?? '',
                 'start' => $event->start_date->toIso8601String(),
                 'end' => $event->end_date ? $event->end_date->toIso8601String() : null,
-                'allDay' => $event->is_all_day,
+                'allDay' => (bool) $event->is_all_day,
                 'color' => $event->getColor(),
-                'location' => $event->location,
+                'location' => $event->location ?? '',
                 'type' => 'calendar_event',
                 'event_type' => $event->event_type,
                 'event_id' => $event->id,
                 'url' => null,
             ];
-        });
+        })->toArray();
+
+        return collect($events);
     }
 
     /**
@@ -94,22 +101,24 @@ class CalendarService
                       })
                       ->get();
 
-        return $quizzes->map(function($quiz) {
+        $events = $quizzes->map(function($quiz) {
             return [
                 'id' => 'quiz_' . $quiz->id,
                 'title' => 'اختبار: ' . $quiz->title,
-                'description' => $quiz->description,
+                'description' => $quiz->description ?? '',
                 'start' => $quiz->available_from->toIso8601String(),
                 'end' => $quiz->available_to ? $quiz->available_to->toIso8601String() : null,
                 'allDay' => false,
                 'color' => '#f59e0b',
-                'location' => null,
+                'location' => '',
                 'type' => 'quiz',
                 'event_type' => 'quiz',
                 'event_id' => $quiz->id,
                 'url' => route('student.quizzes.show', $quiz->id),
             ];
-        });
+        })->toArray();
+
+        return collect($events);
     }
 
     /**
@@ -130,22 +139,24 @@ class CalendarService
                                  })
                                  ->get();
 
-        return $assignments->map(function($assignment) {
+        $events = $assignments->map(function($assignment) {
             return [
                 'id' => 'assignment_' . $assignment->id,
                 'title' => 'واجب: ' . $assignment->title,
-                'description' => $assignment->description,
+                'description' => $assignment->description ?? '',
                 'start' => $assignment->due_date->toIso8601String(),
                 'end' => $assignment->due_date->copy()->addHours(1)->toIso8601String(),
                 'allDay' => false,
                 'color' => '#ef4444',
-                'location' => null,
+                'location' => '',
                 'type' => 'assignment',
                 'event_type' => 'assignment',
                 'event_id' => $assignment->id,
                 'url' => route('student.assignments.show', $assignment->id),
             ];
-        });
+        })->toArray();
+
+        return collect($events);
     }
 
     /**
@@ -190,4 +201,3 @@ class CalendarService
                            ->exists();
     }
 }
-

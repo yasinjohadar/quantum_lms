@@ -50,21 +50,21 @@
                                         <div class="border rounded p-2">
                                             <h4 class="mb-0 text-success">{{ $progress['lessons_completed'] ?? 0 }}</h4>
                                             <small class="text-muted">دروس مكتملة</small>
-                                            <div><small class="text-muted">من {{ $progress['total_lessons'] ?? 0 }}</small></div>
+                                            <div><small class="text-muted">من {{ $progress['lessons_total'] ?? 0 }}</small></div>
                                         </div>
                                     </div>
                                     <div class="col-6 mb-3">
                                         <div class="border rounded p-2">
                                             <h4 class="mb-0 text-info">{{ $progress['quizzes_completed'] ?? 0 }}</h4>
                                             <small class="text-muted">اختبارات</small>
-                                            <div><small class="text-muted">من {{ $progress['total_quizzes'] ?? 0 }}</small></div>
+                                            <div><small class="text-muted">من {{ $progress['quizzes_total'] ?? 0 }}</small></div>
                                         </div>
                                     </div>
                                     <div class="col-6">
                                         <div class="border rounded p-2">
-                                            <h4 class="mb-0 text-warning">{{ $progress['questions_answered'] ?? 0 }}</h4>
+                                            <h4 class="mb-0 text-warning">{{ $progress['questions_completed'] ?? 0 }}</h4>
                                             <small class="text-muted">أسئلة</small>
-                                            <div><small class="text-muted">من {{ $progress['total_questions'] ?? 0 }}</small></div>
+                                            <div><small class="text-muted">من {{ $progress['questions_total'] ?? 0 }}</small></div>
                                         </div>
                                     </div>
                                     <div class="col-6">
@@ -160,4 +160,3 @@
 </div>
 <!-- End::app-content -->
 @stop
-

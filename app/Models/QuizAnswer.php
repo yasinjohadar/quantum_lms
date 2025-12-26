@@ -391,4 +391,3 @@ class QuizAnswer extends Model
         $this->attempt->calculateScore();
     }
 }
-

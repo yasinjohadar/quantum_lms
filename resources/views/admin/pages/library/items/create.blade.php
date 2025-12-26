@@ -110,18 +110,18 @@
                         <div class="col-12">
                             <h6 class="text-primary mb-3">الملف أو الرابط</h6>
                         </div>
-                        <div class="col-md-6" id="file-upload-section">
+                        <div class="col-md-12" id="file-upload-section">
                             <label class="form-label">رفع ملف <span class="text-danger">*</span></label>
-                            <input type="file" name="file" class="form-control @error('file') is-invalid @enderror" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4,.webm">
+                            <input type="file" name="file" id="file-input" class="form-control @error('file') is-invalid @enderror" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4,.webm">
                             <small class="form-text text-muted">الحد الأقصى: 50 ميجابايت</small>
                             @error('file')
-                            <div class="invalid-feedback">{{ $message }}</div>
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
-                        <div class="col-md-6" id="external-url-section" style="display: none;">
+                        <div class="col-md-12" id="external-url-section" style="display: none;">
                             <div class="form-floating">
-                                <input type="url" name="external_url" class="form-control @error('external_url') is-invalid @enderror" placeholder="الرابط الخارجي" value="{{ old('external_url') }}">
-                                <label>الرابط الخارجي</label>
+                                <input type="url" name="external_url" id="external-url-input" class="form-control @error('external_url') is-invalid @enderror" placeholder="https://example.com" value="{{ old('external_url') }}">
+                                <label>الرابط الخارجي <span class="text-danger">*</span></label>
                                 @error('external_url')
                                 <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -177,31 +177,103 @@
     </div>
 </div>
 
-@push('scripts')
+@section('js')
 <script>
-    document.getElementById('type').addEventListener('change', function() {
-        const type = this.value;
+    document.addEventListener('DOMContentLoaded', function() {
+        const typeSelect = document.getElementById('type');
         const fileSection = document.getElementById('file-upload-section');
         const urlSection = document.getElementById('external-url-section');
+        const fileInput = document.getElementById('file-input');
+        const urlInput = document.getElementById('external-url-input');
         
-        if (type === 'link') {
-            fileSection.style.display = 'none';
-            urlSection.style.display = 'block';
-            fileSection.querySelector('input').removeAttribute('required');
-            urlSection.querySelector('input').setAttribute('required', 'required');
-        } else {
-            fileSection.style.display = 'block';
-            urlSection.style.display = 'none';
-            fileSection.querySelector('input').setAttribute('required', 'required');
-            urlSection.querySelector('input').removeAttribute('required');
+        if (!typeSelect || !fileSection || !urlSection) {
+            console.error('Missing required elements for library item form toggle');
+            return;
         }
+        
+        function toggleSections() {
+            const type = typeSelect.value;
+            
+            console.log('Type changed to:', type); // للتحقق
+            
+            if (type === 'link') {
+                // إظهار حقل الرابط وإخفاء حقل الملف
+                fileSection.style.display = 'none';
+                urlSection.style.display = 'block';
+                
+                // إزالة required من الملف وإضافته للرابط
+                if (fileInput) {
+                    fileInput.removeAttribute('required');
+                    fileInput.value = ''; // مسح قيمة الملف
+                }
+                if (urlInput) {
+                    urlInput.setAttribute('required', 'required');
+                }
+            } else if (type) {
+                // إظهار حقل الملف وإخفاء حقل الرابط
+                fileSection.style.display = 'block';
+                urlSection.style.display = 'none';
+                
+                // إضافة required للملف وإزالته من الرابط
+                if (fileInput) {
+                    fileInput.setAttribute('required', 'required');
+                }
+                if (urlInput) {
+                    urlInput.removeAttribute('required');
+                    urlInput.value = ''; // مسح قيمة الرابط
+                }
+            } else {
+                // إذا لم يتم اختيار نوع، إخفاء كلا الحقلين
+                fileSection.style.display = 'block';
+                urlSection.style.display = 'none';
+                if (fileInput) fileInput.removeAttribute('required');
+                if (urlInput) urlInput.removeAttribute('required');
+            }
+        }
+        
+        // إضافة event listener عند تغيير النوع
+        typeSelect.addEventListener('change', toggleSections);
+        
+        // تنفيذ عند تحميل الصفحة
+        toggleSections();
     });
-    
-    // Trigger on page load if type is already selected
-    if (document.getElementById('type').value === 'link') {
-        document.getElementById('type').dispatchEvent(new Event('change'));
-    }
 </script>
-@endpush
+@stop
+@stop
+
+
+                if (urlInput) {
+                    urlInput.setAttribute('required', 'required');
+                }
+            } else if (type) {
+                // إظهار حقل الملف وإخفاء حقل الرابط
+                fileSection.style.display = 'block';
+                urlSection.style.display = 'none';
+                
+                // إضافة required للملف وإزالته من الرابط
+                if (fileInput) {
+                    fileInput.setAttribute('required', 'required');
+                }
+                if (urlInput) {
+                    urlInput.removeAttribute('required');
+                    urlInput.value = ''; // مسح قيمة الرابط
+                }
+            } else {
+                // إذا لم يتم اختيار نوع، إخفاء كلا الحقلين
+                fileSection.style.display = 'block';
+                urlSection.style.display = 'none';
+                if (fileInput) fileInput.removeAttribute('required');
+                if (urlInput) urlInput.removeAttribute('required');
+            }
+        }
+        
+        // إضافة event listener عند تغيير النوع
+        typeSelect.addEventListener('change', toggleSections);
+        
+        // تنفيذ عند تحميل الصفحة
+        toggleSections();
+    });
+</script>
+@stop
 @stop
 

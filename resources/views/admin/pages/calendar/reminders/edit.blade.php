@@ -67,12 +67,12 @@
                                 </select>
                             </div>
 
-                            <div id="single_reminder" class="mb-3" style="display: none;">
+                            <div id="single_reminder" class="mb-3" style="{{ old('reminder_type', $reminder->reminder_type) == 'single' ? '' : 'display: none;' }}">
                                 <label for="custom_minutes" class="form-label">عدد الدقائق قبل الحدث <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="custom_minutes" name="custom_minutes" value="{{ old('custom_minutes', $reminder->custom_minutes) }}" min="1">
+                                <input type="number" class="form-control" id="custom_minutes" name="custom_minutes" value="{{ old('custom_minutes', $reminder->custom_minutes) }}" min="1" {{ old('reminder_type', $reminder->reminder_type) == 'single' ? 'required' : '' }}>
                             </div>
 
-                            <div id="multiple_reminders" class="mb-3" style="display: none;">
+                            <div id="multiple_reminders" class="mb-3" style="{{ old('reminder_type', $reminder->reminder_type) == 'multiple' ? '' : 'display: none;' }}">
                                 <label class="form-label">أوقات التذكير (بالساعات) <span class="text-danger">*</span></label>
                                 <div class="d-flex gap-2 flex-wrap">
                                     <div class="form-check">
@@ -117,16 +117,32 @@ document.addEventListener('DOMContentLoaded', function() {
         if (reminderType.value === 'single') {
             singleReminder.style.display = 'block';
             multipleReminders.style.display = 'none';
-            document.getElementById('custom_minutes').required = true;
+            const customMinutesInput = document.getElementById('custom_minutes');
+            customMinutesInput.setAttribute('required', 'required');
+            customMinutesInput.removeAttribute('disabled');
         } else if (reminderType.value === 'multiple') {
             singleReminder.style.display = 'none';
             multipleReminders.style.display = 'block';
-            document.getElementById('custom_minutes').required = false;
+            const customMinutesInput = document.getElementById('custom_minutes');
+            customMinutesInput.removeAttribute('required');
+            customMinutesInput.value = '';
+        } else {
+            singleReminder.style.display = 'none';
+            multipleReminders.style.display = 'none';
+            document.getElementById('custom_minutes').removeAttribute('required');
         }
     }
 
     reminderType.addEventListener('change', toggleReminderFields);
-    toggleReminderFields(); // Initialize
+    toggleReminderFields(); // Initialize on page load
+});
+</script>
+@endpush
+@stop
+
+
+    reminderType.addEventListener('change', toggleReminderFields);
+    toggleReminderFields(); // Initialize on page load
 });
 </script>
 @endpush
