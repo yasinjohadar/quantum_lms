@@ -110,6 +110,28 @@
                             </a>
                         </li>
 
+                        <!-- الجلسات الحية -->
+                        <li class="slide {{ request()->is('student/live-sessions*') ? 'active' : '' }}">
+                            <a href="{{ route('student.live-sessions.index') }}" class="side-menu__item {{ request()->is('student/live-sessions*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                </svg>
+                                <span class="side-menu__label">الجلسات الحية</span>
+                            </a>
+                        </li>
+
+                        <!-- سجل الحضور -->
+                        <li class="slide {{ request()->is('student/attendance*') ? 'active' : '' }}">
+                            <a href="{{ route('student.attendance.index') }}" class="side-menu__item {{ request()->is('student/attendance*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                                </svg>
+                                <span class="side-menu__label">سجل الحضور</span>
+                            </a>
+                        </li>
+
                         <!-- التحفيز والإنجازات -->
                         <li class="slide has-sub {{ request()->is('student/gamification*') || request()->is('student/tasks*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">

@@ -143,6 +143,40 @@
                             </a>
                         </li>
 
+                        <li class="slide has-sub {{ request()->is('admin/live-sessions*') || request()->is('admin/zoom*') ? 'open' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                </svg>
+                                <span class="side-menu__label">الجلسات الحية</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">الجلسات الحية</a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/live-sessions') && !request()->is('admin/live-sessions/*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.live-sessions.index') }}" class="side-menu__item {{ request()->is('admin/live-sessions') && !request()->is('admin/live-sessions/*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                        </svg>
+                                        <span class="side-menu__label">إدارة الجلسات</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/zoom/settings*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.zoom.settings.index') }}" class="side-menu__item {{ request()->is('admin/zoom/settings*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94L14.4 2.81c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                                        </svg>
+                                        <span class="side-menu__label">إعدادات Zoom</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
                         <li class="slide {{ request()->is('admin/reviews*') ? 'active' : '' }}">
                             <a href="{{ route('admin.reviews.index') }}" class="side-menu__item {{ request()->is('admin/reviews*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">

@@ -23,6 +23,9 @@ use App\Http\Controllers\Admin\AssignmentSubmissionController;
 use App\Http\Controllers\Api\SessionActivityController;
 use App\Http\Controllers\Admin\AnalyticsDashboardController;
 use App\Http\Controllers\Admin\NotificationPreferenceController as AdminNotificationPreferenceController;
+use App\Http\Controllers\Admin\ZoomMeetingController;
+use App\Http\Controllers\Admin\AttendanceController;
+use App\Http\Controllers\Admin\LiveSessionController;
 
 Route::middleware(['auth', 'check.user.active', 'admin'])
     ->prefix('admin')
@@ -500,4 +503,49 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             Route::get('/settings', [\App\Http\Controllers\Admin\ReviewController::class, 'settings'])->name('settings');
             Route::post('/settings', [\App\Http\Controllers\Admin\ReviewController::class, 'saveSettings'])->name('settings.save');
         });
+
+        // Live Sessions Routes
+        Route::resource('live-sessions', LiveSessionController::class);
+
+        // Zoom Settings Routes
+        Route::prefix('zoom')->name('zoom.')->group(function () {
+            Route::get('/settings', [\App\Http\Controllers\Admin\ZoomSettingsController::class, 'index'])->name('settings.index');
+            Route::put('/settings', [\App\Http\Controllers\Admin\ZoomSettingsController::class, 'update'])->name('settings.update');
+            
+            // Account Management
+            Route::post('/accounts', [\App\Http\Controllers\Admin\ZoomSettingsController::class, 'storeAccount'])->name('accounts.store');
+            Route::put('/accounts/{account}', [\App\Http\Controllers\Admin\ZoomSettingsController::class, 'updateAccount'])->name('accounts.update');
+            Route::delete('/accounts/{account}', [\App\Http\Controllers\Admin\ZoomSettingsController::class, 'deleteAccount'])->name('accounts.delete');
+            Route::post('/accounts/{account}/set-default', [\App\Http\Controllers\Admin\ZoomSettingsController::class, 'setDefault'])->name('accounts.set-default');
+        });
+
+        // Zoom Integration Routes
+        Route::prefix('live-sessions/{liveSession}/zoom')
+            ->name('live-sessions.zoom.')
+            ->group(function () {
+                Route::post('/create', [ZoomMeetingController::class, 'create'])
+                    ->name('create');
+                Route::post('/update', [ZoomMeetingController::class, 'update'])
+                    ->name('update');
+                Route::post('/cancel', [ZoomMeetingController::class, 'cancel'])
+                    ->name('cancel');
+                Route::get('/sync', [ZoomMeetingController::class, 'sync'])
+                    ->name('sync');
+                Route::get('/manage', [ZoomMeetingController::class, 'manage'])
+                    ->name('manage');
+            });
+
+        // Attendance management routes
+        Route::prefix('live-sessions/{liveSession}/attendance')
+            ->name('live-sessions.attendance.')
+            ->group(function () {
+                Route::get('/', [AttendanceController::class, 'index'])
+                    ->name('index');
+                Route::get('/users/{user}', [AttendanceController::class, 'show'])
+                    ->name('show');
+                Route::get('/export/{format}', [AttendanceController::class, 'export'])
+                    ->name('export');
+                Route::get('/stats', [AttendanceController::class, 'stats'])
+                    ->name('stats');
+            });
     });

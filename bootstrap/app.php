@@ -18,8 +18,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'role-list' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'check.user.active' => \App\Http\Middleware\CheckUserActive::class,
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'zoom.join.window' => \App\Http\Middleware\EnsureZoomJoinWindow::class,
         ]);
     })
+    ->withProviders([
+        \App\Providers\PermissionServiceProvider::class,
+    ])
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })->create();

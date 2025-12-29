@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\LiveSession;
+use App\Policies\LiveSessionPolicy;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
@@ -14,7 +16,8 @@ class PermissionServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Register LiveSession Policy
+        Gate::policy(LiveSession::class, LiveSessionPolicy::class);
     }
 
     /**

@@ -9,6 +9,9 @@ use App\Http\Controllers\Student\StudentQuizController;
 use App\Http\Controllers\Student\StudentProgressController;
 use App\Http\Controllers\Student\StudentAssignmentController;
 use App\Http\Controllers\Student\NotificationPreferenceController as StudentNotificationPreferenceController;
+use App\Http\Controllers\Student\ZoomJoinController;
+use App\Http\Controllers\Student\AttendanceController;
+use App\Http\Controllers\Student\LiveSessionController;
 
 Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student.')->group(function () {
     // لوحة تحكم الطالب
@@ -145,4 +148,37 @@ Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student
     Route::post('/quizzes/attempt/{attempt}/submit', [StudentQuizController::class, 'submitQuiz'])->name('quizzes.submit');
     Route::get('/quizzes/{quiz}/attempt/{attempt}/result', [StudentQuizController::class, 'showResult'])->name('quizzes.result');
     Route::get('/quizzes/attempt/{attempt}/time', [StudentQuizController::class, 'getRemainingTime'])->name('quizzes.time');
+
+    // Live Sessions Routes
+    Route::get('/live-sessions', [LiveSessionController::class, 'index'])->name('live-sessions.index');
+    Route::get('/live-sessions/{liveSession}', [LiveSessionController::class, 'show'])->name('live-sessions.show');
+
+    // Zoom Integration Routes
+    Route::prefix('live-sessions/{liveSession}/zoom')
+        ->name('live-sessions.zoom.')
+        ->middleware(['throttle:10,1']) // 10 requests per minute
+        ->group(function () {
+            Route::post('/join-token', [ZoomJoinController::class, 'getJoinToken'])
+                ->name('join-token');
+            Route::get('/join', [ZoomJoinController::class, 'join'])
+                ->name('join');
+            Route::post('/on-join', [ZoomJoinController::class, 'onJoin'])
+                ->name('on-join');
+            Route::post('/on-leave', [ZoomJoinController::class, 'onLeave'])
+                ->name('on-leave');
+        });
+
+    // Attendance routes for students
+    Route::prefix('attendance')
+        ->name('attendance.')
+        ->group(function () {
+            Route::get('/', [AttendanceController::class, 'index'])
+                ->name('index');
+            Route::get('/sessions/{liveSession}', [AttendanceController::class, 'show'])
+                ->name('show');
+            Route::get('/stats', [AttendanceController::class, 'stats'])
+                ->name('stats');
+            Route::get('/stats/subject/{subject}', [AttendanceController::class, 'stats'])
+                ->name('stats.subject');
+        });
 });

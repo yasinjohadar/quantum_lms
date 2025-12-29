@@ -43,6 +43,7 @@ class SystemSetting extends Model
         'notifications' => 'الإشعارات',
         'export' => 'التصدير',
         'gamification' => 'التحفيز',
+        'zoom' => 'Zoom',
     ];
 
     /**
