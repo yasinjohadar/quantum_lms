@@ -13,7 +13,7 @@ class LoginLogService
      */
     public static function logLogin(
         ?User $user,
-        Request|object $request,
+        Request $request,
         bool $isSuccessful,
         ?string $failureReason = null
     ): LoginLog {
