@@ -54,7 +54,7 @@ class CalendarService
                   });
             });
         }
-        // إذا كان admin، يجلب جميع الأحداث (لا فلترة)
+        // إذا كان admin أو teacher، يجلب جميع الأحداث (لا فلترة)
 
         $dbEvents = $query->get();
         
@@ -165,13 +165,21 @@ class CalendarService
     public function formatEventsForCalendar(Collection $events): array
     {
         return $events->map(function($event) {
+            // التأكد من أن start و end بتنسيق صحيح
+            $start = is_string($event['start']) ? $event['start'] : Carbon::parse($event['start'])->toIso8601String();
+            $end = isset($event['end']) && $event['end'] 
+                ? (is_string($event['end']) ? $event['end'] : Carbon::parse($event['end'])->toIso8601String())
+                : null;
+            
             return [
-                'id' => $event['id'],
-                'title' => $event['title'],
-                'start' => $event['start'],
-                'end' => $event['end'] ?? null,
+                'id' => $event['id'] ?? null,
+                'title' => $event['title'] ?? 'بدون عنوان',
+                'start' => $start,
+                'end' => $end,
                 'allDay' => $event['allDay'] ?? false,
-                'color' => $event['color'] ?? '#3b82f6',
+                'backgroundColor' => $event['color'] ?? '#3b82f6',
+                'borderColor' => $event['color'] ?? '#3b82f6',
+                'textColor' => '#ffffff',
                 'extendedProps' => [
                     'description' => $event['description'] ?? null,
                     'location' => $event['location'] ?? null,

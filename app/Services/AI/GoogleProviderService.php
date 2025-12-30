@@ -13,7 +13,28 @@ class GoogleProviderService extends AIProviderService
     public function chat(array $messages, array $options = []): array
     {
         $url = $this->getBaseUrl() ?? self::BASE_URL;
-        $endpoint = $this->getApiEndpoint() ?? '/models/' . $this->model->model_key . ':generateContent';
+        
+        // إذا كان endpoint مخصص، استخدمه. وإلا استخدم الافتراضي
+        $customEndpoint = $this->getApiEndpoint();
+        if ($customEndpoint) {
+            // تأكد من أن endpoint يبدأ بـ /
+            $endpoint = str_starts_with($customEndpoint, '/') ? $customEndpoint : '/' . $customEndpoint;
+        } else {
+            // الافتراضي: /models/{model_key}:generateContent
+            // ملاحظة: بعض الموديلات قد تحتاج مسار مختلف
+            $modelKey = $this->model->model_key;
+            
+            // التحقق من الموديلات المدعومة (2024-2025)
+            $supportedModels = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-flash-latest', 'gemini-pro-latest', 'gemini-2.0-flash-lite'];
+            if (!in_array($modelKey, $supportedModels)) {
+                Log::warning('Potentially unsupported Gemini model key', [
+                    'model_key' => $modelKey,
+                    'supported' => $supportedModels,
+                ]);
+            }
+            
+            $endpoint = '/models/' . $modelKey . ':generateContent';
+        }
 
         // تحويل تنسيق الرسائل إلى Google Gemini
         $contents = [];
@@ -36,7 +57,32 @@ class GoogleProviderService extends AIProviderService
 
         try {
             $apiKey = $this->getApiKey();
-            $response = Http::timeout(60)->post($url . $endpoint . '?key=' . $apiKey, $payload);
+            if (!$apiKey) {
+                return [
+                    'success' => false,
+                    'error' => 'API Key غير موجود. يرجى إدخال API Key في حقل "مفتاح API" وحفظ النموذج أولاً.',
+                ];
+            }
+
+            // تنظيف API Key من المسافات
+            $apiKey = trim($apiKey);
+            
+            $fullUrl = $url . $endpoint . '?key=' . urlencode($apiKey);
+            
+            Log::info('Google Gemini API Request', [
+                'url' => $url,
+                'endpoint' => $endpoint,
+                'model_key' => $this->model->model_key,
+                'api_key_length' => strlen($apiKey),
+                'api_key_prefix' => substr($apiKey, 0, 10) . '...',
+            ]);
+
+            $response = Http::timeout(60)->post($fullUrl, $payload);
+            
+            Log::info('Google Gemini API Response', [
+                'status' => $response->status(),
+                'success' => $response->successful(),
+            ]);
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -51,15 +97,42 @@ class GoogleProviderService extends AIProviderService
                 ];
             }
 
+            $errorData = $response->json();
+            $errorMessage = $errorData['error']['message'] ?? 'Unknown error';
+            $errorCode = $errorData['error']['code'] ?? null;
+            
+            Log::error('Google Gemini API Error', [
+                'status' => $response->status(),
+                'error' => $errorMessage,
+                'code' => $errorCode,
+                'response' => $errorData,
+            ]);
+
+            // رسائل خطأ أكثر وضوحاً
+            if ($response->status() === 401) {
+                $errorMessage = 'API Key غير صحيح أو منتهي الصلاحية. يرجى التحقق من API Key من Google AI Studio.';
+            } elseif ($response->status() === 404) {
+                $errorMessage = 'Model Key غير صحيح. استخدم أحد الموديلات الجديدة: gemini-2.0-flash, gemini-2.5-flash, gemini-2.5-pro';
+            } elseif ($response->status() === 400) {
+                $errorMessage = 'طلب غير صحيح: ' . $errorMessage;
+            } elseif ($response->status() === 429) {
+                $errorMessage = '⏳ تم تجاوز حد الاستخدام المجاني. انتظر قليلاً ثم جرّب مرة أخرى. (الاتصال يعمل بشكل صحيح!)';
+            } elseif ($response->status() === 403) {
+                $errorMessage = 'تم رفض الوصول. قد يكون API Key غير مفعل أو لا يملك الصلاحيات المطلوبة.';
+            }
+
             return [
                 'success' => false,
-                'error' => $response->json()['error']['message'] ?? 'Unknown error',
+                'error' => $errorMessage,
+                'status_code' => $response->status(),
             ];
         } catch (\Exception $e) {
-            Log::error('Google Gemini API Error: ' . $e->getMessage());
+            Log::error('Google Gemini API Exception: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
             return [
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => 'خطأ في الاتصال: ' . $e->getMessage(),
             ];
         }
     }
@@ -71,7 +144,13 @@ class GoogleProviderService extends AIProviderService
         ];
 
         $result = $this->chat($messages, $options);
-        return $result['success'] ? $result['content'] : '';
+        
+        if (!$result['success']) {
+            $this->setLastError($result['error'] ?? 'خطأ غير معروف في توليد النص');
+            return '';
+        }
+        
+        return $result['content'] ?? '';
     }
 
     public function estimateTokens(string $text): int

@@ -43,25 +43,68 @@ class AIPromptService
         $questionTypeText = $this->getQuestionTypeText($questionType);
         $difficultyText = $this->getDifficultyText($difficulty);
         
-        $prompt = "أنت معلم محترف. مهمتك إنشاء أسئلة تعليمية من المحتوى التالي:\n\n";
-        $prompt .= "المحتوى:\n{$content}\n\n";
-        $prompt .= "المطلوب:\n";
-        $prompt .= "- عدد الأسئلة: {$numberOfQuestions}\n";
-        $prompt .= "- نوع الأسئلة: {$questionTypeText}\n";
-        $prompt .= "- مستوى الصعوبة: {$difficultyText}\n\n";
-        $prompt .= "قم بإنشاء الأسئلة بصيغة JSON مع البنية التالية:\n";
+        // تحديد أنواع الأسئلة المطلوبة
+        $typeInstructions = $this->getTypeInstructions($questionType, $numberOfQuestions);
+        
+        $prompt = "أنت خبير تعليمي متخصص في إنشاء الأسئلة والاختبارات.\n\n";
+        $prompt .= "## المهمة:\n";
+        $prompt .= "أنشئ بالضبط **{$numberOfQuestions} أسئلة** تعليمية متنوعة من المحتوى التالي.\n";
+        $prompt .= "⚠️ **مهم جداً**: يجب أن يكون العدد بالضبط {$numberOfQuestions} أسئلة، لا أكثر ولا أقل.\n\n";
+        $prompt .= "## المحتوى:\n{$content}\n\n";
+        $prompt .= "## المتطلبات:\n";
+        $prompt .= "1. **العدد المطلوب**: {$numberOfQuestions} أسئلة بالضبط (إلزامي - لا تقبل أي عدد آخر)\n";
+        $prompt .= "2. **نوع الأسئلة**: {$questionTypeText}\n";
+        $prompt .= "3. **مستوى الصعوبة**: {$difficultyText}\n";
+        $prompt .= "{$typeInstructions}\n\n";
+        $prompt .= "## تنسيق الإخراج:\n";
+        $prompt .= "أرجع JSON array يحتوي على **بالضبط {$numberOfQuestions} كائنات** (لا أكثر ولا أقل):\n\n";
+        $prompt .= "```json\n";
         $prompt .= "[\n";
-        $prompt .= "  {\n";
-        $prompt .= "    \"type\": \"نوع السؤال\",\n";
-        $prompt .= "    \"question\": \"نص السؤال\",\n";
-        $prompt .= "    \"options\": [\"خيار1\", \"خيار2\", ...],\n";
-        $prompt .= "    \"correct_answer\": \"الإجابة الصحيحة\",\n";
-        $prompt .= "    \"explanation\": \"شرح الإجابة\",\n";
-        $prompt .= "    \"difficulty\": \"easy|medium|hard\"\n";
-        $prompt .= "  }\n";
+        for ($i = 1; $i <= min(3, $numberOfQuestions); $i++) {
+            $prompt .= "  {\n";
+            $prompt .= "    \"type\": \"single_choice|multiple_choice|true_false|short_answer\",\n";
+            $prompt .= "    \"question\": \"نص السؤال {$i}\",\n";
+            $prompt .= "    \"options\": [\"خيار أ\", \"خيار ب\", \"خيار ج\", \"خيار د\"],\n";
+            $prompt .= "    \"correct_answer\": \"الإجابة الصحيحة\",\n";
+            $prompt .= "    \"explanation\": \"شرح مختصر للإجابة\",\n";
+            $prompt .= "    \"difficulty\": \"easy|medium|hard\"\n";
+            $prompt .= "  }" . ($i < min(3, $numberOfQuestions) ? "," : "") . "\n";
+        }
+        if ($numberOfQuestions > 3) {
+            $prompt .= "  ... (كرر نفس البنية للأسئلة من 4 إلى {$numberOfQuestions}) ...\n";
+        }
         $prompt .= "]\n";
+        $prompt .= "```\n\n";
+        $prompt .= "## ⚠️ تحذير مهم:\n";
+        $prompt .= "- يجب أن يحتوي الرد على **بالضبط {$numberOfQuestions} أسئلة**\n";
+        $lessOne = $numberOfQuestions - 1;
+        $plusOne = $numberOfQuestions + 1;
+        $prompt .= "- لا تقبل أي عدد آخر (لا {$lessOne} ولا {$plusOne})\n";
+        $prompt .= "- تأكد من أن JSON array يحتوي على {$numberOfQuestions} عنصر بالضبط\n";
+        $prompt .= "- إذا لم تستطع إنشاء {$numberOfQuestions} أسئلة، أبلغ بذلك بوضوح\n";
         
         return $prompt;
+    }
+    
+    /**
+     * الحصول على تعليمات نوع السؤال
+     */
+    private function getTypeInstructions(string $type, int $count): string
+    {
+        if ($type === 'mixed') {
+            return "4. **توزيع الأنواع**: وزّع الأسئلة بين اختيار من متعدد، صح/خطأ، وإجابة قصيرة";
+        }
+        
+        $typeNames = [
+            'single_choice' => 'اختيار واحد (4 خيارات لكل سؤال)',
+            'multiple_choice' => 'اختيار متعدد (4 خيارات، يمكن أن تكون أكثر من إجابة صحيحة)',
+            'true_false' => 'صح/خطأ',
+            'short_answer' => 'إجابة قصيرة',
+            'essay' => 'مقالي',
+        ];
+        
+        $typeName = $typeNames[$type] ?? $type;
+        return "4. **نوع كل الأسئلة**: {$typeName}";
     }
 
     /**

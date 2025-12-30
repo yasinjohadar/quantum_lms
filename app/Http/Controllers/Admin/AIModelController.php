@@ -33,8 +33,9 @@ class AIModelController extends Controller
     {
         $providers = AIModel::PROVIDERS;
         $capabilities = AIModel::CAPABILITIES;
+        $supportedModels = AIModel::SUPPORTED_MODELS;
 
-        return view('admin.pages.ai.models.create', compact('providers', 'capabilities'));
+        return view('admin.pages.ai.models.create', compact('providers', 'capabilities', 'supportedModels'));
     }
 
     /**
@@ -89,8 +90,9 @@ class AIModelController extends Controller
     {
         $providers = AIModel::PROVIDERS;
         $capabilities = AIModel::CAPABILITIES;
+        $supportedModels = AIModel::SUPPORTED_MODELS;
 
-        return view('admin.pages.ai.models.edit', compact('model', 'providers', 'capabilities'));
+        return view('admin.pages.ai.models.edit', compact('model', 'providers', 'capabilities', 'supportedModels'));
     }
 
     /**
@@ -120,9 +122,13 @@ class AIModelController extends Controller
             $validated['is_active'] = $request->has('is_active');
             $validated['is_default'] = $request->has('is_default');
 
-            // إذا لم يتم إدخال API key جديد، لا نحدثه
-            if (empty($validated['api_key'])) {
+            // إذا لم يتم إدخال API key جديد أو كان فارغاً، لا نحدثه
+            if (empty($validated['api_key']) || trim($validated['api_key']) === '') {
                 unset($validated['api_key']);
+            } else {
+                // تأكد من أن api_key موجود وليس فارغاً
+                $validated['api_key'] = trim($validated['api_key']);
+                Log::info('API Key provided in update request', ['model_id' => $model->id, 'has_key' => !empty($validated['api_key'])]);
             }
 
             $this->modelService->updateModel($model, $validated);
@@ -164,6 +170,44 @@ class AIModelController extends Controller
 
             return response()->json($result);
         } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'خطأ في الاختبار: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * اختبار API Key مؤقت (قبل الحفظ)
+     */
+    public function testTemp(Request $request)
+    {
+        $validated = $request->validate([
+            'provider' => 'required|in:' . implode(',', array_keys(AIModel::PROVIDERS)),
+            'model_key' => 'required|string|max:255',
+            'api_key' => 'required|string',
+            'base_url' => 'nullable|url|max:500',
+            'api_endpoint' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            // إنشاء موديل مؤقت للاختبار
+            $tempModel = new AIModel([
+                'provider' => $validated['provider'],
+                'model_key' => $validated['model_key'],
+                'api_key' => $validated['api_key'], // سيتم تشفيره تلقائياً
+                'base_url' => $validated['base_url'] ?? null,
+                'api_endpoint' => $validated['api_endpoint'] ?? null,
+                'max_tokens' => 100,
+                'temperature' => 0.7,
+                'is_active' => true,
+            ]);
+
+            $result = $this->modelService->testModel($tempModel);
+
+            return response()->json($result);
+        } catch (\Exception $e) {
+            Log::error('Error testing temp API key: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'خطأ في الاختبار: ' . $e->getMessage(),

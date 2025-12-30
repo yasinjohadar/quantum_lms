@@ -16,7 +16,9 @@ class AIProviderFactory
             'openai' => new OpenAIProviderService($model),
             'anthropic' => new AnthropicProviderService($model),
             'google' => new GoogleProviderService($model),
+            'openrouter' => new OpenRouterProviderService($model),
             'local' => new LocalLLMProviderService($model),
+            'custom' => new OpenRouterProviderService($model), // Custom يستخدم نفس بنية OpenAI
             default => throw new InvalidArgumentException("Unsupported provider: {$model->provider}"),
         };
     }

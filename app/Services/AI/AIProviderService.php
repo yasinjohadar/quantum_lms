@@ -10,10 +10,27 @@ use App\Models\AIModel;
 abstract class AIProviderService
 {
     protected AIModel $model;
+    protected ?string $lastError = null;
 
     public function __construct(AIModel $model)
     {
         $this->model = $model;
+    }
+
+    /**
+     * الحصول على آخر خطأ
+     */
+    public function getLastError(): ?string
+    {
+        return $this->lastError;
+    }
+
+    /**
+     * تعيين آخر خطأ
+     */
+    protected function setLastError(string $error): void
+    {
+        $this->lastError = $error;
     }
 
     /**

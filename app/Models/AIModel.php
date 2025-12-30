@@ -49,6 +49,7 @@ class AIModel extends Model
         'openai' => 'OpenAI',
         'anthropic' => 'Anthropic (Claude)',
         'google' => 'Google (Gemini)',
+        'openrouter' => 'OpenRouter (موصى به - متعدد الموديلات)',
         'local' => 'Local LLM (Ollama)',
         'custom' => 'Custom Provider',
     ];
@@ -61,6 +62,53 @@ class AIModel extends Model
         'question_generation' => 'توليد أسئلة',
         'question_solving' => 'حل أسئلة',
         'all' => 'جميع القدرات',
+    ];
+
+    /**
+     * الموديلات المدعومة لكل مزود
+     */
+    public const SUPPORTED_MODELS = [
+        'openai' => [
+            'gpt-4' => 'GPT-4',
+            'gpt-4-turbo' => 'GPT-4 Turbo',
+            'gpt-4o' => 'GPT-4o',
+            'gpt-3.5-turbo' => 'GPT-3.5 Turbo',
+        ],
+        'anthropic' => [
+            'claude-3-opus-20240229' => 'Claude 3 Opus',
+            'claude-3-sonnet-20240229' => 'Claude 3 Sonnet',
+            'claude-3-haiku-20240307' => 'Claude 3 Haiku',
+        ],
+        'google' => [
+            // الموديلات الجديدة (2024-2025)
+            'gemini-2.0-flash' => 'Gemini 2.0 Flash (موصى به)',
+            'gemini-2.5-flash' => 'Gemini 2.5 Flash',
+            'gemini-2.5-pro' => 'Gemini 2.5 Pro',
+            'gemini-flash-latest' => 'Gemini Flash Latest',
+            'gemini-pro-latest' => 'Gemini Pro Latest',
+            'gemini-2.0-flash-lite' => 'Gemini 2.0 Flash-Lite',
+        ],
+        'local' => [
+            'llama2' => 'Llama 2',
+            'llama3' => 'Llama 3',
+            'mistral' => 'Mistral',
+        ],
+        'openrouter' => [
+            // موديلات مجانية (Free) - متاحة فعلياً
+            'google/gemini-2.0-flash-exp:free' => '🆓 Gemini 2.0 Flash (مجاني - موصى به)',
+            'allenai/olmo-3.1-32b-think:free' => '🆓 OLMo 3.1 32B Think (مجاني)',
+            'xiaomi/mimo-v2-flash:free' => '🆓 Xiaomi MiMo v2 Flash (مجاني)',
+            'nvidia/nemotron-3-nano-30b-a3b:free' => '🆓 NVIDIA Nemotron 3 (مجاني)',
+            'mistralai/devstral-2512:free' => '🆓 Mistral Devstral (مجاني)',
+            'nex-agi/deepseek-v3.1-nex-n1:free' => '🆓 DeepSeek v3.1 (مجاني)',
+            'google/gemma-3-27b-it:free' => '🆓 Gemma 3 27B (مجاني)',
+            'microsoft/phi-4:free' => '🆓 Microsoft Phi-4 (مجاني)',
+            'qwen/qwen-2.5-72b-instruct:free' => '🆓 Qwen 2.5 72B (مجاني)',
+            // موديلات مدفوعة (رخيصة)
+            'anthropic/claude-3.5-sonnet' => '💰 Claude 3.5 Sonnet',
+            'openai/gpt-4o' => '💰 GPT-4o',
+            'google/gemini-2.5-pro-preview' => '💰 Gemini 2.5 Pro',
+        ],
     ];
 
     /**
@@ -161,12 +209,19 @@ class AIModel extends Model
     public function getDecryptedApiKey(): ?string
     {
         if (!$this->api_key) {
+            \Log::debug('API Key is empty in database', ['model_id' => $this->id]);
             return null;
         }
 
         try {
-            return Crypt::decryptString($this->api_key);
+            $decrypted = Crypt::decryptString($this->api_key);
+            \Log::debug('API Key decrypted successfully', ['model_id' => $this->id, 'key_length' => strlen($decrypted)]);
+            return $decrypted;
         } catch (\Exception $e) {
+            \Log::error('Failed to decrypt API Key', [
+                'model_id' => $this->id,
+                'error' => $e->getMessage()
+            ]);
             return null;
         }
     }
@@ -176,8 +231,18 @@ class AIModel extends Model
      */
     public function setApiKeyAttribute($value)
     {
-        if ($value) {
-            $this->attributes['api_key'] = Crypt::encryptString($value);
+        if (!empty($value) && trim($value) !== '') {
+            // إذا كانت القيمة غير فارغة، قم بتشفيرها
+            $encrypted = Crypt::encryptString(trim($value));
+            $this->attributes['api_key'] = $encrypted;
+            \Log::debug('API Key encrypted and set', [
+                'model_id' => $this->id ?? 'new',
+                'encrypted_length' => strlen($encrypted)
+            ]);
+        } else {
+            // إذا كانت فارغة، لا تقم بتحديث القيمة (احتفظ بالقيمة الحالية)
+            unset($this->attributes['api_key']);
+            \Log::debug('API Key not updated (empty value)', ['model_id' => $this->id ?? 'new']);
         }
     }
 

@@ -32,7 +32,7 @@
             <div class="col-12">
                 <div class="card shadow-sm border-0">
                     <div class="card-body">
-                        <div id="calendar" data-events="{{ json_encode($formattedEvents ?? []) }}"></div>
+                        <div id="calendar" data-events="{{ json_encode($formattedEvents ?? [], JSON_UNESCAPED_UNICODE) }}"></div>
                     </div>
                 </div>
             </div>
@@ -88,7 +88,48 @@ document.addEventListener('DOMContentLoaded', function() {
             center: 'title',
             right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
         },
-        events: JSON.parse(document.getElementById('calendar').dataset.events || '[]'),
+        events: function(fetchInfo, successCallback, failureCallback) {
+            // استخدام API endpoint لجلب الأحداث
+            const url = '{{ route("admin.calendar.events-api") }}?start=' + encodeURIComponent(fetchInfo.startStr) + '&end=' + encodeURIComponent(fetchInfo.endStr);
+            
+            console.log('Fetching events from:', url);
+            
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Events loaded from API:', data);
+                    if (Array.isArray(data)) {
+                        successCallback(data);
+                    } else {
+                        console.error('Invalid data format:', data);
+                        // Fallback to initial events
+                        const initialEvents = JSON.parse(document.getElementById('calendar').dataset.events || '[]');
+                        console.log('Using initial events:', initialEvents);
+                        successCallback(initialEvents);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching events:', error);
+                    // Fallback to initial events if API fails
+                    const initialEvents = JSON.parse(document.getElementById('calendar').dataset.events || '[]');
+                    console.log('Using initial events as fallback:', initialEvents);
+                    successCallback(initialEvents);
+                });
+        },
         eventClick: function(info) {
             const event = info.event;
             const extendedProps = event.extendedProps;
@@ -129,7 +170,33 @@ document.addEventListener('DOMContentLoaded', function() {
         height: 'auto',
     });
     
+    // تحميل البيانات الأولية أولاً
+    const initialEvents = JSON.parse(document.getElementById('calendar').dataset.events || '[]');
+    console.log('Initial events loaded:', initialEvents);
+    if (initialEvents.length > 0) {
+        calendar.addEventSource(initialEvents);
+    }
+    
     calendar.render();
+    
+    // تحديث التقويم بعد إعادة تحميل الصفحة (مثلاً بعد إضافة حدث جديد)
+    @if (session('success'))
+        // إعادة تحميل الأحداث بعد ثانية واحدة
+        setTimeout(function() {
+            console.log('Refetching events after success message');
+            calendar.refetchEvents();
+        }, 500);
+    @endif
+    
+    // إضافة event listener لتحديث التقويم عند تغيير التاريخ
+    calendar.on('datesSet', function(dateInfo) {
+        console.log('Calendar dates changed:', dateInfo);
+    });
+    
+    // Log when events are loaded
+    calendar.on('eventsSet', function(info) {
+        console.log('Events set in calendar:', info.events.length, 'events');
+    });
 });
 </script>
 @endpush

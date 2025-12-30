@@ -30,7 +30,8 @@
                                         <th>المستخدم</th>
                                         <th>المصدر</th>
                                         <th>نوع السؤال</th>
-                                        <th>عدد الأسئلة</th>
+                                        <th>عدد الأسئلة المطلوب</th>
+                                        <th>عدد الأسئلة المولدة</th>
                                         <th>الحالة</th>
                                         <th>الموديل</th>
                                         <th>التكلفة</th>
@@ -53,7 +54,34 @@
                                                     {{ \App\Models\AIQuestionGeneration::QUESTION_TYPES[$generation->question_type] ?? $generation->question_type }}
                                                 </span>
                                             </td>
-                                            <td>{{ $generation->number_of_questions }}</td>
+                                            <td>
+                                                <span class="badge bg-info">{{ $generation->number_of_questions }}</span>
+                                            </td>
+                                            <td>
+                                                @if($generation->status === 'completed')
+                                                    @php
+                                                        $rawQuestions = $generation->generated_questions;
+                                                        if (is_string($rawQuestions)) {
+                                                            $rawQuestions = json_decode($rawQuestions, true);
+                                                        }
+                                                        $generatedCount = is_array($rawQuestions) ? count($rawQuestions) : 0;
+                                                        $requiredCount = $generation->number_of_questions;
+                                                    @endphp
+                                                    @if($generatedCount > 0)
+                                                        @if($generatedCount < $requiredCount)
+                                                            <span class="badge bg-warning" title="تم توليد {{ $generatedCount }} من {{ $requiredCount }} المطلوبة">
+                                                                {{ $generatedCount }} / {{ $requiredCount }}
+                                                            </span>
+                                                        @else
+                                                            <span class="badge bg-success">{{ $generatedCount }}</span>
+                                                        @endif
+                                                    @else
+                                                        <span class="badge bg-danger" title="لم يتم توليد أي أسئلة">0</span>
+                                                    @endif
+                                                @else
+                                                    <span class="text-muted">-</span>
+                                                @endif
+                                            </td>
                                             <td>
                                                 @if($generation->status === 'completed')
                                                     <span class="badge bg-success">مكتمل</span>
@@ -68,32 +96,69 @@
                                             <td>{{ $generation->model->name ?? '-' }}</td>
                                             <td>{{ $generation->cost ? number_format($generation->cost, 6) : '-' }}</td>
                                             <td>
-                                                <div class="d-flex gap-2 justify-content-center">
-                                                    <a href="{{ route('admin.ai.question-generations.show', $generation->id) }}" class="btn btn-sm btn-info">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    @if($generation->status === 'pending')
-                                                        <form action="{{ route('admin.ai.question-generations.process', $generation->id) }}" method="POST" class="d-inline">
-                                                            @csrf
-                                                            <button type="submit" class="btn btn-sm btn-primary">
-                                                                <i class="fas fa-play"></i>
-                                                            </button>
-                                                        </form>
-                                                    @endif
+                                                <div class="d-flex gap-2 justify-content-center flex-wrap">
                                                     @if($generation->status === 'completed')
-                                                        <form action="{{ route('admin.ai.question-generations.save', $generation->id) }}" method="POST" class="d-inline">
+                                                        <a href="{{ route('admin.ai.question-generations.show', $generation->id) }}" 
+                                                           class="btn btn-sm btn-primary" 
+                                                           title="مراجعة الأسئلة المولدة">
+                                                            <i class="fas fa-eye me-1"></i> مراجعة
+                                                        </a>
+                                                        <form action="{{ route('admin.ai.question-generations.save', $generation->id) }}" 
+                                                              method="POST" 
+                                                              class="d-inline"
+                                                              onsubmit="return confirm('هل أنت متأكد من حفظ جميع الأسئلة؟')">
                                                             @csrf
-                                                            <button type="submit" class="btn btn-sm btn-success">
-                                                                <i class="fas fa-save"></i>
+                                                            <button type="submit" class="btn btn-sm btn-success" title="حفظ جميع الأسئلة">
+                                                                <i class="fas fa-save me-1"></i> حفظ الكل
                                                             </button>
                                                         </form>
+                                                    @elseif($generation->status === 'pending')
+                                                        <a href="{{ route('admin.ai.question-generations.show', $generation->id) }}" 
+                                                           class="btn btn-sm btn-info" 
+                                                           title="عرض تفاصيل الطلب">
+                                                            <i class="fas fa-eye me-1"></i> عرض
+                                                        </a>
+                                                        <form action="{{ route('admin.ai.question-generations.process', $generation->id) }}" 
+                                                              method="POST" 
+                                                              class="d-inline">
+                                                            @csrf
+                                                            <button type="submit" class="btn btn-sm btn-warning" title="بدء معالجة التوليد">
+                                                                <i class="fas fa-play me-1"></i> معالجة
+                                                            </button>
+                                                        </form>
+                                                    @elseif($generation->status === 'processing')
+                                                        <a href="{{ route('admin.ai.question-generations.show', $generation->id) }}" 
+                                                           class="btn btn-sm btn-info" 
+                                                           title="عرض حالة المعالجة">
+                                                            <i class="fas fa-spinner fa-spin me-1"></i> جاري المعالجة
+                                                        </a>
+                                                    @elseif($generation->status === 'failed')
+                                                        <a href="{{ route('admin.ai.question-generations.show', $generation->id) }}" 
+                                                           class="btn btn-sm btn-danger" 
+                                                           title="عرض تفاصيل الخطأ">
+                                                            <i class="fas fa-exclamation-triangle me-1"></i> عرض الخطأ
+                                                        </a>
+                                                        <form action="{{ route('admin.ai.question-generations.regenerate', $generation->id) }}" 
+                                                              method="POST" 
+                                                              class="d-inline">
+                                                            @csrf
+                                                            <button type="submit" class="btn btn-sm btn-primary" title="إعادة التوليد">
+                                                                <i class="fas fa-redo me-1"></i> إعادة
+                                                            </button>
+                                                        </form>
+                                                    @else
+                                                        <a href="{{ route('admin.ai.question-generations.show', $generation->id) }}" 
+                                                           class="btn btn-sm btn-secondary" 
+                                                           title="عرض تفاصيل الطلب">
+                                                            <i class="fas fa-eye me-1"></i> عرض
+                                                        </a>
                                                     @endif
                                                 </div>
                                             </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="9" class="text-center">لا توجد طلبات.</td>
+                                            <td colspan="10" class="text-center">لا توجد طلبات.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

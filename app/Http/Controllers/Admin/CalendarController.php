@@ -43,8 +43,9 @@ class CalendarController extends Controller
     public function getEvents(Request $request)
     {
         try {
-            $start = Carbon::parse($request->input('start'));
-            $end = Carbon::parse($request->input('end'));
+            // FullCalendar يرسل start و end كـ ISO strings
+            $start = $request->has('start') ? Carbon::parse($request->input('start')) : Carbon::now()->startOfMonth();
+            $end = $request->has('end') ? Carbon::parse($request->input('end')) : Carbon::now()->endOfMonth();
             $user = Auth::user();
 
             $events = $this->calendarService->getEventsForUser($user, $start, $end);
@@ -105,7 +106,13 @@ class CalendarController extends Controller
         try {
             $validated['created_by'] = Auth::id();
             $validated['is_all_day'] = $request->has('is_all_day');
-            $validated['is_public'] = $request->has('is_public') ?? true;
+            $validated['is_public'] = $request->has('is_public') ? true : false;
+            
+            // تحويل التواريخ إلى Carbon
+            $validated['start_date'] = Carbon::parse($validated['start_date']);
+            if (isset($validated['end_date'])) {
+                $validated['end_date'] = Carbon::parse($validated['end_date']);
+            }
 
             $event = CalendarEvent::create($validated);
 

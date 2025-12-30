@@ -126,6 +126,14 @@ class AIQuestionGenerationController extends Controller
     public function show(AIQuestionGeneration $generation)
     {
         $generation->load(['user', 'subject', 'lesson', 'model']);
+        
+        // تحديث البيانات من قاعدة البيانات
+        $generation->refresh();
+        
+        // التأكد من أن generated_questions هو array
+        if ($generation->generated_questions && !is_array($generation->generated_questions)) {
+            $generation->generated_questions = json_decode($generation->generated_questions, true) ?? [];
+        }
 
         return view('admin.pages.ai.question-generations.show', compact('generation'));
     }
@@ -159,6 +167,32 @@ class AIQuestionGenerationController extends Controller
                            ->with('success', 'تم حفظ ' . $questions->count() . ' سؤال بنجاح.');
         } catch (\Exception $e) {
             Log::error('Error saving generated questions: ' . $e->getMessage());
+            return redirect()->back()
+                           ->with('error', 'حدث خطأ أثناء حفظ الأسئلة: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * حفظ الأسئلة المحددة فقط
+     */
+    public function saveSelected(Request $request, AIQuestionGeneration $generation)
+    {
+        $validated = $request->validate([
+            'selected_questions' => 'required|array|min:1',
+            'selected_questions.*' => 'integer|min:0',
+        ]);
+
+        try {
+            $selectedIndices = array_map('intval', $validated['selected_questions']);
+            $questions = $this->generationService->saveGeneratedQuestions($generation, $selectedIndices);
+
+            return redirect()->route('admin.questions.index')
+                           ->with('success', 'تم حفظ ' . $questions->count() . ' سؤال بنجاح.');
+        } catch (\Exception $e) {
+            Log::error('Error saving selected questions: ' . $e->getMessage(), [
+                'generation_id' => $generation->id,
+                'selected_indices' => $validated['selected_questions'] ?? [],
+            ]);
             return redirect()->back()
                            ->with('error', 'حدث خطأ أثناء حفظ الأسئلة: ' . $e->getMessage());
         }

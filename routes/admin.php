@@ -225,6 +225,7 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             'destroy' => 'ai.models.destroy',
         ]);
         Route::post('ai/models/{model}/test', [\App\Http\Controllers\Admin\AIModelController::class, 'test'])->name('ai.models.test');
+        Route::post('ai/models/test-temp', [\App\Http\Controllers\Admin\AIModelController::class, 'testTemp'])->name('ai.models.test-temp');
         Route::post('ai/models/{model}/set-default', [\App\Http\Controllers\Admin\AIModelController::class, 'setDefault'])->name('ai.models.set-default');
         Route::post('ai/models/{model}/toggle-active', [\App\Http\Controllers\Admin\AIModelController::class, 'toggleActive'])->name('ai.models.toggle-active');
 
@@ -236,6 +237,7 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         ]);
         Route::post('ai/question-generations/{generation}/process', [\App\Http\Controllers\Admin\AIQuestionGenerationController::class, 'process'])->name('ai.question-generations.process');
         Route::post('ai/question-generations/{generation}/save', [\App\Http\Controllers\Admin\AIQuestionGenerationController::class, 'save'])->name('ai.question-generations.save');
+        Route::post('ai/question-generations/{generation}/save-selected', [\App\Http\Controllers\Admin\AIQuestionGenerationController::class, 'saveSelected'])->name('ai.question-generations.save-selected');
         Route::post('ai/question-generations/{generation}/regenerate', [\App\Http\Controllers\Admin\AIQuestionGenerationController::class, 'regenerate'])->name('ai.question-generations.regenerate');
 
         Route::resource('ai/question-solutions', \App\Http\Controllers\Admin\AIQuestionSolvingController::class)->names([
@@ -328,7 +330,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('report-templates.set-default');
 
         // الإعدادات
-        Route::resource('settings', \App\Http\Controllers\Admin\SettingsController::class)->only(['index', 'update']);
+        Route::get('settings', [\App\Http\Controllers\Admin\SettingsController::class, 'index'])->name('settings.index');
+        Route::put('settings', [\App\Http\Controllers\Admin\SettingsController::class, 'update'])->name('settings.update');
         Route::post('settings/{group}/reset', [\App\Http\Controllers\Admin\SettingsController::class, 'reset'])
             ->name('settings.reset');
 

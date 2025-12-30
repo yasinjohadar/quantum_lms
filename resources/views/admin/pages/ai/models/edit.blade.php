@@ -53,25 +53,101 @@
                                 </div>
 
                                 <div class="col-md-6 mb-3">
-                                    <label for="model_key" class="form-label">معرف الموديل <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="model_key" name="model_key" value="{{ old('model_key', $model->model_key) }}" required>
+                                    <label for="model_key_select" class="form-label">معرف الموديل <span class="text-danger">*</span></label>
+                                    @php
+                                        $currentProvider = old('provider', $model->provider);
+                                        $availableModels = $supportedModels[$currentProvider] ?? [];
+                                        $isCustomModel = !empty($model->model_key) && !in_array($model->model_key, array_keys($availableModels));
+                                    @endphp
+                                    @if(!empty($availableModels))
+                                        <select class="form-select" id="model_key_select" required>
+                                            <option value="">-- اختر موديل --</option>
+                                            @foreach($availableModels as $key => $name)
+                                                <option value="{{ $key }}" {{ old('model_key', $model->model_key) == $key ? 'selected' : '' }}>
+                                                    {{ $name }}
+                                                </option>
+                                            @endforeach
+                                            <option value="__custom__" {{ $isCustomModel ? 'selected' : '' }}>
+                                                ✏️ موديل مخصص
+                                            </option>
+                                        </select>
+                                        <input type="text" class="form-control mt-2" id="model_key_custom_input" 
+                                               placeholder="أدخل معرف الموديل (مثل: google/gemini-2.0-flash-exp:free)" 
+                                               value="{{ $isCustomModel ? old('model_key', $model->model_key) : '' }}"
+                                               style="display: {{ $isCustomModel ? 'block' : 'none' }};">
+                                        <!-- الحقل الفعلي الذي سيتم إرساله -->
+                                        <input type="hidden" name="model_key" id="model_key_hidden" value="{{ old('model_key', $model->model_key) }}">
+                                        <small class="text-muted d-block mt-1">
+                                            @if($currentProvider == 'google')
+                                                الموديلات المدعومة: <code>gemini-2.0-flash</code>, <code>gemini-2.5-flash</code>, <code>gemini-2.5-pro</code>
+                                            @elseif($currentProvider == 'openai')
+                                                الموديلات المدعومة: <code>gpt-4</code>, <code>gpt-4-turbo</code>, <code>gpt-3.5-turbo</code>
+                                            @elseif($currentProvider == 'openrouter')
+                                                🆓 الموديلات المجانية لا تحتاج رصيد! | <a href="https://openrouter.ai/models" target="_blank">عرض كل الموديلات</a>
+                                            @else
+                                                اختر من القائمة أو أدخل موديل مخصص
+                                            @endif
+                                        </small>
+                                    @else
+                                        <input type="text" class="form-control" id="model_key" name="model_key" value="{{ old('model_key', $model->model_key) }}" required>
+                                    @endif
                                 </div>
                             </div>
 
                             <div class="mb-3">
-                                <label for="api_key" class="form-label">مفتاح API (اتركه فارغاً للحفاظ على القيمة الحالية)</label>
-                                <input type="password" class="form-control" id="api_key" name="api_key" placeholder="أدخل مفتاح جديد لتحديثه">
+                                <label for="api_key" class="form-label">
+                                    مفتاح API <span class="text-danger">*</span>
+                                    <small class="text-muted">(اتركه فارغاً للحفاظ على القيمة الحالية)</small>
+                                </label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="api_key" name="api_key" placeholder="@if($model->provider == 'google') AlzaSyBo-... (من Google AI Studio) @elseif($model->provider == 'openrouter') sk-or-... (من OpenRouter) @else أدخل مفتاح API @endif">
+                                    <button type="button" class="btn btn-outline-primary" id="testApiKeyBtn" onclick="testApiKey()">
+                                        <i class="fas fa-vial me-1"></i> اختبار الاتصال
+                                    </button>
+                                </div>
+                                <small class="text-muted d-block mt-1">
+                                    @if($model->provider == 'google')
+                                        <strong>📍 للحصول على API Key:</strong> اذهب إلى <a href="https://aistudio.google.com/app/api-keys" target="_blank">Google AI Studio</a> → API Keys → Copy Key
+                                    @elseif($model->provider == 'openai')
+                                        <strong>📍 للحصول على API Key:</strong> اذهب إلى <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a> → API Keys → Create new secret key
+                                    @elseif($model->provider == 'openrouter')
+                                        <strong>📍 للحصول على API Key مجاني:</strong> اذهب إلى <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a> → Create Key<br>
+                                        <span class="text-success">✅ لا يحتاج بطاقة ائتمان | ✅ الموديلات المجانية متاحة فوراً</span>
+                                    @else
+                                        أدخل مفتاح API الخاص بالمزود
+                                    @endif
+                                </small>
+                                <div id="testResult" class="mt-2"></div>
                             </div>
 
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="base_url" class="form-label">Base URL</label>
-                                    <input type="url" class="form-control" id="base_url" name="base_url" value="{{ old('base_url', $model->base_url) }}">
+                                    <input type="url" class="form-control" id="base_url" name="base_url" value="{{ old('base_url', $model->base_url) }}" placeholder="@if($model->provider == 'google') https://generativelanguage.googleapis.com/v1beta @elseif($model->provider == 'openai') https://api.openai.com/v1 @else اتركه فارغاً للاستخدام الافتراضي @endif">
+                                    <small class="text-muted">
+                                        @if($model->provider == 'google')
+                                            الافتراضي: <code>https://generativelanguage.googleapis.com/v1beta</code>
+                                        @elseif($model->provider == 'openai')
+                                            الافتراضي: <code>https://api.openai.com/v1</code>
+                                        @else
+                                            اتركه فارغاً للاستخدام الافتراضي
+                                        @endif
+                                    </small>
                                 </div>
 
                                 <div class="col-md-6 mb-3">
                                     <label for="api_endpoint" class="form-label">API Endpoint</label>
-                                    <input type="text" class="form-control" id="api_endpoint" name="api_endpoint" value="{{ old('api_endpoint', $model->api_endpoint) }}">
+                                    <input type="text" class="form-control" id="api_endpoint" name="api_endpoint" value="{{ old('api_endpoint', $model->api_endpoint) }}" placeholder="@if($model->provider == 'google') /models/gemini-pro:generateContent @elseif($model->provider == 'openai') /chat/completions @else /api/chat @endif">
+                                    <small class="text-muted">
+                                        @if($model->provider == 'google')
+                                            الافتراضي: <code>/models/{model_key}:generateContent</code><br>
+                                            <strong class="text-danger">⚠️ لا تضع API Key هنا! ضعه في حقل "مفتاح API" أعلاه</strong>
+                                        @elseif($model->provider == 'openai')
+                                            الافتراضي: <code>/chat/completions</code>
+                                        @else
+                                            اتركه فارغاً للاستخدام الافتراضي
+                                        @endif
+                                    </small>
                                 </div>
                             </div>
 
@@ -142,5 +218,129 @@
         </div>
     </div>
 </div>
+@stop
+
+@section('js')
+<script>
+// تحديث حقل Model Key عند تغيير Provider
+document.addEventListener('DOMContentLoaded', function() {
+    const providerSelect = document.getElementById('provider');
+    const modelKeySelect = document.getElementById('model_key_select');
+    const modelKeyCustomInput = document.getElementById('model_key_custom_input');
+    const modelKeyHidden = document.getElementById('model_key_hidden');
+    
+    if (providerSelect) {
+        providerSelect.addEventListener('change', function() {
+            // إعادة تحميل الصفحة لتحديث قائمة الموديلات
+            const url = new URL(window.location.href);
+            url.searchParams.set('provider', this.value);
+            window.location.href = url.toString();
+        });
+    }
+    
+    // إظهار/إخفاء حقل Model Key المخصص وتحديث الحقل المخفي
+    if (modelKeySelect && modelKeyCustomInput && modelKeyHidden) {
+        // تحديث الحقل المخفي عند تغيير القائمة
+        modelKeySelect.addEventListener('change', function() {
+            if (this.value === '__custom__') {
+                modelKeyCustomInput.style.display = 'block';
+                modelKeyCustomInput.required = true;
+                modelKeyHidden.value = modelKeyCustomInput.value;
+            } else {
+                modelKeyCustomInput.style.display = 'none';
+                modelKeyCustomInput.required = false;
+                modelKeyHidden.value = this.value;
+            }
+        });
+        
+        // تحديث الحقل المخفي عند الكتابة في حقل الموديل المخصص
+        modelKeyCustomInput.addEventListener('input', function() {
+            modelKeyHidden.value = this.value;
+        });
+        
+        // تحديث القيمة الأولية
+        if (modelKeySelect.value && modelKeySelect.value !== '__custom__') {
+            modelKeyHidden.value = modelKeySelect.value;
+        } else if (modelKeySelect.value === '__custom__') {
+            modelKeyHidden.value = modelKeyCustomInput.value;
+        }
+    }
+});
+
+function testApiKey() {
+    const btn = document.getElementById('testApiKeyBtn');
+    const resultDiv = document.getElementById('testResult');
+    const originalText = btn.innerHTML;
+    
+    // تعطيل الزر وإظهار حالة التحميل
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الاختبار...';
+    resultDiv.innerHTML = '';
+    
+    // إرسال طلب AJAX
+    fetch('{{ route("admin.ai.models.test", $model->id) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        
+        if (data.success) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <strong>✓ نجح الاختبار!</strong><br>
+                    ${data.message}<br>
+                    ${data.response_time_ms ? `وقت الاستجابة: ${data.response_time_ms} مللي ثانية` : ''}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            `;
+        } else {
+            // عرض رسالة الخطأ مع تنسيق أفضل
+            let errorHtml = `<div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>✗ فشل الاختبار!</strong><br>`;
+            
+            // تقسيم الرسالة إلى أسطر
+            if (data.message) {
+                const lines = data.message.split('\n');
+                lines.forEach(line => {
+                    if (line.trim()) {
+                        if (line.includes('معلومات التكوين:')) {
+                            errorHtml += `<br><strong>${line}</strong>`;
+                        } else if (line.startsWith('-')) {
+                            errorHtml += `<br>${line}`;
+                        } else {
+                            errorHtml += `<br>${line}`;
+                        }
+                    }
+                });
+            } else {
+                errorHtml += 'حدث خطأ غير معروف.';
+            }
+            
+            errorHtml += `<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+            </div>`;
+            
+            resultDiv.innerHTML = errorHtml;
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>✗ خطأ!</strong><br>
+                حدث خطأ أثناء الاختبار: ${error.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+            </div>
+        `;
+    });
+}
+</script>
 @stop
 
