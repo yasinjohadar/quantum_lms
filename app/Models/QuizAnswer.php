@@ -30,6 +30,10 @@ class QuizAnswer extends Model
         'is_graded',
         'graded_by',
         'graded_at',
+        'ai_graded',
+        'ai_grading_data',
+        'ai_graded_at',
+        'ai_grading_model_id',
         'answered_at',
         'time_spent',
         'options_order',
@@ -53,6 +57,9 @@ class QuizAnswer extends Model
         'answered_at' => 'datetime',
         'time_spent' => 'integer',
         'options_order' => 'array',
+        'ai_graded' => 'boolean',
+        'ai_grading_data' => 'array',
+        'ai_graded_at' => 'datetime',
     ];
 
     /**
@@ -73,6 +80,11 @@ class QuizAnswer extends Model
         return $this->belongsTo(User::class, 'graded_by');
     }
 
+    public function aiGradingModel(): BelongsTo
+    {
+        return $this->belongsTo(AIModel::class, 'ai_grading_model_id');
+    }
+
     /**
      * Scopes
      */
@@ -89,6 +101,11 @@ class QuizAnswer extends Model
     public function scopeNeedsManualGrading($query)
     {
         return $query->where('needs_manual_grading', true)->where('is_graded', false);
+    }
+
+    public function scopeAiGraded($query)
+    {
+        return $query->where('ai_graded', true);
     }
 
     public function scopeCorrect($query)
@@ -175,8 +192,24 @@ class QuizAnswer extends Model
     {
         $question = $this->question;
         
+        // التحقق من إمكانية استخدام AI grading للأسئلة المقالية
+        if ($question->type === 'essay') {
+            $aiGradingEnabled = \App\Models\SystemSetting::get('ai_essay_grading_enabled', false);
+            $autoGradeEnabled = \App\Models\SystemSetting::get('ai_essay_auto_grade', false);
+            
+            if ($aiGradingEnabled && $autoGradeEnabled && !empty($this->answer_text)) {
+                try {
+                    $this->aiGrade();
+                    return;
+                } catch (\Exception $e) {
+                    \Log::error('AI grading failed, falling back to manual: ' . $e->getMessage());
+                    // في حالة فشل AI grading، ننتقل للتصحيح اليدوي
+                }
+            }
+        }
+        
         // الأسئلة التي تحتاج تصحيح يدوي
-        if ($question->needs_manual_grading) {
+        if ($question->needs_manual_grading || $question->type === 'essay') {
             $this->needs_manual_grading = true;
             $this->is_graded = false;
             $this->save();

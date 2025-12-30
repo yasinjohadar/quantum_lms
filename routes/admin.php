@@ -248,6 +248,17 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::post('ai/question-solutions/solve-multiple', [\App\Http\Controllers\Admin\AIQuestionSolvingController::class, 'solveMultiple'])->name('ai.question-solutions.solve-multiple');
         Route::post('ai/question-solutions/{solution}/verify', [\App\Http\Controllers\Admin\AIQuestionSolvingController::class, 'verify'])->name('ai.question-solutions.verify');
 
+        // AI Content Routes
+        Route::post('ai/content/summarize', [\App\Http\Controllers\Admin\AIContentController::class, 'summarize'])->name('ai.content.summarize');
+        Route::get('lessons/{lesson}/summary', [\App\Http\Controllers\Admin\AIContentController::class, 'lessonSummary'])->name('lessons.summary');
+        Route::post('ai/content/improve', [\App\Http\Controllers\Admin\AIContentController::class, 'improve'])->name('ai.content.improve');
+        Route::post('ai/content/grammar-check', [\App\Http\Controllers\Admin\AIContentController::class, 'grammarCheck'])->name('ai.content.grammar-check');
+
+        // AI Student Feedback Routes
+        Route::get('ai/student-feedback', [\App\Http\Controllers\Admin\AIStudentFeedbackController::class, 'index'])->name('ai.student-feedback.index');
+        Route::get('ai/student-feedback/{studentFeedback}', [\App\Http\Controllers\Admin\AIStudentFeedbackController::class, 'show'])->name('ai.student-feedback.show');
+        Route::post('students/{student}/ai-feedback', [\App\Http\Controllers\Admin\AIStudentFeedbackController::class, 'generateFeedback'])->name('ai.student-feedback.generate');
+
         Route::get('ai/settings', [\App\Http\Controllers\Admin\AISettingsController::class, 'index'])->name('ai.settings.index');
         Route::put('ai/settings', [\App\Http\Controllers\Admin\AISettingsController::class, 'update'])->name('ai.settings.update');
 
@@ -356,6 +367,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('quiz-attempts.save-grade');
         Route::post('quiz-attempts/{attempt}/regrade', [QuizAttemptController::class, 'regrade'])
             ->name('quiz-attempts.regrade');
+        Route::post('quiz-attempts/{attempt}/answers/{answer}/ai-grade', [QuizAttemptController::class, 'gradeWithAI'])
+            ->name('quiz-attempts.ai-grade');
+        Route::post('quiz-attempts/{attempt}/ai-grade-all', [QuizAttemptController::class, 'gradeMultipleWithAI'])
+            ->name('quiz-attempts.ai-grade-all');
         Route::delete('quiz-attempts/{attempt}', [QuizAttemptController::class, 'destroy'])
             ->name('quiz-attempts.destroy');
         Route::post('quizzes/{quiz}/reset-user-attempts', [QuizAttemptController::class, 'resetUserAttempts'])

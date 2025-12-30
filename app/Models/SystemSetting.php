@@ -44,6 +44,7 @@ class SystemSetting extends Model
         'export' => 'التصدير',
         'gamification' => 'التحفيز',
         'zoom' => 'Zoom',
+        'ai' => 'الذكاء الاصطناعي',
     ];
 
     /**

@@ -29,6 +29,10 @@ class QuestionAnswer extends Model
         'is_graded',
         'graded_by',
         'graded_at',
+        'ai_graded',
+        'ai_grading_data',
+        'ai_graded_at',
+        'ai_grading_model_id',
         'answered_at',
         'time_spent',
         'options_order',
@@ -51,6 +55,9 @@ class QuestionAnswer extends Model
         'answered_at' => 'datetime',
         'time_spent' => 'integer',
         'options_order' => 'array',
+        'ai_graded' => 'boolean',
+        'ai_grading_data' => 'array',
+        'ai_graded_at' => 'datetime',
     ];
 
     /**
@@ -71,6 +78,11 @@ class QuestionAnswer extends Model
         return $this->belongsTo(User::class, 'graded_by');
     }
 
+    public function aiGradingModel(): BelongsTo
+    {
+        return $this->belongsTo(AIModel::class, 'ai_grading_model_id');
+    }
+
     /**
      * Scopes
      */
@@ -89,6 +101,11 @@ class QuestionAnswer extends Model
         return $query->where('needs_manual_grading', true)->where('is_graded', false);
     }
 
+    public function scopeAiGraded($query)
+    {
+        return $query->where('ai_graded', true);
+    }
+
     public function scopeCorrect($query)
     {
         return $query->where('is_correct', true);
@@ -97,5 +114,18 @@ class QuestionAnswer extends Model
     public function scopeWrong($query)
     {
         return $query->where('is_correct', false)->whereNotNull('answer');
+    }
+
+    /**
+     * تصحيح تلقائي باستخدام AI
+     */
+    public function aiGrade(?array $criteria = null): void
+    {
+        if ($this->question->type !== 'essay') {
+            throw new \Exception('هذا السؤال ليس مقالي');
+        }
+
+        $gradingService = app(\App\Services\AI\AIEssayGradingService::class);
+        $gradingService->gradeEssay($this, $criteria ?? []);
     }
 }

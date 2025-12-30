@@ -100,6 +100,10 @@ Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student
     Route::get('/quizzes/results', [\App\Http\Controllers\Student\StudentQuizListController::class, 'results'])->name('quizzes.results');
     Route::get('/quizzes/{quiz}/start', [StudentQuizController::class, 'startQuiz'])->name('quizzes.start');
     Route::get('/quizzes/{quiz}/attempt/{attempt}', [StudentQuizController::class, 'showQuiz'])->name('quizzes.show');
+
+    // AI Feedback
+    Route::get('/ai-feedback', [\App\Http\Controllers\Student\AIStudentFeedbackController::class, 'index'])->name('ai-feedback.index');
+    Route::get('/ai-feedback/{aiFeedback}', [\App\Http\Controllers\Student\AIStudentFeedbackController::class, 'show'])->name('ai-feedback.show');
     
     // نظام التحفيز
     Route::get('/tasks', [\App\Http\Controllers\Student\TaskController::class, 'index'])->name('tasks.index');

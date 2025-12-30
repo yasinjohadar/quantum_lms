@@ -133,6 +133,22 @@ class QuestionAttemptService
         }
 
         $question = $attempt->question;
+        
+        // التحقق من إمكانية استخدام AI grading للأسئلة المقالية
+        if ($question->type === 'essay') {
+            $aiGradingEnabled = \App\Models\SystemSetting::get('ai_essay_grading_enabled', false);
+            
+            if ($aiGradingEnabled && !empty($answer->answer_text)) {
+                try {
+                    $answer->aiGrade();
+                    return;
+                } catch (\Exception $e) {
+                    \Log::error('AI grading failed in QuestionAttemptService: ' . $e->getMessage());
+                    // في حالة فشل AI grading، ننتقل للتصحيح اليدوي
+                }
+            }
+        }
+        
         $needsManualGrading = in_array($question->type, ['essay', 'short_answer']);
 
         if ($needsManualGrading) {

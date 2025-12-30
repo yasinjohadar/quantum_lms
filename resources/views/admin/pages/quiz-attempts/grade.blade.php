@@ -48,6 +48,28 @@
         <strong>الأسئلة التي تحتاج تصحيح:</strong> {{ $attempt->answers->count() }}
     </div>
 
+    @php
+        $essayAnswers = $attempt->answers->filter(function($answer) {
+            return $answer->question->type === 'essay' && !empty($answer->answer_text);
+        });
+    @endphp
+
+    @if($essayAnswers->count() > 0)
+        <div class="alert alert-primary d-flex justify-content-between align-items-center">
+            <div>
+                <i class="bi bi-robot me-2"></i>
+                <strong>تصحيح تلقائي بالAI:</strong> 
+                يوجد {{ $essayAnswers->count() }} سؤال مقالي يمكن تصحيحه تلقائياً
+            </div>
+            <form action="{{ route('admin.quiz-attempts.ai-grade-all', $attempt->id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من تصحيح جميع الأسئلة المقالية باستخدام AI؟');">
+                @csrf
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-robot me-1"></i> تصحيح الكل بالAI
+                </button>
+            </form>
+        </div>
+    @endif
+
     <form action="{{ route('admin.quiz-attempts.save-grade', $attempt->id) }}" method="POST">
         @csrf
         
@@ -81,6 +103,84 @@
                         @endif
                     </div>
 
+                    {{-- AI Grading Results --}}
+                    @if($answer->ai_graded && $answer->ai_grading_data)
+                        @php
+                            $aiData = $answer->ai_grading_data;
+                        @endphp
+                        <div class="alert alert-success mb-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <strong>
+                                    <i class="bi bi-robot me-1"></i>
+                                    تم التصحيح تلقائياً بالAI
+                                </strong>
+                                @if($answer->aiGradingModel)
+                                    <span class="badge bg-secondary">{{ $answer->aiGradingModel->name }}</span>
+                                @endif
+                            </div>
+                            
+                            @if(isset($aiData['points']) && isset($aiData['max_points']))
+                                <div class="mb-2">
+                                    <strong>الدرجة:</strong> 
+                                    <span class="badge bg-success">{{ $aiData['points'] }} / {{ $aiData['max_points'] }}</span>
+                                    ({{ number_format(($aiData['points'] / $aiData['max_points']) * 100, 1) }}%)
+                                </div>
+                            @endif
+
+                            @if(isset($aiData['feedback']) && !empty($aiData['feedback']))
+                                <div class="mb-2">
+                                    <strong>التعليق:</strong>
+                                    <p class="mb-0">{{ $aiData['feedback'] }}</p>
+                                </div>
+                            @endif
+
+                            @if(isset($aiData['strengths']) && is_array($aiData['strengths']) && count($aiData['strengths']) > 0)
+                                <div class="mb-2">
+                                    <strong class="text-success">نقاط القوة:</strong>
+                                    <ul class="mb-0">
+                                        @foreach($aiData['strengths'] as $strength)
+                                            <li>{{ $strength }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+
+                            @if(isset($aiData['weaknesses']) && is_array($aiData['weaknesses']) && count($aiData['weaknesses']) > 0)
+                                <div class="mb-2">
+                                    <strong class="text-danger">نقاط الضعف:</strong>
+                                    <ul class="mb-0">
+                                        @foreach($aiData['weaknesses'] as $weakness)
+                                            <li>{{ $weakness }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+
+                            @if(isset($aiData['suggestions']) && is_array($aiData['suggestions']) && count($aiData['suggestions']) > 0)
+                                <div class="mb-0">
+                                    <strong class="text-info">اقتراحات للتحسين:</strong>
+                                    <ul class="mb-0">
+                                        @foreach($aiData['suggestions'] as $suggestion)
+                                            <li>{{ $suggestion }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+
+                    {{-- AI Grading Button (for essay questions) --}}
+                    @if($answer->question->type === 'essay' && !empty($answer->answer_text) && !$answer->ai_graded)
+                        <div class="mb-3">
+                            <form action="{{ route('admin.quiz-attempts.ai-grade', [$attempt->id, $answer->id]) }}" method="POST" class="d-inline" onsubmit="return confirm('هل تريد تصحيح هذا السؤال باستخدام AI؟');">
+                                @csrf
+                                <button type="submit" class="btn btn-outline-primary btn-sm" id="ai-grade-btn-{{ $answer->id }}">
+                                    <i class="bi bi-robot me-1"></i> تصحيح تلقائي بالAI
+                                </button>
+                            </form>
+                        </div>
+                    @endif
+
                     <input type="hidden" name="grades[{{ $index }}][answer_id]" value="{{ $answer->id }}">
                     
                     <div class="row">
@@ -89,15 +189,21 @@
                             <div class="input-group">
                                 <input type="number" name="grades[{{ $index }}][points]" 
                                        class="form-control" min="0" max="{{ $answer->max_points }}" 
-                                       step="0.5" value="{{ $answer->points_earned }}" required>
+                                       step="0.5" value="{{ $answer->points_earned ?? ($answer->ai_graded && isset($answer->ai_grading_data['points']) ? $answer->ai_grading_data['points'] : '') }}" required>
                                 <span class="input-group-text">/ {{ $answer->max_points }}</span>
                             </div>
+                            @if($answer->ai_graded)
+                                <small class="text-muted">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    يمكنك تعديل الدرجة المقترحة من AI
+                                </small>
+                            @endif
                         </div>
                         <div class="col-md-8">
                             <label class="form-label">ملاحظة للطالب (اختياري)</label>
-                            <input type="text" name="grades[{{ $index }}][feedback]" 
-                                   class="form-control" value="{{ $answer->feedback }}"
-                                   placeholder="ملاحظة أو تعليق على الإجابة...">
+                            <textarea name="grades[{{ $index }}][feedback]" 
+                                      class="form-control" rows="2"
+                                      placeholder="ملاحظة أو تعليق على الإجابة...">{{ $answer->feedback ?? ($answer->ai_graded && isset($answer->ai_grading_data['feedback']) ? $answer->ai_grading_data['feedback'] : '') }}</textarea>
                         </div>
                     </div>
 

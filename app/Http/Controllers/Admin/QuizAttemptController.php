@@ -6,11 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\QuizAnswer;
+use App\Services\AI\AIEssayGradingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class QuizAttemptController extends Controller
 {
+    public function __construct(
+        private AIEssayGradingService $gradingService
+    ) {}
     /**
      * عرض محاولات اختبار معين
      */
@@ -71,6 +75,7 @@ class QuizAttemptController extends Controller
                 $q->where('needs_manual_grading', true)->where('is_graded', false);
             },
             'answers.question.options',
+            'answers.aiGradingModel',
         ])->findOrFail($id);
 
         if ($attempt->answers->isEmpty()) {
@@ -269,6 +274,79 @@ class QuizAttemptController extends Controller
             ->take(5);
 
         return view('admin.pages.quiz-attempts.statistics', compact('quiz', 'stats', 'scoreDistribution', 'hardestQuestions'));
+    }
+
+    /**
+     * تصحيح إجابة مقالية واحدة باستخدام AI
+     */
+    public function gradeWithAI(string $attemptId, string $answerId)
+    {
+        try {
+            $attempt = QuizAttempt::findOrFail($attemptId);
+            $answer = QuizAnswer::with('question')
+                ->where('id', $answerId)
+                ->where('attempt_id', $attemptId)
+                ->firstOrFail();
+
+            if ($answer->question->type !== 'essay') {
+                return redirect()->back()
+                    ->with('error', 'هذا السؤال ليس مقالي');
+            }
+
+            $this->gradingService->gradeEssay($answer);
+
+            return redirect()->back()
+                ->with('success', 'تم تصحيح السؤال باستخدام AI بنجاح');
+
+        } catch (\Exception $e) {
+            Log::error('Error grading with AI: ' . $e->getMessage(), [
+                'attempt_id' => $attemptId,
+                'answer_id' => $answerId,
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء التصحيح: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * تصحيح جميع الأسئلة المقالية في المحاولة باستخدام AI
+     */
+    public function gradeMultipleWithAI(string $attemptId, Request $request)
+    {
+        try {
+            $attempt = QuizAttempt::with(['answers.question'])->findOrFail($attemptId);
+
+            $essayAnswers = $attempt->answers->filter(function ($answer) {
+                return $answer->question->type === 'essay' && !empty($answer->answer_text);
+            });
+
+            if ($essayAnswers->isEmpty()) {
+                return redirect()->back()
+                    ->with('info', 'لا توجد أسئلة مقالية تحتاج تصحيح');
+            }
+
+            $results = $this->gradingService->gradeMultipleEssays($essayAnswers);
+
+            $successCount = $results->where('success', true)->count();
+            $failCount = $results->where('success', false)->count();
+
+            $message = "تم تصحيح {$successCount} إجابة بنجاح";
+            if ($failCount > 0) {
+                $message .= "، فشل تصحيح {$failCount} إجابة";
+            }
+
+            return redirect()->back()
+                ->with('success', $message);
+
+        } catch (\Exception $e) {
+            Log::error('Error grading multiple with AI: ' . $e->getMessage(), [
+                'attempt_id' => $attemptId,
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء التصحيح: ' . $e->getMessage());
+        }
     }
 }
 
