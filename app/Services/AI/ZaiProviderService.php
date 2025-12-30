@@ -6,9 +6,17 @@ use App\Models\AIModel;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class OpenAIProviderService extends AIProviderService
+/**
+ * Z.ai Provider Service
+ * 
+ * يوفر وصولاً إلى Z.ai GLM-4.7 Model
+ * متوافق مع OpenAI API format
+ * 
+ * @see https://z.ai/subscribe
+ */
+class ZaiProviderService extends AIProviderService
 {
-    private const BASE_URL = 'https://api.openai.com/v1';
+    private const BASE_URL = 'https://api.z.ai/api/coding/paas/v4';
 
     public function chat(array $messages, array $options = []): array
     {
@@ -35,7 +43,7 @@ class OpenAIProviderService extends AIProviderService
         try {
             $fullUrl = $url . $endpoint;
             
-            Log::info('OpenAI API Request', [
+            Log::info('Z.ai API Request', [
                 'url' => $fullUrl,
                 'model' => $this->model->model_key,
                 'max_tokens' => $payload['max_tokens'],
@@ -46,7 +54,7 @@ class OpenAIProviderService extends AIProviderService
                 'Content-Type' => 'application/json',
             ])->timeout(180)->post($fullUrl, $payload);
 
-            Log::info('OpenAI API Response', [
+            Log::info('Z.ai API Response', [
                 'status' => $response->status(),
                 'success' => $response->successful(),
             ]);
@@ -70,7 +78,7 @@ class OpenAIProviderService extends AIProviderService
             $errorType = $errorData['error']['type'] ?? null;
             $errorCode = $errorData['error']['code'] ?? null;
             
-            Log::error('OpenAI API Error', [
+            Log::error('Z.ai API Error', [
                 'status' => $response->status(),
                 'error' => $errorMessage,
                 'type' => $errorType,
@@ -89,7 +97,7 @@ class OpenAIProviderService extends AIProviderService
                 'raw_error' => $errorMessage,
             ];
         } catch (\Exception $e) {
-            Log::error('OpenAI API Exception: ' . $e->getMessage(), [
+            Log::error('Z.ai API Exception: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
             
@@ -108,22 +116,21 @@ class OpenAIProviderService extends AIProviderService
      */
     private function getFriendlyErrorMessage(int $statusCode, string $errorMessage, ?string $errorType = null): string
     {
-        // رسائل خطأ شائعة من OpenAI
         if ($statusCode === 401) {
-            return 'API Key غير صحيح أو منتهي الصلاحية. يرجى التحقق من API Key من OpenAI Platform.';
+            return 'API Key غير صحيح أو منتهي الصلاحية. يرجى التحقق من API Key من Z.ai Platform.';
         } elseif ($statusCode === 404) {
-            return 'Model Key غير صحيح أو غير متاح. تأكد من أن Model Key صحيح (مثل: gpt-4, gpt-3.5-turbo).';
+            return 'Model Key غير صحيح أو غير متاح. تأكد من أن Model Key صحيح (glm-4.7).';
         } elseif ($statusCode === 429) {
-            return 'تم تجاوز حد الاستخدام. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى، أو التحقق من خطة OpenAI الخاصة بك.';
+            return 'تم تجاوز حد الاستخدام. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى، أو التحقق من خطة Z.ai الخاصة بك.';
         } elseif ($statusCode === 500 || $statusCode === 502 || $statusCode === 503) {
-            return 'خطأ في خادم OpenAI. يرجى المحاولة مرة أخرى لاحقاً.';
+            return 'خطأ في خادم Z.ai. يرجى المحاولة مرة أخرى لاحقاً.';
         } elseif ($errorType === 'insufficient_quota') {
-            return 'رصيد OpenAI غير كافٍ. يرجى إضافة رصيد إلى حسابك من OpenAI Platform.';
+            return 'رصيد Z.ai غير كافٍ. يرجى إضافة رصيد إلى حسابك من Z.ai Platform.';
         } elseif ($errorType === 'invalid_request_error') {
             return 'طلب غير صحيح: ' . $errorMessage;
         }
 
-        return 'خطأ من OpenAI: ' . $errorMessage;
+        return 'خطأ من Z.ai: ' . $errorMessage;
     }
 
     public function generateText(string $prompt, array $options = []): string
@@ -158,7 +165,7 @@ class OpenAIProviderService extends AIProviderService
 
             return $result['success'] ?? false;
         } catch (\Exception $e) {
-            Log::error('OpenAI test connection failed: ' . $e->getMessage());
+            Log::error('Z.ai test connection failed: ' . $e->getMessage());
             $this->setLastError('فشل اختبار الاتصال: ' . $e->getMessage());
             return false;
         }

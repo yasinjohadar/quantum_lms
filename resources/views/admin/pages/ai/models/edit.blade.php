@@ -100,7 +100,7 @@
                                     <small class="text-muted">(اتركه فارغاً للحفاظ على القيمة الحالية)</small>
                                 </label>
                                 <div class="input-group">
-                                    <input type="password" class="form-control" id="api_key" name="api_key" placeholder="@if($model->provider == 'google') AlzaSyBo-... (من Google AI Studio) @elseif($model->provider == 'openrouter') sk-or-... (من OpenRouter) @else أدخل مفتاح API @endif">
+                                    <input type="password" class="form-control" id="api_key" name="api_key" placeholder="@if($model->provider == 'google') AlzaSyBo-... (من Google AI Studio) @elseif($model->provider == 'openrouter') sk-or-... (من OpenRouter) @elseif($model->provider == 'openai') sk-... (من OpenAI Platform) @elseif($model->provider == 'zai') zai-... (من Z.ai Platform) @else أدخل مفتاح API @endif">
                                     <button type="button" class="btn btn-outline-primary" id="testApiKeyBtn" onclick="testApiKey()">
                                         <i class="fas fa-vial me-1"></i> اختبار الاتصال
                                     </button>
@@ -113,6 +113,9 @@
                                     @elseif($model->provider == 'openrouter')
                                         <strong>📍 للحصول على API Key مجاني:</strong> اذهب إلى <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a> → Create Key<br>
                                         <span class="text-success">✅ لا يحتاج بطاقة ائتمان | ✅ الموديلات المجانية متاحة فوراً</span>
+                                    @elseif($model->provider == 'zai')
+                                        <strong>📍 للحصول على API Key:</strong> اذهب إلى <a href="https://z.ai/subscribe" target="_blank">Z.ai Platform</a> → Subscribe → Get API Key<br>
+                                        <span class="text-info">🚀 GLM-4.7: 358B parameters | متوافق مع OpenAI API</span>
                                     @else
                                         أدخل مفتاح API الخاص بالمزود
                                     @endif

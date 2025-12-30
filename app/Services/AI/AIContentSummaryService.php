@@ -20,6 +20,9 @@ class AIContentSummaryService
      */
     public function summarize(string $content, string $type = 'short', ?AIModel $model = null): ContentSummary
     {
+        // زيادة وقت التنفيذ إلى 3 دقائق للطلبات الطويلة
+        set_time_limit(180);
+        
         if (!$model) {
             $model = $this->modelService->getBestModelFor('question_solving');
         }

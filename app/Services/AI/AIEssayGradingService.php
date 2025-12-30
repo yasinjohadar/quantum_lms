@@ -23,6 +23,9 @@ class AIEssayGradingService
      */
     public function gradeEssay(QuizAnswer|QuestionAnswer $answer, array $criteria = []): EssayGradingResultDTO
     {
+        // زيادة وقت التنفيذ إلى 3 دقائق للطلبات الطويلة
+        set_time_limit(180);
+        
         $question = $answer->question;
         
         if ($question->type !== 'essay') {
@@ -102,6 +105,9 @@ class AIEssayGradingService
      */
     public function gradeMultipleEssays(Collection $answers, array $criteria = []): Collection
     {
+        // زيادة وقت التنفيذ إلى 3 دقائق للطلبات الطويلة
+        set_time_limit(180);
+        
         $results = collect();
 
         foreach ($answers as $answer) {

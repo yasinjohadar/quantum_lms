@@ -50,6 +50,7 @@ class AIModel extends Model
         'anthropic' => 'Anthropic (Claude)',
         'google' => 'Google (Gemini)',
         'openrouter' => 'OpenRouter (موصى به - متعدد الموديلات)',
+        'zai' => 'Z.ai (GLM)',
         'local' => 'Local LLM (Ollama)',
         'custom' => 'Custom Provider',
     ];

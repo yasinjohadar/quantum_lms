@@ -84,6 +84,9 @@ class AIQuestionGenerationService
      */
     public function processGeneration(AIQuestionGeneration $generation): array
     {
+        // زيادة وقت التنفيذ إلى 3 دقائق للطلبات الطويلة
+        set_time_limit(180);
+        
         $generation->update(['status' => 'processing']);
 
         try {
@@ -102,9 +105,10 @@ class AIQuestionGenerationService
                 ]
             );
 
-            // حساب max_tokens بناءً على عدد الأسئلة (تقريباً 500 token لكل سؤال للأسئلة الطويلة)
-            $requiredTokens = max(3000, $generation->number_of_questions * 500);
-            $maxTokens = min($requiredTokens, $model->max_tokens ?: 8000);
+            // حساب max_tokens بناءً على عدد الأسئلة (تقريباً 800 token لكل سؤال للأسئلة الطويلة)
+            // زيادة العدد لضمان عدم قطع الاستجابة
+            $requiredTokens = max(4000, $generation->number_of_questions * 800);
+            $maxTokens = min($requiredTokens, $model->max_tokens ?: 16000);
             
             Log::info('Question generation tokens calculation', [
                 'generation_id' => $generation->id,
@@ -126,6 +130,14 @@ class AIQuestionGenerationService
                 $lastError = $provider->getLastError() ?? 'فشل في توليد الأسئلة - لم يتم الحصول على رد من API';
                 throw new \Exception($lastError);
             }
+
+            // حفظ الرد الكامل في logs للتصحيح
+            Log::info('Full AI response received', [
+                'generation_id' => $generation->id,
+                'response_length' => strlen($response),
+                'response_preview' => substr($response, 0, 1000),
+                'response_full' => $response, // حفظ الرد الكامل
+            ]);
 
             // محاولة تحليل JSON
             $questions = $this->parseGeneratedQuestions($response);
@@ -282,12 +294,22 @@ class AIQuestionGenerationService
             'response_preview' => substr($response, 0, 500),
         ]);
 
+        // محاولة إصلاح encoding issues
+        if (!mb_check_encoding($response, 'UTF-8')) {
+            $response = mb_convert_encoding($response, 'UTF-8', 'auto');
+            Log::info('Fixed encoding issues in response');
+        }
+        
         // تنظيف الرد من markdown code blocks
         $cleanedResponse = $response;
         
         // إزالة ```json و ``` من البداية والنهاية
         $cleanedResponse = preg_replace('/^```(?:json)?\s*/i', '', trim($cleanedResponse));
         $cleanedResponse = preg_replace('/\s*```$/i', '', $cleanedResponse);
+        
+        // إزالة أي BOM أو characters غريبة
+        $cleanedResponse = preg_replace('/^\xEF\xBB\xBF/', '', $cleanedResponse);
+        $cleanedResponse = trim($cleanedResponse);
         
         // محاولة 1: تحليل JSON مباشرة
         $decoded = json_decode($cleanedResponse, true);

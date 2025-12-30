@@ -70,7 +70,7 @@
                                     مفتاح API <span class="text-danger">*</span>
                                 </label>
                                 <div class="input-group">
-                                    <input type="password" class="form-control" id="api_key" name="api_key" value="{{ old('api_key') }}" placeholder="@if(old('provider') == 'google') AlzaSyBo-... (من Google AI Studio) @elseif(old('provider') == 'openrouter') sk-or-... (من OpenRouter) @elseif(old('provider') == 'openai') sk-... (من OpenAI Platform) @else أدخل مفتاح API @endif">
+                                    <input type="password" class="form-control" id="api_key" name="api_key" value="{{ old('api_key') }}" placeholder="@if(old('provider') == 'google') AlzaSyBo-... (من Google AI Studio) @elseif(old('provider') == 'openrouter') sk-or-... (من OpenRouter) @elseif(old('provider') == 'openai') sk-... (من OpenAI Platform) @elseif(old('provider') == 'zai') zai-... (من Z.ai Platform) @else أدخل مفتاح API @endif">
                                     <button type="button" class="btn btn-outline-primary" id="testApiKeyBtn" onclick="testApiKey()">
                                         <i class="fas fa-vial me-1"></i> اختبار الاتصال
                                     </button>
@@ -83,6 +83,9 @@
                                     @elseif(old('provider') == 'openrouter')
                                         <strong>📍 للحصول على API Key مجاني:</strong> اذهب إلى <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a> → Create Key<br>
                                         <span class="text-success">✅ لا يحتاج بطاقة ائتمان | ✅ الموديلات المجانية متاحة فوراً</span>
+                                    @elseif(old('provider') == 'zai')
+                                        <strong>📍 للحصول على API Key:</strong> اذهب إلى <a href="https://z.ai/subscribe" target="_blank">Z.ai Platform</a> → Subscribe → Get API Key<br>
+                                        <span class="text-info">🚀 GLM-4.7: 358B parameters | متوافق مع OpenAI API</span>
                                     @else
                                         أدخل مفتاح API الخاص بالمزود
                                     @endif
@@ -186,6 +189,7 @@ document.addEventListener('DOMContentLoaded', function() {
         'google': '📌 يحتاج API Key من <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a>',
         'openai': '📌 يحتاج API Key من <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a>',
         'anthropic': '📌 يحتاج API Key من <a href="https://console.anthropic.com/settings/keys" target="_blank">Anthropic Console</a>',
+        'zai': '🚀 يحتاج API Key من <a href="https://z.ai/subscribe" target="_blank">Z.ai Platform</a> | GLM-4.7 (358B parameters)',
         'local': '🏠 للموديلات المحلية (Ollama, LM Studio) - لا يحتاج API Key'
     };
     
@@ -384,11 +388,29 @@ if (providerSelect && apiKeyHint) {
             hint = '<strong>📍 للحصول على API Key:</strong> اذهب إلى <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a> → API Keys → Create new secret key';
         } else if (provider === 'openrouter') {
             hint = '<strong>📍 للحصول على API Key مجاني:</strong> اذهب إلى <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a> → Create Key<br><span class="text-success">✅ لا يحتاج بطاقة ائتمان | ✅ الموديلات المجانية متاحة فوراً</span>';
+        } else if (provider === 'zai') {
+            hint = '<strong>📍 للحصول على API Key:</strong> اذهب إلى <a href="https://z.ai/subscribe" target="_blank">Z.ai Platform</a> → Subscribe → Get API Key<br><span class="text-info">🚀 GLM-4.7: 358B parameters | متوافق مع OpenAI API</span>';
         } else {
             hint = 'أدخل مفتاح API الخاص بالمزود';
         }
         
         apiKeyHint.innerHTML = hint;
+        
+        // تحديث placeholder
+        const apiKeyInput = document.getElementById('api_key');
+        if (apiKeyInput) {
+            if (provider === 'google') {
+                apiKeyInput.placeholder = 'AlzaSyBo-... (من Google AI Studio)';
+            } else if (provider === 'openai') {
+                apiKeyInput.placeholder = 'sk-... (من OpenAI Platform)';
+            } else if (provider === 'openrouter') {
+                apiKeyInput.placeholder = 'sk-or-... (من OpenRouter)';
+            } else if (provider === 'zai') {
+                apiKeyInput.placeholder = 'zai-... (من Z.ai Platform)';
+            } else {
+                apiKeyInput.placeholder = 'أدخل مفتاح API';
+            }
+        }
     });
 }
 </script>

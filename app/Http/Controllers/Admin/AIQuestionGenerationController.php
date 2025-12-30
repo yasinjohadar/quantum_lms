@@ -143,6 +143,9 @@ class AIQuestionGenerationController extends Controller
      */
     public function process(AIQuestionGeneration $generation)
     {
+        // زيادة وقت التنفيذ إلى 3 دقائق للطلبات الطويلة
+        set_time_limit(180);
+        
         try {
             $questions = $this->generationService->processGeneration($generation);
 
@@ -203,6 +206,9 @@ class AIQuestionGenerationController extends Controller
      */
     public function regenerate(AIQuestionGeneration $generation)
     {
+        // زيادة وقت التنفيذ إلى 3 دقائق للطلبات الطويلة
+        set_time_limit(180);
+        
         try {
             $generation->update(['status' => 'pending']);
             $questions = $this->generationService->processGeneration($generation);

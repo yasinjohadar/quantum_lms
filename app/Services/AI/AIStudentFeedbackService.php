@@ -20,6 +20,9 @@ class AIStudentFeedbackService
      */
     public function generateFeedback(User $student, ?QuizAttempt $attempt = null, ?AIModel $model = null): AIStudentFeedback
     {
+        // زيادة وقت التنفيذ إلى 3 دقائق للطلبات الطويلة
+        set_time_limit(180);
+        
         if (!$model) {
             $model = $this->modelService->getBestModelFor('question_solving');
         }

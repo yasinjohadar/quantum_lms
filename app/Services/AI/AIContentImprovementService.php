@@ -17,6 +17,9 @@ class AIContentImprovementService
      */
     public function improveContent(string $content, array $options = []): array
     {
+        // زيادة وقت التنفيذ إلى 3 دقائق للطلبات الطويلة
+        set_time_limit(180);
+        
         $type = $options['type'] ?? 'general';
         $model = $options['model'] ?? $this->modelService->getBestModelFor('question_solving');
 
@@ -48,6 +51,9 @@ class AIContentImprovementService
      */
     public function checkGrammar(string $text, ?AIModel $model = null): array
     {
+        // زيادة وقت التنفيذ إلى 3 دقائق للطلبات الطويلة
+        set_time_limit(180);
+        
         if (!$model) {
             $model = $this->modelService->getBestModelFor('question_solving');
         }
