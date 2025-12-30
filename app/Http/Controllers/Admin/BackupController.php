@@ -47,7 +47,7 @@ class BackupController extends Controller
     {
         $backupTypes = Backup::BACKUP_TYPES;
         $compressionTypes = Backup::COMPRESSION_TYPES;
-        $storageConfigs = \App\Models\BackupStorageConfig::where('is_active', true)->get();
+        $storageDrivers = \App\Models\BackupStorageConfig::where('is_active', true)->get();
 
         return view('admin.pages.backups.create', compact('backupTypes', 'compressionTypes', 'storageDrivers'));
     }
@@ -63,7 +63,32 @@ class BackupController extends Controller
             'storage_driver' => 'required|string',
             'compression_type' => 'required|in:' . implode(',', array_keys(Backup::COMPRESSION_TYPES)),
             'retention_days' => 'required|integer|min:1|max:365',
+        ], [
+            'name.required' => 'اسم النسخة مطلوب',
+            'name.string' => 'اسم النسخة يجب أن يكون نصاً',
+            'name.max' => 'اسم النسخة لا يمكن أن يتجاوز 255 حرفاً',
+            'backup_type.required' => 'نوع النسخ مطلوب',
+            'backup_type.in' => 'نوع النسخ المحدد غير صالح',
+            'storage_driver.required' => 'مكان التخزين مطلوب',
+            'storage_driver.string' => 'مكان التخزين يجب أن يكون نصاً',
+            'compression_type.required' => 'نوع الضغط مطلوب',
+            'compression_type.in' => 'نوع الضغط المحدد غير صالح',
+            'retention_days.required' => 'أيام الاحتفاظ مطلوبة',
+            'retention_days.integer' => 'أيام الاحتفاظ يجب أن تكون رقماً',
+            'retention_days.min' => 'أيام الاحتفاظ يجب أن تكون على الأقل 1',
+            'retention_days.max' => 'أيام الاحتفاظ لا يمكن أن تتجاوز 365',
         ]);
+
+        // التحقق من وجود مكان التخزين
+        $storageConfig = \App\Models\BackupStorageConfig::where('driver', $validated['storage_driver'])
+            ->where('is_active', true)
+            ->first();
+
+        if (!$storageConfig) {
+            return redirect()->back()
+                ->with('error', 'مكان التخزين المحدد غير موجود أو غير نشط')
+                ->withInput();
+        }
 
         try {
             $backup = $this->backupService->createBackup([
@@ -78,8 +103,13 @@ class BackupController extends Controller
 
             return redirect()->route('admin.backups.show', $backup)
                            ->with('success', 'تم إنشاء النسخة الاحتياطية بنجاح.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            Log::error('Error creating backup: ' . $e->getMessage());
+            Log::error('Error creating backup: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all(),
+            ]);
             return redirect()->back()
                            ->with('error', 'حدث خطأ أثناء إنشاء النسخة: ' . $e->getMessage())
                            ->withInput();

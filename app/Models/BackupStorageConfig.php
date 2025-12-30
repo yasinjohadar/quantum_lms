@@ -41,8 +41,6 @@ class BackupStorageConfig extends Model
     public const DRIVERS = [
         'local' => 'Local Storage',
         's3' => 'Amazon S3',
-        'google_drive' => 'Google Drive',
-        'dropbox' => 'Dropbox',
         'ftp' => 'FTP',
         'sftp' => 'SFTP',
         'azure' => 'Azure Blob Storage',

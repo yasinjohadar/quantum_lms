@@ -6,8 +6,6 @@ use App\Contracts\BackupStorageInterface;
 use App\Models\BackupStorageConfig;
 use App\Services\Backup\StorageDrivers\LocalStorageDriver;
 use App\Services\Backup\StorageDrivers\S3StorageDriver;
-use App\Services\Backup\StorageDrivers\GoogleDriveStorageDriver;
-use App\Services\Backup\StorageDrivers\DropboxStorageDriver;
 use App\Services\Backup\StorageDrivers\AzureStorageDriver;
 use App\Services\Backup\StorageDrivers\FTPStorageDriver;
 use App\Services\Backup\StorageDrivers\DigitalOceanStorageDriver;
@@ -28,8 +26,6 @@ class StorageFactory
         return match($config->driver) {
             'local' => new LocalStorageDriver($driverConfig),
             's3' => new S3StorageDriver($driverConfig),
-            'google_drive' => new GoogleDriveStorageDriver($driverConfig),
-            'dropbox' => new DropboxStorageDriver($driverConfig),
             'azure' => new AzureStorageDriver($driverConfig),
             'ftp', 'sftp' => new FTPStorageDriver($driverConfig),
             'digitalocean' => new DigitalOceanStorageDriver($driverConfig),
@@ -48,8 +44,6 @@ class StorageFactory
         return match($driver) {
             'local' => new LocalStorageDriver($config),
             's3' => new S3StorageDriver($config),
-            'google_drive' => new GoogleDriveStorageDriver($config),
-            'dropbox' => new DropboxStorageDriver($config),
             'azure' => new AzureStorageDriver($config),
             'ftp', 'sftp' => new FTPStorageDriver($config),
             'digitalocean' => new DigitalOceanStorageDriver($config),

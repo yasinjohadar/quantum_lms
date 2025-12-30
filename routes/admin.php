@@ -274,8 +274,9 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::post('backup-schedules/{schedule}/execute', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'execute'])->name('backup-schedules.execute');
         Route::post('backup-schedules/{schedule}/toggle-active', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'toggleActive'])->name('backup-schedules.toggle-active');
 
-        Route::resource('backup-storage', \App\Http\Controllers\Admin\BackupStorageController::class);
+        Route::resource('backup-storage', \App\Http\Controllers\Admin\BackupStorageController::class)->parameters(['backup-storage' => 'config']);
         Route::post('backup-storage/{config}/test', [\App\Http\Controllers\Admin\BackupStorageController::class, 'test'])->name('backup-storage.test');
+        Route::post('backup-storage/test-connection', [\App\Http\Controllers\Admin\BackupStorageController::class, 'testConnection'])->name('backup-storage.test-connection');
         Route::get('backup-storage/analytics', [\App\Http\Controllers\Admin\BackupStorageAnalyticsController::class, 'index'])->name('backup-storage.analytics');
 
         // تفضيلات إشعارات الطلاب (عرض فقط)

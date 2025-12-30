@@ -34,6 +34,8 @@ class BackupService
             'type' => $options['type'] ?? 'manual',
             'backup_type' => $options['backup_type'] ?? 'full',
             'storage_driver' => $options['storage_driver'] ?? 'local',
+            'storage_path' => null, // سيتم تعيينه بعد الرفع
+            'file_path' => null, // سيتم تعيينه بعد الإنشاء
             'compression_type' => $options['compression_type'] ?? 'zip',
             'status' => 'pending',
             'retention_days' => $options['retention_days'] ?? 30,
@@ -73,7 +75,16 @@ class BackupService
             $storagePath = $backup->storage_path;
 
             $duration = now()->diffInSeconds($backup->started_at);
-            $fileSize = Storage::disk('local')->size($compressedPath);
+            
+            // الحصول على حجم الملف - استخدام filesize() لأن compressedPath هو مسار كامل
+            if (!file_exists($compressedPath)) {
+                throw new \Exception('ملف النسخة الاحتياطية غير موجود: ' . $compressedPath);
+            }
+            
+            $fileSize = filesize($compressedPath);
+            if ($fileSize === false) {
+                throw new \Exception('فشل في الحصول على حجم ملف النسخة الاحتياطية: ' . $compressedPath);
+            }
 
             $backup->update([
                 'status' => 'completed',
@@ -135,31 +146,105 @@ class BackupService
     public function createDatabaseBackup(Backup $backup, array $options): string
     {
         $filename = 'database_' . now()->format('Y-m-d_H-i-s') . '.sql';
-        $path = storage_path('app/backups/' . $filename);
+        $backupDir = storage_path('app/backups');
+        $path = $backupDir . '/' . $filename;
+
+        // التأكد من وجود المجلد
+        if (!is_dir($backupDir)) {
+            mkdir($backupDir, 0755, true);
+        }
 
         $database = config('database.connections.mysql.database');
         $username = config('database.connections.mysql.username');
         $password = config('database.connections.mysql.password');
         $host = config('database.connections.mysql.host');
+        $port = config('database.connections.mysql.port', 3306);
 
-        $command = sprintf(
-            'mysqldump --user=%s --password=%s --host=%s %s > %s',
-            escapeshellarg($username),
-            escapeshellarg($password),
-            escapeshellarg($host),
-            escapeshellarg($database),
-            escapeshellarg($path)
-        );
+        // استخدام Laravel DB facade بدلاً من mysqldump
+        try {
+            $tables = DB::select('SHOW TABLES');
+            $databaseName = $database;
+            $tablesKey = 'Tables_in_' . $databaseName;
+            
+            $sqlContent = "-- Database Backup\n";
+            $sqlContent .= "-- Generated: " . now()->toDateTimeString() . "\n";
+            $sqlContent .= "-- Database: {$databaseName}\n\n";
+            $sqlContent .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
 
-        exec($command, $output, $returnVar);
+            foreach ($tables as $table) {
+                $tableName = $table->$tablesKey;
+                
+                // الحصول على CREATE TABLE statement
+                $createTable = DB::select("SHOW CREATE TABLE `{$tableName}`");
+                $sqlContent .= "DROP TABLE IF EXISTS `{$tableName}`;\n";
+                $sqlContent .= $createTable[0]->{'Create Table'} . ";\n\n";
 
-        if ($returnVar !== 0) {
-            throw new \Exception('فشل في نسخ قاعدة البيانات');
+                // الحصول على البيانات
+                $rows = DB::table($tableName)->get();
+                if ($rows->count() > 0) {
+                    $sqlContent .= "LOCK TABLES `{$tableName}` WRITE;\n";
+                    
+                    // الحصول على أسماء الأعمدة من أول صف
+                    $firstRow = (array) $rows->first();
+                    $columns = array_map(function ($col) {
+                        return "`{$col}`";
+                    }, array_keys($firstRow));
+                    $columnsStr = implode(", ", $columns);
+                    
+                    $values = [];
+                    $chunkSize = 100;
+                    $currentChunk = 0;
+                    
+                    foreach ($rows as $row) {
+                        $rowArray = (array) $row;
+                        
+                        $valArray = array_map(function ($val) {
+                            if ($val === null) {
+                                return 'NULL';
+                            }
+                            return DB::getPdo()->quote($val);
+                        }, array_values($rowArray));
+                        
+                        $values[] = "(" . implode(", ", $valArray) . ")";
+                        $currentChunk++;
+                        
+                        // كتابة كل 100 صف
+                        if ($currentChunk >= $chunkSize) {
+                            $valuesStr = implode(",\n", $values);
+                            $sqlContent .= "INSERT INTO `{$tableName}` ({$columnsStr}) VALUES\n{$valuesStr};\n\n";
+                            $values = [];
+                            $currentChunk = 0;
+                        }
+                    }
+                    
+                    // كتابة الصفوف المتبقية
+                    if (!empty($values)) {
+                        $valuesStr = implode(",\n", $values);
+                        $sqlContent .= "INSERT INTO `{$tableName}` ({$columnsStr}) VALUES\n{$valuesStr};\n\n";
+                    }
+                    
+                    $sqlContent .= "UNLOCK TABLES;\n\n";
+                }
+            }
+
+            $sqlContent .= "SET FOREIGN_KEY_CHECKS=1;\n";
+
+            file_put_contents($path, $sqlContent);
+
+            if (!file_exists($path) || filesize($path) === 0) {
+                throw new \Exception('فشل في إنشاء ملف النسخة الاحتياطية - الملف فارغ أو غير موجود');
+            }
+
+            $this->log($backup, 'info', 'تم نسخ قاعدة البيانات بنجاح');
+
+            return $path;
+        } catch (\Exception $e) {
+            Log::error('Database backup failed: ' . $e->getMessage(), [
+                'backup_id' => $backup->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw new \Exception('فشل في نسخ قاعدة البيانات: ' . $e->getMessage());
         }
-
-        $this->log($backup, 'info', 'تم نسخ قاعدة البيانات بنجاح');
-
-        return $path;
     }
 
     /**
@@ -220,15 +305,19 @@ class BackupService
             // حذف الملف من التخزين
             $this->storageService->deleteBackupFromStorage($backup);
 
-            // حذف الملف المحلي
-            if ($backup->file_path && Storage::disk('local')->exists($backup->file_path)) {
-                Storage::disk('local')->delete($backup->file_path);
+            // حذف الملف المحلي - file_path هو مسار كامل (absolute path)
+            if ($backup->file_path && file_exists($backup->file_path)) {
+                @unlink($backup->file_path);
             }
 
             $backup->delete();
 
             return true;
         } catch (\Exception $e) {
+            Log::error('Error deleting backup: ' . $e->getMessage(), [
+                'backup_id' => $backup->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
             throw new \Exception('فشل في حذف النسخة: ' . $e->getMessage());
         }
     }

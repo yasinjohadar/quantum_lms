@@ -18,6 +18,33 @@
             </div>
         </div>
 
+        @if (session('success'))
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+            </div>
+        @endif
+
+        @if ($errors->any())
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <strong>حدث خطأ:</strong>
+                <ul class="mb-0 mt-2">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+            </div>
+        @endif
+
         <div class="row">
             <div class="col-lg-8">
                 <div class="card shadow-sm border-0">
@@ -27,42 +54,61 @@
 
                             <div class="mb-3">
                                 <label for="name" class="form-label">اسم النسخة <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="name" name="name" value="{{ old('name', 'backup_' . now()->format('Y-m-d_H-i-s')) }}" required>
+                                <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name', 'backup_' . now()->format('Y-m-d_H-i-s')) }}" required>
+                                @error('name')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
 
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="backup_type" class="form-label">نوع النسخ <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="backup_type" name="backup_type" required>
+                                    <select class="form-select @error('backup_type') is-invalid @enderror" id="backup_type" name="backup_type" required>
                                         @foreach($backupTypes as $key => $label)
-                                            <option value="{{ $key }}" {{ old('backup_type', 'full') == $key ? 'selected' : '' }}>{{ $label }}</option>
+                                            <option value="{{ $key }}" {{ old('backup_type', 'database') == $key ? 'selected' : '' }}>{{ $label }}</option>
                                         @endforeach
                                     </select>
+                                    @error('backup_type')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
 
                                 <div class="col-md-6 mb-3">
                                     <label for="compression_type" class="form-label">نوع الضغط <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="compression_type" name="compression_type" required>
+                                    <select class="form-select @error('compression_type') is-invalid @enderror" id="compression_type" name="compression_type" required>
                                         @foreach($compressionTypes as $key => $label)
                                             <option value="{{ $key }}" {{ old('compression_type', 'zip') == $key ? 'selected' : '' }}>{{ $label }}</option>
                                         @endforeach
                                     </select>
+                                    @error('compression_type')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                             </div>
 
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="storage_driver" class="form-label">مكان التخزين <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="storage_driver" name="storage_driver" required>
+                                    <select class="form-select @error('storage_driver') is-invalid @enderror" id="storage_driver" name="storage_driver" required>
+                                        <option value="">اختر مكان التخزين</option>
                                         @foreach($storageDrivers as $config)
                                             <option value="{{ $config->driver }}" {{ old('storage_driver') == $config->driver ? 'selected' : '' }}>{{ $config->name }} ({{ \App\Models\BackupStorageConfig::DRIVERS[$config->driver] ?? $config->driver }})</option>
                                         @endforeach
                                     </select>
+                                    @error('storage_driver')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    @if($storageDrivers->isEmpty())
+                                        <small class="text-danger">لا توجد أماكن تخزين نشطة. يرجى <a href="{{ route('admin.backup-storage.create') }}">إضافة مكان تخزين</a> أولاً.</small>
+                                    @endif
                                 </div>
 
                                 <div class="col-md-6 mb-3">
                                     <label for="retention_days" class="form-label">أيام الاحتفاظ <span class="text-danger">*</span></label>
-                                    <input type="number" class="form-control" id="retention_days" name="retention_days" value="{{ old('retention_days', 30) }}" min="1" max="365" required>
+                                    <input type="number" class="form-control @error('retention_days') is-invalid @enderror" id="retention_days" name="retention_days" value="{{ old('retention_days', 30) }}" min="1" max="365" required>
+                                    @error('retention_days')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                             </div>
 

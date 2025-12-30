@@ -44,8 +44,21 @@ class BackupStorageService
      */
     public function deleteBackupFromStorage(Backup $backup): bool
     {
-        $storage = $this->getStorage($backup->storage_driver);
-        return $storage->delete($backup->storage_path);
+        // إذا لم يكن هناك storage_path، لا يوجد شيء للحذف
+        if (!$backup->storage_path) {
+            return true;
+        }
+
+        try {
+            $storage = $this->getStorage($backup->storage_driver);
+            return $storage->delete($backup->storage_path);
+        } catch (\Exception $e) {
+            \Log::warning('Failed to delete backup from storage: ' . $e->getMessage(), [
+                'backup_id' => $backup->id,
+                'storage_path' => $backup->storage_path,
+            ]);
+            return false;
+        }
     }
 
     /**

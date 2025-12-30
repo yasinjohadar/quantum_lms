@@ -44,6 +44,9 @@
                                 <!-- سيتم ملؤها ديناميكياً -->
                             </div>
 
+                            <!-- Test Connection Result -->
+                            <div id="test-connection-result" class="mt-3" style="display: none;"></div>
+
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="priority" class="form-label">الأولوية</label>
@@ -64,6 +67,9 @@
                             </div>
 
                             <div class="d-flex gap-2">
+                                <button type="button" id="test-connection-btn" class="btn btn-info">
+                                    <i class="fas fa-plug me-1"></i> اختبار الاتصال
+                                </button>
                                 <button type="submit" class="btn btn-primary">
                                     <i class="fas fa-save me-1"></i> تحديث
                                 </button>
@@ -79,21 +85,22 @@
     </div>
 </div>
 
-@push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const driverSelect = document.getElementById('driver');
-    const configFields = document.getElementById('config-fields');
-    const currentConfig = @json($config->getDecryptedConfig() ?? []);
+    var driverSelect = document.getElementById('driver');
+    var configFields = document.getElementById('config-fields');
+    var currentConfig = @json($config->getDecryptedConfig() ?? []);
 
-    const configTemplates = {
+    console.log('Edit page loaded, currentConfig:', currentConfig);
+
+    var configTemplates = {
         'local': '<div class="mb-3"><label class="form-label">المسار (اختياري)</label><input type="text" class="form-control" name="config[path]" value="' + (currentConfig.path || 'backups') + '"></div>',
         's3': `
             <div class="mb-3"><label class="form-label">Access Key ID <span class="text-danger">*</span></label><input type="text" class="form-control" name="config[access_key_id]" value="${currentConfig.access_key_id || ''}" required></div>
             <div class="mb-3"><label class="form-label">Secret Access Key <span class="text-danger">*</span></label><input type="password" class="form-control" name="config[secret_access_key]" placeholder="اتركه فارغاً للحفاظ على القيمة الحالية"></div>
             <div class="mb-3"><label class="form-label">Bucket <span class="text-danger">*</span></label><input type="text" class="form-control" name="config[bucket]" value="${currentConfig.bucket || ''}" required></div>
-            <div class="mb-3"><label class="form-label">Region</label><input type="text" class="form-control" name="config[region]" value="${currentConfig.region || 'us-east-1'}"></div>
-            <div class="mb-3"><label class="form-label">Endpoint (لـ S3-compatible)</label><input type="text" class="form-control" name="config[endpoint]" value="${currentConfig.endpoint || ''}" placeholder="https://s3.region.amazonaws.com"></div>
+            <div class="mb-3"><label class="form-label">Region <span class="text-danger">*</span></label><input type="text" class="form-control" name="config[region]" value="${currentConfig.region || 'us-east-1'}" required placeholder="مثال: us-east-1, eu-west-1"></div>
+            <div class="mb-3"><label class="form-label">Endpoint (لـ S3-compatible، اختياري)</label><input type="text" class="form-control" name="config[endpoint]" value="${currentConfig.endpoint || ''}" placeholder="https://s3.region.amazonaws.com"></div>
             <div class="mb-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="config[use_path_style]" value="1" id="use_path_style" ${currentConfig.use_path_style ? 'checked' : ''}><label class="form-check-label" for="use_path_style">Use Path Style Endpoint</label></div></div>
         `,
         'digitalocean': `
@@ -120,15 +127,6 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="mb-3"><label class="form-label">Secret Access Key <span class="text-danger">*</span></label><input type="password" class="form-control" name="config[secret_access_key]" placeholder="اتركه فارغاً للحفاظ على القيمة الحالية"></div>
             <div class="mb-3"><label class="form-label">Bucket <span class="text-danger">*</span></label><input type="text" class="form-control" name="config[bucket]" value="${currentConfig.bucket || ''}" required></div>
         `,
-        'google_drive': `
-            <div class="mb-3"><label class="form-label">Client ID <span class="text-danger">*</span></label><input type="text" class="form-control" name="config[client_id]" value="${currentConfig.client_id || ''}" required></div>
-            <div class="mb-3"><label class="form-label">Client Secret <span class="text-danger">*</span></label><input type="password" class="form-control" name="config[client_secret]" placeholder="اتركه فارغاً للحفاظ على القيمة الحالية"></div>
-            <div class="mb-3"><label class="form-label">Refresh Token <span class="text-danger">*</span></label><input type="text" class="form-control" name="config[refresh_token]" value="${currentConfig.refresh_token || ''}" required></div>
-            <div class="mb-3"><label class="form-label">Folder ID (اختياري)</label><input type="text" class="form-control" name="config[folder_id]" value="${currentConfig.folder_id || ''}" placeholder="ID المجلد في Google Drive"></div>
-        `,
-        'dropbox': `
-            <div class="mb-3"><label class="form-label">Access Token <span class="text-danger">*</span></label><input type="text" class="form-control" name="config[access_token]" value="${currentConfig.access_token || ''}" required></div>
-        `,
         'ftp': `
             <div class="mb-3"><label class="form-label">Protocol</label><select class="form-select" name="config[protocol]"><option value="ftp" ${currentConfig.protocol == 'ftp' ? 'selected' : ''}>FTP</option><option value="sftp" ${currentConfig.protocol == 'sftp' ? 'selected' : ''}>SFTP</option></select></div>
             <div class="mb-3"><label class="form-label">Host <span class="text-danger">*</span></label><input type="text" class="form-control" name="config[host]" value="${currentConfig.host || ''}" required></div>
@@ -153,19 +151,138 @@ document.addEventListener('DOMContentLoaded', function() {
         `,
     };
 
-    driverSelect.addEventListener('change', function() {
-        const driver = this.value;
-        if (configTemplates[driver]) {
+    function updateConfigFields() {
+        var driver = driverSelect.value;
+        console.log('Updating config fields for driver:', driver);
+        if (driver && configTemplates[driver]) {
             configFields.innerHTML = configTemplates[driver];
         } else {
-            configFields.innerHTML = '';
+            configFields.innerHTML = '<div class="alert alert-info mb-0">يرجى اختيار نوع التخزين</div>';
         }
-    });
+    }
+
+    driverSelect.addEventListener('change', updateConfigFields);
 
     // تشغيل عند التحميل
-    driverSelect.dispatchEvent(new Event('change'));
+    updateConfigFields();
+
+    // اختبار الاتصال
+    var testBtn = document.getElementById('test-connection-btn');
+    var testResultDiv = document.getElementById('test-connection-result');
+    
+    if (testBtn && testResultDiv) {
+        testBtn.addEventListener('click', function() {
+            var driver = driverSelect.value;
+            if (!driver) {
+                testResultDiv.innerHTML = `
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        يرجى اختيار نوع التخزين أولاً
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+                testResultDiv.style.display = 'block';
+                return;
+            }
+
+            // جمع بيانات الإعدادات
+            var configData = {};
+            var configInputs = configFields.querySelectorAll('input, select, textarea');
+            configInputs.forEach(function(input) {
+                if (input.name && input.name.startsWith('config[')) {
+                    var key = input.name.replace('config[', '').replace(']', '');
+                    if (input.type === 'checkbox') {
+                        configData[key] = input.checked ? input.value : '';
+                    } else {
+                        // للحقول الفارغة (مثل password)، استخدم القيمة الحالية من currentConfig
+                        if (input.value === '' && input.type === 'password' && currentConfig[key]) {
+                            // لا نرسل كلمة المرور القديمة في الاختبار - نتركها فارغة
+                            configData[key] = '';
+                        } else {
+                            configData[key] = input.value || '';
+                        }
+                    }
+                }
+            });
+
+            // تعطيل الزر أثناء الاختبار
+            testBtn.disabled = true;
+            var originalText = testBtn.innerHTML;
+            testBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الاختبار...';
+            testResultDiv.style.display = 'none';
+
+            // إرسال طلب AJAX
+            fetch('{{ route("admin.backup-storage.test-connection") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    driver: driver,
+                    config: configData
+                })
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    return response.text().then(function(text) {
+                        throw new Error('HTTP ' + response.status + ': ' + text.substring(0, 100));
+                    });
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                testBtn.disabled = false;
+                testBtn.innerHTML = originalText;
+                
+                if (data.success) {
+                    testResultDiv.innerHTML = `
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>✓ نجح الاختبار!</strong><br>
+                            ${data.message || 'الاتصال ناجح'}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    `;
+                } else {
+                    var errorMessage = data.message || 'فشل الاختبار';
+                    // تقسيم الرسالة إلى أسطر إذا كانت طويلة
+                    if (errorMessage.includes('\n')) {
+                        errorMessage = errorMessage.split('\n').join('<br>');
+                    }
+                    // تنظيف الرسالة من أحرف خاصة قد تسبب مشاكل
+                    errorMessage = errorMessage.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    testResultDiv.innerHTML = `
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-times-circle me-2"></i>
+                            <strong>✗ فشل الاختبار!</strong><br>
+                            ${errorMessage}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    `;
+                }
+                testResultDiv.style.display = 'block';
+            })
+            .catch(function(error) {
+                testBtn.disabled = false;
+                testBtn.innerHTML = originalText;
+                var errorMsg = error.message || 'حدث خطأ غير متوقع';
+                // تنظيف رسالة الخطأ
+                errorMsg = errorMsg.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                testResultDiv.innerHTML = `
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>خطأ!</strong><br>
+                        حدث خطأ أثناء الاختبار: ${errorMsg}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+                testResultDiv.style.display = 'block';
+            });
+        });
+    }
 });
 </script>
-@endpush
 @stop
 
