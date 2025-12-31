@@ -135,6 +135,180 @@
                 </div>
                 <!-- row closed -->
 
+                <!-- اختصارات سريعة -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header pb-2">
+                                <h4 class="card-title mb-0">
+                                    <i class="fe fe-zap me-2"></i> اختصارات سريعة
+                                </h4>
+                                <p class="fs-12 text-muted mb-0">الوصول السريع لأهم أجزاء النظام</p>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <!-- الطلاب -->
+                                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                                        <a href="{{ route('users.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
+                                            <div class="card-body text-center p-3">
+                                                <div class="avatar avatar-md bg-primary-transparent mx-auto mb-2">
+                                                    <i class="fas fa-users fs-20 text-primary"></i>
+                                                </div>
+                                                <h6 class="mb-0 fw-semibold">الطلاب</h6>
+                                                <small class="text-muted">إدارة الطلاب</small>
+                                            </div>
+                                        </a>
+                                    </div>
+
+                                    <!-- المواد -->
+                                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                                        <a href="{{ route('admin.subjects.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
+                                            <div class="card-body text-center p-3">
+                                                <div class="avatar avatar-md bg-success-transparent mx-auto mb-2">
+                                                    <i class="fas fa-book fs-20 text-success"></i>
+                                                </div>
+                                                <h6 class="mb-0 fw-semibold">المواد</h6>
+                                                <small class="text-muted">إدارة المواد</small>
+                                            </div>
+                                        </a>
+                                    </div>
+
+                                    <!-- الاختبارات -->
+                                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                                        <a href="{{ route('admin.quizzes.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
+                                            <div class="card-body text-center p-3">
+                                                <div class="avatar avatar-md bg-info-transparent mx-auto mb-2">
+                                                    <i class="fas fa-clipboard-list fs-20 text-info"></i>
+                                                </div>
+                                                <h6 class="mb-0 fw-semibold">الاختبارات</h6>
+                                                <small class="text-muted">إدارة الاختبارات</small>
+                                            </div>
+                                        </a>
+                                    </div>
+
+                                    <!-- الانضمامات -->
+                                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                                        <a href="{{ route('admin.enrollments.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
+                                            <div class="card-body text-center p-3">
+                                                <div class="avatar avatar-md bg-warning-transparent mx-auto mb-2">
+                                                    <i class="fas fa-user-check fs-20 text-warning"></i>
+                                                </div>
+                                                <h6 class="mb-0 fw-semibold">الانضمامات</h6>
+                                                <small class="text-muted">إدارة الانضمامات</small>
+                                            </div>
+                                        </a>
+                                    </div>
+
+                                    <!-- التقارير -->
+                                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                                        <a href="{{ route('admin.reports.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
+                                            <div class="card-body text-center p-3">
+                                                <div class="avatar avatar-md bg-danger-transparent mx-auto mb-2">
+                                                    <i class="fas fa-chart-line fs-20 text-danger"></i>
+                                                </div>
+                                                <h6 class="mb-0 fw-semibold">التقارير</h6>
+                                                <small class="text-muted">التقارير والإحصائيات</small>
+                                            </div>
+                                        </a>
+                                    </div>
+
+                                    <!-- المكتبة -->
+                                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                                        <a href="{{ route('admin.library.items.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
+                                            <div class="card-body text-center p-3">
+                                                <div class="avatar avatar-md bg-secondary-transparent mx-auto mb-2">
+                                                    <i class="fas fa-book-reader fs-20 text-secondary"></i>
+                                                </div>
+                                                <h6 class="mb-0 fw-semibold">المكتبة</h6>
+                                                <small class="text-muted">المكتبة الرقمية</small>
+                                            </div>
+                                        </a>
+                                    </div>
+
+                                    <!-- جلسات المستخدمين -->
+                                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                                        <a href="{{ route('admin.user-sessions.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
+                                            <div class="card-body text-center p-3">
+                                                <div class="avatar avatar-md bg-purple-transparent mx-auto mb-2">
+                                                    <i class="fas fa-desktop fs-20" style="color: #6f42c1;"></i>
+                                                </div>
+                                                <h6 class="mb-0 fw-semibold">الجلسات</h6>
+                                                <small class="text-muted">جلسات المستخدمين</small>
+                                            </div>
+                                        </a>
+                                    </div>
+
+                                    <!-- النسخ الاحتياطية -->
+                                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                                        <a href="{{ route('admin.backups.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
+                                            <div class="card-body text-center p-3">
+                                                <div class="avatar avatar-md bg-teal-transparent mx-auto mb-2">
+                                                    <i class="fas fa-database fs-20" style="color: #20c997;"></i>
+                                                </div>
+                                                <h6 class="mb-0 fw-semibold">النسخ الاحتياطية</h6>
+                                                <small class="text-muted">إدارة النسخ</small>
+                                            </div>
+                                        </a>
+                                    </div>
+
+                                    <!-- نماذج AI -->
+                                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                                        <a href="{{ route('admin.ai.models.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
+                                            <div class="card-body text-center p-3">
+                                                <div class="avatar avatar-md bg-gradient-primary-transparent mx-auto mb-2">
+                                                    <i class="fas fa-brain fs-20 text-primary"></i>
+                                                </div>
+                                                <h6 class="mb-0 fw-semibold">نماذج AI</h6>
+                                                <small class="text-muted">إدارة النماذج</small>
+                                            </div>
+                                        </a>
+                                    </div>
+
+                                    <!-- التقويم -->
+                                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                                        <a href="{{ route('admin.calendar.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
+                                            <div class="card-body text-center p-3">
+                                                <div class="avatar avatar-md bg-orange-transparent mx-auto mb-2">
+                                                    <i class="fas fa-calendar-alt fs-20" style="color: #fd7e14;"></i>
+                                                </div>
+                                                <h6 class="mb-0 fw-semibold">التقويم</h6>
+                                                <small class="text-muted">الجدول الزمني</small>
+                                            </div>
+                                        </a>
+                                    </div>
+
+                                    <!-- سجلات الدخول -->
+                                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                                        <a href="{{ route('admin.login-logs.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
+                                            <div class="card-body text-center p-3">
+                                                <div class="avatar avatar-md bg-indigo-transparent mx-auto mb-2">
+                                                    <i class="fas fa-sign-in-alt fs-20" style="color: #6610f2;"></i>
+                                                </div>
+                                                <h6 class="mb-0 fw-semibold">سجلات الدخول</h6>
+                                                <small class="text-muted">سجلات تسجيل الدخول</small>
+                                            </div>
+                                        </a>
+                                    </div>
+
+                                    <!-- الإعدادات -->
+                                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                                        <a href="{{ route('admin.settings.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
+                                            <div class="card-body text-center p-3">
+                                                <div class="avatar avatar-md bg-gray-transparent mx-auto mb-2">
+                                                    <i class="fas fa-cog fs-20 text-muted"></i>
+                                                </div>
+                                                <h6 class="mb-0 fw-semibold">الإعدادات</h6>
+                                                <small class="text-muted">إعدادات النظام</small>
+                                            </div>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- end اختصارات سريعة -->
+
                 <!-- row opened -->
                 <div class="row mb-4">
                     <div class="col-md-12 col-lg-8">
@@ -353,4 +527,25 @@
             </div>
         </div>
         <!-- End::app-content -->
+@stop
+
+@section('js')
+<style>
+    .quick-link-card {
+        transition: all 0.3s ease;
+        border-color: #e9ecef !important;
+    }
+    .quick-link-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        border-color: #007bff !important;
+        text-decoration: none;
+    }
+    .quick-link-card:hover .avatar {
+        transform: scale(1.1);
+    }
+    .quick-link-card .avatar {
+        transition: transform 0.3s ease;
+    }
+</style>
 @stop

@@ -19,6 +19,7 @@
     <meta name="keywords" content="إعلانات , لوحة التحكم">
 
     @include('admin.layouts.head')
+    @stack('styles')
 </head>
 
 <body>
@@ -54,7 +55,7 @@
 
     </div>
     @include('admin.layouts.footer-scripts')
-
+    @stack('scripts')
 
 </body>
 

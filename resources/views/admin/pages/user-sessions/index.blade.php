@@ -100,59 +100,95 @@
 
             <div class="row">
                 <div class="col-xl-12">
-                    <div class="card custom-card">
-                        <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-                            <h5 class="mb-0 fw-bold">قائمة الجلسات</h5>
+                    <!-- قسم الفلاتر -->
+                    <div class="card custom-card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0 fw-bold">
+                                <i class="bi bi-funnel me-2"></i> البحث والفلترة
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="GET" action="{{ route('admin.user-sessions.index') }}">
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-md-3">
+                                        <label class="form-label mb-1">بحث</label>
+                                        <input type="text" name="search" class="form-control form-control-sm"
+                                               placeholder="بحث بالاسم، البريد، أو UUID"
+                                               value="{{ request('search') }}">
+                                    </div>
 
-                            <form method="GET" action="{{ route('admin.user-sessions.index') }}"
-                                  class="d-flex flex-wrap gap-2 align-items-center">
-                                <input type="text" name="search" class="form-control form-control-sm"
-                                       placeholder="بحث بالاسم، البريد، أو UUID"
-                                       value="{{ request('search') }}" style="min-width: 220px;">
+                                    <div class="col-md-2">
+                                        <label class="form-label mb-1">المستخدم</label>
+                                        <select name="user_id" class="form-select form-select-sm">
+                                            <option value="">كل المستخدمين</option>
+                                            @foreach($users as $user)
+                                                <option value="{{ $user->id }}" {{ request('user_id') == $user->id ? 'selected' : '' }}>
+                                                    {{ $user->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
 
-                                <select name="user_id" class="form-select form-select-sm" style="min-width: 160px;">
-                                    <option value="">كل المستخدمين</option>
-                                    @foreach($users as $user)
-                                        <option value="{{ $user->id }}" {{ request('user_id') == $user->id ? 'selected' : '' }}>
-                                            {{ $user->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                    <div class="col-md-2">
+                                        <label class="form-label mb-1">عنوان IP</label>
+                                        <input type="text" name="ip_address" class="form-control form-control-sm"
+                                               placeholder="عنوان IP"
+                                               value="{{ request('ip_address') }}">
+                                    </div>
 
-                                <input type="text" name="ip_address" class="form-control form-control-sm"
-                                       placeholder="عنوان IP"
-                                       value="{{ request('ip_address') }}" style="min-width: 150px;">
+                                    <div class="col-md-2">
+                                        <label class="form-label mb-1">الحالة</label>
+                                        <select name="status" class="form-select form-select-sm">
+                                            <option value="">كل الحالات</option>
+                                            <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>نشطة</option>
+                                            <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>مكتملة</option>
+                                            <option value="disconnected" {{ request('status') === 'disconnected' ? 'selected' : '' }}>منفصلة</option>
+                                            <option value="timeout" {{ request('status') === 'timeout' ? 'selected' : '' }}>منتهية</option>
+                                        </select>
+                                    </div>
 
-                                <select name="status" class="form-select form-select-sm" style="min-width: 150px;">
-                                    <option value="">كل الحالات</option>
-                                    <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>نشطة</option>
-                                    <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>مكتملة</option>
-                                    <option value="disconnected" {{ request('status') === 'disconnected' ? 'selected' : '' }}>منفصلة</option>
-                                    <option value="timeout" {{ request('status') === 'timeout' ? 'selected' : '' }}>منتهية</option>
-                                </select>
+                                    <div class="col-md-2">
+                                        <label class="form-label mb-1">الجهاز</label>
+                                        <select name="device_type" class="form-select form-select-sm">
+                                            <option value="">كل الأجهزة</option>
+                                            <option value="desktop" {{ request('device_type') === 'desktop' ? 'selected' : '' }}>سطح المكتب</option>
+                                            <option value="mobile" {{ request('device_type') === 'mobile' ? 'selected' : '' }}>جوال</option>
+                                            <option value="tablet" {{ request('device_type') === 'tablet' ? 'selected' : '' }}>تابلت</option>
+                                        </select>
+                                    </div>
 
-                                <select name="device_type" class="form-select form-select-sm" style="min-width: 120px;">
-                                    <option value="">كل الأجهزة</option>
-                                    <option value="desktop" {{ request('device_type') === 'desktop' ? 'selected' : '' }}>سطح المكتب</option>
-                                    <option value="mobile" {{ request('device_type') === 'mobile' ? 'selected' : '' }}>جوال</option>
-                                    <option value="tablet" {{ request('device_type') === 'tablet' ? 'selected' : '' }}>تابلت</option>
-                                </select>
+                                    <div class="col-md-1">
+                                        <label class="form-label mb-1">من تاريخ</label>
+                                        <input type="date" name="date_from" class="form-control form-control-sm"
+                                               value="{{ request('date_from') }}">
+                                    </div>
 
-                                <input type="date" name="date_from" class="form-control form-control-sm"
-                                       value="{{ request('date_from') }}" style="min-width: 150px;"
-                                       placeholder="من تاريخ">
+                                    <div class="col-md-1">
+                                        <label class="form-label mb-1">إلى تاريخ</label>
+                                        <input type="date" name="date_to" class="form-control form-control-sm"
+                                               value="{{ request('date_to') }}">
+                                    </div>
 
-                                <input type="date" name="date_to" class="form-control form-control-sm"
-                                       value="{{ request('date_to') }}" style="min-width: 150px;"
-                                       placeholder="إلى تاريخ">
-
-                                <button type="submit" class="btn btn-secondary btn-sm">
-                                    <i class="bi bi-search me-1"></i> بحث
-                                </button>
-                                <a href="{{ route('admin.user-sessions.index') }}" class="btn btn-outline-danger btn-sm">
-                                    <i class="bi bi-x-circle me-1"></i> مسح
-                                </a>
+                                    <div class="col-md-2">
+                                        <label class="form-label mb-1 d-block">&nbsp;</label>
+                                        <div class="d-flex gap-2">
+                                            <button type="submit" class="btn btn-primary btn-sm flex-fill">
+                                                <i class="bi bi-search me-1"></i> بحث
+                                            </button>
+                                            <a href="{{ route('admin.user-sessions.index') }}" class="btn btn-outline-danger btn-sm">
+                                                <i class="bi bi-x-circle me-1"></i> مسح
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
                             </form>
+                        </div>
+                    </div>
+
+                    <!-- جدول الجلسات -->
+                    <div class="card custom-card">
+                        <div class="card-header">
+                            <h5 class="mb-0 fw-bold">قائمة الجلسات</h5>
                         </div>
 
                         <div class="card-body">

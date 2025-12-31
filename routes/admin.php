@@ -334,12 +334,12 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::get('reports/templates/list', [\App\Http\Controllers\Admin\ReportController::class, 'templates'])
             ->name('reports.templates');
 
-        // قوالب التقارير
-        Route::resource('report-templates', \App\Http\Controllers\Admin\ReportTemplateController::class);
-        Route::post('report-templates/{id}/duplicate', [\App\Http\Controllers\Admin\ReportTemplateController::class, 'duplicate'])
-            ->name('report-templates.duplicate');
-        Route::post('report-templates/{id}/set-default', [\App\Http\Controllers\Admin\ReportTemplateController::class, 'setDefault'])
-            ->name('report-templates.set-default');
+        // قوالب التقارير - تم إزالتها مؤقتاً لأن الـ controller غير موجود
+        // Route::resource('report-templates', \App\Http\Controllers\Admin\ReportTemplateController::class);
+        // Route::post('report-templates/{id}/duplicate', [\App\Http\Controllers\Admin\ReportTemplateController::class, 'duplicate'])
+        //     ->name('report-templates.duplicate');
+        // Route::post('report-templates/{id}/set-default', [\App\Http\Controllers\Admin\ReportTemplateController::class, 'setDefault'])
+        //     ->name('report-templates.set-default');
 
         // الإعدادات
         Route::get('settings', [\App\Http\Controllers\Admin\SettingsController::class, 'index'])->name('settings.index');

@@ -49,49 +49,78 @@
 
             <div class="row">
                 <div class="col-xl-12">
-                    <div class="card custom-card">
-                        <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-                            <h5 class="mb-0 fw-bold">قائمة الانضمامات</h5>
+                    <!-- قسم الفلاتر -->
+                    <div class="card custom-card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0 fw-bold">
+                                <i class="bi bi-funnel me-2"></i> البحث والفلترة
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="GET" action="{{ route('admin.enrollments.index') }}">
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-md-3">
+                                        <label class="form-label mb-1">بحث</label>
+                                        <input type="text" name="search" class="form-control form-control-sm"
+                                               placeholder="بحث بالاسم، البريد، أو المادة"
+                                               value="{{ request('search') }}">
+                                    </div>
 
-                            <form method="GET" action="{{ route('admin.enrollments.index') }}"
-                                  class="d-flex flex-wrap gap-2 align-items-center">
-                                <input type="text" name="search" class="form-control form-control-sm"
-                                       placeholder="بحث بالاسم، البريد، أو المادة"
-                                       value="{{ request('search') }}" style="min-width: 220px;">
+                                    <div class="col-md-2">
+                                        <label class="form-label mb-1">الطالب</label>
+                                        <select name="user_id" class="form-select form-select-sm">
+                                            <option value="">كل الطلاب</option>
+                                            @foreach($users as $user)
+                                                <option value="{{ $user->id }}" {{ request('user_id') == $user->id ? 'selected' : '' }}>
+                                                    {{ $user->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
 
-                                <select name="user_id" class="form-select form-select-sm" style="min-width: 160px;">
-                                    <option value="">كل الطلاب</option>
-                                    @foreach($users as $user)
-                                        <option value="{{ $user->id }}" {{ request('user_id') == $user->id ? 'selected' : '' }}>
-                                            {{ $user->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                    <div class="col-md-2">
+                                        <label class="form-label mb-1">المادة</label>
+                                        <select name="subject_id" class="form-select form-select-sm">
+                                            <option value="">كل المواد</option>
+                                            @foreach($subjects as $subject)
+                                                <option value="{{ $subject->id }}" {{ request('subject_id') == $subject->id ? 'selected' : '' }}>
+                                                    {{ $subject->name }} - {{ $subject->schoolClass->name ?? '' }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
 
-                                <select name="subject_id" class="form-select form-select-sm" style="min-width: 160px;">
-                                    <option value="">كل المواد</option>
-                                    @foreach($subjects as $subject)
-                                        <option value="{{ $subject->id }}" {{ request('subject_id') == $subject->id ? 'selected' : '' }}>
-                                            {{ $subject->name }} - {{ $subject->schoolClass->name ?? '' }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                    <div class="col-md-2">
+                                        <label class="form-label mb-1">الحالة</label>
+                                        <select name="status" class="form-select form-select-sm">
+                                            <option value="">كل الحالات</option>
+                                            <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>معلق</option>
+                                            <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>نشط</option>
+                                            <option value="suspended" {{ request('status') === 'suspended' ? 'selected' : '' }}>معلق</option>
+                                            <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>مكتمل</option>
+                                        </select>
+                                    </div>
 
-                                <select name="status" class="form-select form-select-sm" style="min-width: 150px;">
-                                    <option value="">كل الحالات</option>
-                                    <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>معلق</option>
-                                    <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>نشط</option>
-                                    <option value="suspended" {{ request('status') === 'suspended' ? 'selected' : '' }}>معلق</option>
-                                    <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>مكتمل</option>
-                                </select>
-
-                                <button type="submit" class="btn btn-secondary btn-sm">
-                                    <i class="bi bi-search me-1"></i> بحث
-                                </button>
-                                <a href="{{ route('admin.enrollments.index') }}" class="btn btn-outline-danger btn-sm">
-                                    <i class="bi bi-x-circle me-1"></i> مسح
-                                </a>
+                                    <div class="col-md-3">
+                                        <label class="form-label mb-1 d-block">&nbsp;</label>
+                                        <div class="d-flex gap-2">
+                                            <button type="submit" class="btn btn-primary btn-sm flex-fill">
+                                                <i class="bi bi-search me-1"></i> بحث
+                                            </button>
+                                            <a href="{{ route('admin.enrollments.index') }}" class="btn btn-outline-danger btn-sm">
+                                                <i class="bi bi-x-circle me-1"></i> مسح
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
                             </form>
+                        </div>
+                    </div>
+
+                    <!-- جدول الانضمامات -->
+                    <div class="card custom-card">
+                        <div class="card-header">
+                            <h5 class="mb-0 fw-bold">قائمة الانضمامات</h5>
                         </div>
 
                         <div class="card-body">
