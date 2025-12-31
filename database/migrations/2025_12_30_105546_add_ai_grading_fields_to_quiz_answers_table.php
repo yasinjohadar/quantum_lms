@@ -16,17 +16,17 @@ return new class extends Migration
             $table->json('ai_grading_data')->nullable()->after('ai_graded')->comment('بيانات التصحيح من AI (الدرجة المقترحة، التعليقات، المعايير)');
             $table->timestamp('ai_graded_at')->nullable()->after('ai_grading_data')->comment('تاريخ ووقت التصحيح بواسطة AI');
             $table->foreignId('ai_grading_model_id')->nullable()->after('ai_graded_at')->constrained('ai_models')->nullOnDelete()->comment('الموديل المستخدم للتصحيح');
-            
+
             $table->index('ai_graded');
             $table->index('ai_grading_model_id');
         });
-        
+
         Schema::table('question_answers', function (Blueprint $table) {
             $table->boolean('ai_graded')->default(false)->after('graded_at')->comment('هل تم التصحيح بواسطة AI');
             $table->json('ai_grading_data')->nullable()->after('ai_graded')->comment('بيانات التصحيح من AI (الدرجة المقترحة، التعليقات، المعايير)');
             $table->timestamp('ai_graded_at')->nullable()->after('ai_grading_data')->comment('تاريخ ووقت التصحيح بواسطة AI');
             $table->foreignId('ai_grading_model_id')->nullable()->after('ai_graded_at')->constrained('ai_models')->nullOnDelete()->comment('الموديل المستخدم للتصحيح');
-            
+
             $table->index('ai_graded');
             $table->index('ai_grading_model_id');
         });
@@ -43,7 +43,7 @@ return new class extends Migration
             $table->dropIndex(['ai_graded']);
             $table->dropColumn(['ai_graded', 'ai_grading_data', 'ai_graded_at', 'ai_grading_model_id']);
         });
-        
+
         Schema::table('question_answers', function (Blueprint $table) {
             $table->dropForeign(['ai_grading_model_id']);
             $table->dropIndex(['ai_grading_model_id']);

@@ -22,6 +22,7 @@ class BackupStorageAnalyticsController extends Controller
         $configs = BackupStorageConfig::where('is_active', true)->get();
         $selectedConfig = null;
         $stats = null;
+        $budgetAlert = null;
         $period = $request->get('period', 'month'); // day, week, month, year
 
         if ($request->filled('config_id')) {
@@ -42,7 +43,7 @@ class BackupStorageAnalyticsController extends Controller
             $budgetAlert = $this->analyticsService->checkBudgetAlert($selectedConfig);
         }
 
-        return view('admin.pages.backup-storage.analytics', compact('configs', 'selectedConfig', 'stats', 'period', 'budgetAlert' ?? null));
+        return view('admin.pages.backup-storage.analytics', compact('configs', 'selectedConfig', 'stats', 'period', 'budgetAlert'));
     }
 }
 
