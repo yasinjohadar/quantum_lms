@@ -16,6 +16,7 @@
             --border: #e5e7eb;
             --bg: #ffffff;
             --bg-light: #f9fafb;
+            --bg-body: #f3f4f6;
             --danger: #ef4444;
             --success: #10b981;
         }
@@ -26,10 +27,14 @@
             padding: 0;
         }
 
+        html, body {
+            height: 100%;
+        }
+
         body {
             min-height: 100vh;
             font-family: 'Cairo', system-ui, -apple-system, sans-serif;
-            background: var(--bg);
+            background: var(--bg-body);
             color: var(--text-main);
             display: flex;
             align-items: center;
@@ -46,8 +51,9 @@
         .login-card {
             background: var(--bg);
             border: 1px solid var(--border);
+            border-radius: 12px;
             padding: 40px 32px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
 
         @media (min-width: 480px) {
@@ -71,13 +77,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 2px solid var(--primary-dark);
+            border-radius: 12px;
         }
 
         .brand-mark-icon {
             color: white;
             font-weight: 700;
-            font-size: 24px;
+            font-size: 28px;
         }
 
         .brand-title {
@@ -117,6 +123,7 @@
             padding: 6px 12px;
             background: #ecfdf5;
             border: 1px solid #10b981;
+            border-radius: 20px;
             color: #065f46;
             font-size: 12px;
             font-weight: 600;
@@ -127,6 +134,7 @@
             width: 6px;
             height: 6px;
             background: #10b981;
+            border-radius: 50%;
         }
 
         .alert {
@@ -134,6 +142,7 @@
             padding: 12px 16px;
             margin-bottom: 16px;
             border: 1px solid transparent;
+            border-radius: 8px;
             display: flex;
             align-items: flex-start;
             gap: 12px;
@@ -202,12 +211,14 @@
             padding-left: 44px;
             padding-right: 16px;
             border: 1px solid var(--border);
+            border-radius: 8px;
             background: var(--bg);
             color: var(--text-main);
             font-size: 14px;
             font-weight: 500;
             outline: none;
             font-family: 'Cairo', sans-serif;
+            transition: all 0.2s;
         }
 
         .field-control input[type="password"] {
@@ -221,7 +232,7 @@
 
         .field-control input:focus {
             border-color: var(--primary);
-            outline: 2px solid var(--primary);
+            outline: 2px solid rgba(79, 70, 229, 0.1);
             outline-offset: -2px;
         }
 
@@ -338,11 +349,13 @@
             cursor: pointer;
             color: white;
             background: var(--primary);
+            border-radius: 8px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 12px;
             font-family: 'Cairo', sans-serif;
+            transition: all 0.2s;
         }
 
         .btn-primary:hover {
@@ -408,7 +421,7 @@
             color: var(--text-main);
             cursor: pointer;
             font-family: 'Cairo', sans-serif;
-            border-radius: 0;
+            border-radius: 8px;
             transition: all 0.2s;
             display: inline-flex;
             align-items: center;
@@ -553,77 +566,6 @@
                 <div class="field-control">
                     <input
                         id="password"
-                        type="password"
-                        name="password"
-                        required
-                        autocomplete="current-password"
-                        placeholder="••••••••"
-                    >
-                    <div class="field-icon">🔒</div>
-                    <button type="button" class="password-toggle" onclick="togglePassword()" aria-label="إظهار/إخفاء كلمة المرور">
-                        <span id="password-toggle-icon">👁</span>
-                    </button>
-                </div>
-                @if ($errors->has('password'))
-                    <div class="field-error">
-                        <ul>
-                            @foreach ($errors->get('password') as $message)
-                                <li>{{ $message }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
-            </div>
-
-            <div class="row-inline">
-                <label class="remember" for="remember_me">
-                    <input id="remember_me" type="checkbox" name="remember">
-                    <span>تذكرني في هذا الجهاز</span>
-                </label>
-
-                @if (Route::has('password.request'))
-                    <a class="link-muted" href="{{ route('password.request') }}">
-                        نسيت كلمة المرور؟
-                    </a>
-                @endif
-            </div>
-
-            <div class="actions">
-                <div class="demo-buttons">
-                    <button type="button" class="btn-demo btn-demo-admin" onclick="fillDemoCredentials('admin')">
-                        <span>👤</span>
-                        <span>تسجيل دخول كمدير</span>
-                    </button>
-                    <button type="button" class="btn-demo btn-demo-student" onclick="fillDemoCredentials('student')">
-                        <span>🎓</span>
-                        <span>تسجيل دخول كطالب</span>
-                    </button>
-                </div>
-                <button type="submit" class="btn-primary">
-                    <span>تسجيل الدخول</span>
-                    <span class="btn-primary-icon">→</span>
-                </button>
-            </div>
-
-            <div class="meta">
-                <span>معلومات الدخول الخاصة بك سرية.</span>
-                @if (Route::has('register'))
-                    <span>
-                        لا تملك حساباً؟
-                        <a href="{{ route('register') }}">إنشاء حساب</a>
-                    </span>
-                @endif
-            </div>
-        </form>
-
-        <div class="footer-note">
-            Quantum LMS &copy; {{ date('Y') }} &mdash; جميع الحقوق محفوظة.
-        </div>
-    </div>
-</div>
-</body>
-</html>
-
                         type="password"
                         name="password"
                         required

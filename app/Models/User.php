@@ -291,4 +291,15 @@ class User extends Authenticatable
         return $this->belongsToMany(LibraryItem::class, 'library_favorites', 'user_id', 'library_item_id')
                     ->withTimestamps();
     }
+
+    /**
+     * Send the password reset notification.
+     *
+     * @param  string  $token
+     * @return void
+     */
+    public function sendPasswordResetNotification($token)
+    {
+        $this->notify(new \App\Notifications\ResetPasswordNotification($token));
+    }
 }

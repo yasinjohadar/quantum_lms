@@ -45,6 +45,7 @@ class SystemSetting extends Model
         'gamification' => 'التحفيز',
         'zoom' => 'Zoom',
         'ai' => 'الذكاء الاصطناعي',
+        'email' => 'البريد الإلكتروني',
     ];
 
     /**

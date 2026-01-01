@@ -567,4 +567,19 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
                 Route::get('/stats', [AttendanceController::class, 'stats'])
                     ->name('stats');
             });
+
+        // Email Settings Routes
+        Route::prefix('email-settings')->name('email-settings.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\EmailSettingsController::class, 'index'])->name('index');
+            Route::post('/', [\App\Http\Controllers\Admin\EmailSettingsController::class, 'update'])->name('update');
+            Route::post('/test-connection', [\App\Http\Controllers\Admin\EmailSettingsController::class, 'testConnection'])->name('test-connection');
+            Route::post('/send-test', [\App\Http\Controllers\Admin\EmailSettingsController::class, 'sendTestEmail'])->name('send-test');
+        });
+
+        // Email Logs Routes
+        Route::resource('email-logs', \App\Http\Controllers\Admin\EmailLogController::class)->only(['index', 'show', 'destroy']);
+
+        // Email Templates Routes
+        Route::resource('email-templates', \App\Http\Controllers\Admin\EmailTemplateController::class);
+        Route::post('email-templates/{emailTemplate}/preview', [\App\Http\Controllers\Admin\EmailTemplateController::class, 'preview'])->name('email-templates.preview');
     });

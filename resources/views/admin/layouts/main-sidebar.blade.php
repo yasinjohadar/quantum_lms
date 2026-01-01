@@ -516,6 +516,37 @@
                             </a>
                         </li>
 
+                        <li class="slide has-sub {{ request()->is('admin/email-settings*') || request()->is('admin/email-logs*') || request()->is('admin/email-templates*') ? 'open' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                                </svg>
+                                <span class="side-menu__label">البريد الإلكتروني</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">البريد الإلكتروني</a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/email-settings*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.email-settings.index') }}" class="side-menu__item {{ request()->is('admin/email-settings*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">إعدادات SMTP</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/email-logs*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.email-logs.index') }}" class="side-menu__item {{ request()->is('admin/email-logs*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">سجل الإيميلات</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/email-templates*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.email-templates.index') }}" class="side-menu__item {{ request()->is('admin/email-templates*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">قوالب الإيميلات</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
                         <li class="slide {{ request()->is('admin/settings*') ? 'active' : '' }}">
                             <a href="{{ route('admin.settings.index') }}" class="side-menu__item {{ request()->is('admin/settings*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">

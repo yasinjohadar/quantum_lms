@@ -43,6 +43,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Apply email settings from database
+        try {
+            $emailSettingsService = app(\App\Services\Email\EmailSettingsService::class);
+            $emailSettingsService->applyToConfig();
+        } catch (\Exception $e) {
+            // Silently fail if tables don't exist yet
+        }
+
         // Register storage helper globally
         if (!function_exists('storage_disk')) {
             function storage_disk(string $diskName) {
