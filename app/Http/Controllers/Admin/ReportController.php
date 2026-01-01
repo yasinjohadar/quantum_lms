@@ -121,7 +121,7 @@ class ReportController extends Controller
      */
     public function templates()
     {
-        $templates = ReportTemplate::with('creator')->orderBy('type')->orderBy('name')->get();
+        $templates = ReportTemplate::orderBy('type')->orderBy('name')->get();
         return view('admin.pages.reports.templates.index', compact('templates'));
     }
 
