@@ -46,9 +46,29 @@ class AppServiceProvider extends ServiceProvider
         // Apply email settings from database
         try {
             $emailSettingsService = app(\App\Services\Email\EmailSettingsService::class);
+            $emailSettingsService->initializeDefaults();
             $emailSettingsService->applyToConfig();
         } catch (\Exception $e) {
             // Silently fail if tables don't exist yet
+            \Log::warning('Failed to apply email settings from DB: ' . $e->getMessage());
+        }
+
+        // Initialize SMS settings from database
+        try {
+            $smsSettingsService = app(\App\Services\SMS\SMSSettingsService::class);
+            $smsSettingsService->initializeDefaults();
+        } catch (\Exception $e) {
+            // Silently fail if tables don't exist yet
+            \Log::warning('Failed to initialize SMS settings: ' . $e->getMessage());
+        }
+
+        // Initialize WhatsApp settings from database
+        try {
+            $whatsappSettingsService = app(\App\Services\WhatsApp\WhatsAppSettingsService::class);
+            $whatsappSettingsService->initializeDefaults();
+        } catch (\Exception $e) {
+            // Silently fail if tables don't exist yet
+            \Log::warning('Failed to initialize WhatsApp settings: ' . $e->getMessage());
         }
 
         // Register storage helper globally
@@ -79,5 +99,8 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(LibraryItemCreated::class, SendLibraryItemNotification::class);
         Event::listen(EventReminderSent::class, SendEventReminderNotification::class);
         Event::listen(EventReminderSent::class, SendRealTimeNotification::class);
+
+        // WhatsApp Event Listeners
+        Event::listen(\App\Events\WhatsAppMessageReceived::class, \App\Listeners\AutoReplyWhatsAppListener::class);
     }
 }

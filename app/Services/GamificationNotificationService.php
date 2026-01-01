@@ -54,6 +54,16 @@ class GamificationNotificationService
             // Mail::to($user->email)->send(new GamificationNotificationMail($notification));
         }
 
+        // إرسال SMS إذا كان مفعلاً
+        if ($user->phone && $this->preferenceService->isAllowed($user, $type, 'sms')) {
+            try {
+                $smsService = app(\App\Services\SMS\SMSService::class);
+                $smsService->send($user->phone, $message, ['type' => 'notification']);
+            } catch (\Exception $e) {
+                \Log::error('Error sending SMS notification: ' . $e->getMessage());
+            }
+        }
+
         return $notification;
     }
 

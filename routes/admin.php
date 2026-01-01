@@ -576,10 +576,55 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             Route::post('/send-test', [\App\Http\Controllers\Admin\EmailSettingsController::class, 'sendTestEmail'])->name('send-test');
         });
 
+        // WhatsApp Settings Routes
+        Route::prefix('whatsapp-settings')->name('whatsapp-settings.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'index'])->name('index');
+            Route::post('/', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'update'])->name('update');
+            Route::post('/test-connection', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'testConnection'])->name('test-connection');
+        });
+
+        // WhatsApp Messages Routes
+        Route::prefix('whatsapp-messages')->name('whatsapp-messages.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'index'])->name('index');
+            Route::get('/send', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'create'])->name('create');
+            Route::post('/send', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'send'])->name('send');
+            Route::get('/{message}', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'show'])->name('show');
+        });
+
         // Email Logs Routes
         Route::resource('email-logs', \App\Http\Controllers\Admin\EmailLogController::class)->only(['index', 'show', 'destroy']);
 
         // Email Templates Routes
         Route::resource('email-templates', \App\Http\Controllers\Admin\EmailTemplateController::class);
         Route::post('email-templates/{emailTemplate}/preview', [\App\Http\Controllers\Admin\EmailTemplateController::class, 'preview'])->name('email-templates.preview');
+
+        // SMS Settings Routes
+        Route::prefix('sms-settings')->name('sms-settings.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\SMSSettingsController::class, 'index'])->name('index');
+            Route::post('/', [\App\Http\Controllers\Admin\SMSSettingsController::class, 'update'])->name('update');
+            Route::post('/test-connection', [\App\Http\Controllers\Admin\SMSSettingsController::class, 'testConnection'])->name('test-connection');
+            Route::post('/send-test', [\App\Http\Controllers\Admin\SMSSettingsController::class, 'sendTestSMS'])->name('send-test');
+        });
+
+        // SMS Logs Routes
+        Route::resource('sms-logs', \App\Http\Controllers\Admin\SMSLogController::class)->only(['index', 'show']);
+
+        // SMS Templates Routes
+        Route::resource('sms-templates', \App\Http\Controllers\Admin\SMSTemplateController::class);
+        Route::post('sms-templates/{smsTemplate}/preview', [\App\Http\Controllers\Admin\SMSTemplateController::class, 'preview'])->name('sms-templates.preview');
+
+        // WhatsApp Settings Routes
+        Route::prefix('whatsapp-settings')->name('whatsapp-settings.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'index'])->name('index');
+            Route::post('/', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'update'])->name('update');
+            Route::post('/test-connection', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'testConnection'])->name('test-connection');
+        });
+
+        // WhatsApp Messages Routes
+        Route::prefix('whatsapp-messages')->name('whatsapp-messages.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'index'])->name('index');
+            Route::get('/send', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'create'])->name('create');
+            Route::post('/send', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'send'])->name('send');
+            Route::get('/{message}', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'show'])->name('show');
+        });
     });

@@ -46,6 +46,8 @@ class SystemSetting extends Model
         'zoom' => 'Zoom',
         'ai' => 'الذكاء الاصطناعي',
         'email' => 'البريد الإلكتروني',
+        'sms' => 'SMS',
+        'whatsapp' => 'WhatsApp',
     ];
 
     /**

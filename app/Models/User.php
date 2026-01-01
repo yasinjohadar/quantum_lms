@@ -52,6 +52,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'phone_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
         ];
@@ -290,6 +291,14 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(LibraryItem::class, 'library_favorites', 'user_id', 'library_item_id')
                     ->withTimestamps();
+    }
+
+    /**
+     * العلاقة مع OTP codes
+     */
+    public function otpCodes()
+    {
+        return $this->hasMany(\App\Models\OTPCode::class);
     }
 
     /**

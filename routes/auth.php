@@ -33,6 +33,11 @@ Route::middleware('guest')->group(function () {
 
     Route::post('reset-password', [NewPasswordController::class, 'store'])
         ->name('password.store');
+
+    // OTP Routes
+    Route::post('otp/send', [\App\Http\Controllers\Auth\OTPController::class, 'send'])->name('otp.send');
+    Route::post('otp/verify', [\App\Http\Controllers\Auth\OTPController::class, 'verify'])->name('otp.verify');
+    Route::post('otp/resend', [\App\Http\Controllers\Auth\OTPController::class, 'resend'])->name('otp.resend');
 });
 
 Route::middleware('auth')->group(function () {
@@ -46,6 +51,11 @@ Route::middleware('auth')->group(function () {
     Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
         ->middleware('throttle:6,1')
         ->name('verification.send');
+
+    // Phone Verification Routes
+    Route::get('verify-phone', [\App\Http\Controllers\Auth\PhoneVerificationController::class, 'show'])->name('phone.verify');
+    Route::post('verify-phone', [\App\Http\Controllers\Auth\PhoneVerificationController::class, 'verify'])->name('phone.verify');
+    Route::post('verify-phone/send', [\App\Http\Controllers\Auth\PhoneVerificationController::class, 'send'])->name('phone.send');
 
     Route::get('confirm-password', [ConfirmablePasswordController::class, 'show'])
         ->name('password.confirm');
