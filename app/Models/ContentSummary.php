@@ -61,3 +61,4 @@ class ContentSummary extends Model
     ];
 }
 
+

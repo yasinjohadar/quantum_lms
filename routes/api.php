@@ -11,3 +11,4 @@ Route::prefix('webhooks/whatsapp')
         Route::post('/', [WhatsAppWebhookController::class, 'handle'])->name('handle');
     });
 
+

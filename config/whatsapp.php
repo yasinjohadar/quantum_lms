@@ -39,3 +39,4 @@ return [
     'retry_attempts' => env('WHATSAPP_RETRY_ATTEMPTS', 3),
 ];
 
+
