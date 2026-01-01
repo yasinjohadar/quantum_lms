@@ -62,3 +62,4 @@ class ContentSummary extends Model
 }
 
 
+

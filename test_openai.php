@@ -22,14 +22,14 @@ if (!$apiKey) {
     $openAIModel = AIModel::where('provider', 'openai')
         ->where('is_active', true)
         ->first();
-    
+
     if ($openAIModel) {
         echo "[33m📋 استخدام موديل من قاعدة البيانات:[0m\n";
         echo "  - الاسم: " . $openAIModel->name . "\n";
         echo "  - Model Key: " . $openAIModel->model_key . "\n";
         $apiKey = $openAIModel->getDecryptedApiKey();
         $modelKey = $openAIModel->model_key;
-        
+
         if (empty($apiKey)) {
             echo "[31m✗ API Key غير موجود في قاعدة البيانات![0m\n\n";
             echo "[34m💡 للحصول على API Key:[0m\n";
@@ -81,14 +81,14 @@ echo "[36m═══════════════════════�
 
 try {
     $provider = AIProviderFactory::create($model);
-    
+
     // اختبار 1: اختبار الاتصال الأساسي
     echo "[33m📋 اختبار 1: اختبار الاتصال الأساسي[0m\n";
     $startTime = microtime(true);
     $testResult = $provider->testConnection();
     $endTime = microtime(true);
     $responseTime = round(($endTime - $startTime) * 1000, 2);
-    
+
     if ($testResult) {
         echo "[32m  ✅ نجح الاتصال![0m\n";
         echo "[34m  - وقت الاستجابة: {$responseTime} مللي ثانية[0m\n\n";
@@ -101,7 +101,7 @@ try {
         echo "[34m  - وقت الاستجابة: {$responseTime} مللي ثانية[0m\n\n";
         exit(1);
     }
-    
+
     // اختبار 2: محادثة بسيطة
     echo "[33m📋 اختبار 2: محادثة بسيطة[0m\n";
     $startTime = microtime(true);
@@ -110,7 +110,7 @@ try {
     ], ['max_tokens' => 20]);
     $endTime = microtime(true);
     $responseTime = round(($endTime - $startTime) * 1000, 2);
-    
+
     if ($chatResult['success']) {
         echo "[32m  ✅ نجح![0m\n";
         echo "[34m  - الرد: " . substr($chatResult['content'], 0, 100) . "...[0m\n";
@@ -121,7 +121,7 @@ try {
         echo "[31m  - رسالة الخطأ: " . ($chatResult['error'] ?? 'خطأ غير معروف') . "[0m\n";
         echo "[34m  - وقت الاستجابة: {$responseTime} مللي ثانية[0m\n\n";
     }
-    
+
     // اختبار 3: توليد نص طويل
     echo "[33m📋 اختبار 3: توليد نص طويل[0m\n";
     $startTime = microtime(true);
@@ -131,7 +131,7 @@ try {
     );
     $endTime = microtime(true);
     $responseTime = round(($endTime - $startTime) * 1000, 2);
-    
+
     if (!empty($longResult)) {
         echo "[32m  ✅ نجح![0m\n";
         echo "[34m  - النص المولد: " . substr($longResult, 0, 150) . "...[0m\n";
@@ -145,20 +145,20 @@ try {
         }
         echo "[34m  - وقت الاستجابة: {$responseTime} مللي ثانية[0m\n\n";
     }
-    
+
     // اختبار 4: اختبار Model Key مختلف
     if ($modelKey !== 'gpt-4') {
         echo "[33m📋 اختبار 4: اختبار GPT-4[0m\n";
         $model->model_key = 'gpt-4';
         $provider = AIProviderFactory::create($model);
-        
+
         $startTime = microtime(true);
         $gpt4Result = $provider->chat([
             ['role' => 'user', 'content' => 'Hello']
         ], ['max_tokens' => 5]);
         $endTime = microtime(true);
         $responseTime = round(($endTime - $startTime) * 1000, 2);
-        
+
         if ($gpt4Result['success']) {
             echo "[32m  ✅ GPT-4 يعمل![0m\n";
             echo "[34m  - وقت الاستجابة: {$responseTime} مللي ثانية[0m\n\n";
@@ -168,11 +168,11 @@ try {
             echo "[34m  - وقت الاستجابة: {$responseTime} مللي ثانية[0m\n\n";
         }
     }
-    
+
     echo "[36m═══════════════════════════════════════════════════════════════[0m\n";
     echo "[32m  ✅ جميع الاختبارات اكتملت![0m\n";
     echo "[36m═══════════════════════════════════════════════════════════════[0m\n";
-    
+
 } catch (\Exception $e) {
     echo "[31m  ❌ حدث خطأ غير متوقع: " . $e->getMessage() . "[0m\n";
     Log::error('OpenAI Test Script Exception: ' . $e->getMessage(), [
@@ -182,5 +182,6 @@ try {
 }
 
 echo "\n";
+
 
 
