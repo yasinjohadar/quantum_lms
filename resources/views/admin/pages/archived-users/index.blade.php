@@ -267,7 +267,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function toggleBulkRestoreBtn() {
         const checked = document.querySelectorAll('.row-checkbox:checked');
         if (bulkRestoreBtn) {
-            bulkRestoreBtn.style.display = checked.length > 0 ? 'inline-block' : 'none';
+            if (checked.length > 0) {
+                bulkRestoreBtn.style.display = 'inline-block';
+                bulkRestoreBtn.textContent = `استعادة المحدد (${checked.length})`;
+            } else {
+                bulkRestoreBtn.style.display = 'none';
+            }
         }
     }
 
@@ -279,18 +284,30 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Bulk restore
-    if (bulkRestoreBtn) {
-        bulkRestoreBtn.addEventListener('click', function() {
+    if (bulkRestoreBtn && bulkRestoreForm) {
+        bulkRestoreBtn.addEventListener('click', function(e) {
+            e.preventDefault();
             const checked = document.querySelectorAll('.row-checkbox:checked');
             const ids = Array.from(checked).map(cb => cb.value);
             
             if (ids.length === 0) {
-                alert('يرجى اختيار سجلات للاستعادة');
+                alert('يرجى اختيار مستخدم واحد على الأقل للاستعادة');
                 return;
             }
 
             if (confirm('هل أنت متأكد من استعادة ' + ids.length + ' مستخدم محدد؟')) {
                 archivedUserIdsInput.value = JSON.stringify(ids);
+                
+                // Ensure CSRF token is present
+                if (!document.querySelector('#bulk-restore-form input[name="_token"]')) {
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = '_token';
+                    csrfInput.value = '{{ csrf_token() }}';
+                    bulkRestoreForm.appendChild(csrfInput);
+                }
+                
+                bulkRestoreForm.method = 'POST';
                 bulkRestoreForm.submit();
             }
         });
