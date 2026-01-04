@@ -49,38 +49,55 @@
 
             <div class="row">
                 <div class="col-xl-12">
-                    <div class="card shadow-sm border-0">
-                        <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-                            <h5 class="mb-0 fw-bold">قائمة الصفوف الدراسية</h5>
-
+                    <!-- Filters Card -->
+                    <div class="card shadow-sm border-0 mb-3">
+                        <div class="card-body">
                             <form method="GET" action="{{ route('admin.classes.index') }}"
-                                  class="d-flex flex-wrap gap-2 align-items-center">
-                                <input type="text" name="query" class="form-control form-control-sm"
-                                       placeholder="بحث باسم الصف أو الوصف"
-                                       value="{{ request('query') }}" style="min-width: 220px;">
+                                  class="row g-3 align-items-end">
+                                <div class="col-md-3">
+                                    <label class="form-label mb-1">البحث</label>
+                                    <input type="text" name="query" class="form-control form-control-sm"
+                                           placeholder="بحث باسم الصف أو الوصف"
+                                           value="{{ request('query') }}">
+                                </div>
 
-                                <select name="stage_id" class="form-select form-select-sm" style="min-width: 160px;">
-                                    <option value="">كل المراحل</option>
-                                    @foreach($stages as $stage)
-                                        <option value="{{ $stage->id }}" {{ request('stage_id') == $stage->id ? 'selected' : '' }}>
-                                            {{ $stage->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <div class="col-md-3">
+                                    <label class="form-label mb-1">المرحلة</label>
+                                    <select name="stage_id" class="form-select form-select-sm">
+                                        <option value="">كل المراحل</option>
+                                        @foreach($stages as $stage)
+                                            <option value="{{ $stage->id }}" {{ request('stage_id') == $stage->id ? 'selected' : '' }}>
+                                                {{ $stage->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
 
-                                <select name="is_active" class="form-select form-select-sm" style="min-width: 150px;">
-                                    <option value="">كل الحالات</option>
-                                    <option value="1" {{ request('is_active') === '1' ? 'selected' : '' }}>نشط</option>
-                                    <option value="0" {{ request('is_active') === '0' ? 'selected' : '' }}>غير نشط</option>
-                                </select>
+                                <div class="col-md-2">
+                                    <label class="form-label mb-1">الحالة</label>
+                                    <select name="is_active" class="form-select form-select-sm">
+                                        <option value="">كل الحالات</option>
+                                        <option value="1" {{ request('is_active') === '1' ? 'selected' : '' }}>نشط</option>
+                                        <option value="0" {{ request('is_active') === '0' ? 'selected' : '' }}>غير نشط</option>
+                                    </select>
+                                </div>
 
-                                <button type="submit" class="btn btn-secondary btn-sm">
-                                    بحث
-                                </button>
-                                <a href="{{ route('admin.classes.index') }}" class="btn btn-outline-danger btn-sm">
-                                    مسح الفلاتر
-                                </a>
+                                <div class="col-md-4">
+                                    <button type="submit" class="btn btn-primary btn-sm me-2">
+                                        <i class="fas fa-search me-1"></i> بحث
+                                    </button>
+                                    <a href="{{ route('admin.classes.index') }}" class="btn btn-outline-danger btn-sm">
+                                        <i class="fas fa-times me-1"></i> مسح الفلاتر
+                                    </a>
+                                </div>
                             </form>
+                        </div>
+                    </div>
+
+                    <!-- Classes List Card -->
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header">
+                            <h5 class="mb-0 fw-bold">قائمة الصفوف الدراسية</h5>
                         </div>
 
                         <div class="card-body">

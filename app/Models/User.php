@@ -7,12 +7,13 @@ use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Notifications\Notifiable;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes;
       use HasRoles;
 
     /**
@@ -275,13 +276,37 @@ class User extends Authenticatable
     }
 
     /**
-     * نطاق الطلاب فقط
+     * نطاق الطلاب فقط (غير المؤرشفين)
      */
     public function scopeStudents($query)
     {
         return $query->whereHas('roles', function ($q) {
             $q->where('name', 'student');
-        });
+        })->where('is_archived', false);
+    }
+
+    /**
+     * نطاق المستخدمين المؤرشفين
+     */
+    public function scopeArchived($query)
+    {
+        return $query->where('is_archived', true);
+    }
+
+    /**
+     * نطاق المستخدمين غير المؤرشفين
+     */
+    public function scopeNotArchived($query)
+    {
+        return $query->where('is_archived', false);
+    }
+
+    /**
+     * Relationship to archived user record
+     */
+    public function archivedRecord()
+    {
+        return $this->hasOne(ArchivedUser::class, 'original_user_id');
     }
 
     /**

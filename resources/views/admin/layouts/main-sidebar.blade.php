@@ -28,14 +28,30 @@
                             </a>
                         </li>
 
-                        <li class="slide {{ request()->is('users*') ? 'active' : '' }}">
-                            <a href="{{ route('users.index') }}" class="side-menu__item {{ request()->is('users*') ? 'active' : '' }}">
+                        <li class="slide has-sub {{ request()->is('users*') || request()->is('admin/archived-users*') ? 'open' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
                                     <path d="M16 13c-1.66 0-3 1.34-3 3v3h8v-3c0-1.66-1.34-3-3-3h-2zm-8 0c-1.66 0-3 1.34-3 3v3h6v-3c0-1.66-1.34-3-3-3H8zm8-2a3 3 0 100-6 3 3 0 000 6zm-8 0a3 3 0 100-6 3 3 0 000 6z"/>
                                 </svg>
                                 <span class="side-menu__label">المستخدمون</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">المستخدمون</a>
+                                </li>
+                                <li class="slide {{ request()->is('users*') && !request()->is('admin/archived-users*') ? 'active' : '' }}">
+                                    <a href="{{ route('users.index') }}" class="side-menu__item {{ request()->is('users*') && !request()->is('admin/archived-users*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">قائمة المستخدمين</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/archived-users*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.archived-users.index') }}" class="side-menu__item {{ request()->is('admin/archived-users*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">الأرشيف</span>
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
 
                         <li class="slide {{ request()->is('roles*') ? 'active' : '' }}">
@@ -91,13 +107,28 @@
                                 <li class="slide side-menu__label1">
                                     <a href="javascript:void(0);">الانضمامات</a>
                                 </li>
+                                <li class="slide {{ request()->is('admin/enrollments/class-pending') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.enrollments.class-pending') }}" class="side-menu__item {{ request()->is('admin/enrollments/class-pending') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                        </svg>
+                                        <span class="side-menu__label">طلبات الصف المعلقة</span>
+                                        @php
+                                            $classPendingCount = \App\Models\ClassEnrollment::pending()->count();
+                                        @endphp
+                                        @if($classPendingCount > 0)
+                                            <span class="badge bg-warning-transparent text-warning ms-auto">{{ $classPendingCount }}</span>
+                                        @endif
+                                    </a>
+                                </li>
                                 <li class="slide {{ request()->is('admin/enrollments/pending') ? 'active' : '' }}">
                                     <a href="{{ route('admin.enrollments.pending') }}" class="side-menu__item {{ request()->is('admin/enrollments/pending') ? 'active' : '' }}">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
                                             <path d="M0 0h24v24H0z" fill="none"/>
                                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                                         </svg>
-                                        <span class="side-menu__label">طلبات معلقة</span>
+                                        <span class="side-menu__label">طلبات المواد المعلقة</span>
                                         @php
                                             $pendingCount = \App\Models\Enrollment::pending()->count();
                                         @endphp

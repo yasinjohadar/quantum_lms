@@ -11,7 +11,7 @@ class ArchiveUserRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true; // TODO: Add permission check later
     }
 
     /**
@@ -22,7 +22,7 @@ class ArchiveUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'reason' => ['nullable', 'string', 'max:1000'],
         ];
     }
 }

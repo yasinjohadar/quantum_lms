@@ -21,11 +21,11 @@ class DatabaseSeeder extends Seeder
             SubjectSeeder::class,
             StudentsSeeder::class,
             QuestionsSeeder::class,
-            ReportTemplatesSeeder::class,
-            SystemSettingsSeeder::class,
-            GamificationSeeder::class,
-            AIModelsSeeder::class,
-            AnalyticsEventsSeeder::class,
+            // ReportTemplatesSeeder::class, // Empty file
+            // SystemSettingsSeeder::class, // Empty file
+            // GamificationSeeder::class, // Check if needed
+            // AIModelsSeeder::class, // Check if needed
+            // AnalyticsEventsSeeder::class, // Check if needed
         ]);
 
         // إنشاء مستخدم تجريبي إضافي (إن لم يكن موجوداً)

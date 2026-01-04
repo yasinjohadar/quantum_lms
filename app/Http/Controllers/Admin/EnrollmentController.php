@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Enrollment;
+use App\Models\ClassEnrollment;
 use App\Models\User;
 use App\Models\Subject;
 use App\Models\SchoolClass;
@@ -505,9 +506,288 @@ class EnrollmentController extends Controller
             ->ordered()
             ->get();
 
-        return response()->json([
-            'success' => true,
-            'data' => $subjects,
+            return response()->json([
+                'success' => true,
+                'data' => $subjects,
+            ]);
+    }
+
+    /**
+     * عرض طلبات الانضمام للصف المعلقة
+     */
+    public function classPendingRequests(Request $request)
+    {
+        $classEnrollmentsQuery = ClassEnrollment::with(['user', 'schoolClass.stage', 'enrolledBy'])
+            ->pending();
+
+        // فلترة حسب البحث
+        if ($request->filled('search')) {
+            $classEnrollmentsQuery->search($request->input('search'));
+        }
+
+        // فلترة حسب الطالب
+        if ($request->filled('user_id')) {
+            $classEnrollmentsQuery->forUser($request->input('user_id'));
+        }
+
+        // فلترة حسب الصف
+        if ($request->filled('class_id')) {
+            $classEnrollmentsQuery->forClass($request->input('class_id'));
+        }
+
+        $classEnrollments = $classEnrollmentsQuery->latest('created_at')->paginate(20);
+        
+        $classes = SchoolClass::with('stage')->active()->ordered()->get();
+        
+        // جلب المستخدمين (الطلاب)
+        try {
+            $hasStudentRole = \Spatie\Permission\Models\Role::where('name', 'student')->exists();
+            $users = $hasStudentRole ? User::students()->get() : User::limit(100)->get();
+        } catch (\Exception $e) {
+            $users = User::limit(100)->get();
+        }
+
+        // إحصائيات
+        $pendingCount = ClassEnrollment::pending()->count();
+        $approvedCount = ClassEnrollment::approved()->count();
+
+        return view('admin.pages.enrollments.class-pending', compact('classEnrollments', 'classes', 'users', 'pendingCount', 'approvedCount'));
+    }
+
+    /**
+     * قبول طلب انضمام للصف
+     */
+    public function approveClassEnrollment(ClassEnrollment $classEnrollment, Request $request)
+    {
+        try {
+            if ($classEnrollment->status !== 'pending') {
+                return redirect()->back()
+                    ->with('error', 'هذا الطلب ليس معلقاً');
+            }
+
+            DB::beginTransaction();
+
+            // تحديث status إلى approved
+            $classEnrollment->update([
+                'status' => 'approved',
+                'enrolled_by' => auth()->id(),
+                'enrolled_at' => now(),
+                'notes' => $request->input('notes', $classEnrollment->notes),
+            ]);
+
+            // جلب الصف مع المواد
+            $class = SchoolClass::with(['subjects' => function($query) {
+                $query->where('is_active', true);
+            }])->findOrFail($classEnrollment->class_id);
+
+            // إنشاء enrollments لكل مادة في الصف
+            $createdCount = 0;
+            $skippedCount = 0;
+
+            foreach ($class->subjects as $subject) {
+                // التحقق من عدم وجود enrollment نشط للطالب في نفس المادة
+                $existingEnrollment = Enrollment::withTrashed()
+                    ->where('user_id', $classEnrollment->user_id)
+                    ->where('subject_id', $subject->id)
+                    ->first();
+
+                if ($existingEnrollment) {
+                    if ($existingEnrollment->status === 'active') {
+                        $skippedCount++;
+                        continue;
+                    } elseif (in_array($existingEnrollment->status, ['pending', 'suspended', 'completed'])) {
+                        // حذف enrollment القديم
+                        $existingEnrollment->forceDelete();
+                    }
+                }
+
+                // إنشاء enrollment جديد
+                Enrollment::create([
+                    'user_id' => $classEnrollment->user_id,
+                    'subject_id' => $subject->id,
+                    'enrolled_by' => auth()->id(),
+                    'enrolled_at' => now(),
+                    'status' => 'active',
+                    'notes' => 'تم قبول طلب الانضمام للصف: ' . $class->name,
+                ]);
+                $createdCount++;
+            }
+
+            DB::commit();
+
+            $message = "تم قبول طلب الانضمام للصف بنجاح. تم إنشاء {$createdCount} انضمام للمواد";
+            if ($skippedCount > 0) {
+                $message .= " (تم تخطي {$skippedCount} مادة مسجل فيها مسبقاً)";
+            }
+
+            return redirect()->back()
+                ->with('success', $message);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error approving class enrollment: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء قبول الطلب: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * رفض طلب انضمام للصف
+     */
+    public function rejectClassEnrollment(ClassEnrollment $classEnrollment, Request $request)
+    {
+        try {
+            if ($classEnrollment->status !== 'pending') {
+                return redirect()->back()
+                    ->with('error', 'هذا الطلب ليس معلقاً');
+            }
+
+            $classEnrollment->update([
+                'status' => 'rejected',
+                'enrolled_by' => auth()->id(),
+                'notes' => $request->input('notes', $classEnrollment->notes),
+            ]);
+
+            return redirect()->back()
+                ->with('success', 'تم رفض طلب الانضمام للصف بنجاح');
+
+        } catch (\Exception $e) {
+            Log::error('Error rejecting class enrollment: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء رفض الطلب');
+        }
+    }
+
+    /**
+     * قبول عدة طلبات صف دفعة واحدة
+     */
+    public function approveMultipleClassEnrollments(Request $request)
+    {
+        $request->validate([
+            'class_enrollment_ids' => 'required|array|min:1',
+            'class_enrollment_ids.*' => 'required|exists:class_enrollments,id',
         ]);
+
+        try {
+            DB::beginTransaction();
+
+            $classEnrollments = ClassEnrollment::whereIn('id', $request->input('class_enrollment_ids'))
+                ->pending()
+                ->get();
+
+            if ($classEnrollments->isEmpty()) {
+                DB::rollBack();
+                return redirect()->back()
+                    ->with('error', 'لا توجد طلبات معلقة للقبول');
+            }
+
+            $approvedCount = 0;
+            $totalCreatedEnrollments = 0;
+
+            foreach ($classEnrollments as $classEnrollment) {
+                // تحديث status
+                $classEnrollment->update([
+                    'status' => 'approved',
+                    'enrolled_by' => auth()->id(),
+                    'enrolled_at' => now(),
+                ]);
+
+                // جلب الصف مع المواد
+                $class = SchoolClass::with(['subjects' => function($query) {
+                    $query->where('is_active', true);
+                }])->findOrFail($classEnrollment->class_id);
+
+                // إنشاء enrollments لكل مادة
+                foreach ($class->subjects as $subject) {
+                    // التحقق من عدم وجود enrollment نشط
+                    $existingEnrollment = Enrollment::withTrashed()
+                        ->where('user_id', $classEnrollment->user_id)
+                        ->where('subject_id', $subject->id)
+                        ->first();
+
+                    if ($existingEnrollment && $existingEnrollment->status === 'active') {
+                        continue;
+                    }
+
+                    if ($existingEnrollment) {
+                        $existingEnrollment->forceDelete();
+                    }
+
+                    Enrollment::create([
+                        'user_id' => $classEnrollment->user_id,
+                        'subject_id' => $subject->id,
+                        'enrolled_by' => auth()->id(),
+                        'enrolled_at' => now(),
+                        'status' => 'active',
+                        'notes' => 'تم قبول طلب الانضمام للصف: ' . $class->name,
+                    ]);
+                    $totalCreatedEnrollments++;
+                }
+
+                $approvedCount++;
+            }
+
+            DB::commit();
+
+            $message = "تم قبول {$approvedCount} طلب انضمام للصف بنجاح. تم إنشاء {$totalCreatedEnrollments} انضمام للمواد";
+
+            return redirect()->back()
+                ->with('success', $message);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error approving multiple class enrollments: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء قبول الطلبات');
+        }
+    }
+
+    /**
+     * رفض عدة طلبات صف دفعة واحدة
+     */
+    public function rejectMultipleClassEnrollments(Request $request)
+    {
+        $request->validate([
+            'class_enrollment_ids' => 'required|array|min:1',
+            'class_enrollment_ids.*' => 'required|exists:class_enrollments,id',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $classEnrollments = ClassEnrollment::whereIn('id', $request->input('class_enrollment_ids'))
+                ->pending()
+                ->get();
+
+            if ($classEnrollments->isEmpty()) {
+                DB::rollBack();
+                return redirect()->back()
+                    ->with('error', 'لا توجد طلبات معلقة للرفض');
+            }
+
+            $count = 0;
+            foreach ($classEnrollments as $classEnrollment) {
+                $classEnrollment->update([
+                    'status' => 'rejected',
+                    'enrolled_by' => auth()->id(),
+                ]);
+                $count++;
+            }
+
+            DB::commit();
+
+            return redirect()->back()
+                ->with('success', "تم رفض {$count} طلب انضمام للصف بنجاح");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error rejecting multiple class enrollments: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء رفض الطلبات');
+        }
     }
 }

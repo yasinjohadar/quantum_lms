@@ -11,15 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('dashboard_widgets', function (Blueprint $table) {
+        Schema::create('leaderboards', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('type'); // chart, stats, list, etc.
-            $table->string('position'); // top, left, right, bottom
-            $table->integer('order')->default(0);
-            $table->json('config')->nullable();
+            $table->string('type'); // daily, weekly, monthly, all_time
+            $table->date('period_start')->nullable();
+            $table->date('period_end')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
+
+            $table->index('type');
+            $table->index('is_active');
         });
     }
 
@@ -28,7 +30,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('dashboard_widgets');
+        Schema::dropIfExists('leaderboards');
     }
 };
 

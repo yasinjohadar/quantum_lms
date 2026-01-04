@@ -1,4 +1,4 @@
-لهف سفشفعس<?php
+<?php
 
 namespace Database\Seeders;
 
@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Hash;
 
 class AdminUserSeeder extends Seeder
 {
-  public function run(): void
+    public function run(): void
     {
         // إنشاء أو جلب دور المدير
         $adminRole = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);

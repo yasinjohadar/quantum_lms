@@ -15,6 +15,9 @@
                 <a href="{{ route('admin.enrollments.index') }}" class="btn btn-secondary btn-sm">
                     <i class="fas fa-arrow-right me-1"></i> رجوع للقائمة
                 </a>
+                <a href="{{ route('admin.enrollments.class-pending') }}" class="btn btn-info btn-sm">
+                    <i class="fas fa-list me-1"></i> طلبات الصف
+                </a>
             </div>
         </div>
 

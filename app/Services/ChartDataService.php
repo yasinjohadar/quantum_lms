@@ -31,19 +31,14 @@ class ChartDataService
             $subjects = $user->subjects()->wherePivot('status', 'active')->get();
             
             if ($subjects->isEmpty()) {
-                \Log::info('No subjects found for user: ' . $userId);
+                \Log::warning('No subjects found for user: ' . $userId . ' - returning empty chart');
                 return [
                     'type' => 'bar',
                     'options' => [
                         'chart' => ['type' => 'bar', 'height' => 400],
                         'title' => ['text' => 'تقدم الطالب في الكورسات'],
                         'xaxis' => ['categories' => []],
-                        'series' => [
-                            [
-                                'name' => 'التقدم الإجمالي',
-                                'data' => [],
-                            ],
-                        ],
+                        'series' => [],
                     ],
                 ];
             }
@@ -155,10 +150,28 @@ class ChartDataService
                 ]
             ];
 
-            \Log::info('Chart options generated:', [
+            // التحقق من وجود بيانات قبل إرجاعها
+            if (empty($subjectNames) || empty($progressData)) {
+                \Log::warning('Chart data is empty after processing', [
+                    'subjects_count' => count($subjectNames),
+                    'progress_data_count' => count($progressData),
+                ]);
+                return [
+                    'type' => 'bar',
+                    'options' => [
+                        'chart' => ['type' => 'bar', 'height' => 400],
+                        'title' => ['text' => 'تقدم الطالب في الكورسات'],
+                        'xaxis' => ['categories' => []],
+                        'series' => [],
+                    ],
+                ];
+            }
+            
+            \Log::info('Chart options generated successfully:', [
                 'subjects_count' => count($subjectNames),
                 'has_series' => !empty($chartOptions['series']),
-                'series_count' => count($chartOptions['series'] ?? [])
+                'series_count' => count($chartOptions['series'] ?? []),
+                'subject_names' => $subjectNames,
             ]);
 
             return [

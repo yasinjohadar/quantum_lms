@@ -426,39 +426,120 @@
 @stop
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Progress Chart
+    // Progress Chart - بناء الخيارات بشكل كامل في JavaScript
     @if(isset($report['data']['charts']['progress']))
         @php
             $chartData = $report['data']['charts']['progress'];
             $chartOptions = $chartData['options'] ?? [];
+            $series = $chartOptions['series'] ?? [];
+            $categories = $chartOptions['xaxis']['categories'] ?? [];
+            
+            // Debug logging
+            \Log::info('Chart data in view:', [
+                'has_chart_data' => isset($report['data']['charts']['progress']),
+                'has_options' => isset($chartData['options']),
+                'series_count' => is_array($series) ? count($series) : 0,
+                'categories_count' => is_array($categories) ? count($categories) : 0,
+                'series' => $series,
+                'categories' => $categories,
+            ]);
         @endphp
         
-        @if(!empty($chartOptions))
-            var progressOptions = @json($chartOptions);
+        console.log('Chart data check:', {
+            hasChartData: @json(isset($report['data']['charts']['progress'])),
+            hasOptions: @json(isset($chartData['options'])),
+            seriesCount: @json(is_array($series) ? count($series) : 0),
+            categoriesCount: @json(is_array($categories) ? count($categories) : 0),
+            series: @json($series),
+            categories: @json($categories)
+        });
+        
+        @if(!empty($series) && is_array($series) && count($series) > 0 && !empty($categories) && is_array($categories) && count($categories) > 0)
+            var chartElement = document.querySelector("#progressChart");
             
-            // تحويل formatter strings إلى functions
-            if (progressOptions.dataLabels && typeof progressOptions.dataLabels.formatter === 'string') {
-                var formatterStr = progressOptions.dataLabels.formatter;
-                progressOptions.dataLabels.formatter = eval('(' + formatterStr + ')');
+            if (chartElement) {
+                setTimeout(function() {
+                    try {
+                        if (typeof ApexCharts === 'undefined') {
+                            chartElement.innerHTML = '<div class="text-center py-5"><p class="text-danger">مكتبة الرسوم البيانية غير محملة</p></div>';
+                            return;
+                        }
+                        
+                        var rawSeries = @json($series);
+                        var categories = @json($categories);
+
+                        // تأكد أن القيم أرقام صحيحة
+                        var normalizedSeries = [];
+                        for (var i = 0; i < rawSeries.length; i++) {
+                            var s = rawSeries[i];
+                            var dataArr = [];
+                            if (s.data && Array.isArray(s.data)) {
+                                for (var j = 0; j < s.data.length; j++) {
+                                    dataArr.push(parseFloat(s.data[j]) || 0);
+                                }
+                            }
+                            normalizedSeries.push({
+                                name: s.name || 'Series',
+                                data: dataArr
+                            });
+                        }
+
+                        var progressOptions = {
+                            chart: {
+                                type: 'bar',
+                                height: 400
+                            },
+                            title: {
+                                text: 'تقدم الطالب في الكورسات',
+                                align: 'center'
+                            },
+                            xaxis: {
+                                categories: categories
+                            },
+                            yaxis: {
+                                max: 100
+                            },
+                            series: normalizedSeries,
+                            colors: ['#007bff', '#28a745', '#ffc107', '#17a2b8'],
+                            plotOptions: {
+                                bar: {
+                                    horizontal: false,
+                                    columnWidth: '55%'
+                                }
+                            },
+                            dataLabels: {
+                                enabled: false
+                            },
+                            legend: {
+                                position: 'top'
+                            }
+                        };
+                        
+                        var progressChart = new ApexCharts(chartElement, progressOptions);
+                        progressChart.render();
+                        console.log('Progress chart rendered');
+                    } catch (e) {
+                        console.error('Chart error:', e);
+                        chartElement.innerHTML = '<div class="text-center py-5"><p class="text-danger">خطأ: ' + e.message + '</p></div>';
+                    }
+                }, 300);
             }
-            if (progressOptions.tooltip && progressOptions.tooltip.y && typeof progressOptions.tooltip.y.formatter === 'string') {
-                var tooltipFormatterStr = progressOptions.tooltip.y.formatter;
-                progressOptions.tooltip.y.formatter = eval('(' + tooltipFormatterStr + ')');
-            }
+        @else
+            console.log('No series data for progress chart', {
+                hasChartData: @json(isset($report['data']['charts']['progress'])),
+                hasOptions: @json(isset($chartData['options'])),
+                series: @json($series),
+                categories: @json($categories),
+                seriesCount: @json(is_array($series) ? count($series) : 0),
+                categoriesCount: @json(is_array($categories) ? count($categories) : 0)
+            });
             
-            // التأكد من وجود عنصر الرسم البياني
+            // عرض رسالة للمستخدم
             var chartElement = document.querySelector("#progressChart");
             if (chartElement) {
-                try {
-                    var progressChart = new ApexCharts(chartElement, progressOptions);
-                    progressChart.render();
-                } catch (e) {
-                    console.error('Error rendering chart:', e);
-                    chartElement.innerHTML = '<div class="text-center py-5"><p class="text-muted">حدث خطأ في عرض المخطط</p></div>';
-                }
+                chartElement.innerHTML = '<div class="text-center py-5"><p class="text-muted">لا توجد بيانات متاحة لعرض المخطط</p><small class="text-muted">الطالب غير مسجل في أي كورسات أو لا توجد بيانات تقدم</small></div>';
             }
         @endif
     @endif

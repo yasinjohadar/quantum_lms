@@ -37,15 +37,16 @@
                         <form method="GET" action="{{ route('admin.reports.show', $selectedTemplate ? $selectedTemplate->id : ($templates->first()->id ?? 1)) }}">
                             @if(request('type') == 'student')
                                 <div class="mb-3">
-                                    <label class="form-label">الطالب</label>
-                                    <select name="user_id" class="form-select" required>
-                                        <option value="">اختر الطالب</option>
+                                    <label class="form-label">الطالب <span class="text-danger">*</span></label>
+                                    <select name="user_id" id="student-select" class="form-select" required>
+                                        <option value="">ابحث عن طالب...</option>
                                         @foreach(\App\Models\User::students()->get() as $student)
                                             <option value="{{ $student->id }}" {{ request('user_id') == $student->id ? 'selected' : '' }}>
                                                 {{ $student->name }} - {{ $student->email }}
                                             </option>
                                         @endforeach
                                     </select>
+                                    <small class="text-muted">يمكنك البحث بالاسم أو البريد الإلكتروني</small>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">الفترة</label>
@@ -119,4 +120,33 @@
         </div>
     </div>
 </div>
+
+@push('styles')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+@endpush
+
+@push('scripts')
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Initialize Select2 for student search
+    $('#student-select').select2({
+        placeholder: 'ابحث عن طالب...',
+        allowClear: true,
+        dir: 'rtl',
+        language: {
+            noResults: function() {
+                return 'لا توجد نتائج';
+            },
+            searching: function() {
+                return 'جاري البحث...';
+            }
+        },
+        width: '100%'
+    });
+});
+</script>
+@endpush
+
 @stop

@@ -13,17 +13,20 @@ return new class extends Migration
     {
         Schema::create('audit_logs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->string('event_type')->comment('نوع الحدث، مثل login_success, login_failed, quiz_focus_lost');
-            $table->string('ip_address')->nullable();
-            $table->string('user_agent')->nullable();
+            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null');
+            $table->string('event_type'); // login, logout, create, update, delete, etc.
+            $table->string('action'); // login_success, login_failed, user_created, etc.
+            $table->string('ip_address', 45)->nullable();
+            $table->text('user_agent')->nullable();
             $table->string('url')->nullable();
-            $table->string('action')->nullable()->comment('وصف قصير للعمل المنفذ');
-            $table->json('metadata')->nullable()->comment('تفاصيل إضافية (JSON)');
+            $table->json('metadata')->nullable();
             $table->timestamp('occurred_at');
             $table->timestamps();
 
-            $table->index(['user_id', 'event_type', 'occurred_at']);
+            $table->index('user_id');
+            $table->index('event_type');
+            $table->index('action');
+            $table->index('occurred_at');
         });
     }
 

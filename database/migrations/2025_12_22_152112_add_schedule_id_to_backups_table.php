@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('backups')) {
+            return;
+        }
+        
         Schema::table('backups', function (Blueprint $table) {
             $table->foreignId('schedule_id')->nullable()->after('created_by')->constrained('backup_schedules')->nullOnDelete();
         });

@@ -42,11 +42,17 @@ return new class extends Migration {
                 ->default(false)
                 ->comment('هل المستخدم متصل الآن داخل النظام');
 
+            // حالة الأرشفة
+            $table->boolean('is_archived')->default(false);
+            $table->timestamp('archived_at')->nullable();
 
             $table->text('address')->nullable()->comment('Full Address');
             $table->rememberToken();
             $table->softDeletes();
             $table->timestamps();
+
+            // Indexes
+            $table->index('is_archived');
 
         });
 

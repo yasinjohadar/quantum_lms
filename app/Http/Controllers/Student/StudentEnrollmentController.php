@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\Enrollment;
+use App\Models\ClassEnrollment;
 use App\Models\Stage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -72,8 +73,9 @@ class StudentEnrollmentController extends Controller
             // التحقق من وجود المادة
             $subject = Subject::where('is_active', true)->findOrFail($subjectId);
             
-            // التحقق من عدم وجود انضمام مسبق
-            $existingEnrollment = Enrollment::where('user_id', $user->id)
+            // التحقق من عدم وجود انضمام مسبق (بما في ذلك المحذوفة ب soft delete)
+            $existingEnrollment = Enrollment::withTrashed()
+                ->where('user_id', $user->id)
                 ->where('subject_id', $subjectId)
                 ->first();
             
@@ -89,8 +91,11 @@ class StudentEnrollmentController extends Controller
                         'message' => 'أنت مسجل بالفعل في هذه المادة'
                     ], 400);
                 } elseif (in_array($existingEnrollment->status, ['suspended', 'completed'])) {
-                    // إذا كان الانضمام معلق أو مكتمل، يمكن إنشاء طلب جديد
-                    $existingEnrollment->delete();
+                    // إذا كان الانضمام معلق أو مكتمل، احذفه بشكل نهائي
+                    $existingEnrollment->forceDelete();
+                } else {
+                    // أي حالة أخرى، احذفه بشكل نهائي
+                    $existingEnrollment->forceDelete();
                 }
             }
             
@@ -169,64 +174,48 @@ class StudentEnrollmentController extends Controller
         }
         
         try {
-            DB::beginTransaction();
+            // التحقق من عدم وجود طلب صف معلق أو مقبول للطالب في نفس الصف
+            $existingClassEnrollment = ClassEnrollment::withTrashed()
+                ->where('user_id', $user->id)
+                ->where('class_id', $classId)
+                ->first();
             
-            $enrollments = [];
-            $skipped = 0;
-            $added = 0;
-            
-            foreach ($class->subjects as $subject) {
-                // التحقق من عدم وجود انضمام مسبق
-                $existingEnrollment = Enrollment::where('user_id', $user->id)
-                    ->where('subject_id', $subject->id)
-                    ->first();
-                
-                if ($existingEnrollment) {
-                    if ($existingEnrollment->status === 'pending' || $existingEnrollment->status === 'active') {
-                        $skipped++;
-                        continue;
-                    } elseif (in_array($existingEnrollment->status, ['suspended', 'completed'])) {
-                        $existingEnrollment->delete();
-                    }
+            if ($existingClassEnrollment) {
+                if ($existingClassEnrollment->status === 'pending') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'لديك طلب انضمام معلق لهذا الصف'
+                    ], 400);
+                } elseif ($existingClassEnrollment->status === 'approved') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'أنت مسجل بالفعل في هذا الصف'
+                    ], 400);
+                } elseif ($existingClassEnrollment->status === 'rejected') {
+                    // إذا كان مرفوض، احذفه بشكل نهائي للسماح بطلب جديد
+                    $existingClassEnrollment->forceDelete();
+                } else {
+                    // أي حالة أخرى، احذفه بشكل نهائي
+                    $existingClassEnrollment->forceDelete();
                 }
-                
-                $enrollments[] = [
-                    'user_id' => $user->id,
-                    'subject_id' => $subject->id,
-                    'enrolled_by' => null,
-                    'enrolled_at' => now(),
-                    'status' => 'pending',
-                    'notes' => 'طلب انضمام لصف كامل: ' . $class->name,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-                $added++;
             }
             
-            if (empty($enrollments)) {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => 'أنت مسجل بالفعل في جميع مواد هذا الصف'
-                ], 400);
-            }
-            
-            Enrollment::insert($enrollments);
-            
-            DB::commit();
-            
-            $message = "تم إرسال طلب الانضمام لـ {$added} مادة";
-            if ($skipped > 0) {
-                $message .= " (تم تخطي {$skipped} مادة مسجل فيها مسبقاً)";
-            }
-            $message .= ". سيتم مراجعته من قبل الإدارة.";
+            // إنشاء طلب انضمام للصف
+            ClassEnrollment::create([
+                'user_id' => $user->id,
+                'class_id' => $classId,
+                'enrolled_by' => null,
+                'enrolled_at' => null,
+                'status' => 'pending',
+                'notes' => 'طلب انضمام لصف كامل: ' . $class->name,
+            ]);
             
             return response()->json([
                 'success' => true,
-                'message' => $message
+                'message' => 'تم إرسال طلب الانضمام للصف بنجاح. سيتم مراجعته من قبل الإدارة.'
             ]);
         } catch (\Exception $e) {
-            DB::rollBack();
+            \Log::error('Error in requestClassEnrollment: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'حدث خطأ أثناء إرسال الطلب: ' . $e->getMessage()

@@ -27,6 +27,7 @@ use App\Events\EventReminderSent;
 use App\Listeners\SendRealTimeNotification;
 use App\Listeners\SendLibraryItemNotification;
 use App\Listeners\SendEventReminderNotification;
+use Illuminate\Pagination\Paginator;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -102,5 +103,7 @@ class AppServiceProvider extends ServiceProvider
 
         // WhatsApp Event Listeners
         Event::listen(\App\Events\WhatsAppMessageReceived::class, \App\Listeners\AutoReplyWhatsAppListener::class);
+
+        Paginator::useBootstrap();
     }
 }

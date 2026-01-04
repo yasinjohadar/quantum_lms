@@ -131,11 +131,20 @@ class ReportBuilderService
             
             // إنشاء مخططات إضافية
             try {
+                $chartData = $this->chartDataService->getStudentProgressChart($userId, $params['period'] ?? 'month');
+                \Log::info('Chart data generated:', [
+                    'has_options' => isset($chartData['options']),
+                    'has_series' => isset($chartData['options']['series']),
+                    'series_count' => isset($chartData['options']['series']) ? count($chartData['options']['series']) : 0,
+                ]);
                 $charts = [
-                    'progress' => $this->chartDataService->getStudentProgressChart($userId, $params['period'] ?? 'month'),
+                    'progress' => $chartData,
                 ];
             } catch (\Exception $e) {
-                \Log::warning('Chart error: ' . $e->getMessage());
+                \Log::error('Chart error: ' . $e->getMessage(), [
+                    'exception' => $e,
+                    'trace' => $e->getTraceAsString()
+                ]);
                 $charts = [];
             }
 

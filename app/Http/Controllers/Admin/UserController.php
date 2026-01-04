@@ -62,8 +62,8 @@ public function index(Request $request)
             ->get()
             ->groupBy('user_id');
 
-        // بدء استعلام المستخدمين
-        $usersQuery = User::query();
+        // بدء استعلام المستخدمين (استبعاد المؤرشفين)
+        $usersQuery = User::query()->notArchived();
 
         // فلترة حسب البحث (name, email, phone)
         if ($request->filled('query')) {

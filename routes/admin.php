@@ -397,6 +397,18 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('enrollments.approve-multiple');
         Route::post('enrollments/reject-multiple', [EnrollmentController::class, 'rejectMultiple'])
             ->name('enrollments.reject-multiple');
+        
+        // طلبات الانضمام للصف
+        Route::get('enrollments/class-pending', [EnrollmentController::class, 'classPendingRequests'])
+            ->name('enrollments.class-pending');
+        Route::post('enrollments/class/{classEnrollment}/approve', [EnrollmentController::class, 'approveClassEnrollment'])
+            ->name('enrollments.class.approve');
+        Route::post('enrollments/class/{classEnrollment}/reject', [EnrollmentController::class, 'rejectClassEnrollment'])
+            ->name('enrollments.class.reject');
+        Route::post('enrollments/class/approve-multiple', [EnrollmentController::class, 'approveMultipleClassEnrollments'])
+            ->name('enrollments.class.approve-multiple');
+        Route::post('enrollments/class/reject-multiple', [EnrollmentController::class, 'rejectMultipleClassEnrollments'])
+            ->name('enrollments.class.reject-multiple');
 
         Route::resource('enrollments', EnrollmentController::class)->except(['show', 'edit', 'update']);
 
@@ -440,6 +452,19 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('login-logs.destroy');
         Route::post('login-logs/clear-old', [LoginLogController::class, 'clearOld'])
             ->name('login-logs.clear-old');
+
+        // ===============================================
+        // الأرشيف (Archived Users)
+        // ===============================================
+        Route::resource('archived-users', \App\Http\Controllers\Admin\ArchivedUserController::class)->except(['create', 'edit']);
+        Route::post('archived-users/{archived_user}/restore', [\App\Http\Controllers\Admin\ArchivedUserController::class, 'restore'])
+            ->name('archived-users.restore');
+        Route::post('archived-users/bulk-restore', [\App\Http\Controllers\Admin\ArchivedUserController::class, 'bulkRestore'])
+            ->name('archived-users.bulk-restore');
+        Route::post('users/{user}/archive', [\App\Http\Controllers\Admin\ArchivedUserController::class, 'store'])
+            ->name('users.archive');
+        Route::post('users/bulk-archive', [\App\Http\Controllers\Admin\ArchivedUserController::class, 'bulkArchive'])
+            ->name('users.bulk-archive');
 
         // ===============================================
         // جلسات المستخدمين
@@ -587,7 +612,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::prefix('whatsapp-messages')->name('whatsapp-messages.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'index'])->name('index');
             Route::get('/send', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'create'])->name('create');
+            Route::get('/search-students', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'searchStudents'])->name('search-students');
             Route::post('/send', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'send'])->name('send');
+            Route::post('/broadcast', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'broadcast'])->name('broadcast');
+            Route::get('/broadcast/students-count', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'getStudentsCount'])->name('broadcast.students-count');
             Route::get('/{message}', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'show'])->name('show');
         });
 
@@ -625,6 +653,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             Route::get('/', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'index'])->name('index');
             Route::get('/send', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'create'])->name('create');
             Route::post('/send', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'send'])->name('send');
+            Route::post('/broadcast', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'broadcast'])->name('broadcast');
+            Route::get('/broadcast/students-count', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'getStudentsCount'])->name('broadcast.students-count');
             Route::get('/{message}', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'show'])->name('show');
         });
     });

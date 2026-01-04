@@ -11,7 +11,23 @@ class BulkArchiveRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true; // TODO: Add permission check later
+    }
+
+    /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation(): void
+    {
+        // إذا كان user_ids JSON string، قم بتحويله إلى array
+        if ($this->has('user_ids') && is_string($this->input('user_ids'))) {
+            $decoded = json_decode($this->input('user_ids'), true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $this->merge([
+                    'user_ids' => $decoded,
+                ]);
+            }
+        }
     }
 
     /**
@@ -22,7 +38,9 @@ class BulkArchiveRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'user_ids' => ['required', 'array', 'min:1'],
+            'user_ids.*' => ['required', 'integer', 'exists:users,id'],
+            'reason' => ['nullable', 'string', 'max:1000'],
         ];
     }
 }
