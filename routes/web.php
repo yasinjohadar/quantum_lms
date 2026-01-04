@@ -62,6 +62,7 @@ Route::middleware(['auth', 'check.user.active', 'admin'])->group(function () {
     Route::get('users/{user}/login-logs', [UserController::class, 'loginLogs'])->name('users.login-logs');
     Route::resource('roles', RoleController::class);
     Route::put('users/{user}/change-password', [UserController::class, 'updatePassword'])->name('users.update-password');
+    Route::post('users/{user}/send-verification-otp', [UserController::class, 'sendVerificationOTP'])->name('users.send-verification-otp');
 });
 
 // مسار toggle-status - محمي بصلاحية admin

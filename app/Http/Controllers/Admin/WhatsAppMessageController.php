@@ -87,9 +87,9 @@ class WhatsAppMessageController extends Controller
         $validated = $request->validate([
             'to' => 'required|string|regex:/^\+[1-9]\d{1,14}$/',
             'type' => 'required|in:text,template',
-            'message' => 'required_if:type,text|string|max:4096',
-            'template_name' => 'required_if:type,template|string|max:255',
-            'language' => 'required_if:type,template|string|max:10',
+            'message' => 'required_if:type,text|nullable|string|max:4096',
+            'template_name' => 'required_if:type,template|nullable|string|max:255',
+            'language' => 'required_if:type,template|nullable|string|max:10',
         ], [
             'to.required' => 'رقم الهاتف مطلوب',
             'to.regex' => 'رقم الهاتف يجب أن يبدأ بـ + متبوعاً برمز الدولة',

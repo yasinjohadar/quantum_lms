@@ -211,6 +211,16 @@
                                                                 title="سجلات الدخول">
                                                                 <i class="fa-solid fa-sign-in-alt"></i>
                                                             </a>
+                                                            @if($user->phone && !$user->phone_verified_at)
+                                                            <button type="button" 
+                                                                    class="btn btn-success btn-sm send-otp-btn"
+                                                                    data-user-id="{{ $user->id }}"
+                                                                    data-user-name="{{ $user->name }}"
+                                                                    data-user-phone="{{ $user->phone }}"
+                                                                    title="إرسال كود التحقق">
+                                                                <i class="fa-solid fa-message"></i>
+                                                            </button>
+                                                            @endif
                                                             <a class="btn btn-danger btn-sm" data-bs-toggle="modal"
                                                                 data-bs-target="#delete{{ $user->id }}"
                                                                 title="حذف المستخدم">
@@ -284,6 +294,85 @@
                 }
             });
         }, 5000);
+
+        // إرسال OTP يدوياً
+        document.querySelectorAll('.send-otp-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const button = this;
+                const userId = button.getAttribute('data-user-id');
+                const userName = button.getAttribute('data-user-name');
+                const userPhone = button.getAttribute('data-user-phone');
+                
+                // تعطيل الزر وإظهار loading
+                const originalHTML = button.innerHTML;
+                button.disabled = true;
+                button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                
+                // إرسال الطلب
+                fetch(`/users/${userId}/send-verification-otp`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // إظهار رسالة نجاح
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                        alertDiv.innerHTML = `
+                            <i class="bi bi-check-circle me-2"></i>
+                            <strong>نجح!</strong> ${data.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                        `;
+                        document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.container-fluid').firstChild);
+                        
+                        // إزالة الرسالة بعد 5 ثواني
+                        setTimeout(() => {
+                            alertDiv.remove();
+                        }, 5000);
+                    } else {
+                        // إظهار رسالة خطأ
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                        alertDiv.innerHTML = `
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            <strong>خطأ!</strong> ${data.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                        `;
+                        document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.container-fluid').firstChild);
+                        
+                        // إزالة الرسالة بعد 5 ثواني
+                        setTimeout(() => {
+                            alertDiv.remove();
+                        }, 5000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                    alertDiv.innerHTML = `
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>خطأ!</strong> حدث خطأ أثناء إرسال كود التحقق
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                    `;
+                    document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.container-fluid').firstChild);
+                    
+                    setTimeout(() => {
+                        alertDiv.remove();
+                    }, 5000);
+                })
+                .finally(() => {
+                    // إعادة تفعيل الزر
+                    button.disabled = false;
+                    button.innerHTML = originalHTML;
+                });
+            });
+        });
     });
 </script>
 @stop

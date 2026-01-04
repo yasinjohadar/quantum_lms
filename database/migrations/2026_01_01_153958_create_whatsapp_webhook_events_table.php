@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('whatsapp_webhook_events')) {
+            return;
+        }
+
         Schema::create('whatsapp_webhook_events', function (Blueprint $table) {
             $table->id();
             $table->string('event_id')->unique()->comment('Unique hash for idempotency');

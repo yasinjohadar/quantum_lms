@@ -10,6 +10,8 @@ class OTPCode extends Model
 {
     use HasFactory;
 
+    protected $table = 'otp_codes';
+
     protected $fillable = [
         'user_id',
         'phone',

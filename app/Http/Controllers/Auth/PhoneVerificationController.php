@@ -4,17 +4,19 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Services\SMS\OTPService;
+use App\Models\User;
+use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
-use App\Models\SystemSetting;
 
 class PhoneVerificationController extends Controller
 {
     public function __construct(
         private OTPService $otpService
     ) {
-        $this->middleware('auth');
+        // إزالة middleware('auth') للسماح بالوصول للمستخدمين غير المسجلين دخول
+        // سنتحقق من المستخدم يدوياً في show() و verify()
     }
 
     /**
@@ -22,13 +24,43 @@ class PhoneVerificationController extends Controller
      */
     public function show()
     {
-        $user = Auth::user();
-
-        if ($user->phone_verified_at) {
-            return redirect()->route('dashboard');
+        // محاولة الحصول على المستخدم من session (للمستخدمين الجدد)
+        $userId = session('pending_verification_user_id');
+        
+        if ($userId) {
+            $user = User::find($userId);
+            if (!$user) {
+                return redirect()->route('register')
+                    ->with('error', 'انتهت صلاحية جلسة التحقق. يرجى التسجيل مرة أخرى.');
+            }
+        } else {
+            // للمستخدمين المسجلين دخول
+            if (!Auth::check()) {
+                return redirect()->route('login')
+                    ->with('error', 'يجب تسجيل الدخول أولاً');
+            }
+            $user = Auth::user();
         }
 
-        return view('auth.verify-phone');
+        // إذا كان الرقم مفعلاً بالفعل
+        if ($user->phone_verified_at) {
+            // إذا كان المستخدم غير مسجل دخول، سجله دخول
+            if (!Auth::check()) {
+                Auth::login($user);
+            }
+            return redirect()->route('student.dashboard');
+        }
+
+        // التحقق من وجود رقم الهاتف
+        if (!$user->phone) {
+            return redirect()->route('register')
+                ->with('error', 'رقم الهاتف غير موجود');
+        }
+
+        return view('auth.verify-phone', [
+            'user' => $user,
+            'phone' => $user->phone,
+        ]);
     }
 
     /**
@@ -43,7 +75,23 @@ class PhoneVerificationController extends Controller
             'code.size' => 'رمز التحقق يجب أن يكون 6 أرقام',
         ]);
 
-        $user = Auth::user();
+        // محاولة الحصول على المستخدم من session (للمستخدمين الجدد)
+        $userId = session('pending_verification_user_id');
+        
+        if ($userId) {
+            $user = User::find($userId);
+            if (!$user) {
+                return redirect()->route('register')
+                    ->with('error', 'انتهت صلاحية جلسة التحقق. يرجى التسجيل مرة أخرى.');
+            }
+        } else {
+            // للمستخدمين المسجلين دخول
+            if (!Auth::check()) {
+                return redirect()->route('login')
+                    ->with('error', 'يجب تسجيل الدخول أولاً');
+            }
+            $user = Auth::user();
+        }
 
         if (!$user->phone) {
             throw ValidationException::withMessages([
@@ -63,8 +111,22 @@ class PhoneVerificationController extends Controller
             ]);
         }
 
-        return redirect()->route('dashboard')
-            ->with('success', 'تم التحقق من رقم الهاتف بنجاح');
+        // تفعيل الحساب
+        $user->update([
+            'is_active' => true,
+            'phone_verified_at' => now(),
+        ]);
+
+        // تسجيل الدخول إذا لم يكن مسجل دخول
+        if (!Auth::check()) {
+            Auth::login($user);
+        }
+
+        // تنظيف session
+        session()->forget('pending_verification_user_id');
+
+        return redirect()->route('student.dashboard')
+            ->with('success', 'تم التحقق من رقم الهاتف وتفعيل حسابك بنجاح');
     }
 
     /**
@@ -72,7 +134,27 @@ class PhoneVerificationController extends Controller
      */
     public function send(Request $request)
     {
-        $user = Auth::user();
+        // محاولة الحصول على المستخدم من session (للمستخدمين الجدد)
+        $userId = session('pending_verification_user_id');
+        
+        if ($userId) {
+            $user = User::find($userId);
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'انتهت صلاحية جلسة التحقق',
+                ], 400);
+            }
+        } else {
+            // للمستخدمين المسجلين دخول
+            if (!Auth::check()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'يجب تسجيل الدخول أولاً',
+                ], 401);
+            }
+            $user = Auth::user();
+        }
 
         if (!$user->phone) {
             return response()->json([

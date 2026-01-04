@@ -72,8 +72,28 @@
                             <hr class="my-4">
 
                             <h6 class="fw-bold mb-3">
-                                <i class="fas fa-info-circle me-2 text-info"></i>معلومات الحساب
+                                <i class="fas fa-plug me-2 text-primary"></i>اختيار المزود (Provider)
                             </h6>
+
+                            <div class="mb-4">
+                                <label for="whatsapp_provider" class="form-label">نوع المزود <span class="text-danger">*</span></label>
+                                <select class="form-select @error('whatsapp_provider') is-invalid @enderror" id="whatsapp_provider" name="whatsapp_provider" required>
+                                    <option value="meta" {{ old('whatsapp_provider', $settings['whatsapp_provider'] ?? 'meta') === 'meta' ? 'selected' : '' }}>Meta WhatsApp Cloud API</option>
+                                    <option value="custom_api" {{ old('whatsapp_provider', $settings['whatsapp_provider'] ?? 'meta') === 'custom_api' ? 'selected' : '' }}>Custom API Provider</option>
+                                </select>
+                                <small class="text-muted">اختر مزود WhatsApp الذي تريد استخدامه</small>
+                                @error('whatsapp_provider')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <hr class="my-4">
+
+                            <h6 class="fw-bold mb-3" id="meta-settings-header">
+                                <i class="fas fa-info-circle me-2 text-info"></i>معلومات حساب Meta
+                            </h6>
+
+                            <div id="meta-settings">
 
                             <div class="row">
                                 <div class="col-md-6 mb-3">
@@ -146,6 +166,57 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
+                            </div>
+
+                            <div id="custom-api-settings" style="display: none;">
+                                <h6 class="fw-bold mb-3">
+                                    <i class="fas fa-code me-2 text-success"></i>إعدادات Custom API
+                                </h6>
+
+                                <div class="mb-3">
+                                    <label for="custom_api_url" class="form-label">رابط API <span class="text-danger">*</span></label>
+                                    <input type="url" class="form-control @error('custom_api_url') is-invalid @enderror" id="custom_api_url" name="custom_api_url" value="{{ old('custom_api_url', $settings['custom_api_url'] ?? '') }}" placeholder="https://api.example.com/whatsapp/send">
+                                    <small class="text-muted">رابط API endpoint لإرسال الرسائل</small>
+                                    @error('custom_api_url')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="custom_api_key" class="form-label">API Key</label>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control @error('custom_api_key') is-invalid @enderror" id="custom_api_key" name="custom_api_key" placeholder="اتركه فارغاً للاحتفاظ بالقيمة الحالية">
+                                        <button class="btn btn-outline-secondary" type="button" id="toggle-custom-api-key">
+                                            <i class="fas fa-eye" id="toggle-custom-api-key-icon"></i>
+                                        </button>
+                                    </div>
+                                    <small class="text-muted">API Key للمصادقة (يتم تشفيره)</small>
+                                    @error('custom_api_key')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="custom_api_method" class="form-label">طريقة الطلب (Method)</label>
+                                    <select class="form-select @error('custom_api_method') is-invalid @enderror" id="custom_api_method" name="custom_api_method">
+                                        <option value="POST" {{ old('custom_api_method', $settings['custom_api_method'] ?? 'POST') === 'POST' ? 'selected' : '' }}>POST</option>
+                                        <option value="GET" {{ old('custom_api_method', $settings['custom_api_method'] ?? 'POST') === 'GET' ? 'selected' : '' }}>GET</option>
+                                    </select>
+                                    <small class="text-muted">طريقة HTTP request</small>
+                                    @error('custom_api_method')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="custom_api_headers" class="form-label">Headers إضافية (JSON - اختياري)</label>
+                                    <textarea class="form-control @error('custom_api_headers') is-invalid @enderror" id="custom_api_headers" name="custom_api_headers" rows="3" placeholder='{"X-Custom-Header": "value"}'>{{ old('custom_api_headers', is_array($settings['custom_api_headers'] ?? []) ? json_encode($settings['custom_api_headers'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) : ($settings['custom_api_headers'] ?? '{}')) }}</textarea>
+                                    <small class="text-muted">Headers إضافية بصيغة JSON (اختياري)</small>
+                                    @error('custom_api_headers')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
 
                             <hr class="my-4">
 
@@ -179,6 +250,35 @@
                                 <small class="text-muted">الرسالة التي سيتم إرسالها تلقائياً عند استلام رسالة</small>
                             </div>
 
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="webhook_path" class="form-label">مسار Webhook</label>
+                                    <input type="text" class="form-control @error('webhook_path') is-invalid @enderror" id="webhook_path" name="webhook_path" value="{{ old('webhook_path', $settings['webhook_path'] ?? '/api/webhooks/whatsapp') }}" placeholder="/api/webhooks/whatsapp">
+                                    <small class="text-muted">المسار الذي سيستخدمه Meta لإرسال Webhooks</small>
+                                    @error('webhook_path')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="timeout" class="form-label">المهلة الزمنية (Timeout)</label>
+                                    <input type="number" class="form-control @error('timeout') is-invalid @enderror" id="timeout" name="timeout" value="{{ old('timeout', $settings['timeout'] ?? 30) }}" min="1" max="300" placeholder="30">
+                                    <small class="text-muted">المهلة الزمنية لطلبات API بالثواني (1-300)</small>
+                                    @error('timeout')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="default_from" class="form-label">رقم الهاتف الافتراضي (اختياري)</label>
+                                <input type="text" class="form-control @error('default_from') is-invalid @enderror" id="default_from" name="default_from" value="{{ old('default_from', $settings['default_from'] ?? '') }}" placeholder="+1234567890">
+                                <small class="text-muted">رقم الهاتف الافتراضي لإرسال الرسائل (يمكن تركه فارغاً)</small>
+                                @error('default_from')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
                             <div id="test-connection-result" class="alert mt-3" style="display: none;" role="alert">
                                 <span id="test-result-icon"></span>
                                 <span id="test-result-message"></span>
@@ -205,7 +305,7 @@
                     <div class="card-body">
                         <p class="mb-2"><strong>Webhook URL:</strong></p>
                         <div class="input-group mb-3">
-                            <input type="text" class="form-control" value="{{ url(config('whatsapp.webhook_path', '/api/webhooks/whatsapp')) }}" readonly id="webhook-url">
+                            <input type="text" class="form-control" value="{{ url($settings['webhook_path'] ?? config('whatsapp.webhook_path', '/api/webhooks/whatsapp')) }}" readonly id="webhook-url">
                             <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('webhook-url')">
                                 <i class="fas fa-copy"></i> نسخ
                             </button>
@@ -224,16 +324,82 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const whatsappProvider = document.getElementById('whatsapp_provider');
+    const metaSettings = document.getElementById('meta-settings');
+    const metaSettingsHeader = document.getElementById('meta-settings-header');
+    const customApiSettings = document.getElementById('custom-api-settings');
     const toggleAccessToken = document.getElementById('toggle-access-token');
     const accessTokenInput = document.getElementById('access_token');
     const toggleAppSecret = document.getElementById('toggle-app-secret');
     const appSecretInput = document.getElementById('app_secret');
+    const toggleCustomApiKey = document.getElementById('toggle-custom-api-key');
+    const customApiKeyInput = document.getElementById('custom_api_key');
     const autoReply = document.getElementById('auto_reply');
     const autoReplyMessageField = document.getElementById('auto-reply-message-field');
     const testConnectionBtn = document.getElementById('test-connection-btn');
     const testResultDiv = document.getElementById('test-connection-result');
     const testResultIcon = document.getElementById('test-result-icon');
     const testResultMessage = document.getElementById('test-result-message');
+
+    // Toggle provider settings
+    function toggleProviderSettings() {
+        if (!whatsappProvider) return;
+        
+        const provider = whatsappProvider.value;
+        
+        // Get all Meta required fields
+        const metaRequiredFields = [
+            'api_version',
+            'phone_number_id',
+            'verify_token'
+        ];
+        
+        if (provider === 'custom_api') {
+            if (metaSettings) metaSettings.style.display = 'none';
+            if (metaSettingsHeader) metaSettingsHeader.style.display = 'none';
+            if (customApiSettings) customApiSettings.style.display = 'block';
+            
+            // Remove required attribute from Meta fields when Custom API is selected
+            metaRequiredFields.forEach(fieldName => {
+                const field = document.getElementById(fieldName);
+                if (field) {
+                    field.removeAttribute('required');
+                }
+            });
+            
+            // Add required to custom_api_url
+            const customApiUrl = document.getElementById('custom_api_url');
+            if (customApiUrl) {
+                customApiUrl.setAttribute('required', 'required');
+            }
+        } else {
+            if (metaSettings) metaSettings.style.display = 'block';
+            if (metaSettingsHeader) metaSettingsHeader.style.display = 'block';
+            if (customApiSettings) customApiSettings.style.display = 'none';
+            
+            // Add required attribute to Meta fields when Meta is selected
+            metaRequiredFields.forEach(fieldName => {
+                const field = document.getElementById(fieldName);
+                if (field) {
+                    field.setAttribute('required', 'required');
+                }
+            });
+            
+            // Remove required from custom_api_url
+            const customApiUrl = document.getElementById('custom_api_url');
+            if (customApiUrl) {
+                customApiUrl.removeAttribute('required');
+            }
+        }
+    }
+
+    // Initial toggle
+    toggleProviderSettings();
+
+    // Listen to provider change
+    if (whatsappProvider) {
+        whatsappProvider.addEventListener('change', toggleProviderSettings);
+    }
 
     // Toggle password visibility
     toggleAccessToken.addEventListener('click', function() {
@@ -252,6 +418,18 @@ document.addEventListener('DOMContentLoaded', function() {
         icon.classList.toggle('fa-eye-slash');
     });
 
+    if (toggleCustomApiKey && customApiKeyInput) {
+        toggleCustomApiKey.addEventListener('click', function() {
+            const type = customApiKeyInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            customApiKeyInput.setAttribute('type', type);
+            const icon = document.getElementById('toggle-custom-api-key-icon');
+            if (icon) {
+                icon.classList.toggle('fa-eye');
+                icon.classList.toggle('fa-eye-slash');
+            }
+        });
+    }
+
     // Auto reply toggle
     autoReply.addEventListener('change', function() {
         autoReplyMessageField.style.display = this.checked ? 'block' : 'none';
@@ -265,8 +443,20 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>جاري الاختبار...';
 
         const formData = new FormData();
-        formData.append('phone_number_id', document.getElementById('phone_number_id').value);
-        formData.append('access_token', document.getElementById('access_token').value);
+        const provider = whatsappProvider ? whatsappProvider.value : 'meta';
+        formData.append('whatsapp_provider', provider);
+        
+        if (provider === 'meta') {
+            formData.append('phone_number_id', document.getElementById('phone_number_id').value);
+            formData.append('access_token', document.getElementById('access_token').value);
+            formData.append('api_version', document.getElementById('api_version').value);
+        } else {
+            formData.append('custom_api_url', document.getElementById('custom_api_url').value);
+            formData.append('custom_api_key', document.getElementById('custom_api_key').value);
+            formData.append('custom_api_method', document.getElementById('custom_api_method').value);
+            formData.append('custom_api_headers', document.getElementById('custom_api_headers').value);
+        }
+        
         formData.append('_token', '{{ csrf_token() }}');
 
         testResultDiv.style.display = 'none';

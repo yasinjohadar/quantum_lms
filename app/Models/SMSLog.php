@@ -9,6 +9,8 @@ class SMSLog extends Model
 {
     use HasFactory;
 
+    protected $table = 'sms_logs';
+
     protected $fillable = [
         'to',
         'message',

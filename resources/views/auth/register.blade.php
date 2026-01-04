@@ -352,6 +352,49 @@
                 toggleIcon.textContent = '👁';
             }
         }
+
+        // Phone number validation
+        document.addEventListener('DOMContentLoaded', function() {
+            const phoneInput = document.getElementById('phone');
+            const phoneError = document.getElementById('phone-error');
+            
+            if (phoneInput) {
+                phoneInput.addEventListener('input', function(e) {
+                    let value = e.target.value;
+                    
+                    // Remove any non-digit characters except +
+                    if (value.length > 0 && value[0] !== '+') {
+                        value = '+' + value.replace(/[^0-9]/g, '');
+                    } else {
+                        value = value[0] + value.slice(1).replace(/[^0-9]/g, '');
+                    }
+                    
+                    e.target.value = value;
+                    
+                    // Validate format
+                    const pattern = /^\+[1-9]\d{1,14}$/;
+                    if (value.length > 0 && !pattern.test(value)) {
+                        if (phoneError) {
+                            phoneError.textContent = 'يجب أن يبدأ الرقم بـ + متبوعاً برمز الدولة (مثال: +966501234567)';
+                            phoneError.style.display = 'block';
+                        }
+                    } else {
+                        if (phoneError) {
+                            phoneError.style.display = 'none';
+                        }
+                    }
+                });
+
+                phoneInput.addEventListener('blur', function(e) {
+                    const pattern = /^\+[1-9]\d{1,14}$/;
+                    if (e.target.value.length > 0 && !pattern.test(e.target.value)) {
+                        e.target.setCustomValidity('يجب أن يبدأ الرقم بـ + متبوعاً برمز الدولة');
+                    } else {
+                        e.target.setCustomValidity('');
+                    }
+                });
+            }
+        });
     </script>
 </head>
 <body>
@@ -446,6 +489,42 @@
                         </ul>
                     </div>
                 @endif
+            </div>
+
+            {{-- Phone --}}
+            <div class="field" id="phone-field">
+                <div class="field-label">
+                    <span>رقم الهاتف @if(isset($phoneVerificationEnabled) && $phoneVerificationEnabled)<span class="text-danger">*</span>@endif</span>
+                </div>
+                <div class="field-control">
+                    <input
+                        id="phone"
+                        type="tel"
+                        name="phone"
+                        value="{{ old('phone') }}"
+                        @if(isset($phoneVerificationEnabled) && $phoneVerificationEnabled)required @endif
+                        autocomplete="tel"
+                        placeholder="+966501234567"
+                        pattern="^\+[1-9]\d{1,14}$"
+                    >
+                    <div class="field-icon">📱</div>
+                </div>
+                <div class="field-error" style="display: none;" id="phone-error"></div>
+                @if ($errors->has('phone'))
+                    <div class="field-error">
+                        <ul>
+                            @foreach ($errors->get('phone') as $message)
+                                <li>{{ $message }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+                <small style="display: block; margin-top: 6px; font-size: 12px; color: var(--text-muted);">
+                    يجب أن يبدأ الرقم بـ + متبوعاً برمز الدولة (مثال: +966501234567)
+                    @if(isset($phoneVerificationEnabled) && $phoneVerificationEnabled)
+                        <span class="text-danger">* مطلوب للتحقق من الحساب</span>
+                    @endif
+                </small>
             </div>
 
             {{-- Password --}}

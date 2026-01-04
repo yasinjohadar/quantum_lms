@@ -4,7 +4,8 @@ namespace App\Jobs;
 
 use App\Exceptions\WhatsAppApiException;
 use App\Models\WhatsAppMessage;
-use App\Services\WhatsApp\WhatsAppClient;
+use App\Services\WhatsApp\WhatsAppProviderFactory;
+use App\Services\WhatsApp\WhatsAppSettingsService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -27,23 +28,31 @@ class SendWhatsAppMessageJob implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(WhatsAppClient $client): void
+    public function handle(WhatsAppSettingsService $settingsService): void
     {
         try {
             $contact = $this->message->contact;
             $to = $contact->wa_id;
 
+            // Get provider settings
+            $settings = $settingsService->getSettings();
+            $provider = $settings['whatsapp_provider'] ?? 'meta';
+            $config = $settingsService->getProviderConfig();
+
+            // Create provider instance
+            $providerInstance = WhatsAppProviderFactory::create($provider, $config);
+
             $messageType = $this->messageData['type'] ?? $this->message->type;
             
             if ($messageType === 'template') {
-                $response = $client->sendTemplate(
+                $response = $providerInstance->sendTemplate(
                     $to,
                     $this->messageData['template_name'] ?? $this->message->body,
                     $this->messageData['language'] ?? 'ar',
                     $this->messageData['components'] ?? []
                 );
             } else {
-                $response = $client->sendText(
+                $response = $providerInstance->sendText(
                     $to,
                     $this->messageData['text'] ?? $this->message->body ?? '',
                     $this->messageData['preview_url'] ?? false

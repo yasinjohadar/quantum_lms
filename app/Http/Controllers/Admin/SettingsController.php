@@ -40,17 +40,30 @@ class SettingsController extends Controller
 
         try {
             foreach ($validated['settings'] as $key => $value) {
-                $setting = SystemSetting::where('key', $key)->first();
+                $setting = SystemSetting::where('key', $key)
+                    ->where('group', $validated['group'] ?? 'general')
+                    ->first();
                 
                 if ($setting) {
-                    $setting->value = $value;
+                    // Handle boolean values
+                    if ($setting->type === 'boolean') {
+                        $setting->value = $value ? '1' : '0';
+                    } elseif ($setting->type === 'text') {
+                        $setting->value = $value;
+                    } else {
+                        $setting->value = $value;
+                    }
                     $setting->save();
                 } else {
                     // إنشاء إعداد جديد إذا لم يكن موجوداً
+                    $type = 'string';
+                    if ($key === 'phone_verification_enabled') {
+                        $type = 'boolean';
+                    }
                     SystemSetting::set(
                         $key,
-                        $value,
-                        'string',
+                        $type === 'boolean' ? ($value ? '1' : '0') : $value,
+                        $type,
                         $validated['group'] ?? 'general'
                     );
                 }

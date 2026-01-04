@@ -5,8 +5,12 @@ namespace App\Http\Controllers\Admin;
 use HashContext;
 use App\Models\User;
 use App\Models\LoginLog;
+use App\Models\SystemSetting;
+use App\Services\SMS\OTPService;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Spatie\Permission\Models\Role;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
@@ -32,17 +36,18 @@ class UserController extends Controller
     //     $this->middleware(['permission:user-show'])->only('show');
     // }
 
-    public function __construct()
-{
-    // تأكد أن المستخدم مصادق أولًا ثم تحقق من الصلاحيات
-    $this->middleware('auth');
+    public function __construct(
+        private OTPService $otpService
+    ) {
+        // تأكد أن المستخدم مصادق أولًا ثم تحقق من الصلاحيات
+        $this->middleware('auth');
 
-    $this->middleware('permission:user-list')->only('index');
-    $this->middleware('permission:user-create')->only(['create', 'store']);
-    $this->middleware('permission:user-edit')->only(['edit', 'update']);
-    $this->middleware('permission:user-delete')->only('destroy');
-    $this->middleware('permission:user-show')->only('show');
-}
+        $this->middleware('permission:user-list')->only('index');
+        $this->middleware('permission:user-create')->only(['create', 'store']);
+        $this->middleware('permission:user-edit')->only(['edit', 'update']);
+        $this->middleware('permission:user-delete')->only('destroy');
+        $this->middleware('permission:user-show')->only('show');
+    }
 
     /**
      * Display a listing of the resource.
@@ -395,6 +400,91 @@ public function index(Request $request)
         } catch (\Exception $e) {
             return redirect()->route('users.index')
                 ->with('error', 'حدث خطأ أثناء عرض سجلات الدخول: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * إرسال كود التحقق للمستخدم يدوياً
+     */
+    public function sendVerificationOTP(User $user): JsonResponse
+    {
+        try {
+            // التحقق من وجود رقم هاتف
+            if (!$user->phone) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'المستخدم لا يملك رقم هاتف مسجل',
+                ], 400);
+            }
+
+            // التحقق من أن رقم الهاتف بصيغة صحيحة
+            if (!preg_match('/^\+[1-9]\d{1,14}$/', $user->phone)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'رقم الهاتف غير صحيح. يجب أن يبدأ بـ + متبوعاً برمز الدولة',
+                ], 400);
+            }
+
+            Log::info('Admin sending verification OTP manually', [
+                'admin_id' => auth()->id(),
+                'user_id' => $user->id,
+                'phone' => $user->phone,
+            ]);
+
+            // إنشاء OTP جديد
+            $otp = $this->otpService->generateOTP($user, $user->phone, 'verification');
+
+            Log::info('OTP generated for manual send', [
+                'otp_id' => $otp->id,
+                'phone' => $otp->phone,
+                'expires_at' => $otp->expires_at,
+            ]);
+
+            // إرسال OTP عبر SMS (افتراضي) أو WhatsApp حسب الإعداد
+            $provider = SystemSetting::get('otp_provider', 'sms');
+            
+            Log::info('Attempting to send OTP manually', [
+                'provider' => $provider,
+                'phone' => $user->phone,
+            ]);
+
+            $sent = $this->otpService->sendOTP($otp, $provider);
+
+            if (!$sent) {
+                Log::warning('Manual OTP send failed', [
+                    'user_id' => $user->id,
+                    'phone' => $user->phone,
+                    'provider' => $provider,
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'فشل إرسال كود التحقق. يرجى التحقق من إعدادات SMS/WhatsApp',
+                ], 500);
+            }
+
+            Log::info('Manual OTP sent successfully', [
+                'user_id' => $user->id,
+                'phone' => $user->phone,
+                'provider' => $provider,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إرسال كود التحقق بنجاح إلى ' . substr($user->phone, 0, 4) . '****' . substr($user->phone, -4),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error sending manual verification OTP', [
+                'user_id' => $user->id,
+                'phone' => $user->phone ?? 'N/A',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء إرسال كود التحقق: ' . $e->getMessage(),
+            ], 500);
         }
     }
 

@@ -48,6 +48,7 @@ class SystemSetting extends Model
         'email' => 'البريد الإلكتروني',
         'sms' => 'SMS',
         'whatsapp' => 'WhatsApp',
+        'phone_verification' => 'Phone Verification',
     ];
 
     /**
@@ -114,11 +115,10 @@ class SystemSetting extends Model
     public static function set($key, $value, $type = 'string', $group = 'general', $description = null)
     {
         return self::updateOrCreate(
-            ['key' => $key],
+            ['key' => $key, 'group' => $group],
             [
                 'value' => $value,
                 'type' => $type,
-                'group' => $group,
                 'description' => $description,
             ]
         );

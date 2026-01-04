@@ -3,6 +3,7 @@
 namespace App\Services\SMS;
 
 use App\Models\OTPCode;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\SMS\SMSService;
 use App\Services\WhatsApp\SendWhatsAppMessage;
@@ -88,14 +89,52 @@ class OTPService
      */
     public function sendOTP(OTPCode $otp, string $provider = 'sms'): bool
     {
-        $message = "رمز التحقق الخاص بك هو: {$otp->code} - صالح لمدة 5 دقائق";
+        // Get custom message template from settings or use default
+        $template = SystemSetting::get('otp_message_template', 'رمز التحقق الخاص بك هو: {code} - صالح لمدة {expires_in} دقائق');
+        
+        // Calculate expiration minutes
+        $expiresInMinutes = 5; // Default expiration time
+        if ($otp->expires_at) {
+            $expiresInMinutes = max(1, ceil($otp->expires_at->diffInMinutes(now())));
+        }
+        
+        // Replace placeholders
+        $message = str_replace(
+            ['{code}', '{expires_in}'],
+            [$otp->code, $expiresInMinutes],
+            $template
+        );
 
-        if ($provider === 'whatsapp' && $this->whatsappService) {
+        if ($provider === 'whatsapp') {
+            // Try to resolve WhatsApp service if not injected
+            if (!$this->whatsappService) {
+                try {
+                    $this->whatsappService = app(\App\Services\WhatsApp\SendWhatsAppMessage::class);
+                } catch (\Exception $e) {
+                    Log::error('WhatsApp service is not available: ' . $e->getMessage());
+                    return false;
+                }
+            }
+
             try {
-                $this->whatsappService->sendText($otp->phone, $message);
+                // sendText() returns WhatsAppMessage object, not boolean
+                // If it doesn't throw exception, consider it successful
+                $whatsappMessage = $this->whatsappService->sendText($otp->phone, $message);
+                
+                Log::info('OTP sent via WhatsApp successfully', [
+                    'otp_id' => $otp->id,
+                    'phone' => $otp->phone,
+                    'whatsapp_message_id' => $whatsappMessage->id ?? 'N/A',
+                ]);
+                
                 return true;
             } catch (\Exception $e) {
-                Log::error('Error sending OTP via WhatsApp: ' . $e->getMessage());
+                Log::error('Error sending OTP via WhatsApp: ' . $e->getMessage(), [
+                    'otp_id' => $otp->id,
+                    'phone' => $otp->phone,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
                 return false;
             }
         }

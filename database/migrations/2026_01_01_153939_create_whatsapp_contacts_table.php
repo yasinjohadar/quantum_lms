@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('whatsapp_contacts')) {
+            return;
+        }
+
         Schema::create('whatsapp_contacts', function (Blueprint $table) {
             $table->id();
             $table->string('wa_id')->unique()->comment('WhatsApp ID (phone number)');

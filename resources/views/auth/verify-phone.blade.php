@@ -256,7 +256,13 @@
 
         <div class="heading">
             <div class="heading-main">التحقق من رقم الهاتف</div>
-            <div class="heading-sub">أدخل رمز التحقق الذي تم إرساله إلى رقم هاتفك</div>
+            <div class="heading-sub">
+                @if(isset($phone))
+                    أدخل رمز التحقق الذي تم إرساله إلى {{ substr($phone, 0, 4) }}****{{ substr($phone, -4) }}
+                @else
+                    أدخل رمز التحقق الذي تم إرساله إلى رقم هاتفك
+                @endif
+            </div>
         </div>
 
         @if (session('success'))
@@ -307,9 +313,19 @@
                 <button type="submit" class="btn-primary">
                     <span>التحقق</span>
                 </button>
-                <button type="button" class="btn-link" id="resend-btn">
-                    إعادة إرسال الرمز
-                </button>
+                <div style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
+                    <button type="button" class="btn-link" id="resend-btn">
+                        إعادة إرسال الرمز
+                    </button>
+                    <div style="display: flex; gap: 12px; margin-top: 8px;">
+                        <button type="button" class="btn-link" id="resend-sms-btn" style="font-size: 12px;">
+                            إرسال عبر SMS
+                        </button>
+                        <button type="button" class="btn-link" id="resend-whatsapp-btn" style="font-size: 12px;">
+                            إرسال عبر WhatsApp
+                        </button>
+                    </div>
+                </div>
             </div>
         </form>
 
@@ -329,9 +345,33 @@ document.addEventListener('DOMContentLoaded', function() {
         this.value = this.value.replace(/[^0-9]/g, '');
     });
 
-    // Resend OTP
-    resendBtn.addEventListener('click', function() {
-        const btn = this;
+    let resendCooldown = 0;
+    let resendTimer = null;
+
+    function updateResendButton() {
+        const buttons = [resendBtn, document.getElementById('resend-sms-btn'), document.getElementById('resend-whatsapp-btn')];
+        buttons.forEach(btn => {
+            if (btn) {
+                if (resendCooldown > 0) {
+                    btn.disabled = true;
+                    btn.textContent = `إعادة إرسال (${resendCooldown}ث)`;
+                    resendCooldown--;
+                } else {
+                    btn.disabled = false;
+                    if (btn === resendBtn) {
+                        btn.textContent = 'إعادة إرسال الرمز';
+                    } else if (btn.id === 'resend-sms-btn') {
+                        btn.textContent = 'إرسال عبر SMS';
+                    } else if (btn.id === 'resend-whatsapp-btn') {
+                        btn.textContent = 'إرسال عبر WhatsApp';
+                    }
+                }
+            }
+        });
+    }
+
+    function sendOTP(provider = 'sms') {
+        const btn = resendBtn;
         const originalText = btn.textContent;
         btn.disabled = true;
         btn.textContent = 'جاري الإرسال...';
@@ -341,12 +381,17 @@ document.addEventListener('DOMContentLoaded', function() {
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            }
+            },
+            body: JSON.stringify({ provider: provider })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 alert('تم إرسال رمز التحقق بنجاح');
+                resendCooldown = 60; // 60 ثانية cooldown
+                if (resendTimer) clearInterval(resendTimer);
+                resendTimer = setInterval(updateResendButton, 1000);
+                updateResendButton();
             } else {
                 alert('فشل إرسال رمز التحقق: ' + data.message);
             }
@@ -358,7 +403,28 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.disabled = false;
             btn.textContent = originalText;
         });
+    }
+
+    // Resend OTP (default: SMS)
+    resendBtn.addEventListener('click', function() {
+        sendOTP('sms');
     });
+
+    // Resend via SMS
+    const resendSmsBtn = document.getElementById('resend-sms-btn');
+    if (resendSmsBtn) {
+        resendSmsBtn.addEventListener('click', function() {
+            sendOTP('sms');
+        });
+    }
+
+    // Resend via WhatsApp
+    const resendWhatsappBtn = document.getElementById('resend-whatsapp-btn');
+    if (resendWhatsappBtn) {
+        resendWhatsappBtn.addEventListener('click', function() {
+            sendOTP('whatsapp');
+        });
+    }
 });
 </script>
 </body>

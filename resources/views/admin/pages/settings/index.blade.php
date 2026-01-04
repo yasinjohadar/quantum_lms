@@ -60,9 +60,17 @@
                                     @foreach($settings as $setting)
                                         <div class="col-md-6">
                                             <label class="form-label">
-                                                {{ $setting->key }}
+                                                @if($setting->key === 'phone_verification_enabled')
+                                                    تفعيل التحقق من رقم الهاتف عند التسجيل
+                                                @elseif($setting->key === 'otp_message_template')
+                                                    نص رسالة كود التحقق
+                                                @elseif($setting->key === 'otp_provider')
+                                                    مزود إرسال كود التحقق
+                                                @else
+                                                    {{ $setting->key }}
+                                                @endif
                                                 @if($setting->description)
-                                                    <small class="text-muted">({{ $setting->description }})</small>
+                                                    <small class="text-muted d-block mt-1">{{ $setting->description }}</small>
                                                 @endif
                                             </label>
                                             
@@ -88,6 +96,11 @@
                                                          name="settings[{{ $setting->key }}]" 
                                                          id="setting_{{ $setting->id }}" 
                                                          rows="3">{{ is_array($setting->value) ? json_encode($setting->value, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) : $setting->value }}</textarea>
+                                            @elseif($setting->type === 'text')
+                                                <textarea class="form-control" 
+                                                         name="settings[{{ $setting->key }}]" 
+                                                         id="setting_{{ $setting->id }}" 
+                                                         rows="3">{{ $setting->value }}</textarea>
                                             @else
                                                 <input type="text" 
                                                       class="form-control" 

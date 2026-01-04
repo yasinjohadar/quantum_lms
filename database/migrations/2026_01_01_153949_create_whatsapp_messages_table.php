@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('whatsapp_messages')) {
+            return;
+        }
+
         Schema::create('whatsapp_messages', function (Blueprint $table) {
             $table->id();
             $table->enum('direction', ['inbound', 'outbound']);

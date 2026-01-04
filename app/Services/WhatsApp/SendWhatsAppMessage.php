@@ -5,16 +5,15 @@ namespace App\Services\WhatsApp;
 use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\WhatsAppContact;
 use App\Models\WhatsAppMessage;
-use App\Services\WhatsApp\WhatsAppClient;
 use Illuminate\Support\Facades\Log;
 
 class SendWhatsAppMessage
 {
-    protected WhatsAppClient $client;
+    protected WhatsAppSettingsService $settingsService;
 
-    public function __construct(WhatsAppClient $client)
+    public function __construct(WhatsAppSettingsService $settingsService)
     {
-        $this->client = $client;
+        $this->settingsService = $settingsService;
     }
 
     /**
