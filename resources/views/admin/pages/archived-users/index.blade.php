@@ -108,18 +108,31 @@
                                     </select>
                                 </div>
 
-                                <div class="col-md-6">
-                                    <button type="submit" class="btn btn-primary btn-sm me-2">
+                                <div class="col-md-6 d-flex gap-2 flex-wrap align-items-end">
+                                    <button type="submit" class="btn btn-primary btn-sm">
                                         <i class="fas fa-search me-1"></i> بحث
                                     </button>
                                     <a href="{{ route('admin.archived-users.index') }}" class="btn btn-outline-danger btn-sm">
                                         <i class="fas fa-times me-1"></i> مسح الفلاتر
                                     </a>
-                                    <button type="button" class="btn btn-success btn-sm" id="bulk-restore-btn" style="display: none;">
-                                        <i class="fas fa-undo me-1"></i> استعادة المحدد
-                                    </button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+
+                    <!-- Bulk Actions Bar -->
+                    <div class="card shadow-sm border-0 mb-3" id="bulk-actions-bar" style="display: none;">
+                        <div class="card-body py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="text-muted" id="selected-count-text">تم تحديد <strong>0</strong> مستخدم</span>
+                                </div>
+                                <div>
+                                    <button type="button" class="btn btn-success btn-sm" id="bulk-restore-btn">
+                                        <i class="fas fa-undo me-1"></i> <span id="bulk-restore-text">استعادة المحدد</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -130,11 +143,13 @@
                         </div>
 
                         <div class="card-body">
-                            <form id="bulk-restore-form" action="{{ route('admin.archived-users.bulk-restore') }}" method="POST">
+                            <!-- Bulk restore form (hidden, only for JavaScript) -->
+                            <form id="bulk-restore-form" action="{{ route('admin.archived-users.bulk-restore') }}" method="POST" style="display: none;">
                                 @csrf
                                 <input type="hidden" name="archived_user_ids" id="archived_user_ids_input">
+                            </form>
 
-                                <div class="table-responsive">
+                            <div class="table-responsive">
                                     <table class="table table-striped align-middle table-hover table-bordered mb-0 text-center">
                                         <thead class="table-light">
                                         <tr>
@@ -187,14 +202,12 @@
                                                            class="btn btn-sm btn-info" title="عرض التفاصيل">
                                                             <i class="fas fa-eye"></i>
                                                         </a>
-                                                        <form action="{{ route('admin.archived-users.restore', $archivedUser->id) }}" 
-                                                              method="POST" class="d-inline" 
-                                                              onsubmit="return confirm('هل أنت متأكد من استعادة هذا المستخدم؟');">
-                                                            @csrf
-                                                            <button type="submit" class="btn btn-sm btn-success" title="استعادة">
-                                                                <i class="fas fa-undo"></i>
-                                                            </button>
-                                                        </form>
+                                                        <button type="button" class="btn btn-sm btn-success restore-btn" 
+                                                                data-id="{{ $archivedUser->id }}"
+                                                                data-name="{{ $archivedUser->name }}"
+                                                                title="استعادة">
+                                                            <i class="fas fa-undo"></i>
+                                                        </button>
                                                         <form action="{{ route('admin.archived-users.destroy', $archivedUser->id) }}" 
                                                               method="POST" class="d-inline" 
                                                               onsubmit="return confirm('هل أنت متأكد من حذف هذا السجل نهائياً؟');">
@@ -218,26 +231,102 @@
                                     </table>
                                 </div>
 
-                                <div class="d-flex justify-content-between align-items-center mt-3">
-                                    <div>
-                                        <p class="text-muted mb-0">
-                                            عرض {{ $archivedUsers->firstItem() ?? 0 }} إلى {{ $archivedUsers->lastItem() ?? 0 }} من {{ $archivedUsers->total() }} سجل
-                                        </p>
-                                    </div>
-                                    <div>
-                                        {{ $archivedUsers->links() }}
-                                    </div>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <div>
+                                    <p class="text-muted mb-0">
+                                        عرض {{ $archivedUsers->firstItem() ?? 0 }} إلى {{ $archivedUsers->lastItem() ?? 0 }} من {{ $archivedUsers->total() }} سجل
+                                    </p>
                                 </div>
-                            </form>
+                                <div>
+                                    {{ $archivedUsers->links() }}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
+
+<!-- Modal استعادة المستخدم -->
+<div class="modal fade" id="restoreModal" tabindex="-1" aria-labelledby="restoreModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="restoreModalLabel">
+                    <i class="fas fa-undo me-2"></i> استعادة المستخدم
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="mb-3">
+                    <i class="fas fa-undo text-success" style="font-size: 4rem;"></i>
+                </div>
+                <h5 class="mb-3">هل أنت متأكد من استعادة هذا المستخدم؟</h5>
+                <p class="text-muted mb-2">
+                    <strong id="restoreUserName"></strong>
+                </p>
+                <p class="text-muted mb-0">
+                    سيتم استعادة المستخدم إلى قائمة المستخدمين النشطين.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i> إلغاء
+                </button>
+                <form id="restoreForm" method="POST" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-undo me-1"></i> نعم، استعادة المستخدم
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal استعادة المستخدمين المحددين -->
+<div class="modal fade" id="bulkRestoreModal" tabindex="-1" aria-labelledby="bulkRestoreModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="bulkRestoreModalLabel">
+                    <i class="fas fa-undo me-2"></i> استعادة المستخدمين المحددين
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="mb-3">
+                    <i class="fas fa-undo text-success" style="font-size: 4rem;"></i>
+                </div>
+                <h5 class="mb-3">هل أنت متأكد من استعادة المستخدمين المحددين؟</h5>
+                <p class="text-muted mb-2">
+                    سيتم استعادة <strong id="bulkRestoreCount"></strong> مستخدم محدد.
+                </p>
+                <p class="text-muted mb-0">
+                    سيتم استعادة جميع المستخدمين المحددين إلى قائمة المستخدمين النشطين.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i> إلغاء
+                </button>
+                <form id="bulkRestoreForm" method="POST" action="{{ route('admin.archived-users.bulk-restore') }}" class="d-inline">
+                    @csrf
+                    <input type="hidden" name="archived_user_ids" id="bulkRestoreUserIds">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-undo me-1"></i> نعم، استعادة المحدد
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 @stop
 
-@section('scripts')
+@push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const selectAll = document.getElementById('select-all');
@@ -266,15 +355,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function toggleBulkRestoreBtn() {
         const checked = document.querySelectorAll('.row-checkbox:checked');
-        if (bulkRestoreBtn) {
-            if (checked.length > 0) {
-                bulkRestoreBtn.style.display = 'inline-block';
-                bulkRestoreBtn.textContent = `استعادة المحدد (${checked.length})`;
-            } else {
-                bulkRestoreBtn.style.display = 'none';
+        const bulkActionsBar = document.getElementById('bulk-actions-bar');
+        const bulkRestoreText = document.getElementById('bulk-restore-text');
+        const selectedCountText = document.getElementById('selected-count-text');
+        
+        if (checked.length > 0) {
+            // Show bulk actions bar
+            if (bulkActionsBar) {
+                bulkActionsBar.style.display = 'block';
+            }
+            
+            // Update selected count
+            if (selectedCountText) {
+                selectedCountText.innerHTML = `تم تحديد <strong>${checked.length}</strong> مستخدم`;
+            }
+            
+            // Update restore button text
+            if (bulkRestoreText) {
+                bulkRestoreText.textContent = `استعادة المحدد (${checked.length})`;
+            }
+        } else {
+            // Hide bulk actions bar
+            if (bulkActionsBar) {
+                bulkActionsBar.style.display = 'none';
             }
         }
     }
+    
+    // Initialize button state on page load
+    toggleBulkRestoreBtn();
 
     function updateSelectAll() {
         if (selectAll) {
@@ -284,7 +393,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Bulk restore
-    if (bulkRestoreBtn && bulkRestoreForm) {
+    if (bulkRestoreBtn) {
         bulkRestoreBtn.addEventListener('click', function(e) {
             e.preventDefault();
             const checked = document.querySelectorAll('.row-checkbox:checked');
@@ -295,23 +404,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            if (confirm('هل أنت متأكد من استعادة ' + ids.length + ' مستخدم محدد؟')) {
-                archivedUserIdsInput.value = JSON.stringify(ids);
-                
-                // Ensure CSRF token is present
-                if (!document.querySelector('#bulk-restore-form input[name="_token"]')) {
-                    const csrfInput = document.createElement('input');
-                    csrfInput.type = 'hidden';
-                    csrfInput.name = '_token';
-                    csrfInput.value = '{{ csrf_token() }}';
-                    bulkRestoreForm.appendChild(csrfInput);
-                }
-                
-                bulkRestoreForm.method = 'POST';
-                bulkRestoreForm.submit();
-            }
+            // Set count and IDs in modal
+            document.getElementById('bulkRestoreCount').textContent = ids.length;
+            document.getElementById('bulkRestoreUserIds').value = JSON.stringify(ids);
+            
+            // Show modal
+            const bulkRestoreModal = new bootstrap.Modal(document.getElementById('bulkRestoreModal'));
+            bulkRestoreModal.show();
         });
     }
+
+    // Individual restore buttons
+    document.querySelectorAll('.restore-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const archivedUserId = this.getAttribute('data-id');
+            const userName = this.getAttribute('data-name');
+            
+            document.getElementById('restoreUserName').textContent = userName;
+            document.getElementById('restoreForm').action = '{{ route("admin.archived-users.restore", ":id") }}'.replace(':id', archivedUserId);
+            
+            const restoreModal = new bootstrap.Modal(document.getElementById('restoreModal'));
+            restoreModal.show();
+        });
+    });
 });
 </script>
-@stop
+@endpush

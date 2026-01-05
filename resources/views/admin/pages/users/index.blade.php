@@ -298,7 +298,49 @@
     </div>
     <!-- End::app-content -->
 
-
+<!-- Modal أرشفة المستخدم -->
+<div class="modal fade" id="archiveModal" tabindex="-1" aria-labelledby="archiveModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="archiveModalLabel">
+                    <i class="bi bi-archive-fill me-2"></i> أرشفة المستخدم
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4">
+                <div class="text-center mb-3">
+                    <i class="bi bi-archive-fill text-warning" style="font-size: 4rem;"></i>
+                </div>
+                <h5 class="text-center mb-3">هل أنت متأكد من أرشفة هذا المستخدم؟</h5>
+                <p class="text-muted text-center mb-3">
+                    <strong id="archiveUserName"></strong>
+                </p>
+                <div class="mb-3">
+                    <label for="archiveReason" class="form-label">سبب الأرشفة (اختياري)</label>
+                    <textarea class="form-control" id="archiveReason" name="reason" rows="3" 
+                              placeholder="أدخل سبب الأرشفة (اختياري)"></textarea>
+                </div>
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    سيتم نقل المستخدم إلى الأرشيف ويمكن استعادته لاحقاً.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i> إلغاء
+                </button>
+                <form id="archiveForm" method="POST" class="d-inline">
+                    @csrf
+                    <input type="hidden" name="reason" id="archiveReasonInput">
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-archive me-1"></i> نعم، أرشفة المستخدم
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 
 @stop
 
@@ -392,37 +434,47 @@
 
         // Individual archive
         document.querySelectorAll('.archive-user-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
                 const userId = this.getAttribute('data-user-id');
                 const userName = this.getAttribute('data-user-name');
                 
-                const reason = prompt('أدخل سبب أرشفة ' + userName + ' (اختياري):');
-                if (reason === null) return; // User cancelled
-
-                if (confirm('هل أنت متأكد من أرشفة المستخدم: ' + userName + '؟')) {
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = '/admin/users/' + userId + '/archive';
-                    
-                    const csrfToken = document.createElement('input');
-                    csrfToken.type = 'hidden';
-                    csrfToken.name = '_token';
-                    csrfToken.value = '{{ csrf_token() }}';
-                    form.appendChild(csrfToken);
-                    
-                    if (reason) {
-                        const reasonInput = document.createElement('input');
-                        reasonInput.type = 'hidden';
-                        reasonInput.name = 'reason';
-                        reasonInput.value = reason;
-                        form.appendChild(reasonInput);
-                    }
-                    
-                    document.body.appendChild(form);
-                    form.submit();
+                if (!userId || !userName) {
+                    console.error('Missing data attributes');
+                    return;
                 }
+                
+                const archiveUserNameEl = document.getElementById('archiveUserName');
+                const archiveFormEl = document.getElementById('archiveForm');
+                const archiveReasonEl = document.getElementById('archiveReason');
+                const archiveReasonInputEl = document.getElementById('archiveReasonInput');
+                const archiveModalEl = document.getElementById('archiveModal');
+                
+                if (!archiveUserNameEl || !archiveFormEl || !archiveModalEl) {
+                    console.error('Modal elements not found');
+                    return;
+                }
+                
+                archiveUserNameEl.textContent = userName;
+                archiveFormEl.action = '{{ route("admin.users.archive", ":id") }}'.replace(':id', userId);
+                if (archiveReasonEl) archiveReasonEl.value = '';
+                if (archiveReasonInputEl) archiveReasonInputEl.value = '';
+                
+                const archiveModal = new bootstrap.Modal(archiveModalEl);
+                archiveModal.show();
             });
         });
+
+        // Archive form submission
+        const archiveForm = document.getElementById('archiveForm');
+        if (archiveForm) {
+            archiveForm.addEventListener('submit', function(e) {
+                const reason = document.getElementById('archiveReason').value;
+                document.getElementById('archiveReasonInput').value = reason;
+            });
+        }
 
         // إظهار جميع الرسائل
         const alerts = document.querySelectorAll('.alert');

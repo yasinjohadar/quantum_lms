@@ -15,9 +15,23 @@ class UserArchiveService
     public function archive(User $user, ?string $reason = null, ?User $archivedBy = null): ArchivedUser
     {
         return DB::transaction(function () use ($user, $reason, $archivedBy) {
+            // Check if user is already archived (not restored)
+            $existingArchivedUser = ArchivedUser::where('original_user_id', $user->id)
+                ->whereNull('restored_at')
+                ->first();
+            
+            if ($existingArchivedUser) {
+                throw new \Exception('المستخدم مؤرشف بالفعل');
+            }
+
             // Get user attributes before any changes
             $userAttributes = $user->fresh()->getAttributes();
             $userId = $user->id;
+            
+            // Check if there's a restored archived user record (we need to update it)
+            $restoredArchivedUser = ArchivedUser::where('original_user_id', $userId)
+                ->whereNotNull('restored_at')
+                ->first();
             
             // Mark user as archived first
             $user->update([
@@ -25,31 +39,59 @@ class UserArchiveService
                 'archived_at' => now(),
             ]);
 
-            // Create archived user record BEFORE soft delete
-            // This ensures the foreign key constraint is satisfied
-            $archivedUser = ArchivedUser::create([
-                'original_user_id' => $userId,
-                'name' => $userAttributes['name'] ?? $user->name,
-                'email' => $userAttributes['email'] ?? $user->email,
-                'phone' => $userAttributes['phone'] ?? $user->phone,
-                'password' => $userAttributes['password'] ?? $user->password,
-                'email_verified_at' => $userAttributes['email_verified_at'] ?? $user->email_verified_at,
-                'avatar' => $userAttributes['avatar'] ?? $user->avatar ?? null,
-                'student_id' => $userAttributes['student_id'] ?? null,
-                'date_of_birth' => $userAttributes['date_of_birth'] ?? null,
-                'gender' => $userAttributes['gender'] ?? null,
-                'last_login_at' => $userAttributes['last_login_at'] ?? $user->last_login_at,
-                'last_login_ip' => $userAttributes['last_login_ip'] ?? $user->last_login_ip,
-                'last_device_type' => $userAttributes['last_device_type'] ?? null,
-                'is_active' => $userAttributes['is_active'] ?? $user->is_active ?? false,
-                'is_connected' => $userAttributes['is_connected'] ?? false,
-                'address' => $userAttributes['address'] ?? null,
-                'archived_at' => now(),
-                'archived_by' => $archivedBy?->id ?? auth()->id(),
-                'archive_reason' => $reason,
-            ]);
+            // If there's a restored record, update it; otherwise create a new one
+            if ($restoredArchivedUser) {
+                // Update existing restored record
+                $restoredArchivedUser->update([
+                    'name' => $userAttributes['name'] ?? $user->name,
+                    'email' => $userAttributes['email'] ?? $user->email,
+                    'phone' => $userAttributes['phone'] ?? $user->phone,
+                    'password' => $userAttributes['password'] ?? $user->password,
+                    'email_verified_at' => $userAttributes['email_verified_at'] ?? $user->email_verified_at,
+                    'avatar' => $userAttributes['avatar'] ?? $user->avatar ?? null,
+                    'student_id' => $userAttributes['student_id'] ?? null,
+                    'date_of_birth' => $userAttributes['date_of_birth'] ?? null,
+                    'gender' => $userAttributes['gender'] ?? null,
+                    'last_login_at' => $userAttributes['last_login_at'] ?? $user->last_login_at,
+                    'last_login_ip' => $userAttributes['last_login_ip'] ?? $user->last_login_ip,
+                    'last_device_type' => $userAttributes['last_device_type'] ?? null,
+                    'is_active' => $userAttributes['is_active'] ?? $user->is_active ?? false,
+                    'is_connected' => $userAttributes['is_connected'] ?? false,
+                    'address' => $userAttributes['address'] ?? null,
+                    'archived_at' => now(),
+                    'archived_by' => $archivedBy?->id ?? auth()->id(),
+                    'archive_reason' => $reason,
+                    'restored_at' => null,
+                    'restored_by' => null,
+                ]);
+                $archivedUser = $restoredArchivedUser->fresh();
+            } else {
+                // Create new archived user record BEFORE soft delete
+                // This ensures the foreign key constraint is satisfied
+                $archivedUser = ArchivedUser::create([
+                    'original_user_id' => $userId,
+                    'name' => $userAttributes['name'] ?? $user->name,
+                    'email' => $userAttributes['email'] ?? $user->email,
+                    'phone' => $userAttributes['phone'] ?? $user->phone,
+                    'password' => $userAttributes['password'] ?? $user->password,
+                    'email_verified_at' => $userAttributes['email_verified_at'] ?? $user->email_verified_at,
+                    'avatar' => $userAttributes['avatar'] ?? $user->avatar ?? null,
+                    'student_id' => $userAttributes['student_id'] ?? null,
+                    'date_of_birth' => $userAttributes['date_of_birth'] ?? null,
+                    'gender' => $userAttributes['gender'] ?? null,
+                    'last_login_at' => $userAttributes['last_login_at'] ?? $user->last_login_at,
+                    'last_login_ip' => $userAttributes['last_login_ip'] ?? $user->last_login_ip,
+                    'last_device_type' => $userAttributes['last_device_type'] ?? null,
+                    'is_active' => $userAttributes['is_active'] ?? $user->is_active ?? false,
+                    'is_connected' => $userAttributes['is_connected'] ?? false,
+                    'address' => $userAttributes['address'] ?? null,
+                    'archived_at' => now(),
+                    'archived_by' => $archivedBy?->id ?? auth()->id(),
+                    'archive_reason' => $reason,
+                ]);
+            }
 
-            // Soft delete the user AFTER creating archived record
+            // Soft delete the user AFTER creating/updating archived record
             // Soft delete doesn't actually remove the record, so foreign key is still valid
             $user->delete();
 
@@ -57,6 +99,7 @@ class UserArchiveService
                 'user_id' => $userId,
                 'archived_user_id' => $archivedUser->id,
                 'archived_by' => $archivedBy?->id ?? auth()->id(),
+                'updated_existing' => $restoredArchivedUser !== null,
             ]);
 
             return $archivedUser;
