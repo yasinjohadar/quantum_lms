@@ -107,21 +107,12 @@ class Stage extends Model
             return asset('assets/images/media/media-22.jpg');
         }
 
-        // استخدام Storage::url() للحصول على الرابط الصحيح
-        try {
-            if (Storage::disk('public')->exists($this->image)) {
-                return Storage::disk('public')->url($this->image);
-            }
-        } catch (\Exception $e) {
-            // في حالة الخطأ، استخدم asset
-        }
-
         // إذا كان المسار يحتوي على storage/ فهو جاهز
         if (str_starts_with($this->image, 'storage/')) {
             return asset($this->image);
         }
 
-        // إذا كان المسار نسبي فقط
+        // استخدام asset مباشرة مع storage/
         return asset('storage/' . $this->image);
     }
 }

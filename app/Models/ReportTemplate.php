@@ -15,13 +15,11 @@ class ReportTemplate extends Model
         'type',
         'config',
         'is_active',
-        'is_default',
     ];
 
     protected $casts = [
         'config' => 'array',
         'is_active' => 'boolean',
-        'is_default' => 'boolean',
     ];
 
     /**

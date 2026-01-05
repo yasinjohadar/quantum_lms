@@ -63,8 +63,7 @@ class ReportBuilderService
             $query->ofType($type);
         }
 
-        return $query->orderBy('is_default', 'desc')
-                    ->orderBy('name')
+        return $query->orderBy('name')
                     ->get();
     }
 
