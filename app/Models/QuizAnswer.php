@@ -216,6 +216,34 @@ class QuizAnswer extends Model
             return;
         }
 
+        // Check if answer exists
+        $hasAnswer = false;
+        if ($this->selected_options && (is_array($this->selected_options) ? count($this->selected_options) > 0 : !empty($this->selected_options))) {
+            $hasAnswer = true;
+        } elseif ($this->answer_text && trim($this->answer_text) !== '') {
+            $hasAnswer = true;
+        } elseif ($this->numeric_answer !== null) {
+            $hasAnswer = true;
+        } elseif ($this->matching_pairs && (is_array($this->matching_pairs) ? count($this->matching_pairs) > 0 : !empty($this->matching_pairs))) {
+            $hasAnswer = true;
+        } elseif ($this->ordering && (is_array($this->ordering) ? count($this->ordering) > 0 : !empty($this->ordering))) {
+            $hasAnswer = true;
+        } elseif ($this->fill_blanks_answers && (is_array($this->fill_blanks_answers) ? count($this->fill_blanks_answers) > 0 : !empty($this->fill_blanks_answers))) {
+            $hasAnswer = true;
+        } elseif ($this->drag_drop_assignments && (is_array($this->drag_drop_assignments) ? count($this->drag_drop_assignments) > 0 : !empty($this->drag_drop_assignments))) {
+            $hasAnswer = true;
+        }
+        
+        if (!$hasAnswer) {
+            // No answer provided, mark as incorrect
+            $this->is_correct = false;
+            $this->points_earned = 0;
+            $this->is_graded = true;
+            $this->graded_at = now();
+            $this->save();
+            return;
+        }
+
         $isCorrect = false;
         $pointsEarned = 0;
 
@@ -275,12 +303,26 @@ class QuizAnswer extends Model
         $correctOption = $this->question->correctOptions()->first();
         
         if (!$correctOption || !$this->selected_options) {
+            \Log::debug('gradeSingleChoice: No correct option or selected options', [
+                'correctOption' => $correctOption?->id,
+                'selected_options' => $this->selected_options,
+            ]);
             return false;
         }
 
         $selectedIds = is_array($this->selected_options) ? $this->selected_options : [$this->selected_options];
         
-        return in_array($correctOption->id, $selectedIds);
+        // تحويل جميع القيم إلى integers للمقارنة الصحيحة
+        $selectedIds = array_map('intval', $selectedIds);
+        $correctId = (int) $correctOption->id;
+        
+        \Log::debug('gradeSingleChoice: Comparing', [
+            'correctId' => $correctId,
+            'selectedIds' => $selectedIds,
+            'result' => in_array($correctId, $selectedIds, true),
+        ]);
+        
+        return in_array($correctId, $selectedIds, true);
     }
 
     protected function gradeMultipleChoice(): array
@@ -291,6 +333,10 @@ class QuizAnswer extends Model
         if (empty($selectedIds)) {
             return ['is_correct' => false, 'points' => 0];
         }
+
+        // تحويل جميع القيم إلى integers للمقارنة الصحيحة
+        $selectedIds = array_map('intval', $selectedIds);
+        $correctOptions = array_map('intval', $correctOptions);
 
         $correctCount = count(array_intersect($selectedIds, $correctOptions));
         $wrongCount = count(array_diff($selectedIds, $correctOptions));

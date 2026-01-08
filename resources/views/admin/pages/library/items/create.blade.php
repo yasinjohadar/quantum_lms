@@ -95,16 +95,30 @@
                         </div>
                         <div class="col-md-6">
                             <div class="form-floating">
-                                <select name="subject_id" class="form-select @error('subject_id') is-invalid @enderror">
-                                    <option value="">عام (غير مرتبط بمادة)</option>
-                                    @foreach($subjects as $subject)
-                                        <option value="{{ $subject->id }}" {{ old('subject_id') == $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
+                                <select name="class_id" id="class_id" class="form-select @error('class_id') is-invalid @enderror">
+                                    <option value="">اختر الصف (اختياري)</option>
+                                    @foreach($classes as $class)
+                                        <option value="{{ $class->id }}" {{ old('class_id') == $class->id ? 'selected' : '' }}>{{ $class->name }}</option>
                                     @endforeach
+                                </select>
+                                <label>الصف (اختياري)</label>
+                                @error('class_id')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <select name="subject_id" id="subject_id" class="form-select @error('subject_id') is-invalid @enderror" disabled>
+                                    <option value="">عام (غير مرتبط بمادة)</option>
                                 </select>
                                 <label>المادة (اختياري)</label>
                                 @error('subject_id')
                                 <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
+                            </div>
+                            <div id="subject-hint" class="text-muted small mt-1" style="display: none;">
+                                <i class="fas fa-info-circle me-1"></i> يرجى اختيار الصف أولاً لعرض المواد المرتبطة به
                             </div>
                         </div>
                         <div class="col-12">
@@ -176,8 +190,9 @@
         </div>
     </div>
 </div>
+@stop
 
-@section('js')
+@push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const typeSelect = document.getElementById('type');
@@ -185,45 +200,46 @@
         const urlSection = document.getElementById('external-url-section');
         const fileInput = document.getElementById('file-input');
         const urlInput = document.getElementById('external-url-input');
+        const classSelect = document.getElementById('class_id');
+        const subjectSelect = document.getElementById('subject_id');
+        const subjectHint = document.getElementById('subject-hint');
         
         if (!typeSelect || !fileSection || !urlSection) {
             console.error('Missing required elements for library item form toggle');
             return;
         }
         
+        if (!classSelect || !subjectSelect || !subjectHint) {
+            console.error('Missing required elements for class/subject select');
+            return;
+        }
+        
         function toggleSections() {
             const type = typeSelect.value;
             
-            console.log('Type changed to:', type); // للتحقق
-            
             if (type === 'link') {
-                // إظهار حقل الرابط وإخفاء حقل الملف
                 fileSection.style.display = 'none';
                 urlSection.style.display = 'block';
                 
-                // إزالة required من الملف وإضافته للرابط
                 if (fileInput) {
                     fileInput.removeAttribute('required');
-                    fileInput.value = ''; // مسح قيمة الملف
+                    fileInput.value = '';
                 }
                 if (urlInput) {
                     urlInput.setAttribute('required', 'required');
                 }
             } else if (type) {
-                // إظهار حقل الملف وإخفاء حقل الرابط
                 fileSection.style.display = 'block';
                 urlSection.style.display = 'none';
                 
-                // إضافة required للملف وإزالته من الرابط
                 if (fileInput) {
                     fileInput.setAttribute('required', 'required');
                 }
                 if (urlInput) {
                     urlInput.removeAttribute('required');
-                    urlInput.value = ''; // مسح قيمة الرابط
+                    urlInput.value = '';
                 }
             } else {
-                // إذا لم يتم اختيار نوع، إخفاء كلا الحقلين
                 fileSection.style.display = 'block';
                 urlSection.style.display = 'none';
                 if (fileInput) fileInput.removeAttribute('required');
@@ -231,49 +247,98 @@
             }
         }
         
-        // إضافة event listener عند تغيير النوع
-        typeSelect.addEventListener('change', toggleSections);
+        function loadSubjectsByClass(classId, selectedSubjectId = null) {
+            if (!subjectSelect || !subjectHint) {
+                console.error('subjectSelect or subjectHint not found');
+                return;
+            }
+            
+            if (!classId) {
+                // إعادة تعيين حقل المادة
+                subjectSelect.innerHTML = '<option value="">عام (غير مرتبط بمادة)</option>';
+                subjectSelect.disabled = true;
+                subjectHint.style.display = 'block';
+                return;
+            }
+            
+            console.log('Loading subjects for class_id:', classId);
+            
+            // إظهار loading
+            subjectSelect.disabled = true;
+            subjectSelect.innerHTML = '<option value="">جاري التحميل...</option>';
+            subjectHint.style.display = 'none';
+            
+            const url = '{{ route("admin.library.items.subjects-by-class") }}?class_id=' + classId;
+            console.log('Fetching from URL:', url);
+            
+            // جلب المواد عبر AJAX
+            fetch(url, {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Received data:', data);
+                    if (data.success && data.subjects) {
+                        // تحديث خيارات المادة
+                        updateSubjectSelect(data.subjects, selectedSubjectId);
+                        subjectSelect.disabled = false;
+                    } else {
+                        subjectSelect.innerHTML = '<option value="">لا توجد مواد متاحة</option>';
+                        subjectSelect.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading subjects:', error);
+                    subjectSelect.innerHTML = '<option value="">حدث خطأ في التحميل</option>';
+                    subjectSelect.disabled = false;
+                });
+        }
         
-        // تنفيذ عند تحميل الصفحة
-        toggleSections();
-    });
-</script>
-@stop
-@stop
-
-
-                if (urlInput) {
-                    urlInput.setAttribute('required', 'required');
-                }
-            } else if (type) {
-                // إظهار حقل الملف وإخفاء حقل الرابط
-                fileSection.style.display = 'block';
-                urlSection.style.display = 'none';
-                
-                // إضافة required للملف وإزالته من الرابط
-                if (fileInput) {
-                    fileInput.setAttribute('required', 'required');
-                }
-                if (urlInput) {
-                    urlInput.removeAttribute('required');
-                    urlInput.value = ''; // مسح قيمة الرابط
-                }
-            } else {
-                // إذا لم يتم اختيار نوع، إخفاء كلا الحقلين
-                fileSection.style.display = 'block';
-                urlSection.style.display = 'none';
-                if (fileInput) fileInput.removeAttribute('required');
-                if (urlInput) urlInput.removeAttribute('required');
+        function updateSubjectSelect(subjects, selectedSubjectId = null) {
+            let html = '<option value="">عام (غير مرتبط بمادة)</option>';
+            
+            subjects.forEach(subject => {
+                const selected = selectedSubjectId && subject.id == selectedSubjectId ? 'selected' : '';
+                html += `<option value="${subject.id}" ${selected}>${subject.name}</option>`;
+            });
+            
+            subjectSelect.innerHTML = html;
+            
+            // إذا كان هناك old value، حدده
+            const oldSubjectId = '{{ old("subject_id") }}';
+            if (oldSubjectId && !selectedSubjectId) {
+                subjectSelect.value = oldSubjectId;
             }
         }
         
-        // إضافة event listener عند تغيير النوع
-        typeSelect.addEventListener('change', toggleSections);
+        // عند تغيير الصف
+        if (classSelect) {
+            classSelect.addEventListener('change', function() {
+                loadSubjectsByClass(this.value);
+            });
+            
+            // إذا كان هناك old value للصف، حمّل المواد تلقائياً
+            const oldClassId = '{{ old("class_id") }}';
+            if (oldClassId) {
+                loadSubjectsByClass(oldClassId, '{{ old("subject_id") }}');
+            }
+        }
         
-        // تنفيذ عند تحميل الصفحة
+        typeSelect.addEventListener('change', toggleSections);
         toggleSections();
     });
 </script>
-@stop
-@stop
+@endpush
 

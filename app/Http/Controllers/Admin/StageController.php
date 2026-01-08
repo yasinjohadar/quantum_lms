@@ -58,6 +58,7 @@ class StageController extends Controller
                     $image = $request->file('image');
                     $imageName = time() . '_' . $image->getClientOriginalName();
                     $data['image'] = $image->storeAs('stages/images', $imageName, 'public');
+
                 } catch (\Exception $e) {
                     return redirect()->back()
                         ->withInput()
@@ -71,6 +72,7 @@ class StageController extends Controller
                     $ogImage = $request->file('og_image');
                     $ogImageName = time() . '_og_' . $ogImage->getClientOriginalName();
                     $data['og_image'] = $ogImage->storeAs('stages/og_images', $ogImageName, 'public');
+
                 } catch (\Exception $e) {
                     return redirect()->back()
                         ->withInput()
@@ -144,13 +146,14 @@ class StageController extends Controller
             if ($request->hasFile('image')) {
                 try {
                     // حذف الصورة القديمة
-                    if ($stage->image) {
-                        StorageHelper::delete('images', $stage->image);
+                    if ($stage->image && Storage::disk('public')->exists($stage->image)) {
+                        Storage::disk('public')->delete($stage->image);
                     }
 
                     $image = $request->file('image');
                     $imageName = time() . '_' . $image->getClientOriginalName();
                     $data['image'] = $image->storeAs('stages/images', $imageName, 'public');
+
                 } catch (\Exception $e) {
                     return redirect()->back()
                         ->withInput()
@@ -165,13 +168,14 @@ class StageController extends Controller
             if ($request->hasFile('og_image')) {
                 try {
                     // حذف الصورة القديمة
-                    if ($stage->og_image) {
-                        StorageHelper::delete('images', $stage->og_image);
+                    if ($stage->og_image && Storage::disk('public')->exists($stage->og_image)) {
+                        Storage::disk('public')->delete($stage->og_image);
                     }
 
                     $ogImage = $request->file('og_image');
                     $ogImageName = time() . '_og_' . $ogImage->getClientOriginalName();
                     $data['og_image'] = $ogImage->storeAs('stages/og_images', $ogImageName, 'public');
+
                 } catch (\Exception $e) {
                     return redirect()->back()
                         ->withInput()

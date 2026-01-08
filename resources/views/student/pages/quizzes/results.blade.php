@@ -109,7 +109,11 @@
                                                 </span>
                                                 <br>
                                                 <small class="text-muted">
-                                                    {{ number_format(($attempt->score / $attempt->max_score) * 100, 1) }}%
+                                                    @if($attempt->max_score > 0)
+                                                        {{ number_format(($attempt->score / $attempt->max_score) * 100, 1) }}%
+                                                    @else
+                                                        0%
+                                                    @endif
                                                 </small>
                                             @else
                                                 <span class="text-muted">قيد التصحيح</span>

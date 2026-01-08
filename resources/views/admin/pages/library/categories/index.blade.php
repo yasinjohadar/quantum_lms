@@ -84,13 +84,13 @@
                                                 <a href="{{ route('admin.library.categories.edit', $category->id) }}" class="btn btn-sm btn-primary-light" data-bs-toggle="tooltip" title="تعديل">
                                                     <i class="fas fa-pencil-alt"></i>
                                                 </a>
-                                                <form action="{{ route('admin.library.categories.destroy', $category->id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف هذا التصنيف؟');" class="d-inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-sm btn-danger-light" data-bs-toggle="tooltip" title="حذف">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </form>
+                                                <button type="button" class="btn btn-sm btn-danger-light delete-category-btn" 
+                                                        data-bs-toggle="tooltip" 
+                                                        title="حذف"
+                                                        data-category-id="{{ $category->id }}"
+                                                        data-category-name="{{ $category->name }}">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -111,5 +111,65 @@
         </div>
     </div>
 </div>
+
+<!-- Modal حذف التصنيف -->
+<div class="modal fade" id="deleteCategoryModal" tabindex="-1" aria-labelledby="deleteCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteCategoryModalLabel">
+                    <i class="fas fa-trash me-2"></i> حذف التصنيف
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="mb-3">
+                    <i class="fas fa-trash text-danger" style="font-size: 4rem;"></i>
+                </div>
+                <h5 class="mb-3">هل أنت متأكد من حذف هذا التصنيف؟</h5>
+                <p class="text-muted mb-2">
+                    <strong id="deleteCategoryName"></strong>
+                </p>
+                <p class="text-danger small mb-0">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    لا يمكن التراجع عن هذا الإجراء
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i> إلغاء
+                </button>
+                <form id="deleteCategoryForm" method="POST" class="d-inline">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-1"></i> نعم، حذف التصنيف
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 @stop
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Delete category buttons
+    document.querySelectorAll('.delete-category-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const categoryId = this.getAttribute('data-category-id');
+            const categoryName = this.getAttribute('data-category-name');
+            
+            document.getElementById('deleteCategoryName').textContent = categoryName;
+            document.getElementById('deleteCategoryForm').action = '{{ route("admin.library.categories.destroy", ":id") }}'.replace(':id', categoryId);
+            
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteCategoryModal'));
+            deleteModal.show();
+        });
+    });
+});
+</script>
+@endpush
+
 

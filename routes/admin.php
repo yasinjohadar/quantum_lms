@@ -152,6 +152,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             'update' => 'library.categories.update',
             'destroy' => 'library.categories.destroy',
         ]);
+        Route::get('library/items/subjects-by-class', [\App\Http\Controllers\Admin\LibraryItemController::class, 'getSubjectsByClass'])
+            ->name('library.items.subjects-by-class');
         Route::resource('library/items', \App\Http\Controllers\Admin\LibraryItemController::class)->names([
             'index' => 'library.items.index',
             'create' => 'library.items.create',

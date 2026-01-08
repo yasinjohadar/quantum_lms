@@ -285,9 +285,9 @@
                         'content' => $opt->content,
                         'is_correct' => $opt->is_correct,
                     ];
-                })
+                })->values()->toArray()
             ];
-        });
+        })->values()->toArray();
         
         $answersJson = $answers->mapWithKeys(function($a) {
             return [$a->question_id => [
@@ -299,11 +299,25 @@
                 'fill_blanks_answers' => $a->fill_blanks_answers,
                 'drag_drop_assignments' => $a->drag_drop_assignments,
             ]];
-        });
+        })->toArray();
     @endphp
     
-    const questions = {!! json_encode($questionsJson) !!};
-    const answers = {!! json_encode($answersJson) !!};
+    let questions = {!! json_encode($questionsJson) !!};
+    let answers = {!! json_encode($answersJson) !!};
+    
+    // Ensure questions is an array
+    if (!Array.isArray(questions)) {
+        console.error('Questions is not an array:', questions);
+        questions = Object.values(questions);
+    }
+    
+    // Ensure answers is an object (it should be)
+    if (Array.isArray(answers)) {
+        console.error('Answers should be an object, converting...');
+        answers = {};
+    }
+    
+    console.log('Quiz initialized with', questions.length, 'questions');
     
     let currentQuestionIndex = 0;
     const saveUrl = '{{ route("student.quizzes.save-answer", $attempt->id) }}';
@@ -311,7 +325,15 @@
 
     // تحميل سؤال
     function loadQuestion(index) {
-        if (index < 0 || index >= questions.length) return;
+        if (!Array.isArray(questions)) {
+            console.error('Questions is not an array');
+            return;
+        }
+        
+        if (index < 0 || index >= questions.length) {
+            console.error('Invalid question index:', index);
+            return;
+        }
         
         currentQuestionIndex = index;
         const question = questions[index];
@@ -502,25 +524,65 @@
         
         let html = '<div class="d-flex gap-3">';
         
-        const trueChecked = selectedOptions.includes('true') || selectedOptions.includes(true) ? 'checked' : '';
-        const falseChecked = selectedOptions.includes('false') || selectedOptions.includes(false) ? 'checked' : '';
+        // Find true and false options
+        const trueOption = question.options?.find(opt => opt.is_correct === true);
+        const falseOption = question.options?.find(opt => opt.is_correct === false);
         
-        html += `
-            <div class="form-check p-4 border rounded flex-fill text-center ${trueChecked ? 'border-success bg-success-transparent' : ''}">
-                <input class="form-check-input" type="radio" name="answer_${question.id}" 
-                       id="true_${question.id}" value="true" ${trueChecked}>
-                <label class="form-check-label w-100 cursor-pointer fs-5" for="true_${question.id}">
-                    <i class="bi bi-check-circle text-success me-2"></i> صحيح
-                </label>
-            </div>
-            <div class="form-check p-4 border rounded flex-fill text-center ${falseChecked ? 'border-danger bg-danger-transparent' : ''}">
-                <input class="form-check-input" type="radio" name="answer_${question.id}" 
-                       id="false_${question.id}" value="false" ${falseChecked}>
-                <label class="form-check-label w-100 cursor-pointer fs-5" for="false_${question.id}">
-                    <i class="bi bi-x-circle text-danger me-2"></i> خطأ
-                </label>
-            </div>
-        `;
+        // If options are not available, fallback to old system
+        if (!trueOption || !falseOption) {
+            const trueChecked = selectedOptions.includes('true') || selectedOptions.includes(true) ? 'checked' : '';
+            const falseChecked = selectedOptions.includes('false') || selectedOptions.includes(false) ? 'checked' : '';
+            
+            html += `
+                <div class="form-check p-4 border rounded flex-fill text-center ${trueChecked ? 'border-success bg-success-transparent' : ''}">
+                    <input class="form-check-input" type="radio" name="answer_${question.id}" 
+                           id="true_${question.id}" value="true" ${trueChecked}>
+                    <label class="form-check-label w-100 cursor-pointer fs-5" for="true_${question.id}">
+                        <i class="bi bi-check-circle text-success me-2"></i> صحيح
+                    </label>
+                </div>
+                <div class="form-check p-4 border rounded flex-fill text-center ${falseChecked ? 'border-danger bg-danger-transparent' : ''}">
+                    <input class="form-check-input" type="radio" name="answer_${question.id}" 
+                           id="false_${question.id}" value="false" ${falseChecked}>
+                    <label class="form-check-label w-100 cursor-pointer fs-5" for="false_${question.id}">
+                        <i class="bi bi-x-circle text-danger me-2"></i> خطأ
+                    </label>
+                </div>
+            `;
+        } else {
+            // Convert string values to option IDs for comparison (backward compatibility)
+            const selectedIds = selectedOptions.map(val => {
+                // If it's "true" or "false", convert to option ID
+                if (val === 'true' || val === true) {
+                    return trueOption.id;
+                } else if (val === 'false' || val === false) {
+                    return falseOption.id;
+                }
+                // Otherwise, try to parse as integer (should be option ID)
+                return parseInt(val) || val;
+            }).map(id => parseInt(id)); // Ensure all are integers for comparison
+            
+            // Use option IDs
+            const trueChecked = selectedIds.includes(trueOption.id) ? 'checked' : '';
+            const falseChecked = selectedIds.includes(falseOption.id) ? 'checked' : '';
+            
+            html += `
+                <div class="form-check p-4 border rounded flex-fill text-center ${trueChecked ? 'border-success bg-success-transparent' : ''}">
+                    <input class="form-check-input" type="radio" name="answer_${question.id}" 
+                           id="option_${trueOption.id}" value="${trueOption.id}" ${trueChecked}>
+                    <label class="form-check-label w-100 cursor-pointer fs-5" for="option_${trueOption.id}">
+                        <i class="bi bi-check-circle text-success me-2"></i> ${escapeHtml(trueOption.content || 'صحيح')}
+                    </label>
+                </div>
+                <div class="form-check p-4 border rounded flex-fill text-center ${falseChecked ? 'border-danger bg-danger-transparent' : ''}">
+                    <input class="form-check-input" type="radio" name="answer_${question.id}" 
+                           id="option_${falseOption.id}" value="${falseOption.id}" ${falseChecked}>
+                    <label class="form-check-label w-100 cursor-pointer fs-5" for="option_${falseOption.id}">
+                        <i class="bi bi-x-circle text-danger me-2"></i> ${escapeHtml(falseOption.content || 'خطأ')}
+                    </label>
+                </div>
+            `;
+        }
         
         html += '</div>';
         return html;
@@ -1060,103 +1122,104 @@
     }
     
     function saveCurrentAnswer(question) {
-        const formData = new FormData();
-        formData.append('_token', csrfToken);
-        formData.append('question_id', question.id);
-        
-        // Collect answer based on type
-        switch(question.type) {
-            case 'single_choice':
-            case 'true_false':
-                const radio = document.querySelector(`input[name="answer_${question.id}"]:checked`);
-                if (radio) {
-                    formData.append('selected_options[]', radio.value);
-                }
-                break;
-            case 'multiple_choice':
-                document.querySelectorAll(`input[name="answer_${question.id}[]"]:checked`).forEach(checkbox => {
-                    formData.append('selected_options[]', checkbox.value);
-                });
-                break;
-            case 'multi_select':
-                document.querySelectorAll(`input[name="answer_${question.id}[]"]:checked`).forEach(cb => {
-                    formData.append('selected_options[]', cb.value);
-                });
-                break;
-            case 'short_answer':
-            case 'essay':
-                const textInput = document.querySelector(`[name="answer_${question.id}"]`);
-                if (textInput) {
-                    formData.append('answer_text', textInput.value);
-                }
-                break;
-            case 'numeric':
-                const numInput = document.querySelector(`[name="answer_${question.id}"]`);
-                if (numInput) {
-                    formData.append('numeric_answer', numInput.value);
-                }
-                break;
-            case 'matching':
-                const matchingSelects = document.querySelectorAll(`select[name^="matching_${question.id}"]`);
-                matchingSelects.forEach(select => {
-                    // Extract key from name like "matching_123[456]" -> "456"
-                    const matchResult = select.name.match(/\[([^\]]+)\]/);
-                    if (matchResult && select.value) {
-                        const key = matchResult[1];
-                        formData.append(`matching_pairs[${key}]`, select.value);
+        return new Promise((resolve) => {
+            const formData = new FormData();
+            formData.append('_token', csrfToken);
+            formData.append('question_id', question.id);
+            
+            // Collect answer based on type
+            switch(question.type) {
+                case 'single_choice':
+                case 'true_false':
+                    const radio = document.querySelector(`input[name="answer_${question.id}"]:checked`);
+                    if (radio) {
+                        formData.append('selected_options[]', radio.value);
                     }
-                });
-                break;
-            case 'ordering':
-                const orderInput = document.getElementById(`ordering_input_${question.id}`);
-                if (orderInput) {
-                    formData.append('ordering', orderInput.value);
-                }
-                break;
-            case 'fill_blank':
-            case 'fill_blanks':
-                document.querySelectorAll(`input[name^="blank_${question.id}"]`).forEach(input => {
-                    const key = input.name.match(/\[(\d+)\]/)[1];
-                    formData.append(`fill_blanks_answers[${key}]`, input.value);
-                });
-                break;
-            case 'drag_drop':
-                const dragDropInput = document.getElementById(`drag-drop-input-${question.id}`);
-                if (dragDropInput) {
-                    formData.append('drag_drop_assignments', dragDropInput.value);
-                }
-                break;
-        }
-        
-        fetch(saveUrl, {
-            method: 'POST',
-            body: formData
-        }).then(response => response.json())
-          .then(data => {
-              if (data.success) {
-                  // Update answers cache with proper structure
-                  if (data.answer) {
-                      answers[question.id] = {
-                          'selected_options': data.answer.selected_options || null,
-                          'answer_text': data.answer.answer_text || null,
-                          'numeric_answer': data.answer.numeric_answer || null,
-                          'matching_pairs': data.answer.matching_pairs || null,
-                          'ordering': data.answer.ordering || null,
-                          'fill_blanks_answers': data.answer.fill_blanks_answers || null,
-                          'drag_drop_assignments': data.answer.drag_drop_assignments || null,
-                      };
-                  } else {
-                      // If no answer data, at least ensure the key exists
-                      answers[question.id] = answers[question.id] || {};
-                  }
-                  
-                  // Update progress
-                  const answeredCount = Object.keys(answers).filter(k => {
-                      const ans = answers[k];
-                      return ans && (
-                          (ans.selected_options && ans.selected_options.length > 0) ||
-                          ans.answer_text ||
-                          ans.numeric_answer !== null ||
+                    break;
+                case 'multiple_choice':
+                    document.querySelectorAll(`input[name="answer_${question.id}[]"]:checked`).forEach(checkbox => {
+                        formData.append('selected_options[]', checkbox.value);
+                    });
+                    break;
+                case 'multi_select':
+                    document.querySelectorAll(`input[name="answer_${question.id}[]"]:checked`).forEach(cb => {
+                        formData.append('selected_options[]', cb.value);
+                    });
+                    break;
+                case 'short_answer':
+                case 'essay':
+                    const textInput = document.querySelector(`[name="answer_${question.id}"]`);
+                    if (textInput) {
+                        formData.append('answer_text', textInput.value);
+                    }
+                    break;
+                case 'numeric':
+                    const numInput = document.querySelector(`[name="answer_${question.id}"]`);
+                    if (numInput) {
+                        formData.append('numeric_answer', numInput.value);
+                    }
+                    break;
+                case 'matching':
+                    const matchingSelects = document.querySelectorAll(`select[name^="matching_${question.id}"]`);
+                    matchingSelects.forEach(select => {
+                        // Extract key from name like "matching_123[456]" -> "456"
+                        const matchResult = select.name.match(/\[([^\]]+)\]/);
+                        if (matchResult && select.value) {
+                            const key = matchResult[1];
+                            formData.append(`matching_pairs[${key}]`, select.value);
+                        }
+                    });
+                    break;
+                case 'ordering':
+                    const orderInput = document.getElementById(`ordering_input_${question.id}`);
+                    if (orderInput) {
+                        formData.append('ordering', orderInput.value);
+                    }
+                    break;
+                case 'fill_blank':
+                case 'fill_blanks':
+                    document.querySelectorAll(`input[name^="blank_${question.id}"]`).forEach(input => {
+                        const key = input.name.match(/\[(\d+)\]/)[1];
+                        formData.append(`fill_blanks_answers[${key}]`, input.value);
+                    });
+                    break;
+                case 'drag_drop':
+                    const dragDropInput = document.getElementById(`drag-drop-input-${question.id}`);
+                    if (dragDropInput) {
+                        formData.append('drag_drop_assignments', dragDropInput.value);
+                    }
+                    break;
+            }
+            
+            fetch(saveUrl, {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json())
+              .then(data => {
+                  if (data.success) {
+                      // Update answers cache with proper structure
+                      if (data.answer) {
+                          answers[question.id] = {
+                              'selected_options': data.answer.selected_options || null,
+                              'answer_text': data.answer.answer_text || null,
+                              'numeric_answer': data.answer.numeric_answer || null,
+                              'matching_pairs': data.answer.matching_pairs || null,
+                              'ordering': data.answer.ordering || null,
+                              'fill_blanks_answers': data.answer.fill_blanks_answers || null,
+                              'drag_drop_assignments': data.answer.drag_drop_assignments || null,
+                          };
+                      } else {
+                          // If no answer data, at least ensure the key exists
+                          answers[question.id] = answers[question.id] || {};
+                      }
+                      
+                      // Update progress
+                      const answeredCount = Object.keys(answers).filter(k => {
+                          const ans = answers[k];
+                          return ans && (
+                              (ans.selected_options && ans.selected_options.length > 0) ||
+                              ans.answer_text ||
+                              ans.numeric_answer !== null ||
                           (ans.matching_pairs && Object.keys(ans.matching_pairs).length > 0) ||
                           (ans.ordering && ans.ordering.length > 0) ||
                           (ans.fill_blanks_answers && Object.keys(ans.fill_blanks_answers).length > 0) ||
@@ -1178,10 +1241,13 @@
                       }
                   }
               }
+              resolve();
           }).catch(err => {
               console.error('Save error:', err);
               alert('حدث خطأ أثناء حفظ الإجابة');
+              resolve(); // Resolve anyway to not block submission
           });
+        });
     }
     
     // Navigation
@@ -1214,12 +1280,31 @@
     // Initialize
     loadQuestion(0);
     
+    // Save all answers before submitting quiz
+    document.getElementById('submit-quiz-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const form = this;
+        
+        // Save all answers before submitting
+        const savePromises = questions.map(question => saveCurrentAnswer(question));
+        
+        Promise.all(savePromises).then(() => {
+            // After all answers are saved, submit the form
+            form.submit();
+        });
+    });
+    
     @if($quiz->duration_minutes)
         const timer = new QuizTimer({
             remainingTime: {{ $attempt->remaining_time ?? ($quiz->duration_minutes * 60) }},
             updateUrl: '{{ route("student.quizzes.time", $attempt->id) }}',
             onTimeout: function() {
-                document.getElementById('submit-quiz-form').submit();
+                // Save all answers before timeout submit
+                const savePromises = questions.map(question => saveCurrentAnswer(question));
+                
+                Promise.all(savePromises).then(() => {
+                    document.getElementById('submit-quiz-form').submit();
+                });
             }
         });
         timer.start();

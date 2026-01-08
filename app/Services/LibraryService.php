@@ -223,6 +223,146 @@ class LibraryService
     }
 
     /**
+     * الحصول على عناصر المكتبة للطالب حسب الصفوف والمواد
+     */
+    public function getStudentItems(User $user, array $filters = [])
+    {
+        // جلب IDs المواد المسجل فيها الطالب (active enrollments)
+        $enrolledSubjectIds = $user->enrollments()
+            ->active()
+            ->pluck('subject_id')
+            ->toArray();
+
+        // جلب IDs الصفوف المسجل فيها الطالب (approved class enrollments)
+        $enrolledClassIds = $user->classEnrollments()
+            ->approved()
+            ->pluck('class_id')
+            ->toArray();
+
+        $query = LibraryItem::with(['category', 'subject', 'schoolClass', 'uploader', 'tags'])
+            ->where(function($q) use ($enrolledSubjectIds, $enrolledClassIds) {
+                // الكتب العامة (غير مرتبطة بمادة أو صف)
+                $q->where(function($subQ) {
+                    $subQ->whereNull('subject_id')
+                         ->whereNull('class_id');
+                });
+                
+                // أو الكتب المرتبطة بالمواد المسجل فيها الطالب (إذا كان لديه مواد مسجلة)
+                if (!empty($enrolledSubjectIds)) {
+                    $q->orWhereIn('subject_id', $enrolledSubjectIds);
+                }
+                
+                // أو الكتب المرتبطة بالصفوف المسجل فيها الطالب (إذا كان لديه صفوف مسجلة)
+                if (!empty($enrolledClassIds)) {
+                    $q->orWhereIn('class_id', $enrolledClassIds);
+                }
+            })
+            ->public()
+            ->where('access_level', 'public');
+
+        // فلترة حسب التصنيف
+        if (isset($filters['category_id'])) {
+            $query->where('category_id', $filters['category_id']);
+        }
+
+        // فلترة حسب النوع
+        if (isset($filters['type'])) {
+            $query->where('type', $filters['type']);
+        }
+
+        // فلترة حسب المادة
+        if (isset($filters['subject_id'])) {
+            $query->where('subject_id', $filters['subject_id']);
+        }
+
+        // البحث
+        if (isset($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        // الترتيب
+        $orderBy = $filters['order_by'] ?? 'created_at';
+        $orderDir = $filters['order_dir'] ?? 'desc';
+        $query->orderBy($orderBy, $orderDir);
+
+        return $query->paginate($filters['per_page'] ?? 20);
+    }
+
+    /**
+     * البحث في عناصر المكتبة للطالب
+     */
+    public function searchStudentItems(User $user, string $searchQuery, array $filters = [])
+    {
+        // جلب IDs المواد المسجل فيها الطالب (active enrollments)
+        $enrolledSubjectIds = $user->enrollments()
+            ->active()
+            ->pluck('subject_id')
+            ->toArray();
+
+        // جلب IDs الصفوف المسجل فيها الطالب (approved class enrollments)
+        $enrolledClassIds = $user->classEnrollments()
+            ->approved()
+            ->pluck('class_id')
+            ->toArray();
+
+        $query = LibraryItem::with(['category', 'subject', 'schoolClass', 'uploader', 'tags'])
+            ->where(function($q) use ($searchQuery) {
+                $q->where('title', 'like', "%{$searchQuery}%")
+                  ->orWhere('description', 'like', "%{$searchQuery}%");
+            })
+            ->where(function($q) use ($enrolledSubjectIds, $enrolledClassIds) {
+                // الكتب العامة (غير مرتبطة بمادة أو صف)
+                $q->where(function($subQ) {
+                    $subQ->whereNull('subject_id')
+                         ->whereNull('class_id');
+                });
+                
+                // أو الكتب المرتبطة بالمواد المسجل فيها الطالب (إذا كان لديه مواد مسجلة)
+                if (!empty($enrolledSubjectIds)) {
+                    $q->orWhereIn('subject_id', $enrolledSubjectIds);
+                }
+                
+                // أو الكتب المرتبطة بالصفوف المسجل فيها الطالب (إذا كان لديه صفوف مسجلة)
+                if (!empty($enrolledClassIds)) {
+                    $q->orWhereIn('class_id', $enrolledClassIds);
+                }
+            })
+            ->public()
+            ->where('access_level', 'public');
+
+        // فلترة حسب التصنيف
+        if (isset($filters['category_id'])) {
+            $query->where('category_id', $filters['category_id']);
+        }
+
+        // فلترة حسب النوع
+        if (isset($filters['type'])) {
+            $query->where('type', $filters['type']);
+        }
+
+        // فلترة حسب المادة
+        if (isset($filters['subject_id'])) {
+            $query->where('subject_id', $filters['subject_id']);
+        }
+
+        // فلترة حسب التقييم
+        if (isset($filters['min_rating'])) {
+            $query->where('average_rating', '>=', $filters['min_rating']);
+        }
+
+        // الترتيب
+        $orderBy = $filters['order_by'] ?? 'created_at';
+        $orderDir = $filters['order_dir'] ?? 'desc';
+        $query->orderBy($orderBy, $orderDir);
+
+        return $query->paginate($filters['per_page'] ?? 20);
+    }
+
+    /**
      * الحصول على عناصر مادة معينة
      */
     public function getSubjectItems(Subject $subject, ?User $user = null, array $filters = [])

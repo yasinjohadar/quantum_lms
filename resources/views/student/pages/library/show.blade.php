@@ -66,10 +66,10 @@
                                     <i class="fas fa-external-link-alt me-1"></i> فتح الرابط
                                 </a>
                             @endif
-                            <button type="button" class="btn btn-outline-danger toggle-favorite-btn" 
+                            <button type="button" class="btn {{ $isFavorited ? 'btn-danger' : 'btn-outline-danger' }} toggle-favorite-btn" 
                                     data-item-id="{{ $item->id }}"
                                     data-favorited="{{ $isFavorited ? 'true' : 'false' }}">
-                                <i class="fas fa-heart {{ $isFavorited ? '' : 'far' }}"></i>
+                                <i class="{{ $isFavorited ? 'fas' : 'far' }} fa-heart"></i>
                                 <span class="ms-1">
                                     {{ $isFavorited ? 'إزالة من المفضلة' : 'إضافة للمفضلة' }}
                                 </span>
@@ -191,13 +191,34 @@ document.addEventListener('DOMContentLoaded', function() {
                         icon.classList.remove('far');
                         icon.classList.add('fas');
                         this.setAttribute('data-favorited', 'true');
+                        this.classList.add('btn-danger');
+                        this.classList.remove('btn-outline-danger');
                         if (span) span.textContent = 'إزالة من المفضلة';
                     } else {
                         icon.classList.remove('fas');
                         icon.classList.add('far');
                         this.setAttribute('data-favorited', 'false');
+                        this.classList.remove('btn-danger');
+                        this.classList.add('btn-outline-danger');
                         if (span) span.textContent = 'إضافة للمفضلة';
                     }
+                    
+                    // إظهار رسالة نجاح (اختياري)
+                    if (data.message) {
+                        const alert = document.createElement('div');
+                        alert.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+                        alert.style.zIndex = '9999';
+                        alert.innerHTML = `
+                            ${data.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        `;
+                        document.body.appendChild(alert);
+                        setTimeout(() => {
+                            alert.remove();
+                        }, 3000);
+                    }
+                } else {
+                    alert(data.message || 'حدث خطأ أثناء تحديث المفضلة');
                 }
             })
             .catch(error => {

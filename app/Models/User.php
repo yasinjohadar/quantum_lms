@@ -73,6 +73,14 @@ class User extends Authenticatable
     }
 
     /**
+     * العلاقة مع انضمامات الصفوف
+     */
+    public function classEnrollments()
+    {
+        return $this->hasMany(ClassEnrollment::class, 'user_id');
+    }
+
+    /**
      * العلاقة مع المواد (Many-to-Many through enrollments)
      */
     public function subjects()

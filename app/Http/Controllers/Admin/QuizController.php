@@ -68,13 +68,52 @@ class QuizController extends Controller
         $selectedSubjectId = $request->get('subject_id');
         $selectedUnitId = $request->get('unit_id');
         
+        $selectedSubject = null;
+        $selectedUnit = null;
+        $selectedClass = null;
+        $isFromSubjectOrUnit = false;
+        
         if ($selectedSubjectId) {
-            $units = Unit::whereHas('section', function ($q) use ($selectedSubjectId) {
-                $q->where('subject_id', $selectedSubjectId);
-            })->orderBy('title')->get();
+            $selectedSubject = Subject::with('schoolClass')->find($selectedSubjectId);
+            if ($selectedSubject) {
+                $selectedClass = $selectedSubject->schoolClass;
+                $isFromSubjectOrUnit = true;
+                
+                $units = Unit::whereHas('section', function ($q) use ($selectedSubjectId) {
+                    $q->where('subject_id', $selectedSubjectId);
+                })->orderBy('title')->get();
+            }
+        }
+        
+        if ($selectedUnitId) {
+            $selectedUnit = Unit::with('section.subject.schoolClass')->find($selectedUnitId);
+            if ($selectedUnit) {
+                if (!$selectedSubject) {
+                    $selectedSubject = $selectedUnit->section->subject;
+                    $selectedClass = $selectedSubject->schoolClass;
+                }
+                $isFromSubjectOrUnit = true;
+                
+                // إذا لم تكن الوحدات محملة بعد، قم بتحميلها
+                if ($units->isEmpty() && $selectedSubject) {
+                    $subjectId = $selectedSubject->id;
+                    $units = Unit::whereHas('section', function ($q) use ($subjectId) {
+                        $q->where('subject_id', $subjectId);
+                    })->orderBy('title')->get();
+                }
+            }
         }
 
-        return view('admin.pages.quizzes.create', compact('subjects', 'units', 'selectedSubjectId', 'selectedUnitId'));
+        return view('admin.pages.quizzes.create', compact(
+            'subjects', 
+            'units', 
+            'selectedSubjectId', 
+            'selectedUnitId',
+            'selectedSubject',
+            'selectedUnit',
+            'selectedClass',
+            'isFromSubjectOrUnit'
+        ));
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\CalendarService;
 use App\Services\ICalExportService;
 use App\Models\CalendarEvent;
+use App\Models\CalendarNote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -185,6 +186,145 @@ class CalendarController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'تم حذف الحدث بنجاح',
+        ]);
+    }
+
+    /**
+     * جلب الملاحظات لنطاق زمني
+     */
+    public function getNotes(Request $request)
+    {
+        $start = Carbon::parse($request->input('start'));
+        $end = Carbon::parse($request->input('end'));
+        $user = Auth::user();
+
+        $notes = CalendarNote::forUser($user->id)
+            ->byDateRange($start, $end)
+            ->orderBy('note_date', 'desc')
+            ->orderBy('is_pinned', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'notes' => $notes,
+        ]);
+    }
+
+    /**
+     * حفظ ملاحظة جديدة
+     */
+    public function storeNote(Request $request)
+    {
+        $validated = $request->validate([
+            'note_date' => 'required|date',
+            'title' => 'nullable|string|max:255',
+            'content' => 'required|string',
+            'color' => 'nullable|string|max:7',
+            'is_pinned' => 'boolean',
+        ]);
+
+        $user = Auth::user();
+
+        $note = CalendarNote::create([
+            'user_id' => $user->id,
+            'note_date' => Carbon::parse($validated['note_date']),
+            'title' => $validated['title'] ?? null,
+            'content' => $validated['content'],
+            'color' => $validated['color'] ?? '#fbbf24',
+            'is_pinned' => $validated['is_pinned'] ?? false,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إضافة الملاحظة بنجاح',
+            'note' => $note,
+        ]);
+    }
+
+    /**
+     * تحديث ملاحظة
+     */
+    public function updateNote(CalendarNote $note, Request $request)
+    {
+        $user = Auth::user();
+
+        // التحقق من أن الملاحظة ملك للطالب
+        if ($note->user_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'غير مصرح بتعديل هذه الملاحظة',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'note_date' => 'required|date',
+            'title' => 'nullable|string|max:255',
+            'content' => 'required|string',
+            'color' => 'nullable|string|max:7',
+            'is_pinned' => 'boolean',
+        ]);
+
+        $note->update([
+            'note_date' => Carbon::parse($validated['note_date']),
+            'title' => $validated['title'] ?? null,
+            'content' => $validated['content'],
+            'color' => $validated['color'] ?? '#fbbf24',
+            'is_pinned' => $validated['is_pinned'] ?? false,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تحديث الملاحظة بنجاح',
+            'note' => $note,
+        ]);
+    }
+
+    /**
+     * حذف ملاحظة
+     */
+    public function deleteNote(CalendarNote $note)
+    {
+        $user = Auth::user();
+
+        // التحقق من أن الملاحظة ملك للطالب
+        if ($note->user_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'غير مصرح بحذف هذه الملاحظة',
+            ], 403);
+        }
+
+        $note->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم حذف الملاحظة بنجاح',
+        ]);
+    }
+
+    /**
+     * تثبيت/إلغاء تثبيت ملاحظة
+     */
+    public function pinNote(CalendarNote $note)
+    {
+        $user = Auth::user();
+
+        // التحقق من أن الملاحظة ملك للطالب
+        if ($note->user_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'غير مصرح بتعديل هذه الملاحظة',
+            ], 403);
+        }
+
+        $note->update([
+            'is_pinned' => !$note->is_pinned,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => $note->is_pinned ? 'تم تثبيت الملاحظة' : 'تم إلغاء تثبيت الملاحظة',
+            'note' => $note,
         ]);
     }
 }

@@ -145,10 +145,10 @@
                                 <a href="{{ route('student.library.show', $item->id) }}" class="btn btn-primary btn-sm flex-grow-1">
                                     <i class="fas fa-eye me-1"></i> عرض التفاصيل
                                 </a>
-                                <button type="button" class="btn btn-outline-danger btn-sm toggle-favorite-btn" 
+                                <button type="button" class="btn {{ in_array($item->id, $favoriteIds ?? []) ? 'btn-danger' : 'btn-outline-danger' }} btn-sm toggle-favorite-btn" 
                                         data-item-id="{{ $item->id }}"
                                         data-favorited="{{ in_array($item->id, $favoriteIds ?? []) ? 'true' : 'false' }}">
-                                    <i class="fas fa-heart {{ in_array($item->id, $favoriteIds ?? []) ? '' : 'far' }}"></i>
+                                    <i class="{{ in_array($item->id, $favoriteIds ?? []) ? 'fas' : 'far' }} fa-heart"></i>
                                 </button>
                             </div>
                         </div>
@@ -169,5 +169,66 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.toggle-favorite-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const itemId = this.getAttribute('data-item-id');
+            const isFavorited = this.getAttribute('data-favorited') === 'true';
+            const icon = this.querySelector('i');
+            
+            fetch(`/student/library/${itemId}/toggle-favorite`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.is_favorited) {
+                        icon.classList.remove('far');
+                        icon.classList.add('fas');
+                        this.setAttribute('data-favorited', 'true');
+                        this.classList.add('btn-danger');
+                        this.classList.remove('btn-outline-danger');
+                    } else {
+                        icon.classList.remove('fas');
+                        icon.classList.add('far');
+                        this.setAttribute('data-favorited', 'false');
+                        this.classList.remove('btn-danger');
+                        this.classList.add('btn-outline-danger');
+                    }
+                    
+                    // إظهار رسالة نجاح (اختياري)
+                    if (data.message) {
+                        const alert = document.createElement('div');
+                        alert.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+                        alert.style.zIndex = '9999';
+                        alert.innerHTML = `
+                            ${data.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        `;
+                        document.body.appendChild(alert);
+                        setTimeout(() => {
+                            alert.remove();
+                        }, 3000);
+                    }
+                } else {
+                    alert(data.message || 'حدث خطأ أثناء تحديث المفضلة');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('حدث خطأ أثناء تحديث المفضلة');
+            });
+        });
+    });
+});
+</script>
+@endpush
 @stop
 

@@ -145,11 +145,3 @@ document.addEventListener('DOMContentLoaded', function() {
 @endpush
 @stop
 
-
-    reminderType.addEventListener('change', toggleReminderFields);
-    toggleReminderFields(); // Initialize on page load
-});
-</script>
-@endpush
-@stop
-

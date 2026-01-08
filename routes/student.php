@@ -57,6 +57,13 @@ Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student
     Route::put('/calendar/events/{event}', [\App\Http\Controllers\Student\CalendarController::class, 'update'])->name('calendar.events.update');
     Route::delete('/calendar/events/{event}', [\App\Http\Controllers\Student\CalendarController::class, 'destroy'])->name('calendar.events.destroy');
     
+    // المفكرة (Calendar Notes)
+    Route::get('/calendar/notes-api', [\App\Http\Controllers\Student\CalendarController::class, 'getNotes'])->name('calendar.notes-api');
+    Route::post('/calendar/notes', [\App\Http\Controllers\Student\CalendarController::class, 'storeNote'])->name('calendar.notes.store');
+    Route::put('/calendar/notes/{note}', [\App\Http\Controllers\Student\CalendarController::class, 'updateNote'])->name('calendar.notes.update');
+    Route::delete('/calendar/notes/{note}', [\App\Http\Controllers\Student\CalendarController::class, 'deleteNote'])->name('calendar.notes.destroy');
+    Route::post('/calendar/notes/{note}/pin', [\App\Http\Controllers\Student\CalendarController::class, 'pinNote'])->name('calendar.notes.pin');
+    
     // المساعد التعليمي (Chatbot)
     Route::resource('ai/chatbot', \App\Http\Controllers\Student\AIChatbotController::class)->names([
         'index' => 'ai.chatbot.index',

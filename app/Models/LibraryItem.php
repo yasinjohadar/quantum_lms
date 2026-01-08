@@ -18,6 +18,7 @@ class LibraryItem extends Model
         'description',
         'type',
         'category_id',
+        'class_id',
         'subject_id',
         'uploaded_by',
         'file_path',
@@ -89,6 +90,14 @@ class LibraryItem extends Model
     public function category()
     {
         return $this->belongsTo(LibraryCategory::class, 'category_id');
+    }
+
+    /**
+     * العلاقة مع الصف الدراسي
+     */
+    public function schoolClass()
+    {
+        return $this->belongsTo(SchoolClass::class, 'class_id');
     }
 
     /**
@@ -196,6 +205,14 @@ class LibraryItem extends Model
     }
 
     /**
+     * نطاق العناصر لصف معين
+     */
+    public function scopeForClass($query, int $classId)
+    {
+        return $query->where('class_id', $classId);
+    }
+
+    /**
      * الحصول على رابط الملف
      */
     public function getFileUrl(): ?string
@@ -223,8 +240,40 @@ class LibraryItem extends Model
     public function canUserDownload(?User $user): bool
     {
         // إذا كان الوصول عام
-        if ($this->access_level === 'public') {
-            return true;
+        if ($this->access_level === 'public' && $this->is_public) {
+            // الكتب العامة (غير مرتبطة بمادة أو صف) متاحة للجميع
+            if (is_null($this->subject_id) && is_null($this->class_id)) {
+                return true;
+            }
+            
+            // إذا لم يكن هناك مستخدم مسجل، لا يمكن الوصول للكتب المرتبطة بمادة أو صف
+            if (!$user) {
+                return false;
+            }
+            
+            // التحقق من التسجيل في المادة (إذا كانت مرتبطة بمادة)
+            if ($this->subject_id) {
+                $isEnrolledInSubject = $this->subject->students()
+                    ->where('users.id', $user->id)
+                    ->exists();
+                if ($isEnrolledInSubject) {
+                    return true;
+                }
+            }
+            
+            // التحقق من التسجيل في الصف (إذا كانت مرتبطة بصف)
+            if ($this->class_id) {
+                $isEnrolledInClass = $user->classEnrollments()
+                    ->where('class_id', $this->class_id)
+                    ->approved()
+                    ->exists();
+                if ($isEnrolledInClass) {
+                    return true;
+                }
+            }
+            
+            // إذا كانت مرتبطة بمادة أو صف لكن المستخدم غير مسجل، لا يمكن الوصول
+            return false;
         }
 
         // إذا لم يكن هناك مستخدم مسجل

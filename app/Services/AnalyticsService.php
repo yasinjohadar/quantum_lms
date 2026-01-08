@@ -16,6 +16,17 @@ class AnalyticsService
      */
     public function trackEvent($eventType, $userId = null, $data = [])
     {
+        // استخراج metadata منفصلة عن الأعمدة المباشرة
+        $metadata = $data['metadata'] ?? [];
+        
+        // إذا كان هناك بيانات إضافية غير الأعمدة المباشرة، أضفها إلى metadata
+        $directColumns = ['subject_id', 'lesson_id', 'quiz_id', 'question_id', 'metadata'];
+        foreach ($data as $key => $value) {
+            if (!in_array($key, $directColumns) && $value !== null) {
+                $metadata[$key] = $value;
+            }
+        }
+        
         return AnalyticsEvent::create([
             'event_type' => $eventType,
             'user_id' => $userId,
@@ -23,7 +34,7 @@ class AnalyticsService
             'lesson_id' => $data['lesson_id'] ?? null,
             'quiz_id' => $data['quiz_id'] ?? null,
             'question_id' => $data['question_id'] ?? null,
-            'metadata' => $data['metadata'] ?? [],
+            'metadata' => $metadata,
         ]);
     }
 

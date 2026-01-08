@@ -211,6 +211,48 @@
                                                                 </div>
                                                             </div>
                                                         @endif
+                                                        
+                                                        <!-- أسئلة الوحدة -->
+                                                        @if(isset($unit->questions) && $unit->questions->count() > 0)
+                                                            <div class="mt-4">
+                                                                <h6 class="text-primary mb-3">
+                                                                    <i class="bi bi-question-circle me-2"></i>
+                                                                    أسئلة الوحدة ({{ $unit->questions->count() }})
+                                                                </h6>
+                                                                <div class="list-group">
+                                                                    @foreach($unit->questions as $question)
+                                                                        <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center bg-primary-transparent">
+                                                                            <div class="flex-grow-1">
+                                                                                <h6 class="mb-1">
+                                                                                    <i class="bi bi-question-circle me-2 text-primary"></i>
+                                                                                    {{ $question->title ?? \Illuminate\Support\Str::limit($question->content, 60) }}
+                                                                                </h6>
+                                                                                <div class="d-flex flex-wrap gap-2 mt-2">
+                                                                                    <span class="badge bg-secondary">
+                                                                                        {{ $question->type_name ?? $question->type }}
+                                                                                    </span>
+                                                                                    @if($question->difficulty)
+                                                                                        <span class="badge bg-{{ $question->difficulty === 'easy' ? 'success' : ($question->difficulty === 'medium' ? 'warning' : 'danger') }}">
+                                                                                            {{ $question->difficulty === 'easy' ? 'سهل' : ($question->difficulty === 'medium' ? 'متوسط' : 'صعب') }}
+                                                                                        </span>
+                                                                                    @endif
+                                                                                    <span class="badge bg-info">
+                                                                                        <i class="bi bi-star me-1"></i>
+                                                                                        {{ $question->default_points ?? 10 }} نقطة
+                                                                                    </span>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div>
+                                                                                <a href="{{ route('student.questions.start.specific', $question->id) }}" class="btn btn-sm btn-primary">
+                                                                                    <i class="bi bi-play-fill me-1"></i>
+                                                                                    بدء السؤال
+                                                                                </a>
+                                                                            </div>
+                                                                        </div>
+                                                                    @endforeach
+                                                                </div>
+                                                            </div>
+                                                        @endif
                                                     </div>
                                                 </div>
                                             </div>

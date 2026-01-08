@@ -39,11 +39,16 @@ class StudentLibraryController extends Controller
             'per_page' => 20,
         ];
 
-        $items = $this->libraryService->getPublicItems($filters);
+        $items = $this->libraryService->getStudentItems($user, $filters);
         $categories = LibraryCategory::active()->ordered()->get();
         $subjects = $user->subjects()->active()->get();
 
-        return view('student.pages.library.index', compact('items', 'categories', 'subjects'));
+        // جلب عناصر المفضلة للمستخدم
+        $favoriteIds = LibraryFavorite::where('user_id', $user->id)
+            ->pluck('library_item_id')
+            ->toArray();
+
+        return view('student.pages.library.index', compact('items', 'categories', 'subjects', 'favoriteIds'));
     }
 
     /**
@@ -186,7 +191,7 @@ class StudentLibraryController extends Controller
             'per_page' => 20,
         ];
 
-        $items = $this->libraryService->searchItems($query, $filters);
+        $items = $this->libraryService->searchStudentItems($user, $query, $filters);
         $categories = LibraryCategory::active()->ordered()->get();
         $subjects = $user->subjects()->active()->get();
 

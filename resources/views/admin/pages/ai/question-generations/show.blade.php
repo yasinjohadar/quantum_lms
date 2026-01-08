@@ -194,12 +194,45 @@
                                             <i class="fas fa-save me-1"></i> حفظ المحدد (<span id="selectedCount">0</span>)
                                         </button>
                                     </form>
-                                    <form action="{{ route('admin.ai.question-generations.save', $generation->id) }}" method="POST" class="d-inline">
-                                        @csrf
-                                        <button type="submit" class="btn btn-light btn-sm" onclick="return confirm('هل أنت متأكد من حفظ جميع الأسئلة؟')">
-                                            <i class="fas fa-save me-1"></i> حفظ الكل
-                                        </button>
-                                    </form>
+                                    <button type="button" 
+                                            class="btn btn-light btn-sm" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#saveAllModal">
+                                        <i class="fas fa-save me-1"></i> حفظ الكل
+                                    </button>
+                                    
+                                    <!-- Modal for Save All -->
+                                    <div class="modal fade" id="saveAllModal" tabindex="-1" aria-labelledby="saveAllModalLabel" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content">
+                                                <div class="modal-header border-0 pb-0">
+                                                    <h5 class="modal-title" id="saveAllModalLabel">
+                                                        <i class="fas fa-save text-success me-2"></i>
+                                                        تأكيد حفظ الأسئلة
+                                                    </h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body text-center py-4">
+                                                    <div class="mb-3">
+                                                        <i class="fas fa-question-circle fa-3x text-warning"></i>
+                                                    </div>
+                                                    <h6 class="mb-2">هل أنت متأكد من حفظ جميع الأسئلة؟</h6>
+                                                    <p class="text-muted mb-0">سيتم حفظ جميع الأسئلة المولدة في قاعدة البيانات</p>
+                                                </div>
+                                                <div class="modal-footer border-0 pt-0">
+                                                    <form action="{{ route('admin.ai.question-generations.save', $generation->id) }}" method="POST" class="d-inline">
+                                                        @csrf
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                            <i class="fas fa-times me-1"></i> إلغاء
+                                                        </button>
+                                                        <button type="submit" class="btn btn-success">
+                                                            <i class="fas fa-save me-1"></i> نعم، احفظ الكل
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="card-body">
@@ -355,6 +388,36 @@
         </div>
     </div>
 </div>
+
+<!-- Modal for Save Selected Questions -->
+<div class="modal fade" id="saveSelectedModal" tabindex="-1" aria-labelledby="saveSelectedModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title" id="saveSelectedModalLabel">
+                    <i class="fas fa-save text-warning me-2"></i>
+                    تأكيد حفظ الأسئلة المحددة
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="mb-3">
+                    <i class="fas fa-question-circle fa-3x text-warning"></i>
+                </div>
+                <h6 class="mb-2">هل أنت متأكد من حفظ الأسئلة المحددة؟</h6>
+                <p class="text-muted mb-0">سيتم حفظ الأسئلة المحددة فقط في قاعدة البيانات</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> إلغاء
+                </button>
+                <button type="button" class="btn btn-warning" id="confirmSaveSelected">
+                    <i class="fas fa-save me-1"></i> نعم، احفظ المحدد
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 @stop
 
 @section('js')
@@ -410,8 +473,34 @@ function saveSelected() {
         form.appendChild(input);
     });
     
-    return confirm(`هل أنت متأكد من حفظ ${selected.length} سؤال محدد؟`);
+    // تحديث نص المودال
+    const modalBody = document.querySelector('#saveSelectedModal .modal-body p');
+    modalBody.textContent = `هل أنت متأكد من حفظ ${selected.length} سؤال محدد؟ سيتم حفظ الأسئلة المحددة فقط في قاعدة البيانات`;
+    
+    // إظهار المودال
+    const modal = new bootstrap.Modal(document.getElementById('saveSelectedModal'));
+    modal.show();
+    
+    return false; // منع إرسال النموذج، سيتم التعامل معه من المودال
 }
+
+// معالج تأكيد حفظ الأسئلة المحددة
+document.addEventListener('DOMContentLoaded', function() {
+    const confirmBtn = document.getElementById('confirmSaveSelected');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function() {
+            const form = document.getElementById('saveSelectedForm');
+            if (form) {
+                // إغلاق المودال
+                const modal = bootstrap.Modal.getInstance(document.getElementById('saveSelectedModal'));
+                modal.hide();
+                
+                // إرسال النموذج
+                form.submit();
+            }
+        });
+    }
+});
 
 // تحديث العدد عند التحميل
 document.addEventListener('DOMContentLoaded', function() {

@@ -34,6 +34,22 @@ class StudentQuizController extends Controller
      */
     public function startQuiz($quizId)
     {
+        // #region agent log - Hypothesis A: Entry point
+        $logDataA = [
+            'sessionId' => 'debug-session',
+            'runId' => 'run1',
+            'hypothesisId' => 'A',
+            'location' => 'StudentQuizController.php:35',
+            'message' => 'startQuiz method called',
+            'data' => [
+                'quiz_id' => $quizId,
+                'user_id' => Auth::id(),
+            ],
+            'timestamp' => time() * 1000
+        ];
+        file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataA) . "\n", FILE_APPEND);
+        // #endregion
+        
         $user = Auth::user();
         $quiz = Quiz::with(['questions' => function($query) {
             $query->orderBy('quiz_questions.order');
@@ -41,9 +57,60 @@ class StudentQuizController extends Controller
         ->where('is_published', true)
         ->findOrFail($quizId);
 
+        // #region agent log - Hypothesis B: Quiz loaded
+        $logDataB = [
+            'sessionId' => 'debug-session',
+            'runId' => 'run1',
+            'hypothesisId' => 'B',
+            'location' => 'StudentQuizController.php:42',
+            'message' => 'Quiz loaded',
+            'data' => [
+                'quiz_id' => $quiz->id,
+                'quiz_title' => $quiz->title,
+                'is_active' => $quiz->is_active,
+                'is_published' => $quiz->is_published,
+                'questions_count' => $quiz->questions->count(),
+            ],
+            'timestamp' => time() * 1000
+        ];
+        file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataB) . "\n", FILE_APPEND);
+        // #endregion
+
         // التحقق من إمكانية بدء الاختبار
         $canAttempt = $quiz->canUserAttempt($user);
+        
+        // #region agent log - Hypothesis C: canUserAttempt check
+        $logDataC = [
+            'sessionId' => 'debug-session',
+            'runId' => 'run1',
+            'hypothesisId' => 'C',
+            'location' => 'StudentQuizController.php:45',
+            'message' => 'canUserAttempt result',
+            'data' => [
+                'can' => $canAttempt['can'] ?? false,
+                'reason' => $canAttempt['reason'] ?? null,
+                'canAttempt_full' => $canAttempt,
+            ],
+            'timestamp' => time() * 1000
+        ];
+        file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataC) . "\n", FILE_APPEND);
+        // #endregion
+        
         if (!$canAttempt['can']) {
+            // #region agent log - Hypothesis D: Redirect back due to canAttempt failure
+            $logDataD = [
+                'sessionId' => 'debug-session',
+                'runId' => 'run1',
+                'hypothesisId' => 'D',
+                'location' => 'StudentQuizController.php:47',
+                'message' => 'Redirecting back - canAttempt failed',
+                'data' => [
+                    'reason' => $canAttempt['reason'] ?? 'Unknown reason',
+                ],
+                'timestamp' => time() * 1000
+            ];
+            file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataD) . "\n", FILE_APPEND);
+            // #endregion
             return redirect()->back()
                 ->with('error', $canAttempt['reason']);
         }
@@ -54,7 +121,38 @@ class StudentQuizController extends Controller
             ->where('status', 'in_progress')
             ->first();
 
+        // #region agent log - Hypothesis G: In-progress attempt check
+        $logDataG = [
+            'sessionId' => 'debug-session',
+            'runId' => 'run1',
+            'hypothesisId' => 'G',
+            'location' => 'StudentQuizController.php:119',
+            'message' => 'Checking for in-progress attempt',
+            'data' => [
+                'has_in_progress_attempt' => $inProgressAttempt !== null,
+                'in_progress_attempt_id' => $inProgressAttempt ? $inProgressAttempt->id : null,
+            ],
+            'timestamp' => time() * 1000
+        ];
+        file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataG) . "\n", FILE_APPEND);
+        // #endregion
+
         if ($inProgressAttempt) {
+            // #region agent log - Hypothesis H: Redirect to existing attempt
+            $logDataH = [
+                'sessionId' => 'debug-session',
+                'runId' => 'run1',
+                'hypothesisId' => 'H',
+                'location' => 'StudentQuizController.php:130',
+                'message' => 'Redirecting to existing in-progress attempt',
+                'data' => [
+                    'quiz_id' => $quizId,
+                    'attempt_id' => $inProgressAttempt->id,
+                ],
+                'timestamp' => time() * 1000
+            ];
+            file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataH) . "\n", FILE_APPEND);
+            // #endregion
             return redirect()->route('student.quizzes.show', [
                 'quiz' => $quizId,
                 'attempt' => $inProgressAttempt->id
@@ -107,12 +205,48 @@ class StudentQuizController extends Controller
 
             DB::commit();
 
+            // #region agent log - Hypothesis E: Success redirect
+            $logDataE = [
+                'sessionId' => 'debug-session',
+                'runId' => 'run1',
+                'hypothesisId' => 'E',
+                'location' => 'StudentQuizController.php:175',
+                'message' => 'Redirecting to quiz show page',
+                'data' => [
+                    'quiz_id' => $quizId,
+                    'attempt_id' => $attempt->id,
+                    'redirect_url' => route('student.quizzes.show', ['quiz' => $quizId, 'attempt' => $attempt->id]),
+                ],
+                'timestamp' => time() * 1000
+            ];
+            file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataE) . "\n", FILE_APPEND);
+            // #endregion
+
             return redirect()->route('student.quizzes.show', [
                 'quiz' => $quizId,
                 'attempt' => $attempt->id
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+            
+            // #region agent log - Hypothesis F: Exception caught
+            $logDataF = [
+                'sessionId' => 'debug-session',
+                'runId' => 'run1',
+                'hypothesisId' => 'F',
+                'location' => 'StudentQuizController.php:181',
+                'message' => 'Exception caught in startQuiz',
+                'data' => [
+                    'exception_message' => $e->getMessage(),
+                    'exception_file' => $e->getFile(),
+                    'exception_line' => $e->getLine(),
+                    'exception_trace' => substr($e->getTraceAsString(), 0, 500),
+                ],
+                'timestamp' => time() * 1000
+            ];
+            file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataF) . "\n", FILE_APPEND);
+            // #endregion
+            
             Log::error('Error starting quiz: ' . $e->getMessage());
             return redirect()->back()
                 ->with('error', 'حدث خطأ أثناء بدء الاختبار: ' . $e->getMessage());
@@ -124,6 +258,23 @@ class StudentQuizController extends Controller
      */
     public function showQuiz($quizId, $attemptId)
     {
+        // #region agent log - Hypothesis I: showQuiz entry
+        $logDataI = [
+            'sessionId' => 'debug-session',
+            'runId' => 'run1',
+            'hypothesisId' => 'I',
+            'location' => 'StudentQuizController.php:259',
+            'message' => 'showQuiz method called',
+            'data' => [
+                'quiz_id' => $quizId,
+                'attempt_id' => $attemptId,
+                'user_id' => Auth::id(),
+            ],
+            'timestamp' => time() * 1000
+        ];
+        file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataI) . "\n", FILE_APPEND);
+        // #endregion
+        
         $user = Auth::user();
         $quiz = Quiz::with(['questions.options' => function($query) {
             $query->orderBy('order');
@@ -133,6 +284,23 @@ class StudentQuizController extends Controller
         $attempt = QuizAttempt::where('user_id', $user->id)
             ->where('quiz_id', $quizId)
             ->findOrFail($attemptId);
+        
+        // #region agent log - Hypothesis J: Quiz and attempt loaded
+        $logDataJ = [
+            'sessionId' => 'debug-session',
+            'runId' => 'run1',
+            'hypothesisId' => 'J',
+            'location' => 'StudentQuizController.php:270',
+            'message' => 'Quiz and attempt loaded',
+            'data' => [
+                'quiz_id' => $quiz->id,
+                'attempt_id' => $attempt->id,
+                'attempt_status' => $attempt->status,
+            ],
+            'timestamp' => time() * 1000
+        ];
+        file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataJ) . "\n", FILE_APPEND);
+        // #endregion
 
         if ($attempt->status !== 'in_progress') {
             return redirect()->back()
@@ -251,8 +419,41 @@ class StudentQuizController extends Controller
 
             // حفظ آخر إجابة إذا كانت موجودة
             if ($request->has('question_id')) {
+                // #region agent log - Hypothesis E: Saving last answer
+                $logDataE = [
+                    'sessionId' => 'debug-session',
+                    'runId' => 'run1',
+                    'hypothesisId' => 'E',
+                    'location' => 'StudentQuizController.php:421',
+                    'message' => 'Saving last answer from request',
+                    'data' => [
+                        'question_id' => $request->question_id,
+                        'request_data' => $request->all(),
+                    ],
+                    'timestamp' => time() * 1000
+                ];
+                file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataE) . "\n", FILE_APPEND);
+                // #endregion
+                
                 $question = Question::findOrFail($request->question_id);
                 $answerData = $this->prepareAnswerData($request, $question);
+                
+                // #region agent log - Hypothesis F: Prepared answer data
+                $logDataF = [
+                    'sessionId' => 'debug-session',
+                    'runId' => 'run1',
+                    'hypothesisId' => 'F',
+                    'location' => 'StudentQuizController.php:430',
+                    'message' => 'Prepared answer data',
+                    'data' => [
+                        'question_id' => $question->id,
+                        'question_type' => $question->type,
+                        'answer_data' => $answerData,
+                    ],
+                    'timestamp' => time() * 1000
+                ];
+                file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataF) . "\n", FILE_APPEND);
+                // #endregion
                 
                 QuizAnswer::updateOrCreate(
                     [
@@ -266,8 +467,94 @@ class StudentQuizController extends Controller
                 );
             }
 
+            // #region agent log - Hypothesis A: Before grading answers
+            $logDataA = [
+                'sessionId' => 'debug-session',
+                'runId' => 'run1',
+                'hypothesisId' => 'A',
+                'location' => 'StudentQuizController.php:437',
+                'message' => 'Before grading answers',
+                'data' => [
+                    'attempt_id' => $attemptId,
+                    'answers_count' => $attempt->answers()->count(),
+                    'ungraded_count' => $attempt->answers()->where('is_graded', false)->count(),
+                ],
+                'timestamp' => time() * 1000
+            ];
+            file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataA) . "\n", FILE_APPEND);
+            // #endregion
+
+            // تصحيح جميع الإجابات غير المصححة
+            $answers = $attempt->answers()->with('question')->get();
+            foreach ($answers as $answer) {
+                if (!$answer->is_graded && !$answer->needs_manual_grading) {
+                    // #region agent log - Hypothesis B: Grading answer
+                    $logDataB = [
+                        'sessionId' => 'debug-session',
+                        'runId' => 'run1',
+                        'hypothesisId' => 'B',
+                        'location' => 'StudentQuizController.php:450',
+                        'message' => 'Grading answer',
+                        'data' => [
+                            'answer_id' => $answer->id,
+                            'question_id' => $answer->question_id,
+                            'question_type' => $answer->question->type ?? null,
+                            'has_answer' => $answer->answer !== null,
+                            'selected_options' => $answer->selected_options,
+                            'answer_text' => $answer->answer_text,
+                            'numeric_answer' => $answer->numeric_answer,
+                            'answer_raw' => $answer->toArray(),
+                        ],
+                        'timestamp' => time() * 1000
+                    ];
+                    file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataB) . "\n", FILE_APPEND);
+                    // #endregion
+                    
+                    $answer->autoGrade();
+                    
+                    // #region agent log - Hypothesis C: After grading answer
+                    $logDataC = [
+                        'sessionId' => 'debug-session',
+                        'runId' => 'run1',
+                        'hypothesisId' => 'C',
+                        'location' => 'StudentQuizController.php:465',
+                        'message' => 'After grading answer',
+                        'data' => [
+                            'answer_id' => $answer->id,
+                            'is_graded' => $answer->is_graded,
+                            'is_correct' => $answer->is_correct,
+                            'points_earned' => $answer->points_earned,
+                            'max_points' => $answer->max_points,
+                        ],
+                        'timestamp' => time() * 1000
+                    ];
+                    file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataC) . "\n", FILE_APPEND);
+                    // #endregion
+                }
+            }
+
             // إنهاء المحاولة
             $attempt->finish();
+            
+            // #region agent log - Hypothesis D: After finish
+            $logDataD = [
+                'sessionId' => 'debug-session',
+                'runId' => 'run1',
+                'hypothesisId' => 'D',
+                'location' => 'StudentQuizController.php:480',
+                'message' => 'After finish attempt',
+                'data' => [
+                    'attempt_id' => $attempt->id,
+                    'score' => $attempt->score,
+                    'max_score' => $attempt->max_score,
+                    'percentage' => $attempt->percentage,
+                    'questions_correct' => $attempt->questions_correct,
+                    'questions_wrong' => $attempt->questions_wrong,
+                ],
+                'timestamp' => time() * 1000
+            ];
+            file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataD) . "\n", FILE_APPEND);
+            // #endregion
 
             // ربط مع نظام التحفيز
             $gamificationService = app(GamificationService::class);

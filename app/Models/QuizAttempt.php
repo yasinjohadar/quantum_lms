@@ -238,22 +238,35 @@ class QuizAttempt extends Model
         $answered = 0;
 
         foreach ($answers as $answer) {
-            $maxScore += $answer->max_points;
+            // Use max_points from answer, or fallback to question's default_points
+            $answerMaxPoints = $answer->max_points ?? $answer->question->default_points ?? 0;
+            $maxScore += $answerMaxPoints;
+            
+            // Update max_points if it was missing or zero
+            if (($answer->max_points ?? 0) == 0 && $answerMaxPoints > 0) {
+                $answer->max_points = $answerMaxPoints;
+                $answer->save();
+            }
             
             if ($answer->is_graded) {
-                $score += $answer->points_earned;
+                $score += $answer->points_earned ?? 0;
                 $answered++;
                 
                 if ($answer->is_correct) {
                     $correct++;
-                } elseif ($answer->answer !== null) {
+                } elseif ($answer->answer !== null || $answer->selected_options || $answer->answer_text || $answer->numeric_answer !== null) {
                     $wrong++;
                 } else {
                     $skipped++;
                 }
-            } elseif ($answer->answer === null) {
+            } elseif ($answer->answer === null && !$answer->selected_options && !$answer->answer_text && $answer->numeric_answer === null) {
                 $skipped++;
             }
+        }
+
+        // If maxScore is still 0, try to calculate from quiz questions
+        if ($maxScore == 0 && $this->quiz) {
+            $maxScore = $this->quiz->questions()->sum('default_points') ?? 0;
         }
 
         $this->score = $score;

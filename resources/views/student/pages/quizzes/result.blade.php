@@ -296,9 +296,22 @@
                                     @endif
                                 </div>
                                 
+                                <!-- Explanation -->
+                                @if($question->explanation)
+                                    <div class="mt-3 p-3 bg-light rounded border-start border-3 {{ $isCorrect ? 'border-success' : 'border-info' }}">
+                                        <div class="d-flex align-items-start">
+                                            <i class="bi bi-lightbulb-fill {{ $isCorrect ? 'text-success' : 'text-info' }} me-2 mt-1"></i>
+                                            <div>
+                                                <strong class="{{ $isCorrect ? 'text-success' : 'text-info' }}">الشرح:</strong>
+                                                <p class="mb-0 mt-1">{{ $question->explanation }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                                
                                 <!-- Correct Answer (if wrong) -->
                                 @if(!$isCorrect && $quiz->show_correct_answers)
-                                    <div>
+                                    <div class="mt-2">
                                         <strong class="text-success">الإجابة الصحيحة:</strong>
                                         @if($question->type == 'multiple_choice' || $question->type == 'single_choice')
                                             @php

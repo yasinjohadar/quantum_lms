@@ -103,15 +103,46 @@
                                                            title="مراجعة الأسئلة المولدة">
                                                             <i class="fas fa-eye me-1"></i> مراجعة
                                                         </a>
-                                                        <form action="{{ route('admin.ai.question-generations.save', $generation->id) }}" 
-                                                              method="POST" 
-                                                              class="d-inline"
-                                                              onsubmit="return confirm('هل أنت متأكد من حفظ جميع الأسئلة؟')">
-                                                            @csrf
-                                                            <button type="submit" class="btn btn-sm btn-success" title="حفظ جميع الأسئلة">
-                                                                <i class="fas fa-save me-1"></i> حفظ الكل
-                                                            </button>
-                                                        </form>
+                                                        <button type="button" 
+                                                                class="btn btn-sm btn-success" 
+                                                                title="حفظ جميع الأسئلة"
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#saveAllModal{{ $generation->id }}">
+                                                            <i class="fas fa-save me-1"></i> حفظ الكل
+                                                        </button>
+                                                        
+                                                        <!-- Modal for Save All -->
+                                                        <div class="modal fade" id="saveAllModal{{ $generation->id }}" tabindex="-1" aria-labelledby="saveAllModalLabel{{ $generation->id }}" aria-hidden="true">
+                                                            <div class="modal-dialog modal-dialog-centered">
+                                                                <div class="modal-content">
+                                                                    <div class="modal-header border-0 pb-0">
+                                                                        <h5 class="modal-title" id="saveAllModalLabel{{ $generation->id }}">
+                                                                            <i class="fas fa-save text-success me-2"></i>
+                                                                            تأكيد حفظ الأسئلة
+                                                                        </h5>
+                                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                                    </div>
+                                                                    <div class="modal-body text-center py-4">
+                                                                        <div class="mb-3">
+                                                                            <i class="fas fa-question-circle fa-3x text-warning"></i>
+                                                                        </div>
+                                                                        <h6 class="mb-2">هل أنت متأكد من حفظ جميع الأسئلة؟</h6>
+                                                                        <p class="text-muted mb-0">سيتم حفظ جميع الأسئلة المولدة في قاعدة البيانات</p>
+                                                                    </div>
+                                                                    <div class="modal-footer border-0 pt-0">
+                                                                        <form action="{{ route('admin.ai.question-generations.save', $generation->id) }}" method="POST" class="d-inline">
+                                                                            @csrf
+                                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                                                <i class="fas fa-times me-1"></i> إلغاء
+                                                                            </button>
+                                                                            <button type="submit" class="btn btn-success">
+                                                                                <i class="fas fa-save me-1"></i> نعم، احفظ الكل
+                                                                            </button>
+                                                                        </form>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                     @elseif($generation->status === 'pending')
                                                         <a href="{{ route('admin.ai.question-generations.show', $generation->id) }}" 
                                                            class="btn btn-sm btn-info" 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\LibraryItem;
 use App\Models\LibraryCategory;
 use App\Models\Subject;
+use App\Models\SchoolClass;
 use App\Models\LibraryTag;
 use App\Services\LibraryService;
 use App\Services\LibraryStatsService;
@@ -97,10 +98,11 @@ class LibraryItemController extends Controller
     public function create()
     {
         $categories = LibraryCategory::active()->ordered()->get();
+        $classes = SchoolClass::active()->ordered()->get();
         $subjects = Subject::active()->ordered()->get();
         $tags = LibraryTag::all();
 
-        return view('admin.pages.library.items.create', compact('categories', 'subjects', 'tags'));
+        return view('admin.pages.library.items.create', compact('categories', 'classes', 'subjects', 'tags'));
     }
 
     /**
@@ -114,6 +116,7 @@ class LibraryItemController extends Controller
             'description' => 'nullable|string',
             'type' => 'required|in:file,link,video,document,book,worksheet',
             'category_id' => 'required|exists:library_categories,id',
+            'class_id' => 'nullable|exists:classes,id',
             'subject_id' => 'nullable|exists:subjects,id',
             'file' => 'nullable|file|max:51200', // 50MB max
             'external_url' => 'nullable|url|max:500',
@@ -209,17 +212,27 @@ class LibraryItemController extends Controller
         
         $item->load('tags');
         $categories = LibraryCategory::active()->ordered()->get();
+        $classes = SchoolClass::active()->ordered()->get();
         
-        // للمعلم: عرض المواد التي يدرّسها فقط
+        // إذا كان العنصر مرتبط بصف، احمّل المواد المرتبطة بهذا الصف فقط
+        // وإلا احمّل جميع المواد (للتوافق مع البيانات القديمة)
         if ($user->hasRole('teacher') && !$user->hasRole('admin')) {
-            $subjects = $user->subjects()->active()->ordered()->get();
+            $query = $user->subjects()->active()->ordered();
+            if ($item->class_id) {
+                $query->where('class_id', $item->class_id);
+            }
+            $subjects = $query->get();
         } else {
-            $subjects = Subject::active()->ordered()->get();
+            $query = Subject::active()->ordered();
+            if ($item->class_id) {
+                $query->where('class_id', $item->class_id);
+            }
+            $subjects = $query->get();
         }
         
         $tags = LibraryTag::all();
 
-        return view('admin.pages.library.items.edit', compact('item', 'categories', 'subjects', 'tags'));
+        return view('admin.pages.library.items.edit', compact('item', 'categories', 'classes', 'subjects', 'tags'));
     }
 
     /**
@@ -242,6 +255,7 @@ class LibraryItemController extends Controller
             'description' => 'nullable|string',
             'type' => 'required|in:file,link,video,document,book,worksheet',
             'category_id' => 'required|exists:library_categories,id',
+            'class_id' => 'nullable|exists:classes,id',
             'subject_id' => 'nullable|exists:subjects,id',
             'file' => 'nullable|file|max:51200',
             'external_url' => 'nullable|url|max:500',
@@ -346,5 +360,38 @@ class LibraryItemController extends Controller
         $stats = $this->statsService->getItemStats($item);
 
         return view('admin.pages.library.items.stats', compact('item', 'stats'));
+    }
+
+    /**
+     * جلب المواد المرتبطة بصف معين
+     */
+    public function getSubjectsByClass(Request $request)
+    {
+        try {
+            $request->validate([
+                'class_id' => 'required|exists:classes,id',
+            ]);
+
+            $subjects = Subject::where('class_id', $request->class_id)
+                ->active()
+                ->ordered()
+                ->get(['id', 'name']);
+
+            return response()->json([
+                'success' => true,
+                'subjects' => $subjects ?? [],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching subjects by class: ' . $e->getMessage(), [
+                'class_id' => $request->class_id,
+                'request' => $request->all(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء جلب المواد',
+                'subjects' => [],
+            ], 500);
+        }
     }
 }
