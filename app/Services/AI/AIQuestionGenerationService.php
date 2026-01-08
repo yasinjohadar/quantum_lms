@@ -50,18 +50,42 @@ class AIQuestionGenerationService
             throw new \Exception('لا يوجد موديل AI متاح لتوليد الأسئلة');
         }
 
-        $generation = AIQuestionGeneration::create([
-            'user_id' => $user->id,
-            'subject_id' => $options['subject_id'] ?? null,
-            'lesson_id' => $options['lesson_id'] ?? null,
-            'source_type' => $options['source_type'] ?? 'manual_text',
-            'source_content' => $text,
-            'question_type' => $options['question_type'] ?? 'mixed',
-            'number_of_questions' => $options['number_of_questions'] ?? 5,
-            'difficulty_level' => $options['difficulty_level'] ?? 'mixed',
-            'ai_model_id' => $model->id,
-            'status' => 'pending',
-        ]);
+        // دعم question_types (array) أو question_type (string) للتوافق
+        $questionType = $options['question_type'] ?? null;
+        $questionTypes = $options['question_types'] ?? null;
+        
+        // إذا تم تمرير question_types، استخدمه، وإلا استخدم question_type
+        if ($questionTypes && is_array($questionTypes) && count($questionTypes) > 0) {
+            // استخدام question_types الجديد
+            $generation = AIQuestionGeneration::create([
+                'user_id' => $user->id,
+                'subject_id' => $options['subject_id'] ?? null,
+                'lesson_id' => $options['lesson_id'] ?? null,
+                'source_type' => $options['source_type'] ?? 'manual_text',
+                'source_content' => $text,
+                'question_type' => 'mixed', // للتوافق مع البيانات القديمة
+                'question_types' => $questionTypes,
+                'number_of_questions' => $options['number_of_questions'] ?? 5,
+                'difficulty_level' => $options['difficulty_level'] ?? 'mixed',
+                'ai_model_id' => $model->id,
+                'status' => 'pending',
+            ]);
+        } else {
+            // استخدام question_type القديم
+            $generation = AIQuestionGeneration::create([
+                'user_id' => $user->id,
+                'subject_id' => $options['subject_id'] ?? null,
+                'lesson_id' => $options['lesson_id'] ?? null,
+                'source_type' => $options['source_type'] ?? 'manual_text',
+                'source_content' => $text,
+                'question_type' => $questionType ?? 'mixed',
+                'question_types' => null,
+                'number_of_questions' => $options['number_of_questions'] ?? 5,
+                'difficulty_level' => $options['difficulty_level'] ?? 'mixed',
+                'ai_model_id' => $model->id,
+                'status' => 'pending',
+            ]);
+        }
 
         // معالجة التوليد (يمكن أن تكون async)
         $this->processGeneration($generation);
@@ -95,11 +119,18 @@ class AIQuestionGenerationService
                 throw new \Exception('الموديل غير موجود');
             }
 
+            // تحديد أنواع الأسئلة (question_types أولوية على question_type)
+            $selectedTypes = $generation->getSelectedQuestionTypes();
+            $questionTypeForPrompt = !empty($selectedTypes) && count($selectedTypes) > 0 
+                ? (count($selectedTypes) === 1 ? $selectedTypes[0] : 'mixed')
+                : $generation->question_type;
+            
             // بناء الـ prompt
             $prompt = $this->promptService->getQuestionGenerationPrompt(
                 $generation->source_content,
                 [
-                    'question_type' => $generation->question_type,
+                    'question_type' => $questionTypeForPrompt,
+                    'question_types' => !empty($selectedTypes) ? $selectedTypes : null,
                     'number_of_questions' => $generation->number_of_questions,
                     'difficulty_level' => $generation->difficulty_level,
                 ]
@@ -128,6 +159,19 @@ class AIQuestionGenerationService
             if (!$response || empty($response)) {
                 // محاولة الحصول على معلومات أكثر من آخر خطأ
                 $lastError = $provider->getLastError() ?? 'فشل في توليد الأسئلة - لم يتم الحصول على رد من API';
+                
+                Log::error('AI Question Generation Failed - Empty Response', [
+                    'generation_id' => $generation->id,
+                    'model_id' => $model->id,
+                    'model_key' => $model->model_key,
+                    'provider_class' => get_class($provider),
+                    'last_error' => $lastError,
+                    'response_type' => gettype($response),
+                    'response_empty' => empty($response),
+                    'response_value' => $response, // Log the actual value for debugging
+                    'provider_has_error' => method_exists($provider, 'getLastError'),
+                ]);
+                
                 throw new \Exception($lastError);
             }
 

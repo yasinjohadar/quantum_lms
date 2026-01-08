@@ -11,9 +11,12 @@
             <div class="my-auto">
                 <h5 class="page-title fs-21 mb-1">طلبات توليد الأسئلة</h5>
             </div>
-            <div>
+            <div class="d-flex gap-2">
                 <a href="{{ route('admin.ai.question-generations.create') }}" class="btn btn-primary btn-sm">
                     <i class="fas fa-plus me-1"></i> توليد أسئلة جديدة
+                </a>
+                <a href="{{ route('admin.ai.question-generations.create-advanced') }}" class="btn btn-success btn-sm">
+                    <i class="fas fa-magic me-1"></i> توليد متقدم
                 </a>
             </div>
         </div>
@@ -50,9 +53,20 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                <span class="badge bg-info">
-                                                    {{ \App\Models\AIQuestionGeneration::QUESTION_TYPES[$generation->question_type] ?? $generation->question_type }}
-                                                </span>
+                                                @php
+                                                    $selectedTypes = $generation->getSelectedQuestionTypes();
+                                                @endphp
+                                                @if(!empty($selectedTypes) && count($selectedTypes) > 0)
+                                                    @foreach($selectedTypes as $type)
+                                                        <span class="badge bg-info me-1 mb-1">
+                                                            {{ \App\Models\Question::TYPES[$type] ?? $type }}
+                                                        </span>
+                                                    @endforeach
+                                                @else
+                                                    <span class="badge bg-info">
+                                                        {{ \App\Models\AIQuestionGeneration::QUESTION_TYPES[$generation->question_type] ?? $generation->question_type }}
+                                                    </span>
+                                                @endif
                                             </td>
                                             <td>
                                                 <span class="badge bg-info">{{ $generation->number_of_questions }}</span>

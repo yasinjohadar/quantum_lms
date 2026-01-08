@@ -36,15 +36,21 @@ class AIPromptService
      */
     public function getQuestionGenerationPrompt(string $content, array $options): string
     {
+        $questionTypes = $options['question_types'] ?? null;
         $questionType = $options['question_type'] ?? 'mixed';
         $numberOfQuestions = $options['number_of_questions'] ?? 5;
         $difficulty = $options['difficulty_level'] ?? 'mixed';
         
-        $questionTypeText = $this->getQuestionTypeText($questionType);
-        $difficultyText = $this->getDifficultyText($difficulty);
+        // إذا تم تمرير question_types (array)، استخدمه
+        if ($questionTypes && is_array($questionTypes) && count($questionTypes) > 0) {
+            $questionTypeText = $this->getQuestionTypesText($questionTypes);
+            $typeInstructions = $this->getMultipleTypesInstructions($questionTypes, $numberOfQuestions);
+        } else {
+            $questionTypeText = $this->getQuestionTypeText($questionType);
+            $typeInstructions = $this->getTypeInstructions($questionType, $numberOfQuestions);
+        }
         
-        // تحديد أنواع الأسئلة المطلوبة
-        $typeInstructions = $this->getTypeInstructions($questionType, $numberOfQuestions);
+        $difficultyText = $this->getDifficultyText($difficulty);
         
         $prompt = "أنت خبير تعليمي متخصص في إنشاء الأسئلة والاختبارات.\n\n";
         $prompt .= "## المهمة:\n";
@@ -180,6 +186,52 @@ class AIPromptService
         ];
         
         return $types[$type] ?? $type;
+    }
+
+    /**
+     * الحصول على نص أنواع الأسئلة المتعددة
+     */
+    private function getQuestionTypesText(array $types): string
+    {
+        $typeNames = \App\Models\Question::TYPES;
+        $names = array_map(fn($t) => $typeNames[$t] ?? $t, $types);
+        return implode('، ', $names);
+    }
+
+    /**
+     * الحصول على تعليمات لأنواع متعددة
+     */
+    private function getMultipleTypesInstructions(array $types, int $count): string
+    {
+        $typeNames = \App\Models\Question::TYPES;
+        $typeDescriptions = [
+            'single_choice' => 'اختيار واحد (4 خيارات لكل سؤال)',
+            'multiple_choice' => 'اختيار متعدد (4 خيارات، يمكن أن تكون أكثر من إجابة صحيحة)',
+            'true_false' => 'صح/خطأ',
+            'short_answer' => 'إجابة قصيرة',
+            'essay' => 'مقالي',
+            'matching' => 'مطابقة',
+            'ordering' => 'ترتيب',
+            'fill_blanks' => 'ملء الفراغات',
+            'numerical' => 'رقمي',
+            'drag_drop' => 'سحب وإفلات',
+        ];
+        
+        $selectedTypes = array_map(fn($t) => $typeNames[$t] ?? $t, $types);
+        $descriptions = array_map(fn($t) => $typeDescriptions[$t] ?? $t, $types);
+        
+        $instructions = "4. **أنواع الأسئلة المطلوبة**: يجب أن تكون جميع الأسئلة من الأنواع التالية فقط:\n";
+        foreach ($selectedTypes as $index => $name) {
+            $desc = $descriptions[$index] ?? '';
+            $instructions .= "   - {$name}" . ($desc ? " ({$desc})" : '') . "\n";
+        }
+        
+        if (count($types) > 1) {
+            $instructions .= "\n5. **توزيع الأسئلة**: وزّع الأسئلة بين الأنواع المحددة أعلاه بشكل متوازن قدر الإمكان.\n";
+            $instructions .= "   - حاول توزيع العدد الإجمالي ({$count} أسئلة) بشكل متساوٍ بين الأنواع المحددة.\n";
+        }
+        
+        return $instructions;
     }
 
     /**

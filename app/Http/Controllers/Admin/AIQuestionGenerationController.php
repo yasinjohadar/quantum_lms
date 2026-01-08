@@ -59,6 +59,30 @@ class AIQuestionGenerationController extends Controller
     }
 
     /**
+     * عرض نموذج توليد أسئلة (متقدم)
+     */
+    public function createAdvanced(Request $request)
+    {
+        $subjects = Subject::active()->ordered()->get();
+        $lessons = collect();
+        $models = $this->modelService->getAvailableModels('question_generation');
+        $difficulties = AIQuestionGeneration::DIFFICULTIES;
+
+        if ($request->filled('subject_id')) {
+            $lessons = Lesson::whereHas('unit.section', function($q) use ($request) {
+                $q->where('subject_id', $request->subject_id);
+            })->active()->get();
+        }
+
+        return view('admin.pages.ai.question-generations.create-advanced', compact(
+            'subjects',
+            'lessons',
+            'models',
+            'difficulties'
+        ));
+    }
+
+    /**
      * إنشاء طلب توليد
      */
     public function store(Request $request)
@@ -198,6 +222,73 @@ class AIQuestionGenerationController extends Controller
             ]);
             return redirect()->back()
                            ->with('error', 'حدث خطأ أثناء حفظ الأسئلة: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * إنشاء طلب توليد (متقدم)
+     */
+    public function storeAdvanced(Request $request)
+    {
+        $validQuestionTypes = array_filter(array_keys(AIQuestionGeneration::QUESTION_TYPES), fn($k) => $k !== 'mixed');
+        
+        $validated = $request->validate([
+            'source_type' => 'required|in:lesson_content,manual_text,topic',
+            'lesson_id' => 'nullable|required_if:source_type,lesson_content|exists:lessons,id',
+            'source_content' => 'required_if:source_type,manual_text,topic|string',
+            'question_types' => 'required|array|min:1',
+            'question_types.*' => 'in:' . implode(',', $validQuestionTypes),
+            'number_of_questions' => 'required|integer|min:1|max:50',
+            'difficulty_level' => 'required|in:' . implode(',', array_keys(AIQuestionGeneration::DIFFICULTIES)),
+            'ai_model_id' => 'nullable|exists:ai_models,id',
+        ], [
+            'source_type.required' => 'نوع المصدر مطلوب',
+            'source_content.required_if' => 'المحتوى المصدر مطلوب',
+            'question_types.required' => 'يجب اختيار نوع واحد على الأقل',
+            'question_types.min' => 'يجب اختيار نوع واحد على الأقل',
+            'question_types.*.in' => 'نوع سؤال غير صحيح',
+            'number_of_questions.required' => 'عدد الأسئلة مطلوب',
+        ]);
+
+        try {
+            $model = $validated['ai_model_id'] 
+                ? AIModel::find($validated['ai_model_id'])
+                : null;
+
+            if ($validated['source_type'] === 'lesson_content') {
+                $lesson = Lesson::findOrFail($validated['lesson_id']);
+                $generation = $this->generationService->generateFromLesson($lesson, [
+                    'user' => Auth::user(),
+                    'model' => $model,
+                    'question_types' => $validated['question_types'],
+                    'number_of_questions' => $validated['number_of_questions'],
+                    'difficulty_level' => $validated['difficulty_level'],
+                ]);
+            } elseif ($validated['source_type'] === 'topic') {
+                $generation = $this->generationService->generateFromTopic($validated['source_content'], [
+                    'user' => Auth::user(),
+                    'model' => $model,
+                    'question_types' => $validated['question_types'],
+                    'number_of_questions' => $validated['number_of_questions'],
+                    'difficulty_level' => $validated['difficulty_level'],
+                ]);
+            } else {
+                $generation = $this->generationService->generateFromText($validated['source_content'], [
+                    'user' => Auth::user(),
+                    'model' => $model,
+                    'question_types' => $validated['question_types'],
+                    'number_of_questions' => $validated['number_of_questions'],
+                    'difficulty_level' => $validated['difficulty_level'],
+                ]);
+            }
+
+            return redirect()->route('admin.ai.question-generations.show', $generation)
+                           ->with('success', 'تم إنشاء طلب التوليد بنجاح.');
+        } catch (\Exception $e) {
+            Log::error('Error creating advanced question generation: ' . $e->getMessage());
+            return redirect()->back()
+                           ->with('error', 'حدث خطأ أثناء إنشاء طلب التوليد: ' . $e->getMessage())
+                           ->withInput();
         }
     }
 

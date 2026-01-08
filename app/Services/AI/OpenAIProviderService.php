@@ -44,7 +44,7 @@ class OpenAIProviderService extends AIProviderService
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . trim($apiKey),
                 'Content-Type' => 'application/json',
-            ])->timeout(180)->post($fullUrl, $payload);
+            ])->timeout(300)->post($fullUrl, $payload);
 
             Log::info('OpenAI API Response', [
                 'status' => $response->status(),

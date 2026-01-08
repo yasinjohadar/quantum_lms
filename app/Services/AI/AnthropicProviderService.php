@@ -43,7 +43,7 @@ class AnthropicProviderService extends AIProviderService
                 'x-api-key' => $this->getApiKey(),
                 'anthropic-version' => '2023-06-01',
                 'Content-Type' => 'application/json',
-            ])->timeout(180)->post($url . $endpoint, $payload);
+            ])->timeout(300)->post($url . $endpoint, $payload);
 
             if ($response->successful()) {
                 $data = $response->json();

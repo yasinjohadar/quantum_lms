@@ -77,7 +77,7 @@ class GoogleProviderService extends AIProviderService
                 'api_key_prefix' => substr($apiKey, 0, 10) . '...',
             ]);
 
-            $response = Http::timeout(180)->post($fullUrl, $payload);
+            $response = Http::timeout(300)->post($fullUrl, $payload);
             
             Log::info('Google Gemini API Response', [
                 'status' => $response->status(),

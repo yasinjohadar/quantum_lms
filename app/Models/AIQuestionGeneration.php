@@ -19,6 +19,7 @@ class AIQuestionGeneration extends Model
         'source_content',
         'prompt',
         'question_type',
+        'question_types',
         'number_of_questions',
         'difficulty_level',
         'ai_model_id',
@@ -34,6 +35,7 @@ class AIQuestionGeneration extends Model
         'tokens_used' => 'integer',
         'cost' => 'decimal:6',
         'generated_questions' => 'array',
+        'question_types' => 'array',
     ];
 
     /**
@@ -137,5 +139,57 @@ class AIQuestionGeneration extends Model
     public function getStatus(): string
     {
         return self::STATUSES[$this->status] ?? $this->status;
+    }
+
+    /**
+     * Accessor للحصول على أنواع الأسئلة
+     */
+    public function getQuestionTypesAttribute($value)
+    {
+        if (is_null($value)) {
+            return null;
+        }
+        
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            return is_array($decoded) ? $decoded : null;
+        }
+        
+        return is_array($value) ? $value : null;
+    }
+
+    /**
+     * Mutator لحفظ أنواع الأسئلة
+     */
+    public function setQuestionTypesAttribute($value)
+    {
+        if (is_null($value)) {
+            $this->attributes['question_types'] = null;
+        } elseif (is_array($value)) {
+            $this->attributes['question_types'] = json_encode($value);
+        } else {
+            $this->attributes['question_types'] = $value;
+        }
+    }
+
+    /**
+     * الحصول على أنواع الأسئلة المحددة (مع fallback إلى question_type)
+     */
+    public function getSelectedQuestionTypes(): array
+    {
+        if ($this->question_types && is_array($this->question_types) && count($this->question_types) > 0) {
+            return $this->question_types;
+        }
+        
+        // Fallback إلى question_type القديم
+        if ($this->question_type) {
+            if ($this->question_type === 'mixed') {
+                // إذا كان mixed، أرجع جميع الأنواع عدا mixed
+                return array_filter(array_keys(self::QUESTION_TYPES), fn($k) => $k !== 'mixed');
+            }
+            return [$this->question_type];
+        }
+        
+        return [];
     }
 }

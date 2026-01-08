@@ -389,8 +389,13 @@
                                     </a>
                                 </li>
                                 <li class="slide {{ request()->is('admin/ai/question-generations*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.ai.question-generations.index') }}" class="side-menu__item {{ request()->is('admin/ai/question-generations*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.ai.question-generations.index') }}" class="side-menu__item {{ request()->is('admin/ai/question-generations*') && !request()->is('admin/ai/question-generations/create-advanced*') ? 'active' : '' }}">
                                         <span class="side-menu__label">توليد الأسئلة</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/ai/question-generations/create-advanced*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.ai.question-generations.create-advanced') }}" class="side-menu__item {{ request()->is('admin/ai/question-generations/create-advanced*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">توليد متقدم</span>
                                     </a>
                                 </li>
                                 <li class="slide {{ request()->is('admin/ai/question-solutions*') ? 'active' : '' }}">

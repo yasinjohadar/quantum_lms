@@ -82,7 +82,22 @@
                             </tr>
                             <tr>
                                 <td class="text-muted">نوع الأسئلة:</td>
-                                <td>{{ \App\Models\AIQuestionGeneration::QUESTION_TYPES[$generation->question_type] ?? $generation->question_type }}</td>
+                                <td>
+                                    @php
+                                        $selectedTypes = $generation->getSelectedQuestionTypes();
+                                    @endphp
+                                    @if(!empty($selectedTypes) && count($selectedTypes) > 0)
+                                        @foreach($selectedTypes as $type)
+                                            <span class="badge bg-info me-1 mb-1">
+                                                {{ \App\Models\Question::TYPES[$type] ?? $type }}
+                                            </span>
+                                        @endforeach
+                                    @else
+                                        <span class="badge bg-info">
+                                            {{ \App\Models\AIQuestionGeneration::QUESTION_TYPES[$generation->question_type] ?? $generation->question_type }}
+                                        </span>
+                                    @endif
+                                </td>
                             </tr>
                             <tr>
                                 <td class="text-muted">العدد المطلوب:</td>

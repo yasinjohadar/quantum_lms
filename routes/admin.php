@@ -231,6 +231,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::post('ai/models/{model}/set-default', [\App\Http\Controllers\Admin\AIModelController::class, 'setDefault'])->name('ai.models.set-default');
         Route::post('ai/models/{model}/toggle-active', [\App\Http\Controllers\Admin\AIModelController::class, 'toggleActive'])->name('ai.models.toggle-active');
 
+        Route::get('ai/question-generations/create-advanced', [\App\Http\Controllers\Admin\AIQuestionGenerationController::class, 'createAdvanced'])->name('ai.question-generations.create-advanced');
+        Route::post('ai/question-generations/store-advanced', [\App\Http\Controllers\Admin\AIQuestionGenerationController::class, 'storeAdvanced'])->name('ai.question-generations.store-advanced');
         Route::resource('ai/question-generations', \App\Http\Controllers\Admin\AIQuestionGenerationController::class)->names([
             'index' => 'ai.question-generations.index',
             'create' => 'ai.question-generations.create',

@@ -34,7 +34,7 @@ class LocalLLMProviderService extends AIProviderService
         ];
 
         try {
-            $response = Http::timeout(120)->post($baseUrl . $endpoint, $payload);
+            $response = Http::timeout(300)->post($baseUrl . $endpoint, $payload);
 
             if ($response->successful()) {
                 $data = $response->json();

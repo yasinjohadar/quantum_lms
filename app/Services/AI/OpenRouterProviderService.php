@@ -68,7 +68,7 @@ class OpenRouterProviderService extends AIProviderService
                 'Content-Type' => 'application/json',
                 'HTTP-Referer' => config('app.url', 'http://localhost'),
                 'X-Title' => config('app.name', 'Laravel App'),
-            ])->timeout(180)->post($url . $endpoint, $payload);
+            ])->timeout(300)->post($url . $endpoint, $payload);
 
             Log::info('OpenRouter API Response', [
                 'status' => $response->status(),
