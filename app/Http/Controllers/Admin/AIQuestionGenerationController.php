@@ -67,8 +67,20 @@ class AIQuestionGenerationController extends Controller
         $lessons = collect();
         $models = $this->modelService->getAvailableModels('question_generation');
         $difficulties = AIQuestionGeneration::DIFFICULTIES;
+        $quiz = null;
 
-        if ($request->filled('subject_id')) {
+        // التحقق من وجود quiz_id (اختياري)
+        if ($request->filled('quiz_id')) {
+            $quiz = \App\Models\Quiz::find($request->quiz_id);
+            if ($quiz && $request->filled('subject_id')) {
+                // استخدام subject_id من الاختبار إذا كان متوفراً
+                $lessons = Lesson::whereHas('unit.section', function($q) use ($quiz) {
+                    $q->where('subject_id', $quiz->subject_id);
+                })->active()->get();
+            }
+        }
+
+        if ($request->filled('subject_id') && !$quiz) {
             $lessons = Lesson::whereHas('unit.section', function($q) use ($request) {
                 $q->where('subject_id', $request->subject_id);
             })->active()->get();
@@ -78,7 +90,8 @@ class AIQuestionGenerationController extends Controller
             'subjects',
             'lessons',
             'models',
-            'difficulties'
+            'difficulties',
+            'quiz'
         ));
     }
 
@@ -241,6 +254,7 @@ class AIQuestionGenerationController extends Controller
             'number_of_questions' => 'required|integer|min:1|max:50',
             'difficulty_level' => 'required|in:' . implode(',', array_keys(AIQuestionGeneration::DIFFICULTIES)),
             'ai_model_id' => 'nullable|exists:ai_models,id',
+            'quiz_id' => 'nullable|exists:quizzes,id', // إضافة quiz_id كحقل اختياري
         ], [
             'source_type.required' => 'نوع المصدر مطلوب',
             'source_content.required_if' => 'المحتوى المصدر مطلوب',
@@ -255,6 +269,7 @@ class AIQuestionGenerationController extends Controller
                 ? AIModel::find($validated['ai_model_id'])
                 : null;
 
+            // إنشاء التوليد
             if ($validated['source_type'] === 'lesson_content') {
                 $lesson = Lesson::findOrFail($validated['lesson_id']);
                 $generation = $this->generationService->generateFromLesson($lesson, [
@@ -282,6 +297,43 @@ class AIQuestionGenerationController extends Controller
                 ]);
             }
 
+            // إذا كان quiz_id موجوداً، معالجة التوليد وحفظ الأسئلة وربطها بالاختبار
+            if ($request->filled('quiz_id')) {
+                try {
+                    // معالجة التوليد
+                    set_time_limit(180);
+                    $this->generationService->processGeneration($generation);
+                    
+                    // حفظ الأسئلة المولدة
+                    $savedQuestions = $this->generationService->saveGeneratedQuestions($generation);
+                    
+                    // ربط الأسئلة بالاختبار
+                    if ($savedQuestions->isNotEmpty()) {
+                        $questionIds = $savedQuestions->pluck('id')->toArray();
+                        $attachedCount = \App\Http\Controllers\Admin\QuizController::attachQuestionsToQuiz(
+                            $request->quiz_id,
+                            $questionIds
+                        );
+                        
+                        return redirect()->route('admin.quizzes.questions', $request->quiz_id)
+                                       ->with('success', "تم توليد {$savedQuestions->count()} سؤال وربط {$attachedCount} سؤال بالاختبار بنجاح.");
+                    } else {
+                        return redirect()->route('admin.quizzes.questions', $request->quiz_id)
+                                       ->with('warning', 'تم إنشاء طلب التوليد ولكن لم يتم توليد أي أسئلة.');
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error processing generation for quiz: ' . $e->getMessage(), [
+                        'generation_id' => $generation->id,
+                        'quiz_id' => $request->quiz_id,
+                    ]);
+                    
+                    // إعادة التوجيه إلى صفحة إدارة الأسئلة مع رسالة خطأ
+                    return redirect()->route('admin.quizzes.questions', $request->quiz_id)
+                                   ->with('error', 'حدث خطأ أثناء معالجة التوليد: ' . $e->getMessage());
+                }
+            }
+
+            // إذا لم يكن quiz_id موجوداً، السلوك العادي
             return redirect()->route('admin.ai.question-generations.show', $generation)
                            ->with('success', 'تم إنشاء طلب التوليد بنجاح.');
         } catch (\Exception $e) {

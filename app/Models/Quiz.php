@@ -277,7 +277,7 @@ class Quiz extends Model
      */
     public function calculateTotalPoints(): void
     {
-        $this->total_points = $this->questions()->sum('quiz_questions.points');
+        $this->total_points = $this->quizQuestions()->sum('points');
         $this->save();
     }
 

@@ -228,6 +228,9 @@
                         <span class="fw-bold">{{ $quiz->total_points }}</span>
                     </div>
                     <div class="btn-list">
+                        <a href="{{ route('admin.ai.question-generations.create-advanced', ['quiz_id' => $quiz->id, 'subject_id' => $quiz->subject_id]) }}" class="btn btn-outline-info">
+                            <i class="fas fa-magic me-1"></i> توليد أسئلة بالذكاء الاصطناعي
+                        </a>
                         <a href="{{ route('admin.questions.create') }}" class="btn btn-outline-primary">
                             <i class="bi bi-plus-lg me-1"></i> إنشاء سؤال جديد
                         </a>

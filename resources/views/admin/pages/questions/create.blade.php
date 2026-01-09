@@ -85,6 +85,7 @@
 
     <form action="{{ route('admin.questions.store') }}" method="POST" enctype="multipart/form-data" id="questionForm">
         @csrf
+        <input type="hidden" name="_tinymce_sync" value="1">
         
         <div class="row">
             <div class="col-lg-8">
@@ -117,12 +118,12 @@
                     <div class="card-body">
                         <div class="mb-3">
                             <label class="form-label">نص السؤال <span class="text-danger">*</span></label>
-                            <textarea name="title" class="form-control" rows="3" required 
+                            <textarea name="title" id="question-title-editor" class="form-control" rows="6" required 
                                       placeholder="اكتب نص السؤال هنا...">{{ old('title') }}</textarea>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">محتوى إضافي (اختياري)</label>
-                            <textarea name="content" class="form-control" rows="3" 
+                            <textarea name="content" id="question-content-editor" class="form-control" rows="6" 
                                       placeholder="يمكنك إضافة شرح إضافي أو HTML...">{{ old('content') }}</textarea>
                         </div>
                         <div class="mb-3">
@@ -212,7 +213,7 @@
                         <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i> شرح الإجابة (اختياري)</h6>
                     </div>
                     <div class="card-body">
-                        <textarea name="explanation" class="form-control" rows="3" 
+                        <textarea name="explanation" id="question-explanation-editor" class="form-control" rows="6" 
                                   placeholder="اكتب شرحاً للإجابة الصحيحة يظهر بعد الإجابة...">{{ old('explanation') }}</textarea>
                     </div>
                 </div>
@@ -320,8 +321,99 @@
 @stop
 
 @section('js')
+<!-- TinyMCE Self-Hosted (Free & Open Source) -->
+<script src="https://cdn.jsdelivr.net/npm/tinymce@7.3.0/tinymce.min.js"></script>
 <script>
 console.log('Question create script loaded');
+
+// تهيئة TinyMCE
+document.addEventListener('DOMContentLoaded', function() {
+    tinymce.init({
+        selector: '#question-title-editor, #question-content-editor, #question-explanation-editor',
+        language: 'ar',
+        language_url: 'https://cdn.jsdelivr.net/npm/tinymce-i18n@24/langs5/ar.js',
+        directionality: 'rtl',
+        height: 400,
+        menubar: 'file edit view insert format tools table help',
+        plugins: [
+            'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+            'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+            'insertdatetime', 'media', 'table', 'help', 'wordcount',
+            'directionality', 'visualchars', 'emoticons', 'paste'
+        ],
+        toolbar: 'undo redo | blocks | fontfamily fontsize | ' +
+            'bold italic underline strikethrough | forecolor backcolor | ' +
+            'alignleft aligncenter alignright alignjustify | ' +
+            'bullist numlist outdent indent | ' +
+            'link image media | table charmap emoticons | ' +
+            'code preview fullscreen | ' +
+            'ltr rtl | searchreplace visualblocks visualchars | ' +
+            'help',
+        content_style: 'body { font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; font-size: 14px; direction: rtl; text-align: right; }',
+        image_advtab: true,
+        file_picker_types: 'image',
+        automatic_uploads: true,
+        images_upload_handler: function (blobInfo, progress) {
+            return new Promise(function (resolve, reject) {
+                var xhr = new XMLHttpRequest();
+                xhr.withCredentials = false;
+                xhr.open('POST', '{{ route("admin.questions.upload-image") }}');
+                
+                var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                xhr.setRequestHeader('X-CSRF-TOKEN', token);
+                
+                xhr.upload.onprogress = function (e) {
+                    if (e.lengthComputable) {
+                        progress(e.loaded / e.total * 100);
+                    }
+                };
+                
+                xhr.onload = function () {
+                    if (xhr.status === 403) {
+                        reject({ message: 'HTTP Error: ' + xhr.status, remove: true });
+                        return;
+                    }
+                    
+                    if (xhr.status < 200 || xhr.status >= 300) {
+                        reject('HTTP Error: ' + xhr.status);
+                        return;
+                    }
+                    
+                    var json = JSON.parse(xhr.responseText);
+                    
+                    if (!json || typeof json.location != 'string') {
+                        reject('Invalid JSON: ' + xhr.responseText);
+                        return;
+                    }
+                    
+                    resolve(json.location);
+                };
+                
+                xhr.onerror = function () {
+                    reject('Image upload failed due to a XHR Transport error. Code: ' + xhr.status);
+                };
+                
+                var formData = new FormData();
+                formData.append('file', blobInfo.blob(), blobInfo.filename());
+                
+                xhr.send(formData);
+            });
+        },
+        paste_data_images: true,
+        convert_urls: false,
+        relative_urls: false,
+        remove_script_host: false,
+    });
+
+    // التأكد من حفظ محتوى TinyMCE قبل إرسال النموذج
+    const form = document.getElementById('questionForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // حفظ محتوى جميع محررات TinyMCE
+            tinymce.triggerSave();
+        });
+    }
+});
 
 let optionCounter = 0;
 let blankCounter = 1;

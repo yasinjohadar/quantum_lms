@@ -11,24 +11,177 @@ class AIPromptService
     /**
      * الحصول على prompt للمساعد التعليمي
      */
-    public function getChatbotPrompt(AIConversation $conversation): string
+    public function getChatbotPrompt(AIConversation $conversation, ?string $quickAction = null): string
     {
         $context = $conversation->getContext();
+        $settings = $conversation->getSettings();
+        $mode = $settings['mode'] ?? 'educational';
+        
+        // معلومات الطالب
+        $user = $conversation->user;
+        $studentInfo = $this->getStudentInfo($user);
         
         $prompt = "أنت مساعد تعليمي ذكي. مهمتك مساعدة الطلاب في فهم المواد الدراسية والإجابة على أسئلتهم.\n\n";
         
-        if ($context) {
-            $prompt .= "السياق:\n{$context}\n\n";
+        // معلومات الطالب
+        if ($studentInfo) {
+            $prompt .= "## معلومات الطالب:\n{$studentInfo}\n\n";
         }
         
-        $prompt .= "تعليمات:\n";
+        // السياق التعليمي
+        if ($context) {
+            $prompt .= "## السياق التعليمي:\n{$context}\n\n";
+            
+            // معلومات إضافية للمادة/الدرس
+            $additionalContext = $this->getAdditionalContext($conversation);
+            if ($additionalContext) {
+                $prompt .= "## معلومات إضافية:\n{$additionalContext}\n\n";
+            }
+        }
+        
+        // Quick Action Instructions
+        if ($quickAction) {
+            $quickActionPrompt = $this->getQuickActionPrompt($quickAction);
+            if ($quickActionPrompt) {
+                $prompt .= "## تعليمات خاصة:\n{$quickActionPrompt}\n\n";
+            }
+        }
+        
+        // Conversation Mode Instructions
+        $modeInstructions = $this->getModeInstructions($mode);
+        $prompt .= "## نمط المحادثة:\n{$modeInstructions}\n\n";
+        
+        // تعليمات عامة
+        $prompt .= "## تعليمات عامة:\n";
         $prompt .= "- قدم إجابات واضحة ومفصلة\n";
         $prompt .= "- استخدم أمثلة لتوضيح المفاهيم\n";
-        $prompt .= "- شجع الطالب على التفكير\n";
-        $prompt .= "- إذا لم تكن متأكداً من الإجابة، اعترف بذلك\n";
-        $prompt .= "- استخدم اللغة العربية بشكل صحيح\n";
+        $prompt .= "- شجع الطالب على التفكير والاستكشاف\n";
+        $prompt .= "- إذا لم تكن متأكداً من الإجابة، اعترف بذلك بصراحة\n";
+        $prompt .= "- استخدم اللغة العربية بشكل صحيح ومناسب للسياق التعليمي\n";
+        $prompt .= "- قم بتقسيم المعلومات المعقدة إلى أجزاء أصغر وأسهل للفهم\n";
+        $prompt .= "- استخدم مصطلحات تعليمية مناسبة لمستوى الطالب\n";
         
         return $prompt;
+    }
+
+    /**
+     * الحصول على معلومات الطالب
+     */
+    private function getStudentInfo($user): ?string
+    {
+        if (!$user) {
+            return null;
+        }
+
+        $info = [];
+        
+        if ($user->school_class_id) {
+            $class = $user->schoolClass ?? null;
+            if ($class) {
+                $info[] = "الصف: {$class->name}";
+            }
+        }
+
+        // يمكن إضافة معلومات إضافية عن التقدم الدراسي هنا
+        // مثل: المواد المسجلة، معدل الدرجات، إلخ
+
+        return !empty($info) ? implode("\n", $info) : null;
+    }
+
+    /**
+     * الحصول على سياق إضافي للمادة/الدرس
+     */
+    private function getAdditionalContext(AIConversation $conversation): ?string
+    {
+        $additionalInfo = [];
+
+        if ($conversation->subject) {
+            $subject = $conversation->subject->load('sections.units.lessons');
+            
+            // معلومات القسم والوحدة
+            if ($subject->sections && $subject->sections->isNotEmpty()) {
+                $sections = $subject->sections->pluck('name')->implode('، ');
+                if ($sections) {
+                    $additionalInfo[] = "الأقسام في المادة: {$sections}";
+                }
+            }
+
+            // عدد الدروس
+            if ($subject->sections) {
+                $lessonsCount = $subject->sections->sum(function($section) {
+                    if ($section->units) {
+                        return $section->units->sum(function($unit) {
+                            if ($unit->lessons) {
+                                return $unit->lessons->where('is_active', true)->count();
+                            }
+                            return 0;
+                        });
+                    }
+                    return 0;
+                });
+                if ($lessonsCount > 0) {
+                    $additionalInfo[] = "عدد الدروس في المادة: {$lessonsCount}";
+                }
+            }
+        }
+
+        if ($conversation->lesson) {
+            $lesson = $conversation->lesson->load('unit.section');
+            
+            // معلومات الوحدة
+            if ($lesson->unit) {
+                $additionalInfo[] = "الوحدة: {$lesson->unit->title}";
+                
+                // معلومات القسم
+                if ($lesson->unit->section) {
+                    $additionalInfo[] = "القسم: {$lesson->unit->section->name}";
+                }
+            }
+
+            // الدروس المرتبطة في نفس الوحدة
+            if ($lesson->unit && $lesson->unit->lessons) {
+                $relatedLessons = $lesson->unit->lessons()
+                    ->where('id', '!=', $lesson->id)
+                    ->where('is_active', true)
+                    ->pluck('title')
+                    ->implode('، ');
+                if ($relatedLessons) {
+                    $additionalInfo[] = "دروس أخرى في نفس الوحدة: {$relatedLessons}";
+                }
+            }
+        }
+
+        return !empty($additionalInfo) ? implode("\n", $additionalInfo) : null;
+    }
+
+    /**
+     * الحصول على prompt للـ Quick Action
+     */
+    private function getQuickActionPrompt(string $action): ?string
+    {
+        $prompts = [
+            'simple_explanation' => "قم بشرح المفهوم بطريقة بسيطة وسهلة الفهم. استخدم لغة واضحة ومباشرة. تجنب المصطلحات المعقدة إلا عند الضرورة، وعند استخدامها قم بشرحها.",
+            'example' => "قدم مثالاً واضحاً وعملياً لتوضيح المفهوم. يجب أن يكون المثال مناسباً للسياق التعليمي وسهلاً للفهم.",
+            'summary' => "قدم ملخصاً شاملاً ومركزاً للموضوع. قم بتغطية النقاط الرئيسية فقط بشكل مختصر وواضح.",
+            'review_questions' => "أنشئ مجموعة من الأسئلة للمراجعة تغطي النقاط المهمة في الموضوع. قدم أسئلة متنوعة (اختيار من متعدد، صح/خطأ، إجابة قصيرة).",
+            'important_terms' => "قم بذكر المصطلحات المهمة في الموضوع مع تعريف واضح لكل مصطلح. رتب المصطلحات بشكل منطقي.",
+        ];
+
+        return $prompts[$action] ?? null;
+    }
+
+    /**
+     * الحصول على تعليمات نمط المحادثة
+     */
+    private function getModeInstructions(string $mode): string
+    {
+        $modes = [
+            'educational' => "النمط التعليمي: ركز على التعلم والتفهم. قدم شروحات تفصيلية وتأكد من فهم الطالب. استخدم أساليب تعليمية فعالة.",
+            'casual' => "النمط العادي: قم بالمحادثة بشكل طبيعي وودود. لا حاجة لشروحات مفصلة إلا عند الطلب.",
+            'deep_analysis' => "النمط التحليلي العميق: قم بتحليل عميق للموضوع. ابحث عن الروابط والعلاقات بين المفاهيم. قدم تحليلاً شاملاً ومتعدد الأبعاد.",
+        ];
+
+        return $modes[$mode] ?? $modes['educational'];
     }
 
     /**

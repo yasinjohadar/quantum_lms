@@ -94,6 +94,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
 
         // بنك الأسئلة
         Route::resource('questions', QuestionController::class);
+        Route::post('questions/upload-image', [QuestionController::class, 'uploadImage'])
+            ->name('questions.upload-image');
         Route::post('questions/{question}/duplicate', [QuestionController::class, 'duplicate'])
             ->name('questions.duplicate');
         Route::post('questions/{question}/toggle-status', [QuestionController::class, 'toggleStatus'])

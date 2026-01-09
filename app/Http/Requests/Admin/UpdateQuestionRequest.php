@@ -24,9 +24,9 @@ class UpdateQuestionRequest extends FormRequest
         
         $rules = [
             'type' => ['required', 'string', 'in:' . implode(',', array_keys(Question::TYPES))],
-            'title' => ['required', 'string', 'max:500'],
-            'content' => ['nullable', 'string'],
-            'explanation' => ['nullable', 'string'],
+            'title' => ['required', 'string', 'max:10000'], // زيادة الحد للسماح بـ HTML
+            'content' => ['nullable', 'string', 'max:50000'], // زيادة الحد للسماح بـ HTML
+            'explanation' => ['nullable', 'string', 'max:10000'], // زيادة الحد للسماح بـ HTML
             'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:5120'],
             'remove_image' => ['nullable', 'boolean'],
             'difficulty' => ['required', 'string', 'in:easy,medium,hard'],
@@ -78,7 +78,7 @@ class UpdateQuestionRequest extends FormRequest
             'type.required' => 'نوع السؤال مطلوب',
             'type.in' => 'نوع السؤال غير صالح',
             'title.required' => 'نص السؤال مطلوب',
-            'title.max' => 'نص السؤال يجب ألا يتجاوز 500 حرف',
+            'title.max' => 'نص السؤال كبير جداً',
             'difficulty.required' => 'مستوى الصعوبة مطلوب',
             'difficulty.in' => 'مستوى الصعوبة غير صالح',
             'default_points.required' => 'درجة السؤال مطلوبة',

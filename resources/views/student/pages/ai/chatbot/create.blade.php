@@ -53,6 +53,57 @@
                                 </select>
                             </div>
 
+                            <!-- الخيارات المتقدمة -->
+                            <div class="accordion mb-3" id="advancedOptions">
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingAdvanced">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAdvanced" aria-expanded="false" aria-controls="collapseAdvanced">
+                                            <i class="fas fa-cog me-2"></i> خيارات متقدمة
+                                        </button>
+                                    </h2>
+                                    <div id="collapseAdvanced" class="accordion-collapse collapse" aria-labelledby="headingAdvanced" data-bs-parent="#advancedOptions">
+                                        <div class="accordion-body">
+                                            <div class="mb-3">
+                                                <label for="ai_model_id" class="form-label">موديل AI</label>
+                                                <select class="form-select" id="ai_model_id" name="ai_model_id">
+                                                    <option value="">استخدام الأفضل تلقائياً</option>
+                                                    @foreach($models ?? [] as $model)
+                                                        <option value="{{ $model->id }}" {{ old('ai_model_id') == $model->id ? 'selected' : '' }}>
+                                                            {{ $model->name }} ({{ $model->provider }})
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                <small class="text-muted">إذا لم تختر، سيتم استخدام أفضل موديل متاح</small>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label for="temperature" class="form-label">درجة الحرارة (Temperature): <span id="temperatureValue">0.7</span></label>
+                                                <input type="range" class="form-range" id="temperature" name="temperature" min="0.1" max="1.0" step="0.1" value="0.7" oninput="document.getElementById('temperatureValue').textContent = this.value">
+                                                <div class="d-flex justify-content-between">
+                                                    <small class="text-muted">أكثر إبداعاً</small>
+                                                    <small class="text-muted">أكثر دقة</small>
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label for="max_tokens" class="form-label">الحد الأقصى للـ Tokens</label>
+                                                <input type="number" class="form-control" id="max_tokens" name="max_tokens" min="100" max="10000" step="100" placeholder="اتركه فارغاً للاستخدام الافتراضي">
+                                                <small class="text-muted">يحدد طول الرد (100-10000)</small>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label for="mode" class="form-label">نمط المحادثة</label>
+                                                <select class="form-select" id="mode" name="mode">
+                                                    <option value="educational" {{ old('mode', 'educational') == 'educational' ? 'selected' : '' }}>تعليمي (موصى به)</option>
+                                                    <option value="casual" {{ old('mode') == 'casual' ? 'selected' : '' }}>محادثة عادية</option>
+                                                    <option value="deep_analysis" {{ old('mode') == 'deep_analysis' ? 'selected' : '' }}>تحليل عميق</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="d-flex gap-2">
                                 <button type="submit" class="btn btn-primary">
                                     <i class="fas fa-comments me-1"></i> بدء المحادثة

@@ -19,6 +19,8 @@ class AIMessage extends Model
         'cost',
         'response_time',
         'metadata',
+        'quick_action',
+        'is_bookmarked',
     ];
 
     protected $casts = [
@@ -26,6 +28,7 @@ class AIMessage extends Model
         'cost' => 'decimal:6',
         'response_time' => 'integer',
         'metadata' => 'array',
+        'is_bookmarked' => 'boolean',
     ];
 
     /**
@@ -59,5 +62,21 @@ class AIMessage extends Model
     public function getCost(): float
     {
         return $this->cost ?? 0;
+    }
+
+    /**
+     * العلاقة مع المرفقات
+     */
+    public function attachments()
+    {
+        return $this->hasMany(AIMessageAttachment::class, 'message_id');
+    }
+
+    /**
+     * التحقق من وجود مرفقات
+     */
+    public function hasAttachments(): bool
+    {
+        return $this->attachments()->count() > 0;
     }
 }

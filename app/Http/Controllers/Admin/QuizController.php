@@ -374,6 +374,57 @@ class QuizController extends Controller
     }
 
     /**
+     * ربط مجموعة من الأسئلة بالاختبار
+     */
+    public static function attachQuestionsToQuiz(int $quizId, array $questionIds): int
+    {
+        try {
+            $quiz = Quiz::findOrFail($quizId);
+            $attachedCount = 0;
+
+            // الحصول على آخر order
+            $maxOrder = $quiz->quizQuestions()->max('order') ?? 0;
+
+            foreach ($questionIds as $questionId) {
+                // التحقق من وجود السؤال
+                $question = Question::find($questionId);
+                if (!$question) {
+                    continue;
+                }
+
+                // التحقق من عدم وجود السؤال مسبقاً في الاختبار
+                if ($quiz->quizQuestions()->where('question_id', $questionId)->exists()) {
+                    continue;
+                }
+
+                // إضافة السؤال للاختبار
+                QuizQuestion::create([
+                    'quiz_id' => $quiz->id,
+                    'question_id' => $questionId,
+                    'order' => ++$maxOrder,
+                    'points' => $question->default_points,
+                    'is_required' => true,
+                ]);
+
+                $attachedCount++;
+            }
+
+            // إعادة حساب إجمالي النقاط
+            if ($attachedCount > 0) {
+                $quiz->calculateTotalPoints();
+            }
+
+            return $attachedCount;
+        } catch (\Exception $e) {
+            Log::error('Error attaching questions to quiz: ' . $e->getMessage(), [
+                'quiz_id' => $quizId,
+                'question_ids' => $questionIds,
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
      * إزالة سؤال من الاختبار
      */
     public function removeQuestion(string $id, string $questionId)

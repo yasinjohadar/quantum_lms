@@ -20,10 +20,40 @@ class StudentReportController extends Controller
     /**
      * قائمة التقارير المتاحة للطالب
      */
-    public function index()
+    public function index(Request $request)
     {
-        $templates = $this->reportBuilder->getAvailableTemplates('student');
-        return view('student.pages.reports.index', compact('templates'));
+        try {
+            $params = array_merge($request->except(['_token', '_method']), [
+                'user_id' => Auth::id(),
+                'period' => $request->get('period', 'month'),
+            ]);
+
+            // جمع البيانات مباشرة بدون template
+            $report = [
+                'data' => $this->reportBuilder->collectStudentDataDirectly($params),
+                'params' => $params,
+            ];
+
+            return view('student.pages.reports.index', compact('report'));
+        } catch (\Exception $e) {
+            \Log::error('Error loading student reports: ' . $e->getMessage());
+            return view('student.pages.reports.index', [
+                'report' => [
+                    'data' => [
+                        'student' => Auth::user(),
+                        'progress' => [],
+                        'analytics' => [],
+                        'charts' => [],
+                        'quizzes' => ['list' => [], 'statistics' => []],
+                        'assignments' => ['list' => [], 'statistics' => []],
+                        'grades' => [],
+                        'attendance' => [],
+                    ],
+                    'params' => [],
+                ],
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

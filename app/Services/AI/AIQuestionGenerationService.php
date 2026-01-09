@@ -258,9 +258,12 @@ class AIQuestionGenerationService
         DB::beginTransaction();
         try {
             foreach ($questions as $questionData) {
+                $questionType = $questionData['type'] ?? 'single_choice';
+                
+                // إنشاء السؤال
                 $question = Question::create([
                     'unit_id' => $generation->lesson?->unit_id,
-                    'type' => $questionData['type'] ?? 'single_choice',
+                    'type' => $questionType,
                     'title' => $questionData['question'] ?? '',
                     'content' => $questionData['question'] ?? '',
                     'explanation' => $questionData['explanation'] ?? '',
@@ -270,25 +273,8 @@ class AIQuestionGenerationService
                     'created_by' => $generation->user_id,
                 ]);
 
-                // إضافة الخيارات إذا كانت موجودة
-                if (isset($questionData['options']) && is_array($questionData['options'])) {
-                    $correctAnswer = $questionData['correct_answer'] ?? '';
-                    foreach ($questionData['options'] as $index => $optionText) {
-                        $isCorrect = false;
-                        if (is_array($correctAnswer)) {
-                            $isCorrect = in_array($optionText, $correctAnswer);
-                        } else {
-                            $isCorrect = trim($optionText) === trim($correctAnswer);
-                        }
-
-                        QuestionOption::create([
-                            'question_id' => $question->id,
-                            'content' => $optionText,
-                            'is_correct' => $isCorrect,
-                            'order' => $index + 1,
-                        ]);
-                    }
-                }
+                // معالجة الخيارات حسب نوع السؤال
+                $this->saveQuestionOptions($question, $questionType, $questionData);
 
                 $savedQuestions->push($question);
             }
@@ -299,6 +285,350 @@ class AIQuestionGenerationService
             DB::rollBack();
             Log::error('Error saving generated questions: ' . $e->getMessage());
             throw $e;
+        }
+    }
+
+    /**
+     * حفظ خيارات السؤال حسب نوعه
+     */
+    protected function saveQuestionOptions(Question $question, string $type, array $questionData): void
+    {
+        switch ($type) {
+            case 'single_choice':
+            case 'multiple_choice':
+                $this->saveChoiceOptions($question, $type, $questionData);
+                break;
+                
+            case 'true_false':
+                $this->saveTrueFalseOptions($question, $questionData);
+                break;
+                
+            case 'matching':
+                $this->saveMatchingOptions($question, $questionData);
+                break;
+                
+            case 'ordering':
+                $this->saveOrderingOptions($question, $questionData);
+                break;
+                
+            case 'numerical':
+                $this->saveNumericalAnswer($question, $questionData);
+                break;
+                
+            case 'fill_blanks':
+                $this->saveFillBlanksAnswer($question, $questionData);
+                break;
+                
+            case 'drag_drop':
+                $this->saveDragDropOptions($question, $questionData);
+                break;
+                
+            case 'essay':
+            case 'short_answer':
+                // لا تحتاج خيارات
+                break;
+                
+            default:
+                // Fallback: محاولة حفظ الخيارات بشكل عام
+                if (isset($questionData['options']) && is_array($questionData['options']) && count($questionData['options']) >= 2) {
+                    $this->saveChoiceOptions($question, 'single_choice', $questionData);
+                }
+                break;
+        }
+    }
+
+    /**
+     * حفظ خيارات اختيار واحد/متعدد
+     */
+    protected function saveChoiceOptions(Question $question, string $type, array $questionData): void
+    {
+        $options = $questionData['options'] ?? [];
+        $correctAnswer = $questionData['correct_answer'] ?? '';
+        
+        // التحقق من وجود خيارات كافية
+        if (count($options) < 2) {
+            Log::warning('Insufficient options for choice question', [
+                'question_id' => $question->id,
+                'type' => $type,
+                'options_count' => count($options),
+            ]);
+            return;
+        }
+        
+        // لـ multiple_choice، correct_answer يجب أن يكون array
+        if ($type === 'multiple_choice' && !is_array($correctAnswer)) {
+            $correctAnswer = [$correctAnswer];
+        }
+        
+        foreach ($options as $index => $optionText) {
+            if (empty(trim($optionText))) {
+                continue; // تخطي الخيارات الفارغة
+            }
+            
+            $isCorrect = false;
+            if (is_array($correctAnswer)) {
+                // للبحث في array (دعم multiple_choice)
+                // محاولة 1: البحث في النصوص مباشرة
+                $isCorrect = in_array(trim($optionText), array_map('trim', $correctAnswer), true);
+                // محاولة 2: البحث في الـ indices (0, 1, 2, ...)
+                if (!$isCorrect) {
+                    $isCorrect = in_array($index, $correctAnswer, true);
+                }
+                // محاولة 3: البحث في array indexed
+                if (!$isCorrect && isset($correctAnswer[$index])) {
+                    $isCorrect = trim($optionText) === trim($correctAnswer[$index]);
+                }
+            } else {
+                // للـ single_choice
+                // محاولة 1: مطابقة النص
+                $isCorrect = trim($optionText) === trim($correctAnswer);
+                // محاولة 2: دعم index-based answer (0, 1, 2, ...)
+                if (!$isCorrect && is_numeric($correctAnswer)) {
+                    $isCorrect = ($index == (int)$correctAnswer);
+                }
+            }
+            
+            QuestionOption::create([
+                'question_id' => $question->id,
+                'content' => trim($optionText),
+                'is_correct' => $isCorrect,
+                'order' => $index + 1,
+            ]);
+        }
+    }
+
+    /**
+     * حفظ خيارات صح/خطأ
+     */
+    protected function saveTrueFalseOptions(Question $question, array $questionData): void
+    {
+        $correctAnswer = $questionData['correct_answer'] ?? '';
+        $correctAnswerStr = is_array($correctAnswer) ? ($correctAnswer[0] ?? '') : $correctAnswer;
+        $correctAnswerStr = strtolower(trim($correctAnswerStr));
+        
+        // إنشاء خيارين فقط
+        $trueOption = QuestionOption::create([
+            'question_id' => $question->id,
+            'content' => 'صح',
+            'is_correct' => in_array($correctAnswerStr, ['true', 'صح', '1', 'yes', 'نعم', 'صحيح'], true),
+            'order' => 1,
+        ]);
+        
+        $falseOption = QuestionOption::create([
+            'question_id' => $question->id,
+            'content' => 'خطأ',
+            'is_correct' => in_array($correctAnswerStr, ['false', 'خطأ', '0', 'no', 'لا', 'خطأ'], true),
+            'order' => 2,
+        ]);
+    }
+
+    /**
+     * حفظ خيارات المطابقة
+     */
+    protected function saveMatchingOptions(Question $question, array $questionData): void
+    {
+        $options = $questionData['options'] ?? [];
+        $matchTargets = $questionData['match_targets'] ?? [];
+        $matches = $questionData['matches'] ?? [];
+        
+        if (count($options) < 2) {
+            Log::warning('Insufficient options for matching question', [
+                'question_id' => $question->id,
+                'options_count' => count($options),
+            ]);
+            return;
+        }
+        
+        // محاولة استخراج matches من structure مختلف
+        if (empty($matchTargets) && !empty($matches) && is_array($matches)) {
+            // Structure 1: [{'item': 'A', 'target': '1'}, ...]
+            if (isset($matches[0]) && is_array($matches[0]) && isset($matches[0]['item'])) {
+                foreach ($matches as $match) {
+                    if (isset($match['item']) && isset($match['target'])) {
+                        $itemIndex = array_search($match['item'], $options);
+                        if ($itemIndex !== false) {
+                            $matchTargets[$itemIndex] = $match['target'];
+                        }
+                    }
+                }
+            }
+            // Structure 2: {'A': '1', 'B': '2', ...}
+            elseif (isset($matches[0]) && !is_array($matches[0])) {
+                foreach ($matches as $key => $value) {
+                    $itemIndex = array_search($key, $options);
+                    if ($itemIndex !== false) {
+                        $matchTargets[$itemIndex] = $value;
+                    }
+                }
+            }
+        }
+        
+        foreach ($options as $index => $optionText) {
+            if (empty(trim($optionText))) {
+                continue;
+            }
+            
+            $matchTarget = $matchTargets[$index] ?? '';
+            
+            // إذا لم يكن match_target موجوداً، محاولة البحث في matches مرة أخرى
+            if (empty($matchTarget) && !empty($matches)) {
+                foreach ($matches as $match) {
+                    if (is_array($match)) {
+                        if ((isset($match['item']) && trim($match['item']) === trim($optionText)) ||
+                            (isset($match['left']) && trim($match['left']) === trim($optionText))) {
+                            $matchTarget = $match['target'] ?? $match['right'] ?? '';
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            QuestionOption::create([
+                'question_id' => $question->id,
+                'content' => trim($optionText),
+                'match_target' => trim($matchTarget),
+                'is_correct' => true, // جميع خيارات المطابقة صحيحة إذا تمت المطابقة بشكل صحيح
+                'order' => $index + 1,
+            ]);
+        }
+    }
+
+    /**
+     * حفظ خيارات الترتيب
+     */
+    protected function saveOrderingOptions(Question $question, array $questionData): void
+    {
+        $options = $questionData['options'] ?? [];
+        
+        if (count($options) < 2) {
+            Log::warning('Insufficient options for ordering question', [
+                'question_id' => $question->id,
+                'options_count' => count($options),
+            ]);
+            return;
+        }
+        
+        $correctOrder = $questionData['correct_order'] ?? [];
+        
+        foreach ($options as $index => $optionText) {
+            if (empty(trim($optionText))) {
+                continue;
+            }
+            
+            // تحديد الترتيب الصحيح
+            $order = $index + 1;
+            if (is_array($correctOrder)) {
+                if (isset($correctOrder[$index])) {
+                    $order = (int)$correctOrder[$index];
+                } elseif (isset($correctOrder[$optionText])) {
+                    $order = (int)$correctOrder[$optionText];
+                }
+            } elseif (is_numeric($correctOrder) && $index === 0) {
+                // إذا كان correct_order رقم واحد، استخدمه للخيار الأول
+                $order = (int)$correctOrder;
+            }
+            
+            QuestionOption::create([
+                'question_id' => $question->id,
+                'content' => trim($optionText),
+                'correct_order' => $order,
+                'is_correct' => true,
+                'order' => $index + 1,
+            ]);
+        }
+    }
+
+    /**
+     * حفظ الإجابة الرقمية
+     */
+    protected function saveNumericalAnswer(Question $question, array $questionData): void
+    {
+        $correctAnswer = $questionData['correct_answer'] ?? '';
+        
+        if (empty($correctAnswer) && !is_numeric($correctAnswer)) {
+            Log::warning('Missing correct answer for numerical question', [
+                'question_id' => $question->id,
+            ]);
+            return;
+        }
+        
+        // حفظ tolerance إذا كان موجوداً
+        if (isset($questionData['tolerance'])) {
+            $question->update(['tolerance' => (float)$questionData['tolerance']]);
+        }
+        
+        // إنشاء خيار واحد يحتوي على الإجابة الصحيحة
+        QuestionOption::create([
+            'question_id' => $question->id,
+            'content' => (string)$correctAnswer,
+            'is_correct' => true,
+            'order' => 1,
+        ]);
+    }
+
+    /**
+     * حفظ إجابات ملء الفراغات
+     */
+    protected function saveFillBlanksAnswer(Question $question, array $questionData): void
+    {
+        $blankAnswers = $questionData['blank_answers'] ?? $questionData['correct_answers'] ?? [];
+        
+        if (empty($blankAnswers)) {
+            Log::warning('Missing blank answers for fill_blanks question', [
+                'question_id' => $question->id,
+            ]);
+            return;
+        }
+        
+        // حفظ blank_answers كـ array في Question
+        if (is_array($blankAnswers)) {
+            $question->update(['blank_answers' => $blankAnswers]);
+        } elseif (is_string($blankAnswers)) {
+            // إذا كان string، محاولة تحويله إلى array
+            $question->update(['blank_answers' => explode(',', $blankAnswers)]);
+        }
+        
+        // حفظ case_sensitive إذا كان موجوداً
+        if (isset($questionData['case_sensitive'])) {
+            $question->update(['case_sensitive' => (bool)$questionData['case_sensitive']]);
+        }
+    }
+
+    /**
+     * حفظ خيارات السحب والإفلات
+     */
+    protected function saveDragDropOptions(Question $question, array $questionData): void
+    {
+        $options = $questionData['options'] ?? [];
+        $correctAnswer = $questionData['correct_answer'] ?? '';
+        
+        if (count($options) < 2) {
+            Log::warning('Insufficient options for drag_drop question', [
+                'question_id' => $question->id,
+                'options_count' => count($options),
+            ]);
+            return;
+        }
+        
+        foreach ($options as $index => $optionText) {
+            if (empty(trim($optionText))) {
+                continue;
+            }
+            
+            $isCorrect = false;
+            if (is_array($correctAnswer)) {
+                $isCorrect = in_array(trim($optionText), array_map('trim', $correctAnswer), true) ||
+                            in_array($index, $correctAnswer, true);
+            } else {
+                $isCorrect = trim($optionText) === trim($correctAnswer);
+            }
+            
+            QuestionOption::create([
+                'question_id' => $question->id,
+                'content' => trim($optionText),
+                'is_correct' => $isCorrect,
+                'order' => $index + 1,
+            ]);
         }
     }
 
@@ -314,11 +644,28 @@ class AIQuestionGenerationService
                 continue;
             }
 
+            $type = $question['type'] ?? 'single_choice';
+            $options = $question['options'] ?? [];
+            
+            // التحقق من صحة البيانات حسب نوع السؤال
+            if (!$this->validateQuestionData($type, $question)) {
+                Log::warning('Invalid question data, skipping', [
+                    'type' => $type,
+                    'question_preview' => substr($question['question'] ?? '', 0, 50),
+                ]);
+                continue;
+            }
+
             $validated[] = [
-                'type' => $question['type'] ?? 'single_choice',
+                'type' => $type,
                 'question' => $question['question'],
-                'options' => $question['options'] ?? [],
+                'options' => $options,
                 'correct_answer' => $question['correct_answer'] ?? '',
+                'match_targets' => $question['match_targets'] ?? $question['matches'] ?? [],
+                'correct_order' => $question['correct_order'] ?? [],
+                'blank_answers' => $question['blank_answers'] ?? $question['correct_answers'] ?? [],
+                'tolerance' => $question['tolerance'] ?? null,
+                'case_sensitive' => $question['case_sensitive'] ?? false,
                 'explanation' => $question['explanation'] ?? '',
                 'difficulty' => $question['difficulty'] ?? 'medium',
                 'points' => $question['points'] ?? 10,
@@ -326,6 +673,66 @@ class AIQuestionGenerationService
         }
 
         return $validated;
+    }
+
+    /**
+     * التحقق من صحة بيانات السؤال حسب نوعه
+     */
+    protected function validateQuestionData(string $type, array $questionData): bool
+    {
+        $options = $questionData['options'] ?? [];
+        
+        switch ($type) {
+            case 'single_choice':
+            case 'multiple_choice':
+            case 'drag_drop':
+                // يجب أن يكون هناك خياران على الأقل
+                if (count($options) < 2) {
+                    return false;
+                }
+                // يجب أن تكون هناك إجابة صحيحة
+                if (empty($questionData['correct_answer'])) {
+                    return false;
+                }
+                return true;
+                
+            case 'true_false':
+                // لا يحتاج options، سيتم إنشاؤها تلقائياً
+                return !empty($questionData['correct_answer']);
+                
+            case 'matching':
+                // يجب أن يكون هناك خياران على الأقل
+                if (count($options) < 2) {
+                    return false;
+                }
+                // match_targets اختياري - يمكن إنشاؤه لاحقاً
+                return true;
+                
+            case 'ordering':
+                // يجب أن يكون هناك خياران على الأقل
+                if (count($options) < 2) {
+                    return false;
+                }
+                return true;
+                
+            case 'numerical':
+                // يجب أن تكون هناك إجابة رقمية
+                $correctAnswer = $questionData['correct_answer'] ?? '';
+                return !empty($correctAnswer) && (is_numeric($correctAnswer) || is_numeric(str_replace(',', '.', $correctAnswer)));
+                
+            case 'fill_blanks':
+                // يجب أن تكون هناك blank_answers
+                $blankAnswers = $questionData['blank_answers'] ?? $questionData['correct_answers'] ?? [];
+                return !empty($blankAnswers);
+                
+            case 'essay':
+            case 'short_answer':
+                // لا يحتاج خيارات
+                return true;
+                
+            default:
+                return true; // السماح بالأنواع الأخرى
+        }
     }
 
     /**

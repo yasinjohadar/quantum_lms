@@ -448,6 +448,40 @@ class QuestionController extends Controller
     }
 
     /**
+     * رفع صورة من TinyMCE
+     */
+    public function uploadImage(Request $request)
+    {
+        try {
+            $request->validate([
+                'file' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max
+            ]);
+
+            if ($request->hasFile('file')) {
+                $image = $request->file('file');
+                $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+                $path = $image->storeAs('questions/images', $imageName, 'public');
+                
+                $url = asset('storage/' . $path);
+                
+                return response()->json([
+                    'location' => $url
+                ]);
+            }
+
+            return response()->json([
+                'error' => 'لم يتم رفع الملف'
+            ], 400);
+
+        } catch (\Exception $e) {
+            Log::error('Error uploading image for TinyMCE: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'حدث خطأ أثناء رفع الصورة: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * تصدير الأسئلة
      */
     public function export(Request $request)

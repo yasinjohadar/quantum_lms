@@ -65,15 +65,20 @@ Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student
     Route::post('/calendar/notes/{note}/pin', [\App\Http\Controllers\Student\CalendarController::class, 'pinNote'])->name('calendar.notes.pin');
     
     // المساعد التعليمي (Chatbot)
-    Route::resource('ai/chatbot', \App\Http\Controllers\Student\AIChatbotController::class)->names([
-        'index' => 'ai.chatbot.index',
-        'create' => 'ai.chatbot.create',
-        'store' => 'ai.chatbot.store',
-        'show' => 'ai.chatbot.show',
-        'destroy' => 'ai.chatbot.destroy',
-    ]);
+    Route::resource('ai/chatbot', \App\Http\Controllers\Student\AIChatbotController::class)
+        ->parameters(['chatbot' => 'conversation'])
+        ->names([
+            'index' => 'ai.chatbot.index',
+            'create' => 'ai.chatbot.create',
+            'store' => 'ai.chatbot.store',
+            'show' => 'ai.chatbot.show',
+            'destroy' => 'ai.chatbot.destroy',
+        ]);
     Route::post('ai/chatbot/{conversation}/send-message', [\App\Http\Controllers\Student\AIChatbotController::class, 'sendMessage'])->name('ai.chatbot.send-message');
     Route::get('ai/chatbot/{conversation}/history', [\App\Http\Controllers\Student\AIChatbotController::class, 'getHistory'])->name('ai.chatbot.history');
+    Route::post('ai/chatbot/{conversation}/update-context', [\App\Http\Controllers\Student\AIChatbotController::class, 'updateContext'])->name('ai.chatbot.update-context');
+    Route::post('ai/chatbot/{conversation}/rename', [\App\Http\Controllers\Student\AIChatbotController::class, 'rename'])->name('ai.chatbot.rename');
+    Route::post('ai/chatbot/{conversation}/messages/{message}/toggle-bookmark', [\App\Http\Controllers\Student\AIChatbotController::class, 'toggleBookmark'])->name('ai.chatbot.toggle-bookmark');
     Route::get('subjects/{subject}/lessons', function(\App\Models\Subject $subject) {
         $lessons = \App\Models\Lesson::whereHas('unit.section', function($q) use ($subject) {
             $q->where('subject_id', $subject->id);
