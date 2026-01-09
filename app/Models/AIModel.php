@@ -52,6 +52,8 @@ class AIModel extends Model
         'openrouter' => 'OpenRouter (موصى به - متعدد الموديلات)',
         'zai' => 'Z.ai (GLM)',
         'local' => 'Local LLM (Ollama)',
+        'manus' => 'Manus AI',
+        'deepseek' => 'DeepSeek',
         'custom' => 'Custom Provider',
     ];
 
@@ -109,6 +111,20 @@ class AIModel extends Model
             'anthropic/claude-3.5-sonnet' => '💰 Claude 3.5 Sonnet',
             'openai/gpt-4o' => '💰 GPT-4o',
             'google/gemini-2.5-pro-preview' => '💰 Gemini 2.5 Pro',
+        ],
+        'manus' => [
+            'manus-v1' => 'Manus v1',
+            'manus-chat' => 'Manus Chat',
+            // إضافة موديلات أخرى حسب الوثائق الرسمية
+        ],
+        'deepseek' => [
+            'deepseek-chat' => 'DeepSeek Chat',
+            'deepseek-coder' => 'DeepSeek Coder',
+            'deepseek-reasoner' => 'DeepSeek Reasoner',
+            'deepseek-v2' => 'DeepSeek V2',
+            'deepseek-v2.5' => 'DeepSeek V2.5',
+            'deepseek-v3' => 'DeepSeek V3',
+            // إضافة موديلات أخرى حسب الوثائق الرسمية
         ],
     ];
 

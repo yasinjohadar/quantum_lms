@@ -19,6 +19,8 @@ class AIProviderFactory
             'openrouter' => new OpenRouterProviderService($model),
             'zai' => new ZaiProviderService($model),
             'local' => new LocalLLMProviderService($model),
+            'manus' => new ManusProviderService($model),
+            'deepseek' => new DeepSeekProviderService($model),
             'custom' => new OpenRouterProviderService($model), // Custom يستخدم نفس بنية OpenAI
             default => throw new InvalidArgumentException("Unsupported provider: {$model->provider}"),
         };
