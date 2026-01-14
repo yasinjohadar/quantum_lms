@@ -10,6 +10,7 @@ use App\Models\QuizQuestion;
 use App\Models\Question;
 use App\Models\Subject;
 use App\Models\Unit;
+use App\Models\SchoolClass;
 use App\Services\ReminderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -319,6 +320,15 @@ class QuizController extends Controller
     {
         $quiz = Quiz::with(['questions.options', 'subject'])->findOrFail($id);
         
+        // جلب الصفوف والمواد للفلاتر
+        $classes = SchoolClass::with('stage')->ordered()->get();
+        $subjects = Subject::with('schoolClass')->active()->ordered()->get();
+        
+        // إذا كان هناك class_id محدد، فلتر المواد
+        if ($request->filled('class_id')) {
+            $subjects = $subjects->where('class_id', $request->input('class_id'));
+        }
+        
         // الأسئلة المتاحة للإضافة
         $availableQuestions = Question::with(['units', 'options'])
             ->active()
@@ -332,11 +342,21 @@ class QuizController extends Controller
             ->when($request->filled('search'), function ($q) use ($request) {
                 $q->search($request->search);
             })
+            ->when($request->filled('class_id'), function ($q) use ($request) {
+                $q->whereHas('units.section.subject', function ($query) use ($request) {
+                    $query->where('class_id', $request->class_id);
+                });
+            })
+            ->when($request->filled('subject_id'), function ($q) use ($request) {
+                $q->whereHas('units.section', function ($query) use ($request) {
+                    $query->where('subject_id', $request->subject_id);
+                });
+            })
             ->latest()
             ->paginate(10)
             ->withQueryString();
 
-        return view('admin.pages.quizzes.questions', compact('quiz', 'availableQuestions'));
+        return view('admin.pages.quizzes.questions', compact('quiz', 'availableQuestions', 'classes', 'subjects'));
     }
 
     /**
@@ -346,16 +366,22 @@ class QuizController extends Controller
     {
         try {
             $quiz = Quiz::findOrFail($id);
-            $question = Question::findOrFail($request->question_id);
+            $question = Question::with(['options', 'units'])->findOrFail($request->question_id);
 
             // التحقق من عدم وجود السؤال مسبقاً
             if ($quiz->questions()->where('question_id', $question->id)->exists()) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'السؤال موجود مسبقاً في الاختبار'
+                    ], 400);
+                }
                 return redirect()->back()->with('error', 'السؤال موجود مسبقاً في الاختبار');
             }
 
             $maxOrder = $quiz->quizQuestions()->max('order') ?? 0;
 
-            QuizQuestion::create([
+            $quizQuestion = QuizQuestion::create([
                 'quiz_id' => $quiz->id,
                 'question_id' => $question->id,
                 'order' => $maxOrder + 1,
@@ -364,11 +390,41 @@ class QuizController extends Controller
             ]);
 
             $quiz->calculateTotalPoints();
+            $quiz->refresh();
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم إضافة السؤال للاختبار بنجاح',
+                    'question' => [
+                        'id' => $question->id,
+                        'title' => $question->title,
+                        'type' => $question->type,
+                        'type_name' => $question->type_name,
+                        'type_color' => $question->type_color,
+                        'type_icon' => $question->type_icon,
+                        'points' => $quizQuestion->points,
+                        'order' => $quizQuestion->order,
+                    ],
+                    'statistics' => [
+                        'total_questions' => $quiz->questions->count(),
+                        'total_points' => $quiz->total_points,
+                    ]
+                ]);
+            }
 
             return redirect()->back()->with('success', 'تم إضافة السؤال للاختبار بنجاح');
 
         } catch (\Exception $e) {
             Log::error('Error adding question to quiz: ' . $e->getMessage());
+            
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ أثناء إضافة السؤال: ' . $e->getMessage()
+                ], 500);
+            }
+            
             return redirect()->back()->with('error', 'حدث خطأ أثناء إضافة السؤال');
         }
     }
@@ -427,17 +483,57 @@ class QuizController extends Controller
     /**
      * إزالة سؤال من الاختبار
      */
-    public function removeQuestion(string $id, string $questionId)
+    public function removeQuestion(Request $request, string $id, string $questionId)
     {
         try {
             $quiz = Quiz::findOrFail($id);
+            $question = Question::findOrFail($questionId);
+            
+            // الحصول على معلومات السؤال قبل الحذف
+            $quizQuestion = QuizQuestion::where('quiz_id', $quiz->id)
+                ->where('question_id', $questionId)
+                ->first();
+            
+            $points = $quizQuestion ? $quizQuestion->points : 0;
+            
             $quiz->questions()->detach($questionId);
             $quiz->calculateTotalPoints();
+            $quiz->refresh();
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم إزالة السؤال من الاختبار',
+                    'question' => [
+                        'id' => $question->id,
+                        'title' => $question->title,
+                        'type' => $question->type,
+                        'type_name' => $question->type_name,
+                        'type_color' => $question->type_color,
+                        'type_icon' => $question->type_icon,
+                        'difficulty' => $question->difficulty,
+                        'difficulty_name' => $question->difficulty_name,
+                        'default_points' => $question->default_points,
+                    ],
+                    'statistics' => [
+                        'total_questions' => $quiz->questions->count(),
+                        'total_points' => $quiz->total_points,
+                    ]
+                ]);
+            }
 
             return redirect()->back()->with('success', 'تم إزالة السؤال من الاختبار');
 
         } catch (\Exception $e) {
             Log::error('Error removing question from quiz: ' . $e->getMessage());
+            
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ أثناء إزالة السؤال: ' . $e->getMessage()
+                ], 500);
+            }
+            
             return redirect()->back()->with('error', 'حدث خطأ أثناء إزالة السؤال');
         }
     }
@@ -482,13 +578,63 @@ class QuizController extends Controller
                 ->update(['points' => $request->points]);
 
             $quiz->calculateTotalPoints();
+            $quiz->refresh();
 
+            // إرجاع JSON response إذا كان الطلب Ajax
+            if ($request->wantsJson() || $request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم تحديث درجة السؤال بنجاح',
+                    'points' => (float) $request->points,
+                    'total_points' => (float) $quiz->total_points,
+                ]);
+            }
+
+            // إرجاع redirect للطلبات العادية
             return redirect()->back()->with('success', 'تم تحديث درجة السؤال');
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->wantsJson() || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'البيانات المدخلة غير صحيحة',
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+            return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
             Log::error('Error updating question points: ' . $e->getMessage());
+            
+            if ($request->wantsJson() || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ أثناء تحديث الدرجة: ' . $e->getMessage(),
+                ], 500);
+            }
+            
             return redirect()->back()->with('error', 'حدث خطأ أثناء تحديث الدرجة');
         }
+    }
+
+    /**
+     * AJAX endpoint للحصول على المواد حسب الصف
+     */
+    public function getSubjectsByClass(Request $request)
+    {
+        $request->validate([
+            'class_id' => 'required|exists:classes,id',
+        ]);
+
+        $subjects = Subject::with('schoolClass.stage')
+            ->where('class_id', $request->input('class_id'))
+            ->active()
+            ->ordered()
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $subjects,
+        ]);
     }
 
     /**

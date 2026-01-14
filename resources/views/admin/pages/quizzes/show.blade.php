@@ -179,9 +179,9 @@
                             @foreach($quiz->questions as $index => $question)
                                 <div class="list-group-item">
                                     <div class="d-flex justify-content-between align-items-start">
-                                        <div class="d-flex align-items-start">
+                                        <div class="d-flex align-items-start flex-grow-1">
                                             <span class="badge bg-secondary me-2">{{ $index + 1 }}</span>
-                                            <div>
+                                            <div class="flex-grow-1">
                                                 <span class="badge bg-{{ $question->type_color }}-transparent text-{{ $question->type_color }} mb-1">
                                                     <i class="bi {{ $question->type_icon }} me-1"></i>
                                                     {{ $question->type_name }}
@@ -189,7 +189,19 @@
                                                 <p class="mb-0">{{ Str::limit($question->title, 100) }}</p>
                                             </div>
                                         </div>
-                                        <span class="badge bg-primary">{{ $question->pivot->points }} درجة</span>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-primary question-points-badge" 
+                                                  data-quiz-id="{{ $quiz->id }}" 
+                                                  data-question-id="{{ $question->id }}"
+                                                  id="question-points-{{ $quiz->id }}-{{ $question->id }}">
+                                                {{ $question->pivot->points }} درجة
+                                            </span>
+                                            <a href="{{ route('admin.questions.edit', $question->id) }}?quiz_id={{ $quiz->id }}" 
+                                               class="btn btn-sm btn-outline-primary" 
+                                               title="تعديل السؤال">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
                             @endforeach
@@ -416,5 +428,68 @@
 @stop
 
 @section('js')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // الاستماع إلى تحديثات الدرجات من صفحة إدارة الأسئلة
+    // استخدام BroadcastChannel للتواصل بين الصفحات
+    const channel = new BroadcastChannel('quiz-question-updates');
+    
+    channel.addEventListener('message', function(event) {
+        const { type, quizId, questionId, points, totalPoints } = event.data;
+        
+        if (type === 'points-updated' && quizId == {{ $quiz->id }}) {
+            // تحديث الدرجة في صفحة العرض
+            const badge = document.getElementById(`question-points-${quizId}-${questionId}`);
+            if (badge) {
+                badge.textContent = `${parseFloat(points).toFixed(2)} درجة`;
+                
+                // إضافة animation للتأكيد على التحديث
+                badge.style.transition = 'all 0.3s ease';
+                badge.style.transform = 'scale(1.1)';
+                badge.style.backgroundColor = '#0d6efd';
+                
+                setTimeout(() => {
+                    badge.style.transform = 'scale(1)';
+                }, 300);
+            }
+            
+            // تحديث إجمالي الدرجات إذا كان موجوداً
+            if (totalPoints !== undefined) {
+                const totalPointsElements = document.querySelectorAll('[id*="total-points"], [id*="total_points"]');
+                totalPointsElements.forEach(el => {
+                    if (el.textContent.includes('درجة') || el.textContent.includes('نقطة')) {
+                        const currentText = el.textContent;
+                        const newText = currentText.replace(/\d+\.?\d*/g, parseFloat(totalPoints).toFixed(2));
+                        el.textContent = newText;
+                    }
+                });
+            }
+        }
+    });
+    
+    // Fallback: استخدام localStorage events أيضاً
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'quiz-question-updated') {
+            try {
+                const data = JSON.parse(e.newValue);
+                if (data.quizId == {{ $quiz->id }}) {
+                    const badge = document.getElementById(`question-points-${data.quizId}-${data.questionId}`);
+                    if (badge) {
+                        badge.textContent = `${parseFloat(data.points).toFixed(2)} درجة`;
+                        
+                        badge.style.transition = 'all 0.3s ease';
+                        badge.style.transform = 'scale(1.1)';
+                        setTimeout(() => {
+                            badge.style.transform = 'scale(1)';
+                        }, 300);
+                    }
+                }
+            } catch (err) {
+                console.error('Error parsing storage event:', err);
+            }
+        }
+    });
+});
+</script>
 @stop
 

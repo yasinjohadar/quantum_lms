@@ -235,6 +235,13 @@ class QuestionController extends Controller
 
             DB::commit();
 
+            // إذا كان هناك quiz_id في الـ request، العودة إلى صفحة عرض الاختبار
+            if ($request->filled('quiz_id')) {
+                return redirect()
+                    ->route('admin.quizzes.show', $request->input('quiz_id'))
+                    ->with('success', 'تم تحديث السؤال بنجاح');
+            }
+
             return redirect()
                 ->route('admin.questions.index')
                 ->with('success', 'تم تحديث السؤال بنجاح');

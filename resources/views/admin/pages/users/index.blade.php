@@ -267,6 +267,10 @@
                                                         </div>
                                                     </td>
                                                 </tr>
+                                                {{-- Modals for each user --}}
+                                                @include('admin.pages.users.toggle_status', ['user' => $user])
+                                                @include('admin.pages.users.delete', ['user' => $user])
+                                                @include('admin.pages.users.change_password', ['user' => $user])
                                             @empty
                                                 <tr>
                                                     <td colspan="8" class="text-center text-danger fw-bold">لا توجد

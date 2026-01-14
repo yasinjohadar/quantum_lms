@@ -41,6 +41,19 @@ class ClassController extends Controller
         $classes = $classesQuery->ordered()->paginate(10);
         $stages = Stage::ordered()->get();
 
+        // إذا كان طلب Ajax، إرجاع JSON
+        if ($request->expectsJson() || $request->ajax()) {
+            $html = view('admin.pages.classes.partials.table', compact('classes'))->render();
+            $pagination = view('admin.pages.classes.partials.pagination', compact('classes'))->render();
+            
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'pagination' => $pagination,
+                'count' => $classes->total(),
+            ]);
+        }
+
         return view('admin.pages.classes.index', compact('classes', 'stages'));
     }
 

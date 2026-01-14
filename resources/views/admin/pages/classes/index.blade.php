@@ -52,18 +52,17 @@
                     <!-- Filters Card -->
                     <div class="card shadow-sm border-0 mb-3">
                         <div class="card-body">
-                            <form method="GET" action="{{ route('admin.classes.index') }}"
-                                  class="row g-3 align-items-end">
+                            <form id="classesFilterForm" class="row g-3 align-items-end">
                                 <div class="col-md-3">
                                     <label class="form-label mb-1">البحث</label>
-                                    <input type="text" name="query" class="form-control form-control-sm"
+                                    <input type="text" name="query" id="searchQuery" class="form-control form-control-sm"
                                            placeholder="بحث باسم الصف أو الوصف"
                                            value="{{ request('query') }}">
                                 </div>
 
                                 <div class="col-md-3">
                                     <label class="form-label mb-1">المرحلة</label>
-                                    <select name="stage_id" class="form-select form-select-sm">
+                                    <select name="stage_id" id="stageFilter" class="form-select form-select-sm">
                                         <option value="">كل المراحل</option>
                                         @foreach($stages as $stage)
                                             <option value="{{ $stage->id }}" {{ request('stage_id') == $stage->id ? 'selected' : '' }}>
@@ -75,7 +74,7 @@
 
                                 <div class="col-md-2">
                                     <label class="form-label mb-1">الحالة</label>
-                                    <select name="is_active" class="form-select form-select-sm">
+                                    <select name="is_active" id="statusFilter" class="form-select form-select-sm">
                                         <option value="">كل الحالات</option>
                                         <option value="1" {{ request('is_active') === '1' ? 'selected' : '' }}>نشط</option>
                                         <option value="0" {{ request('is_active') === '0' ? 'selected' : '' }}>غير نشط</option>
@@ -83,12 +82,12 @@
                                 </div>
 
                                 <div class="col-md-4">
-                                    <button type="submit" class="btn btn-primary btn-sm me-2">
+                                    <button type="button" id="searchBtn" class="btn btn-primary btn-sm me-2">
                                         <i class="fas fa-search me-1"></i> بحث
                                     </button>
-                                    <a href="{{ route('admin.classes.index') }}" class="btn btn-outline-danger btn-sm">
+                                    <button type="button" id="clearFiltersBtn" class="btn btn-outline-danger btn-sm">
                                         <i class="fas fa-times me-1"></i> مسح الفلاتر
-                                    </a>
+                                    </button>
                                 </div>
                             </form>
                         </div>
@@ -101,92 +100,37 @@
                         </div>
 
                         <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-striped align-middle table-hover table-bordered mb-0 text-center">
-                                    <thead class="table-light">
-                                    <tr>
-                                        <th style="width: 50px;">#</th>
-                                        <th style="min-width: 140px;">الصورة</th>
-                                        <th style="min-width: 180px;">اسم الصف</th>
-                                        <th style="min-width: 180px;">المرحلة</th>
-                                        <th style="min-width: 90px;">الترتيب</th>
-                                        <th style="min-width: 100px;">الحالة</th>
-                                        <th style="min-width: 160px;">تاريخ الإنشاء</th>
-                                        <th style="min-width: 200px;">العمليات</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    @forelse($classes as $class)
-                                        <tr>
-                                            <td>{{ $loop->iteration + ($classes->currentPage() - 1) * $classes->perPage() }}</td>
-                                            <td>
-                                                <div class="d-flex justify-content-center">
-                                                    <img src="{{ $class->image ? asset('storage/' . $class->image) : asset('assets/images/media/media-22.jpg') }}"
-                                                         alt="{{ $class->name }}"
-                                                         class="rounded"
-                                                         style="width: 60px; height: 60px; object-fit: cover;">
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <a href="{{ route('admin.classes.show', $class->id) }}" class="text-decoration-none fw-semibold">
-                                                    {{ $class->name }}
-                                                </a>
-                                            </td>
-                                            <td>{{ $class->stage?->name ?? '-' }}</td>
-                                            <td>{{ $class->order }}</td>
-                                            <td>
-                                                @if ($class->is_active)
-                                                    <span class="badge bg-success">نشط</span>
-                                                @else
-                                                    <span class="badge bg-danger">غير نشط</span>
-                                                @endif
-                                            </td>
-                                            <td>{{ $class->created_at?->format('Y-m-d H:i') }}</td>
-                                            <td>
-                                                <div class="d-flex gap-1 flex-wrap justify-content-center">
-                                                    <a href="{{ route('admin.classes.show', $class->id) }}"
-                                                       class="btn btn-sm btn-info text-white"
-                                                       title="عرض تفاصيل الصف">
-                                                        <i class="fas fa-eye"></i> عرض
-                                                    </a>
-                                                    <a href="{{ route('admin.classes.enrolled-students', $class->id) }}"
-                                                       class="btn btn-sm btn-primary text-white"
-                                                       title="عرض الطلاب المنضمين">
-                                                        <i class="fas fa-users"></i> الطلاب
-                                                    </a>
-                                                    <a href="{{ route('admin.classes.edit', $class->id) }}"
-                                                       class="btn btn-sm btn-warning text-white"
-                                                       title="تعديل الصف">
-                                                        <i class="fas fa-edit"></i> تعديل
-                                                    </a>
-                                                    <button type="button"
-                                                            class="btn btn-sm btn-danger"
-                                                            data-bs-toggle="modal"
-                                                            data-bs-target="#deleteClass{{ $class->id }}"
-                                                            title="حذف الصف">
-                                                        <i class="fas fa-trash-alt"></i> حذف
-                                                    </button>
-                                                </div>
-
-                                                @include('admin.pages.classes.delete', ['class' => $class])
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="8" class="text-center text-danger fw-bold">
-                                                لا توجد صفوف مسجلة حالياً
-                                            </td>
-                                        </tr>
-                                    @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            @if ($classes instanceof \Illuminate\Pagination\LengthAwarePaginator)
-                                <div class="mt-3">
-                                    {{ $classes->withQueryString()->links() }}
+                            <div id="loadingIndicator" class="text-center py-4" style="display: none;">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">جاري التحميل...</span>
                                 </div>
-                            @endif
+                                <p class="text-muted mt-2">جاري التحميل...</p>
+                            </div>
+                            <div id="classesTableContainer">
+                                <div class="table-responsive">
+                                    <table class="table table-striped align-middle table-hover table-bordered mb-0 text-center">
+                                        <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 50px;">#</th>
+                                            <th style="min-width: 140px;">الصورة</th>
+                                            <th style="min-width: 180px;">اسم الصف</th>
+                                            <th style="min-width: 180px;">المرحلة</th>
+                                            <th style="min-width: 90px;">الترتيب</th>
+                                            <th style="min-width: 100px;">الحالة</th>
+                                            <th style="min-width: 160px;">تاريخ الإنشاء</th>
+                                            <th style="min-width: 200px;">العمليات</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody id="classesTableBody">
+                                        @include('admin.pages.classes.partials.table', ['classes' => $classes])
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div id="paginationContainer" class="mt-3">
+                                    @include('admin.pages.classes.partials.pagination', ['classes' => $classes])
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -194,5 +138,158 @@
 
         </div>
     </div>
+@stop
+
+@section('js')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterForm = document.getElementById('classesFilterForm');
+    const searchQuery = document.getElementById('searchQuery');
+    const stageFilter = document.getElementById('stageFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const searchBtn = document.getElementById('searchBtn');
+    const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+    const classesTableBody = document.getElementById('classesTableBody');
+    const paginationContainer = document.getElementById('paginationContainer');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const classesTableContainer = document.getElementById('classesTableContainer');
+    
+    const csrfToken = '{{ csrf_token() }}';
+    const filterUrl = '{{ route("admin.classes.index") }}';
+    
+    let searchTimeout;
+    let currentPage = 1;
+
+    // دالة لجلب البيانات عبر Ajax
+    function fetchClasses(page = 1) {
+        currentPage = page;
+        
+        // إظهار loading indicator
+        loadingIndicator.style.display = 'block';
+        classesTableContainer.style.opacity = '0.5';
+        
+        // جمع بيانات الفلاتر
+        const formData = new FormData(filterForm);
+        formData.append('page', page);
+        
+        // إضافة headers للـ Ajax request
+        const params = new URLSearchParams();
+        for (const [key, value] of formData.entries()) {
+            if (value) {
+                params.append(key, value);
+            }
+        }
+        
+        fetch(`${filterUrl}?${params.toString()}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // تحديث الجدول
+                classesTableBody.innerHTML = data.html;
+                
+                // تحديث pagination
+                paginationContainer.innerHTML = data.pagination || '';
+                
+                // إعادة ربط event listeners للـ pagination
+                attachPaginationListeners();
+                
+                // تحديث URL بدون إعادة تحميل الصفحة
+                const newUrl = `${filterUrl}?${params.toString()}`;
+                window.history.pushState({}, '', newUrl);
+            } else {
+                showError('حدث خطأ أثناء جلب البيانات');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching classes:', error);
+            showError('حدث خطأ أثناء جلب البيانات');
+        })
+        .finally(() => {
+            // إخفاء loading indicator
+            loadingIndicator.style.display = 'none';
+            classesTableContainer.style.opacity = '1';
+        });
+    }
+
+    // دالة لإعادة ربط event listeners للـ pagination
+    function attachPaginationListeners() {
+        const paginationLinks = paginationContainer.querySelectorAll('a[href*="page"]');
+        paginationLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const url = new URL(this.href);
+                const page = url.searchParams.get('page') || 1;
+                fetchClasses(page);
+            });
+        });
+    }
+
+    // دالة لإظهار رسالة خطأ
+    function showError(message) {
+        classesTableBody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center text-danger fw-bold">
+                    ${message}
+                </td>
+            </tr>
+        `;
+        paginationContainer.innerHTML = '';
+    }
+
+    // Debounce للبحث النصي
+    searchQuery.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            fetchClasses(1);
+        }, 500);
+    });
+
+    // تحديث فوري عند تغيير المرحلة
+    stageFilter.addEventListener('change', function() {
+        fetchClasses(1);
+    });
+
+    // تحديث فوري عند تغيير الحالة
+    statusFilter.addEventListener('change', function() {
+        fetchClasses(1);
+    });
+
+    // زر البحث
+    searchBtn.addEventListener('click', function() {
+        fetchClasses(1);
+    });
+
+    // زر مسح الفلاتر
+    clearFiltersBtn.addEventListener('click', function() {
+        searchQuery.value = '';
+        stageFilter.value = '';
+        statusFilter.value = '';
+        fetchClasses(1);
+    });
+
+    // Enter في حقل البحث
+    searchQuery.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            clearTimeout(searchTimeout);
+            fetchClasses(1);
+        }
+    });
+
+    // تهيئة pagination listeners عند تحميل الصفحة
+    attachPaginationListeners();
+});
+</script>
 @stop
 

@@ -41,16 +41,32 @@ class SubjectController extends Controller
         $subjects = $subjectsQuery->ordered()->paginate(10);
         $classes = SchoolClass::with('stage')->ordered()->get();
 
+        // إذا كان طلب Ajax، إرجاع JSON
+        if ($request->expectsJson() || $request->ajax()) {
+            $html = view('admin.pages.subjects.partials.table', compact('subjects'))->render();
+            $pagination = view('admin.pages.subjects.partials.pagination', compact('subjects'))->render();
+            
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'pagination' => $pagination,
+                'count' => $subjects->total(),
+            ]);
+        }
+
         return view('admin.pages.subjects.index', compact('subjects', 'classes'));
     }
 
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request)
     {
         $classes = SchoolClass::with('stage')->ordered()->get();
-        return view('admin.pages.subjects.create', compact('classes'));
+        $selectedClassId = $request->input('class_id');
+        $selectedClass = $selectedClassId ? SchoolClass::with('stage')->find($selectedClassId) : null;
+        
+        return view('admin.pages.subjects.create', compact('classes', 'selectedClassId', 'selectedClass'));
     }
 
     /**

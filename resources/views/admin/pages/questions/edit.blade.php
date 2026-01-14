@@ -80,6 +80,9 @@
     <form action="{{ route('admin.questions.update', $question->id) }}" method="POST" enctype="multipart/form-data">
         @csrf
         @method('PUT')
+        @if(request('quiz_id'))
+            <input type="hidden" name="quiz_id" value="{{ request('quiz_id') }}">
+        @endif
         
         <div class="row">
             <div class="col-lg-8">

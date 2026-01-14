@@ -66,23 +66,40 @@
                             </div>
 
                             <div class="col-md-6">
-                                <div class="form-floating">
-                                    <select name="class_id"
-                                            class="form-select @error('class_id') is-invalid @enderror"
-                                            aria-label="الصف الدراسي" required>
-                                        <option value="">اختر الصف</option>
-                                        @foreach($classes as $class)
-                                            <option value="{{ $class->id }}"
-                                                {{ old('class_id', request('class_id')) == $class->id ? 'selected' : '' }}>
-                                                {{ $class->name }} - {{ $class->stage?->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <label>الصف الدراسي <span class="text-danger">*</span></label>
-                                    @error('class_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                                @if($selectedClassId && $selectedClass)
+                                    {{-- عرض الصف والمرحلة للقراءة فقط --}}
+                                    <div class="form-floating">
+                                        <input type="text" 
+                                               class="form-control bg-light" 
+                                               value="{{ $selectedClass->name }} - {{ $selectedClass->stage?->name }}" 
+                                               readonly 
+                                               style="cursor: not-allowed;">
+                                        <label>الصف الدراسي <span class="text-danger">*</span></label>
+                                    </div>
+                                    <input type="hidden" name="class_id" value="{{ $selectedClassId }}">
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="fas fa-info-circle me-1"></i>الصف والمرحلة محددة مسبقاً ولا يمكن تغييرها
+                                    </small>
+                                @else
+                                    {{-- عرض القائمة المنسدلة العادية --}}
+                                    <div class="form-floating">
+                                        <select name="class_id"
+                                                class="form-select @error('class_id') is-invalid @enderror"
+                                                aria-label="الصف الدراسي" required>
+                                            <option value="">اختر الصف</option>
+                                            @foreach($classes as $class)
+                                                <option value="{{ $class->id }}"
+                                                    {{ old('class_id', request('class_id')) == $class->id ? 'selected' : '' }}>
+                                                    {{ $class->name }} - {{ $class->stage?->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <label>الصف الدراسي <span class="text-danger">*</span></label>
+                                        @error('class_id')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                @endif
                             </div>
 
                             <div class="col-md-6">

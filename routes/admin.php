@@ -299,6 +299,9 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::resource('storage-disk-mappings', \App\Http\Controllers\Admin\StorageDiskMappingController::class);
 
         // الاختبارات
+        // يجب أن يكون هذا الـ route قبل Route::resource لتجنب التعارض مع quizzes/{quiz}
+        Route::get('quizzes/get-subjects-by-class', [QuizController::class, 'getSubjectsByClass'])
+            ->name('quizzes.get-subjects-by-class');
         Route::resource('quizzes', QuizController::class);
         Route::get('quizzes/{quiz}/questions', [QuizController::class, 'questions'])
             ->name('quizzes.questions');
@@ -324,6 +327,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('quizzes.get-units');
 
         // مراقبة تقدم الطلاب
+        Route::get('student-progress/get-subjects-by-class', [\App\Http\Controllers\Admin\AdminStudentProgressController::class, 'getSubjectsByClass'])
+            ->name('student-progress.get-subjects-by-class');
         Route::get('student-progress', [\App\Http\Controllers\Admin\AdminStudentProgressController::class, 'index'])
             ->name('student-progress.index');
         Route::get('student-progress/{user}', [\App\Http\Controllers\Admin\AdminStudentProgressController::class, 'showStudent'])

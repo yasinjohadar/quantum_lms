@@ -76,6 +76,20 @@ class AdminStudentProgressController extends Controller
         $subjects = Subject::active()->ordered()->get();
         $classes = SchoolClass::with('stage')->orderBy('name')->get();
 
+        // إذا كان طلب Ajax، إرجاع JSON
+        if ($request->expectsJson() || $request->ajax()) {
+            $html = view('admin.pages.student-progress.partials.table', compact('students', 'studentsStats'))->render();
+            $pagination = view('admin.pages.student-progress.partials.pagination', compact('students'))->render();
+            
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'pagination' => $pagination,
+                'count' => $students->total(),
+                'studentsStats' => $studentsStats,
+            ]);
+        }
+
         return view('admin.pages.student-progress.index', compact('students', 'studentsStats', 'subjects', 'classes'));
     }
 
@@ -140,5 +154,31 @@ class AdminStudentProgressController extends Controller
         $stats = $this->progressService->getStudentSubjectStats($userId, $subjectId);
 
         return view('admin.pages.student-progress.subject', compact('student', 'stats', 'subject'));
+    }
+
+    /**
+     * AJAX endpoint للحصول على المواد حسب الصف
+     */
+    public function getSubjectsByClass(Request $request)
+    {
+        $classId = $request->input('class_id');
+        
+        $query = Subject::with('schoolClass.stage')
+            ->active()
+            ->ordered();
+
+        if ($classId) {
+            $request->validate([
+                'class_id' => 'exists:classes,id',
+            ]);
+            $query->where('class_id', $classId);
+        }
+
+        $subjects = $query->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $subjects,
+        ]);
     }
 }

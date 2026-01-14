@@ -36,6 +36,13 @@ class EnrollmentController extends Controller
             $enrollmentsQuery->forUser($request->input('user_id'));
         }
 
+        // فلترة حسب الصف
+        if ($request->filled('class_id')) {
+            $enrollmentsQuery->whereHas('subject', function($query) use ($request) {
+                $query->where('class_id', $request->input('class_id'));
+            });
+        }
+
         // فلترة حسب المادة
         if ($request->filled('subject_id')) {
             $enrollmentsQuery->forSubject($request->input('subject_id'));
@@ -50,6 +57,13 @@ class EnrollmentController extends Controller
         
         $subjects = Subject::with('schoolClass')->active()->ordered()->get();
         
+        // إذا كان هناك class_id محدد، فلتر المواد
+        if ($request->filled('class_id')) {
+            $subjects = $subjects->where('class_id', $request->input('class_id'));
+        }
+        
+        $classes = SchoolClass::with('stage')->active()->ordered()->get();
+        
         // جلب المستخدمين (الطلاب إذا كان role موجود، وإلا جميع المستخدمين)
         try {
             $hasStudentRole = \Spatie\Permission\Models\Role::where('name', 'student')->exists();
@@ -61,9 +75,22 @@ class EnrollmentController extends Controller
         // إحصائيات طلبات الانضمام المعلقة
         $pendingCount = Enrollment::pending()->count();
 
-        return view('admin.pages.enrollments.index', compact('enrollments', 'subjects', 'users', 'pendingCount'));
+        // إذا كان طلب Ajax، إرجاع JSON
+        if ($request->expectsJson() || $request->ajax()) {
+            $html = view('admin.pages.enrollments.partials.table', compact('enrollments'))->render();
+            $pagination = view('admin.pages.enrollments.partials.pagination', compact('enrollments'))->render();
+            
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'pagination' => $pagination,
+                'count' => $enrollments->total(),
+            ]);
+        }
+
+        return view('admin.pages.enrollments.index', compact('enrollments', 'subjects', 'users', 'pendingCount', 'classes'));
     }
-    
+
     /**
      * عرض طلبات الانضمام المعلقة
      */
@@ -496,20 +523,25 @@ class EnrollmentController extends Controller
      */
     public function getSubjectsByClass(Request $request)
     {
-        $request->validate([
-            'class_id' => 'required|exists:classes,id',
-        ]);
-
-        $subjects = Subject::with('schoolClass.stage')
-            ->where('class_id', $request->input('class_id'))
+        $classId = $request->input('class_id');
+        
+        $query = Subject::with('schoolClass.stage')
             ->active()
-            ->ordered()
-            ->get();
+            ->ordered();
 
-            return response()->json([
-                'success' => true,
-                'data' => $subjects,
+        if ($classId) {
+            $request->validate([
+                'class_id' => 'exists:classes,id',
             ]);
+            $query->where('class_id', $classId);
+        }
+
+        $subjects = $query->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $subjects,
+        ]);
     }
 
     /**
