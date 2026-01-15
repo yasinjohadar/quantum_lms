@@ -77,6 +77,22 @@
                                 </select>
                             </div>
                         </div>
+
+                        {{-- عرض نوع الاختبار (للمعلومة فقط حالياً) --}}
+                        <div class="mb-3">
+                            <label class="form-label d-block">نوع الاختبار</label>
+                            @if($quiz->lesson_id)
+                                <div class="alert alert-info py-2 mb-0">
+                                    هذا الاختبار من نوع <strong>اختبار درس</strong> ومربوط بدرس معيّن داخل الوحدة.
+                                    <br>
+                                    يمكن تغيير المادة/الوحدة، لكن ارتباطه بالدرس الحالي يبقى كما هو من الكود حالياً.
+                                </div>
+                            @else
+                                <div class="alert alert-info py-2 mb-0">
+                                    هذا الاختبار من نوع <strong>اختبار عام للوحدة</strong> وغير مرتبط بدرس معيّن.
+                                </div>
+                            @endif
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">عنوان الاختبار <span class="text-danger">*</span></label>
                             <input type="text" name="title" class="form-control" 

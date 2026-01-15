@@ -10,6 +10,7 @@ use App\Models\QuizQuestion;
 use App\Models\Question;
 use App\Models\Subject;
 use App\Models\Unit;
+use App\Models\Lesson;
 use App\Models\SchoolClass;
 use App\Services\ReminderService;
 use Illuminate\Http\Request;
@@ -37,6 +38,13 @@ class QuizController extends Controller
             $query->search($request->search);
         }
 
+        // تصفية حسب الصف
+        if ($request->filled('class_id')) {
+            $query->whereHas('subject', function($q) use ($request) {
+                $q->where('class_id', $request->input('class_id'));
+            });
+        }
+
         // تصفية حسب المادة
         if ($request->filled('subject_id')) {
             $query->forSubject($request->subject_id);
@@ -54,8 +62,22 @@ class QuizController extends Controller
 
         $quizzes = $query->ordered()->paginate(15)->withQueryString();
         $subjects = Subject::with('schoolClass')->orderBy('name')->get();
+        $classes = SchoolClass::with('stage')->orderBy('name')->get();
 
-        return view('admin.pages.quizzes.index', compact('quizzes', 'subjects'));
+        // إذا كان طلب Ajax، إرجاع JSON
+        if ($request->expectsJson() || $request->ajax()) {
+            $html = view('admin.pages.quizzes.partials.table', compact('quizzes'))->render();
+            $pagination = view('admin.pages.quizzes.partials.pagination', compact('quizzes'))->render();
+            
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'pagination' => $pagination,
+                'count' => $quizzes->total(),
+            ]);
+        }
+
+        return view('admin.pages.quizzes.index', compact('quizzes', 'subjects', 'classes'));
     }
 
     /**
@@ -68,12 +90,34 @@ class QuizController extends Controller
         
         $selectedSubjectId = $request->get('subject_id');
         $selectedUnitId = $request->get('unit_id');
+        $selectedLessonId = $request->get('lesson_id');
         
         $selectedSubject = null;
         $selectedUnit = null;
         $selectedClass = null;
+        $selectedLesson = null;
         $isFromSubjectOrUnit = false;
+        $isFromLesson = false;
         
+        // في حال تم تمرير درس، نحمّل الدرس والوحدة والمادة المرتبطة به
+        if ($selectedLessonId) {
+            $selectedLesson = Lesson::with('unit.section.subject.schoolClass')->find($selectedLessonId);
+            if ($selectedLesson && $selectedLesson->unit && $selectedLesson->unit->section) {
+                $selectedUnit = $selectedLesson->unit;
+                $selectedSubject = $selectedUnit->section->subject;
+                $selectedClass = $selectedSubject?->schoolClass;
+                $selectedSubjectId = $selectedSubject?->id;
+                $selectedUnitId = $selectedUnit?->id;
+                $isFromSubjectOrUnit = true;
+                $isFromLesson = true;
+
+                // تحميل وحدات المادة المرتبطة بالدرس (للاستمرارية إن احتجنا)
+                $units = Unit::whereHas('section', function ($q) use ($selectedSubjectId) {
+                    $q->where('subject_id', $selectedSubjectId);
+                })->orderBy('title')->get();
+            }
+        }
+
         if ($selectedSubjectId) {
             $selectedSubject = Subject::with('schoolClass')->find($selectedSubjectId);
             if ($selectedSubject) {
@@ -110,10 +154,13 @@ class QuizController extends Controller
             'units', 
             'selectedSubjectId', 
             'selectedUnitId',
+            'selectedLessonId',
             'selectedSubject',
             'selectedUnit',
             'selectedClass',
-            'isFromSubjectOrUnit'
+            'selectedLesson',
+            'isFromSubjectOrUnit',
+            'isFromLesson'
         ));
     }
 
@@ -144,6 +191,11 @@ class QuizController extends Controller
             $data['prevent_copy_paste'] = $request->has('prevent_copy_paste');
             $data['fullscreen_required'] = $request->has('fullscreen_required');
             $data['created_by'] = auth()->id();
+
+            // نوع الاختبار والتبعية
+            $data['lesson_id'] = $request->input('lesson_id');
+            // إن لم يتم تمرير scope نعتبره اختبار وحدة
+            $data['scope'] = $request->input('scope', $data['lesson_id'] ? 'lesson' : 'unit');
 
             // رفع الصورة
             if ($request->hasFile('image')) {
@@ -240,6 +292,11 @@ class QuizController extends Controller
             $data['require_webcam'] = $request->has('require_webcam');
             $data['prevent_copy_paste'] = $request->has('prevent_copy_paste');
             $data['fullscreen_required'] = $request->has('fullscreen_required');
+
+            // الحفاظ على نوع التبعية (scope) وربط الدرس كما هو حالياً
+            // (يمكن توسيع ذلك لاحقاً إذا أردنا تغيير النوع من شاشة التعديل)
+            $data['lesson_id'] = $quiz->lesson_id;
+            $data['scope'] = $quiz->scope ?? ($quiz->lesson_id ? 'lesson' : 'unit');
 
             // رفع صورة جديدة
             if ($request->hasFile('image')) {

@@ -315,8 +315,9 @@
                                                                                                 title="إضافة درس">
                                                                                             <i class="bi bi-play-circle me-1"></i> درس جديد
                                                                                         </button>
-                                                                                        <a href="{{ route('admin.quizzes.create', ['subject_id' => $subject->id, 'unit_id' => $unit->id]) }}" class="btn btn-sm btn-info" title="إضافة اختبار">
-                                                                                            <i class="bi bi-clipboard-check me-1"></i> اختبار
+                                                                                        {{-- اختبار عام للوحدة --}}
+                                                                                        <a href="{{ route('admin.quizzes.create', ['subject_id' => $subject->id, 'unit_id' => $unit->id, 'scope' => 'unit']) }}" class="btn btn-sm btn-info" title="إضافة اختبار للوحدة">
+                                                                                            <i class="bi bi-clipboard-check me-1"></i> اختبار الوحدة
                                                                                         </a>
                                                                                         <div class="btn-group">
                                                                                             <button type="button" class="btn btn-sm btn-purple dropdown-toggle" 
@@ -427,17 +428,17 @@
                                                                                 </div>
                                                                                 @endif
 
-                                                                                {{-- الاختبارات المرتبطة بالوحدة --}}
-                                                                                @if($unit->quizzes && $unit->quizzes->count() > 0)
+                                                                                {{-- الاختبارات المرتبطة بالوحدة (عامة) --}}
+                                                                                @if($unit->unitQuizzes && $unit->unitQuizzes->count() > 0)
                                                                                 <div class="unit-quizzes mb-3">
                                                                                     <div class="d-flex align-items-center justify-content-between mb-2">
                                                                                         <h6 class="mb-0 text-info fw-semibold small">
                                                                                             <i class="bi bi-clipboard-check me-1"></i>
-                                                                                            اختبارات الوحدة ({{ $unit->quizzes->count() }})
+                                                                                            اختبارات الوحدة ({{ $unit->unitQuizzes->count() }})
                                                                                         </h6>
                                                                                     </div>
                                                                                     <div class="list-group list-group-flush">
-                                                                                        @foreach($unit->quizzes as $quiz)
+                                                                                        @foreach($unit->unitQuizzes as $quiz)
                                                                                         <div class="list-group-item d-flex align-items-center justify-content-between px-2 py-2 bg-info-transparent rounded mb-1">
                                                                                             <div class="d-flex align-items-center flex-grow-1">
                                                                                                 <div class="bg-info rounded-circle d-flex align-items-center justify-content-center me-2" style="width:32px;height:32px;">
@@ -491,7 +492,8 @@
                                                                                     @else
                                                                                         <div class="list-group list-group-flush">
                                                                                             @foreach($unit->lessons as $lesson)
-                                                                                                <div class="list-group-item d-flex align-items-center justify-content-between px-0 py-2">
+                                                                                                <div class="list-group-item d-flex flex-column px-0 py-2">
+                                                                                                    <div class="d-flex align-items-center justify-content-between">
                                                                                                     <div class="d-flex align-items-center">
                                                                                                         <div class="me-3 position-relative">
                                                                                                             @if($lesson->thumbnail)
@@ -534,32 +536,39 @@
                                                                                                             </div>
                                                                                                         </div>
                                                                                                     </div>
-                                                                                                    <div class="d-flex align-items-center gap-1">
-                                                                                                        <a href="{{ route('admin.lessons.show', $lesson->id) }}" 
-                                                                                                           class="btn btn-sm btn-icon btn-success-transparent" title="مشاهدة">
-                                                                                                            <i class="bi bi-play-fill"></i>
+                                                                                                    <div class="d-flex align-items-center justify-content-between mt-2">
+                                                                                                        <div class="d-flex align-items-center gap-1">
+                                                                                                            <a href="{{ route('admin.lessons.show', $lesson->id) }}" 
+                                                                                                               class="btn btn-sm btn-icon btn-success-transparent" title="مشاهدة">
+                                                                                                                <i class="bi bi-play-fill"></i>
+                                                                                                            </a>
+                                                                                                            <button type="button"
+                                                                                                                    class="btn btn-sm btn-icon btn-info-transparent"
+                                                                                                                    data-bs-toggle="modal"
+                                                                                                                    data-bs-target="#addLessonAttachment{{ $lesson->id }}"
+                                                                                                                    title="إضافة مرفقات">
+                                                                                                                <i class="bi bi-paperclip"></i>
+                                                                                                            </button>
+                                                                                                            <button type="button"
+                                                                                                                    class="btn btn-sm btn-icon btn-primary-transparent"
+                                                                                                                    data-bs-toggle="modal"
+                                                                                                                    data-bs-target="#editLesson{{ $lesson->id }}"
+                                                                                                                    title="تعديل">
+                                                                                                                <i class="bi bi-pencil"></i>
+                                                                                                            </button>
+                                                                                                            <button type="button"
+                                                                                                                    class="btn btn-sm btn-icon btn-danger-transparent"
+                                                                                                                    data-bs-toggle="modal"
+                                                                                                                    data-bs-target="#deleteLesson{{ $lesson->id }}"
+                                                                                                                    title="حذف">
+                                                                                                                <i class="bi bi-trash"></i>
+                                                                                                            </button>
+                                                                                                        </div>
+                                                                                                        {{-- زر إنشاء اختبار لهذا الدرس --}}
+                                                                                                        <a href="{{ route('admin.quizzes.create', ['subject_id' => $subject->id, 'unit_id' => $unit->id, 'lesson_id' => $lesson->id, 'scope' => 'lesson']) }}" 
+                                                                                                           class="btn btn-sm btn-outline-info" title="اختبار لهذا الدرس">
+                                                                                                            <i class="bi bi-clipboard-check me-1"></i> اختبار الدرس
                                                                                                         </a>
-                                                                                                        <button type="button"
-                                                                                                                class="btn btn-sm btn-icon btn-info-transparent"
-                                                                                                                data-bs-toggle="modal"
-                                                                                                                data-bs-target="#addLessonAttachment{{ $lesson->id }}"
-                                                                                                                title="إضافة مرفقات">
-                                                                                                            <i class="bi bi-paperclip"></i>
-                                                                                                        </button>
-                                                                                                        <button type="button"
-                                                                                                                class="btn btn-sm btn-icon btn-primary-transparent"
-                                                                                                                data-bs-toggle="modal"
-                                                                                                                data-bs-target="#editLesson{{ $lesson->id }}"
-                                                                                                                title="تعديل">
-                                                                                                            <i class="bi bi-pencil"></i>
-                                                                                                        </button>
-                                                                                                        <button type="button"
-                                                                                                                class="btn btn-sm btn-icon btn-danger-transparent"
-                                                                                                                data-bs-toggle="modal"
-                                                                                                                data-bs-target="#deleteLesson{{ $lesson->id }}"
-                                                                                                                title="حذف">
-                                                                                                            <i class="bi bi-trash"></i>
-                                                                                                        </button>
                                                                                                     </div>
                                                                                                 </div>
                                                                                             @endforeach

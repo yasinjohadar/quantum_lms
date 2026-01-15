@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Lesson extends Model
 {
@@ -60,6 +61,15 @@ class Lesson extends Model
     public function attachments()
     {
         return $this->hasMany(LessonAttachment::class)->orderBy('order');
+    }
+
+    /**
+     * العلاقة مع الاختبارات المرتبطة بهذا الدرس.
+     * هذه الاختبارات هي من نوع \"اختبار الدرس\" وليست الاختبارات العامة للوحدة.
+     */
+    public function quizzes(): HasMany
+    {
+        return $this->hasMany(Quiz::class, 'lesson_id')->orderBy('order');
     }
 
     /**

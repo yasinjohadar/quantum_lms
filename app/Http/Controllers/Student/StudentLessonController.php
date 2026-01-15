@@ -110,7 +110,17 @@ class StudentLessonController extends Controller
                     $query->where('is_active', true)
                           ->orderBy('order');
                 },
-                'units.quizzes' => function($query) {
+                // اختبارات عامة للوحدة
+                'units.unitQuizzes' => function($query) {
+                    $query->where('is_published', true)
+                          ->withCount('questions')
+                          ->with(['attempts' => function($q) {
+                              $q->where('user_id', Auth::id());
+                          }])
+                          ->orderBy('order');
+                },
+                // تحميل اختبارات الدرس المنشورة لكل درس
+                'units.lessons.quizzes' => function($query) {
                     $query->where('is_published', true)
                           ->withCount('questions')
                           ->with(['attempts' => function($q) {
@@ -243,6 +253,36 @@ class StudentLessonController extends Controller
             abort(403, 'ليس لديك صلاحية للوصول إلى هذا الدرس. يجب أن تكون مسجلاً في المادة.');
         }
         
+        // تحميل جميع الأقسام والوحدات والدروس والاختبارات (للعرض في الأكورديون)
+        $sections = $subject->sections()
+            ->with([
+                'units.lessons' => function($query) {
+                    $query->where('is_active', true)
+                          ->orderBy('order');
+                },
+                // اختبارات عامة للوحدة
+                'units.unitQuizzes' => function($query) {
+                    $query->where('is_published', true)
+                          ->withCount('questions')
+                          ->with(['attempts' => function($q) {
+                              $q->where('user_id', Auth::id());
+                          }])
+                          ->orderBy('order');
+                },
+                // تحميل اختبارات الدرس المنشورة لكل درس
+                'units.lessons.quizzes' => function($query) {
+                    $query->where('is_published', true)
+                          ->withCount('questions')
+                          ->with(['attempts' => function($q) {
+                              $q->where('user_id', Auth::id());
+                          }])
+                          ->orderBy('order');
+                }
+            ])
+            ->where('is_active', true)
+            ->orderBy('order')
+            ->get();
+        
         // الحصول على الدروس الأخرى في نفس الوحدة
         $unitLessons = $lesson->unit->lessons()
             ->where('is_active', true)
@@ -257,9 +297,20 @@ class StudentLessonController extends Controller
         $previousLesson = $currentIndex > 0 ? $unitLessons[$currentIndex - 1] : null;
         $nextLesson = $currentIndex < $unitLessons->count() - 1 ? $unitLessons[$currentIndex + 1] : null;
         
-        // الحصول على الاختبارات المرتبطة بنفس الوحدة
-        $quizzes = Quiz::where('unit_id', $lesson->unit_id)
+        // اختبارات الدرس الحالي فقط
+        $lessonQuizzes = Quiz::where('lesson_id', $lesson->id)
+            ->where('is_active', true)
+            ->where('is_published', true)
+            ->with(['questions' => function($query) {
+                $query->orderBy('quiz_questions.order');
+            }])
+            ->orderBy('order')
+            ->get();
+
+        // اختبارات الوحدة العامة (غير مرتبطة بدرس محدد)
+        $unitQuizzes = Quiz::where('unit_id', $lesson->unit_id)
             ->where('subject_id', $subject->id)
+            ->whereNull('lesson_id') // اختبارات الوحدة فقط
             ->where('is_active', true)
             ->where('is_published', true)
             ->with(['questions' => function($query) {
@@ -268,9 +319,10 @@ class StudentLessonController extends Controller
             ->orderBy('order')
             ->get();
         
-        // الحصول على IDs الأسئلة المرتبطة باختبارات
+        // دمج جميع الاختبارات للحصول على IDs الأسئلة
+        $allQuizzes = $lessonQuizzes->merge($unitQuizzes);
         $quizQuestionIds = [];
-        foreach ($quizzes as $quiz) {
+        foreach ($allQuizzes as $quiz) {
             foreach ($quiz->questions as $question) {
                 $quizQuestionIds[] = $question->id;
             }
@@ -300,9 +352,9 @@ class StudentLessonController extends Controller
             ->get()
             ->keyBy('question_id');
         
-        // الحصول على محاولات الطالب للاختبارات
+        // الحصول على محاولات الطالب للاختبارات (كلا النوعين)
         $quizAttempts = \App\Models\QuizAttempt::where('user_id', $user->id)
-            ->whereIn('quiz_id', $quizzes->pluck('id'))
+            ->whereIn('quiz_id', $allQuizzes->pluck('id'))
             ->with('answers')
             ->get()
             ->keyBy('quiz_id');
@@ -334,8 +386,10 @@ class StudentLessonController extends Controller
             'previousLesson',
             'nextLesson',
             'subject',
+            'sections',
             'videoTypes',
-            'quizzes',
+            'lessonQuizzes',
+            'unitQuizzes',
             'questions',
             'questionTypes',
             'questionTypeIcons',

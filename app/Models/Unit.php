@@ -43,11 +43,32 @@ class Unit extends Model
     }
 
     /**
-     * العلاقة مع الاختبارات.
+     * العلاقة مع جميع الاختبارات المرتبطة بهذه الوحدة (قد تكون عامة أو تابعة لدروس).
      */
     public function quizzes()
     {
         return $this->hasMany(Quiz::class)->orderBy('order');
+    }
+
+    /**
+     * اختبارات عامة للوحدة (لا تتبع درساً محدداً).
+     */
+    public function unitQuizzes()
+    {
+        return $this->hasMany(Quiz::class)
+            ->whereNull('lesson_id')
+            ->orderBy('order');
+    }
+
+    /**
+     * اختبارات تابعة لدروس هذه الوحدة (لكل درس اختبار/اختبارات خاصة).
+     * مفيدة إذا احتجنا إحصائيات على مستوى الوحدة لكل اختبارات الدروس.
+     */
+    public function lessonQuizzes()
+    {
+        return $this->hasMany(Quiz::class)
+            ->whereNotNull('lesson_id')
+            ->orderBy('order');
     }
 
     /**

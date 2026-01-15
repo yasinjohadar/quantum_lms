@@ -104,13 +104,15 @@
                                                         @if($unit->lessons->count() > 0)
                                                             <div class="list-group">
                                                                 @foreach($unit->lessons as $lesson)
-                                                                    <a href="{{ route('student.lessons.show', $lesson->id) }}" class="list-group-item list-group-item-action">
+                                                                    <div class="list-group-item">
                                                                         <div class="d-flex justify-content-between align-items-center">
                                                                             <div>
-                                                                                <h6 class="mb-1">
-                                                                                    <i class="bi bi-play-circle me-2 text-primary"></i>
-                                                                                    {{ $lesson->title }}
-                                                                                </h6>
+                                                                                <a href="{{ route('student.lessons.show', $lesson->id) }}" class="text-decoration-none text-reset">
+                                                                                    <h6 class="mb-1">
+                                                                                        <i class="bi bi-play-circle me-2 text-primary"></i>
+                                                                                        {{ $lesson->title }}
+                                                                                    </h6>
+                                                                                </a>
                                                                                 @if($lesson->description)
                                                                                     <p class="text-muted mb-0 small">{{ \Illuminate\Support\Str::limit($lesson->description, 80) }}</p>
                                                                                 @endif
@@ -128,7 +130,59 @@
                                                                             </div>
                                                                             <i class="bi bi-chevron-left"></i>
                                                                         </div>
-                                                                    </a>
+
+                                                                        {{-- اختبارات هذا الدرس --}}
+                                                                        @if(isset($lesson->quizzes) && $lesson->quizzes->count() > 0)
+                                                                            <div class="mt-3 ms-4">
+                                                                                <h6 class="text-primary mb-2 small">
+                                                                                    <i class="bi bi-clipboard-check me-1"></i>
+                                                                                    اختبارات هذا الدرس
+                                                                                </h6>
+                                                                                <div class="list-group list-group-flush">
+                                                                                    @foreach($lesson->quizzes as $quiz)
+                                                                                        @php
+                                                                                            $userAttempt = $quiz->attempts->where('user_id', auth()->id())->sortByDesc('created_at')->first();
+                                                                                        @endphp
+                                                                                        <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center bg-primary-transparent">
+                                                                                            <div>
+                                                                                                <h6 class="mb-1 small">
+                                                                                                    {{ $quiz->title }}
+                                                                                                </h6>
+                                                                                                <div class="d-flex flex-wrap gap-2">
+                                                                                                    @if($quiz->duration_minutes)
+                                                                                                        <span class="badge bg-secondary">
+                                                                                                            <i class="bi bi-clock me-1"></i>
+                                                                                                            {{ $quiz->duration_minutes }} دقيقة
+                                                                                                        </span>
+                                                                                                    @endif
+                                                                                                    <span class="badge bg-info text-dark">
+                                                                                                        <i class="bi bi-question-circle me-1"></i>
+                                                                                                        {{ $quiz->questions_count ?? $quiz->questions->count() }} سؤال
+                                                                                                    </span>
+                                                                                                    @if($userAttempt)
+                                                                                                        @if($userAttempt->status === 'completed' || $userAttempt->status === 'graded')
+                                                                                                            <span class="badge bg-success">
+                                                                                                                <i class="bi bi-check-circle me-1"></i>
+                                                                                                                تم الاختبار
+                                                                                                            </span>
+                                                                                                        @elseif($userAttempt->status === 'in_progress')
+                                                                                                            <span class="badge bg-warning">
+                                                                                                                <i class="bi bi-hourglass-split me-1"></i>
+                                                                                                                قيد الاختبار
+                                                                                                            </span>
+                                                                                                        @endif
+                                                                                                    @endif
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <a href="{{ route('student.quizzes.start', $quiz->id) }}" class="btn btn-sm btn-primary">
+                                                                                                بدء الاختبار
+                                                                                            </a>
+                                                                                        </div>
+                                                                                    @endforeach
+                                                                                </div>
+                                                                            </div>
+                                                                        @endif
+                                                                    </div>
                                                                 @endforeach
                                                             </div>
                                                         @else
@@ -136,14 +190,14 @@
                                                         @endif
                                                         
                                                         <!-- اختبارات الوحدة -->
-                                                        @if(isset($unit->quizzes) && $unit->quizzes->count() > 0)
+                                                        @if(isset($unit->unitQuizzes) && $unit->unitQuizzes->count() > 0)
                                                             <div class="mt-4">
                                                                 <h6 class="text-info mb-3">
                                                                     <i class="bi bi-clipboard-check me-2"></i>
                                                                     اختبارات الوحدة
                                                                 </h6>
                                                                 <div class="list-group">
-                                                                    @foreach($unit->quizzes->where('is_published', true) as $quiz)
+                                                                    @foreach($unit->unitQuizzes->where('is_published', true) as $quiz)
                                                                         @php
                                                                             $userAttempt = $quiz->attempts->where('user_id', auth()->id())->sortByDesc('created_at')->first();
                                                                         @endphp

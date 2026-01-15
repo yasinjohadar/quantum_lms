@@ -37,6 +37,8 @@ class Quiz extends Model
     protected $fillable = [
         'subject_id',
         'unit_id',
+        'lesson_id',
+        'scope',
         'title',
         'description',
         'instructions',
@@ -115,6 +117,11 @@ class Quiz extends Model
         return $this->belongsTo(Unit::class);
     }
 
+    public function lesson(): BelongsTo
+    {
+        return $this->belongsTo(Lesson::class);
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -171,6 +178,23 @@ class Quiz extends Model
     public function scopeForUnit($query, $unitId)
     {
         return $query->where('unit_id', $unitId);
+    }
+
+    /**
+     * اختبارات مرتبطة مباشرةً بدروس (وليس بالوحدة فقط)
+     */
+    public function scopeLessonScoped($query)
+    {
+        // نستخدم lesson_id لأنه الأكثر وضوحاً، حتى لو لم يتم استخدام scope دائماً
+        return $query->whereNotNull('lesson_id');
+    }
+
+    /**
+     * اختبارات عامة للوحدة (بدون درس محدد)
+     */
+    public function scopeUnitScoped($query)
+    {
+        return $query->whereNull('lesson_id');
     }
 
     public function scopeOrdered($query)

@@ -107,6 +107,49 @@
                                 @endif
                             </div>
                         </div>
+
+                        {{-- نوع الاختبار (وحدة / درس) --}}
+                        <div class="mb-3">
+                            <label class="form-label d-block">نوع الاختبار</label>
+
+                            @if(isset($selectedLesson) && $selectedLesson)
+                                {{-- إذا تم فتح النموذج من درس معين --}}
+                                <div class="alert alert-info py-2 mb-2">
+                                    هذا الاختبار سيكون <strong>مرتبطاً بالدرس التالي</strong> ولن يظهر إلا مع هذا الدرس:
+                                    <div class="mt-1 small">
+                                        <span class="d-block">
+                                            المادة: <strong>{{ $selectedSubject->name ?? '-' }}</strong>
+                                        </span>
+                                        <span class="d-block">
+                                            الوحدة: <strong>{{ $selectedUnit->title ?? '-' }}</strong>
+                                        </span>
+                                        <span class="d-block">
+                                            الدرس: <strong>{{ $selectedLesson->title }}</strong>
+                                        </span>
+                                    </div>
+                                </div>
+                                <input type="hidden" name="lesson_id" value="{{ $selectedLesson->id }}">
+                                <input type="hidden" name="scope" value="lesson">
+                            @elseif($isFromSubjectOrUnit && $selectedUnit)
+                                {{-- إذا تم فتح النموذج من وحدة --}}
+                                <div class="alert alert-info py-2 mb-2">
+                                    هذا الاختبار سيكون <strong>اختباراً عاماً للوحدة</strong> ولن يرتبط بدرس واحد فقط.
+                                </div>
+                                <input type="hidden" name="scope" value="unit">
+                            @else
+                                {{-- حالة عامة: من صفحة قائمة الاختبارات --}}
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="scope" id="scopeUnit" value="unit" checked>
+                                    <label class="form-check-label" for="scopeUnit">اختبار عام للوحدة</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="scope" id="scopeLesson" value="lesson" disabled>
+                                    <label class="form-check-label text-muted" for="scopeLesson">
+                                        اختبار مرتبط بدرس (متاح عند إنشاء الاختبار من شاشة الدرس)
+                                    </label>
+                                </div>
+                            @endif
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">عنوان الاختبار <span class="text-danger">*</span></label>
                             <input type="text" name="title" class="form-control" 
