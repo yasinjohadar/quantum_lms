@@ -98,6 +98,24 @@ Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student
     Route::post('/enrollments/request-class/{class}', [StudentEnrollmentController::class, 'requestClassEnrollment'])->name('enrollments.request-class');
     Route::delete('/enrollments/cancel/{subject}', [StudentEnrollmentController::class, 'cancelRequest'])->name('enrollments.cancel');
     
+    // المشتريات
+    Route::prefix('purchases')->name('purchases.')->group(function() {
+        Route::get('class/{class}', [\App\Http\Controllers\Student\PurchaseController::class, 'showClass'])->name('class.show');
+        Route::get('subject/{subject}', [\App\Http\Controllers\Student\PurchaseController::class, 'showSubject'])->name('subject.show');
+        Route::post('initiate', [\App\Http\Controllers\Student\PurchaseController::class, 'initiatePurchase'])->name('initiate');
+        Route::get('payment/{purchase}', [\App\Http\Controllers\Student\PurchaseController::class, 'showPayment'])->name('payment');
+        Route::post('payment/{purchase}', [\App\Http\Controllers\Student\PurchaseController::class, 'processPayment'])->name('process-payment');
+        Route::post('payment/{payment}/upload-receipt', [\App\Http\Controllers\Student\PurchaseController::class, 'uploadReceipt'])->name('upload-receipt');
+        Route::get('my-purchases', [\App\Http\Controllers\Student\PurchaseController::class, 'myPurchases'])->name('my-purchases');
+    });
+    
+    // المحفظة الإلكترونية
+    Route::prefix('wallet')->name('wallet.')->group(function() {
+        Route::get('/', [\App\Http\Controllers\Student\WalletController::class, 'index'])->name('index');
+        Route::post('deposit', [\App\Http\Controllers\Student\WalletController::class, 'deposit'])->name('deposit');
+        Route::get('transactions', [\App\Http\Controllers\Student\WalletController::class, 'transactions'])->name('transactions');
+    });
+    
     // الأسئلة المنفصلة
     Route::get('/questions/start', [StudentQuestionController::class, 'startAttempt'])->name('questions.start');
     Route::get('/questions/{question}/start', [StudentQuestionController::class, 'startAttempt'])->name('questions.start.specific');

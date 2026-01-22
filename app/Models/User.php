@@ -335,6 +335,22 @@ class User extends Authenticatable
     }
 
     /**
+     * العلاقة مع المشتريات
+     */
+    public function purchases()
+    {
+        return $this->hasMany(Purchase::class);
+    }
+
+    /**
+     * العلاقة مع المحفظة الإلكترونية
+     */
+    public function wallet()
+    {
+        return $this->hasOne(Wallet::class);
+    }
+
+    /**
      * Send the password reset notification.
      *
      * @param  string  $token

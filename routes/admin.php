@@ -668,4 +668,23 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             Route::get('/broadcast/students-count', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'getStudentsCount'])->name('broadcast.students-count');
             Route::get('/{message}', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'show'])->name('show');
         });
+
+        // المدفوعات
+        Route::prefix('payments')->name('payments.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\PaymentController::class, 'index'])->name('index');
+            Route::get('{payment}', [\App\Http\Controllers\Admin\PaymentController::class, 'show'])->name('show');
+            Route::post('{payment}/review', [\App\Http\Controllers\Admin\PaymentController::class, 'reviewPayment'])->name('review');
+            Route::post('{payment}/approve', [\App\Http\Controllers\Admin\PaymentController::class, 'approvePayment'])->name('approve');
+            Route::post('{payment}/reject', [\App\Http\Controllers\Admin\PaymentController::class, 'rejectPayment'])->name('reject');
+            Route::get('{payment}/download-receipt', [\App\Http\Controllers\Admin\PaymentController::class, 'downloadReceipt'])->name('download-receipt');
+        });
+
+        // وسائل الدفع المخصصة
+        Route::resource('custom-payment-methods', \App\Http\Controllers\Admin\CustomPaymentMethodController::class);
+
+        // العملات
+        Route::resource('currencies', \App\Http\Controllers\Admin\CurrencyController::class);
+
+        // أسعار الصرف
+        Route::resource('exchange-rates', \App\Http\Controllers\Admin\ExchangeRateController::class);
     });

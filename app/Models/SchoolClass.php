@@ -32,6 +32,9 @@ class SchoolClass extends Model
         'is_active',
         'reviews_enabled',
         'reviews_require_approval',
+        'price',
+        'is_free',
+        'default_currency_id',
     ];
 
     /**
@@ -45,6 +48,8 @@ class SchoolClass extends Model
         'stage_id' => 'integer',
         'reviews_enabled' => 'boolean',
         'reviews_require_approval' => 'boolean',
+        'price' => 'decimal:2',
+        'is_free' => 'boolean',
     ];
 
     protected static function boot()
@@ -149,6 +154,51 @@ class SchoolClass extends Model
     public function approvedReviews()
     {
         return $this->morphMany(Review::class, 'reviewable')->approved();
+    }
+
+    /**
+     * العلاقة مع المشتريات
+     */
+    public function purchases()
+    {
+        return $this->morphMany(Purchase::class, 'purchasable');
+    }
+
+    /**
+     * العلاقة مع الأسعار
+     */
+    public function prices()
+    {
+        return $this->morphMany(Price::class, 'pricable');
+    }
+
+    /**
+     * العلاقة مع العملة الافتراضية
+     */
+    public function defaultCurrency()
+    {
+        return $this->belongsTo(Currency::class, 'default_currency_id');
+    }
+
+    /**
+     * الحصول على السعر بعملة معينة
+     */
+    public function getPrice($currencyId = null)
+    {
+        if (!$currencyId) {
+            $currencyId = $this->default_currency_id ?? Currency::getDefault()->id;
+        }
+
+        $price = $this->prices()->active()->forCurrency($currencyId)->first();
+        return $price ? $price->price : 0;
+    }
+
+    /**
+     * الحصول على جميع الأسعار النشطة
+     */
+    public function getActivePrices()
+    {
+        return $this->prices()->active()->with('currency')->get();
     }
 }
 

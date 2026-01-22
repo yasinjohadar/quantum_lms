@@ -1048,9 +1048,7 @@
         window.reportsChartsInitialized = true;
         init();
     }
-})();
-
-function exportToPDF() {
+})();function exportToPDF() {
     window.print();
 }
 </script>

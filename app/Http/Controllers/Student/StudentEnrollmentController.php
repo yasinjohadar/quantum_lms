@@ -8,12 +8,20 @@ use App\Models\Subject;
 use App\Models\Enrollment;
 use App\Models\ClassEnrollment;
 use App\Models\Stage;
+use App\Models\Purchase;
+use App\Services\PurchaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class StudentEnrollmentController extends Controller
 {
+    protected $purchaseService;
+
+    public function __construct(PurchaseService $purchaseService)
+    {
+        $this->purchaseService = $purchaseService;
+    }
     /**
      * عرض جميع الصفوف والمواد المتاحة للانضمام
      */
@@ -73,45 +81,53 @@ class StudentEnrollmentController extends Controller
             // التحقق من وجود المادة
             $subject = Subject::where('is_active', true)->findOrFail($subjectId);
             
-            // التحقق من عدم وجود انضمام مسبق (بما في ذلك المحذوفة ب soft delete)
-            $existingEnrollment = Enrollment::withTrashed()
-                ->where('user_id', $user->id)
-                ->where('subject_id', $subjectId)
+            // التحقق من وجود شراء مسبق
+            $existingPurchase = Purchase::where('user_id', $user->id)
+                ->where('purchasable_type', Subject::class)
+                ->where('purchasable_id', $subjectId)
+                ->where('status', 'completed')
                 ->first();
-            
-            if ($existingEnrollment) {
-                if ($existingEnrollment->status === 'pending') {
+
+            if ($existingPurchase) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'لقد قمت بشراء هذه المادة مسبقاً'
+                ], 400);
+            }
+
+            // التحقق من شراء الصف كاملاً
+            $class = $subject->schoolClass;
+            if ($class) {
+                $classPurchase = Purchase::where('user_id', $user->id)
+                    ->where('purchasable_type', SchoolClass::class)
+                    ->where('purchasable_id', $class->id)
+                    ->where('status', 'completed')
+                    ->first();
+
+                if ($classPurchase) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'لديك طلب انضمام معلق لهذه المادة'
+                        'message' => 'أنت مسجل في هذه المادة من خلال شراء الصف كاملاً'
                     ], 400);
-                } elseif ($existingEnrollment->status === 'active') {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'أنت مسجل بالفعل في هذه المادة'
-                    ], 400);
-                } elseif (in_array($existingEnrollment->status, ['suspended', 'completed'])) {
-                    // إذا كان الانضمام معلق أو مكتمل، احذفه بشكل نهائي
-                    $existingEnrollment->forceDelete();
-                } else {
-                    // أي حالة أخرى، احذفه بشكل نهائي
-                    $existingEnrollment->forceDelete();
                 }
             }
             
-            // إنشاء طلب انضمام بحالة pending
-            Enrollment::create([
-                'user_id' => $user->id,
-                'subject_id' => $subjectId,
-                'enrolled_by' => null, // سيتم تعيينه من قبل الإدارة
-                'enrolled_at' => now(),
-                'status' => 'pending',
-                'notes' => 'طلب انضمام من الطالب',
-            ]);
+            // إذا كان السعر > 0، توجيه إلى صفحة الشراء
+            if (!$subject->is_free && $subject->price > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'يجب شراء هذه المادة أولاً',
+                    'redirect' => route('student.purchases.subject.show', $subjectId),
+                    'requires_purchase' => true,
+                ], 400);
+            }
+
+            // إذا كان السعر 0، إنشاء شراء مكتمل تلقائياً
+            $purchase = $this->purchaseService->createPurchase($user, $subject, 'subject');
             
             return response()->json([
                 'success' => true,
-                'message' => 'تم إرسال طلب الانضمام بنجاح. سيتم مراجعته من قبل الإدارة.'
+                'message' => 'تم التسجيل في المادة بنجاح'
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
@@ -174,45 +190,36 @@ class StudentEnrollmentController extends Controller
         }
         
         try {
-            // التحقق من عدم وجود طلب صف معلق أو مقبول للطالب في نفس الصف
-            $existingClassEnrollment = ClassEnrollment::withTrashed()
-                ->where('user_id', $user->id)
-                ->where('class_id', $classId)
+            // التحقق من وجود شراء مسبق
+            $existingPurchase = Purchase::where('user_id', $user->id)
+                ->where('purchasable_type', SchoolClass::class)
+                ->where('purchasable_id', $classId)
+                ->where('status', 'completed')
                 ->first();
-            
-            if ($existingClassEnrollment) {
-                if ($existingClassEnrollment->status === 'pending') {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'لديك طلب انضمام معلق لهذا الصف'
-                    ], 400);
-                } elseif ($existingClassEnrollment->status === 'approved') {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'أنت مسجل بالفعل في هذا الصف'
-                    ], 400);
-                } elseif ($existingClassEnrollment->status === 'rejected') {
-                    // إذا كان مرفوض، احذفه بشكل نهائي للسماح بطلب جديد
-                    $existingClassEnrollment->forceDelete();
-                } else {
-                    // أي حالة أخرى، احذفه بشكل نهائي
-                    $existingClassEnrollment->forceDelete();
-                }
+
+            if ($existingPurchase) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'لقد قمت بشراء هذا الصف مسبقاً'
+                ], 400);
             }
-            
-            // إنشاء طلب انضمام للصف
-            ClassEnrollment::create([
-                'user_id' => $user->id,
-                'class_id' => $classId,
-                'enrolled_by' => null,
-                'enrolled_at' => null,
-                'status' => 'pending',
-                'notes' => 'طلب انضمام لصف كامل: ' . $class->name,
-            ]);
+
+            // إذا كان السعر > 0، توجيه إلى صفحة الشراء
+            if (!$class->is_free && $class->price > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'يجب شراء هذا الصف أولاً',
+                    'redirect' => route('student.purchases.class.show', $classId),
+                    'requires_purchase' => true,
+                ], 400);
+            }
+
+            // إذا كان السعر 0، إنشاء شراء مكتمل تلقائياً
+            $purchase = $this->purchaseService->createPurchase($user, $class, 'class');
             
             return response()->json([
                 'success' => true,
-                'message' => 'تم إرسال طلب الانضمام للصف بنجاح. سيتم مراجعته من قبل الإدارة.'
+                'message' => 'تم التسجيل في الصف بنجاح'
             ]);
         } catch (\Exception $e) {
             \Log::error('Error in requestClassEnrollment: ' . $e->getMessage());

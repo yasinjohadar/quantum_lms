@@ -106,8 +106,26 @@ class SubjectController extends Controller
             $data['is_active'] = $request->has('is_active');
             $data['display_in_class'] = $request->has('display_in_class');
             $data['order'] = $request->input('order', 0);
+            $data['price'] = $request->input('price', 0);
+            $data['is_free'] = $request->has('is_free') || $request->input('price', 0) == 0;
+            $data['default_currency_id'] = $request->input('default_currency_id');
 
-            Subject::create($data);
+            $subject = Subject::create($data);
+
+            // معالجة الأسعار المتعددة
+            if ($request->has('prices')) {
+                foreach ($request->prices as $currencyId => $priceData) {
+                    if (isset($priceData['price']) && $priceData['price'] > 0) {
+                        \App\Models\Price::create([
+                            'pricable_type' => get_class($subject),
+                            'pricable_id' => $subject->id,
+                            'currency_id' => $currencyId,
+                            'price' => $priceData['price'],
+                            'is_active' => isset($priceData['is_active']),
+                        ]);
+                    }
+                }
+            }
 
             return redirect()->route('admin.subjects.index')
                 ->with('success', 'تم إضافة المادة بنجاح');
@@ -225,8 +243,42 @@ class SubjectController extends Controller
             $data['is_active'] = $request->has('is_active');
             $data['display_in_class'] = $request->has('display_in_class');
             $data['order'] = $request->input('order', $subject->order);
+            $data['price'] = $request->input('price', 0);
+            $data['is_free'] = $request->has('is_free') || $request->input('price', 0) == 0;
+            $data['default_currency_id'] = $request->input('default_currency_id');
 
             $subject->update($data);
+
+            // معالجة الأسعار المتعددة
+            if ($request->has('prices')) {
+                foreach ($request->prices as $currencyId => $priceData) {
+                    if (isset($priceData['id'])) {
+                        // تحديث سعر موجود
+                        $price = \App\Models\Price::find($priceData['id']);
+                        if ($price) {
+                            $price->update([
+                                'price' => $priceData['price'] ?? 0,
+                                'is_active' => isset($priceData['is_active']),
+                            ]);
+                        }
+                    } else {
+                        // إنشاء سعر جديد
+                        if (isset($priceData['price']) && $priceData['price'] > 0) {
+                            \App\Models\Price::updateOrCreate(
+                                [
+                                    'pricable_type' => get_class($subject),
+                                    'pricable_id' => $subject->id,
+                                    'currency_id' => $currencyId,
+                                ],
+                                [
+                                    'price' => $priceData['price'],
+                                    'is_active' => isset($priceData['is_active']),
+                                ]
+                            );
+                        }
+                    }
+                }
+            }
 
             return redirect()->route('admin.subjects.index')
                 ->with('success', 'تم تحديث المادة بنجاح');

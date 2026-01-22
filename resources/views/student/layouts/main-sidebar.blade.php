@@ -303,6 +303,28 @@
                             </a>
                         </li>
 
+                        <!-- المشتريات -->
+                        <li class="slide {{ request()->is('student/purchases*') ? 'active' : '' }}">
+                            <a href="{{ route('student.purchases.my-purchases') }}" class="side-menu__item {{ request()->is('student/purchases*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M7 18c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12L8.1 13h7.45c.75 0 1.41-.41 1.75-1.03L21.7 4H5.21l-.94-2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                                </svg>
+                                <span class="side-menu__label">مشترياتي</span>
+                            </a>
+                        </li>
+
+                        <!-- المحفظة الإلكترونية -->
+                        <li class="slide {{ request()->is('student/wallet*') ? 'active' : '' }}">
+                            <a href="{{ route('student.wallet.index') }}" class="side-menu__item {{ request()->is('student/wallet*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                                </svg>
+                                <span class="side-menu__label">المحفظة الإلكترونية</span>
+                            </a>
+                        </li>
+
                         <!-- الملف الشخصي -->
                         <li class="slide {{ request()->is('student/profile') || request()->is('profile') ? 'active' : '' }}">
                             <a href="{{ route('student.profile') }}" class="side-menu__item {{ request()->is('student/profile') || request()->is('profile') ? 'active' : '' }}">

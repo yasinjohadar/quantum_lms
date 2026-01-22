@@ -112,6 +112,37 @@
                                 </div>
                             </div>
 
+                            <div class="col-12 mt-3">
+                                <h6 class="text-primary mb-3">التسعير</h6>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="number" name="price"
+                                           class="form-control @error('price') is-invalid @enderror"
+                                           placeholder="السعر"
+                                           value="{{ old('price', $class->price ?? 0) }}"
+                                           step="0.01"
+                                           min="0"
+                                           id="price_input_edit">
+                                    <label>السعر (ر.س) <span class="text-danger">*</span></label>
+                                    @error('price')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <small class="text-muted">اتركه 0 إذا كان الصف مجانياً</small>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 d-flex align-items-center">
+                                <div class="form-check form-switch mt-3">
+                                    <input class="form-check-input" type="checkbox" name="is_free"
+                                           id="is_free_edit" value="1"
+                                           {{ old('is_free', $class->is_free ?? true) ? 'checked' : '' }}
+                                           onchange="document.getElementById('price_input_edit').disabled = this.checked; if(this.checked) document.getElementById('price_input_edit').value = 0;">
+                                    <label class="form-check-label" for="is_free_edit">الصف مجاني</label>
+                                </div>
+                            </div>
+
                             <div class="col-md-12">
                                 <div class="form-floating">
                                     <textarea name="description" class="form-control @error('description') is-invalid @enderror"
@@ -161,6 +192,80 @@
                                            id="is_active" value="1"
                                         {{ old('is_active', $class->is_active) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="is_active">الصف نشط</label>
+                                </div>
+                            </div>
+
+                            <div class="col-12 mt-3">
+                                <h6 class="text-primary mb-3">التسعير</h6>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="default_currency_id" class="form-label">العملة الافتراضية</label>
+                                <select name="default_currency_id" id="default_currency_id" class="form-select">
+                                    <option value="">اختر العملة الافتراضية</option>
+                                    @foreach(\App\Models\Currency::active()->ordered()->get() as $currency)
+                                        <option value="{{ $currency->id }}" {{ old('default_currency_id', $class->default_currency_id) == $currency->id ? 'selected' : '' }}>
+                                            {{ $currency->code }} - {{ $currency->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('default_currency_id')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-12 mt-3">
+                                <h6 class="text-primary mb-3">الأسعار بعدة عملات</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th>العملة</th>
+                                                <th>السعر</th>
+                                                <th>الحالة</th>
+                                                <th>الإجراءات</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="pricesTableBody">
+                                            @php
+                                                $existingPrices = $class->prices()->with('currency')->get()->keyBy('currency_id');
+                                                $currencies = \App\Models\Currency::active()->ordered()->get();
+                                            @endphp
+                                            @foreach($currencies as $currency)
+                                                @php
+                                                    $price = $existingPrices->get($currency->id);
+                                                @endphp
+                                                <tr data-currency-id="{{ $currency->id }}">
+                                                    <td><strong>{{ $currency->code }}</strong> ({{ $currency->name }})</td>
+                                                    <td>
+                                                        <input type="number" 
+                                                               class="form-control price-input" 
+                                                               name="prices[{{ $currency->id }}][price]" 
+                                                               value="{{ $price ? $price->price : 0 }}" 
+                                                               step="0.01" 
+                                                               min="0"
+                                                               data-currency-id="{{ $currency->id }}">
+                                                        <input type="hidden" name="prices[{{ $currency->id }}][currency_id]" value="{{ $currency->id }}">
+                                                    </td>
+                                                    <td>
+                                                        <div class="form-check form-switch">
+                                                            <input class="form-check-input price-active" 
+                                                                   type="checkbox" 
+                                                                   name="prices[{{ $currency->id }}][is_active]" 
+                                                                   value="1"
+                                                                   {{ $price && $price->is_active ? 'checked' : '' }}
+                                                                   data-currency-id="{{ $currency->id }}">
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        @if($price)
+                                                            <input type="hidden" name="prices[{{ $currency->id }}][id]" value="{{ $price->id }}">
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
 

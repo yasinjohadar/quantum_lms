@@ -128,6 +128,65 @@
                                 </div>
                             </div>
 
+                            <div class="col-12 mt-3">
+                                <h6 class="text-primary mb-3">التسعير</h6>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="default_currency_id" class="form-label">العملة الافتراضية</label>
+                                <select name="default_currency_id" id="default_currency_id" class="form-select">
+                                    <option value="">اختر العملة الافتراضية</option>
+                                    @foreach(\App\Models\Currency::active()->ordered()->get() as $currency)
+                                        <option value="{{ $currency->id }}" {{ old('default_currency_id') == $currency->id ? 'selected' : '' }}>
+                                            {{ $currency->code }} - {{ $currency->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('default_currency_id')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-12 mt-3">
+                                <h6 class="text-primary mb-3">الأسعار بعدة عملات</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th>العملة</th>
+                                                <th>السعر</th>
+                                                <th>الحالة</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach(\App\Models\Currency::active()->ordered()->get() as $currency)
+                                                <tr>
+                                                    <td><strong>{{ $currency->code }}</strong> ({{ $currency->name }})</td>
+                                                    <td>
+                                                        <input type="number" 
+                                                               class="form-control" 
+                                                               name="prices[{{ $currency->id }}][price]" 
+                                                               value="{{ old('prices.' . $currency->id . '.price', 0) }}" 
+                                                               step="0.01" 
+                                                               min="0">
+                                                        <input type="hidden" name="prices[{{ $currency->id }}][currency_id]" value="{{ $currency->id }}">
+                                                    </td>
+                                                    <td>
+                                                        <div class="form-check form-switch">
+                                                            <input class="form-check-input" 
+                                                                   type="checkbox" 
+                                                                   name="prices[{{ $currency->id }}][is_active]" 
+                                                                   value="1"
+                                                                   {{ old('prices.' . $currency->id . '.is_active', true) ? 'checked' : '' }}>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
                             <div class="col-md-12">
                                 <div class="form-floating">
                                     <textarea name="description" class="form-control @error('description') is-invalid @enderror"

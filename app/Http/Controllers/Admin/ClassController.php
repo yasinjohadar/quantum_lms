@@ -102,8 +102,26 @@ class ClassController extends Controller
 
             $data['is_active'] = $request->has('is_active');
             $data['order'] = $request->input('order', 0);
+            $data['price'] = $request->input('price', 0);
+            $data['is_free'] = $request->has('is_free') || $request->input('price', 0) == 0;
+            $data['default_currency_id'] = $request->input('default_currency_id');
 
-            SchoolClass::create($data);
+            $class = SchoolClass::create($data);
+
+            // معالجة الأسعار المتعددة
+            if ($request->has('prices')) {
+                foreach ($request->prices as $currencyId => $priceData) {
+                    if (isset($priceData['price']) && $priceData['price'] > 0) {
+                        \App\Models\Price::create([
+                            'pricable_type' => get_class($class),
+                            'pricable_id' => $class->id,
+                            'currency_id' => $currencyId,
+                            'price' => $priceData['price'],
+                            'is_active' => isset($priceData['is_active']),
+                        ]);
+                    }
+                }
+            }
 
             return redirect()->route('admin.classes.index')
                 ->with('success', 'تم إضافة الصف بنجاح');
@@ -200,8 +218,42 @@ class ClassController extends Controller
 
             $data['is_active'] = $request->has('is_active');
             $data['order'] = $request->input('order', $class->order);
+            $data['price'] = $request->input('price', 0);
+            $data['is_free'] = $request->has('is_free') || $request->input('price', 0) == 0;
+            $data['default_currency_id'] = $request->input('default_currency_id');
 
             $class->update($data);
+
+            // معالجة الأسعار المتعددة
+            if ($request->has('prices')) {
+                foreach ($request->prices as $currencyId => $priceData) {
+                    if (isset($priceData['id'])) {
+                        // تحديث سعر موجود
+                        $price = \App\Models\Price::find($priceData['id']);
+                        if ($price) {
+                            $price->update([
+                                'price' => $priceData['price'] ?? 0,
+                                'is_active' => isset($priceData['is_active']),
+                            ]);
+                        }
+                    } else {
+                        // إنشاء سعر جديد
+                        if (isset($priceData['price']) && $priceData['price'] > 0) {
+                            \App\Models\Price::updateOrCreate(
+                                [
+                                    'pricable_type' => get_class($class),
+                                    'pricable_id' => $class->id,
+                                    'currency_id' => $currencyId,
+                                ],
+                                [
+                                    'price' => $priceData['price'],
+                                    'is_active' => isset($priceData['is_active']),
+                                ]
+                            );
+                        }
+                    }
+                }
+            }
 
             return redirect()->route('admin.classes.index')
                 ->with('success', 'تم تحديث الصف بنجاح');
