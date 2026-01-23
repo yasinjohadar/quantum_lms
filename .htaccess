@@ -9,10 +9,10 @@
     RewriteCond %{REQUEST_URI} ^/public/storage/
     RewriteRule ^ - [L]
     
-    # Prevent access to sensitive files and directories (but allow storage)
+    # Prevent access to sensitive files and directories (storage is allowed above)
     RewriteCond %{REQUEST_URI} !^/storage/
     RewriteCond %{REQUEST_URI} !^/public/storage/
-    RewriteRule ^(app|bootstrap|config|database|resources|routes|storage|tests|vendor|\.env|composer\.json|composer\.lock|package\.json|package-lock\.json|artisan|\.git|\.gitignore|\.gitattributes|README\.md|DEPLOYMENT_GUIDE\.md) - [F,L]
+    RewriteRule ^(app|bootstrap|config|database|resources|routes|tests|vendor|\.env|composer\.json|composer\.lock|package\.json|package-lock\.json|artisan|\.git|\.gitignore|\.gitattributes|README\.md|DEPLOYMENT_GUIDE\.md) - [F,L]
     
     # Redirect all requests to public directory
     RewriteCond %{REQUEST_URI} !^/public/
