@@ -39,9 +39,17 @@ Options -Indexes
     </IfModule>
 </FilesMatch>
 
-# حماية مجلدات Laravel الحساسة
+# حماية مجلدات Laravel الحساسة (منع الوصول المباشر من الجذر فقط)
+# ملاحظة: نسمح بالوصول لـ storage عبر public/storage (symlink)
 <IfModule mod_rewrite.c>
-    RewriteRule ^(app|bootstrap|config|database|resources|routes|storage|tests|vendor)/ - [F,L]
+    # منع الوصول المباشر لمجلدات Laravel من الجذر (وليس من public)
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(app|bootstrap|config|database|resources|routes|tests|vendor)/ - [F,L]
+    
+    # منع الوصول المباشر لـ storage من الجذر (لكن نسمح عبر public/storage)
+    RewriteCond %{REQUEST_URI} !^/public/storage/
+    RewriteCond %{REQUEST_URI} ^/storage/
+    RewriteRule ^storage/ - [F,L]
 </IfModule>
 
 # تحسين الأداء - ضغط الملفات
