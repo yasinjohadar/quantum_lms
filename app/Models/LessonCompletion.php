@@ -18,6 +18,7 @@ class LessonCompletion extends Model
         'time_spent',
         'last_position',
         'marked_at',
+        'completed_at', // إضافة completed_at للتوافق مع قاعدة البيانات
     ];
 
     protected $casts = [

@@ -430,6 +430,7 @@ class StudentLessonController extends Controller
         try {
             DB::beginTransaction();
             
+            $now = now();
             $completion = LessonCompletion::updateOrCreate(
                 [
                     'user_id' => $user->id,
@@ -437,7 +438,8 @@ class StudentLessonController extends Controller
                 ],
                 [
                     'status' => $request->status,
-                    'marked_at' => now(),
+                    'marked_at' => $now,
+                    'completed_at' => $now, // إضافة completed_at لتجنب خطأ NOT NULL
                 ]
             );
             
