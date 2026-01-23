@@ -61,11 +61,11 @@
                                         <div class="col-md-6">
                                             <label class="form-label">
                                                 @if($setting->key === 'phone_verification_enabled')
-                                                    تفعيل التحقق من رقم الهاتف عند التسجيل
+                                                    <i class="fas fa-mobile-alt me-2 text-primary"></i>تفعيل التحقق من رقم الهاتف عند التسجيل
                                                 @elseif($setting->key === 'otp_message_template')
-                                                    نص رسالة كود التحقق
+                                                    <i class="fas fa-envelope me-2 text-info"></i>نص رسالة كود التحقق
                                                 @elseif($setting->key === 'otp_provider')
-                                                    مزود إرسال كود التحقق
+                                                    <i class="fas fa-paper-plane me-2 text-success"></i>مزود إرسال كود التحقق
                                                 @else
                                                     {{ $setting->key }}
                                                 @endif
@@ -74,7 +74,15 @@
                                                 @endif
                                             </label>
                                             
-                                            @if($setting->type === 'boolean')
+                                            @if($setting->key === 'otp_provider')
+                                                {{-- معالجة خاصة لحقل otp_provider لعرضه كـ select --}}
+                                                <select class="form-select" 
+                                                        name="settings[{{ $setting->key }}]" 
+                                                        id="setting_{{ $setting->id }}">
+                                                    <option value="whatsapp" {{ $setting->value === 'whatsapp' ? 'selected' : '' }}>WhatsApp</option>
+                                                    <option value="sms" {{ $setting->value === 'sms' ? 'selected' : '' }}>SMS</option>
+                                                </select>
+                                            @elseif($setting->type === 'boolean')
                                                 <div class="form-check form-switch">
                                                     <input class="form-check-input" type="checkbox" 
                                                            name="settings[{{ $setting->key }}]" 
