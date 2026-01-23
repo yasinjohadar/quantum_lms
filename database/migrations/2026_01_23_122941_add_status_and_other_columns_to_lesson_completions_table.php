@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -36,6 +37,12 @@ return new class extends Migration
                     ->comment('الوقت المستغرق في مشاهدة الدرس بالثواني');
             }
         });
+        
+        // جعل عمود completed_at nullable إذا كان موجوداً (لأن الكود يستخدم marked_at الآن)
+        // نستخدم DB::statement مباشرة لتجنب مشاكل doctrine/dbal
+        if (Schema::hasColumn('lesson_completions', 'completed_at')) {
+            DB::statement('ALTER TABLE `lesson_completions` MODIFY COLUMN `completed_at` TIMESTAMP NULL');
+        }
     }
 
     /**
