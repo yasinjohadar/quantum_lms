@@ -4,26 +4,10 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\frontend\HomeController;
 
-// Route للصفحة الرئيسية - يوجه حسب الصلاحية
-Route::get('/', function () {
-    // إذا لم يكن المستخدم مسجل دخول، يوجه إلى login
-    if (!auth()->check()) {
-        return redirect()->route('login');
-    }
-    
-    $user = auth()->user();
-    
-    // التحقق من الصلاحيات
-    if ($user->hasRole('admin')) {
-        return redirect()->route('admin.dashboard');
-    } elseif ($user->hasRole('student')) {
-        return redirect()->route('student.dashboard');
-    }
-    
-    // إذا لم يكن لديه صلاحية محددة، يوجه إلى student dashboard كافتراضي
-    return redirect()->route('student.dashboard');
-})->middleware('auth')->name('admin.dashboard');
+// Route للصفحة الرئيسية - يوجه إلى صفحة Frontend (متاح للجميع بدون middleware auth)
+Route::get('/', [HomeController::class, 'index'])->name('home');
 
 Route::get('/dashboard', function () {
     // إذا لم يكن المستخدم مسجل دخول، يوجه إلى login
@@ -74,3 +58,4 @@ Route::middleware(['auth', 'admin'])->group(function () {
 require __DIR__.'/auth.php';
 require __DIR__.'/admin.php';
 require __DIR__.'/student.php';
+require __DIR__.'/frontend.php';

@@ -185,12 +185,30 @@ class SchoolClass extends Model
      */
     public function getPrice($currencyId = null)
     {
+        // إذا كان الصف مجاني، إرجاع 0
+        if ($this->is_free) {
+            return 0;
+        }
+
         if (!$currencyId) {
             $currencyId = $this->default_currency_id ?? Currency::getDefault()->id;
         }
 
+        // البحث أولاً في جدول prices
         $price = $this->prices()->active()->forCurrency($currencyId)->first();
-        return $price ? $price->price : 0;
+        
+        // إذا وجد سعر في جدول prices، إرجاعه
+        if ($price) {
+            return $price->price;
+        }
+
+        // إذا لم يوجد سعر في جدول prices، استخدام الحقل price المباشر كـ fallback
+        if ($this->price && $this->price > 0) {
+            return $this->price;
+        }
+
+        // إذا لم يوجد أي سعر، إرجاع 0
+        return 0;
     }
 
     /**

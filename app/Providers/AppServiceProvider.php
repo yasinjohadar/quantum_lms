@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\View;
 use App\Events\LessonAttended;
 use App\Events\LessonCompleted;
 use App\Events\QuizStarted;
@@ -27,6 +28,7 @@ use App\Events\EventReminderSent;
 use App\Listeners\SendRealTimeNotification;
 use App\Listeners\SendLibraryItemNotification;
 use App\Listeners\SendEventReminderNotification;
+use App\Models\SchoolClass;
 use Illuminate\Pagination\Paginator;
 
 class AppServiceProvider extends ServiceProvider
@@ -44,6 +46,22 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Frontend footer data (dynamic classes list)
+        View::composer('frontend.layouts.footer', function ($view) {
+            try {
+                $footerClasses = SchoolClass::query()
+                    ->active()
+                    ->ordered()
+                    ->limit(6)
+                    ->get(['id', 'name', 'slug']);
+            } catch (\Exception $e) {
+                // Avoid breaking rendering if tables not ready yet
+                $footerClasses = collect();
+            }
+
+            $view->with('footerClasses', $footerClasses);
+        });
+
         // Apply email settings from database
         try {
             $emailSettingsService = app(\App\Services\Email\EmailSettingsService::class);
