@@ -13,6 +13,35 @@ use Illuminate\Support\Facades\Log;
 class PurchaseService
 {
     /**
+     * إنشاء عدة مشتريات (صف أو مواد متعددة)
+     */
+    public function createMultiplePurchases(User $user, array $purchasables, $currencyId = null): \Illuminate\Support\Collection
+    {
+        $purchases = collect();
+        
+        foreach ($purchasables as $item) {
+            $purchasable = $item['purchasable'];
+            $type = $item['type'];
+            
+            // التحقق من عدم وجود شراء مسبق
+            $existingPurchase = Purchase::where('user_id', $user->id)
+                ->where('purchasable_type', get_class($purchasable))
+                ->where('purchasable_id', $purchasable->id)
+                ->where('status', 'completed')
+                ->first();
+            
+            if ($existingPurchase) {
+                continue; // تخطي إذا كان موجوداً
+            }
+            
+            $purchase = $this->createPurchase($user, $purchasable, $type, $currencyId);
+            $purchases->push($purchase);
+        }
+        
+        return $purchases;
+    }
+
+    /**
      * إنشاء شراء جديد
      */
     public function createPurchase(User $user, $purchasable, string $type, $currencyId = null): Purchase
@@ -40,16 +69,29 @@ class PurchaseService
             'notes' => "شراء {$type}: " . ($purchasable->name ?? ''),
         ]);
 
-        // إذا كان مجانياً، إنشاء دفع مكتمل تلقائياً
+        // إذا كان مجانياً، إنشاء دفع مكتمل تلقائياً وإكمال التسجيل
         if ($isFree) {
-            Payment::create([
-                'purchase_id' => $purchase->id,
-                'payment_method' => 'wallet', // أو 'free'
-                'amount' => 0,
-                'currency' => $currency->code ?? 'SAR',
-                'status' => 'completed',
-                'transaction_id' => 'FREE-' . $purchase->id,
-            ]);
+            try {
+                DB::beginTransaction();
+                
+                Payment::create([
+                    'purchase_id' => $purchase->id,
+                    'payment_method' => 'wallet', // أو 'free'
+                    'amount' => 0,
+                    'currency' => $currency->code ?? 'SAR',
+                    'status' => 'completed',
+                    'transaction_id' => 'FREE-' . $purchase->id,
+                ]);
+                
+                // إكمال الشراء وإنشاء التسجيلات
+                $this->completePurchase($purchase);
+                
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('Error completing free purchase: ' . $e->getMessage());
+                // لا نرمي exception هنا لأن Purchase تم إنشاؤه بالفعل
+            }
         }
 
         return $purchase;
@@ -116,52 +158,175 @@ class PurchaseService
      */
     public function completePurchase(Purchase $purchase): void
     {
+        Log::info('completePurchase started', [
+            'purchase_id' => $purchase->id,
+            'purchase_type' => $purchase->purchase_type,
+        ]);
+
+        // تحميل العلاقات اللازمة
+        $purchase->refresh();
+        $purchase->load(['user', 'purchasable']);
+        
         $user = $purchase->user;
         $purchasable = $purchase->purchasable;
+        
+        Log::info('Purchase data loaded', [
+            'purchase_id' => $purchase->id,
+            'user_exists' => $user ? 'yes' : 'no',
+            'purchasable_exists' => $purchasable ? 'yes' : 'no',
+            'purchasable_type' => $purchase->purchasable_type,
+            'purchasable_id' => $purchase->purchasable_id,
+        ]);
+        
+        if (!$user || !$purchasable) {
+            Log::error('Incomplete purchase data', [
+                'purchase_id' => $purchase->id,
+                'user_id' => $purchase->user_id,
+                'purchasable_type' => $purchase->purchasable_type,
+                'purchasable_id' => $purchase->purchasable_id,
+            ]);
+            throw new \Exception('لا يمكن إكمال الشراء: بيانات غير مكتملة');
+        }
+
+        $enrolledBy = auth()->id() ?? $user->id; // استخدام ID الأدمن أو المستخدم
+
+        Log::info('Enrolled by determined', [
+            'purchase_id' => $purchase->id,
+            'enrolled_by' => $enrolledBy,
+        ]);
 
         if ($purchase->purchase_type === 'class') {
-            // إنشاء تسجيل للصف
-            $classEnrollment = \App\Models\ClassEnrollment::firstOrCreate(
-                [
-                    'user_id' => $user->id,
-                    'class_id' => $purchasable->id,
-                ],
-                [
-                    'status' => 'approved',
-                    'enrolled_at' => now(),
-                    'notes' => 'تسجيل تلقائي بعد الشراء',
-                ]
-            );
+            Log::info('Processing class purchase', [
+                'purchase_id' => $purchase->id,
+                'class_id' => $purchasable->id,
+            ]);
 
-            // إنشاء تسجيلات لجميع المواد في الصف
-            $subjects = $purchasable->subjects()->where('is_active', true)->get();
-            foreach ($subjects as $subject) {
-                \App\Models\Enrollment::firstOrCreate(
+            // تحميل المواد للصف
+            if (method_exists($purchasable, 'subjects')) {
+                $purchasable->load('subjects');
+            }
+            
+            // إنشاء تسجيل للصف
+            try {
+                $classEnrollment = \App\Models\ClassEnrollment::updateOrCreate(
                     [
                         'user_id' => $user->id,
-                        'subject_id' => $subject->id,
+                        'class_id' => $purchasable->id,
+                    ],
+                    [
+                        'status' => 'approved',
+                        'enrolled_by' => $enrolledBy,
+                        'enrolled_at' => now(),
+                        'notes' => 'تسجيل تلقائي بعد الشراء',
+                    ]
+                );
+
+                Log::info('ClassEnrollment created/updated', [
+                    'purchase_id' => $purchase->id,
+                    'class_enrollment_id' => $classEnrollment->id,
+                    'user_id' => $user->id,
+                    'class_id' => $purchasable->id,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error creating ClassEnrollment', [
+                    'purchase_id' => $purchase->id,
+                    'user_id' => $user->id,
+                    'class_id' => $purchasable->id,
+                    'error' => $e->getMessage(),
+                ]);
+                throw $e;
+            }
+
+            // إنشاء تسجيلات لجميع المواد في الصف
+            try {
+                $subjects = $purchasable->subjects()->where('is_active', true)->get();
+                
+                Log::info('Subjects loaded for class', [
+                    'purchase_id' => $purchase->id,
+                    'class_id' => $purchasable->id,
+                    'subjects_count' => $subjects->count(),
+                ]);
+
+                foreach ($subjects as $subject) {
+                    try {
+                        $enrollment = \App\Models\Enrollment::updateOrCreate(
+                            [
+                                'user_id' => $user->id,
+                                'subject_id' => $subject->id,
+                            ],
+                            [
+                                'status' => 'active',
+                                'enrolled_by' => $enrolledBy,
+                                'enrolled_at' => now(),
+                                'notes' => 'تسجيل تلقائي بعد شراء الصف',
+                            ]
+                        );
+
+                        Log::info('Enrollment created/updated for subject', [
+                            'purchase_id' => $purchase->id,
+                            'enrollment_id' => $enrollment->id,
+                            'user_id' => $user->id,
+                            'subject_id' => $subject->id,
+                        ]);
+                    } catch (\Exception $e) {
+                        Log::error('Error creating Enrollment for subject', [
+                            'purchase_id' => $purchase->id,
+                            'user_id' => $user->id,
+                            'subject_id' => $subject->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                        // نستمر في باقي المواد بدلاً من إيقاف العملية
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Error loading/processing subjects', [
+                    'purchase_id' => $purchase->id,
+                    'class_id' => $purchasable->id,
+                    'error' => $e->getMessage(),
+                ]);
+                throw $e;
+            }
+        } elseif ($purchase->purchase_type === 'subject') {
+            Log::info('Processing subject purchase', [
+                'purchase_id' => $purchase->id,
+                'subject_id' => $purchasable->id,
+            ]);
+
+            // إنشاء تسجيل للمادة
+            try {
+                $enrollment = \App\Models\Enrollment::updateOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'subject_id' => $purchasable->id,
                     ],
                     [
                         'status' => 'active',
+                        'enrolled_by' => $enrolledBy,
                         'enrolled_at' => now(),
-                        'notes' => 'تسجيل تلقائي بعد شراء الصف',
+                        'notes' => 'تسجيل تلقائي بعد الشراء',
                     ]
                 );
-            }
-        } elseif ($purchase->purchase_type === 'subject') {
-            // إنشاء تسجيل للمادة
-            \App\Models\Enrollment::firstOrCreate(
-                [
+
+                Log::info('Enrollment created/updated for subject', [
+                    'purchase_id' => $purchase->id,
+                    'enrollment_id' => $enrollment->id,
                     'user_id' => $user->id,
                     'subject_id' => $purchasable->id,
-                ],
-                [
-                    'status' => 'active',
-                    'enrolled_at' => now(),
-                    'notes' => 'تسجيل تلقائي بعد الشراء',
-                ]
-            );
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error creating Enrollment for subject', [
+                    'purchase_id' => $purchase->id,
+                    'user_id' => $user->id,
+                    'subject_id' => $purchasable->id,
+                    'error' => $e->getMessage(),
+                ]);
+                throw $e;
+            }
         }
+
+        Log::info('completePurchase finished successfully', [
+            'purchase_id' => $purchase->id,
+        ]);
     }
 
     /**

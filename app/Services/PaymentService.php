@@ -124,7 +124,34 @@ class PaymentService
         try {
             $path = null;
             if ($receiptFile) {
+                // التحقق من أن الملف موجود وصحيح
+                if (!$receiptFile->isValid()) {
+                    return [
+                        'success' => false,
+                        'error' => 'الملف المرفوع غير صحيح أو تالف',
+                    ];
+                }
+                
+                // حفظ الملف
                 $path = $receiptFile->store('receipts', 'public');
+                
+                if (!$path) {
+                    return [
+                        'success' => false,
+                        'error' => 'فشل حفظ الملف. يرجى المحاولة مرة أخرى',
+                    ];
+                }
+                
+                Log::info('IBAN receipt uploaded', [
+                    'purchase_id' => $purchase->id,
+                    'file_path' => $path,
+                    'file_size' => $receiptFile->getSize(),
+                ]);
+            } else {
+                return [
+                    'success' => false,
+                    'error' => 'يرجى رفع وصل الدفع',
+                ];
             }
 
             return [
@@ -133,10 +160,14 @@ class PaymentService
                 'status' => 'pending', // يحتاج مراجعة
             ];
         } catch (\Exception $e) {
-            Log::error('IBAN payment error: ' . $e->getMessage());
+            Log::error('IBAN payment error', [
+                'purchase_id' => $purchase->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             return [
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => 'حدث خطأ أثناء معالجة الدفع: ' . $e->getMessage(),
             ];
         }
     }
@@ -178,6 +209,29 @@ class PaymentService
         try {
             DB::beginTransaction();
 
+            Log::info('Starting payment review', [
+                'payment_id' => $payment->id,
+                'approved' => $approved,
+                'reviewed_by' => $reviewedBy ?? auth()->id(),
+            ]);
+
+            // تحديث الدفع أولاً
+            $payment->refresh();
+            $payment->load(['purchase.user', 'purchase.purchasable']);
+            
+            if (!$payment->purchase) {
+                Log::error('Purchase not found for payment', ['payment_id' => $payment->id]);
+                throw new \Exception('الشراء المرتبط بهذا الدفع غير موجود');
+            }
+
+            Log::info('Payment purchase loaded', [
+                'payment_id' => $payment->id,
+                'purchase_id' => $payment->purchase->id,
+                'purchase_type' => $payment->purchase->purchase_type,
+                'purchasable_type' => $payment->purchase->purchasable_type,
+                'purchasable_id' => $payment->purchase->purchasable_id,
+            ]);
+
             $payment->update([
                 'status' => $approved ? 'completed' : 'failed',
                 'reviewed_by' => $reviewedBy ?? auth()->id(),
@@ -185,17 +239,71 @@ class PaymentService
                 'review_notes' => $notes,
             ]);
 
+            Log::info('Payment status updated', [
+                'payment_id' => $payment->id,
+                'new_status' => $approved ? 'completed' : 'failed',
+            ]);
+
             if ($approved) {
-                // إكمال الشراء
+                // تحديث حالة الشراء إلى completed
+                $purchase = $payment->purchase;
+                $purchase->refresh();
+                $purchase->load(['user', 'purchasable']);
+                
+                Log::info('Checking purchasable', [
+                    'purchase_id' => $purchase->id,
+                    'purchasable_type' => $purchase->purchasable_type,
+                    'purchasable_id' => $purchase->purchasable_id,
+                    'purchasable_exists' => $purchase->purchasable ? 'yes' : 'no',
+                ]);
+                
+                if (!$purchase->purchasable) {
+                    Log::error('Purchasable not found', [
+                        'purchase_id' => $purchase->id,
+                        'purchasable_type' => $purchase->purchasable_type,
+                        'purchasable_id' => $purchase->purchasable_id,
+                    ]);
+                    throw new \Exception('العنصر المرتبط بهذا الشراء غير موجود');
+                }
+                
+                $purchase->update([
+                    'status' => 'completed',
+                    'purchased_at' => now(),
+                ]);
+
+                Log::info('Purchase status updated to completed', [
+                    'purchase_id' => $purchase->id,
+                ]);
+                
+                // إكمال الشراء وإنشاء التسجيلات
+                Log::info('Starting completePurchase', [
+                    'purchase_id' => $purchase->id,
+                    'purchase_type' => $purchase->purchase_type,
+                ]);
+                
                 $purchaseService = app(PurchaseService::class);
-                $purchaseService->completePurchase($payment->purchase);
+                $purchaseService->completePurchase($purchase);
+                
+                Log::info('completePurchase finished successfully', [
+                    'purchase_id' => $purchase->id,
+                ]);
             }
 
             DB::commit();
+            Log::info('Payment review completed successfully', [
+                'payment_id' => $payment->id,
+                'approved' => $approved,
+            ]);
             return true;
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Review payment error: ' . $e->getMessage());
+            Log::error('Review payment error', [
+                'payment_id' => $payment->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
             return false;
         }
     }

@@ -155,9 +155,12 @@
                                                     <i class="bi bi-eye"></i>
                                                 </a>
                                                 @if($payment->status === 'pending' && in_array($payment->payment_method, ['iban', 'custom']))
-                                                    <button class="btn btn-sm btn-success" onclick="approvePayment({{ $payment->id }})" title="موافقة">
-                                                        <i class="bi bi-check-circle"></i>
-                                                    </button>
+                                                    <form action="{{ route('admin.payments.approve', $payment->id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من الموافقة على هذا الدفع؟');">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-sm btn-success" title="موافقة">
+                                                            <i class="bi bi-check-circle"></i>
+                                                        </button>
+                                                    </form>
                                                     <button class="btn btn-sm btn-danger" onclick="rejectPayment({{ $payment->id }})" title="رفض">
                                                         <i class="bi bi-x-circle"></i>
                                                     </button>
@@ -212,30 +215,6 @@
 
 @push('scripts')
 <script>
-function approvePayment(id) {
-    if (confirm('هل أنت متأكد من الموافقة على هذا الدفع؟')) {
-        fetch(`/admin/payments/${id}/approve`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success || response.ok) {
-                window.location.reload();
-            } else {
-                alert('حدث خطأ أثناء الموافقة على الدفع');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('حدث خطأ أثناء الموافقة على الدفع');
-        });
-    }
-}
-
 function rejectPayment(id) {
     document.getElementById('rejectPaymentId').value = id;
     const modal = new bootstrap.Modal(document.getElementById('rejectModal'));

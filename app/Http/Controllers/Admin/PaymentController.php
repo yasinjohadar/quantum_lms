@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Services\PaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
@@ -115,24 +116,37 @@ class PaymentController extends Controller
             return back()->with('error', 'لا يمكن الموافقة على هذا الدفع');
         }
 
-        $success = $this->paymentService->reviewIBANPayment(
-            $payment,
-            true,
-            null,
-            auth()->id()
-        );
+        try {
+            $success = $this->paymentService->reviewIBANPayment(
+                $payment,
+                true,
+                null,
+                auth()->id()
+            );
 
-        if ($success) {
-            if (request()->expectsJson()) {
-                return response()->json(['success' => true, 'message' => 'تم الموافقة على الدفع بنجاح']);
+            if ($success) {
+                if (request()->expectsJson()) {
+                    return response()->json(['success' => true, 'message' => 'تم الموافقة على الدفع بنجاح']);
+                }
+                return back()->with('success', 'تم الموافقة على الدفع بنجاح');
             }
-            return back()->with('success', 'تم الموافقة على الدفع بنجاح');
-        }
 
-        if (request()->expectsJson()) {
-            return response()->json(['success' => false, 'message' => 'حدث خطأ أثناء الموافقة على الدفع'], 500);
+            if (request()->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'حدث خطأ أثناء الموافقة على الدفع. يرجى التحقق من السجلات'], 500);
+            }
+            return back()->with('error', 'حدث خطأ أثناء الموافقة على الدفع. يرجى التحقق من السجلات');
+        } catch (\Exception $e) {
+            Log::error('Payment approval error in controller', [
+                'payment_id' => $payment->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            if (request()->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'حدث خطأ أثناء الموافقة على الدفع: ' . $e->getMessage()], 500);
+            }
+            return back()->with('error', 'حدث خطأ أثناء الموافقة على الدفع: ' . $e->getMessage());
         }
-        return back()->with('error', 'حدث خطأ أثناء الموافقة على الدفع');
     }
 
     /**

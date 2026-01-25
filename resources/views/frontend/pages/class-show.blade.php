@@ -24,6 +24,164 @@
 
     <div class="container">
 
+        <!-- Purchase Options Section -->
+        @auth
+        @if(!$isEnrolled && $purchaseStatus !== 'pending')
+        <div class="purchase-options-section mb-5">
+            <div class="row">
+                <div class="col-12">
+                    <div class="purchase-options-card">
+                        <h3 class="purchase-options-title">
+                            <i class="fa-solid fa-shopping-cart me-2"></i>
+                            خيارات الشراء
+                        </h3>
+                        
+                        <form id="purchaseForm" method="GET" action="{{ route('frontend.checkout') }}">
+                            
+                            <!-- Option 1: Buy Full Class -->
+                            <div class="purchase-option mb-3">
+                                <label class="purchase-option-label">
+                                    <input type="radio" name="purchase_type" value="class" class="purchase-radio" checked>
+                                    <div class="purchase-option-content">
+                                        <div class="purchase-option-header">
+                                            <span class="purchase-option-title">
+                                                <i class="fa-solid fa-graduation-cap me-2"></i>
+                                                شراء الصف بالكامل
+                                            </span>
+                                            <span class="purchase-option-price">
+                                                @if($class->is_free || $class->getPrice($class->defaultCurrency->id ?? null) == 0)
+                                                    <span class="text-success">مجاني</span>
+                                                @else
+                                                    {{ number_format($class->getPrice($class->defaultCurrency->id ?? null), 2) }}
+                                                    {{ $class->defaultCurrency->symbol ?? $class->defaultCurrency->code ?? '' }}
+                                                @endif
+                                            </span>
+                                        </div>
+                                        <p class="purchase-option-description">
+                                            يشمل جميع المواد الدراسية في هذا الصف ({{ count($subjects) }} مادة)
+                                        </p>
+                                    </div>
+                                </label>
+                            </div>
+                            
+                            <!-- Option 2: Buy Individual Subjects -->
+                            <div class="purchase-option mb-3">
+                                <label class="purchase-option-label">
+                                    <input type="radio" name="purchase_type" value="subjects" class="purchase-radio">
+                                    <div class="purchase-option-content">
+                                        <div class="purchase-option-header">
+                                            <span class="purchase-option-title">
+                                                <i class="fa-solid fa-book me-2"></i>
+                                                شراء مواد متفرقة
+                                            </span>
+                                        </div>
+                                        <p class="purchase-option-description mb-3">
+                                            اختر المواد التي تريد شراءها
+                                        </p>
+                                        
+                                        <!-- Subjects Checkboxes -->
+                                        <div class="subjects-checkboxes" style="display: none;">
+                                            @foreach($subjects as $subject)
+                                                <label class="subject-checkbox-label">
+                                                    <input type="checkbox" name="subject_ids[]" value="{{ $subject['id'] }}" class="subject-checkbox" data-price="{{ $subject['price'] }}" data-currency="{{ $subject['currency']->symbol ?? $subject['currency']->code ?? '' }}">
+                                                    <span class="subject-checkbox-content">
+                                                        <span class="subject-checkbox-name">{{ $subject['name'] }}</span>
+                                                        <span class="subject-checkbox-price">
+                                                            @if($subject['is_free'] || $subject['price'] == 0)
+                                                                <span class="text-success">مجاني</span>
+                                                            @else
+                                                                {{ number_format($subject['price'], 2) }} {{ $subject['currency']->symbol ?? $subject['currency']->code ?? '' }}
+                                                            @endif
+                                                        </span>
+                                                    </span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                            
+                            <!-- Total Price Display -->
+                            <div class="purchase-total mb-3" id="purchaseTotal" style="display: none;">
+                                <div class="purchase-total-content">
+                                    <span class="purchase-total-label">المجموع:</span>
+                                    <span class="purchase-total-price" id="totalPrice">0.00</span>
+                                    <span class="purchase-total-currency" id="totalCurrency"></span>
+                                </div>
+                            </div>
+                            
+                            <!-- Submit Button -->
+                            <div class="purchase-submit">
+                                <button type="submit" class="btn btn-primary btn-lg w-100 purchase-submit-btn">
+                                    <i class="fa-solid fa-arrow-left me-2"></i>
+                                    متابعة إلى الدفع
+                                </button>
+                            </div>
+                            
+                            <input type="hidden" name="class_id" value="{{ $class->id }}">
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @elseif($purchaseStatus === 'pending')
+            <!-- Pending Purchase Message -->
+            <div class="pending-purchase-message-section mb-5">
+                <div class="pending-purchase-message-card">
+                    <div class="pending-purchase-message-content">
+                        <i class="fa-solid fa-clock pending-icon"></i>
+                        <h3 class="pending-purchase-title">الطلب قيد المراجعة من قبل الإدارة</h3>
+                        <p class="pending-purchase-description">
+                            لديك طلب شراء قيد المراجعة لهذا الصف. سيتم إشعارك فور الموافقة على الطلب.
+                        </p>
+                        @if($pendingPurchase)
+                            <div class="pending-purchase-info">
+                                <div class="pending-purchase-info-item">
+                                    <span class="info-label">رقم الطلب:</span>
+                                    <span class="info-value">#{{ $pendingPurchase->id }}</span>
+                                </div>
+                                <div class="pending-purchase-info-item">
+                                    <span class="info-label">تاريخ الطلب:</span>
+                                    <span class="info-value">{{ $pendingPurchase->created_at->format('Y-m-d H:i') }}</span>
+                                </div>
+                                <div class="pending-purchase-info-item">
+                                    <span class="info-label">المبلغ:</span>
+                                    <span class="info-value">{{ number_format($pendingPurchase->price, 2) }} {{ $pendingPurchase->purchasable->defaultCurrency->symbol ?? $pendingPurchase->purchasable->defaultCurrency->code ?? '' }}</span>
+                                </div>
+                            </div>
+                        @endif
+                        <a href="{{ route('student.purchases.my-purchases') }}" class="btn btn-warning pending-purchase-btn">
+                            <i class="fa-solid fa-list me-2"></i>
+                            عرض طلباتي
+                        </a>
+                    </div>
+                </div>
+            </div>
+        @else
+            <!-- Enrolled Message -->
+            <div class="enrolled-message-section mb-5">
+                <div class="enrolled-message-card">
+                    <div class="enrolled-message-content">
+                        <i class="fa-solid fa-check-circle enrolled-icon"></i>
+                        <h3 class="enrolled-title">أنت مسجل في هذا الصف</h3>
+                        <p class="enrolled-description">
+                            يمكنك الآن الوصول إلى جميع المواد الدراسية في هذا الصف وبدء التعلم
+                        </p>
+                        <a href="{{ route('student.dashboard') }}" class="btn btn-primary enrolled-btn">
+                            <i class="fa-solid fa-graduation-cap me-2"></i>
+                            الانتقال إلى لوحة التحكم
+                        </a>
+                    </div>
+                </div>
+            </div>
+        @endif
+        @else
+        <div class="alert alert-info text-center mb-5">
+            <i class="fa-solid fa-info-circle me-2"></i>
+            يرجى <a href="{{ route('login') }}" class="alert-link">تسجيل الدخول</a> لشراء الصف أو المواد
+        </div>
+        @endauth
+
         <!-- Subjects Section -->
         <div class="subjects-section">
             <div class="row mb-4">
@@ -111,3 +269,90 @@
 <!-- Class Show Section End -->
 
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const purchaseTypeRadios = document.querySelectorAll('.purchase-radio');
+    const subjectsCheckboxes = document.querySelector('.subjects-checkboxes');
+    const subjectCheckboxes = document.querySelectorAll('.subject-checkbox');
+    const purchaseTotal = document.getElementById('purchaseTotal');
+    const totalPriceEl = document.getElementById('totalPrice');
+    const totalCurrencyEl = document.getElementById('totalCurrency');
+    const purchaseForm = document.getElementById('purchaseForm');
+    
+    // Get class price and currency
+    const classPrice = {{ $class->getPrice($class->defaultCurrency->id ?? null) ?? 0 }};
+    const classCurrency = '{{ $class->defaultCurrency->symbol ?? $class->defaultCurrency->code ?? "" }}';
+    const classIsFree = {{ $class->is_free || $class->getPrice($class->defaultCurrency->id ?? null) == 0 ? 'true' : 'false' }};
+    
+    // Toggle subjects checkboxes visibility
+    purchaseTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'subjects') {
+                subjectsCheckboxes.style.display = 'block';
+                calculateTotal();
+            } else {
+                subjectsCheckboxes.style.display = 'none';
+                // Uncheck all subject checkboxes
+                subjectCheckboxes.forEach(cb => cb.checked = false);
+                calculateTotal();
+            }
+        });
+    });
+    
+    // Calculate total when checkboxes change
+    subjectCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', calculateTotal);
+    });
+    
+    function calculateTotal() {
+        const selectedType = document.querySelector('.purchase-radio:checked').value;
+        let total = 0;
+        let currency = classCurrency;
+        
+        if (selectedType === 'class') {
+            total = classPrice;
+            currency = classCurrency;
+        } else {
+            // Calculate from selected subjects
+            subjectCheckboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    total += parseFloat(checkbox.dataset.price) || 0;
+                    if (!currency && checkbox.dataset.currency) {
+                        currency = checkbox.dataset.currency;
+                    }
+                }
+            });
+        }
+        
+        if (total > 0 || selectedType === 'class') {
+            purchaseTotal.style.display = 'block';
+            totalPriceEl.textContent = total.toFixed(2);
+            totalCurrencyEl.textContent = currency;
+        } else {
+            purchaseTotal.style.display = 'none';
+        }
+    }
+    
+    // Form validation and data collection
+    purchaseForm.addEventListener('submit', function(e) {
+        const selectedType = document.querySelector('.purchase-radio:checked').value;
+        
+        if (selectedType === 'subjects') {
+            const checkedSubjects = document.querySelectorAll('.subject-checkbox:checked');
+            if (checkedSubjects.length === 0) {
+                e.preventDefault();
+                alert('يرجى اختيار مادة واحدة على الأقل');
+                return false;
+            }
+        }
+        
+        // Form will submit with GET parameters automatically
+    });
+    
+    // Initial calculation
+    calculateTotal();
+});
+</script>
+@endpush

@@ -38,10 +38,11 @@ class Purchase extends Model
 
     /**
      * العلاقة مع الصف أو المادة (morph)
+     * مع دعم العناصر المحذوفة ناعمياً
      */
     public function purchasable()
     {
-        return $this->morphTo();
+        return $this->morphTo()->withTrashed();
     }
 
     /**
