@@ -18,6 +18,12 @@ class PaymentController extends Controller
         $this->paymentService = $paymentService;
         $this->middleware('auth');
         $this->middleware('admin');
+        $this->middleware(['permission:payment-list'])->only('index');
+        $this->middleware(['permission:payment-show'])->only('show');
+        $this->middleware(['permission:payment-review'])->only('reviewPayment');
+        $this->middleware(['permission:payment-approve'])->only('approvePayment');
+        $this->middleware(['permission:payment-reject'])->only('rejectPayment');
+        $this->middleware(['permission:payment-download-receipt'])->only('downloadReceipt');
     }
 
     /**

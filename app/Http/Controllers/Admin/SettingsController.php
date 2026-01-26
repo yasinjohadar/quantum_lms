@@ -11,6 +11,11 @@ use Illuminate\Http\RedirectResponse;
 
 class SettingsController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(['permission:settings-manage'])->only(['index', 'update']);
+    }
+
     /**
      * عرض صفحة الإعدادات العامة
      */

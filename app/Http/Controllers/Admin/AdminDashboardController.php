@@ -14,6 +14,7 @@ class AdminDashboardController extends Controller
     public function __construct(AdminDashboardService $dashboardService)
     {
         $this->dashboardService = $dashboardService;
+        $this->middleware(['permission:dashboard-view'])->only(['dashboard', 'widgets', 'saveWidgets']);
     }
 
     /**

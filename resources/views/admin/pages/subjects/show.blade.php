@@ -517,6 +517,15 @@
                                                                                                                 @if(!$lesson->is_active)
                                                                                                                     <span class="badge bg-secondary-transparent text-secondary ms-1">مخفي</span>
                                                                                                                 @endif
+                                                                                                                @if($lesson->review_status === 'pending_review')
+                                                                                                                    <span class="badge bg-warning text-dark ms-1">
+                                                                                                                        <i class="bi bi-clock-history me-1"></i> قيد المراجعة
+                                                                                                                    </span>
+                                                                                                                @elseif($lesson->review_status === 'rejected')
+                                                                                                                    <span class="badge bg-danger ms-1">
+                                                                                                                        <i class="bi bi-x-circle me-1"></i> مرفوض
+                                                                                                                    </span>
+                                                                                                                @endif
                                                                                                             </h6>
                                                                                                             <div class="d-flex align-items-center gap-2 mt-1">
                                                                                                                 <span class="badge bg-{{ $lesson->video_type === 'youtube' ? 'danger' : ($lesson->video_type === 'vimeo' ? 'info' : 'primary') }}-transparent text-{{ $lesson->video_type === 'youtube' ? 'danger' : ($lesson->video_type === 'vimeo' ? 'info' : 'primary') }}" style="font-size:0.65rem;">
@@ -563,6 +572,22 @@
                                                                                                                     title="حذف">
                                                                                                                 <i class="bi bi-trash"></i>
                                                                                                             </button>
+                                                                                                            @if($lesson->review_status === 'pending_review' && auth()->user()->hasAnyRole(['admin', 'supervisor']))
+                                                                                                                <div class="btn-group btn-group-sm ms-2">
+                                                                                                                    <button type="button" class="btn btn-sm btn-success" 
+                                                                                                                            data-bs-toggle="modal" 
+                                                                                                                            data-bs-target="#approveLesson{{ $lesson->id }}"
+                                                                                                                            title="موافقة">
+                                                                                                                        <i class="bi bi-check-circle"></i>
+                                                                                                                    </button>
+                                                                                                                    <button type="button" class="btn btn-sm btn-danger" 
+                                                                                                                            data-bs-toggle="modal" 
+                                                                                                                            data-bs-target="#rejectLesson{{ $lesson->id }}"
+                                                                                                                            title="رفض">
+                                                                                                                        <i class="bi bi-x-circle"></i>
+                                                                                                                    </button>
+                                                                                                                </div>
+                                                                                                            @endif
                                                                                                         </div>
                                                                                                         {{-- زر إنشاء اختبار لهذا الدرس --}}
                                                                                                         <a href="{{ route('admin.quizzes.create', ['subject_id' => $subject->id, 'unit_id' => $unit->id, 'lesson_id' => $lesson->id, 'scope' => 'lesson']) }}" 
@@ -951,11 +976,36 @@
                                 </div>
 
                                 <div class="row">
-                                    <div class="col-md-4">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" name="is_active" id="lessonActive{{ $unit->id }}" checked>
-                                            <label class="form-check-label" for="lessonActive{{ $unit->id }}">الدرس نشط</label>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">من الصفحة</label>
+                                            <input type="number" name="book_page_from" id="bookPageFrom{{ $unit->id }}" class="form-control" min="1" placeholder="مثال: 10">
                                         </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">إلى الصفحة</label>
+                                            <input type="number" name="book_page_to" id="bookPageTo{{ $unit->id }}" class="form-control" min="1" placeholder="مثال: 25">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        @if(auth()->user()->hasAnyRole(['admin', 'supervisor']))
+                                            {{-- المشرف والمدير يمكنهم التفعيل مباشرة --}}
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" name="is_active" id="lessonActive{{ $unit->id }}" checked>
+                                                <label class="form-check-label" for="lessonActive{{ $unit->id }}">الدرس نشط</label>
+                                            </div>
+                                        @else
+                                            {{-- المعلم: إرسال للمراجعة --}}
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" name="is_active" id="lessonActive{{ $unit->id }}">
+                                                <label class="form-check-label" for="lessonActive{{ $unit->id }}">إرسال للمراجعة</label>
+                                            </div>
+                                            <small class="text-muted d-block mt-1">سيتم إرسال الدرس للمشرف للمراجعة والموافقة</small>
+                                        @endif
                                     </div>
                                     <div class="col-md-4">
                                         <div class="form-check form-switch">
@@ -1053,11 +1103,66 @@
                                     </div>
 
                                     <div class="row">
-                                        <div class="col-md-4">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" name="is_active" {{ $lesson->is_active ? 'checked' : '' }}>
-                                                <label class="form-check-label">الدرس نشط</label>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">من الصفحة</label>
+                                                <input type="number" name="book_page_from" class="form-control" min="1" value="{{ $lesson->book_page_from }}" placeholder="مثال: 10">
                                             </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">إلى الصفحة</label>
+                                                <input type="number" name="book_page_to" class="form-control" min="1" value="{{ $lesson->book_page_to }}" placeholder="مثال: 25">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            @if(auth()->user()->hasAnyRole(['admin', 'supervisor']))
+                                                {{-- المشرف والمدير يمكنهم التفعيل مباشرة --}}
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" name="is_active" 
+                                                           id="lessonActive{{ $lesson->id }}" 
+                                                           {{ $lesson->is_active ? 'checked' : '' }}>
+                                                    <label class="form-check-label" for="lessonActive{{ $lesson->id }}">الدرس نشط</label>
+                                                </div>
+                                            @else
+                                                {{-- المعلم: يعرض حالة المراجعة --}}
+                                                <div class="mb-2">
+                                                    <label class="form-label small">حالة المراجعة:</label>
+                                                    @if($lesson->review_status === 'pending_review')
+                                                        <span class="badge bg-warning text-dark">
+                                                            <i class="bi bi-clock-history me-1"></i> قيد المراجعة
+                                                        </span>
+                                                    @elseif($lesson->review_status === 'approved')
+                                                        <span class="badge bg-success">
+                                                            <i class="bi bi-check-circle me-1"></i> تمت الموافقة
+                                                        </span>
+                                                    @elseif($lesson->review_status === 'rejected')
+                                                        <span class="badge bg-danger">
+                                                            <i class="bi bi-x-circle me-1"></i> مرفوض
+                                                        </span>
+                                                    @else
+                                                        <span class="badge bg-secondary">مسودة</span>
+                                                    @endif
+                                                </div>
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" name="is_active" 
+                                                           id="lessonActive{{ $lesson->id }}" 
+                                                           {{ $lesson->is_active ? 'checked' : '' }}
+                                                           {{ $lesson->review_status === 'pending_review' ? 'disabled' : '' }}>
+                                                    <label class="form-check-label" for="lessonActive{{ $lesson->id }}">
+                                                        {{ $lesson->review_status === 'pending_review' ? 'قيد المراجعة (غير قابل للتعديل)' : 'إرسال للمراجعة' }}
+                                                    </label>
+                                                </div>
+                                                @if($lesson->review_notes)
+                                                    <div class="alert alert-info mt-2 small">
+                                                        <strong>ملاحظات المشرف:</strong><br>
+                                                        {{ $lesson->review_notes }}
+                                                    </div>
+                                                @endif
+                                            @endif
                                         </div>
                                         <div class="col-md-4">
                                             <div class="form-check form-switch">
@@ -1373,6 +1478,78 @@
             @endif
         @endforeach
     @endforeach
+
+    {{-- Modals للموافقة والرفض على الدروس --}}
+    @foreach($subject->sections as $section)
+        @foreach($section->units as $unit)
+            @foreach($unit->lessons as $lesson)
+                @if($lesson->review_status === 'pending_review' && auth()->user()->hasAnyRole(['admin', 'supervisor']))
+                    {{-- Modal الموافقة على الدرس --}}
+                    <div class="modal fade" id="approveLesson{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-0 rounded-4">
+                                <div class="modal-header border-0 bg-success-transparent">
+                                    <h5 class="modal-title fw-bold">
+                                        <i class="bi bi-check-circle text-success me-2"></i>
+                                        الموافقة على تفعيل الدرس
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                                </div>
+                                <form action="{{ route('admin.lessons.approve-review', $lesson->id) }}" method="POST">
+                                    @csrf
+                                    <div class="modal-body">
+                                        <p class="mb-3">هل تريد الموافقة على تفعيل الدرس: <strong>{{ $lesson->title }}</strong>؟</p>
+                                        <div class="mb-3">
+                                            <label class="form-label">ملاحظات (اختياري)</label>
+                                            <textarea name="review_notes" class="form-control" rows="3" placeholder="يمكنك إضافة ملاحظات للمعلم..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer border-0">
+                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="bi bi-check-lg me-1"></i> موافقة
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Modal رفض الدرس --}}
+                    <div class="modal fade" id="rejectLesson{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-0 rounded-4">
+                                <div class="modal-header border-0 bg-danger-transparent">
+                                    <h5 class="modal-title fw-bold">
+                                        <i class="bi bi-x-circle text-danger me-2"></i>
+                                        رفض تفعيل الدرس
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                                </div>
+                                <form action="{{ route('admin.lessons.reject-review', $lesson->id) }}" method="POST">
+                                    @csrf
+                                    <div class="modal-body">
+                                        <p class="mb-3">هل تريد رفض تفعيل الدرس: <strong>{{ $lesson->title }}</strong>؟</p>
+                                        <div class="mb-3">
+                                            <label class="form-label">ملاحظات (مطلوب) <span class="text-danger">*</span></label>
+                                            <textarea name="review_notes" class="form-control" rows="3" required placeholder="يرجى كتابة الملاحظات التي ستُرسل للمعلم..."></textarea>
+                                            <small class="text-muted">سيتم إرسال هذه الملاحظات للمعلم</small>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer border-0">
+                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                        <button type="submit" class="btn btn-danger">
+                                            <i class="bi bi-x-lg me-1"></i> رفض
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+            @endforeach
+        @endforeach
+    @endforeach
 @stop
 
 @section('js')
@@ -1410,6 +1587,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 urlField.style.display = 'none';
             }
         });
+    });
+
+    // التحقق من صحة حقول صفحات الكتاب
+    document.querySelectorAll('[id^="bookPageFrom"], [name="book_page_from"]').forEach(function(fromField) {
+        const unitId = fromField.id ? fromField.id.replace('bookPageFrom', '') : '';
+        const toField = unitId 
+            ? document.getElementById('bookPageTo' + unitId)
+            : fromField.closest('form')?.querySelector('[name="book_page_to"]');
+        
+        if (!toField) return;
+
+        function validatePages() {
+            const fromValue = parseInt(fromField.value);
+            const toValue = parseInt(toField.value);
+            
+            if (fromField.value && toField.value) {
+                if (fromValue > toValue) {
+                    toField.setCustomValidity('إلى الصفحة يجب أن تكون أكبر من أو تساوي من الصفحة');
+                    toField.classList.add('is-invalid');
+                } else {
+                    toField.setCustomValidity('');
+                    toField.classList.remove('is-invalid');
+                }
+            } else {
+                toField.setCustomValidity('');
+                toField.classList.remove('is-invalid');
+            }
+        }
+
+        fromField.addEventListener('input', validatePages);
+        fromField.addEventListener('blur', validatePages);
+        toField.addEventListener('input', validatePages);
+        toField.addEventListener('blur', validatePages);
     });
 
     // ==================================================

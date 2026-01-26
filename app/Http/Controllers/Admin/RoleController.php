@@ -36,14 +36,60 @@ public function __construct()
         }
 
     /**
+     * تصنيف الصلاحيات حسب الفئات
+     */
+    private function categorizePermissions($permissions)
+    {
+        $categories = [
+            'إدارة الصفوف والمراحل' => ['class-', 'stage-'],
+            'إدارة المواد الدراسية' => ['subject-'],
+            'إدارة الدروس' => ['lesson-'],
+            'إدارة الوحدات' => ['unit-'],
+            'إدارة الأسئلة' => ['question-'],
+            'إدارة الاختبارات' => ['quiz-'],
+            'إدارة محاولات الاختبارات' => ['quiz-attempt-'],
+            'إدارة التسجيلات' => ['enrollment-'],
+            'إدارة المدفوعات' => ['payment-'],
+            'إدارة المستخدمين' => ['user-'],
+            'إدارة الأدوار' => ['role-'],
+            'إدارة المكتبة' => ['library-'],
+            'التقارير والإحصائيات' => ['report-'],
+            'الإعدادات' => ['settings-'],
+            'لوحة التحكم' => ['dashboard-'],
+        ];
+        
+        $categorized = [];
+        foreach ($categories as $categoryName => $prefixes) {
+            $categorized[$categoryName] = $permissions->filter(function($permission) use ($prefixes) {
+                foreach ($prefixes as $prefix) {
+                    if (str_starts_with($permission->name, $prefix)) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+        }
+        
+        // إضافة فئة "أخرى" للصلاحيات غير المصنفة
+        $allCategorized = collect($categorized)->flatten();
+        $uncategorized = $permissions->diff($allCategorized);
+        if ($uncategorized->isNotEmpty()) {
+            $categorized['أخرى'] = $uncategorized;
+        }
+        
+        return $categorized;
+    }
+
+    /**
      * Show the form for creating a new resource.
      */
     public function create()
     {
-        $permissions = Permission::all();
+        $permissions = Permission::orderBy('name')->get();
+        $categorizedPermissions = $this->categorizePermissions($permissions);
         $roles = Role::all();
 
-       return view("admin.pages.roles.create" , compact("roles" , "permissions"));
+       return view("admin.pages.roles.create" , compact("roles" , "permissions", "categorizedPermissions"));
     }
 
     /**
@@ -74,10 +120,10 @@ public function __construct()
     public function edit(string $id)
     {
         $role = Role::findOrFail($id);
-         $permissions = Permission::all();
+        $permissions = Permission::orderBy('name')->get();
+        $categorizedPermissions = $this->categorizePermissions($permissions);
 
-
-       return view("admin.pages.roles.edit" , compact("role" , "permissions"));
+       return view("admin.pages.roles.edit" , compact("role" , "permissions", "categorizedPermissions"));
     }
 
     /**

@@ -1041,9 +1041,7 @@
                 }
             }, 500);
         }
-    }
-
-    // Only initialize once
+    }    // Only initialize once
     if (!window.reportsChartsInitialized) {
         window.reportsChartsInitialized = true;
         init();

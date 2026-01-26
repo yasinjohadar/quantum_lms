@@ -23,7 +23,25 @@ class QuizController extends Controller
 {
     public function __construct(
         private ReminderService $reminderService
-    ) {}
+    ) {
+        $this->middleware(['permission:quiz-list'])->only('index');
+        $this->middleware(['permission:quiz-create'])->only(['create', 'store']);
+        $this->middleware(['permission:quiz-edit'])->only(['edit', 'update']);
+        $this->middleware(['permission:quiz-delete'])->only('destroy');
+        $this->middleware(['permission:quiz-show'])->only('show');
+        $this->middleware(['permission:quiz-questions'])->only('questions');
+        $this->middleware(['permission:quiz-add-question'])->only('addQuestion');
+        $this->middleware(['permission:quiz-remove-question'])->only('removeQuestion');
+        $this->middleware(['permission:quiz-reorder-questions'])->only('reorderQuestions');
+        $this->middleware(['permission:quiz-update-question-points'])->only('updateQuestionPoints');
+        $this->middleware(['permission:quiz-duplicate'])->only('duplicate');
+        $this->middleware(['permission:quiz-toggle-publish'])->only('togglePublish');
+        $this->middleware(['permission:quiz-preview'])->only('preview');
+        $this->middleware(['permission:quiz-results'])->only('results');
+        $this->middleware(['permission:quiz-export-results'])->only('exportResults');
+        $this->middleware(['permission:quiz-get-subjects-by-class'])->only('getSubjectsByClass');
+        $this->middleware(['permission:quiz-get-units'])->only('getUnits');
+    }
 
     /**
      * عرض قائمة الاختبارات

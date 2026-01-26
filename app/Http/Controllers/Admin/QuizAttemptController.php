@@ -14,7 +14,20 @@ class QuizAttemptController extends Controller
 {
     public function __construct(
         private AIEssayGradingService $gradingService
-    ) {}
+    ) {
+        $this->middleware(['permission:quiz-attempt-list'])->only('index');
+        $this->middleware(['permission:quiz-attempt-show'])->only('show');
+        $this->middleware(['permission:quiz-attempt-grade'])->only('grade');
+        $this->middleware(['permission:quiz-attempt-save-grade'])->only('saveGrade');
+        $this->middleware(['permission:quiz-attempt-regrade'])->only('regrade');
+        $this->middleware(['permission:quiz-attempt-delete'])->only('destroy');
+        $this->middleware(['permission:quiz-attempt-reset-user'])->only('resetUserAttempts');
+        $this->middleware(['permission:quiz-attempt-needs-grading'])->only('needsGrading');
+        $this->middleware(['permission:quiz-attempt-statistics'])->only('statistics');
+        $this->middleware(['permission:quiz-attempt-grade-with-ai'])->only('gradeWithAI');
+        $this->middleware(['permission:quiz-attempt-grade-multiple-with-ai'])->only('gradeMultipleWithAI');
+    }
+
     /**
      * عرض محاولات اختبار معين
      */

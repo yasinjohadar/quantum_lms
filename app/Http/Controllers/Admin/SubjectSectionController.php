@@ -11,6 +11,13 @@ use Illuminate\Support\Facades\Log;
 
 class SubjectSectionController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(['permission:subject-section-create'])->only('store');
+        $this->middleware(['permission:subject-section-edit'])->only('update');
+        $this->middleware(['permission:subject-section-delete'])->only('destroy');
+    }
+
     /**
      * تخزين قسم جديد تابع لمادة معيّنة.
      */

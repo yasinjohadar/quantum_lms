@@ -15,6 +15,16 @@ use App\Helpers\StorageHelper;
 
 class SubjectController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(['permission:subject-list'])->only('index');
+        $this->middleware(['permission:subject-create'])->only(['create', 'store']);
+        $this->middleware(['permission:subject-edit'])->only(['edit', 'update']);
+        $this->middleware(['permission:subject-delete'])->only('destroy');
+        $this->middleware(['permission:subject-show'])->only('show');
+        $this->middleware(['permission:subject-enrolled-students'])->only('enrolledStudents');
+    }
+
     /**
      * Display a listing of the resource.
      */

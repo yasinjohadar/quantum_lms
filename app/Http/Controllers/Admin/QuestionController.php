@@ -20,6 +20,22 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class QuestionController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(['permission:question-list'])->only('index');
+        $this->middleware(['permission:question-create'])->only(['create', 'store']);
+        $this->middleware(['permission:question-edit'])->only(['edit', 'update']);
+        $this->middleware(['permission:question-delete'])->only('destroy');
+        $this->middleware(['permission:question-show'])->only('show');
+        $this->middleware(['permission:question-duplicate'])->only('duplicate');
+        $this->middleware(['permission:question-toggle-status'])->only('toggleStatus');
+        $this->middleware(['permission:question-upload-image'])->only('uploadImage');
+        $this->middleware(['permission:question-export'])->only('export');
+        $this->middleware(['permission:question-export-template'])->only('exportTemplate');
+        $this->middleware(['permission:question-import'])->only('import');
+        $this->middleware(['permission:question-show-import'])->only('showImport');
+    }
+
     /**
      * عرض قائمة الأسئلة (بنك الأسئلة)
      */

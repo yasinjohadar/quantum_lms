@@ -75,12 +75,48 @@
                                 </div>
 
 
-                                <div>
-                                    @foreach ($permissions as $Permission)
-                                        <li style="list-style-type: none"><input type="checkbox"
-                                                name="permissions[{{ $Permission->name }}]" value="{{ $Permission->name }}"
-                                                {{ $role->hasPermissionTo($Permission->name) ? 'checked' : '' }}>{{ $Permission->name }}
-                                        </li>
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold d-block mb-3">الصلاحيات:</label>
+                                    
+                                    @foreach($categorizedPermissions as $categoryName => $categoryPermissions)
+                                        @if($categoryPermissions->isNotEmpty())
+                                            <div class="card mb-3">
+                                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                                    <h6 class="mb-0 fw-bold">{{ $categoryName }}</h6>
+                                                    <div>
+                                                        <button type="button" class="btn btn-sm btn-link p-0 select-all-category" data-category="{{ $loop->index }}">
+                                                            تحديد الكل
+                                                        </button>
+                                                        <span class="mx-2">|</span>
+                                                        <button type="button" class="btn btn-sm btn-link p-0 deselect-all-category" data-category="{{ $loop->index }}">
+                                                            إلغاء تحديد الكل
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="row">
+                                                        @foreach($categoryPermissions as $permission)
+                                                            <div class="col-md-6 col-lg-4 mb-3">
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="checkbox"
+                                                                           name="permissions[{{ $permission->name }}]"
+                                                                           value="{{ $permission->name }}"
+                                                                           id="perm_{{ $permission->id }}"
+                                                                           {{ $role->hasPermissionTo($permission->name) ? 'checked' : '' }}>
+                                                                    <label class="form-check-label" for="perm_{{ $permission->id }}">
+                                                                        <span class="fw-semibold">{{ $permission->name }}</span>
+                                                                        @if($permission->description)
+                                                                            <br>
+                                                                            <small class="text-muted">{{ $permission->description }}</small>
+                                                                        @endif
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endif
                                     @endforeach
                                 </div>
 
@@ -105,4 +141,30 @@
         </div>
     </div>
     <!-- End::app-content -->
+@stop
+
+@section('js')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // تحديد جميع الصلاحيات في فئة
+    document.querySelectorAll('.select-all-category').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const categoryCard = this.closest('.card');
+            categoryCard.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = true;
+            });
+        });
+    });
+
+    // إلغاء تحديد جميع الصلاحيات في فئة
+    document.querySelectorAll('.deselect-all-category').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const categoryCard = this.closest('.card');
+            categoryCard.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+        });
+    });
+});
+</script>
 @stop

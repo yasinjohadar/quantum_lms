@@ -24,12 +24,16 @@
                     </nav>
                 </div>
                 <div class="d-flex gap-2">
-                    <a href="{{ route('admin.quiz-attempts.needs-grading') }}" class="btn btn-warning btn-sm">
-                        <i class="bi bi-clipboard-check me-1"></i> بحاجة للتصحيح
-                    </a>
-                    <a href="{{ route('admin.quizzes.create') }}" class="btn btn-primary btn-sm">
-                        <i class="fas fa-plus me-1"></i> إنشاء اختبار جديد
-                    </a>
+                    @can('quiz-attempt-needs-grading')
+                        <a href="{{ route('admin.quiz-attempts.needs-grading') }}" class="btn btn-warning btn-sm">
+                            <i class="bi bi-clipboard-check me-1"></i> بحاجة للتصحيح
+                        </a>
+                    @endcan
+                    @can('quiz-create')
+                        <a href="{{ route('admin.quizzes.create') }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus me-1"></i> إنشاء اختبار جديد
+                        </a>
+                    @endcan
                 </div>
             </div>
             <!-- Page Header Close -->

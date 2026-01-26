@@ -18,6 +18,8 @@ class ReportController extends Controller
     {
         $this->reportBuilder = $reportBuilder;
         $this->reportGenerator = $reportGenerator;
+        $this->middleware(['permission:report-view'])->only(['index', 'create', 'show']);
+        $this->middleware(['permission:report-export'])->only('export');
     }
 
     /**

@@ -26,31 +26,41 @@
         <td>{{ $class->created_at?->format('Y-m-d H:i') }}</td>
         <td>
             <div class="d-flex gap-1 flex-wrap justify-content-center">
-                <a href="{{ route('admin.classes.show', $class->id) }}"
-                   class="btn btn-sm btn-info text-white"
-                   title="عرض تفاصيل الصف">
-                    <i class="fas fa-eye"></i> عرض
-                </a>
-                <a href="{{ route('admin.classes.enrolled-students', $class->id) }}"
-                   class="btn btn-sm btn-primary text-white"
-                   title="عرض الطلاب المنضمين">
-                    <i class="fas fa-users"></i> الطلاب
-                </a>
-                <a href="{{ route('admin.classes.edit', $class->id) }}"
-                   class="btn btn-sm btn-warning text-white"
-                   title="تعديل الصف">
-                    <i class="fas fa-edit"></i> تعديل
-                </a>
-                <button type="button"
-                        class="btn btn-sm btn-danger"
-                        data-bs-toggle="modal"
-                        data-bs-target="#deleteClass{{ $class->id }}"
-                        title="حذف الصف">
-                    <i class="fas fa-trash-alt"></i> حذف
-                </button>
+                @can('class-show')
+                    <a href="{{ route('admin.classes.show', $class->id) }}"
+                       class="btn btn-sm btn-info text-white"
+                       title="عرض تفاصيل الصف">
+                        <i class="fas fa-eye"></i> عرض
+                    </a>
+                @endcan
+                @can('class-enrolled-students')
+                    <a href="{{ route('admin.classes.enrolled-students', $class->id) }}"
+                       class="btn btn-sm btn-primary text-white"
+                       title="عرض الطلاب المنضمين">
+                        <i class="fas fa-users"></i> الطلاب
+                    </a>
+                @endcan
+                @can('class-edit')
+                    <a href="{{ route('admin.classes.edit', $class->id) }}"
+                       class="btn btn-sm btn-warning text-white"
+                       title="تعديل الصف">
+                        <i class="fas fa-edit"></i> تعديل
+                    </a>
+                @endcan
+                @can('class-delete')
+                    <button type="button"
+                            class="btn btn-sm btn-danger"
+                            data-bs-toggle="modal"
+                            data-bs-target="#deleteClass{{ $class->id }}"
+                            title="حذف الصف">
+                        <i class="fas fa-trash-alt"></i> حذف
+                    </button>
+                @endcan
             </div>
 
-            @include('admin.pages.classes.delete', ['class' => $class])
+            @can('class-delete')
+                @include('admin.pages.classes.delete', ['class' => $class])
+            @endcan
         </td>
     </tr>
 @empty

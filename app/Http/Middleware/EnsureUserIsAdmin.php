@@ -19,7 +19,10 @@ class EnsureUserIsAdmin
             return redirect()->route('login');
         }
 
-        if (!auth()->user()->hasRole('admin')) {
+        $user = auth()->user();
+        
+        // السماح للمدير والمشرف والمعلم بالوصول
+        if (!$user->hasAnyRole(['admin', 'supervisor', 'teacher'])) {
             abort(403, 'غير مصرح لك بالوصول إلى هذه الصفحة.');
         }
 

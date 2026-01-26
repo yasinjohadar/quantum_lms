@@ -69,6 +69,11 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('lessons.update');
         Route::delete('lessons/{lesson}', [LessonController::class, 'destroy'])
             ->name('lessons.destroy');
+        // مراجعة الدروس
+        Route::post('lessons/{lesson}/approve-review', [LessonController::class, 'approveReview'])
+            ->name('lessons.approve-review');
+        Route::post('lessons/{lesson}/reject-review', [LessonController::class, 'rejectReview'])
+            ->name('lessons.reject-review');
 
         // مرفقات الدروس
         Route::post('lessons/{lesson}/attachments', [LessonAttachmentController::class, 'store'])

@@ -13,6 +13,17 @@ use Illuminate\Support\Facades\Log;
 
 class UnitController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(['permission:unit-create'])->only('store');
+        $this->middleware(['permission:unit-edit'])->only('update');
+        $this->middleware(['permission:unit-delete'])->only('destroy');
+        $this->middleware(['permission:unit-questions'])->only('questions');
+        $this->middleware(['permission:unit-attach-questions'])->only('attachQuestions');
+        $this->middleware(['permission:unit-detach-question'])->only('detachQuestion');
+        $this->middleware(['permission:unit-available-questions'])->only('availableQuestions');
+    }
+
     /**
      * تخزين وحدة جديدة تابعة لقسم معيّن.
      */

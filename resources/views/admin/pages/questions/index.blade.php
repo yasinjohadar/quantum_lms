@@ -43,12 +43,16 @@
                     </nav>
                 </div>
                 <div class="d-flex gap-2">
-                    <a href="{{ route('admin.questions.import.show') }}" class="btn btn-success btn-sm">
-                        <i class="bi bi-upload me-1"></i> استيراد أسئلة
-                    </a>
-                    <a href="{{ route('admin.questions.create') }}" class="btn btn-primary btn-sm">
-                        <i class="fas fa-plus me-1"></i> إضافة سؤال جديد
-                    </a>
+                    @can('question-show-import')
+                        <a href="{{ route('admin.questions.import.show') }}" class="btn btn-success btn-sm">
+                            <i class="bi bi-upload me-1"></i> استيراد أسئلة
+                        </a>
+                    @endcan
+                    @can('question-create')
+                        <a href="{{ route('admin.questions.create') }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus me-1"></i> إضافة سؤال جديد
+                        </a>
+                    @endcan
                 </div>
             </div>
             <!-- Page Header Close -->
@@ -170,14 +174,20 @@
                                             <i class="bi bi-three-dots-vertical"></i>
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end">
-                                            <li><a class="dropdown-item" href="{{ route('admin.questions.show', $question->id) }}"><i class="bi bi-eye me-2"></i>عرض</a></li>
-                                            <li><a class="dropdown-item" href="{{ route('admin.questions.edit', $question->id) }}"><i class="bi bi-pencil me-2"></i>تعديل</a></li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <button class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteQuestion{{ $question->id }}">
-                                                    <i class="bi bi-trash me-2"></i>حذف
-                                                </button>
-                                            </li>
+                                            @can('question-show')
+                                                <li><a class="dropdown-item" href="{{ route('admin.questions.show', $question->id) }}"><i class="bi bi-eye me-2"></i>عرض</a></li>
+                                            @endcan
+                                            @can('question-edit')
+                                                <li><a class="dropdown-item" href="{{ route('admin.questions.edit', $question->id) }}"><i class="bi bi-pencil me-2"></i>تعديل</a></li>
+                                            @endcan
+                                            @can('question-delete')
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <button class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteQuestion{{ $question->id }}">
+                                                        <i class="bi bi-trash me-2"></i>حذف
+                                                    </button>
+                                                </li>
+                                            @endcan
                                         </ul>
                                     </div>
                                 </div>
@@ -254,6 +264,7 @@
                             </div>
                         </div>
                     </div>
+                    @endcan
                 @empty
                     <div class="col-12">
                         <div class="card custom-card">

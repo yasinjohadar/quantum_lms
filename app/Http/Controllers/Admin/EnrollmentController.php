@@ -18,7 +18,23 @@ class EnrollmentController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
+        $this->middleware(['permission:enrollment-list'])->only('index');
+        $this->middleware(['permission:enrollment-create'])->only(['create', 'store']);
+        $this->middleware(['permission:enrollment-delete'])->only('destroy');
+        $this->middleware(['permission:enrollment-pending-requests'])->only('pendingRequests');
+        $this->middleware(['permission:enrollment-approve'])->only('approve');
+        $this->middleware(['permission:enrollment-reject'])->only('reject');
+        $this->middleware(['permission:enrollment-approve-multiple'])->only('approveMultiple');
+        $this->middleware(['permission:enrollment-reject-multiple'])->only('rejectMultiple');
+        $this->middleware(['permission:enrollment-search-students'])->only('searchStudents');
+        $this->middleware(['permission:enrollment-get-subjects-by-class'])->only('getSubjectsByClass');
+        $this->middleware(['permission:enrollment-class-pending-requests'])->only('classPendingRequests');
+        $this->middleware(['permission:enrollment-approve-class'])->only('approveClassEnrollment');
+        $this->middleware(['permission:enrollment-reject-class'])->only('rejectClassEnrollment');
+        $this->middleware(['permission:enrollment-approve-multiple-class'])->only('approveMultipleClassEnrollments');
+        $this->middleware(['permission:enrollment-reject-multiple-class'])->only('rejectMultipleClassEnrollments');
     }
+
     /**
      * Display a listing of the resource.
      */

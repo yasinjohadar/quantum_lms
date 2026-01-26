@@ -12,6 +12,13 @@ use App\Helpers\StorageHelper;
 
 class LessonAttachmentController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(['permission:lesson-attachment-create'])->only('store');
+        $this->middleware(['permission:lesson-attachment-edit'])->only('update');
+        $this->middleware(['permission:lesson-attachment-delete'])->only('destroy');
+    }
+
     /**
      * تخزين مرفق جديد للدرس.
      */

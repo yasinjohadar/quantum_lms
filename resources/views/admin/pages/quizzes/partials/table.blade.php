@@ -49,29 +49,39 @@
         </td>
         <td>
             <div class="btn-group btn-group-sm">
-                <a href="{{ route('admin.quizzes.show', $quiz->id) }}" 
-                   class="btn btn-icon btn-info-transparent" title="عرض">
-                    <i class="bi bi-eye"></i>
-                </a>
-                <a href="{{ route('admin.quizzes.questions', $quiz->id) }}" 
-                   class="btn btn-icon btn-success-transparent" title="الأسئلة">
-                    <i class="bi bi-list-check"></i>
-                </a>
-                <a href="{{ route('admin.quizzes.edit', $quiz->id) }}" 
-                   class="btn btn-icon btn-primary-transparent" title="تعديل">
-                    <i class="bi bi-pencil"></i>
-                </a>
-                <a href="{{ route('admin.quizzes.results', $quiz->id) }}" 
-                   class="btn btn-icon btn-warning-transparent" title="النتائج">
-                    <i class="bi bi-bar-chart"></i>
-                </a>
-                @if($quiz->attempts_count == 0)
-                    <button type="button" class="btn btn-icon btn-danger-transparent" 
-                            data-bs-toggle="modal" data-bs-target="#deleteQuiz{{ $quiz->id }}"
-                            title="حذف">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                @endif
+                @can('quiz-show')
+                    <a href="{{ route('admin.quizzes.show', $quiz->id) }}" 
+                       class="btn btn-icon btn-info-transparent" title="عرض">
+                        <i class="bi bi-eye"></i>
+                    </a>
+                @endcan
+                @can('quiz-questions')
+                    <a href="{{ route('admin.quizzes.questions', $quiz->id) }}" 
+                       class="btn btn-icon btn-success-transparent" title="الأسئلة">
+                        <i class="bi bi-list-check"></i>
+                    </a>
+                @endcan
+                @can('quiz-edit')
+                    <a href="{{ route('admin.quizzes.edit', $quiz->id) }}" 
+                       class="btn btn-icon btn-primary-transparent" title="تعديل">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                @endcan
+                @can('quiz-results')
+                    <a href="{{ route('admin.quizzes.results', $quiz->id) }}" 
+                       class="btn btn-icon btn-warning-transparent" title="النتائج">
+                        <i class="bi bi-bar-chart"></i>
+                    </a>
+                @endcan
+                @can('quiz-delete')
+                    @if($quiz->attempts_count == 0)
+                        <button type="button" class="btn btn-icon btn-danger-transparent" 
+                                data-bs-toggle="modal" data-bs-target="#deleteQuiz{{ $quiz->id }}"
+                                title="حذف">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    @endif
+                @endcan
             </div>
         </td>
     </tr>
@@ -115,7 +125,8 @@
                 </div>
             </div>
         </div>
-    @endif
+        @endif
+    @endcan
 @empty
     <tr>
         <td colspan="8" class="text-center py-5">

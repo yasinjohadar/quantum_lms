@@ -40,31 +40,41 @@
         <td>{{ $subject->created_at?->format('Y-m-d H:i') }}</td>
         <td>
             <div class="d-flex gap-1 flex-wrap justify-content-center">
-                <a href="{{ route('admin.subjects.show', $subject->id) }}"
-                   class="btn btn-sm btn-info text-white"
-                   title="عرض تفاصيل المادة">
-                    <i class="fas fa-eye"></i> عرض
-                </a>
-                <a href="{{ route('admin.subjects.enrolled-students', $subject->id) }}"
-                   class="btn btn-sm btn-primary text-white"
-                   title="عرض الطلاب المنضمين">
-                    <i class="fas fa-users"></i> الطلاب
-                </a>
-                <a href="{{ route('admin.subjects.edit', $subject->id) }}"
-                   class="btn btn-sm btn-warning text-white"
-                   title="تعديل المادة">
-                    <i class="fas fa-edit"></i> تعديل
-                </a>
-                <button type="button"
-                        class="btn btn-sm btn-danger"
-                        data-bs-toggle="modal"
-                        data-bs-target="#deleteSubject{{ $subject->id }}"
-                        title="حذف المادة">
-                    <i class="fas fa-trash-alt"></i> حذف
-                </button>
+                @can('subject-show')
+                    <a href="{{ route('admin.subjects.show', $subject->id) }}"
+                       class="btn btn-sm btn-info text-white"
+                       title="عرض تفاصيل المادة">
+                        <i class="fas fa-eye"></i> عرض
+                    </a>
+                @endcan
+                @can('subject-enrolled-students')
+                    <a href="{{ route('admin.subjects.enrolled-students', $subject->id) }}"
+                       class="btn btn-sm btn-primary text-white"
+                       title="عرض الطلاب المنضمين">
+                        <i class="fas fa-users"></i> الطلاب
+                    </a>
+                @endcan
+                @can('subject-edit')
+                    <a href="{{ route('admin.subjects.edit', $subject->id) }}"
+                       class="btn btn-sm btn-warning text-white"
+                       title="تعديل المادة">
+                        <i class="fas fa-edit"></i> تعديل
+                    </a>
+                @endcan
+                @can('subject-delete')
+                    <button type="button"
+                            class="btn btn-sm btn-danger"
+                            data-bs-toggle="modal"
+                            data-bs-target="#deleteSubject{{ $subject->id }}"
+                            title="حذف المادة">
+                        <i class="fas fa-trash-alt"></i> حذف
+                    </button>
+                @endcan
             </div>
 
-            @include('admin.pages.subjects.force-delete', ['subject' => $subject])
+            @can('subject-delete')
+                @include('admin.pages.subjects.force-delete', ['subject' => $subject])
+            @endcan
         </td>
     </tr>
 @empty

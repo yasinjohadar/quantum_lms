@@ -23,7 +23,17 @@ class LibraryItemController extends Controller
     public function __construct(
         private LibraryService $libraryService,
         private LibraryStatsService $statsService
-    ) {}
+    ) {
+        $this->middleware(['permission:library-list'])->only('index');
+        $this->middleware(['permission:library-create'])->only(['create', 'store']);
+        $this->middleware(['permission:library-edit'])->only(['edit', 'update']);
+        $this->middleware(['permission:library-delete'])->only('destroy');
+        $this->middleware(['permission:library-show'])->only('show');
+        $this->middleware(['permission:library-preview'])->only('preview');
+        $this->middleware(['permission:library-download'])->only('download');
+        $this->middleware(['permission:library-stats'])->only('stats');
+        $this->middleware(['permission:library-get-subjects-by-class'])->only('getSubjectsByClass');
+    }
 
     /**
      * عرض قائمة العناصر

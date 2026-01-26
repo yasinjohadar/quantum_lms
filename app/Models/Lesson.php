@@ -22,19 +22,31 @@ class Lesson extends Model
         'video_id',
         'thumbnail',
         'duration',
+        'book_page_from',
+        'book_page_to',
         'order',
         'is_active',
         'is_free',
         'is_preview',
+        'review_status',
+        'review_notes',
+        'reviewed_by',
+        'reviewed_at',
+        'submitted_for_review_at',
     ];
 
     protected $casts = [
         'unit_id' => 'integer',
         'duration' => 'integer',
+        'book_page_from' => 'integer',
+        'book_page_to' => 'integer',
         'order' => 'integer',
         'is_active' => 'boolean',
         'is_free' => 'boolean',
         'is_preview' => 'boolean',
+        'reviewed_by' => 'integer',
+        'reviewed_at' => 'datetime',
+        'submitted_for_review_at' => 'datetime',
     ];
 
     /**
@@ -48,11 +60,27 @@ class Lesson extends Model
     ];
 
     /**
+     * حالات المراجعة.
+     */
+    const REVIEW_STATUS_DRAFT = 'draft';
+    const REVIEW_STATUS_PENDING = 'pending_review';
+    const REVIEW_STATUS_APPROVED = 'approved';
+    const REVIEW_STATUS_REJECTED = 'rejected';
+
+    /**
      * العلاقة مع الوحدة.
      */
     public function unit()
     {
         return $this->belongsTo(Unit::class);
+    }
+
+    /**
+     * العلاقة مع المشرف الذي راجع الدرس.
+     */
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 
     /**
@@ -192,5 +220,29 @@ class Lesson extends Model
     public function scopeOrdered($query)
     {
         return $query->orderBy('order');
+    }
+
+    /**
+     * Scope للدروس قيد المراجعة.
+     */
+    public function scopePendingReview($query)
+    {
+        return $query->where('review_status', self::REVIEW_STATUS_PENDING);
+    }
+
+    /**
+     * Scope للدروس الموافق عليها.
+     */
+    public function scopeApproved($query)
+    {
+        return $query->where('review_status', self::REVIEW_STATUS_APPROVED);
+    }
+
+    /**
+     * Scope للدروس المرفوضة.
+     */
+    public function scopeRejected($query)
+    {
+        return $query->where('review_status', self::REVIEW_STATUS_REJECTED);
     }
 }

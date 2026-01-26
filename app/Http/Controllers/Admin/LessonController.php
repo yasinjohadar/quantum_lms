@@ -7,12 +7,23 @@ use App\Http\Requests\Admin\StoreLessonRequest;
 use App\Http\Requests\Admin\UpdateLessonRequest;
 use App\Models\Lesson;
 use App\Models\Unit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Helpers\StorageHelper;
 
 class LessonController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(['permission:lesson-create'])->only('store');
+        $this->middleware(['permission:lesson-edit'])->only('update');
+        $this->middleware(['permission:lesson-delete'])->only('destroy');
+        $this->middleware(['permission:lesson-show'])->only('show');
+        $this->middleware(['permission:lesson-approve-review'])->only('approveReview');
+        $this->middleware(['permission:lesson-reject-review'])->only('rejectReview');
+    }
+
     /**
      * تخزين درس جديد تابع لوحدة معيّنة.
      */
@@ -23,9 +34,32 @@ class LessonController extends Controller
         try {
             $data = $request->validated();
             $data['unit_id'] = $unit->id;
-            $data['is_active'] = $request->has('is_active');
             $data['is_free'] = $request->has('is_free');
             $data['is_preview'] = $request->has('is_preview');
+
+            // منطق المراجعة: إذا كان المستخدم معلم وليس مشرف أو مدير
+            $user = auth()->user();
+            $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
+
+            if ($isTeacher) {
+                // إذا حاول تفعيل الدرس، ضعه في حالة قيد المراجعة
+                if ($request->has('is_active')) {
+                    $data['review_status'] = Lesson::REVIEW_STATUS_PENDING;
+                    $data['submitted_for_review_at'] = now();
+                    $data['is_active'] = false; // لا يتم تفعيله مباشرة
+                } else {
+                    $data['review_status'] = Lesson::REVIEW_STATUS_DRAFT;
+                    $data['is_active'] = false;
+                }
+            } else {
+                // المشرف والمدير يمكنهم التفعيل مباشرة
+                $data['is_active'] = $request->has('is_active');
+                if ($data['is_active']) {
+                    $data['review_status'] = Lesson::REVIEW_STATUS_APPROVED;
+                } else {
+                    $data['review_status'] = Lesson::REVIEW_STATUS_DRAFT;
+                }
+            }
 
             // معالجة نوع الفيديو واستخراج المعرف
             if ($data['video_type'] === 'youtube' && !empty($data['video_url'])) {
@@ -89,9 +123,38 @@ class LessonController extends Controller
     {
         try {
             $data = $request->validated();
-            $data['is_active'] = $request->has('is_active');
             $data['is_free'] = $request->has('is_free');
             $data['is_preview'] = $request->has('is_preview');
+
+            $user = auth()->user();
+            $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
+
+            if ($isTeacher) {
+                // إذا كان الدرس في حالة pending أو rejected وكان المعلم يحاول تفعيله
+                if ($request->has('is_active') && in_array($lesson->review_status, [Lesson::REVIEW_STATUS_PENDING, Lesson::REVIEW_STATUS_REJECTED])) {
+                    $data['review_status'] = Lesson::REVIEW_STATUS_PENDING;
+                    $data['submitted_for_review_at'] = now();
+                    $data['review_notes'] = null; // مسح الملاحظات القديمة
+                    $data['is_active'] = false;
+                } elseif ($request->has('is_active')) {
+                    // إذا كان draft ويحاول تفعيله
+                    $data['review_status'] = Lesson::REVIEW_STATUS_PENDING;
+                    $data['submitted_for_review_at'] = now();
+                    $data['is_active'] = false;
+                } else {
+                    // إذا لم يحاول تفعيله، يبقى draft
+                    $data['review_status'] = Lesson::REVIEW_STATUS_DRAFT;
+                    $data['is_active'] = false;
+                }
+            } else {
+                // المشرف والمدير
+                $data['is_active'] = $request->has('is_active');
+                if ($data['is_active'] && $lesson->review_status !== Lesson::REVIEW_STATUS_APPROVED) {
+                    $data['review_status'] = Lesson::REVIEW_STATUS_APPROVED;
+                } elseif (!$data['is_active']) {
+                    $data['review_status'] = Lesson::REVIEW_STATUS_DRAFT;
+                }
+            }
 
             // معالجة نوع الفيديو واستخراج المعرف
             if ($data['video_type'] === 'youtube' && !empty($data['video_url'])) {
@@ -176,6 +239,54 @@ class LessonController extends Controller
                 ->route('admin.subjects.show', $subjectId)
                 ->with('error', 'حدث خطأ أثناء حذف الدرس: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * الموافقة على تفعيل الدرس
+     */
+    public function approveReview(Request $request, Lesson $lesson)
+    {
+        $request->validate([
+            'review_notes' => 'nullable|string|max:1000',
+        ]);
+
+        $lesson->update([
+            'review_status' => Lesson::REVIEW_STATUS_APPROVED,
+            'is_active' => true,
+            'review_notes' => $request->input('review_notes'),
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+        ]);
+
+        $subjectId = $lesson->unit->section->subject_id;
+
+        return redirect()
+            ->route('admin.subjects.show', $subjectId)
+            ->with('success', 'تم الموافقة على تفعيل الدرس بنجاح.');
+    }
+
+    /**
+     * رفض تفعيل الدرس مع ملاحظات
+     */
+    public function rejectReview(Request $request, Lesson $lesson)
+    {
+        $request->validate([
+            'review_notes' => 'required|string|max:1000',
+        ]);
+
+        $lesson->update([
+            'review_status' => Lesson::REVIEW_STATUS_REJECTED,
+            'is_active' => false,
+            'review_notes' => $request->input('review_notes'),
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+        ]);
+
+        $subjectId = $lesson->unit->section->subject_id;
+
+        return redirect()
+            ->route('admin.subjects.show', $subjectId)
+            ->with('success', 'تم رفض تفعيل الدرس وتم إرسال الملاحظات للمعلم.');
     }
 }
 

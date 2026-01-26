@@ -16,9 +16,11 @@
                     <h5 class="page-title fs-21 mb-1">الصفوف الدراسية</h5>
                 </div>
                 <div class="d-flex gap-2">
-                    <a href="{{ route('admin.classes.create') }}" class="btn btn-primary btn-sm">
-                        <i class="fas fa-plus me-1"></i> إضافة صف جديد
-                    </a>
+                    @can('class-create')
+                        <a href="{{ route('admin.classes.create') }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus me-1"></i> إضافة صف جديد
+                        </a>
+                    @endcan
                 </div>
             </div>
 

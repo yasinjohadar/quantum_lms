@@ -15,6 +15,16 @@ use App\Helpers\StorageHelper;
 
 class ClassController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(['permission:class-list'])->only('index');
+        $this->middleware(['permission:class-create'])->only(['create', 'store']);
+        $this->middleware(['permission:class-edit'])->only(['edit', 'update']);
+        $this->middleware(['permission:class-delete'])->only('destroy');
+        $this->middleware(['permission:class-show'])->only('show');
+        $this->middleware(['permission:class-enrolled-students'])->only('enrolledStudents');
+    }
+
     /**
      * Display a listing of the resource.
      */
