@@ -65,10 +65,18 @@
                                 @method('PUT')
                                 <div class="row">
 
-                                    <div class="mb-3 col">
+                                    <div class="mb-3 col-md-6">
                                         <label class="form-label">اسم الروول</label>
                                         <input type="text" class="form-control" name="name"
                                             value="{{ $role->name }}">
+                                    </div>
+                                    <div class="mb-3 col-md-6">
+                                        <label class="form-label">نوع الواجهة</label>
+                                        <select class="form-select" name="dashboard_type" required>
+                                            <option value="admin" {{ ($role->dashboard_type ?? 'student') === 'admin' ? 'selected' : '' }}>لوحة تحكم الأدمن</option>
+                                            <option value="student" {{ ($role->dashboard_type ?? 'student') === 'student' ? 'selected' : '' }}>لوحة تحكم الطالب</option>
+                                        </select>
+                                        <small class="text-muted">حدد نوع الواجهة التي يجب أن يصل إليها المستخدمون بهذا الدور</small>
                                     </div>
                                 </div>
 

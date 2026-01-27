@@ -561,15 +561,20 @@ public function index(Request $request)
         Log::info('Admin ' . ($impersonatorName ?? 'System') . ' logged in as user ' . $user->name . ' (ID: ' . $user->id . ') via ' . (request()->isMethod('get') ? 'signed URL' : 'form'));
 
         // توجيه حسب صلاحية المستخدم
-        if ($user->hasRole('student')) {
-            return redirect()->route('student.dashboard')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
-        } elseif ($user->hasRole('teacher')) {
-            return redirect()->route('admin.dashboard')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
-        } elseif ($user->hasRole('supervisor')) {
-            return redirect()->route('admin.my-classes')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
-        } else {
-            return redirect()->route('admin.dashboard')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
+        $primaryRole = $user->roles()->first();
+
+        if ($primaryRole) {
+            if ($primaryRole->dashboard_type === 'admin') {
+                if ($primaryRole->name === 'supervisor') {
+                    return redirect()->route('admin.my-classes')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
+                }
+                return redirect()->route('admin.dashboard')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
+            } else {
+                return redirect()->route('student.dashboard')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
+            }
         }
+
+        return redirect()->route('student.dashboard')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
     }
 
     /**

@@ -66,6 +66,7 @@
                                         <tr>
                                             <th>#</th>
                                             <th>اسم الصلاحية</th>
+                                            <th>نوع الواجهة</th>
                                             <th>العمليات</th>
                                         </tr>
                                     </thead>
@@ -74,6 +75,11 @@
                                             <tr>
                                                 <td>{{ $loop->iteration }}</td>
                                                 <td>{{ $role->name }}</td>
+                                                <td>
+                                                    <span class="badge {{ ($role->dashboard_type ?? 'student') === 'admin' ? 'bg-primary' : 'bg-info' }}">
+                                                        {{ ($role->dashboard_type ?? 'student') === 'admin' ? 'لوحة الأدمن' : 'لوحة الطالب' }}
+                                                    </span>
+                                                </td>
                                                 <td>
                                                     <a href="{{route("roles.edit" , $role->id)}}" class="btn btn-sm btn-info text-white">
                                                         <i class="fas fa-edit"></i> تعديل
@@ -88,7 +94,7 @@
                                             @include('admin.pages.roles.delete');
                                         @empty
                                             <tr>
-                                                <td colspan="3" class="text-danger fw-bold text-center">
+                                                <td colspan="4" class="text-danger fw-bold text-center">
                                                     لا توجد بيانات متاحة
                                                 </td>
                                             </tr>

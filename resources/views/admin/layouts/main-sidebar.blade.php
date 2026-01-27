@@ -524,7 +524,7 @@
                         </li>
                         @endcanany
 
-                        @canany(['dashboard-view'])
+                        @canany(['gamification-list', 'badge-list', 'achievement-list', 'level-list', 'challenge-list', 'reward-list', 'certificate-list', 'leaderboard-list', 'daily-task-list', 'weekly-task-list', 'gamification-update'])
                         <li class="slide has-sub {{ request()->is('admin/gamification*') || request()->is('admin/badges*') || request()->is('admin/achievements*') || request()->is('admin/levels*') || request()->is('admin/challenges*') || request()->is('admin/rewards*') || request()->is('admin/certificates*') || request()->is('admin/leaderboards*') || request()->is('admin/daily-tasks*') || request()->is('admin/weekly-tasks*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -538,77 +538,77 @@
                                 <li class="slide side-menu__label1">
                                     <a href="javascript:void(0);">نظام التحفيز</a>
                                 </li>
-                                @can('dashboard-view')
+                                @can('gamification-list')
                                 <li class="slide {{ request()->is('admin/gamification*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.gamification.index') }}" class="side-menu__item {{ request()->is('admin/gamification*') ? 'active' : '' }}">
                                         <span class="side-menu__label">لوحة التحكم</span>
                                     </a>
                                 </li>
                                 @endcan
-                                @can('dashboard-view')
+                                @can('badge-list')
                                 <li class="slide {{ request()->is('admin/badges*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.badges.index') }}" class="side-menu__item {{ request()->is('admin/badges*') ? 'active' : '' }}">
                                         <span class="side-menu__label">الشارات</span>
                                     </a>
                                 </li>
                                 @endcan
-                                @can('dashboard-view')
+                                @can('achievement-list')
                                 <li class="slide {{ request()->is('admin/achievements*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.achievements.index') }}" class="side-menu__item {{ request()->is('admin/achievements*') ? 'active' : '' }}">
                                         <span class="side-menu__label">الإنجازات</span>
                                     </a>
                                 </li>
                                 @endcan
-                                @can('dashboard-view')
+                                @can('level-list')
                                 <li class="slide {{ request()->is('admin/levels*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.levels.index') }}" class="side-menu__item {{ request()->is('admin/levels*') ? 'active' : '' }}">
                                         <span class="side-menu__label">المستويات</span>
                                     </a>
                                 </li>
                                 @endcan
-                                @can('dashboard-view')
+                                @can('challenge-list')
                                 <li class="slide {{ request()->is('admin/challenges*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.challenges.index') }}" class="side-menu__item {{ request()->is('admin/challenges*') ? 'active' : '' }}">
                                         <span class="side-menu__label">التحديات</span>
                                     </a>
                                 </li>
                                 @endcan
-                                @can('dashboard-view')
+                                @can('reward-list')
                                 <li class="slide {{ request()->is('admin/rewards*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.rewards.index') }}" class="side-menu__item {{ request()->is('admin/rewards*') ? 'active' : '' }}">
                                         <span class="side-menu__label">المكافآت</span>
                                     </a>
                                 </li>
                                 @endcan
-                                @can('dashboard-view')
+                                @can('certificate-list')
                                 <li class="slide {{ request()->is('admin/certificates*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.certificates.index') }}" class="side-menu__item {{ request()->is('admin/certificates*') ? 'active' : '' }}">
                                         <span class="side-menu__label">الشهادات</span>
                                     </a>
                                 </li>
                                 @endcan
-                                @can('dashboard-view')
+                                @can('leaderboard-list')
                                 <li class="slide {{ request()->is('admin/leaderboards*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.leaderboards.index') }}" class="side-menu__item {{ request()->is('admin/leaderboards*') ? 'active' : '' }}">
                                         <span class="side-menu__label">لوحة المتصدرين</span>
                                     </a>
                                 </li>
                                 @endcan
-                                @can('dashboard-view')
+                                @can('daily-task-list')
                                 <li class="slide {{ request()->is('admin/daily-tasks*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.daily-tasks.index') }}" class="side-menu__item {{ request()->is('admin/daily-tasks*') ? 'active' : '' }}">
                                         <span class="side-menu__label">المهام اليومية</span>
                                     </a>
                                 </li>
                                 @endcan
-                                @can('dashboard-view')
+                                @can('weekly-task-list')
                                 <li class="slide {{ request()->is('admin/weekly-tasks*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.weekly-tasks.index') }}" class="side-menu__item {{ request()->is('admin/weekly-tasks*') ? 'active' : '' }}">
                                         <span class="side-menu__label">المهام الأسبوعية</span>
                                     </a>
                                 </li>
                                 @endcan
-                                @can('dashboard-view')
+                                @can('gamification-update')
                                 <li class="slide {{ request()->is('admin/gamification/settings*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.gamification.settings') }}" class="side-menu__item {{ request()->is('admin/gamification/settings*') ? 'active' : '' }}">
                                         <span class="side-menu__label">إعدادات التحفيز</span>
@@ -672,7 +672,7 @@
                         </li>
                         @endcanany
 
-                        @canany(['dashboard-view'])
+                        @canany(['calendar-list', 'reminder-list'])
                         <li class="slide has-sub {{ request()->is('admin/calendar*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -686,21 +686,21 @@
                                 <li class="slide side-menu__label1">
                                     <a href="javascript:void(0);">التقويم والجدولة</a>
                                 </li>
-                                @can('dashboard-view')
+                                @can('calendar-list')
                                 <li class="slide {{ request()->is('admin/calendar') && !request()->is('admin/calendar/*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.calendar.index') }}" class="side-menu__item {{ request()->is('admin/calendar') && !request()->is('admin/calendar/*') ? 'active' : '' }}">
                                         <span class="side-menu__label">التقويم</span>
                                     </a>
                                 </li>
                                 @endcan
-                                @can('dashboard-view')
+                                @can('calendar-list')
                                 <li class="slide {{ request()->is('admin/calendar/events*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.calendar.events.index') }}" class="side-menu__item {{ request()->is('admin/calendar/events*') ? 'active' : '' }}">
                                         <span class="side-menu__label">الأحداث</span>
                                     </a>
                                 </li>
                                 @endcan
-                                @can('dashboard-view')
+                                @can('reminder-list')
                                 <li class="slide {{ request()->is('admin/calendar/reminders*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.calendar.reminders.index') }}" class="side-menu__item {{ request()->is('admin/calendar/reminders*') ? 'active' : '' }}">
                                         <span class="side-menu__label">التذكيرات</span>
@@ -836,7 +836,7 @@
                         </li>
                         @endcanany
 
-                        @can('dashboard-view')
+                        @can('notification-create')
                         <li class="slide {{ request()->is('admin/notifications*') ? 'active' : '' }}">
                             <a href="{{ route('admin.notifications.create') }}" class="side-menu__item {{ request()->is('admin/notifications*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">

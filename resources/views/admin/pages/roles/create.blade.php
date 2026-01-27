@@ -63,6 +63,14 @@
                                         <label class="form-label fw-bold">اسم الدور</label>
                                         <input type="text" class="form-control" name="name" placeholder="مثال: مشرف عام">
                                     </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">نوع الواجهة</label>
+                                        <select class="form-select" name="dashboard_type" required>
+                                            <option value="admin">لوحة تحكم الأدمن</option>
+                                            <option value="student">لوحة تحكم الطالب</option>
+                                        </select>
+                                        <small class="text-muted">حدد نوع الواجهة التي يجب أن يصل إليها المستخدمون بهذا الدور</small>
+                                    </div>
                                 </div>
 
                                 <div class="mb-4">

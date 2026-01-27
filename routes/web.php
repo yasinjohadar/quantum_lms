@@ -17,18 +17,23 @@ Route::get('/dashboard', function () {
     
     $user = auth()->user();
     
-    // التحقق من الصلاحيات
-    if ($user->hasRole('admin')) {
-        return redirect()->route('admin.dashboard');
-    } elseif ($user->hasRole('supervisor')) {
-        return redirect()->route('admin.my-classes');
-    } elseif ($user->hasRole('teacher')) {
-        return redirect()->route('admin.dashboard');
-    } elseif ($user->hasRole('student')) {
-        return redirect()->route('student.dashboard');
+    // الحصول على أول دور للمستخدم
+    $primaryRole = $user->roles()->first();
+    
+    if ($primaryRole) {
+        // استخدام dashboard_type من الدور
+        if ($primaryRole->dashboard_type === 'admin') {
+            // توجيه خاص للمشرف
+            if ($primaryRole->name === 'supervisor') {
+                return redirect()->route('admin.my-classes');
+            }
+            return redirect()->route('admin.dashboard');
+        } else {
+            return redirect()->route('student.dashboard');
+        }
     }
     
-    // إذا لم يكن لديه صلاحية محددة، يوجه إلى student dashboard كافتراضي
+    // افتراضي: student dashboard
     return redirect()->route('student.dashboard');
 })->middleware(['auth'])->name('dashboard');
 

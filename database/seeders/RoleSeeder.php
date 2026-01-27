@@ -147,5 +147,11 @@ class RoleSeeder extends Seeder
         ];
         
         $teacherRole->syncPermissions($teacherPermissions);
+        
+        // تحديث الأدوار الموجودة لتحديد نوع الواجهة
+        Role::where('name', 'admin')->update(['dashboard_type' => 'admin']);
+        Role::where('name', 'supervisor')->update(['dashboard_type' => 'admin']);
+        Role::where('name', 'teacher')->update(['dashboard_type' => 'admin']);
+        Role::where('name', 'student')->update(['dashboard_type' => 'student']);
     }
 }

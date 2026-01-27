@@ -148,6 +148,7 @@
                             <div class="card-body">
                                 <div class="row g-3">
                                     <!-- الطلاب -->
+                                    @can('user-list')
                                     <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
                                         <a href="{{ route('users.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
                                             <div class="card-body text-center p-3">
@@ -159,8 +160,10 @@
                                             </div>
                                         </a>
                                     </div>
+                                    @endcan
 
                                     <!-- المواد -->
+                                    @can('subject-list')
                                     <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
                                         <a href="{{ route('admin.subjects.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
                                             <div class="card-body text-center p-3">
@@ -172,8 +175,10 @@
                                             </div>
                                         </a>
                                     </div>
+                                    @endcan
 
                                     <!-- الاختبارات -->
+                                    @can('quiz-list')
                                     <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
                                         <a href="{{ route('admin.quizzes.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
                                             <div class="card-body text-center p-3">
@@ -185,8 +190,10 @@
                                             </div>
                                         </a>
                                     </div>
+                                    @endcan
 
                                     <!-- الانضمامات -->
+                                    @can('enrollment-list')
                                     <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
                                         <a href="{{ route('admin.enrollments.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
                                             <div class="card-body text-center p-3">
@@ -198,8 +205,10 @@
                                             </div>
                                         </a>
                                     </div>
+                                    @endcan
 
                                     <!-- التقارير -->
+                                    @can('report-view')
                                     <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
                                         <a href="{{ route('admin.reports.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
                                             <div class="card-body text-center p-3">
@@ -211,8 +220,10 @@
                                             </div>
                                         </a>
                                     </div>
+                                    @endcan
 
                                     <!-- المكتبة -->
+                                    @can('library-list')
                                     <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
                                         <a href="{{ route('admin.library.items.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
                                             <div class="card-body text-center p-3">
@@ -224,8 +235,10 @@
                                             </div>
                                         </a>
                                     </div>
+                                    @endcan
 
                                     <!-- جلسات المستخدمين -->
+                                    @can('user-login-logs')
                                     <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
                                         <a href="{{ route('admin.user-sessions.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
                                             <div class="card-body text-center p-3">
@@ -237,8 +250,10 @@
                                             </div>
                                         </a>
                                     </div>
+                                    @endcan
 
                                     <!-- النسخ الاحتياطية -->
+                                    @can('settings-manage')
                                     <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
                                         <a href="{{ route('admin.backups.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
                                             <div class="card-body text-center p-3">
@@ -250,8 +265,10 @@
                                             </div>
                                         </a>
                                     </div>
+                                    @endcan
 
                                     <!-- نماذج AI -->
+                                    @can('question-create')
                                     <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
                                         <a href="{{ route('admin.ai.models.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
                                             <div class="card-body text-center p-3">
@@ -263,8 +280,10 @@
                                             </div>
                                         </a>
                                     </div>
+                                    @endcan
 
                                     <!-- التقويم -->
+                                    @can('calendar-list')
                                     <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
                                         <a href="{{ route('admin.calendar.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
                                             <div class="card-body text-center p-3">
@@ -276,8 +295,10 @@
                                             </div>
                                         </a>
                                     </div>
+                                    @endcan
 
                                     <!-- سجلات الدخول -->
+                                    @can('user-login-logs')
                                     <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
                                         <a href="{{ route('admin.login-logs.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
                                             <div class="card-body text-center p-3">
@@ -289,8 +310,10 @@
                                             </div>
                                         </a>
                                     </div>
+                                    @endcan
 
                                     <!-- الإعدادات -->
+                                    @can('settings-manage')
                                     <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
                                         <a href="{{ route('admin.settings.index') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
                                             <div class="card-body text-center p-3">
@@ -302,6 +325,7 @@
                                             </div>
                                         </a>
                                     </div>
+                                    @endcan
                                 </div>
                             </div>
                         </div>

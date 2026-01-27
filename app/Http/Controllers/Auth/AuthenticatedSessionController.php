@@ -83,31 +83,21 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         // توجيه المستخدم حسب صلاحيته
-        // الحصول على جميع الصلاحيات للمستخدم
-        $roles = $user->getRoleNames();
-        
-        // التحقق من admin أولاً
-        if ($user->hasRole('admin')) {
-            return redirect()->route('admin.dashboard');
-        }
-        
-        // التحقق من supervisor
-        if ($user->hasRole('supervisor')) {
-            return redirect()->route('admin.dashboard');
-        }
-        
-        // التحقق من teacher
-        if ($user->hasRole('teacher')) {
-            return redirect()->route('admin.dashboard');
-        }
-        
-        // التحقق من student
-        if ($user->hasRole('student')) {
-            return redirect()->route('student.dashboard');
+        $primaryRole = $user->roles()->first();
+
+        if ($primaryRole) {
+            if ($primaryRole->dashboard_type === 'admin') {
+                // توجيه خاص للمشرف
+                if ($primaryRole->name === 'supervisor') {
+                    return redirect()->route('admin.my-classes');
+                }
+                return redirect()->route('admin.dashboard');
+            } else {
+                return redirect()->route('student.dashboard');
+            }
         }
 
-        // إذا لم يكن لديه صلاحية محددة، يوجه إلى student dashboard كافتراضي
-        // (لأن المستخدمين الجدد يحصلون على صلاحية student تلقائياً)
+        // افتراضي: student dashboard
         return redirect()->route('student.dashboard');
     }
 

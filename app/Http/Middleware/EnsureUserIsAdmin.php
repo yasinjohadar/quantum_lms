@@ -21,8 +21,12 @@ class EnsureUserIsAdmin
 
         $user = auth()->user();
         
-        // السماح للمدير والمشرف والمعلم بالوصول
-        if (!$user->hasAnyRole(['admin', 'supervisor', 'teacher'])) {
+        // التحقق من أن المستخدم لديه دور بنوع admin
+        $hasAdminDashboard = $user->roles()
+            ->where('dashboard_type', 'admin')
+            ->exists();
+
+        if (!$hasAdminDashboard) {
             abort(403, 'غير مصرح لك بالوصول إلى هذه الصفحة.');
         }
 

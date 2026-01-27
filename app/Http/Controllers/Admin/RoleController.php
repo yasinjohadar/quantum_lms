@@ -139,7 +139,8 @@ public function __construct()
     public function store(Request $request)
     {
         $role = Role::create([
-            "name" => $request->name
+            "name" => $request->name,
+            "dashboard_type" => $request->dashboard_type ?? 'student'
         ]);
 
         $role->syncPermissions($request->permissions);
@@ -175,10 +176,9 @@ public function __construct()
         $role = Role::findOrFail($request->id);
 
         $role->update([
-
-            "name" => $request->name
-            ]
-        );
+            "name" => $request->name,
+            "dashboard_type" => $request->dashboard_type ?? 'student'
+        ]);
         $role->syncPermissions($request->permissions);
         return redirect()->route("roles.index")->with("success" , "تم تعديل الروول بنجاح");
     }
