@@ -41,6 +41,9 @@ class QuizController extends Controller
         $this->middleware(['permission:quiz-export-results'])->only('exportResults');
         $this->middleware(['permission:quiz-get-subjects-by-class'])->only('getSubjectsByClass');
         $this->middleware(['permission:quiz-get-units'])->only('getUnits');
+        $this->middleware(['permission:quiz-approve-review'])->only('approveReview');
+        $this->middleware(['permission:quiz-reject-review'])->only('rejectReview');
+        $this->middleware(['permission:quiz-submit-for-review'])->only('submitForReview');
     }
 
     /**
@@ -50,6 +53,29 @@ class QuizController extends Controller
     {
         $query = Quiz::with(['subject.schoolClass', 'unit', 'creator'])
             ->withCount(['questions', 'attempts']);
+
+        // إذا كان المستخدم معلم وليس مشرف/مدير
+        $user = auth()->user();
+        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            $classIds = $user->assignedClasses()->pluck('classes.id');
+            $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
+            
+            $query->whereHas('subject', function($q) use ($classIds, $subjectIds) {
+                // المواد من الصفوف المخصصة
+                if ($classIds->isNotEmpty()) {
+                    $q->whereIn('class_id', $classIds);
+                }
+                // أو المواد المخصصة مباشرة
+                if ($subjectIds->isNotEmpty()) {
+                    $q->orWhereIn('id', $subjectIds);
+                }
+            });
+        }
+
+        // إذا كان المستخدم مشرف وليس مدير
+        if ($user->hasRole('supervisor') && !$user->hasRole('admin')) {
+            $query->forSupervisor($user->id);
+        }
 
         // البحث
         if ($request->filled('search')) {
@@ -76,6 +102,11 @@ class QuizController extends Controller
         // تصفية حسب النشر
         if ($request->filled('is_published')) {
             $query->where('is_published', $request->is_published === '1');
+        }
+
+        // تصفية حسب حالة المراجعة
+        if ($request->filled('review_status')) {
+            $query->where('review_status', $request->input('review_status'));
         }
 
         $quizzes = $query->ordered()->paginate(15)->withQueryString();
@@ -203,12 +234,35 @@ class QuizController extends Controller
             $data['show_explanation'] = $request->has('show_explanation');
             $data['show_points_per_question'] = $request->has('show_points_per_question');
             $data['is_active'] = $request->has('is_active');
-            $data['is_published'] = $request->has('is_published');
             $data['requires_password'] = $request->has('requires_password');
             $data['require_webcam'] = $request->has('require_webcam');
             $data['prevent_copy_paste'] = $request->has('prevent_copy_paste');
             $data['fullscreen_required'] = $request->has('fullscreen_required');
             $data['created_by'] = auth()->id();
+
+            // منطق المراجعة: إذا كان المستخدم معلم وليس مشرف أو مدير
+            $user = auth()->user();
+            $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
+
+            if ($isTeacher) {
+                // إذا حاول نشر الاختبار، ضعه في حالة قيد المراجعة
+                if ($request->has('is_published')) {
+                    $data['review_status'] = Quiz::REVIEW_STATUS_PENDING;
+                    $data['submitted_for_review_at'] = now();
+                    $data['is_published'] = false; // لا يتم النشر مباشرة
+                } else {
+                    $data['review_status'] = Quiz::REVIEW_STATUS_DRAFT;
+                    $data['is_published'] = false;
+                }
+            } else {
+                // المشرف والمدير يمكنهم النشر مباشرة
+                $data['is_published'] = $request->has('is_published');
+                if ($data['is_published']) {
+                    $data['review_status'] = Quiz::REVIEW_STATUS_APPROVED;
+                } else {
+                    $data['review_status'] = Quiz::REVIEW_STATUS_DRAFT;
+                }
+            }
 
             // نوع الاختبار والتبعية
             $data['lesson_id'] = $request->input('lesson_id');
@@ -275,6 +329,16 @@ class QuizController extends Controller
     public function edit(string $id)
     {
         $quiz = Quiz::findOrFail($id);
+        
+        // التحقق من التخصيص
+        $user = auth()->user();
+        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            if (!$user->isAssignedToSubject($quiz->subject_id) && 
+                !$user->isAssignedToClass($quiz->subject->class_id)) {
+                abort(403, 'غير مصرح لك بالوصول إلى هذا الاختبار');
+            }
+        }
+        
         $subjects = Subject::with('schoolClass')->orderBy('name')->get();
         $units = Unit::whereHas('section', function ($q) use ($quiz) {
             $q->where('subject_id', $quiz->subject_id);
@@ -305,11 +369,41 @@ class QuizController extends Controller
             $data['show_explanation'] = $request->has('show_explanation');
             $data['show_points_per_question'] = $request->has('show_points_per_question');
             $data['is_active'] = $request->has('is_active');
-            $data['is_published'] = $request->has('is_published');
             $data['requires_password'] = $request->has('requires_password');
             $data['require_webcam'] = $request->has('require_webcam');
             $data['prevent_copy_paste'] = $request->has('prevent_copy_paste');
             $data['fullscreen_required'] = $request->has('fullscreen_required');
+
+            // منطق المراجعة: إذا كان المستخدم معلم وليس مشرف أو مدير
+            $user = auth()->user();
+            $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
+
+            if ($isTeacher) {
+                // إذا كان الاختبار في حالة pending أو rejected وكان المعلم يحاول نشره
+                if ($request->has('is_published') && in_array($quiz->review_status, [Quiz::REVIEW_STATUS_PENDING, Quiz::REVIEW_STATUS_REJECTED])) {
+                    $data['review_status'] = Quiz::REVIEW_STATUS_PENDING;
+                    $data['submitted_for_review_at'] = now();
+                    $data['review_notes'] = null; // مسح الملاحظات القديمة
+                    $data['is_published'] = false;
+                } elseif ($request->has('is_published')) {
+                    // إذا كان draft ويحاول نشره
+                    $data['review_status'] = Quiz::REVIEW_STATUS_PENDING;
+                    $data['submitted_for_review_at'] = now();
+                    $data['is_published'] = false;
+                } else {
+                    // إذا لم يحاول نشره، يبقى draft
+                    $data['review_status'] = Quiz::REVIEW_STATUS_DRAFT;
+                    $data['is_published'] = false;
+                }
+            } else {
+                // المشرف والمدير
+                $data['is_published'] = $request->has('is_published');
+                if ($data['is_published'] && $quiz->review_status !== Quiz::REVIEW_STATUS_APPROVED) {
+                    $data['review_status'] = Quiz::REVIEW_STATUS_APPROVED;
+                } elseif (!$data['is_published']) {
+                    $data['review_status'] = Quiz::REVIEW_STATUS_DRAFT;
+                }
+            }
 
             // الحفاظ على نوع التبعية (scope) وربط الدرس كما هو حالياً
             // (يمكن توسيع ذلك لاحقاً إذا أردنا تغيير النوع من شاشة التعديل)
@@ -360,6 +454,15 @@ class QuizController extends Controller
     {
         try {
             $quiz = Quiz::findOrFail($id);
+
+            // التحقق من التخصيص
+            $user = auth()->user();
+            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+                if (!$user->isAssignedToSubject($quiz->subject_id) && 
+                    !$user->isAssignedToClass($quiz->subject->class_id)) {
+                    abort(403, 'غير مصرح لك بالوصول إلى هذا الاختبار');
+                }
+            }
 
             // التحقق من وجود محاولات
             if ($quiz->attempts()->count() > 0) {
@@ -764,6 +867,13 @@ class QuizController extends Controller
     {
         try {
             $quiz = Quiz::findOrFail($id);
+            $user = auth()->user();
+            $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
+            
+            // إذا كان المستخدم معلم، لا يمكنه النشر مباشرة
+            if ($isTeacher) {
+                return redirect()->back()->with('error', 'يجب إرسال الاختبار للمراجعة أولاً. لا يمكنك النشر مباشرة.');
+            }
             
             // التحقق من وجود أسئلة قبل النشر
             if (!$quiz->is_published && $quiz->questions()->count() === 0) {
@@ -771,6 +881,9 @@ class QuizController extends Controller
             }
 
             $quiz->is_published = !$quiz->is_published;
+            if ($quiz->is_published) {
+                $quiz->review_status = Quiz::REVIEW_STATUS_APPROVED;
+            }
             $quiz->save();
 
             $status = $quiz->is_published ? 'نشر' : 'إلغاء نشر';
@@ -827,6 +940,123 @@ class QuizController extends Controller
         })->orderBy('title')->get(['id', 'title']);
 
         return response()->json($units);
+    }
+
+    /**
+     * إرسال الاختبار للمراجعة
+     */
+    public function submitForReview(string $id)
+    {
+        try {
+            $quiz = Quiz::findOrFail($id);
+            $user = auth()->user();
+            
+            // التحقق من أن المستخدم معلم
+            if (!$user->hasRole('teacher') || $user->hasAnyRole(['admin', 'supervisor'])) {
+                abort(403, 'غير مصرح لك بإرسال الاختبار للمراجعة');
+            }
+            
+            // التحقق من وجود أسئلة
+            if ($quiz->questions()->count() === 0) {
+                return redirect()->back()->with('error', 'لا يمكن إرسال اختبار بدون أسئلة للمراجعة');
+            }
+            
+            // التحقق من التخصيص
+            if (!$user->isAssignedToSubject($quiz->subject_id) && 
+                !$user->isAssignedToClass($quiz->subject->class_id)) {
+                abort(403, 'غير مصرح لك بالوصول إلى هذا الاختبار');
+            }
+            
+            $quiz->update([
+                'review_status' => Quiz::REVIEW_STATUS_PENDING,
+                'submitted_for_review_at' => now(),
+                'review_notes' => null, // مسح الملاحظات القديمة
+                'is_published' => false,
+            ]);
+
+            return redirect()->back()->with('success', 'تم إرسال الاختبار للمراجعة بنجاح. سيتم مراجعته من قبل المشرف/الأدمن.');
+
+        } catch (\Exception $e) {
+            Log::error('Error submitting quiz for review: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'حدث خطأ أثناء إرسال الاختبار للمراجعة');
+        }
+    }
+
+    /**
+     * الموافقة على نشر الاختبار
+     */
+    public function approveReview(Request $request, string $id)
+    {
+        $request->validate([
+            'review_notes' => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            $quiz = Quiz::findOrFail($id);
+            
+            // التحقق من الصلاحية (admin/supervisor فقط)
+            $user = auth()->user();
+            if (!$user->hasAnyRole(['admin', 'supervisor'])) {
+                abort(403, 'غير مصرح لك بالموافقة على نشر الاختبار');
+            }
+            
+            // التحقق من وجود أسئلة
+            if ($quiz->questions()->count() === 0) {
+                return redirect()->back()->with('error', 'لا يمكن الموافقة على نشر اختبار بدون أسئلة');
+            }
+
+            $quiz->update([
+                'review_status' => Quiz::REVIEW_STATUS_APPROVED,
+                'is_published' => true,
+                'review_notes' => $request->input('review_notes'),
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+            ]);
+
+            return redirect()
+                ->back()
+                ->with('success', 'تم الموافقة على نشر الاختبار بنجاح.');
+
+        } catch (\Exception $e) {
+            Log::error('Error approving quiz review: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'حدث خطأ أثناء الموافقة على نشر الاختبار');
+        }
+    }
+
+    /**
+     * رفض نشر الاختبار مع ملاحظات
+     */
+    public function rejectReview(Request $request, string $id)
+    {
+        $request->validate([
+            'review_notes' => 'required|string|max:1000',
+        ]);
+
+        try {
+            $quiz = Quiz::findOrFail($id);
+            
+            // التحقق من الصلاحية (admin/supervisor فقط)
+            $user = auth()->user();
+            if (!$user->hasAnyRole(['admin', 'supervisor'])) {
+                abort(403, 'غير مصرح لك برفض نشر الاختبار');
+            }
+
+            $quiz->update([
+                'review_status' => Quiz::REVIEW_STATUS_REJECTED,
+                'is_published' => false,
+                'review_notes' => $request->input('review_notes'),
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+            ]);
+
+            return redirect()
+                ->back()
+                ->with('success', 'تم رفض نشر الاختبار وتم إرسال الملاحظات للمعلم.');
+
+        } catch (\Exception $e) {
+            Log::error('Error rejecting quiz review: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'حدث خطأ أثناء رفض نشر الاختبار');
+        }
     }
 }
 

@@ -44,6 +44,34 @@ class QuestionController extends Controller
         $query = Question::with(['units', 'creator', 'options'])
             ->withCount(['quizzes']);
 
+        // إذا كان المستخدم معلم وليس مشرف/مدير
+        $user = auth()->user();
+        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            $classIds = $user->assignedClasses()->pluck('classes.id');
+            $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
+            
+            // جلب معرفات الوحدات من المواد المخصصة
+            $unitIds = \App\Models\Unit::whereHas('section', function($q) use ($classIds, $subjectIds) {
+                $q->whereHas('subject', function($sq) use ($classIds, $subjectIds) {
+                    if ($classIds->isNotEmpty()) {
+                        $sq->whereIn('class_id', $classIds);
+                    }
+                    if ($subjectIds->isNotEmpty()) {
+                        $sq->orWhereIn('id', $subjectIds);
+                    }
+                });
+            })->pluck('id');
+            
+            $query->where(function($q) use ($unitIds) {
+                // الأسئلة المرتبطة بالوحدات المخصصة
+                if ($unitIds->isNotEmpty()) {
+                    $q->whereHas('units', function($uq) use ($unitIds) {
+                        $uq->whereIn('units.id', $unitIds);
+                    });
+                }
+            });
+        }
+
         // البحث
         if ($request->filled('search')) {
             $query->search($request->search);

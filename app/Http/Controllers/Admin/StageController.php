@@ -12,6 +12,15 @@ use App\Helpers\StorageHelper;
 
 class StageController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(['permission:stage-list'])->only('index');
+        $this->middleware(['permission:stage-create'])->only(['create', 'store']);
+        $this->middleware(['permission:stage-edit'])->only(['edit', 'update']);
+        $this->middleware(['permission:stage-delete'])->only('destroy');
+        $this->middleware(['permission:stage-show'])->only('show');
+    }
+
     /**
      * Display a listing of the resource.
      */

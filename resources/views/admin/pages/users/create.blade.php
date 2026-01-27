@@ -199,7 +199,7 @@
                                 <select class="form-select @error('roles') is-invalid @enderror" name="roles[]" multiple>
                                     @foreach ($roles as $role)
                                         <option value="{{ $role->name }}" 
-                                                {{ in_array($role->name, old('roles', [])) ? 'selected' : '' }}>
+                                                {{ (isset($defaultRole) && $defaultRole === 'teacher' && $role->name === 'teacher') || in_array($role->name, old('roles', [])) ? 'selected' : '' }}>
                                             {{ $role->name }}
                                         </option>
                                     @endforeach

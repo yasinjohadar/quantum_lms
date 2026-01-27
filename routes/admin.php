@@ -330,6 +330,36 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('quizzes.export-results');
         Route::get('quizzes-get-units', [QuizController::class, 'getUnits'])
             ->name('quizzes.get-units');
+        Route::post('quizzes/{quiz}/submit-for-review', [QuizController::class, 'submitForReview'])
+            ->name('quizzes.submit-for-review');
+        Route::post('quizzes/{quiz}/approve-review', [QuizController::class, 'approveReview'])
+            ->name('quizzes.approve-review');
+        Route::post('quizzes/{quiz}/reject-review', [QuizController::class, 'rejectReview'])
+            ->name('quizzes.reject-review');
+
+        // قائمة المراجعة
+        Route::get('review-queue', [\App\Http\Controllers\Admin\ReviewQueueController::class, 'index'])
+            ->name('review-queue.index');
+        Route::get('review-queue/lessons', [\App\Http\Controllers\Admin\ReviewQueueController::class, 'lessons'])
+            ->name('review-queue.lessons');
+        Route::get('review-queue/quizzes', [\App\Http\Controllers\Admin\ReviewQueueController::class, 'quizzes'])
+            ->name('review-queue.quizzes');
+        Route::get('review-queue/assignments', [\App\Http\Controllers\Admin\ReviewQueueController::class, 'assignments'])
+            ->name('review-queue.assignments');
+
+        // الملاحظات
+        Route::post('review-comments', [\App\Http\Controllers\Admin\ReviewCommentController::class, 'store'])
+            ->name('review-comments.store');
+        Route::put('review-comments/{comment}', [\App\Http\Controllers\Admin\ReviewCommentController::class, 'update'])
+            ->name('review-comments.update');
+        Route::delete('review-comments/{comment}', [\App\Http\Controllers\Admin\ReviewCommentController::class, 'destroy'])
+            ->name('review-comments.destroy');
+        Route::post('review-comments/{comment}/reply', [\App\Http\Controllers\Admin\ReviewCommentController::class, 'reply'])
+            ->name('review-comments.reply');
+        Route::post('review-comments/{comment}/resolve', [\App\Http\Controllers\Admin\ReviewCommentController::class, 'resolve'])
+            ->name('review-comments.resolve');
+        Route::post('review-comments/{comment}/unresolve', [\App\Http\Controllers\Admin\ReviewCommentController::class, 'unresolve'])
+            ->name('review-comments.unresolve');
 
         // مراقبة تقدم الطلاب
         Route::get('student-progress/get-subjects-by-class', [\App\Http\Controllers\Admin\AdminStudentProgressController::class, 'getSubjectsByClass'])
@@ -481,6 +511,22 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('users.archive');
         Route::post('users/bulk-archive', [\App\Http\Controllers\Admin\ArchivedUserController::class, 'bulkArchive'])
             ->name('users.bulk-archive');
+
+        // تخصيص المعلمين
+        Route::get('teachers/assignments', [\App\Http\Controllers\Admin\TeacherAssignmentController::class, 'index'])
+            ->name('teachers.assignments.index');
+        Route::get('teachers/{teacher}/assignments', [\App\Http\Controllers\Admin\TeacherAssignmentController::class, 'show'])
+            ->name('teachers.assignments');
+        Route::put('teachers/{teacher}/assignments', [\App\Http\Controllers\Admin\TeacherAssignmentController::class, 'update'])
+            ->name('teachers.assignments.update');
+
+        // تخصيص المشرفين
+        Route::get('supervisors/assignments', [\App\Http\Controllers\Admin\SupervisorAssignmentController::class, 'index'])
+            ->name('supervisors.assignments.index');
+        Route::get('supervisors/{supervisor}/assignments', [\App\Http\Controllers\Admin\SupervisorAssignmentController::class, 'show'])
+            ->name('supervisors.assignments');
+        Route::put('supervisors/{supervisor}/assignments', [\App\Http\Controllers\Admin\SupervisorAssignmentController::class, 'update'])
+            ->name('supervisors.assignments.update');
 
         // ===============================================
         // جلسات المستخدمين

@@ -36,26 +36,67 @@ public function __construct()
         }
 
     /**
-     * تصنيف الصلاحيات حسب الفئات
+     * تصنيف الصلاحيات حسب الفئات (كل تصنيف منفصل)
      */
     private function categorizePermissions($permissions)
     {
         $categories = [
-            'إدارة الصفوف والمراحل' => ['class-', 'stage-'],
+            'إدارة الصفوف' => ['class-'],
+            'إدارة المراحل' => ['stage-'],
             'إدارة المواد الدراسية' => ['subject-'],
+            'إدارة أقسام المواد' => ['subject-section-'],
             'إدارة الدروس' => ['lesson-'],
+            'إدارة مرفقات الدروس' => ['lesson-attachment-'],
             'إدارة الوحدات' => ['unit-'],
             'إدارة الأسئلة' => ['question-'],
             'إدارة الاختبارات' => ['quiz-'],
             'إدارة محاولات الاختبارات' => ['quiz-attempt-'],
+            'إدارة الواجبات' => ['assignment-'],
             'إدارة التسجيلات' => ['enrollment-'],
             'إدارة المدفوعات' => ['payment-'],
+            'إدارة وسائل الدفع المخصصة' => ['custom-payment-method-'],
             'إدارة المستخدمين' => ['user-'],
+            'إدارة المستخدمين المؤرشفين' => ['archived-user-'],
             'إدارة الأدوار' => ['role-'],
-            'إدارة المكتبة' => ['library-'],
+            'إدارة المكتبة' => ['library-item-', 'library-'],
+            'إدارة فئات المكتبة' => ['library-category-'],
+            'إدارة علامات المكتبة' => ['library-tag-'],
             'التقارير والإحصائيات' => ['report-'],
             'الإعدادات' => ['settings-'],
-            'لوحة التحكم' => ['dashboard-'],
+            'لوحة التحكم' => ['dashboard-', 'admin-dashboard-'],
+            'إدارة العملات' => ['currency-'],
+            'إدارة أسعار الصرف' => ['exchange-rate-'],
+            'إدارة التقويم' => ['calendar-', 'calendar-event-'],
+            'إدارة الحضور' => ['attendance-'],
+            'إدارة الجلسات الحية' => ['live-session-'],
+            'إدارة Zoom' => ['zoom-', 'zoom-settings-', 'zoom-meeting-'],
+            'إدارة WhatsApp' => ['whats-app-', 'whats-app-settings-', 'whats-app-message-'],
+            'إدارة البريد الإلكتروني' => ['email-', 'email-settings-', 'email-template-', 'email-log-'],
+            'إدارة SMS' => ['sms-', 'sms-settings-', 'sms-template-', 'sms-log-'],
+            'إدارة النسخ الاحتياطي' => ['backup-', 'backup-storage-', 'backup-schedule-', 'backup-storage-analytics-'],
+            'إدارة التخزين' => ['storage-', 'app-storage-', 'app-storage-analytics-', 'storage-disk-mapping-'],
+            'إدارة الذكاء الاصطناعي' => ['ai-', 'ai-question-generation-', 'ai-content-', 'ai-settings-', 'ai-grading-settings-', 'ai-student-feedback-', 'ai-model-', 'ai-question-solving-'],
+            'إدارة التحفيز' => ['gamification-'],
+            'إدارة الإشعارات' => ['notification-', 'notification-preference-'],
+            'إدارة سجلات تسجيل الدخول' => ['login-log-'],
+            'إدارة الجلسات' => ['user-session-'],
+            'إدارة تقدم الطلاب' => ['student-progress-', 'admin-student-progress-'],
+            'إدارة التقييمات' => ['review-'],
+            'إدارة المجموعات' => ['group-'],
+            'إدارة المهام الأسبوعية' => ['weekly-task-'],
+            'إدارة المهام اليومية' => ['daily-task-'],
+            'إدارة التذكيرات' => ['reminder-'],
+            'إدارة المستويات' => ['level-'],
+            'إدارة الإنجازات' => ['achievement-'],
+            'إدارة الشارات' => ['badge-'],
+            'إدارة التحديات' => ['challenge-'],
+            'إدارة لوحة المتصدرين' => ['leaderboard-'],
+            'إدارة الشهادات' => ['certificate-'],
+            'إدارة المكافآت' => ['reward-'],
+            'إدارة تخصيصات المعلمين' => ['teacher-assignment-'],
+            'لوحة التحليلات' => ['analytics-dashboard-'],
+            'لوحة المكتبة' => ['library-dashboard-'],
+            'تقارير المكتبة' => ['library-report-'],
         ];
         
         $categorized = [];
@@ -150,5 +191,23 @@ public function __construct()
         $role = Role::findOrFail($request->id);
         $role->delete();
         return redirect()->route("roles.index")->with("success" , "تم حذف الدور بنجاح");
+    }
+
+    /**
+     * البحث في الصلاحيات (AJAX)
+     */
+    public function searchPermissions(Request $request)
+    {
+        $search = $request->input('search');
+        $permissions = Permission::query();
+        
+        if ($search) {
+            $permissions->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+        
+        return response()->json($permissions->get());
     }
 }

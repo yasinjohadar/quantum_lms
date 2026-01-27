@@ -73,17 +73,18 @@
         .brand-mark {
             width: 64px;
             height: 64px;
-            background: var(--primary);
+            background: transparent;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 12px;
+            overflow: hidden;
         }
 
-        .brand-mark-icon {
-            color: white;
-            font-weight: 700;
-            font-size: 28px;
+        .brand-mark img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
 
         .brand-title {
@@ -406,15 +407,15 @@
         }
 
         .demo-buttons {
-            display: flex;
-            gap: 8px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
             margin-bottom: 16px;
         }
 
         .btn-demo {
-            flex: 1;
-            padding: 10px 16px;
-            font-size: 13px;
+            padding: 8px 10px;
+            font-size: 12px;
             font-weight: 600;
             border: 1px solid var(--border);
             background: var(--bg-light);
@@ -426,7 +427,11 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 4px;
+        }
+
+        .btn-demo span:first-child {
+            font-size: 14px;
         }
 
         .btn-demo:hover {
@@ -451,6 +456,24 @@
         .btn-demo-student:hover {
             background: #10b981;
             border-color: #10b981;
+        }
+
+        .btn-demo-supervisor {
+            border-color: #3b82f6;
+        }
+
+        .btn-demo-supervisor:hover {
+            background: #3b82f6;
+            border-color: #3b82f6;
+        }
+
+        .btn-demo-teacher {
+            border-color: #8b5cf6;
+        }
+
+        .btn-demo-teacher:hover {
+            background: #8b5cf6;
+            border-color: #8b5cf6;
         }
     </style>
     <script>
@@ -477,6 +500,12 @@
             } else if (type === 'student') {
                 emailInput.value = 'student@gmail.com';
                 passwordInput.value = '123456789';
+            } else if (type === 'supervisor') {
+                emailInput.value = 'supervisor@example.com';
+                passwordInput.value = '123456789';
+            } else if (type === 'teacher') {
+                emailInput.value = 'teacher@example.com';
+                passwordInput.value = '123456789';
             }
         }
     </script>
@@ -486,7 +515,7 @@
     <div class="login-card">
         <div class="brand">
             <div class="brand-mark">
-                <div class="brand-mark-icon">Q</div>
+                <img src="{{ asset('frontend/images/logo-footer.webp') }}" alt="Quantum LMS" style="width: 100%; height: 100%; object-fit: contain; border-radius: 12px;">
             </div>
             <div class="brand-title">Quantum LMS</div>
             <div class="brand-subtitle">لوحة تحكم الإدارة</div>
@@ -605,11 +634,19 @@
                 <div class="demo-buttons">
                     <button type="button" class="btn-demo btn-demo-admin" onclick="fillDemoCredentials('admin')">
                         <span>👤</span>
-                        <span>تسجيل دخول كمدير</span>
+                        <span>مدير</span>
                     </button>
                     <button type="button" class="btn-demo btn-demo-student" onclick="fillDemoCredentials('student')">
                         <span>🎓</span>
-                        <span>تسجيل دخول كطالب</span>
+                        <span>طالب</span>
+                    </button>
+                    <button type="button" class="btn-demo btn-demo-supervisor" onclick="fillDemoCredentials('supervisor')">
+                        <span>👨‍💼</span>
+                        <span>مشرف</span>
+                    </button>
+                    <button type="button" class="btn-demo btn-demo-teacher" onclick="fillDemoCredentials('teacher')">
+                        <span>👨‍🏫</span>
+                        <span>معلم</span>
                     </button>
                 </div>
                 <button type="submit" class="btn-primary">

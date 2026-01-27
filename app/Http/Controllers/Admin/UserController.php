@@ -69,6 +69,15 @@ public function index(Request $request)
         // بدء استعلام المستخدمين (استبعاد المؤرشفين)
         $usersQuery = User::query()->notArchived();
 
+        // فلترة حسب الدور (إذا كان role=teacher أو role=supervisor)
+        if ($request->filled('role')) {
+            if ($request->input('role') === 'teacher') {
+                $usersQuery->teachers();
+            } elseif ($request->input('role') === 'supervisor') {
+                $usersQuery->supervisors();
+            }
+        }
+
         // فلترة حسب البحث (name, email, phone)
         if ($request->filled('query')) {
             $search = $request->input('query');
@@ -97,10 +106,12 @@ public function index(Request $request)
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request)
     {
         $roles = Role::all();
-        return view("admin.pages.users.create" ,compact("roles"));
+        $defaultRole = $request->input('role'); // للحصول على role من query parameter
+        
+        return view("admin.pages.users.create", compact("roles", "defaultRole"));
     }
 
     /**

@@ -120,6 +120,16 @@
                                     <option value="0" {{ request('is_published') === '0' ? 'selected' : '' }}>مسودة</option>
                                 </select>
                             </div>
+                            <div class="col-md-2">
+                                <label class="form-label">حالة المراجعة</label>
+                                <select name="review_status" id="reviewStatusFilter" class="form-select">
+                                    <option value="">الكل</option>
+                                    <option value="draft" {{ request('review_status') === 'draft' ? 'selected' : '' }}>مسودة</option>
+                                    <option value="pending_review" {{ request('review_status') === 'pending_review' ? 'selected' : '' }}>قيد المراجعة</option>
+                                    <option value="approved" {{ request('review_status') === 'approved' ? 'selected' : '' }}>معتمد</option>
+                                    <option value="rejected" {{ request('review_status') === 'rejected' ? 'selected' : '' }}>مرفوض</option>
+                                </select>
+                            </div>
                             <div class="col-md-1 d-flex align-items-end gap-2">
                                 <button type="button" id="searchBtn" class="btn btn-primary flex-fill">
                                     <i class="bi bi-search"></i>
@@ -169,6 +179,7 @@
                                             <th style="width: 100px">المحاولات</th>
                                             <th style="width: 100px">المدة</th>
                                             <th style="width: 100px">الحالة</th>
+                                            <th style="width: 120px">حالة المراجعة</th>
                                             <th style="width: 180px">الإجراءات</th>
                                         </tr>
                                     </thead>

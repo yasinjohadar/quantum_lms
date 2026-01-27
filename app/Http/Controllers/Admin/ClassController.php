@@ -32,6 +32,14 @@ class ClassController extends Controller
     {
         $classesQuery = SchoolClass::with('stage');
 
+        // إذا كان المستخدم معلم وليس مشرف/مدير، عرض فقط الصفوف المخصصة له
+        $user = auth()->user();
+        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            $classesQuery->whereHas('assignedTeachers', function($q) use ($user) {
+                $q->where('users.id', $user->id);
+            });
+        }
+
         // فلترة حسب البحث
         if ($request->filled('query')) {
             $search = $request->input('query');
@@ -150,6 +158,15 @@ class ClassController extends Controller
     {
         try {
             $class = SchoolClass::with(['stage', 'subjects'])->findOrFail($id);
+            
+            // التحقق من التخصيص
+            $user = auth()->user();
+            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+                if (!$user->isAssignedToClass($class->id)) {
+                    abort(403, 'غير مصرح لك بالوصول إلى هذا الصف');
+                }
+            }
+            
             return view('admin.pages.classes.show', compact('class'));
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return redirect()->route('admin.classes.index')
@@ -168,6 +185,15 @@ class ClassController extends Controller
     {
         try {
             $class = SchoolClass::findOrFail($id);
+            
+            // التحقق من التخصيص
+            $user = auth()->user();
+            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+                if (!$user->isAssignedToClass($class->id)) {
+                    abort(403, 'غير مصرح لك بالوصول إلى هذا الصف');
+                }
+            }
+            
             $stages = Stage::ordered()->get();
             return view('admin.pages.classes.edit', compact('class', 'stages'));
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -186,6 +212,14 @@ class ClassController extends Controller
     {
         try {
             $class = SchoolClass::findOrFail($id);
+            
+            // التحقق من التخصيص
+            $user = auth()->user();
+            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+                if (!$user->isAssignedToClass($class->id)) {
+                    abort(403, 'غير مصرح لك بالوصول إلى هذا الصف');
+                }
+            }
             $data = $request->validated();
 
             // صورة الصف
@@ -285,6 +319,14 @@ class ClassController extends Controller
     {
         try {
             $class = SchoolClass::findOrFail($id);
+            
+            // التحقق من التخصيص
+            $user = auth()->user();
+            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+                if (!$user->isAssignedToClass($class->id)) {
+                    abort(403, 'غير مصرح لك بالوصول إلى هذا الصف');
+                }
+            }
 
             try {
                 if ($class->image) {

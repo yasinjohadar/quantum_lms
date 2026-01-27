@@ -17,9 +17,11 @@
                 </div>
                 <div class="d-flex gap-2">
                     @can('class-create')
-                        <a href="{{ route('admin.classes.create') }}" class="btn btn-primary btn-sm">
-                            <i class="fas fa-plus me-1"></i> إضافة صف جديد
-                        </a>
+                        @if(!auth()->user()->hasRole('teacher') || auth()->user()->hasAnyRole(['admin', 'supervisor']))
+                            <a href="{{ route('admin.classes.create') }}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-plus me-1"></i> إضافة صف جديد
+                            </a>
+                        @endif
                     @endcan
                 </div>
             </div>

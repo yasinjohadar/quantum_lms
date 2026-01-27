@@ -230,6 +230,13 @@
                                                                 title="تعديل المستخدم">
                                                                 <i class="fa-solid fa-pen-to-square"></i>
                                                             </a>
+                                                            @if($user->hasRole('teacher'))
+                                                            <a class="btn btn-success btn-sm"
+                                                                href="{{ route('admin.teachers.assignments', $user->id) }}"
+                                                                title="تخصيص الصفوف والمواد">
+                                                                <i class="fa-solid fa-user-tie"></i>
+                                                            </a>
+                                                            @endif
                                                             <a class="btn btn-primary btn-sm"
                                                                 href="{{ route('users.login-logs', $user->id) }}"
                                                                 title="سجلات الدخول">

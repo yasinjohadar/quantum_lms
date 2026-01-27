@@ -6,8 +6,6 @@
 
 
 
-@section('css')
-@stop
 
 @section('content')
     @if (\Session::has('success'))
@@ -62,7 +60,7 @@
 
 
 
-                            <form method="POST" action="{{ route('roles.update', 'test') }}">
+                            <form id="role-edit-form" method="POST" action="{{ route('roles.update', 'test') }}">
                                 @csrf
                                 @method('PUT')
                                 <div class="row">
@@ -76,7 +74,17 @@
 
 
                                 <div class="mb-4">
-                                    <label class="form-label fw-bold d-block mb-3">الصلاحيات:</label>
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <label class="form-label fw-bold mb-0">الصلاحيات:</label>
+                                    </div>
+                                    
+                                    <!-- حقل البحث -->
+                                    <div class="mb-3">
+                                        <input type="text" 
+                                               id="permissionSearch" 
+                                               class="form-control" 
+                                               placeholder="بحث في الصلاحيات (بالاسم أو الوصف)...">
+                                    </div>
                                     
                                     @foreach($categorizedPermissions as $categoryName => $categoryPermissions)
                                         @if($categoryPermissions->isNotEmpty())
@@ -122,11 +130,6 @@
 
                                 <input type="hidden" value="{{ $role->id }}" name="id">
 
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">إغلاق</button>
-                                    <button type="submit" class="btn btn-primary">تعديل بيانات الرول</button>
-                                </div>
-
                             </form>
 
 
@@ -136,7 +139,6 @@
                 </div>
             </div>
             <!--End::row-1 -->
-
 
         </div>
     </div>
@@ -165,6 +167,55 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
+
+    // البحث في الصلاحيات
+    const searchInput = document.getElementById('permissionSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            const categoryCards = document.querySelectorAll('.card.mb-3');
+            
+            categoryCards.forEach(card => {
+                const cardText = card.textContent.toLowerCase();
+                const hasMatch = cardText.includes(searchTerm);
+                
+                if (searchTerm === '') {
+                    // إذا كان البحث فارغاً، إظهار جميع البطاقات
+                    card.style.display = '';
+                } else if (hasMatch) {
+                    // إظهار البطاقة إذا كانت تحتوي على النص
+                    card.style.display = '';
+                    
+                    // إخفاء الصلاحيات التي لا تطابق البحث داخل البطاقة
+                    const permissionItems = card.querySelectorAll('.col-md-6.col-lg-4.mb-3');
+                    permissionItems.forEach(item => {
+                        const itemText = item.textContent.toLowerCase();
+                        if (itemText.includes(searchTerm)) {
+                            item.style.display = '';
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
+                } else {
+                    // إخفاء البطاقة بالكامل إذا لم تطابق البحث
+                    card.style.display = 'none';
+                }
+            });
+        });
+    }
 });
 </script>
 @stop
+
+@push('header-actions')
+<div class="header-element">
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-sm btn-danger" onclick="window.history.back()">
+            <i class="fe fe-x me-1"></i> إغلاق
+        </button>
+        <button type="submit" form="role-edit-form" class="btn btn-sm btn-primary">
+            <i class="fe fe-save me-1"></i> تعديل بيانات الرول
+        </button>
+    </div>
+</div>
+@endpush

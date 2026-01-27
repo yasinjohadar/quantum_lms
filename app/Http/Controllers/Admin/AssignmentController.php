@@ -18,7 +18,17 @@ class AssignmentController extends Controller
     public function __construct(
         private AssignmentService $assignmentService,
         private ReminderService $reminderService
-    ) {}
+    ) {
+        $this->middleware(['permission:assignment-list'])->only('index');
+        $this->middleware(['permission:assignment-create'])->only(['create', 'store']);
+        $this->middleware(['permission:assignment-edit'])->only(['edit', 'update']);
+        $this->middleware(['permission:assignment-delete'])->only('destroy');
+        $this->middleware(['permission:assignment-show'])->only('show');
+        $this->middleware(['permission:assignment-publish'])->only('publish');
+        $this->middleware(['permission:assignment-unpublish'])->only('unpublish');
+        $this->middleware(['permission:assignment-duplicate'])->only('duplicate');
+        $this->middleware(['permission:assignment-get-assignable-items'])->only('getAssignableItems');
+    }
 
     /**
      * عرض قائمة الواجبات
@@ -26,6 +36,63 @@ class AssignmentController extends Controller
     public function index(Request $request)
     {
         $query = Assignment::with(['assignable', 'creator']);
+
+        // إذا كان المستخدم معلم وليس مشرف/مدير
+        $user = auth()->user();
+        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            $classIds = $user->assignedClasses()->pluck('classes.id');
+            $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
+            
+            $query->where(function($q) use ($classIds, $subjectIds) {
+                // الواجبات المرتبطة بالمواد من الصفوف المخصصة
+                $q->where(function($sq) use ($classIds, $subjectIds) {
+                    $sq->where('assignable_type', \App\Models\Subject::class)
+                       ->whereHasMorph('assignable', \App\Models\Subject::class, function($subQuery) use ($classIds, $subjectIds) {
+                           if ($classIds->isNotEmpty()) {
+                               $subQuery->whereIn('class_id', $classIds);
+                           }
+                           if ($subjectIds->isNotEmpty()) {
+                               $subQuery->orWhereIn('id', $subjectIds);
+                           }
+                       });
+                })
+                // أو الواجبات المرتبطة بالوحدات من المواد المخصصة
+                ->orWhere(function($uq) use ($classIds, $subjectIds) {
+                    $uq->where('assignable_type', \App\Models\Unit::class)
+                       ->whereHasMorph('assignable', \App\Models\Unit::class, function($unitQuery) use ($classIds, $subjectIds) {
+                           $unitQuery->whereHas('section', function($sectionQuery) use ($classIds, $subjectIds) {
+                               $sectionQuery->whereHas('subject', function($subjectQuery) use ($classIds, $subjectIds) {
+                                   if ($classIds->isNotEmpty()) {
+                                       $subjectQuery->whereIn('class_id', $classIds);
+                                   }
+                                   if ($subjectIds->isNotEmpty()) {
+                                       $subjectQuery->orWhereIn('id', $subjectIds);
+                                   }
+                               });
+                           });
+                       });
+                })
+                // أو الواجبات المرتبطة بالدروس من المواد المخصصة
+                ->orWhere(function($lq) use ($classIds, $subjectIds) {
+                    $lq->where('assignable_type', \App\Models\Lesson::class)
+                       ->whereHasMorph('assignable', \App\Models\Lesson::class, function($lessonQuery) use ($classIds, $subjectIds) {
+                           $lessonQuery->whereHas('unit.section.subject', function($subjectQuery) use ($classIds, $subjectIds) {
+                               if ($classIds->isNotEmpty()) {
+                                   $subjectQuery->whereIn('class_id', $classIds);
+                               }
+                               if ($subjectIds->isNotEmpty()) {
+                                   $subjectQuery->orWhereIn('id', $subjectIds);
+                               }
+                           });
+                       });
+                });
+            });
+        }
+
+        // إذا كان المستخدم مشرف وليس مدير
+        if ($user->hasRole('supervisor') && !$user->hasRole('admin')) {
+            $query->forSupervisor($user->id);
+        }
 
         // فلترة حسب البحث
         if ($request->filled('search')) {

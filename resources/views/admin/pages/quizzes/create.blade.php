@@ -345,12 +345,23 @@
                                    id="isActive" {{ old('is_active', true) ? 'checked' : '' }}>
                             <label class="form-check-label" for="isActive">الاختبار نشط</label>
                         </div>
-                        <div class="form-check form-switch mb-3">
-                            <input class="form-check-input" type="checkbox" name="is_published" 
-                                   id="isPublished" {{ old('is_published') ? 'checked' : '' }}>
-                            <label class="form-check-label" for="isPublished">نشر للطلاب</label>
-                            <small class="text-muted d-block">يُنصح بإضافة الأسئلة أولاً ثم النشر</small>
-                        </div>
+                        @php
+                            $user = auth()->user();
+                            $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
+                        @endphp
+                        @if(!$isTeacher)
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" name="is_published" 
+                                       id="isPublished" {{ old('is_published') ? 'checked' : '' }}>
+                                <label class="form-check-label" for="isPublished">نشر للطلاب</label>
+                                <small class="text-muted d-block">يُنصح بإضافة الأسئلة أولاً ثم النشر</small>
+                            </div>
+                        @else
+                            <div class="alert alert-info mb-3">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>ملاحظة:</strong> يجب إرسال الاختبار للمراجعة أولاً. لا يمكنك النشر مباشرة.
+                            </div>
+                        @endif
                         <div class="mb-3">
                             <label class="form-label">ترتيب العرض</label>
                             <input type="number" name="order" class="form-control" 

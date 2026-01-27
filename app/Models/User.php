@@ -351,6 +351,176 @@ class User extends Authenticatable
     }
 
     /**
+     * العلاقة مع الصفوف المخصصة للمعلم
+     */
+    public function assignedClasses()
+    {
+        return $this->belongsToMany(SchoolClass::class, 'teacher_classes', 'teacher_id', 'class_id')
+                    ->withPivot(['assigned_by', 'assigned_at', 'notes'])
+                    ->withTimestamps();
+    }
+
+    /**
+     * العلاقة مع المواد المخصصة للمعلم
+     */
+    public function assignedSubjects()
+    {
+        return $this->belongsToMany(Subject::class, 'teacher_subjects', 'teacher_id', 'subject_id')
+                    ->withPivot(['assigned_by', 'assigned_at', 'notes'])
+                    ->withTimestamps();
+    }
+
+    /**
+     * التحقق من أن المعلم مسؤول عن صف معين
+     */
+    public function isAssignedToClass($classId)
+    {
+        return $this->assignedClasses()->where('classes.id', $classId)->exists();
+    }
+
+    /**
+     * التحقق من أن المعلم مسؤول عن مادة معينة
+     */
+    public function isAssignedToSubject($subjectId)
+    {
+        return $this->assignedSubjects()->where('subjects.id', $subjectId)->exists();
+    }
+
+    /**
+     * الحصول على جميع المواد التي يمكن للمعلم الوصول إليها
+     * (من خلال الصفوف المخصصة له + المواد المخصصة مباشرة)
+     */
+    public function getAccessibleSubjects()
+    {
+        // المواد من الصفوف المخصصة
+        $classIds = $this->assignedClasses()->pluck('classes.id');
+        
+        // المواد المخصصة مباشرة
+        $directSubjectIds = $this->assignedSubjects()->pluck('subjects.id');
+        
+        // إرجاع query builder
+        return Subject::where(function($query) use ($classIds, $directSubjectIds) {
+            if ($classIds->isNotEmpty()) {
+                $query->whereIn('class_id', $classIds);
+            }
+            if ($directSubjectIds->isNotEmpty()) {
+                if ($classIds->isNotEmpty()) {
+                    $query->orWhereIn('id', $directSubjectIds);
+                } else {
+                    $query->whereIn('id', $directSubjectIds);
+                }
+            }
+            // إذا لم يكن هناك أي تخصيصات، إرجاع query فارغ
+            if ($classIds->isEmpty() && $directSubjectIds->isEmpty()) {
+                $query->whereRaw('1 = 0'); // Always false condition
+            }
+        });
+    }
+
+    /**
+     * الحصول على جميع الصفوف التي يمكن للمعلم الوصول إليها
+     */
+    public function getAccessibleClasses()
+    {
+        return $this->assignedClasses();
+    }
+
+    /**
+     * العلاقة مع الصفوف المخصصة للمشرف
+     */
+    public function assignedClassesAsSupervisor()
+    {
+        return $this->belongsToMany(SchoolClass::class, 'supervisor_classes', 'supervisor_id', 'class_id')
+                    ->withPivot(['assigned_by', 'assigned_at', 'notes'])
+                    ->withTimestamps();
+    }
+
+    /**
+     * العلاقة مع المواد المخصصة للمشرف
+     */
+    public function assignedSubjectsAsSupervisor()
+    {
+        return $this->belongsToMany(Subject::class, 'supervisor_subjects', 'supervisor_id', 'subject_id')
+                    ->withPivot(['assigned_by', 'assigned_at', 'notes'])
+                    ->withTimestamps();
+    }
+
+    /**
+     * التحقق من أن المشرف مسؤول عن صف معين
+     */
+    public function isAssignedToClassAsSupervisor($classId)
+    {
+        return $this->assignedClassesAsSupervisor()->where('classes.id', $classId)->exists();
+    }
+
+    /**
+     * التحقق من أن المشرف مسؤول عن مادة معينة
+     */
+    public function isAssignedToSubjectAsSupervisor($subjectId)
+    {
+        return $this->assignedSubjectsAsSupervisor()->where('subjects.id', $subjectId)->exists();
+    }
+
+    /**
+     * الحصول على جميع المواد التي يمكن للمشرف الوصول إليها
+     * (من خلال الصفوف المخصصة له + المواد المخصصة مباشرة)
+     */
+    public function getAccessibleSubjectsAsSupervisor()
+    {
+        // المواد من الصفوف المخصصة
+        $classIds = $this->assignedClassesAsSupervisor()->pluck('classes.id');
+        
+        // المواد المخصصة مباشرة
+        $directSubjectIds = $this->assignedSubjectsAsSupervisor()->pluck('subjects.id');
+        
+        // إرجاع query builder
+        return Subject::where(function($query) use ($classIds, $directSubjectIds) {
+            if ($classIds->isNotEmpty()) {
+                $query->whereIn('class_id', $classIds);
+            }
+            if ($directSubjectIds->isNotEmpty()) {
+                if ($classIds->isNotEmpty()) {
+                    $query->orWhereIn('id', $directSubjectIds);
+                } else {
+                    $query->whereIn('id', $directSubjectIds);
+                }
+            }
+            // إذا لم يكن هناك أي تخصيصات، إرجاع query فارغ
+            if ($classIds->isEmpty() && $directSubjectIds->isEmpty()) {
+                $query->whereRaw('1 = 0'); // Always false condition
+            }
+        });
+    }
+
+    /**
+     * الحصول على جميع الصفوف التي يمكن للمشرف الوصول إليها
+     */
+    public function getAccessibleClassesAsSupervisor()
+    {
+        return $this->assignedClassesAsSupervisor();
+    }
+
+    /**
+     * Scope للمعلمين فقط
+     */
+    public function scopeTeachers($query)
+    {
+        return $query->whereHas('roles', function($q) {
+            $q->where('name', 'teacher');
+        });
+    }
+
+    /**
+     * Scope للمشرفين فقط
+     */
+    public function scopeSupervisors($query)
+    {
+        return $query->whereHas('roles', function($q) {
+            $q->where('name', 'supervisor');
+        });
+    }
+
+    /**
      * Send the password reset notification.
      *
      * @param  string  $token

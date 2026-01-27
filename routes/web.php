@@ -20,6 +20,10 @@ Route::get('/dashboard', function () {
     // التحقق من الصلاحيات
     if ($user->hasRole('admin')) {
         return redirect()->route('admin.dashboard');
+    } elseif ($user->hasRole('supervisor')) {
+        return redirect()->route('admin.dashboard');
+    } elseif ($user->hasRole('teacher')) {
+        return redirect()->route('admin.dashboard');
     } elseif ($user->hasRole('student')) {
         return redirect()->route('student.dashboard');
     }
@@ -45,6 +49,7 @@ Route::middleware(['auth', 'check.user.active', 'admin'])->group(function () {
     Route::resource('users', UserController::class);
     Route::get('users/{user}/login-logs', [UserController::class, 'loginLogs'])->name('users.login-logs');
     Route::resource('roles', RoleController::class);
+    Route::get('roles/search-permissions', [RoleController::class, 'searchPermissions'])->name('roles.search-permissions');
     Route::put('users/{user}/change-password', [UserController::class, 'updatePassword'])->name('users.update-password');
     Route::post('users/{user}/send-verification-otp', [UserController::class, 'sendVerificationOTP'])->name('users.send-verification-otp');
 });
@@ -58,4 +63,5 @@ Route::middleware(['auth', 'admin'])->group(function () {
 require __DIR__.'/auth.php';
 require __DIR__.'/admin.php';
 require __DIR__.'/student.php';
+require __DIR__.'/teacher.php';
 require __DIR__.'/frontend.php';

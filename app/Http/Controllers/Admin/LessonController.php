@@ -32,13 +32,22 @@ class LessonController extends Controller
         Log::info('محاولة إنشاء درس جديد للوحدة: ' . $unit->id, $request->all());
 
         try {
+            // التحقق من التخصيص
+            $user = auth()->user();
+            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+                $subject = $unit->section->subject;
+                if (!$user->isAssignedToSubject($subject->id) && 
+                    !$user->isAssignedToClass($subject->class_id)) {
+                    abort(403, 'غير مصرح لك بالوصول إلى هذه المادة');
+                }
+            }
+            
             $data = $request->validated();
             $data['unit_id'] = $unit->id;
             $data['is_free'] = $request->has('is_free');
             $data['is_preview'] = $request->has('is_preview');
 
             // منطق المراجعة: إذا كان المستخدم معلم وليس مشرف أو مدير
-            $user = auth()->user();
             $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
 
             if ($isTeacher) {
@@ -113,6 +122,17 @@ class LessonController extends Controller
     public function show(Lesson $lesson)
     {
         $lesson->load(['unit.section.subject', 'attachments']);
+        
+        // التحقق من التخصيص
+        $user = auth()->user();
+        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            $subject = $lesson->unit->section->subject;
+            if (!$user->isAssignedToSubject($subject->id) && 
+                !$user->isAssignedToClass($subject->class_id)) {
+                abort(403, 'غير مصرح لك بالوصول إلى هذا الدرس');
+            }
+        }
+        
         return view('admin.pages.lessons.show', compact('lesson'));
     }
 
@@ -122,11 +142,20 @@ class LessonController extends Controller
     public function update(UpdateLessonRequest $request, Lesson $lesson)
     {
         try {
+            // التحقق من التخصيص
+            $user = auth()->user();
+            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+                $subject = $lesson->unit->section->subject;
+                if (!$user->isAssignedToSubject($subject->id) && 
+                    !$user->isAssignedToClass($subject->class_id)) {
+                    abort(403, 'غير مصرح لك بالوصول إلى هذا الدرس');
+                }
+            }
+            
             $data = $request->validated();
             $data['is_free'] = $request->has('is_free');
             $data['is_preview'] = $request->has('is_preview');
 
-            $user = auth()->user();
             $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
 
             if ($isTeacher) {
@@ -208,6 +237,16 @@ class LessonController extends Controller
      */
     public function destroy(Lesson $lesson)
     {
+        // التحقق من التخصيص
+        $user = auth()->user();
+        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            $subject = $lesson->unit->section->subject;
+            if (!$user->isAssignedToSubject($subject->id) && 
+                !$user->isAssignedToClass($subject->class_id)) {
+                abort(403, 'غير مصرح لك بالوصول إلى هذا الدرس');
+            }
+        }
+        
         $subjectId = $lesson->unit->section->subject_id;
         $lessonTitle = $lesson->title;
 

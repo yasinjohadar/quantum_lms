@@ -33,6 +33,11 @@ class PermissionSeeder extends Seeder
             ['name' => 'user-login-logs', 'description' => 'عرض سجلات تسجيل الدخول'],
             ['name' => 'user-send-verification-otp', 'description' => 'إرسال رمز التحقق للمستخدم'],
 
+            // صلاحيات إدارة تخصيصات المشرفين
+            ['name' => 'supervisor-assignment-list', 'description' => 'عرض قائمة تخصيصات المشرفين'],
+            ['name' => 'supervisor-assignment-show', 'description' => 'عرض صفحة تخصيص المشرف'],
+            ['name' => 'supervisor-assignment-update', 'description' => 'تحديث تخصيصات المشرف'],
+
             // صلاحيات إدارة الصفوف
             ['name' => 'class-list', 'description' => 'عرض قائمة الصفوف'],
             ['name' => 'class-create', 'description' => 'إنشاء صف جديد'],
@@ -40,6 +45,13 @@ class PermissionSeeder extends Seeder
             ['name' => 'class-delete', 'description' => 'حذف الصف'],
             ['name' => 'class-show', 'description' => 'عرض تفاصيل الصف'],
             ['name' => 'class-enrolled-students', 'description' => 'عرض الطلاب المنضمين للصف'],
+
+            // صلاحيات إدارة المراحل
+            ['name' => 'stage-list', 'description' => 'عرض قائمة المراحل'],
+            ['name' => 'stage-create', 'description' => 'إنشاء مرحلة جديدة'],
+            ['name' => 'stage-edit', 'description' => 'تعديل المرحلة'],
+            ['name' => 'stage-delete', 'description' => 'حذف المرحلة'],
+            ['name' => 'stage-show', 'description' => 'عرض تفاصيل المرحلة'],
 
             // صلاحيات إدارة المواد
             ['name' => 'subject-list', 'description' => 'عرض قائمة المواد'],
@@ -108,6 +120,22 @@ class PermissionSeeder extends Seeder
             ['name' => 'quiz-export-results', 'description' => 'تصدير نتائج الاختبار'],
             ['name' => 'quiz-get-subjects-by-class', 'description' => 'الحصول على المواد حسب الصف'],
             ['name' => 'quiz-get-units', 'description' => 'الحصول على الوحدات'],
+            ['name' => 'quiz-approve-review', 'description' => 'الموافقة على نشر الاختبار'],
+            ['name' => 'quiz-reject-review', 'description' => 'رفض نشر الاختبار'],
+            ['name' => 'quiz-submit-for-review', 'description' => 'إرسال الاختبار للمراجعة'],
+
+            // صلاحيات قائمة المراجعة
+            ['name' => 'review-queue-list', 'description' => 'عرض قائمة المراجعة'],
+            ['name' => 'review-queue-lessons', 'description' => 'عرض الدروس قيد المراجعة'],
+            ['name' => 'review-queue-quizzes', 'description' => 'عرض الاختبارات قيد المراجعة'],
+            ['name' => 'review-queue-assignments', 'description' => 'عرض الواجبات قيد المراجعة'],
+
+            // صلاحيات ملاحظات المراجعة
+            ['name' => 'review-comment-create', 'description' => 'إنشاء ملاحظة مراجعة'],
+            ['name' => 'review-comment-edit', 'description' => 'تعديل ملاحظة مراجعة'],
+            ['name' => 'review-comment-delete', 'description' => 'حذف ملاحظة مراجعة'],
+            ['name' => 'review-comment-reply', 'description' => 'الرد على ملاحظة مراجعة'],
+            ['name' => 'review-comment-resolve', 'description' => 'حل/إلغاء حل ملاحظة مراجعة'],
 
             // صلاحيات إدارة محاولات الاختبارات
             ['name' => 'quiz-attempt-list', 'description' => 'عرض محاولات الاختبار'],
@@ -140,6 +168,17 @@ class PermissionSeeder extends Seeder
             ['name' => 'enrollment-approve-multiple-class', 'description' => 'قبول عدة طلبات صف دفعة واحدة'],
             ['name' => 'enrollment-reject-multiple-class', 'description' => 'رفض عدة طلبات صف دفعة واحدة'],
 
+            // صلاحيات إدارة الواجبات
+            ['name' => 'assignment-list', 'description' => 'عرض قائمة الواجبات'],
+            ['name' => 'assignment-create', 'description' => 'إنشاء واجب جديد'],
+            ['name' => 'assignment-edit', 'description' => 'تعديل الواجب'],
+            ['name' => 'assignment-delete', 'description' => 'حذف الواجب'],
+            ['name' => 'assignment-show', 'description' => 'عرض تفاصيل الواجب'],
+            ['name' => 'assignment-publish', 'description' => 'نشر الواجب'],
+            ['name' => 'assignment-unpublish', 'description' => 'إلغاء نشر الواجب'],
+            ['name' => 'assignment-duplicate', 'description' => 'نسخ الواجب'],
+            ['name' => 'assignment-get-assignable-items', 'description' => 'الحصول على العناصر القابلة للتعيين'],
+
             // صلاحيات إدارة المدفوعات
             ['name' => 'payment-list', 'description' => 'عرض قائمة المدفوعات'],
             ['name' => 'payment-show', 'description' => 'عرض تفاصيل الدفع'],
@@ -147,6 +186,13 @@ class PermissionSeeder extends Seeder
             ['name' => 'payment-approve', 'description' => 'الموافقة على الدفع'],
             ['name' => 'payment-reject', 'description' => 'رفض الدفع'],
             ['name' => 'payment-download-receipt', 'description' => 'تحميل وصل الدفع'],
+
+            // صلاحيات إدارة وسائل الدفع المخصصة
+            ['name' => 'custom-payment-method-list', 'description' => 'عرض قائمة وسائل الدفع المخصصة'],
+            ['name' => 'custom-payment-method-create', 'description' => 'إنشاء وسيلة دفع مخصصة'],
+            ['name' => 'custom-payment-method-edit', 'description' => 'تعديل وسيلة الدفع المخصصة'],
+            ['name' => 'custom-payment-method-delete', 'description' => 'حذف وسيلة الدفع المخصصة'],
+            ['name' => 'custom-payment-method-show', 'description' => 'عرض تفاصيل وسيلة الدفع المخصصة'],
 
             // صلاحيات إدارة المكتبة
             ['name' => 'library-list', 'description' => 'عرض قائمة عناصر المكتبة'],
@@ -168,6 +214,223 @@ class PermissionSeeder extends Seeder
 
             // صلاحيات لوحة التحكم
             ['name' => 'dashboard-view', 'description' => 'عرض لوحة التحكم'],
+            ['name' => 'dashboard-widgets', 'description' => 'إدارة عناصر لوحة التحكم'],
+            ['name' => 'dashboard-save-widgets', 'description' => 'حفظ عناصر لوحة التحكم'],
+
+            // صلاحيات إدارة العملات
+            ['name' => 'currency-list', 'description' => 'عرض قائمة العملات'],
+            ['name' => 'currency-create', 'description' => 'إنشاء عملة جديدة'],
+            ['name' => 'currency-edit', 'description' => 'تعديل العملة'],
+            ['name' => 'currency-delete', 'description' => 'حذف العملة'],
+            ['name' => 'currency-show', 'description' => 'عرض تفاصيل العملة'],
+
+            // صلاحيات إدارة أسعار الصرف
+            ['name' => 'exchange-rate-list', 'description' => 'عرض قائمة أسعار الصرف'],
+            ['name' => 'exchange-rate-create', 'description' => 'إنشاء سعر صرف جديد'],
+            ['name' => 'exchange-rate-edit', 'description' => 'تعديل سعر الصرف'],
+            ['name' => 'exchange-rate-delete', 'description' => 'حذف سعر الصرف'],
+            ['name' => 'exchange-rate-show', 'description' => 'عرض تفاصيل سعر الصرف'],
+
+            // صلاحيات إدارة التقويم
+            ['name' => 'calendar-list', 'description' => 'عرض قائمة الأحداث'],
+            ['name' => 'calendar-create', 'description' => 'إنشاء حدث جديد'],
+            ['name' => 'calendar-edit', 'description' => 'تعديل الحدث'],
+            ['name' => 'calendar-delete', 'description' => 'حذف الحدث'],
+            ['name' => 'calendar-get-events', 'description' => 'الحصول على الأحداث'],
+
+            // صلاحيات إدارة الحضور
+            ['name' => 'attendance-list', 'description' => 'عرض قائمة الحضور'],
+            ['name' => 'attendance-show', 'description' => 'عرض تفاصيل الحضور'],
+            ['name' => 'attendance-export', 'description' => 'تصدير بيانات الحضور'],
+            ['name' => 'attendance-stats', 'description' => 'عرض إحصائيات الحضور'],
+
+            // صلاحيات إدارة الجلسات الحية
+            ['name' => 'live-session-list', 'description' => 'عرض قائمة الجلسات الحية'],
+            ['name' => 'live-session-create', 'description' => 'إنشاء جلسة حية جديدة'],
+            ['name' => 'live-session-edit', 'description' => 'تعديل الجلسة الحية'],
+            ['name' => 'live-session-delete', 'description' => 'حذف الجلسة الحية'],
+            ['name' => 'live-session-show', 'description' => 'عرض تفاصيل الجلسة الحية'],
+
+            // صلاحيات إدارة Zoom
+            ['name' => 'zoom-settings-list', 'description' => 'عرض إعدادات Zoom'],
+            ['name' => 'zoom-settings-update', 'description' => 'تحديث إعدادات Zoom'],
+            ['name' => 'zoom-settings-update-account', 'description' => 'تحديث حساب Zoom'],
+            ['name' => 'zoom-settings-store-account', 'description' => 'حفظ حساب Zoom'],
+            ['name' => 'zoom-meeting-list', 'description' => 'عرض قائمة اجتماعات Zoom'],
+            ['name' => 'zoom-meeting-create', 'description' => 'إنشاء اجتماع Zoom'],
+            ['name' => 'zoom-meeting-edit', 'description' => 'تعديل اجتماع Zoom'],
+            ['name' => 'zoom-meeting-delete', 'description' => 'حذف اجتماع Zoom'],
+            ['name' => 'zoom-meeting-cancel', 'description' => 'إلغاء اجتماع Zoom'],
+
+            // صلاحيات إدارة WhatsApp
+            ['name' => 'whats-app-settings-list', 'description' => 'عرض إعدادات WhatsApp'],
+            ['name' => 'whats-app-settings-update', 'description' => 'تحديث إعدادات WhatsApp'],
+            ['name' => 'whats-app-settings-test-connection', 'description' => 'اختبار اتصال WhatsApp'],
+            ['name' => 'whats-app-message-list', 'description' => 'عرض قائمة رسائل WhatsApp'],
+            ['name' => 'whats-app-message-send', 'description' => 'إرسال رسالة WhatsApp'],
+            ['name' => 'whats-app-message-get-students-count', 'description' => 'الحصول على عدد الطلاب'],
+
+            // صلاحيات إدارة البريد الإلكتروني
+            ['name' => 'email-settings-list', 'description' => 'عرض إعدادات البريد الإلكتروني'],
+            ['name' => 'email-settings-update', 'description' => 'تحديث إعدادات البريد الإلكتروني'],
+            ['name' => 'email-settings-test-connection', 'description' => 'اختبار اتصال البريد الإلكتروني'],
+            ['name' => 'email-template-list', 'description' => 'عرض قائمة قوالب البريد الإلكتروني'],
+            ['name' => 'email-template-create', 'description' => 'إنشاء قالب بريد إلكتروني'],
+            ['name' => 'email-template-edit', 'description' => 'تعديل قالب البريد الإلكتروني'],
+            ['name' => 'email-template-delete', 'description' => 'حذف قالب البريد الإلكتروني'],
+            ['name' => 'email-log-list', 'description' => 'عرض سجلات البريد الإلكتروني'],
+            ['name' => 'email-log-show', 'description' => 'عرض تفاصيل سجل البريد الإلكتروني'],
+            ['name' => 'email-log-delete', 'description' => 'حذف سجل البريد الإلكتروني'],
+
+            // صلاحيات إدارة SMS
+            ['name' => 'sms-settings-list', 'description' => 'عرض إعدادات SMS'],
+            ['name' => 'sms-settings-update', 'description' => 'تحديث إعدادات SMS'],
+            ['name' => 'sms-template-list', 'description' => 'عرض قائمة قوالب SMS'],
+            ['name' => 'sms-template-create', 'description' => 'إنشاء قالب SMS'],
+            ['name' => 'sms-template-edit', 'description' => 'تعديل قالب SMS'],
+            ['name' => 'sms-template-delete', 'description' => 'حذف قالب SMS'],
+            ['name' => 'sms-log-list', 'description' => 'عرض سجلات SMS'],
+
+            // صلاحيات إدارة النسخ الاحتياطي
+            ['name' => 'backup-list', 'description' => 'عرض قائمة النسخ الاحتياطي'],
+            ['name' => 'backup-create', 'description' => 'إنشاء نسخة احتياطية'],
+            ['name' => 'backup-restore', 'description' => 'استعادة نسخة احتياطية'],
+            ['name' => 'backup-delete', 'description' => 'حذف نسخة احتياطية'],
+            ['name' => 'backup-storage-list', 'description' => 'عرض قائمة تخزين النسخ الاحتياطي'],
+            ['name' => 'backup-storage-create', 'description' => 'إنشاء تخزين نسخ احتياطي'],
+            ['name' => 'backup-storage-edit', 'description' => 'تعديل تخزين النسخ الاحتياطي'],
+            ['name' => 'backup-storage-delete', 'description' => 'حذف تخزين النسخ الاحتياطي'],
+            ['name' => 'backup-storage-test', 'description' => 'اختبار تخزين النسخ الاحتياطي'],
+            ['name' => 'backup-storage-test-connection', 'description' => 'اختبار اتصال تخزين النسخ الاحتياطي'],
+            ['name' => 'backup-schedule-list', 'description' => 'عرض قائمة جدولة النسخ الاحتياطي'],
+            ['name' => 'backup-schedule-create', 'description' => 'إنشاء جدولة نسخ احتياطي'],
+            ['name' => 'backup-schedule-edit', 'description' => 'تعديل جدولة النسخ الاحتياطي'],
+            ['name' => 'backup-schedule-delete', 'description' => 'حذف جدولة النسخ الاحتياطي'],
+
+            // صلاحيات إدارة التخزين
+            ['name' => 'app-storage-list', 'description' => 'عرض قائمة تخزين التطبيق'],
+            ['name' => 'app-storage-create', 'description' => 'إنشاء تخزين تطبيق'],
+            ['name' => 'app-storage-edit', 'description' => 'تعديل تخزين التطبيق'],
+            ['name' => 'app-storage-delete', 'description' => 'حذف تخزين التطبيق'],
+            ['name' => 'storage-disk-mapping-list', 'description' => 'عرض قائمة تعيينات أقراص التخزين'],
+            ['name' => 'storage-disk-mapping-create', 'description' => 'إنشاء تعيين قرص تخزين'],
+            ['name' => 'storage-disk-mapping-edit', 'description' => 'تعديل تعيين قرص التخزين'],
+            ['name' => 'storage-disk-mapping-delete', 'description' => 'حذف تعيين قرص التخزين'],
+
+            // صلاحيات إدارة الذكاء الاصطناعي
+            ['name' => 'ai-question-generation-list', 'description' => 'عرض قائمة توليد الأسئلة بالذكاء الاصطناعي'],
+            ['name' => 'ai-question-generation-create', 'description' => 'إنشاء توليد أسئلة بالذكاء الاصطناعي'],
+            ['name' => 'ai-question-generation-create-advanced', 'description' => 'إنشاء توليد أسئلة متقدم بالذكاء الاصطناعي'],
+            ['name' => 'ai-question-generation-show', 'description' => 'عرض تفاصيل توليد الأسئلة'],
+            ['name' => 'ai-question-generation-process', 'description' => 'معالجة توليد الأسئلة'],
+            ['name' => 'ai-question-generation-save', 'description' => 'حفظ توليد الأسئلة'],
+            ['name' => 'ai-question-generation-save-selected', 'description' => 'حفظ الأسئلة المحددة'],
+            ['name' => 'ai-question-generation-regenerate', 'description' => 'إعادة توليد الأسئلة'],
+            ['name' => 'ai-content-summarize', 'description' => 'تلخيص المحتوى بالذكاء الاصطناعي'],
+            ['name' => 'ai-content-lesson-summary', 'description' => 'تلخيص الدرس بالذكاء الاصطناعي'],
+            ['name' => 'ai-content-improve', 'description' => 'تحسين المحتوى بالذكاء الاصطناعي'],
+            ['name' => 'ai-content-grammar-check', 'description' => 'فحص القواعد بالذكاء الاصطناعي'],
+            ['name' => 'ai-settings-list', 'description' => 'عرض إعدادات الذكاء الاصطناعي'],
+            ['name' => 'ai-settings-update', 'description' => 'تحديث إعدادات الذكاء الاصطناعي'],
+            ['name' => 'ai-model-list', 'description' => 'عرض قائمة نماذج الذكاء الاصطناعي'],
+            ['name' => 'ai-model-create', 'description' => 'إنشاء نموذج ذكاء اصطناعي'],
+            ['name' => 'ai-model-edit', 'description' => 'تعديل نموذج الذكاء الاصطناعي'],
+            ['name' => 'ai-model-delete', 'description' => 'حذف نموذج الذكاء الاصطناعي'],
+
+            // صلاحيات إدارة التحفيز
+            ['name' => 'gamification-list', 'description' => 'عرض إعدادات التحفيز'],
+            ['name' => 'gamification-update', 'description' => 'تحديث إعدادات التحفيز'],
+            ['name' => 'achievement-list', 'description' => 'عرض قائمة الإنجازات'],
+            ['name' => 'achievement-create', 'description' => 'إنشاء إنجاز جديد'],
+            ['name' => 'achievement-edit', 'description' => 'تعديل الإنجاز'],
+            ['name' => 'achievement-delete', 'description' => 'حذف الإنجاز'],
+            ['name' => 'badge-list', 'description' => 'عرض قائمة الشارات'],
+            ['name' => 'badge-create', 'description' => 'إنشاء شارة جديدة'],
+            ['name' => 'badge-edit', 'description' => 'تعديل الشارة'],
+            ['name' => 'badge-delete', 'description' => 'حذف الشارة'],
+            ['name' => 'challenge-list', 'description' => 'عرض قائمة التحديات'],
+            ['name' => 'challenge-create', 'description' => 'إنشاء تحدي جديد'],
+            ['name' => 'challenge-edit', 'description' => 'تعديل التحدي'],
+            ['name' => 'challenge-delete', 'description' => 'حذف التحدي'],
+            ['name' => 'leaderboard-list', 'description' => 'عرض لوحة المتصدرين'],
+            ['name' => 'reward-list', 'description' => 'عرض قائمة المكافآت'],
+            ['name' => 'reward-create', 'description' => 'إنشاء مكافأة جديدة'],
+            ['name' => 'reward-edit', 'description' => 'تعديل المكافأة'],
+            ['name' => 'reward-delete', 'description' => 'حذف المكافأة'],
+            ['name' => 'level-list', 'description' => 'عرض قائمة المستويات'],
+            ['name' => 'level-create', 'description' => 'إنشاء مستوى جديد'],
+            ['name' => 'level-edit', 'description' => 'تعديل المستوى'],
+            ['name' => 'level-delete', 'description' => 'حذف المستوى'],
+
+            // صلاحيات إدارة الإشعارات
+            ['name' => 'notification-create', 'description' => 'إرسال إشعار'],
+            ['name' => 'notification-preference-list', 'description' => 'عرض تفضيلات الإشعارات'],
+            ['name' => 'notification-preference-update', 'description' => 'تحديث تفضيلات الإشعارات'],
+
+            // صلاحيات إدارة سجلات تسجيل الدخول
+            ['name' => 'login-log-list', 'description' => 'عرض سجلات تسجيل الدخول'],
+            ['name' => 'login-log-show', 'description' => 'عرض تفاصيل سجل تسجيل الدخول'],
+            ['name' => 'login-log-delete', 'description' => 'حذف سجل تسجيل الدخول'],
+
+            // صلاحيات إدارة الجلسات
+            ['name' => 'user-session-list', 'description' => 'عرض قائمة جلسات المستخدمين'],
+            ['name' => 'user-session-delete', 'description' => 'حذف جلسة مستخدم'],
+
+            // صلاحيات إدارة تقدم الطلاب
+            ['name' => 'student-progress-list', 'description' => 'عرض قائمة تقدم الطلاب'],
+            ['name' => 'student-progress-show-student', 'description' => 'عرض تقدم طالب'],
+            ['name' => 'student-progress-show-student-subject', 'description' => 'عرض تقدم طالب في مادة'],
+            ['name' => 'student-progress-get-subjects-by-class', 'description' => 'الحصول على المواد حسب الصف'],
+
+            // صلاحيات إدارة التقييمات
+            ['name' => 'review-list', 'description' => 'عرض قائمة التقييمات'],
+            ['name' => 'review-create', 'description' => 'إنشاء تقييم جديد'],
+            ['name' => 'review-edit', 'description' => 'تعديل التقييم'],
+            ['name' => 'review-delete', 'description' => 'حذف التقييم'],
+
+            // صلاحيات إدارة المجموعات
+            ['name' => 'group-list', 'description' => 'عرض قائمة المجموعات'],
+            ['name' => 'group-create', 'description' => 'إنشاء مجموعة جديدة'],
+            ['name' => 'group-edit', 'description' => 'تعديل المجموعة'],
+            ['name' => 'group-delete', 'description' => 'حذف المجموعة'],
+
+            // صلاحيات إدارة المهام الأسبوعية
+            ['name' => 'weekly-task-list', 'description' => 'عرض قائمة المهام الأسبوعية'],
+            ['name' => 'weekly-task-create', 'description' => 'إنشاء مهمة أسبوعية جديدة'],
+            ['name' => 'weekly-task-edit', 'description' => 'تعديل المهمة الأسبوعية'],
+            ['name' => 'weekly-task-delete', 'description' => 'حذف المهمة الأسبوعية'],
+
+            // صلاحيات إدارة المهام اليومية
+            ['name' => 'daily-task-list', 'description' => 'عرض قائمة المهام اليومية'],
+            ['name' => 'daily-task-create', 'description' => 'إنشاء مهمة يومية جديدة'],
+            ['name' => 'daily-task-edit', 'description' => 'تعديل المهمة اليومية'],
+            ['name' => 'daily-task-delete', 'description' => 'حذف المهمة اليومية'],
+
+            // صلاحيات إدارة التذكيرات
+            ['name' => 'reminder-list', 'description' => 'عرض قائمة التذكيرات'],
+            ['name' => 'reminder-create', 'description' => 'إنشاء تذكير جديد'],
+            ['name' => 'reminder-edit', 'description' => 'تعديل التذكير'],
+            ['name' => 'reminder-delete', 'description' => 'حذف التذكير'],
+
+            // صلاحيات إدارة الشهادات
+            ['name' => 'certificate-list', 'description' => 'عرض قائمة الشهادات'],
+            ['name' => 'certificate-create', 'description' => 'إنشاء شهادة جديدة'],
+            ['name' => 'certificate-edit', 'description' => 'تعديل الشهادة'],
+            ['name' => 'certificate-delete', 'description' => 'حذف الشهادة'],
+
+            // صلاحيات إدارة تخصيصات المعلمين
+            ['name' => 'teacher-assignment-list', 'description' => 'عرض قائمة تخصيصات المعلمين'],
+            ['name' => 'teacher-assignment-show', 'description' => 'عرض تفاصيل تخصيص المعلم'],
+            ['name' => 'teacher-assignment-update', 'description' => 'تحديث تخصيص المعلم'],
+
+            // صلاحيات لوحة التحليلات
+            ['name' => 'analytics-dashboard-view', 'description' => 'عرض لوحة التحليلات'],
+
+            // صلاحيات لوحة المكتبة
+            ['name' => 'library-dashboard-view', 'description' => 'عرض لوحة المكتبة'],
+
+            // صلاحيات تقارير المكتبة
+            ['name' => 'library-report-list', 'description' => 'عرض تقارير المكتبة'],
         ];
 
         // حفظ الصلاحيات الأساسية

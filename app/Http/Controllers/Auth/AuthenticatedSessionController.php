@@ -91,6 +91,16 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('admin.dashboard');
         }
         
+        // التحقق من supervisor
+        if ($user->hasRole('supervisor')) {
+            return redirect()->route('admin.dashboard');
+        }
+        
+        // التحقق من teacher
+        if ($user->hasRole('teacher')) {
+            return redirect()->route('admin.dashboard');
+        }
+        
         // التحقق من student
         if ($user->hasRole('student')) {
             return redirect()->route('student.dashboard');

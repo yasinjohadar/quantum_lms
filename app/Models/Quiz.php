@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Carbon\Carbon;
 
 class Quiz extends Model
@@ -32,6 +33,21 @@ class Quiz extends Model
         'immediately' => 'فور الانتهاء',
         'after_close' => 'بعد انتهاء فترة الاختبار',
         'always' => 'دائماً',
+    ];
+
+    /**
+     * حالات مراجعة الاختبار
+     */
+    public const REVIEW_STATUS_DRAFT = 'draft';
+    public const REVIEW_STATUS_PENDING = 'pending_review';
+    public const REVIEW_STATUS_APPROVED = 'approved';
+    public const REVIEW_STATUS_REJECTED = 'rejected';
+
+    public const REVIEW_STATUSES = [
+        self::REVIEW_STATUS_DRAFT => 'مسودة',
+        self::REVIEW_STATUS_PENDING => 'قيد المراجعة',
+        self::REVIEW_STATUS_APPROVED => 'معتمد',
+        self::REVIEW_STATUS_REJECTED => 'مرفوض',
     ];
 
     protected $fillable = [
@@ -71,6 +87,11 @@ class Quiz extends Model
         'fullscreen_required',
         'order',
         'created_by',
+        'review_status',
+        'review_notes',
+        'reviewed_by',
+        'reviewed_at',
+        'submitted_for_review_at',
     ];
 
     protected $casts = [
@@ -127,6 +148,11 @@ class Quiz extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
     public function questions(): BelongsToMany
     {
         return $this->belongsToMany(Question::class, 'quiz_questions')
@@ -143,6 +169,14 @@ class Quiz extends Model
     public function attempts(): HasMany
     {
         return $this->hasMany(QuizAttempt::class);
+    }
+
+    /**
+     * العلاقة مع ملاحظات المراجعة.
+     */
+    public function reviewComments(): MorphMany
+    {
+        return $this->morphMany(ReviewComment::class, 'reviewable')->orderBy('created_at', 'asc');
     }
 
     /**
@@ -394,6 +428,103 @@ class Quiz extends Model
             'average' => $attempts->avg('percentage'),
             default => $attempts->max('percentage'),
         };
+    }
+
+    /**
+     * Helper methods للتحقق من حالة المراجعة
+     */
+    public function isPendingReview(): bool
+    {
+        return $this->review_status === self::REVIEW_STATUS_PENDING;
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->review_status === self::REVIEW_STATUS_APPROVED;
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->review_status === self::REVIEW_STATUS_REJECTED;
+    }
+
+    public function isDraft(): bool
+    {
+        return $this->review_status === self::REVIEW_STATUS_DRAFT;
+    }
+
+    public function getReviewStatusNameAttribute(): string
+    {
+        return self::REVIEW_STATUSES[$this->review_status] ?? $this->review_status;
+    }
+
+    public function getReviewStatusColorAttribute(): string
+    {
+        return match($this->review_status) {
+            self::REVIEW_STATUS_DRAFT => 'secondary',
+            self::REVIEW_STATUS_PENDING => 'warning',
+            self::REVIEW_STATUS_APPROVED => 'success',
+            self::REVIEW_STATUS_REJECTED => 'danger',
+            default => 'dark',
+        };
+    }
+
+    /**
+     * Scope للاختبارات قيد المراجعة.
+     */
+    public function scopePendingReview($query)
+    {
+        return $query->where('review_status', self::REVIEW_STATUS_PENDING);
+    }
+
+    /**
+     * Scope للاختبارات الموافق عليها.
+     */
+    public function scopeApproved($query)
+    {
+        return $query->where('review_status', self::REVIEW_STATUS_APPROVED);
+    }
+
+    /**
+     * Scope للاختبارات المرفوضة.
+     */
+    public function scopeRejected($query)
+    {
+        return $query->where('review_status', self::REVIEW_STATUS_REJECTED);
+    }
+
+    /**
+     * Scope للاختبارات المخصصة لمشرف معين.
+     * يعرض فقط الاختبارات من المواد/الصفوف المخصصة للمشرف.
+     */
+    public function scopeForSupervisor($query, $supervisorId)
+    {
+        $supervisor = \App\Models\User::find($supervisorId);
+        
+        if (!$supervisor || !$supervisor->hasRole('supervisor')) {
+            return $query->whereRaw('1 = 0'); // Always false
+        }
+
+        // الحصول على المواد والصفوف المخصصة للمشرف
+        $classIds = $supervisor->assignedClassesAsSupervisor()->pluck('classes.id');
+        $subjectIds = $supervisor->assignedSubjectsAsSupervisor()->pluck('subjects.id');
+
+        return $query->whereHas('subject', function($subjectQuery) use ($classIds, $subjectIds) {
+            if ($classIds->isNotEmpty()) {
+                $subjectQuery->whereIn('class_id', $classIds);
+            }
+            if ($subjectIds->isNotEmpty()) {
+                if ($classIds->isNotEmpty()) {
+                    $subjectQuery->orWhereIn('id', $subjectIds);
+                } else {
+                    $subjectQuery->whereIn('id', $subjectIds);
+                }
+            }
+            // إذا لم يكن هناك أي تخصيصات، إرجاع query فارغ
+            if ($classIds->isEmpty() && $subjectIds->isEmpty()) {
+                $subjectQuery->whereRaw('1 = 0'); // Always false condition
+            }
+        });
     }
 }
 

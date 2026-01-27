@@ -32,6 +32,24 @@ class SubjectController extends Controller
     {
         $subjectsQuery = Subject::with(['schoolClass.stage']);
 
+        // إذا كان المستخدم معلم وليس مشرف/مدير
+        $user = auth()->user();
+        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            $classIds = $user->assignedClasses()->pluck('classes.id');
+            $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
+            
+            $subjectsQuery->where(function($q) use ($classIds, $subjectIds) {
+                // المواد من الصفوف المخصصة
+                if ($classIds->isNotEmpty()) {
+                    $q->whereIn('class_id', $classIds);
+                }
+                // أو المواد المخصصة مباشرة
+                if ($subjectIds->isNotEmpty()) {
+                    $q->orWhereIn('id', $subjectIds);
+                }
+            });
+        }
+
         // فلترة حسب البحث
         if ($request->filled('query')) {
             $search = $request->input('query');
@@ -174,6 +192,15 @@ class SubjectController extends Controller
                     $q->orderBy('order')->orderBy('title');
                 },
             ])->findOrFail($id);
+            
+            // التحقق من التخصيص
+            $user = auth()->user();
+            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+                if (!$user->isAssignedToSubject($subject->id) && 
+                    !$user->isAssignedToClass($subject->class_id)) {
+                    abort(403, 'غير مصرح لك بالوصول إلى هذه المادة');
+                }
+            }
             return view('admin.pages.subjects.show', compact('subject'));
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return redirect()->route('admin.subjects.index')
@@ -192,6 +219,16 @@ class SubjectController extends Controller
     {
         try {
             $subject = Subject::findOrFail($id);
+            
+            // التحقق من التخصيص
+            $user = auth()->user();
+            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+                if (!$user->isAssignedToSubject($subject->id) && 
+                    !$user->isAssignedToClass($subject->class_id)) {
+                    abort(403, 'غير مصرح لك بالوصول إلى هذه المادة');
+                }
+            }
+            
             $classes = SchoolClass::with('stage')->ordered()->get();
             return view('admin.pages.subjects.edit', compact('subject', 'classes'));
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -210,6 +247,15 @@ class SubjectController extends Controller
     {
         try {
             $subject = Subject::findOrFail($id);
+            
+            // التحقق من التخصيص
+            $user = auth()->user();
+            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+                if (!$user->isAssignedToSubject($subject->id) && 
+                    !$user->isAssignedToClass($subject->class_id)) {
+                    abort(403, 'غير مصرح لك بالوصول إلى هذه المادة');
+                }
+            }
             $data = $request->validated();
 
             // صورة المادة
@@ -310,6 +356,15 @@ class SubjectController extends Controller
     {
         try {
             $subject = Subject::findOrFail($id);
+            
+            // التحقق من التخصيص
+            $user = auth()->user();
+            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+                if (!$user->isAssignedToSubject($subject->id) && 
+                    !$user->isAssignedToClass($subject->class_id)) {
+                    abort(403, 'غير مصرح لك بالوصول إلى هذه المادة');
+                }
+            }
 
             try {
                 if ($subject->image) {

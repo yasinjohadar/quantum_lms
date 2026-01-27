@@ -32,6 +32,16 @@ class UnitController extends Controller
         Log::info('محاولة إنشاء وحدة جديدة للقسم: ' . $section->id, $request->all());
 
         try {
+            // التحقق من التخصيص
+            $user = auth()->user();
+            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+                $subject = $section->subject;
+                if (!$user->isAssignedToSubject($subject->id) && 
+                    !$user->isAssignedToClass($subject->class_id)) {
+                    abort(403, 'غير مصرح لك بالوصول إلى هذه المادة');
+                }
+            }
+            
             $data = $request->validated();
             $data['section_id'] = $section->id;
             $data['is_active'] = $request->has('is_active');
@@ -86,6 +96,16 @@ class UnitController extends Controller
      */
     public function destroy(Unit $unit)
     {
+        // التحقق من التخصيص
+        $user = auth()->user();
+        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            $subject = $unit->section->subject;
+            if (!$user->isAssignedToSubject($subject->id) && 
+                !$user->isAssignedToClass($subject->class_id)) {
+                abort(403, 'غير مصرح لك بالوصول إلى هذه الوحدة');
+            }
+        }
+        
         $subjectId = $unit->section->subject_id;
         $unitTitle = $unit->title;
 

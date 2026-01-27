@@ -268,5 +268,15 @@ class Subject extends Model
     {
         return $this->prices()->active()->with('currency')->get();
     }
+
+    /**
+     * العلاقة مع المعلمين المخصصين لهذه المادة
+     */
+    public function assignedTeachers()
+    {
+        return $this->belongsToMany(User::class, 'teacher_subjects', 'subject_id', 'teacher_id')
+                    ->withPivot(['assigned_by', 'assigned_at', 'notes'])
+                    ->withTimestamps();
+    }
 }
 

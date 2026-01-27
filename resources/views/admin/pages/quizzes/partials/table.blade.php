@@ -48,6 +48,11 @@
             @endif
         </td>
         <td>
+            <span class="badge bg-{{ $quiz->review_status_color }}">
+                {{ $quiz->review_status_name }}
+            </span>
+        </td>
+        <td>
             <div class="btn-group btn-group-sm">
                 @can('quiz-show')
                     <a href="{{ route('admin.quizzes.show', $quiz->id) }}" 
@@ -129,7 +134,7 @@
     @endcan
 @empty
     <tr>
-        <td colspan="8" class="text-center py-5">
+        <td colspan="9" class="text-center py-5">
             <i class="bi bi-journal-x display-4 text-muted"></i>
             <p class="text-muted mt-3">لا توجد اختبارات حالياً</p>
             <a href="{{ route('admin.quizzes.create') }}" class="btn btn-primary">

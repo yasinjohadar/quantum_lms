@@ -218,5 +218,15 @@ class SchoolClass extends Model
     {
         return $this->prices()->active()->with('currency')->get();
     }
+
+    /**
+     * العلاقة مع المعلمين المخصصين لهذا الصف
+     */
+    public function assignedTeachers()
+    {
+        return $this->belongsToMany(User::class, 'teacher_classes', 'class_id', 'teacher_id')
+                    ->withPivot(['assigned_by', 'assigned_at', 'notes'])
+                    ->withTimestamps();
+    }
 }
 

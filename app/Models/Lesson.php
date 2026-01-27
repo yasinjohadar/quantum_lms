@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Lesson extends Model
 {
@@ -114,6 +115,14 @@ class Lesson extends Model
     public function completions()
     {
         return $this->hasMany(LessonCompletion::class);
+    }
+
+    /**
+     * العلاقة مع ملاحظات المراجعة.
+     */
+    public function reviewComments(): MorphMany
+    {
+        return $this->morphMany(ReviewComment::class, 'reviewable')->orderBy('created_at', 'asc');
     }
 
     /**
@@ -244,5 +253,39 @@ class Lesson extends Model
     public function scopeRejected($query)
     {
         return $query->where('review_status', self::REVIEW_STATUS_REJECTED);
+    }
+
+    /**
+     * Scope للدروس المخصصة لمشرف معين.
+     * يعرض فقط الدروس من المواد/الصفوف المخصصة للمشرف.
+     */
+    public function scopeForSupervisor($query, $supervisorId)
+    {
+        $supervisor = \App\Models\User::find($supervisorId);
+        
+        if (!$supervisor || !$supervisor->hasRole('supervisor')) {
+            return $query->whereRaw('1 = 0'); // Always false
+        }
+
+        // الحصول على المواد والصفوف المخصصة للمشرف
+        $classIds = $supervisor->assignedClassesAsSupervisor()->pluck('classes.id');
+        $subjectIds = $supervisor->assignedSubjectsAsSupervisor()->pluck('subjects.id');
+
+        return $query->whereHas('unit.section.subject', function($subjectQuery) use ($classIds, $subjectIds) {
+            if ($classIds->isNotEmpty()) {
+                $subjectQuery->whereIn('class_id', $classIds);
+            }
+            if ($subjectIds->isNotEmpty()) {
+                if ($classIds->isNotEmpty()) {
+                    $subjectQuery->orWhereIn('id', $subjectIds);
+                } else {
+                    $subjectQuery->whereIn('id', $subjectIds);
+                }
+            }
+            // إذا لم يكن هناك أي تخصيصات، إرجاع query فارغ
+            if ($classIds->isEmpty() && $subjectIds->isEmpty()) {
+                $subjectQuery->whereRaw('1 = 0'); // Always false condition
+            }
+        });
     }
 }

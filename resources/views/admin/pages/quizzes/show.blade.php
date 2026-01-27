@@ -64,6 +64,9 @@
                         @else
                             <span class="badge bg-warning">معطل</span>
                         @endif
+                        <span class="badge bg-{{ $quiz->review_status_color }}">
+                            {{ $quiz->review_status_name }}
+                        </span>
                         <span class="badge bg-{{ $quiz->availability_status_color }}">
                             {{ $quiz->availability_status_name }}
                         </span>
@@ -156,6 +159,139 @@
                     @endif
                 </div>
             </div>
+
+            {{-- حالة المراجعة --}}
+            @php
+                $user = auth()->user();
+                $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
+            @endphp
+            <div class="card custom-card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-clipboard-check me-2"></i> حالة المراجعة</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">الحالة:</label>
+                        <div>
+                            <span class="badge bg-{{ $quiz->review_status_color }} fs-6">
+                                {{ $quiz->review_status_name }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    @if($quiz->review_notes)
+                        <div class="mb-3">
+                            <label class="form-label">ملاحظات المراجعة:</label>
+                            <div class="alert alert-{{ $quiz->review_status === \App\Models\Quiz::REVIEW_STATUS_REJECTED ? 'danger' : 'info' }}">
+                                {{ $quiz->review_notes }}
+                            </div>
+                        </div>
+                    @endif
+                    
+                    @if($quiz->reviewed_at)
+                        <div class="mb-3">
+                            <small class="text-muted">
+                                <i class="bi bi-person-check me-1"></i>
+                                مراجع من: <strong>{{ $quiz->reviewer->name ?? 'غير معروف' }}</strong>
+                                <br>
+                                <i class="bi bi-calendar me-1"></i>
+                                في: {{ $quiz->reviewed_at->format('Y-m-d H:i') }}
+                            </small>
+                        </div>
+                    @endif
+                    
+                    @if($quiz->submitted_for_review_at)
+                        <div class="mb-3">
+                            <small class="text-muted">
+                                <i class="bi bi-send me-1"></i>
+                                تم الإرسال للمراجعة في: {{ $quiz->submitted_for_review_at->format('Y-m-d H:i') }}
+                            </small>
+                        </div>
+                    @endif
+                    
+                    {{-- أزرار المراجعة للمعلم --}}
+                    @if($isTeacher && in_array($quiz->review_status, [\App\Models\Quiz::REVIEW_STATUS_DRAFT, \App\Models\Quiz::REVIEW_STATUS_REJECTED]))
+                        <div class="mt-3">
+                            <form action="{{ route('admin.quizzes.submit-for-review', $quiz->id) }}" method="POST" class="d-inline">
+                                @csrf
+                                <button type="submit" class="btn btn-warning" 
+                                        onclick="return confirm('هل أنت متأكد من إرسال الاختبار للمراجعة؟')">
+                                    <i class="bi bi-send me-1"></i> إرسال للمراجعة
+                                </button>
+                            </form>
+                        </div>
+                    @endif
+                    
+                    {{-- أزرار المراجعة للمشرف/الأدمن --}}
+                    @if(!$isTeacher && $quiz->review_status === \App\Models\Quiz::REVIEW_STATUS_PENDING)
+                        <div class="mt-3 d-flex gap-2">
+                            <button type="button" class="btn btn-success" 
+                                    data-bs-toggle="modal" data-bs-target="#approveModal">
+                                <i class="bi bi-check-circle me-1"></i> الموافقة على النشر
+                            </button>
+                            <button type="button" class="btn btn-danger" 
+                                    data-bs-toggle="modal" data-bs-target="#rejectModal">
+                                <i class="bi bi-x-circle me-1"></i> رفض النشر
+                            </button>
+                        </div>
+                    @endif
+                </div>
+            </div>
+            
+            {{-- Modal الموافقة --}}
+            @if(!$isTeacher && $quiz->review_status === \App\Models\Quiz::REVIEW_STATUS_PENDING)
+                <div class="modal fade" id="approveModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form action="{{ route('admin.quizzes.approve-review', $quiz->id) }}" method="POST">
+                                @csrf
+                                <div class="modal-header">
+                                    <h5 class="modal-title">الموافقة على نشر الاختبار</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">ملاحظات (اختياري)</label>
+                                        <textarea name="review_notes" class="form-control" rows="3" 
+                                                  placeholder="أضف ملاحظات للمعلم..."></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                    <button type="submit" class="btn btn-success">الموافقة</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                {{-- Modal الرفض --}}
+                <div class="modal fade" id="rejectModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form action="{{ route('admin.quizzes.reject-review', $quiz->id) }}" method="POST">
+                                @csrf
+                                <div class="modal-header">
+                                    <h5 class="modal-title">رفض نشر الاختبار</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">ملاحظات <span class="text-danger">*</span></label>
+                                        <textarea name="review_notes" class="form-control" rows="3" 
+                                                  placeholder="أضف ملاحظات للمعلم..." required></textarea>
+                                        <small class="text-muted">يجب إضافة ملاحظات توضح سبب الرفض</small>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                    <button type="submit" class="btn btn-danger">رفض</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             {{-- الأسئلة --}}
             <div class="card custom-card mb-3">

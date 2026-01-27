@@ -42,6 +42,24 @@ class EnrollmentController extends Controller
     {
         $enrollmentsQuery = Enrollment::with(['user', 'subject.schoolClass.stage', 'enrolledBy']);
 
+        // إذا كان المستخدم معلم وليس مشرف/مدير
+        $user = auth()->user();
+        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            $classIds = $user->assignedClasses()->pluck('classes.id');
+            $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
+            
+            $enrollmentsQuery->whereHas('subject', function($q) use ($classIds, $subjectIds) {
+                // المواد من الصفوف المخصصة
+                if ($classIds->isNotEmpty()) {
+                    $q->whereIn('class_id', $classIds);
+                }
+                // أو المواد المخصصة مباشرة
+                if ($subjectIds->isNotEmpty()) {
+                    $q->orWhereIn('id', $subjectIds);
+                }
+            });
+        }
+
         // فلترة حسب البحث
         if ($request->filled('search')) {
             $enrollmentsQuery->search($request->input('search'));

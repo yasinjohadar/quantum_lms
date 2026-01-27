@@ -160,6 +160,8 @@
                     </div>
                     <!-- End::header-element -->
 
+                    @stack('header-actions')
+
                     <!-- Start::header-element -->
                     <div class="header-element headerProfile-dropdown">
                         <!-- Start::header-link|dropdown-toggle -->
