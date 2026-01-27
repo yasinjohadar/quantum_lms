@@ -27,6 +27,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'user-create', 'description' => 'إنشاء مستخدم جديد'],
             ['name' => 'user-edit', 'description' => 'تعديل المستخدم'],
             ['name' => 'user-delete', 'description' => 'حذف المستخدم'],
+            ['name' => 'user-impersonate', 'description' => 'تسجيل الدخول كالمستخدم'],
             ['name' => 'user-show', 'description' => 'عرض تفاصيل المستخدم'],
             ['name' => 'user-update-password', 'description' => 'تحديث كلمة مرور المستخدم'],
             ['name' => 'user-toggle-status', 'description' => 'تبديل حالة المستخدم'],
@@ -82,6 +83,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'lesson-show', 'description' => 'عرض تفاصيل الدرس'],
             ['name' => 'lesson-approve-review', 'description' => 'الموافقة على تفعيل الدرس'],
             ['name' => 'lesson-reject-review', 'description' => 'رفض تفعيل الدرس'],
+            ['name' => 'lesson-submit-for-review', 'description' => 'إرسال الدرس للمراجعة'],
 
             // صلاحيات إدارة مرفقات الدروس
             ['name' => 'lesson-attachment-create', 'description' => 'إضافة مرفق للدرس'],
@@ -129,6 +131,9 @@ class PermissionSeeder extends Seeder
             ['name' => 'review-queue-lessons', 'description' => 'عرض الدروس قيد المراجعة'],
             ['name' => 'review-queue-quizzes', 'description' => 'عرض الاختبارات قيد المراجعة'],
             ['name' => 'review-queue-assignments', 'description' => 'عرض الواجبات قيد المراجعة'],
+            ['name' => 'assignment-approve-review', 'description' => 'الموافقة على نشر الواجب'],
+            ['name' => 'assignment-reject-review', 'description' => 'رفض نشر الواجب'],
+            ['name' => 'assignment-submit-for-review', 'description' => 'إرسال الواجب للمراجعة'],
 
             // صلاحيات ملاحظات المراجعة
             ['name' => 'review-comment-create', 'description' => 'إنشاء ملاحظة مراجعة'],

@@ -337,6 +337,12 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::post('quizzes/{quiz}/reject-review', [QuizController::class, 'rejectReview'])
             ->name('quizzes.reject-review');
 
+        // مراجعة الواجبات
+        Route::post('assignments/{assignment}/approve-review', [AssignmentController::class, 'approveReview'])
+            ->name('assignments.approve-review');
+        Route::post('assignments/{assignment}/reject-review', [AssignmentController::class, 'rejectReview'])
+            ->name('assignments.reject-review');
+
         // قائمة المراجعة
         Route::get('review-queue', [\App\Http\Controllers\Admin\ReviewQueueController::class, 'index'])
             ->name('review-queue.index');
@@ -738,4 +744,14 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
 
         // أسعار الصرف
         Route::resource('exchange-rates', \App\Http\Controllers\Admin\ExchangeRateController::class);
+
+        // مسارات المشرف - الصفوف والمواد المخصصة
+        Route::get('my-classes', [\App\Http\Controllers\Supervisor\SupervisorDashboardController::class, 'myClasses'])
+            ->name('my-classes');
+        Route::get('my-classes/{class}', [\App\Http\Controllers\Supervisor\SupervisorDashboardController::class, 'showClass'])
+            ->name('my-classes.show');
+        Route::get('my-subjects', [\App\Http\Controllers\Supervisor\SupervisorDashboardController::class, 'mySubjects'])
+            ->name('my-subjects');
+        Route::get('my-subjects/{subject}', [\App\Http\Controllers\Supervisor\SupervisorDashboardController::class, 'showSubject'])
+            ->name('my-subjects.show');
     });

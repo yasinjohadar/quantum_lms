@@ -182,9 +182,32 @@
                                         @if(Auth::user()->username)
                                             <br><span class="fs-11 op-7 lh-1">@{{ Auth::user()->username }}</span>
                                         @endif
+                                        @if(session()->has('impersonator_id'))
+                                            <br><span class="fs-11 op-7 lh-1 badge bg-warning text-dark mt-1">
+                                                <i class="fas fa-user-secret me-1"></i> متصل كالمستخدم
+                                            </span>
+                                        @endif
                                     </div>
                                 </div>
                             </li>
+                            @if(session()->has('impersonator_id'))
+                            <li>
+                                <div class="px-3 py-2 border-bottom">
+                                    <div class="alert alert-warning mb-0 p-2">
+                                        <small class="d-block mb-2">
+                                            <i class="fas fa-user-secret me-1"></i>
+                                            أنت متصل كـ <strong>{{ Auth::user()->name }}</strong>
+                                        </small>
+                                        <form action="{{ route('stop-impersonate') }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-outline-danger w-100">
+                                                <i class="fas fa-undo me-1"></i> العودة للحساب الأصلي
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </li>
+                            @endif
                             <li>
                                 <a class="dropdown-item d-flex" href="{{ route('profile.edit') }}">
                                     <i class="bx bx-user-circle fs-18 me-2 op-7"></i>الملف الشخصي

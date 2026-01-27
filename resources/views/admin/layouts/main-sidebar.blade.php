@@ -66,6 +66,67 @@
                         </li>
                         @endif
 
+                        @if(auth()->user()->hasRole('supervisor') && !auth()->user()->hasRole('admin'))
+                        <li class="slide has-sub {{ request()->is('admin/my-classes*') || request()->is('admin/my-subjects*') ? 'open' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                </svg>
+                                <span class="side-menu__label">إشرافي</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">إشرافي</a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/my-classes*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.my-classes') }}" class="side-menu__item {{ request()->is('admin/my-classes*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M6 4h12v2H6zm0 4h12v2H6zm0 4h8v2H6zm0 4h8v2H6z"/>
+                                        </svg>
+                                        <span class="side-menu__label">صفوفي المخصصة</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/my-subjects*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.my-subjects') }}" class="side-menu__item {{ request()->is('admin/my-subjects*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M18 2H8a2 2 0 00-2 2v14a2 2 0 002 2h10l4-4V4a2 2 0 00-2-2zm0 13v3h-3a1 1 0 01-1-1v-2h4zm-6-4H8V9h4zm4-3H8V6h8z"/>
+                                        </svg>
+                                        <span class="side-menu__label">موادي المخصصة</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/review-queue*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.review-queue.index') }}" class="side-menu__item {{ request()->is('admin/review-queue*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                        </svg>
+                                        <span class="side-menu__label">قائمة المراجعة</span>
+                                        @php
+                                            $user = auth()->user();
+                                            $isSupervisor = $user->hasRole('supervisor') && !$user->hasRole('admin');
+                                            if ($isSupervisor) {
+                                                $pendingCount = \App\Models\Lesson::forSupervisor($user->id)->pendingReview()->count() + 
+                                                               \App\Models\Quiz::forSupervisor($user->id)->pendingReview()->count() + 
+                                                               \App\Models\Assignment::forSupervisor($user->id)->pendingReview()->count();
+                                            } else {
+                                                $pendingCount = \App\Models\Lesson::pendingReview()->count() + 
+                                                               \App\Models\Quiz::pendingReview()->count() + 
+                                                               \App\Models\Assignment::pendingReview()->count();
+                                            }
+                                        @endphp
+                                        @if($pendingCount > 0)
+                                            <span class="badge bg-warning-transparent text-warning ms-auto">{{ $pendingCount }}</span>
+                                        @endif
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        @endif
+
                         @canany(['user-list'])
                         <li class="slide has-sub {{ request()->is('users*') || request()->is('admin/archived-users*') || request()->is('admin/teachers/assignments*') || request()->is('admin/supervisors/assignments*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">

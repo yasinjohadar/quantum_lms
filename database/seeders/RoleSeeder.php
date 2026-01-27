@@ -49,6 +49,7 @@ class RoleSeeder extends Seeder
             'quiz-reorder-questions', 'quiz-update-question-points', 'quiz-duplicate',
             'quiz-toggle-publish', 'quiz-preview', 'quiz-results', 'quiz-export-results',
             'quiz-get-subjects-by-class', 'quiz-get-units',
+            'quiz-approve-review', 'quiz-reject-review',
             
             // صلاحيات إدارة محاولات الاختبارات
             'quiz-attempt-list', 'quiz-attempt-show', 'quiz-attempt-grade',
@@ -79,6 +80,14 @@ class RoleSeeder extends Seeder
             
             // صلاحيات التقارير والإحصائيات
             'report-view', 'report-export',
+            
+            // صلاحيات المراجعة
+            'review-queue-list',
+            'review-queue-lessons',
+            'review-queue-quizzes',
+            'review-queue-assignments',
+            'assignment-approve-review',
+            'assignment-reject-review',
             
             // صلاحيات لوحة التحكم
             'dashboard-view',

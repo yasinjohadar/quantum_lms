@@ -29,8 +29,8 @@ class ReviewQueueController extends Controller
         $isSupervisor = $user->hasRole('supervisor') && !$user->hasRole('admin');
 
         // إحصائيات
-        $lessonsQuery = Lesson::with(['unit.section.subject.schoolClass', 'reviewer', 'reviewComments']);
-        $quizzesQuery = Quiz::with(['subject.schoolClass', 'reviewer', 'reviewComments']);
+        $lessonsQuery = Lesson::with(['unit.section.subject.schoolClass.stage', 'reviewer', 'reviewComments']);
+        $quizzesQuery = Quiz::with(['subject.schoolClass.stage', 'creator', 'reviewer', 'reviewComments']);
         $assignmentsQuery = Assignment::with(['assignable', 'creator', 'reviewer', 'reviewComments']);
 
         // فلترة للمشرف

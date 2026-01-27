@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Spatie\Permission\Models\Role;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 use App\Helpers\StorageHelper;
 
 class UserController extends Controller
@@ -40,7 +41,9 @@ class UserController extends Controller
         private OTPService $otpService
     ) {
         // تأكد أن المستخدم مصادق أولًا ثم تحقق من الصلاحيات
-        $this->middleware('auth');
+        // استثناء impersonate من auth middleware للسماح بـ signed URL (GET requests)
+        // الـ POST requests محمية بـ auth middleware في route definition
+        $this->middleware('auth')->except(['impersonate']);
 
         $this->middleware('permission:user-list')->only('index');
         $this->middleware('permission:user-create')->only(['create', 'store']);
@@ -51,6 +54,10 @@ class UserController extends Controller
         $this->middleware('permission:user-toggle-status')->only('toggleStatus');
         $this->middleware('permission:user-login-logs')->only('loginLogs');
         $this->middleware('permission:user-send-verification-otp')->only('sendVerificationOTP');
+        // permission middleware للـ impersonate سيتم التحقق منه داخل الـ method نفسه
+        // للـ POST requests: يتم التحقق في الـ method
+        // للـ GET requests: الـ signed URL يوفر الأمان
+        $this->middleware('permission:user-impersonate')->only(['stopImpersonate']);
     }
 
     /**
@@ -501,6 +508,105 @@ public function index(Request $request)
                 'message' => 'حدث خطأ أثناء إرسال كود التحقق: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * تسجيل الدخول كالمستخدم المحدد
+     * يدعم GET (signed URL) و POST (form) للسماح بفتح الرابط مباشرة
+     */
+    public function impersonate(User $user)
+    {
+        // إذا كان الطلب من signed URL (GET بدون auth)
+        if (request()->isMethod('get') && !auth()->check()) {
+            // التحقق من أن الرابط موقّع بشكل صحيح (يتم تلقائياً بواسطة signed middleware)
+            // لا حاجة لتحقق إضافي لأن الأدمن فقط يمكنه إنشاء الرابط الموقّع
+            // لا يوجد مستخدم أصلي في هذه الحالة، لذلك سنستخدم null
+            $impersonatorId = null;
+            $impersonatorName = 'System (Signed URL)';
+        } else {
+            // إذا كان الطلب من form (POST مع auth)
+            if (!auth()->check() || !auth()->user()->hasRole('admin')) {
+                abort(403, 'غير مصرح لك بتسجيل الدخول كالمستخدم');
+            }
+
+            // التحقق من أن المستخدم لا يمكنه impersonate نفسه
+            if ($user->id === auth()->id()) {
+                return redirect()->back()->with('error', 'لا يمكنك تسجيل الدخول كحسابك الخاص');
+            }
+
+            // حفظ المستخدم الأصلي في session
+            $impersonatorId = auth()->id();
+            $impersonatorName = auth()->user()->name;
+        }
+
+        // التحقق من أن المستخدم نشط
+        if (!$user->is_active) {
+            if (auth()->check()) {
+                return redirect()->back()->with('error', 'لا يمكن تسجيل الدخول كحساب غير نشط');
+            } else {
+                return redirect()->route('login')->with('error', 'لا يمكن تسجيل الدخول كحساب غير نشط');
+            }
+        }
+
+        // حفظ المستخدم الأصلي في session (إذا كان موجود)
+        if ($impersonatorId) {
+            session()->put('impersonator_id', $impersonatorId);
+            session()->put('impersonator_name', $impersonatorName);
+        }
+
+        // تسجيل الدخول كالمستخدم الجديد
+        Auth::login($user);
+
+        // تسجيل الحدث
+        Log::info('Admin ' . ($impersonatorName ?? 'System') . ' logged in as user ' . $user->name . ' (ID: ' . $user->id . ') via ' . (request()->isMethod('get') ? 'signed URL' : 'form'));
+
+        // توجيه حسب صلاحية المستخدم
+        if ($user->hasRole('student')) {
+            return redirect()->route('student.dashboard')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
+        } elseif ($user->hasRole('teacher')) {
+            return redirect()->route('admin.dashboard')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
+        } elseif ($user->hasRole('supervisor')) {
+            return redirect()->route('admin.my-classes')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
+        } else {
+            return redirect()->route('admin.dashboard')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
+        }
+    }
+
+    /**
+     * العودة للحساب الأصلي
+     * يدعم GET و POST للسماح بفتح الرابط مباشرة
+     */
+    public function stopImpersonate()
+    {
+        if (!session()->has('impersonator_id')) {
+            return redirect()->route('admin.dashboard');
+        }
+
+        $impersonatorId = session('impersonator_id');
+        $impersonatorName = session('impersonator_name');
+        $impersonator = User::find($impersonatorId);
+
+        if (!$impersonator) {
+            session()->forget(['impersonator_id', 'impersonator_name']);
+            Auth::logout();
+            return redirect()->route('login')->with('error', 'المستخدم الأصلي غير موجود');
+        }
+
+        $currentUserName = Auth::user()->name;
+
+        // تسجيل الخروج من الحساب الحالي
+        Auth::logout();
+
+        // تسجيل الدخول كالمستخدم الأصلي
+        Auth::login($impersonator);
+
+        // حذف بيانات الـ impersonation
+        session()->forget(['impersonator_id', 'impersonator_name']);
+
+        // تسجيل الحدث
+        Log::info('Admin ' . $impersonatorName . ' stopped impersonating user ' . $currentUserName);
+
+        return redirect()->route('admin.dashboard')->with('success', 'تم العودة لحسابك الأصلي');
     }
 
 }

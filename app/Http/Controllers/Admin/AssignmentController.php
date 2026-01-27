@@ -28,6 +28,8 @@ class AssignmentController extends Controller
         $this->middleware(['permission:assignment-unpublish'])->only('unpublish');
         $this->middleware(['permission:assignment-duplicate'])->only('duplicate');
         $this->middleware(['permission:assignment-get-assignable-items'])->only('getAssignableItems');
+        $this->middleware(['permission:assignment-approve-review'])->only('approveReview');
+        $this->middleware(['permission:assignment-reject-review'])->only('rejectReview');
     }
 
     /**
@@ -446,5 +448,61 @@ class AssignmentController extends Controller
             return redirect()->back()
                 ->with('error', 'حدث خطأ أثناء نسخ الواجب: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * الموافقة على نشر الواجب
+     */
+    public function approveReview(Request $request, Assignment $assignment)
+    {
+        $request->validate([
+            'review_notes' => 'nullable|string|max:1000',
+        ]);
+
+        // التحقق من الصلاحية (admin/supervisor فقط)
+        $user = auth()->user();
+        if (!$user->hasAnyRole(['admin', 'supervisor'])) {
+            abort(403, 'غير مصرح لك بالموافقة على نشر الواجب');
+        }
+
+        $assignment->update([
+            'review_status' => Assignment::REVIEW_STATUS_APPROVED,
+            'is_published' => true,
+            'review_notes' => $request->input('review_notes'),
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+        ]);
+
+        return redirect()
+            ->back()
+            ->with('success', 'تم الموافقة على نشر الواجب بنجاح.');
+    }
+
+    /**
+     * رفض نشر الواجب مع ملاحظات
+     */
+    public function rejectReview(Request $request, Assignment $assignment)
+    {
+        $request->validate([
+            'review_notes' => 'required|string|max:1000',
+        ]);
+
+        // التحقق من الصلاحية (admin/supervisor فقط)
+        $user = auth()->user();
+        if (!$user->hasAnyRole(['admin', 'supervisor'])) {
+            abort(403, 'غير مصرح لك برفض نشر الواجب');
+        }
+
+        $assignment->update([
+            'review_status' => Assignment::REVIEW_STATUS_REJECTED,
+            'is_published' => false,
+            'review_notes' => $request->input('review_notes'),
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+        ]);
+
+        return redirect()
+            ->back()
+            ->with('success', 'تم رفض نشر الواجب وتم إرسال الملاحظات للمعلم.');
     }
 }

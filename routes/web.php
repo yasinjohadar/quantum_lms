@@ -21,7 +21,7 @@ Route::get('/dashboard', function () {
     if ($user->hasRole('admin')) {
         return redirect()->route('admin.dashboard');
     } elseif ($user->hasRole('supervisor')) {
-        return redirect()->route('admin.dashboard');
+        return redirect()->route('admin.my-classes');
     } elseif ($user->hasRole('teacher')) {
         return redirect()->route('admin.dashboard');
     } elseif ($user->hasRole('student')) {
@@ -44,6 +44,11 @@ Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile');
 });
 
+// Route للـ impersonation بدون auth middleware (يستخدم signed URL)
+Route::get('users/{user}/impersonate', [UserController::class, 'impersonate'])
+    ->middleware('signed')
+    ->name('users.impersonate.link');
+
 // Admin routes - محمية بصلاحية admin فقط
 Route::middleware(['auth', 'check.user.active', 'admin'])->group(function () {
     Route::resource('users', UserController::class);
@@ -52,6 +57,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])->group(function () {
     Route::get('roles/search-permissions', [RoleController::class, 'searchPermissions'])->name('roles.search-permissions');
     Route::put('users/{user}/change-password', [UserController::class, 'updatePassword'])->name('users.update-password');
     Route::post('users/{user}/send-verification-otp', [UserController::class, 'sendVerificationOTP'])->name('users.send-verification-otp');
+    
+    // تسجيل الدخول كالمستخدم (POST فقط من form)
+    Route::post('users/{user}/impersonate', [UserController::class, 'impersonate'])->name('users.impersonate');
+    Route::match(['get', 'post'], 'stop-impersonate', [UserController::class, 'stopImpersonate'])->name('stop-impersonate');
 });
 
 // مسار toggle-status - محمي بصلاحية admin

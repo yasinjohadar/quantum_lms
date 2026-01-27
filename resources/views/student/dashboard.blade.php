@@ -11,8 +11,72 @@
             <!-- Page Header -->
             <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
                 <div>
-                    <h4 class="mb-0">مرحباً بك! 👋</h4>
-                    <p class="mb-0 text-muted">{{ now()->translatedFormat('l، d F Y') }}</p>
+                    <h4 class="mb-2" style="font-size: 1.5rem;">
+                        <span class="text-primary">مرحباً</span>
+                        <span class="fw-bold" style="
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            -webkit-background-clip: text;
+                            -webkit-text-fill-color: transparent;
+                            background-clip: text;
+                            font-size: 1.6rem;
+                            display: inline-block;
+                            margin: 0 5px;
+                        ">{{ Auth::user()->name }}</span>
+                        <span class="text-primary">! 👋</span>
+                    </h4>
+                    <div class="mt-3">
+                        <div class="d-inline-block position-relative" style="
+                            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                            border-left: 4px solid #667eea;
+                            padding: 12px 20px;
+                            border-radius: 8px;
+                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                            transform: perspective(1000px) rotateY(-2deg);
+                            transition: all 0.3s ease;
+                        " onmouseover="this.style.transform='perspective(1000px) rotateY(0deg) scale(1.02)'" 
+                           onmouseout="this.style.transform='perspective(1000px) rotateY(-2deg) scale(1)'">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3" style="
+                                    width: 40px;
+                                    height: 40px;
+                                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                    border-radius: 50%;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+                                ">
+                                    <i class="fe fe-calendar text-white" style="font-size: 18px;"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-dark mb-1" style="font-size: 0.95rem; letter-spacing: 0.5px;">
+                                        {{ now()->translatedFormat('l') }}
+                                    </div>
+                                    <div class="text-muted" style="font-size: 0.85rem;">
+                                        <span class="fw-semibold">{{ now()->translatedFormat('d') }}</span>
+                                        <span class="mx-1">{{ now()->translatedFormat('F') }}</span>
+                                        <span class="fw-semibold">{{ now()->translatedFormat('Y') }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- خطوط ورقية -->
+                            <div style="
+                                position: absolute;
+                                top: 0;
+                                left: 0;
+                                right: 0;
+                                bottom: 0;
+                                background-image: repeating-linear-gradient(
+                                    transparent,
+                                    transparent 2px,
+                                    rgba(102, 126, 234, 0.03) 2px,
+                                    rgba(102, 126, 234, 0.03) 4px
+                                );
+                                pointer-events: none;
+                                border-radius: 8px;
+                            "></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

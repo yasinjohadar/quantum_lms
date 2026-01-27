@@ -145,10 +145,20 @@
                                                     <th scope="row">{{ $loop->iteration }}</th>
 
                                                     <td>
-                                                        <a href="{{ route('users.show', $user->id) }}"
-                                                            class="text-decoration-none">
-                                                            {{ $user->name }}
-                                                        </a>
+                                                        <div class="d-flex align-items-center">
+                                                            <a href="{{ route('users.show', $user->id) }}"
+                                                                class="text-decoration-none">
+                                                                {{ $user->name }}
+                                                            </a>
+                                                            @can('user-impersonate')
+                                                            <button type="button" class="btn btn-sm btn-info ms-2" 
+                                                                    data-bs-toggle="modal" 
+                                                                    data-bs-target="#impersonateModal{{ $user->id }}"
+                                                                    title="تسجيل الدخول كالمستخدم">
+                                                                <i class="fas fa-user-secret"></i>
+                                                            </button>
+                                                            @endcan
+                                                        </div>
                                                     </td>
 
                                                     <td>
@@ -585,4 +595,76 @@
         });
     });
 </script>
+
+@foreach($users as $user)
+    @can('user-impersonate')
+    <div class="modal fade" id="impersonateModal{{ $user->id }}" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">تسجيل الدخول كالمستخدم</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>هل تريد تسجيل الدخول كالمستخدم <strong>{{ $user->name }}</strong>؟</p>
+                    <p class="text-muted small">سيتم حفظ حسابك الأصلي ويمكنك العودة إليه في أي وقت.</p>
+                    <div class="alert alert-info">
+                        <strong>الرابط المباشر (صلاحية ساعة واحدة):</strong><br>
+                        @php
+                            $impersonateUrl = URL::temporarySignedRoute(
+                                'users.impersonate.link',
+                                now()->addHour(), // صلاحية ساعة واحدة
+                                ['user' => $user->id]
+                            );
+                        @endphp
+                        <input type="text" class="form-control mt-2" 
+                               value="{{ $impersonateUrl }}" 
+                               readonly id="impersonateLink{{ $user->id }}">
+                        <button type="button" class="btn btn-sm btn-secondary mt-2" 
+                                onclick="copyLink({{ $user->id }})">
+                            <i class="fas fa-copy me-1"></i> نسخ الرابط
+                        </button>
+                        <small class="text-muted d-block mt-1">
+                            <i class="fas fa-info-circle me-1"></i> هذا الرابط صالح لمدة ساعة واحدة فقط
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <form action="{{ route('users.impersonate', $user->id) }}" method="POST" class="d-inline">
+                        @csrf
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-sign-in-alt me-1"></i> تسجيل الدخول
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endcan
+@endforeach
+
+@push('scripts')
+<script>
+function copyLink(userId) {
+    const linkInput = document.getElementById('impersonateLink' + userId);
+    linkInput.select();
+    linkInput.setSelectionRange(0, 99999); // For mobile devices
+    document.execCommand('copy');
+    
+    // إظهار رسالة نجاح
+    const button = event.target.closest('button');
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-check me-1"></i> تم النسخ';
+    button.classList.remove('btn-secondary');
+    button.classList.add('btn-success');
+    
+    setTimeout(() => {
+        button.innerHTML = originalText;
+        button.classList.remove('btn-success');
+        button.classList.add('btn-secondary');
+    }, 2000);
+}
+</script>
+@endpush
 @stop
