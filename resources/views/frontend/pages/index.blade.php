@@ -4,7 +4,7 @@
 
 <!-- Hero Section Start -->
 <section class="hero-section">
-    <div class="container">
+                    <div class="container">
         <div class="row align-items-center">
 
                 <!-- الصور/الكروت - يسار في RTL -->
@@ -13,17 +13,17 @@
                     <!-- أيقونة قبعة التخرج -->
                     <div class="graduation-icon position-absolute">
                         <i class="fa-solid fa-graduation-cap"></i>
-                    </div>
+                            </div>
                     <div class="hero-main-image">
                         <img src="{{ asset('frontend/images/hero-img.png') }}" alt="Hero" />
-                    </div>
+                                </div>
                     
                     <!-- أيقونة الخبرة -->
                     <div class="experience-badge position-absolute">
                         <i class="fa-solid fa-lightbulb"></i>
                         <span>25+ سنة من الخبرة</span>
-                    </div>
-                </div>
+            </div>
+            </div>
             </div>
             <!-- النص - يمين في RTL -->
             <div class="col-md-6 order-md-2">
@@ -41,37 +41,37 @@
                         <a href="#" class="btn btn-primary btn-lg btn-gold">
                             ابدأ الآن
                             <i class="fa-solid fa-angles-left ms-2"></i>
-                        </a>
-                    </div>
+                                    </a>
+                                </div>
                     <div class="hero-stats d-flex align-items-center justify-content-end gap-2">
                         <div class="stats-dots d-flex gap-1">
                             <span class="dot"></span>
                             <span class="dot"></span>
                             <span class="dot"></span>
-                        </div>
+                            </div>
                         <span class="stats-text">2000+ طالب ناجح</span>
+                        </div>
                     </div>
                 </div>
-            </div>
             
     
 
-        </div>
-    </div>
-</section>
+                                </div>
+            </div>
+        </section>
 <!-- Hero Section End -->
 
 <!-- Classes Section Start -->
 <section class="classes-section py-5">
-    <div class="container">
+            <div class="container">
         <div class="row mb-5">
             <div class="col-12 text-center">
                 <h2 class="section-title">الصفوف الدراسية</h2>
                 <p class="section-description">اختر الصف المناسب لك وابدأ رحلتك التعليمية</p>
-            </div>
-        </div>
+                        </div>
+                    </div>
         
-        <div class="row">
+                <div class="row">
             @forelse($classes as $class)
                 <div class="col-lg-3 col-md-6 col-12 mb-4">
                     <a href="{{ route('frontend.class.show', $class['slug']) }}" class="class-card-link">
@@ -99,11 +99,11 @@
                                                     @else
                                                         <div class="avatar-placeholder">
                                                             {{ strtoupper(mb_substr($student['name'], 0, 1)) }}
-                                                        </div>
+            </div>
                                                     @endif
-                                                </div>
+                </div>
                                             @endforeach
-                                        </div>
+                </div>
                                     @endif
                                     <span class="students-count">
                                         @if($class['enrolled_students_count'] > 0)
@@ -112,8 +112,8 @@
                                             0 طالب
                                         @endif
                                     </span>
-                                </div>
-                            </div>
+                </div>
+            </div>
                             <div class="class-card-body">
                                 <h3 class="class-card-title">{{ $class['name'] }}</h3>
                                 
@@ -134,28 +134,28 @@
                                                     {{ number_format($class['old_price'], 2) }} {{ $class['currency']->symbol ?? $class['currency']->code ?? '' }}
                                                 </span>
                                             @endif
-                                        </div>
+                                            </div>
                                     @endif
                                 </div>
-                                
+
                                 <div class="class-card-btn enroll-btn">
                                     عرض المواد
                                     <i class="fa-solid fa-angles-left ms-2"></i>
-                                </div>
-                            </div>
-                        </div>
+                                        </div>
+                                            </div>
+                                            </div>
                     </a>
-                </div>
+                                        </div>
             @empty
                 <div class="col-12">
                     <div class="text-center py-5">
                         <p class="text-muted">لا توجد صفوف متاحة حالياً</p>
-                    </div>
-                </div>
+                                    </div>
+                                </div>
             @endforelse
-        </div>
-    </div>
-</section>
+                </div>
+            </div>
+        </section>
 <!-- Classes Section End -->
 
 @endsection

@@ -180,7 +180,7 @@
                             <div id="paginationContainer" class="mt-3">
                                 @include('admin.pages.enrollments.partials.pagination', ['enrollments' => $enrollments])
                             </div>
-                            </div>
+                                </div>
                         </div>
                     </div>
                 </div>
@@ -460,6 +460,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (selectedClassId) {
         loadSubjectsByClass(selectedClassId, true);
     }
-});
+    });
 </script>
 @stop
