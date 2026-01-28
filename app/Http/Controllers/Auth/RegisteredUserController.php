@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
 
@@ -38,16 +39,33 @@ class RegisteredUserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $phoneVerificationEnabled = SystemSetting::get('phone_verification_enabled', false);
-        
+
+        // تطبيع رقم الهاتف: إزالة المسافات والفراغات حتى لا يُعتبر نفس الرقم مختلفاً
+        if ($request->filled('phone')) {
+            $request->merge(['phone' => preg_replace('/\s+/', '', trim($request->phone))]);
+        }
+
+        // التحقق من التفرد تجاهل المستخدمين المحذوفين (soft-deleted) حتى لا يظهر "مستخدم بالفعل" لرقم/بريد سبق تسجيله ثم حذف
         $validationRules = [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'email' => [
+                'required',
+                'string',
+                'lowercase',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->whereNull('deleted_at'),
+            ],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ];
 
-        // إضافة validation لرقم الهاتف إذا كانت الميزة مفعلة
         if ($phoneVerificationEnabled) {
-            $validationRules['phone'] = ['required', 'string', 'regex:/^\+[1-9]\d{1,14}$/', 'unique:users,phone'];
+            $validationRules['phone'] = [
+                'required',
+                'string',
+                'regex:/^\+[1-9]\d{1,14}$/',
+                Rule::unique('users', 'phone')->whereNull('deleted_at'),
+            ];
         }
 
         $validated = $request->validate($validationRules, [
