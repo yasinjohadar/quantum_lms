@@ -73,7 +73,7 @@ Route::middleware(['auth', 'check.user.active', 'admin'])->group(function () {
     Route::resource('roles', RoleController::class);
     Route::get('roles/search-permissions', [RoleController::class, 'searchPermissions'])->name('roles.search-permissions');
     Route::put('users/{user}/change-password', [UserController::class, 'updatePassword'])->name('users.update-password');
-    Route::post('users/{user}/send-verification-otp', [UserController::class, 'sendVerificationOTP'])->name('users.send-verification-otp');
+    Route::post('users/{id}/send-verification-otp', [UserController::class, 'sendVerificationOTP'])->name('users.send-verification-otp');
     
     // تسجيل الدخول كالمستخدم (POST فقط من form)
     Route::post('users/{user}/impersonate', [UserController::class, 'impersonate'])->name('users.impersonate');

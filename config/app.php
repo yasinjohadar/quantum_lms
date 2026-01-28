@@ -86,6 +86,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Default country code for phone normalization
+    |--------------------------------------------------------------------------
+    |
+    | Used when normalizing phone numbers that start with 0 (e.g. 0501234567
+    | becomes +966501234567). Set in .env as APP_PHONE_DEFAULT_COUNTRY_CODE=966
+    |
+    */
+    'phone_default_country_code' => env('APP_PHONE_DEFAULT_COUNTRY_CODE', '966'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Encryption Key
     |--------------------------------------------------------------------------
     |

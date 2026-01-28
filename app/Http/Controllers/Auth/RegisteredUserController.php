@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Helpers\PhoneHelper;
 use App\Models\User;
 use App\Models\SystemSetting;
 use App\Services\SMS\OTPService;
@@ -40,9 +41,14 @@ class RegisteredUserController extends Controller
     {
         $phoneVerificationEnabled = SystemSetting::get('phone_verification_enabled', false);
 
-        // تطبيع رقم الهاتف: إزالة المسافات والفراغات حتى لا يُعتبر نفس الرقم مختلفاً
+        // تطبيع رقم الهاتف تلقائياً: إضافة + ورمز الدولة إن لزم (مثل 0501234567 → +966501234567)
         if ($request->filled('phone')) {
-            $request->merge(['phone' => preg_replace('/\s+/', '', trim($request->phone))]);
+            $normalized = PhoneHelper::normalize($request->phone, config('app.phone_default_country_code', '966'));
+            if ($normalized !== null) {
+                $request->merge(['phone' => $normalized]);
+            } else {
+                $request->merge(['phone' => preg_replace('/\s+/', '', trim($request->phone))]);
+            }
         }
 
         // التحقق من التفرد تجاهل المستخدمين المحذوفين (soft-deleted) حتى لا يظهر "مستخدم بالفعل" لرقم/بريد سبق تسجيله ثم حذف

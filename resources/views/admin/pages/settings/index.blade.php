@@ -62,8 +62,11 @@
                                             <label class="form-label">
                                                 @if($setting->key === 'phone_verification_enabled')
                                                     <i class="fas fa-mobile-alt me-2 text-primary"></i>تفعيل التحقق من رقم الهاتف عند التسجيل
+                                                @elseif($setting->key === 'otp_expires_minutes')
+                                                    <i class="fas fa-clock me-2 text-warning"></i>مدة صلاحية كود التحقق (دقائق)
                                                 @elseif($setting->key === 'otp_message_template')
                                                     <i class="fas fa-envelope me-2 text-info"></i>نص رسالة كود التحقق
+                                                    <small class="text-muted d-block mt-1">استخدم <code>{code}</code> للرمز و <code>{expires_in}</code> لوقت الصلاحية بالدقائق</small>
                                                 @elseif($setting->key === 'otp_provider')
                                                     <i class="fas fa-paper-plane me-2 text-success"></i>مزود إرسال كود التحقق
                                                 @else
@@ -108,7 +111,8 @@
                                                 <textarea class="form-control" 
                                                          name="settings[{{ $setting->key }}]" 
                                                          id="setting_{{ $setting->id }}" 
-                                                         rows="3">{{ $setting->value }}</textarea>
+                                                         rows="3"
+                                                         @if($setting->key === 'otp_message_template') placeholder="مثال: رمز التحقق الخاص بك هو: {code} - صالح لمدة {expires_in} دقائق" @endif>{{ $setting->value }}</textarea>
                                             @else
                                                 <input type="text" 
                                                       class="form-control" 

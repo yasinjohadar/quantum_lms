@@ -39,13 +39,17 @@ class OTPService
         // Generate 6-digit code
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
+        // مدة الصلاحية من الإعدادات (افتراضي 5 دقائق، بحد أدنى 1 وأقصى 60)
+        $expiresMinutes = (int) SystemSetting::get('otp_expires_minutes', 5);
+        $expiresMinutes = max(1, min(60, $expiresMinutes));
+
         // Create OTP record
         $otp = OTPCode::create([
             'user_id' => $user->id ?? null,
             'phone' => $phone,
             'code' => $code,
             'type' => $type,
-            'expires_at' => now()->addMinutes(5),
+            'expires_at' => now()->addMinutes($expiresMinutes),
         ]);
 
         // Increment rate limit counter
@@ -89,14 +93,12 @@ class OTPService
      */
     public function sendOTP(OTPCode $otp, string $provider = 'sms'): bool
     {
-        // Get custom message template from settings or use default
+        // Get custom message template from settings or use default (يمكن تخصيص النص من الإعدادات)
         $template = SystemSetting::get('otp_message_template', 'رمز التحقق الخاص بك هو: {code} - صالح لمدة {expires_in} دقائق');
         
-        // Calculate expiration minutes
-        $expiresInMinutes = 5; // Default expiration time
-        if ($otp->expires_at) {
-            $expiresInMinutes = max(1, ceil($otp->expires_at->diffInMinutes(now())));
-        }
+        // عرض المدة المُعدّة في الإعدادات (5 دقائق) وليس الوقت المتبقي حتى انتهاء الصلاحية
+        $expiresInMinutes = (int) SystemSetting::get('otp_expires_minutes', 5);
+        $expiresInMinutes = max(1, min(60, $expiresInMinutes));
         
         // Replace placeholders
         $message = str_replace(

@@ -15,6 +15,7 @@ use Spatie\Permission\Models\Role;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use App\Helpers\PhoneHelper;
 use App\Helpers\StorageHelper;
 
 class UserController extends Controller
@@ -127,11 +128,18 @@ public function index(Request $request)
     public function store(Request $request)
     {
         try {
+            // تطبيع رقم الهاتف تلقائياً إن وُجد
+            if ($request->filled('phone')) {
+                $normalized = PhoneHelper::normalize($request->phone, config('app.phone_default_country_code', '966'));
+                if ($normalized !== null) {
+                    $request->merge(['phone' => $normalized]);
+                }
+            }
             // التحقق من صحة البيانات
             $request->validate([
                 'name' => 'required|string|max:255',
                 'email' => 'required|string|email|max:255|unique:users,email',
-                'phone' => 'nullable|string|max:20|unique:users,phone',
+                'phone' => 'nullable|string|max:20|regex:/^\+[1-9]\d{1,14}$/|unique:users,phone',
                 'password' => 'required|string|min:8|confirmed',
                 'is_active' => 'boolean',
                 'roles' => 'array',
@@ -141,6 +149,7 @@ public function index(Request $request)
                 'email.required' => 'البريد الإلكتروني مطلوب',
                 'email.email' => 'البريد الإلكتروني غير صحيح',
                 'email.unique' => 'البريد الإلكتروني مستخدم بالفعل',
+                'phone.regex' => 'رقم الهاتف يجب أن يبدأ بـ + متبوعاً برمز الدولة',
                 'phone.unique' => 'رقم الهاتف مستخدم بالفعل',
                 'password.required' => 'كلمة المرور مطلوبة',
                 'password.min' => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
@@ -222,11 +231,18 @@ public function index(Request $request)
         try {
             $user = User::findOrFail($id);
 
+            // تطبيع رقم الهاتف تلقائياً إن وُجد
+            if ($request->filled('phone')) {
+                $normalized = PhoneHelper::normalize($request->phone, config('app.phone_default_country_code', '966'));
+                if ($normalized !== null) {
+                    $request->merge(['phone' => $normalized]);
+                }
+            }
             // التحقق من صحة البيانات
             $request->validate([
                 'name' => 'required|string|max:255',
                 'email' => 'required|string|email|max:255|unique:users,email,' . $id,
-                'phone' => 'nullable|string|max:20|unique:users,phone,' . $id,
+                'phone' => 'nullable|string|max:20|regex:/^\+[1-9]\d{1,14}$/|unique:users,phone,' . $id,
                 'password' => 'nullable|string|min:8|confirmed',
                 'is_active' => 'boolean',
                 'roles' => 'array',
@@ -428,8 +444,16 @@ public function index(Request $request)
     /**
      * إرسال كود التحقق للمستخدم يدوياً
      */
-    public function sendVerificationOTP(User $user): JsonResponse
+    public function sendVerificationOTP(string $id): JsonResponse
     {
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'المستخدم غير موجود أو تم حذفه.',
+            ], 404);
+        }
+
         try {
             // التحقق من وجود رقم هاتف
             if (!$user->phone) {
@@ -439,22 +463,29 @@ public function index(Request $request)
                 ], 400);
             }
 
-            // التحقق من أن رقم الهاتف بصيغة صحيحة
-            if (!preg_match('/^\+[1-9]\d{1,14}$/', $user->phone)) {
+            // تطبيع رقم الهاتف تلقائياً (إضافة + ورمز الدولة إن لزم) وتحديثه في قاعدة البيانات
+            $phone = PhoneHelper::normalize($user->phone, config('app.phone_default_country_code', '966'));
+            if ($phone === null || !preg_match('/^\+[1-9]\d{1,14}$/', $phone)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'رقم الهاتف غير صحيح. يجب أن يبدأ بـ + متبوعاً برمز الدولة',
+                    'message' => 'رقم الهاتف غير صحيح. أدخل رقماً يبدأ برمز الدولة (مثال: 966501234567 أو 0501234567)',
                 ], 400);
             }
+            if ($phone !== $user->phone) {
+                $user->update(['phone' => $phone]);
+            } else {
+                $user->refresh();
+            }
+            $phoneForSend = $phone;
 
             Log::info('Admin sending verification OTP manually', [
                 'admin_id' => auth()->id(),
                 'user_id' => $user->id,
-                'phone' => $user->phone,
+                'phone' => $phoneForSend,
             ]);
 
-            // إنشاء OTP جديد
-            $otp = $this->otpService->generateOTP($user, $user->phone, 'verification');
+            // إنشاء OTP جديد (باستخدام الرقم المُطبّع)
+            $otp = $this->otpService->generateOTP($user, $phoneForSend, 'verification');
 
             Log::info('OTP generated for manual send', [
                 'otp_id' => $otp->id,
@@ -467,7 +498,7 @@ public function index(Request $request)
             
             Log::info('Attempting to send OTP manually', [
                 'provider' => $provider,
-                'phone' => $user->phone,
+                'phone' => $phoneForSend,
             ]);
 
             $sent = $this->otpService->sendOTP($otp, $provider);
@@ -475,7 +506,7 @@ public function index(Request $request)
             if (!$sent) {
                 Log::warning('Manual OTP send failed', [
                     'user_id' => $user->id,
-                    'phone' => $user->phone,
+                    'phone' => $phoneForSend,
                     'provider' => $provider,
                 ]);
 
@@ -487,13 +518,13 @@ public function index(Request $request)
 
             Log::info('Manual OTP sent successfully', [
                 'user_id' => $user->id,
-                'phone' => $user->phone,
+                'phone' => $phoneForSend,
                 'provider' => $provider,
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم إرسال كود التحقق بنجاح إلى ' . substr($user->phone, 0, 4) . '****' . substr($user->phone, -4),
+                'message' => 'تم إرسال كود التحقق بنجاح إلى ' . substr($phoneForSend, 0, 4) . '****' . substr($phoneForSend, -4),
             ]);
         } catch (\Exception $e) {
             Log::error('Error sending manual verification OTP', [
