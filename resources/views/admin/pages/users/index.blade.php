@@ -150,24 +150,24 @@
                                                                 class="text-decoration-none">
                                                                 {{ $user->name }}
                                                             </a>
-                                                            @can('user-impersonate')
-                                                            <button type="button" class="btn btn-sm btn-info ms-2" 
-                                                                    data-bs-toggle="modal" 
-                                                                    data-bs-target="#impersonateModal{{ $user->id }}"
-                                                                    title="تسجيل الدخول كالمستخدم">
-                                                                <i class="fas fa-user-secret"></i>
-                                                            </button>
-                                                            @endcan
                                                         </div>
                                                     </td>
 
                                                     <td>
                                                         @if ($user->email)
-                                                            <a href="mailto:{{ $user->email }}"
-                                                                class="text-primary text-decoration-none"
-                                                                title="إرسال بريد إلكتروني">
-                                                                {{ $user->email }}
-                                                            </a>
+                                                            <div class="d-flex align-items-center gap-2">
+                                                                <a href="mailto:{{ $user->email }}"
+                                                                    class="text-primary text-decoration-none"
+                                                                    title="إرسال بريد إلكتروني">
+                                                                    {{ $user->email }}
+                                                                </a>
+                                                                <button type="button" 
+                                                                        class="btn btn-sm btn-outline-secondary copy-btn p-1" 
+                                                                        data-copy-text="{{ $user->email }}"
+                                                                        title="نسخ الإيميل">
+                                                                    <i class="fas fa-copy"></i>
+                                                                </button>
+                                                            </div>
                                                         @else
                                                             -
                                                         @endif
@@ -175,13 +175,21 @@
 
                                                     <td>
                                                         @if ($user->phone)
-                                                            <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $user->phone) }}"
-                                                                target="_blank"
-                                                                class="text-success text-decoration-none me-1"
-                                                                title="فتح WhatsApp">
-                                                                <i class="fab fa-whatsapp"></i>
-                                                            </a>
-                                                            {{ $user->phone }}
+                                                            <div class="d-flex align-items-center gap-2">
+                                                                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $user->phone) }}"
+                                                                    target="_blank"
+                                                                    class="text-success text-decoration-none"
+                                                                    title="فتح WhatsApp">
+                                                                    <i class="fab fa-whatsapp me-1"></i>
+                                                                    {{ $user->phone }}
+                                                                </a>
+                                                                <button type="button" 
+                                                                        class="btn btn-sm btn-outline-secondary copy-btn p-1" 
+                                                                        data-copy-text="{{ $user->phone }}"
+                                                                        title="نسخ الرقم">
+                                                                    <i class="fas fa-copy"></i>
+                                                                </button>
+                                                            </div>
                                                         @else
                                                             -
                                                         @endif
@@ -235,6 +243,14 @@
 
                                                     <td>
                                                         <div class="d-flex gap-1 flex-wrap">
+                                                            @can('user-impersonate')
+                                                            <button type="button" class="btn btn-info btn-sm" 
+                                                                    data-bs-toggle="modal" 
+                                                                    data-bs-target="#impersonateModal{{ $user->id }}"
+                                                                    title="تسجيل الدخول كالمستخدم">
+                                                                <i class="fas fa-user-secret"></i>
+                                                            </button>
+                                                            @endcan
                                                             <a class="btn btn-info btn-sm"
                                                                 href="{{ route('users.edit', $user->id) }}"
                                                                 title="تعديل المستخدم">
@@ -247,7 +263,7 @@
                                                                 <i class="fa-solid fa-user-tie"></i>
                                                             </a>
                                                             @endif
-                                                            <a class="btn btn-primary btn-sm"
+                                                            <a class="btn btn-secondary btn-sm"
                                                                 href="{{ route('users.login-logs', $user->id) }}"
                                                                 title="سجلات الدخول">
                                                                 <i class="fa-solid fa-sign-in-alt"></i>
@@ -590,6 +606,34 @@
                     // إعادة تفعيل الزر
                     button.disabled = false;
                     button.innerHTML = originalHTML;
+                });
+            });
+        });
+
+        // وظيفة نسخ النص للواتساب والإيميل
+        document.querySelectorAll('.copy-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const textToCopy = this.getAttribute('data-copy-text');
+                
+                // نسخ النص إلى الحافظة
+                navigator.clipboard.writeText(textToCopy).then(function() {
+                    // تغيير الأيقونة مؤقتاً لإظهار النجاح
+                    const icon = btn.querySelector('i');
+                    const originalClass = icon.className;
+                    icon.className = 'fas fa-check text-success';
+                    
+                    // إظهار رسالة نجاح
+                    const originalTitle = btn.getAttribute('title');
+                    btn.setAttribute('title', 'تم النسخ!');
+                    
+                    // إعادة الأيقونة بعد ثانيتين
+                    setTimeout(function() {
+                        icon.className = originalClass;
+                        btn.setAttribute('title', originalTitle);
+                    }, 2000);
+                }).catch(function(err) {
+                    console.error('فشل النسخ:', err);
+                    alert('فشل نسخ النص');
                 });
             });
         });
