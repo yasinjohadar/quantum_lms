@@ -83,10 +83,17 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         // توجيه المستخدم حسب صلاحيته
-        // 1. التحقق من وجود أي دور بـ dashboard_type = 'admin'
-        $hasAdminDashboard = $user->roles()
-            ->where('dashboard_type', 'admin')
-            ->exists();
+        $hasAdminDashboard = false;
+        
+        // 1. التحقق من وجود أي دور بـ dashboard_type = 'admin' (إذا كان العمود موجوداً)
+        try {
+            $hasAdminDashboard = $user->roles()
+                ->where('dashboard_type', 'admin')
+                ->exists();
+        } catch (\Exception $e) {
+            // إذا كان العمود غير موجود، نستخدم fallback
+            $hasAdminDashboard = false;
+        }
 
         if ($hasAdminDashboard) {
             // التحقق إذا كان المستخدم مشرف
@@ -96,7 +103,7 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('admin.dashboard');
         }
 
-        // 2. Fallback: التحقق من أسماء الأدوار (للتوافق مع البيانات القديمة)
+        // 2. Fallback: التحقق من أسماء الأدوار (للتوافق مع البيانات القديمة أو عند عدم وجود العمود)
         if ($user->hasRole(['admin', 'supervisor', 'teacher'])) {
             // التحقق إذا كان المستخدم مشرف
             if ($user->hasRole('supervisor')) {

@@ -561,10 +561,17 @@ public function index(Request $request)
         Log::info('Admin ' . ($impersonatorName ?? 'System') . ' logged in as user ' . $user->name . ' (ID: ' . $user->id . ') via ' . (request()->isMethod('get') ? 'signed URL' : 'form'));
 
         // توجيه حسب صلاحية المستخدم
-        // 1. التحقق من وجود أي دور بـ dashboard_type = 'admin'
-        $hasAdminDashboard = $user->roles()
-            ->where('dashboard_type', 'admin')
-            ->exists();
+        $hasAdminDashboard = false;
+        
+        // 1. التحقق من وجود أي دور بـ dashboard_type = 'admin' (إذا كان العمود موجوداً)
+        try {
+            $hasAdminDashboard = $user->roles()
+                ->where('dashboard_type', 'admin')
+                ->exists();
+        } catch (\Exception $e) {
+            // إذا كان العمود غير موجود، نستخدم fallback
+            $hasAdminDashboard = false;
+        }
 
         if ($hasAdminDashboard) {
             // التحقق إذا كان المستخدم مشرف
@@ -574,7 +581,7 @@ public function index(Request $request)
             return redirect()->route('admin.dashboard')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
         }
 
-        // 2. Fallback: التحقق من أسماء الأدوار (للتوافق مع البيانات القديمة)
+        // 2. Fallback: التحقق من أسماء الأدوار (للتوافق مع البيانات القديمة أو عند عدم وجود العمود)
         if ($user->hasRole(['admin', 'supervisor', 'teacher'])) {
             // التحقق إذا كان المستخدم مشرف
             if ($user->hasRole('supervisor')) {

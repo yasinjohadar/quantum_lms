@@ -17,10 +17,16 @@ Route::get('/dashboard', function () {
     
     $user = auth()->user();
     
-    // 1. التحقق من وجود أي دور بـ dashboard_type = 'admin'
-    $hasAdminDashboard = $user->roles()
-        ->where('dashboard_type', 'admin')
-        ->exists();
+    // 1. التحقق من وجود أي دور بـ dashboard_type = 'admin' (إذا كان العمود موجوداً)
+    $hasAdminDashboard = false;
+    try {
+        $hasAdminDashboard = $user->roles()
+            ->where('dashboard_type', 'admin')
+            ->exists();
+    } catch (\Exception $e) {
+        // إذا كان العمود غير موجود، نستخدم fallback
+        $hasAdminDashboard = false;
+    }
 
     if ($hasAdminDashboard) {
         // التحقق إذا كان المستخدم مشرف
@@ -30,7 +36,7 @@ Route::get('/dashboard', function () {
         return redirect()->route('admin.dashboard');
     }
 
-    // 2. Fallback: التحقق من أسماء الأدوار (للتوافق مع البيانات القديمة)
+    // 2. Fallback: التحقق من أسماء الأدوار (للتوافق مع البيانات القديمة أو عند عدم وجود العمود)
     if ($user->hasRole(['admin', 'supervisor', 'teacher'])) {
         // التحقق إذا كان المستخدم مشرف
         if ($user->hasRole('supervisor')) {
