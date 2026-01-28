@@ -16,11 +16,11 @@ class DatabaseSeeder extends Seeder
         $this->call([
             PermissionSeeder::class,
             AdminUserSeeder::class,
-            StageSeeder::class,
-            ClassSeeder::class,
-            SubjectSeeder::class,
-            StudentsSeeder::class,
-            QuestionsSeeder::class,
+            // StageSeeder::class,
+            // ClassSeeder::class,
+            // SubjectSeeder::class,
+            // StudentsSeeder::class,
+            // QuestionsSeeder::class,
             // ReportTemplatesSeeder::class, // Empty file
             // SystemSettingsSeeder::class, // Empty file
             // GamificationSeeder::class, // Check if needed

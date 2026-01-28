@@ -14,6 +14,12 @@ class AdminUserSeeder extends Seeder
     {
         // إنشاء أو جلب دور المدير
         $adminRole = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        // ضبط نوع لوحة التحكم (لتفادي أن يصبح الدور student بسبب default في migration)
+        try {
+            $adminRole->update(['dashboard_type' => 'admin']);
+        } catch (\Exception $e) {
+            // تجاهل في حالة عدم وجود العمود (قبل تشغيل migrations)
+        }
 
         // منح جميع الصلاحيات لدور المدير
         $permissions = Permission::all();
@@ -36,6 +42,7 @@ class AdminUserSeeder extends Seeder
 
         // إنشاء أو جلب دور مستخدم عادي
         $userRole = Role::firstOrCreate(['name' => 'user', 'guard_name' => 'web']);
+        // نترك user على dashboard_type الافتراضي (غالباً student)
 
         // منح صلاحيات محدودة للمستخدم العادي
         $userPermissions = [
@@ -47,6 +54,11 @@ class AdminUserSeeder extends Seeder
 
         // إنشاء أو جلب دور المشرف
         $supervisorRole = Role::firstOrCreate(['name' => 'supervisor', 'guard_name' => 'web']);
+        try {
+            $supervisorRole->update(['dashboard_type' => 'admin']);
+        } catch (\Exception $e) {
+            // تجاهل في حالة عدم وجود العمود
+        }
 
         // إنشاء أو جلب مستخدم مشرف افتراضي
         $supervisorUser = User::firstOrCreate(
@@ -66,6 +78,11 @@ class AdminUserSeeder extends Seeder
 
         // إنشاء أو جلب دور المعلم
         $teacherRole = Role::firstOrCreate(['name' => 'teacher', 'guard_name' => 'web']);
+        try {
+            $teacherRole->update(['dashboard_type' => 'admin']);
+        } catch (\Exception $e) {
+            // تجاهل في حالة عدم وجود العمود
+        }
 
         // إنشاء أو جلب مستخدم معلم افتراضي
         $teacherUser = User::firstOrCreate(
