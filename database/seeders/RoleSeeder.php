@@ -15,8 +15,12 @@ class RoleSeeder extends Seeder
     {
         // دور المشرف (Supervisor)
         $supervisorRole = Role::firstOrCreate(['name' => 'supervisor', 'guard_name' => 'web']);
-        // تحديث dashboard_type لضمان القيمة الصحيحة
-        $supervisorRole->update(['dashboard_type' => 'admin']);
+        // تحديث dashboard_type لضمان القيمة الصحيحة (مع حماية في حال عدم وجود العمود)
+        try {
+            $supervisorRole->update(['dashboard_type' => 'admin']);
+        } catch (\Exception $e) {
+            // تجاهل الخطأ إذا كان عمود dashboard_type غير موجود بعد
+        }
         
         $supervisorPermissions = [
             // صلاحيات إدارة الصفوف
@@ -99,8 +103,12 @@ class RoleSeeder extends Seeder
 
         // دور المعلم (Teacher)
         $teacherRole = Role::firstOrCreate(['name' => 'teacher', 'guard_name' => 'web']);
-        // تحديث dashboard_type لضمان القيمة الصحيحة
-        $teacherRole->update(['dashboard_type' => 'admin']);
+        // تحديث dashboard_type لضمان القيمة الصحيحة (مع حماية في حال عدم وجود العمود)
+        try {
+            $teacherRole->update(['dashboard_type' => 'admin']);
+        } catch (\Exception $e) {
+            // تجاهل الخطأ إذا كان عمود dashboard_type غير موجود بعد
+        }
         
         $teacherPermissions = [
             // صلاحيات عرض الصفوف والمواد
@@ -152,10 +160,14 @@ class RoleSeeder extends Seeder
         
         $teacherRole->syncPermissions($teacherPermissions);
         
-        // تحديث الأدوار الموجودة لتحديد نوع الواجهة
-        Role::where('name', 'admin')->update(['dashboard_type' => 'admin']);
-        Role::where('name', 'supervisor')->update(['dashboard_type' => 'admin']);
-        Role::where('name', 'teacher')->update(['dashboard_type' => 'admin']);
-        Role::where('name', 'student')->update(['dashboard_type' => 'student']);
+        // تحديث الأدوار الموجودة لتحديد نوع الواجهة (مع حماية في حال عدم وجود العمود)
+        try {
+            Role::where('name', 'admin')->update(['dashboard_type' => 'admin']);
+            Role::where('name', 'supervisor')->update(['dashboard_type' => 'admin']);
+            Role::where('name', 'teacher')->update(['dashboard_type' => 'admin']);
+            Role::where('name', 'student')->update(['dashboard_type' => 'student']);
+        } catch (\Exception $e) {
+            // تجاهل الخطأ إذا كان عمود dashboard_type غير موجود بعد
+        }
     }
 }
