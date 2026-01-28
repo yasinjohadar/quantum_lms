@@ -17,20 +17,26 @@ Route::get('/dashboard', function () {
     
     $user = auth()->user();
     
-    // الحصول على أول دور للمستخدم
-    $primaryRole = $user->roles()->first();
-    
-    if ($primaryRole) {
-        // استخدام dashboard_type من الدور
-        if ($primaryRole->dashboard_type === 'admin') {
-            // توجيه خاص للمشرف
-            if ($primaryRole->name === 'supervisor') {
-                return redirect()->route('admin.my-classes');
-            }
-            return redirect()->route('admin.dashboard');
-        } else {
-            return redirect()->route('student.dashboard');
+    // 1. التحقق من وجود أي دور بـ dashboard_type = 'admin'
+    $hasAdminDashboard = $user->roles()
+        ->where('dashboard_type', 'admin')
+        ->exists();
+
+    if ($hasAdminDashboard) {
+        // التحقق إذا كان المستخدم مشرف
+        if ($user->hasRole('supervisor')) {
+            return redirect()->route('admin.my-classes');
         }
+        return redirect()->route('admin.dashboard');
+    }
+
+    // 2. Fallback: التحقق من أسماء الأدوار (للتوافق مع البيانات القديمة)
+    if ($user->hasRole(['admin', 'supervisor', 'teacher'])) {
+        // التحقق إذا كان المستخدم مشرف
+        if ($user->hasRole('supervisor')) {
+            return redirect()->route('admin.my-classes');
+        }
+        return redirect()->route('admin.dashboard');
     }
     
     // افتراضي: student dashboard

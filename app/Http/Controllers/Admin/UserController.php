@@ -561,17 +561,26 @@ public function index(Request $request)
         Log::info('Admin ' . ($impersonatorName ?? 'System') . ' logged in as user ' . $user->name . ' (ID: ' . $user->id . ') via ' . (request()->isMethod('get') ? 'signed URL' : 'form'));
 
         // توجيه حسب صلاحية المستخدم
-        $primaryRole = $user->roles()->first();
+        // 1. التحقق من وجود أي دور بـ dashboard_type = 'admin'
+        $hasAdminDashboard = $user->roles()
+            ->where('dashboard_type', 'admin')
+            ->exists();
 
-        if ($primaryRole) {
-            if ($primaryRole->dashboard_type === 'admin') {
-                if ($primaryRole->name === 'supervisor') {
-                    return redirect()->route('admin.my-classes')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
-                }
-                return redirect()->route('admin.dashboard')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
-            } else {
-                return redirect()->route('student.dashboard')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
+        if ($hasAdminDashboard) {
+            // التحقق إذا كان المستخدم مشرف
+            if ($user->hasRole('supervisor')) {
+                return redirect()->route('admin.my-classes')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
             }
+            return redirect()->route('admin.dashboard')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
+        }
+
+        // 2. Fallback: التحقق من أسماء الأدوار (للتوافق مع البيانات القديمة)
+        if ($user->hasRole(['admin', 'supervisor', 'teacher'])) {
+            // التحقق إذا كان المستخدم مشرف
+            if ($user->hasRole('supervisor')) {
+                return redirect()->route('admin.my-classes')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
+            }
+            return redirect()->route('admin.dashboard')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);
         }
 
         return redirect()->route('student.dashboard')->with('success', 'تم تسجيل الدخول كالمستخدم ' . $user->name);

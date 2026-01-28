@@ -15,6 +15,8 @@ class RoleSeeder extends Seeder
     {
         // دور المشرف (Supervisor)
         $supervisorRole = Role::firstOrCreate(['name' => 'supervisor', 'guard_name' => 'web']);
+        // تحديث dashboard_type لضمان القيمة الصحيحة
+        $supervisorRole->update(['dashboard_type' => 'admin']);
         
         $supervisorPermissions = [
             // صلاحيات إدارة الصفوف
@@ -97,6 +99,8 @@ class RoleSeeder extends Seeder
 
         // دور المعلم (Teacher)
         $teacherRole = Role::firstOrCreate(['name' => 'teacher', 'guard_name' => 'web']);
+        // تحديث dashboard_type لضمان القيمة الصحيحة
+        $teacherRole->update(['dashboard_type' => 'admin']);
         
         $teacherPermissions = [
             // صلاحيات عرض الصفوف والمواد
