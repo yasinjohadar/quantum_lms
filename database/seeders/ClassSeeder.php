@@ -32,13 +32,16 @@ class ClassSeeder extends Seeder
             ];
 
             foreach ($classNames as $index => $name) {
+                $slug = Str::slug($name . '-' . $stage->slug);
+                
+                // استخدام updateOrCreate مع slug كمعيار بحث إضافي لتجنب التكرار
                 SchoolClass::updateOrCreate(
+                    [
+                        'slug' => $slug, // البحث أولاً بالـ slug لتجنب التكرار
+                    ],
                     [
                         'name' => $name,
                         'stage_id' => $stage->id,
-                    ],
-                    [
-                        'slug' => Str::slug($name . '-' . $stage->slug),
                         'description' => "صف {$name} في {$stage->name}",
                         'meta_title' => "{$name} - {$stage->name}",
                         'meta_description' => "تعرف على {$name} في {$stage->name}",
