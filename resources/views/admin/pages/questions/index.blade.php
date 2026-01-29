@@ -264,7 +264,6 @@
                             </div>
                         </div>
                     </div>
-                    @endcan
                 @empty
                     <div class="col-12">
                         <div class="card custom-card">
