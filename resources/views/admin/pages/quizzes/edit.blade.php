@@ -200,83 +200,16 @@
                     </div>
                 </div>
 
-                {{-- إعدادات العرض --}}
-                <div class="card custom-card mb-3">
-                    <div class="card-header">
-                        <h6 class="mb-0"><i class="bi bi-display me-2"></i> إعدادات العرض</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-check form-switch mb-2">
-                                    <input class="form-check-input" type="checkbox" name="shuffle_questions" 
-                                           id="shuffleQuestions" {{ old('shuffle_questions', $quiz->shuffle_questions) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="shuffleQuestions">خلط ترتيب الأسئلة</label>
-                                </div>
-                                <div class="form-check form-switch mb-2">
-                                    <input class="form-check-input" type="checkbox" name="shuffle_options" 
-                                           id="shuffleOptions" {{ old('shuffle_options', $quiz->shuffle_options) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="shuffleOptions">خلط ترتيب الخيارات</label>
-                                </div>
-                                <div class="form-check form-switch mb-2">
-                                    <input class="form-check-input" type="checkbox" name="allow_back_navigation" 
-                                           id="allowBackNav" {{ old('allow_back_navigation', $quiz->allow_back_navigation) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="allowBackNav">السماح بالرجوع للأسئلة السابقة</label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">عدد الأسئلة في الصفحة</label>
-                                    <input type="number" name="questions_per_page" class="form-control" 
-                                           value="{{ old('questions_per_page', $quiz->questions_per_page) }}" min="0">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- إعدادات النتائج --}}
-                <div class="card custom-card mb-3">
-                    <div class="card-header">
-                        <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i> إعدادات النتائج</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-check form-switch mb-2">
-                                    <input class="form-check-input" type="checkbox" name="show_result_immediately" 
-                                           id="showResult" {{ old('show_result_immediately', $quiz->show_result_immediately) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="showResult">إظهار النتيجة فور الانتهاء</label>
-                                </div>
-                                <div class="form-check form-switch mb-2">
-                                    <input class="form-check-input" type="checkbox" name="show_correct_answers" 
-                                           id="showCorrect" {{ old('show_correct_answers', $quiz->show_correct_answers) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="showCorrect">إظهار الإجابات الصحيحة</label>
-                                </div>
-                                <div class="form-check form-switch mb-2">
-                                    <input class="form-check-input" type="checkbox" name="show_explanation" 
-                                           id="showExplanation" {{ old('show_explanation', $quiz->show_explanation) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="showExplanation">إظهار شرح الإجابات</label>
-                                </div>
-                                <div class="form-check form-switch mb-2">
-                                    <input class="form-check-input" type="checkbox" name="show_points_per_question" 
-                                           id="showPoints" {{ old('show_points_per_question', $quiz->show_points_per_question) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="showPoints">إظهار درجة كل سؤال</label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">خيارات المراجعة</label>
-                                <select name="review_options" class="form-select">
-                                    @foreach(\App\Models\Quiz::REVIEW_OPTIONS as $key => $value)
-                                        <option value="{{ $key }}" {{ old('review_options', $quiz->review_options) == $key ? 'selected' : '' }}>
-                                            {{ $value }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {{-- قيم افتراضية مخفية (إعدادات العرض والنتائج) --}}
+                <input type="hidden" name="shuffle_questions" value="1">
+                <input type="hidden" name="shuffle_options" value="1">
+                <input type="hidden" name="allow_back_navigation" value="1">
+                <input type="hidden" name="questions_per_page" value="0">
+                <input type="hidden" name="show_result_immediately" value="1">
+                <input type="hidden" name="show_correct_answers" value="1">
+                <input type="hidden" name="show_explanation" value="1">
+                <input type="hidden" name="show_points_per_question" value="1">
+                <input type="hidden" name="review_options" value="immediately">
             </div>
 
             <div class="col-lg-4">
@@ -419,8 +352,8 @@
                     </div>
                 @endif
 
-                {{-- إعدادات الأمان --}}
-                <div class="card custom-card mb-3">
+                {{-- إعدادات الأمان (مخفية) --}}
+                <div class="card custom-card mb-3 d-none">
                     <div class="card-header">
                         <h6 class="mb-0"><i class="bi bi-shield-lock me-2"></i> إعدادات الأمان</h6>
                     </div>

@@ -370,8 +370,8 @@
                     </div>
                 </div>
 
-                {{-- إعدادات الأمان --}}
-                <div class="card custom-card mb-3">
+                {{-- إعدادات الأمان (مخفية) --}}
+                <div class="card custom-card mb-3 d-none">
                     <div class="card-header">
                         <h6 class="mb-0"><i class="bi bi-shield-lock me-2"></i> إعدادات الأمان</h6>
                     </div>
