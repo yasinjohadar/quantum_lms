@@ -117,10 +117,6 @@
                             <textarea name="title" id="question-title-editor" class="form-control" rows="6" required>{{ old('title', $question->title) }}</textarea>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">محتوى إضافي (اختياري)</label>
-                            <textarea name="content" id="question-content-editor" class="form-control" rows="6">{{ old('content', $question->content) }}</textarea>
-                        </div>
-                        <div class="mb-3">
                             <label class="form-label">صورة السؤال</label>
                             @if($question->image)
                                 <div class="mb-2">
@@ -406,7 +402,7 @@ console.log('Question edit script loaded');
 // تهيئة TinyMCE
 document.addEventListener('DOMContentLoaded', function() {
     tinymce.init({
-        selector: '#question-title-editor, #question-content-editor, #question-explanation-editor',
+        selector: '#question-title-editor, #question-explanation-editor',
         language: 'ar',
         language_url: 'https://cdn.jsdelivr.net/npm/tinymce-i18n@24/langs5/ar.js',
         directionality: 'rtl',
@@ -486,8 +482,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('form[action*="questions"]');
     if (form) {
         form.addEventListener('submit', function(e) {
-            // حفظ محتوى جميع محررات TinyMCE
+            e.preventDefault();
             tinymce.triggerSave();
+            var f = form;
+            setTimeout(function() {
+                f.submit();
+            }, 150);
         });
     }
 });

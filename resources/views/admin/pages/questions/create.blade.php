@@ -122,11 +122,6 @@
                                       placeholder="اكتب نص السؤال هنا...">{{ old('title') }}</textarea>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">محتوى إضافي (اختياري)</label>
-                            <textarea name="content" id="question-content-editor" class="form-control" rows="6" 
-                                      placeholder="يمكنك إضافة شرح إضافي أو HTML...">{{ old('content') }}</textarea>
-                        </div>
-                        <div class="mb-3">
                             <label class="form-label">صورة السؤال (اختياري)</label>
                             <input type="file" name="image" class="form-control" accept="image/*" 
                                    onchange="previewImage(this, 'questionImagePreview')">
@@ -329,7 +324,7 @@ console.log('Question create script loaded');
 // تهيئة TinyMCE
 document.addEventListener('DOMContentLoaded', function() {
     tinymce.init({
-        selector: '#question-title-editor, #question-content-editor, #question-explanation-editor',
+        selector: '#question-title-editor, #question-explanation-editor',
         language: 'ar',
         language_url: 'https://cdn.jsdelivr.net/npm/tinymce-i18n@24/langs5/ar.js',
         directionality: 'rtl',
@@ -409,8 +404,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('questionForm');
     if (form) {
         form.addEventListener('submit', function(e) {
-            // حفظ محتوى جميع محررات TinyMCE
+            e.preventDefault();
             tinymce.triggerSave();
+            var f = form;
+            setTimeout(function() {
+                f.submit();
+            }, 150);
         });
     }
 });

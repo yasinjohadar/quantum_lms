@@ -170,7 +170,15 @@ class QuestionController extends Controller
 
             // إنشاء الخيارات
             if ($request->filled('options') && $question->has_options) {
-                $this->saveOptions($question, $request->options);
+                $options = $request->options;
+                // لسؤال صح/خطأ: تحديد الخيار الصحيح من correct_option
+                if ($question->type === 'true_false' && $request->has('correct_option')) {
+                    $correctIndex = (int) $request->correct_option;
+                    if (isset($options[$correctIndex])) {
+                        $options[$correctIndex]['is_correct'] = true;
+                    }
+                }
+                $this->saveOptions($question, $options);
             }
 
             // للأسئلة الرقمية - إنشاء خيار يحتوي على الإجابة الصحيحة
@@ -263,7 +271,14 @@ class QuestionController extends Controller
 
             // تحديث الخيارات
             if ($question->has_options) {
-                $this->updateOptions($question, $request->options ?? []);
+                $options = $request->options ?? [];
+                if ($question->type === 'true_false' && $request->has('correct_option')) {
+                    $correctIndex = (int) $request->correct_option;
+                    if (isset($options[$correctIndex])) {
+                        $options[$correctIndex]['is_correct'] = true;
+                    }
+                }
+                $this->updateOptions($question, $options);
             }
 
             // للأسئلة الرقمية
