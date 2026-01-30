@@ -131,7 +131,7 @@
                                                 <td>{{ $subject->name ?? '-' }}</td>
                                                 <td>{{ $class->name ?? '-' }}</td>
                                                 <td>{{ $teachers->isNotEmpty() ? $teachers->pluck('name')->join('، ') : '-' }}</td>
-                                                <td>{{ $lesson->submitted_for_review_at ? $lesson->submitted_for_review_at->format('Y-m-d') : '-' }}</td>
+                                                <td>{{ $lesson->submitted_for_review_at ? \Carbon\Carbon::parse($lesson->submitted_for_review_at)->format('Y-m-d') : '-' }}</td>
                                                 <td>
                                                     <a href="{{ route('admin.lessons.show', $lesson->id) }}" 
                                                        class="btn btn-sm btn-primary">
@@ -172,7 +172,7 @@
                                                 <td>{{ $quiz->title }}</td>
                                                 <td>{{ $quiz->subject->name ?? '-' }}</td>
                                                 <td>{{ $quiz->creator->name ?? 'N/A' }}</td>
-                                                <td>{{ $quiz->submitted_for_review_at ? $quiz->submitted_for_review_at->format('Y-m-d') : '-' }}</td>
+                                                <td>{{ $quiz->submitted_for_review_at ? \Carbon\Carbon::parse($quiz->submitted_for_review_at)->format('Y-m-d') : '-' }}</td>
                                                 <td>
                                                     <a href="{{ route('admin.quizzes.show', $quiz->id) }}" 
                                                        class="btn btn-sm btn-primary">
@@ -219,7 +219,7 @@
                                                     @endif
                                                 </td>
                                                 <td>{{ $assignment->creator->name ?? '-' }}</td>
-                                                <td>{{ $assignment->submitted_for_review_at ? $assignment->submitted_for_review_at->format('Y-m-d') : '-' }}</td>
+                                                <td>{{ $assignment->submitted_for_review_at ? \Carbon\Carbon::parse($assignment->submitted_for_review_at)->format('Y-m-d') : '-' }}</td>
                                                 <td>
                                                     <a href="{{ route('admin.assignments.show', $assignment->id) }}" 
                                                        class="btn btn-sm btn-primary">

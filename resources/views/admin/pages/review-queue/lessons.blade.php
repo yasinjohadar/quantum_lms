@@ -97,7 +97,7 @@
                                             <td>{{ $class->name ?? '-' }}</td>
                                             <td>{{ $teachers->isNotEmpty() ? $teachers->pluck('name')->join('، ') : '-' }}</td>
                                             <td>{{ $lesson->unit->title ?? '-' }}</td>
-                                            <td>{{ $lesson->submitted_for_review_at ? $lesson->submitted_for_review_at->format('Y-m-d H:i') : '-' }}</td>
+                                            <td>{{ $lesson->submitted_for_review_at ? \Carbon\Carbon::parse($lesson->submitted_for_review_at)->format('Y-m-d H:i') : '-' }}</td>
                                             <td>
                                                 <span class="badge bg-warning">قيد المراجعة</span>
                                             </td>

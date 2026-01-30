@@ -88,7 +88,7 @@
                                             <td>{{ $quiz->title }}</td>
                                             <td>{{ $quiz->subject->name ?? '-' }}</td>
                                             <td>{{ $quiz->creator->name ?? '-' }}</td>
-                                            <td>{{ $quiz->submitted_for_review_at ? $quiz->submitted_for_review_at->format('Y-m-d H:i') : '-' }}</td>
+                                            <td>{{ $quiz->submitted_for_review_at ? \Carbon\Carbon::parse($quiz->submitted_for_review_at)->format('Y-m-d H:i') : '-' }}</td>
                                             <td>
                                                 <span class="badge bg-warning">قيد المراجعة</span>
                                             </td>

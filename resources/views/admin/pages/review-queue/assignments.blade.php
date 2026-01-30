@@ -94,7 +94,7 @@
                                                 @endif
                                             </td>
                                             <td>{{ $assignment->creator->name ?? '-' }}</td>
-                                            <td>{{ $assignment->submitted_for_review_at ? $assignment->submitted_for_review_at->format('Y-m-d H:i') : '-' }}</td>
+                                            <td>{{ $assignment->submitted_for_review_at ? \Carbon\Carbon::parse($assignment->submitted_for_review_at)->format('Y-m-d H:i') : '-' }}</td>
                                             <td>
                                                 <span class="badge bg-warning">قيد المراجعة</span>
                                             </td>

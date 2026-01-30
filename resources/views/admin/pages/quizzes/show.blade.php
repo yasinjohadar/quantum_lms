@@ -195,7 +195,7 @@
                                 مراجع من: <strong>{{ $quiz->reviewer->name ?? 'غير معروف' }}</strong>
                                 <br>
                                 <i class="bi bi-calendar me-1"></i>
-                                في: {{ $quiz->reviewed_at->format('Y-m-d H:i') }}
+                                في: {{ \Carbon\Carbon::parse($quiz->reviewed_at)->format('Y-m-d H:i') }}
                             </small>
                         </div>
                     @endif
@@ -204,7 +204,7 @@
                         <div class="mb-3">
                             <small class="text-muted">
                                 <i class="bi bi-send me-1"></i>
-                                تم الإرسال للمراجعة في: {{ $quiz->submitted_for_review_at->format('Y-m-d H:i') }}
+                                تم الإرسال للمراجعة في: {{ \Carbon\Carbon::parse($quiz->submitted_for_review_at)->format('Y-m-d H:i') }}
                             </small>
                         </div>
                     @endif

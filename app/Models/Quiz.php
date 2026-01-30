@@ -119,6 +119,8 @@ class Quiz extends Model
         'prevent_copy_paste' => 'boolean',
         'fullscreen_required' => 'boolean',
         'order' => 'integer',
+        'reviewed_at' => 'datetime',
+        'submitted_for_review_at' => 'datetime',
     ];
 
     protected $hidden = [
