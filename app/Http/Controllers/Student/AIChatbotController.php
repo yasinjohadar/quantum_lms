@@ -49,7 +49,11 @@ class AIChatbotController extends Controller
         if ($request->filled('subject_id')) {
             $lessons = Lesson::whereHas('unit.section', function($q) use ($request) {
                 $q->where('subject_id', $request->subject_id);
-            })->active()->get();
+            })
+                ->where('is_active', true)
+                ->where('review_status', \App\Models\Lesson::REVIEW_STATUS_APPROVED)
+                ->orderBy('order')
+                ->get();
         }
 
         return view('student.pages.ai.chatbot.create', compact('subjects', 'lessons', 'models'));

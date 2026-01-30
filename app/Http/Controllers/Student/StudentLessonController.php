@@ -108,20 +108,23 @@ class StudentLessonController extends Controller
             ->with([
                 'units.lessons' => function($query) {
                     $query->where('is_active', true)
+                          ->where('review_status', Lesson::REVIEW_STATUS_APPROVED)
                           ->orderBy('order');
                 },
-                // اختبارات عامة للوحدة
+                // اختبارات عامة للوحدة (المعتمدة من المشرف فقط تظهر للطالب)
                 'units.unitQuizzes' => function($query) {
                     $query->where('is_published', true)
+                          ->where('review_status', Quiz::REVIEW_STATUS_APPROVED)
                           ->withCount('questions')
                           ->with(['attempts' => function($q) {
                               $q->where('user_id', Auth::id());
                           }])
                           ->orderBy('order');
                 },
-                // تحميل اختبارات الدرس المنشورة لكل درس
+                // تحميل اختبارات الدرس المعتمدة لكل درس
                 'units.lessons.quizzes' => function($query) {
                     $query->where('is_published', true)
+                          ->where('review_status', Quiz::REVIEW_STATUS_APPROVED)
                           ->withCount('questions')
                           ->with(['attempts' => function($q) {
                               $q->where('user_id', Auth::id());
@@ -252,6 +255,11 @@ class StudentLessonController extends Controller
         if (!$isEnrolled && !$lesson->is_free) {
             abort(403, 'ليس لديك صلاحية للوصول إلى هذا الدرس. يجب أن تكون مسجلاً في المادة.');
         }
+
+        // الدروس تظهر للطالب فقط بعد موافقة المشرف
+        if ($lesson->review_status !== Lesson::REVIEW_STATUS_APPROVED || !$lesson->is_active) {
+            abort(403, 'هذا الدرس قيد المراجعة أو غير مفعّل ولا يمكن عرضه حالياً.');
+        }
         
         // تحميل جميع الأقسام والوحدات والدروس والاختبارات (للعرض في الأكورديون)
         $sections = $subject->sections()
@@ -283,9 +291,10 @@ class StudentLessonController extends Controller
             ->orderBy('order')
             ->get();
         
-        // الحصول على الدروس الأخرى في نفس الوحدة
+        // الحصول على الدروس الأخرى في نفس الوحدة (المعتمدة فقط تظهر للطالب)
         $unitLessons = $lesson->unit->lessons()
             ->where('is_active', true)
+            ->where('review_status', Lesson::REVIEW_STATUS_APPROVED)
             ->orderBy('order')
             ->get();
         
