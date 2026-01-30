@@ -72,7 +72,7 @@
         <!-- المحتوى الرئيسي -->
         <div class="col-lg-9 order-lg-2">
             <!-- عداد الوقت -->
-            @if($quiz->duration_minutes)
+            @if($quiz->show_timer)
                 <div class="card mb-3" id="timer-card">
                     <div class="card-body text-center">
                         <div class="d-flex align-items-center justify-content-center gap-3">
@@ -1277,37 +1277,48 @@
         interval: 30000
     });
     
-    // Initialize
-    loadQuestion(0);
-    
-    // Save all answers before submitting quiz
+    // Initialize when DOM is ready so first question and timer render correctly
+    function initQuiz() {
+        loadQuestion(0);
+
+        @if($quiz->show_timer)
+            const timer = new QuizTimer({
+                remainingTime: {{ $attempt->remaining_time ?? (($quiz->duration_minutes ?? 60) * 60) }},
+                updateUrl: '{{ route("student.quizzes.time", $attempt->id) }}',
+                onTimeout: function() {
+                    const savePromises = questions.map(question => saveCurrentAnswer(question));
+                    Promise.all(savePromises).then(() => {
+                        document.getElementById('submit-quiz-form').submit();
+                    });
+                },
+                onWarning: function(seconds) {
+                    const card = document.getElementById('timer-card');
+                    if (card) {
+                        if (seconds <= 60) {
+                            card.classList.add('danger');
+                            card.classList.remove('warning');
+                        } else if (seconds <= 300) {
+                            card.classList.add('warning');
+                            card.classList.remove('danger');
+                        }
+                    }
+                }
+            });
+            timer.start();
+        @endif
+    }
+
     document.getElementById('submit-quiz-form').addEventListener('submit', function(e) {
         e.preventDefault();
         const form = this;
-        
-        // Save all answers before submitting
         const savePromises = questions.map(question => saveCurrentAnswer(question));
-        
-        Promise.all(savePromises).then(() => {
-            // After all answers are saved, submit the form
-            form.submit();
-        });
+        Promise.all(savePromises).then(() => { form.submit(); });
     });
-    
-    @if($quiz->duration_minutes)
-        const timer = new QuizTimer({
-            remainingTime: {{ $attempt->remaining_time ?? ($quiz->duration_minutes * 60) }},
-            updateUrl: '{{ route("student.quizzes.time", $attempt->id) }}',
-            onTimeout: function() {
-                // Save all answers before timeout submit
-                const savePromises = questions.map(question => saveCurrentAnswer(question));
-                
-                Promise.all(savePromises).then(() => {
-                    document.getElementById('submit-quiz-form').submit();
-                });
-            }
-        });
-        timer.start();
-    @endif
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initQuiz);
+    } else {
+        initQuiz();
+    }
 </script>
 @endpush
