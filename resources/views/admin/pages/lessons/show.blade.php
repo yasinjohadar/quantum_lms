@@ -182,6 +182,71 @@
                         </div>
                     </div>
 
+                    {{-- حالة المراجعة --}}
+                    @php
+                        $user = auth()->user();
+                        $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
+                    @endphp
+                    <div class="card custom-card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="bi bi-clipboard-check me-2"></i> حالة المراجعة</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">الحالة:</label>
+                                <div>
+                                    <span class="badge bg-{{ $lesson->review_status_color }} fs-6">
+                                        {{ $lesson->review_status_name }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            @if($lesson->review_notes)
+                                <div class="mb-3">
+                                    <label class="form-label">ملاحظات المراجعة:</label>
+                                    <div class="alert alert-{{ $lesson->review_status === \App\Models\Lesson::REVIEW_STATUS_REJECTED ? 'danger' : 'info' }}">
+                                        {{ $lesson->review_notes }}
+                                    </div>
+                                </div>
+                            @endif
+
+                            @if($lesson->reviewed_at)
+                                <div class="mb-3">
+                                    <small class="text-muted">
+                                        <i class="bi bi-person-check me-1"></i>
+                                        مراجع من: <strong>{{ $lesson->reviewer->name ?? 'غير معروف' }}</strong>
+                                        <br>
+                                        <i class="bi bi-calendar me-1"></i>
+                                        في: {{ $lesson->reviewed_at->format('Y-m-d H:i') }}
+                                    </small>
+                                </div>
+                            @endif
+
+                            @if($lesson->submitted_for_review_at)
+                                <div class="mb-3">
+                                    <small class="text-muted">
+                                        <i class="bi bi-send me-1"></i>
+                                        تم الإرسال للمراجعة في: {{ $lesson->submitted_for_review_at->format('Y-m-d H:i') }}
+                                    </small>
+                                </div>
+                            @endif
+
+                            {{-- أزرار المراجعة للمشرف/الأدمن --}}
+                            @if(!$isTeacher && $lesson->review_status === \App\Models\Lesson::REVIEW_STATUS_PENDING)
+                                <div class="mt-3 d-flex gap-2 flex-wrap">
+                                    <button type="button" class="btn btn-success"
+                                            data-bs-toggle="modal" data-bs-target="#lessonApproveModal">
+                                        <i class="bi bi-check-circle me-1"></i> الموافقة على النشر
+                                    </button>
+                                    <button type="button" class="btn btn-danger"
+                                            data-bs-toggle="modal" data-bs-target="#lessonRejectModal">
+                                        <i class="bi bi-x-circle me-1"></i> رفض النشر
+                                    </button>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+
                     <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h6 class="mb-0">
@@ -261,6 +326,61 @@
             </div>
         </div>
     </div>
+
+    {{-- مودال الموافقة على الدرس --}}
+    @if(!$isTeacher && $lesson->review_status === \App\Models\Lesson::REVIEW_STATUS_PENDING)
+        <div class="modal fade" id="lessonApproveModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form action="{{ route('admin.lessons.approve-review', $lesson->id) }}" method="POST">
+                        @csrf
+                        <div class="modal-header">
+                            <h5 class="modal-title">الموافقة على نشر الدرس</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">ملاحظات (اختياري)</label>
+                                <textarea name="review_notes" class="form-control" rows="3"
+                                          placeholder="أضف ملاحظات للمعلم..."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                            <button type="submit" class="btn btn-success">الموافقة</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {{-- مودال رفض الدرس --}}
+        <div class="modal fade" id="lessonRejectModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form action="{{ route('admin.lessons.reject-review', $lesson->id) }}" method="POST">
+                        @csrf
+                        <div class="modal-header">
+                            <h5 class="modal-title">رفض نشر الدرس</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">ملاحظات <span class="text-danger">*</span></label>
+                                <textarea name="review_notes" class="form-control" rows="3"
+                                          placeholder="أضف ملاحظات توضح سبب الرفض للمعلم..." required></textarea>
+                                <small class="text-muted">يجب إضافة ملاحظات توضح سبب الرفض</small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                            <button type="submit" class="btn btn-danger">رفض</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
 
     {{-- مودال إضافة مرفق --}}
     <div class="modal fade" id="addAttachmentModal" tabindex="-1" aria-hidden="true">

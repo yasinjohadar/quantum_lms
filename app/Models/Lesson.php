@@ -231,6 +231,22 @@ class Lesson extends Model
         return $query->orderBy('order');
     }
 
+    public function getReviewStatusNameAttribute(): string
+    {
+        return self::REVIEW_STATUSES[$this->review_status] ?? $this->review_status;
+    }
+
+    public function getReviewStatusColorAttribute(): string
+    {
+        return match ($this->review_status) {
+            self::REVIEW_STATUS_DRAFT => 'secondary',
+            self::REVIEW_STATUS_PENDING => 'warning',
+            self::REVIEW_STATUS_APPROVED => 'success',
+            self::REVIEW_STATUS_REJECTED => 'danger',
+            default => 'dark',
+        };
+    }
+
     /**
      * Scope للدروس قيد المراجعة.
      */
