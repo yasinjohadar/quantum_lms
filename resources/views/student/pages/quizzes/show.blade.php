@@ -267,7 +267,7 @@
 @endpush
 
 @push('scripts')
-<script src="{{ asset('js/quiz-timer.js') }}"></script>
+<script src="{{ asset('js/quiz-timer.js') }}?v={{ time() }}"></script>
 <script src="{{ asset('js/auto-save-answer.js') }}"></script>
 <script src="{{ asset('js/question-types.js') }}"></script>
 <script>
@@ -1279,32 +1279,41 @@
     
     // Initialize when DOM is ready so first question and timer render correctly
     function initQuiz() {
+        // Load first question first and independently
         loadQuestion(0);
 
         @if($quiz->show_timer)
-            const timer = new QuizTimer({
-                remainingTime: {{ $attempt->remaining_time ?? (($quiz->duration_minutes ?? 60) * 60) }},
-                updateUrl: '{{ route("student.quizzes.time", $attempt->id) }}',
-                onTimeout: function() {
-                    const savePromises = questions.map(question => saveCurrentAnswer(question));
-                    Promise.all(savePromises).then(() => {
-                        document.getElementById('submit-quiz-form').submit();
-                    });
-                },
-                onWarning: function(seconds) {
-                    const card = document.getElementById('timer-card');
-                    if (card) {
-                        if (seconds <= 60) {
-                            card.classList.add('danger');
-                            card.classList.remove('warning');
-                        } else if (seconds <= 300) {
-                            card.classList.add('warning');
-                            card.classList.remove('danger');
+        try {
+            if (typeof QuizTimer !== 'undefined') {
+                const timer = new QuizTimer({
+                    remainingTime: {{ $attempt->remaining_time ?? (($quiz->duration_minutes ?? 60) * 60) }},
+                    updateUrl: '{{ route("student.quizzes.time", $attempt->id) }}',
+                    onTimeout: function() {
+                        const savePromises = questions.map(question => saveCurrentAnswer(question));
+                        Promise.all(savePromises).then(() => {
+                            document.getElementById('submit-quiz-form').submit();
+                        });
+                    },
+                    onWarning: function(seconds) {
+                        const card = document.getElementById('timer-card');
+                        if (card) {
+                            if (seconds <= 60) {
+                                card.classList.add('danger');
+                                card.classList.remove('warning');
+                            } else if (seconds <= 300) {
+                                card.classList.add('warning');
+                                card.classList.remove('danger');
+                            }
                         }
                     }
-                }
-            });
-            timer.start();
+                });
+                timer.start();
+            } else {
+                console.error('QuizTimer not loaded');
+            }
+        } catch (e) {
+            console.error('QuizTimer error:', e);
+        }
         @endif
     }
 
@@ -1320,5 +1329,12 @@
     } else {
         initQuiz();
     }
+    // Fallback: ensure init runs after paint (e.g. if loader delayed DOM visibility)
+    setTimeout(function() {
+        const contentEl = document.getElementById('question-content');
+        if (contentEl && !contentEl.innerHTML.trim()) {
+            loadQuestion(0);
+        }
+    }, 100);
 </script>
 @endpush
