@@ -205,9 +205,9 @@
                                     <p class="text-muted small">يمكنك إنشاء أول قسم من زر "إضافة قسم جديد"</p>
                                 </div>
                             @else
-                                <div class="accordion accordion-primary" id="subjectSectionsAccordion">
+                                <div class="accordion accordion-primary accordions-items-seperate" id="subjectSectionsAccordion">
                                     @foreach($subject->sections as $index => $section)
-                                        <div class="accordion-item">
+                                        <div class="accordion-item mb-3 rounded overflow-hidden">
                                             <h2 class="accordion-header" id="sectionHeading{{ $section->id }}">
                                                 <button class="accordion-button {{ $index > 0 ? 'collapsed' : '' }}" type="button"
                                                         data-bs-toggle="collapse"
