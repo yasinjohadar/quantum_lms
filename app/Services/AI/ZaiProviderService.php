@@ -99,14 +99,23 @@ class ZaiProviderService extends AIProviderService
                     ];
                 }
                 
-                // Extract content
-                $content = $data['choices'][0]['message']['content'] ?? '';
-                
+                // Extract content (OpenAI-style path)
+                $message = $data['choices'][0]['message'] ?? [];
+                $content = $message['content'] ?? '';
+
+                // مسارات بديلة قد يستخدمها Z.ai (بعض الـ APIs تضع النص في مفاتيح أخرى)
+                if (empty($content) && !empty($message)) {
+                    $content = $message['text'] ?? $message['response'] ?? $message['output'] ?? '';
+                }
+                if (empty($content) && isset($data['choices'][0]['text'])) {
+                    $content = $data['choices'][0]['text'];
+                }
+
                 // Check if content is empty
-                if (empty($content)) {
-                    $error = 'الرد من Z.ai API يحتوي على content فارغ';
+                if (empty(trim((string) $content))) {
+                    $error = 'الرد من Z.ai API يحتوي على content فارغ. قد يكون النموذج رفض الإجابة أو أن صيغة الرد تغيرت. تحقق من سجلات Laravel (storage/logs) لرؤية الرد الخام.';
                     Log::warning('Z.ai API Response Empty Content', [
-                        'message' => $data['choices'][0]['message'],
+                        'message' => $data['choices'][0]['message'] ?? null,
                         'full_response' => $data,
                     ]);
                     $this->setLastError($error);
