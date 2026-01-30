@@ -185,6 +185,9 @@ class SubjectController extends Controller
                 'sections.units.lessons.attachments' => function ($q) {
                     $q->orderBy('order');
                 },
+                'sections.units.lessons.quizzes' => function ($q) {
+                    $q->orderBy('order')->orderBy('title');
+                },
                 'sections.units.questions' => function ($q) {
                     $q->orderBy('created_at', 'desc');
                 },
