@@ -118,7 +118,7 @@
                     <div class="card-body">
                         <div class="mb-3">
                             <label class="form-label">نص السؤال <span class="text-danger">*</span></label>
-                            <textarea name="title" id="question-title-editor" class="form-control" rows="6" required 
+                            <textarea name="title" id="question-title-editor" class="form-control" rows="6" 
                                       placeholder="اكتب نص السؤال هنا...">{{ old('title') }}</textarea>
                         </div>
                         <div class="mb-3">
