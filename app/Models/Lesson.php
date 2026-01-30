@@ -68,6 +68,14 @@ class Lesson extends Model
     const REVIEW_STATUS_APPROVED = 'approved';
     const REVIEW_STATUS_REJECTED = 'rejected';
 
+    /** تسميات حالات المراجعة للعرض. */
+    public const REVIEW_STATUSES = [
+        self::REVIEW_STATUS_DRAFT => 'مسودة',
+        self::REVIEW_STATUS_PENDING => 'قيد المراجعة',
+        self::REVIEW_STATUS_APPROVED => 'معتمد',
+        self::REVIEW_STATUS_REJECTED => 'مرفوض',
+    ];
+
     /**
      * العلاقة مع الوحدة.
      */
