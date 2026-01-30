@@ -545,6 +545,7 @@
                                                                                                             </div>
                                                                                                         </div>
                                                                                                     </div>
+                                                                                                    </div>
                                                                                                     <div class="d-flex align-items-center justify-content-between mt-2">
                                                                                                         <div class="d-flex align-items-center gap-1">
                                                                                                             <a href="{{ route('admin.lessons.show', $lesson->id) }}" 
