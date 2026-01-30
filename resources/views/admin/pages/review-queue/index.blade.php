@@ -112,6 +112,7 @@
                                             <th>#</th>
                                             <th>عنوان الدرس</th>
                                             <th>المادة</th>
+                                            <th>الصف</th>
                                             <th>المعلم</th>
                                             <th>تاريخ الإرسال</th>
                                             <th>الإجراءات</th>
@@ -119,11 +120,17 @@
                                     </thead>
                                     <tbody>
                                         @foreach($lessons as $lesson)
+                                            @php
+                                                $subject = $lesson->unit->section->subject ?? null;
+                                                $class = $subject->schoolClass ?? null;
+                                                $teachers = $subject->assignedTeachers ?? collect();
+                                            @endphp
                                             <tr>
                                                 <td>{{ $loop->iteration }}</td>
                                                 <td>{{ $lesson->title }}</td>
-                                                <td>{{ $lesson->unit->section->subject->name ?? '-' }}</td>
-                                                <td>-</td>
+                                                <td>{{ $subject->name ?? '-' }}</td>
+                                                <td>{{ $class->name ?? '-' }}</td>
+                                                <td>{{ $teachers->isNotEmpty() ? $teachers->pluck('name')->join('، ') : '-' }}</td>
                                                 <td>{{ $lesson->submitted_for_review_at ? $lesson->submitted_for_review_at->format('Y-m-d') : '-' }}</td>
                                                 <td>
                                                     <a href="{{ route('admin.lessons.show', $lesson->id) }}" 

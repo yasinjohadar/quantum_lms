@@ -75,6 +75,8 @@
                                         <th>#</th>
                                         <th>عنوان الدرس</th>
                                         <th>المادة</th>
+                                        <th>الصف</th>
+                                        <th>المعلم</th>
                                         <th>الوحدة</th>
                                         <th>تاريخ الإرسال</th>
                                         <th>الحالة</th>
@@ -83,10 +85,17 @@
                                 </thead>
                                 <tbody>
                                     @foreach($lessons as $lesson)
+                                        @php
+                                            $subject = $lesson->unit->section->subject ?? null;
+                                            $class = $subject->schoolClass ?? null;
+                                            $teachers = $subject->assignedTeachers ?? collect();
+                                        @endphp
                                         <tr>
                                             <td>{{ $loop->iteration + ($lessons->currentPage() - 1) * $lessons->perPage() }}</td>
                                             <td>{{ $lesson->title }}</td>
-                                            <td>{{ $lesson->unit->section->subject->name ?? '-' }}</td>
+                                            <td>{{ $subject->name ?? '-' }}</td>
+                                            <td>{{ $class->name ?? '-' }}</td>
+                                            <td>{{ $teachers->isNotEmpty() ? $teachers->pluck('name')->join('، ') : '-' }}</td>
                                             <td>{{ $lesson->unit->title ?? '-' }}</td>
                                             <td>{{ $lesson->submitted_for_review_at ? $lesson->submitted_for_review_at->format('Y-m-d H:i') : '-' }}</td>
                                             <td>
