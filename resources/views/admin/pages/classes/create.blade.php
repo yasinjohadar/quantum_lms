@@ -8,31 +8,6 @@
 @stop
 
 @section('content')
-    @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-        </div>
-    @endif
-
-    @if (session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-        </div>
-    @endif
-
-    @if ($errors->any())
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <ul class="mb-0">
-                @foreach ($errors->all() as $error)
-                    <li class="small">{{ $error }}</li>
-                @endforeach
-            </ul>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-        </div>
-    @endif
-
     <div class="main-content app-content">
         <div class="container-fluid">
             <div class="page-header d-flex justify-content-between align-items-center my-4">
@@ -44,6 +19,33 @@
 
             <div class="card">
                 <div class="card-body">
+                    {{-- إظهار كافة أخطاء التحقق والرسائل العامة في أعلى النموذج --}}
+                    @if (session('success'))
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                        </div>
+                    @endif
+
+                    @if (session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="bi bi-exclamation-triangle me-2"></i><strong>خطأ:</strong> {{ session('error') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                        </div>
+                    @endif
+
+                    @if ($errors->any())
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <strong>يرجى تصحيح الأخطاء التالية:</strong>
+                            <ul class="mb-0 mt-2 list-unstyled">
+                                @foreach ($errors->all() as $error)
+                                    <li><i class="bi bi-dot text-danger me-1"></i>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                        </div>
+                    @endif
+
                     <form method="POST" action="{{ route('admin.classes.store') }}" enctype="multipart/form-data">
                         @csrf
 
@@ -116,8 +118,34 @@
                             </div>
 
                             <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="number" name="price" id="price_input_create"
+                                           class="form-control @error('price') is-invalid @enderror"
+                                           placeholder="السعر"
+                                           value="{{ old('price', 0) }}"
+                                           step="0.01"
+                                           min="0">
+                                    <label>السعر (العملة الافتراضية) <span class="text-danger">*</span></label>
+                                    @error('price')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <small class="text-muted">اتركه 0 إذا كان الصف مجانياً</small>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 d-flex align-items-center">
+                                <div class="form-check form-switch mt-3">
+                                    <input class="form-check-input" type="checkbox" name="is_free"
+                                           id="is_free_create" value="1"
+                                           {{ old('is_free', false) ? 'checked' : '' }}
+                                           onchange="var el=document.getElementById('price_input_create'); el.disabled=this.checked; if(this.checked) el.value=0;">
+                                    <label class="form-check-label" for="is_free_create">الصف مجاني</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
                                 <label for="default_currency_id" class="form-label">العملة الافتراضية</label>
-                                <select name="default_currency_id" id="default_currency_id" class="form-select">
+                                <select name="default_currency_id" id="default_currency_id" class="form-select @error('default_currency_id') is-invalid @enderror">
                                     <option value="">اختر العملة الافتراضية</option>
                                     @foreach(\App\Models\Currency::active()->ordered()->get() as $currency)
                                         <option value="{{ $currency->id }}" {{ old('default_currency_id') == $currency->id ? 'selected' : '' }}>

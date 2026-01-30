@@ -34,6 +34,13 @@ class StoreClassRequest extends FormRequest
             'og_image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'],
             'order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
+            'price' => ['nullable', 'numeric', 'min:0'],
+            'is_free' => ['nullable', 'boolean'],
+            'default_currency_id' => ['nullable', 'integer', 'exists:currencies,id'],
+            'prices' => ['nullable', 'array'],
+            'prices.*.price' => ['nullable', 'numeric', 'min:0'],
+            'prices.*.currency_id' => ['nullable', 'integer', 'exists:currencies,id'],
+            'prices.*.is_active' => ['nullable', 'boolean'],
         ];
     }
 
@@ -58,6 +65,9 @@ class StoreClassRequest extends FormRequest
             'og_image.max' => 'يجب ألا يتجاوز حجم صورة Open Graph 2 ميجابايت.',
             'order.integer' => 'حقل الترتيب يجب أن يكون رقماً صحيحاً.',
             'order.min' => 'حقل الترتيب يجب أن يكون صفراً أو أكبر.',
+            'price.numeric' => 'السعر يجب أن يكون رقماً.',
+            'price.min' => 'السعر يجب أن يكون صفراً أو أكبر.',
+            'default_currency_id.exists' => 'العملة المختارة غير صحيحة.',
         ];
     }
 }
