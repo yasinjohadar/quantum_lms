@@ -50,8 +50,8 @@
                                 <li class="slide side-menu__label1">
                                     <a href="javascript:void(0);">إدارة صفوفي وموادي</a>
                                 </li>
-                                <li class="slide {{ request()->is('teacher/classes*') ? 'active' : '' }}">
-                                    <a href="{{ route('teacher.classes.index') }}" class="side-menu__item {{ request()->is('teacher/classes*') ? 'active' : '' }}">
+                                <li class="slide {{ request()->is('admin/classes*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.classes.index') }}" class="side-menu__item {{ request()->is('admin/classes*') ? 'active' : '' }}">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
                                             <path d="M0 0h24v24H0z" fill="none"/>
                                             <path d="M6 4h12v2H6zm0 4h12v2H6zm0 4h8v2H6zm0 4h8v2H6z"/>
@@ -59,8 +59,8 @@
                                         <span class="side-menu__label">صفوفي المخصصة</span>
                                     </a>
                                 </li>
-                                <li class="slide {{ request()->is('teacher/subjects*') ? 'active' : '' }}">
-                                    <a href="{{ route('teacher.subjects.index') }}" class="side-menu__item {{ request()->is('teacher/subjects*') ? 'active' : '' }}">
+                                <li class="slide {{ request()->is('admin/subjects*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.subjects.index') }}" class="side-menu__item {{ request()->is('admin/subjects*') ? 'active' : '' }}">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
                                             <path d="M0 0h24v24H0z" fill="none"/>
                                             <path d="M18 2H8a2 2 0 00-2 2v14a2 2 0 002 2h10l4-4V4a2 2 0 00-2-2zm0 13v3h-3a1 1 0 01-1-1v-2h4zm-6-4H8V9h4zm4-3H8V6h8z"/>

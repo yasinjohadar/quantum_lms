@@ -65,7 +65,7 @@ class TeacherSubjectController extends Controller
             abort(403, 'غير مصرح لك بالوصول إلى هذه المادة');
         }
 
-        // جلب البيانات الكاملة
+        // جلب البيانات الكاملة (مع اختبارات كل درس)
         $subject->load([
             'schoolClass.stage',
             'sections' => function ($q) {
@@ -76,6 +76,9 @@ class TeacherSubjectController extends Controller
             },
             'sections.units.lessons' => function ($q) {
                 $q->orderBy('order');
+            },
+            'sections.units.lessons.quizzes' => function ($q) {
+                $q->orderBy('order')->orderBy('title');
             },
         ]);
 

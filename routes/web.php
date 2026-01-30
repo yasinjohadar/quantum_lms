@@ -17,18 +17,17 @@ Route::get('/dashboard', function () {
     
     $user = auth()->user();
     
-    // 1. التحقق من وجود أي دور بـ dashboard_type = 'admin' (إذا كان العمود موجوداً)
-    $hasAdminDashboard = false;
+    // 1. التحقق من وجود أي دور بـ dashboard_type = 'admin' أو 'teacher' (المعلم يستخدم نفس لوحة admin بصلاحيات مخصصة)
+    $hasAdminOrTeacherDashboard = false;
     try {
-        $hasAdminDashboard = $user->roles()
-            ->where('dashboard_type', 'admin')
+        $hasAdminOrTeacherDashboard = $user->roles()
+            ->whereIn('dashboard_type', ['admin', 'teacher'])
             ->exists();
     } catch (\Exception $e) {
-        // إذا كان العمود غير موجود، نستخدم fallback
-        $hasAdminDashboard = false;
+        $hasAdminOrTeacherDashboard = false;
     }
 
-    if ($hasAdminDashboard) {
+    if ($hasAdminOrTeacherDashboard) {
         // التحقق إذا كان المستخدم مشرف
         if ($user->hasRole('supervisor')) {
             return redirect()->route('admin.my-classes');

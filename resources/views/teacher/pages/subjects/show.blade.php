@@ -597,6 +597,51 @@
                                                                                                             <i class="bi bi-clipboard-check me-1"></i> اختبار الدرس
                                                                                                         </a>
                                                                                                     </div>
+                                                                                                    {{-- اختبارات هذا الدرس --}}
+                                                                                                    @if($lesson->quizzes && $lesson->quizzes->count() > 0)
+                                                                                                        <div class="mt-2 pt-2 border-top">
+                                                                                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                                                                                <span class="text-info small fw-semibold">
+                                                                                                                    <i class="bi bi-clipboard-check me-1"></i> اختبارات هذا الدرس ({{ $lesson->quizzes->count() }})
+                                                                                                                </span>
+                                                                                                            </div>
+                                                                                                            <div class="list-group list-group-flush">
+                                                                                                                @foreach($lesson->quizzes as $lessonQuiz)
+                                                                                                                    <div class="list-group-item d-flex flex-column px-2 py-2 bg-info-transparent rounded mb-1 small">
+                                                                                                                        <div class="d-flex align-items-center justify-content-between">
+                                                                                                                            <div class="d-flex align-items-center flex-grow-1 flex-wrap gap-1">
+                                                                                                                                <i class="bi bi-clipboard-check text-info me-2"></i>
+                                                                                                                                <span class="fw-medium">{{ $lessonQuiz->title }}</span>
+                                                                                                                                <span class="badge bg-{{ $lessonQuiz->review_status_color }} ms-1" style="font-size:0.65rem;">{{ $lessonQuiz->review_status_name }}</span>
+                                                                                                                                @if($lessonQuiz->is_published)
+                                                                                                                                    <span class="badge bg-success-transparent text-success" style="font-size:0.6rem;">يظهر للطالب</span>
+                                                                                                                                @endif
+                                                                                                                            </div>
+                                                                                                                            <div class="d-flex align-items-center gap-1">
+                                                                                                                                @can('quiz-show')
+                                                                                                                                    <a href="{{ route('admin.quizzes.show', $lessonQuiz->id) }}" class="btn btn-sm btn-icon btn-info-transparent" title="عرض"><i class="bi bi-eye"></i></a>
+                                                                                                                                @endcan
+                                                                                                                                @can('quiz-edit')
+                                                                                                                                    <a href="{{ route('admin.quizzes.edit', $lessonQuiz->id) }}" class="btn btn-sm btn-icon btn-warning-transparent" title="تعديل"><i class="bi bi-pencil"></i></a>
+                                                                                                                                @endcan
+                                                                                                                                @if(auth()->user()->hasRole('teacher') && !auth()->user()->hasAnyRole(['admin', 'supervisor']) && in_array($lessonQuiz->review_status, [\App\Models\Quiz::REVIEW_STATUS_DRAFT, \App\Models\Quiz::REVIEW_STATUS_REJECTED]))
+                                                                                                                                    <form action="{{ route('admin.quizzes.submit-for-review', $lessonQuiz->id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من إرسال الاختبار للمراجعة؟');">
+                                                                                                                                        @csrf
+                                                                                                                                        <button type="submit" class="btn btn-sm btn-warning" title="إرسال للمراجعة"><i class="bi bi-send me-1"></i> إرسال للمراجعة</button>
+                                                                                                                                    </form>
+                                                                                                                                @endif
+                                                                                                                            </div>
+                                                                                                                        </div>
+                                                                                                                        @if($lessonQuiz->review_status === \App\Models\Quiz::REVIEW_STATUS_REJECTED && $lessonQuiz->review_notes)
+                                                                                                                            <div class="alert alert-danger py-2 px-2 mt-2 mb-0 small">
+                                                                                                                                <strong>ملاحظات المراجعة:</strong> {{ $lessonQuiz->review_notes }}
+                                                                                                                            </div>
+                                                                                                                        @endif
+                                                                                                                    </div>
+                                                                                                                @endforeach
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                    @endif
                                                                                                 </div>
                                                                                             @endforeach
                                                                                         </div>

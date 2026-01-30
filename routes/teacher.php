@@ -1,15 +1,12 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Teacher\TeacherClassController;
-use App\Http\Controllers\Teacher\TeacherSubjectController;
 
+// المعلم يستخدم نفس رابط الأدمن (admin) مع صلاحيات مخصصة فقط
+// إعادة توجيه الروابط القديمة /teacher/* إلى /admin/* للتوافق مع الإشارات المرجعية
 Route::middleware(['auth', 'check.user.active'])->prefix('teacher')->as('teacher.')->group(function () {
-    // الصفوف المخصصة للمعلم
-    Route::get('/classes', [TeacherClassController::class, 'index'])->name('classes.index');
-    Route::get('/classes/{class}', [TeacherClassController::class, 'show'])->name('classes.show');
-    
-    // المواد المخصصة للمعلم
-    Route::get('/subjects', [TeacherSubjectController::class, 'index'])->name('subjects.index');
-    Route::get('/subjects/{subject}', [TeacherSubjectController::class, 'show'])->name('subjects.show');
+    Route::get('/classes', fn () => redirect()->route('admin.classes.index'))->name('classes.index');
+    Route::get('/classes/{class}', fn ($class) => redirect()->route('admin.classes.show', $class))->name('classes.show');
+    Route::get('/subjects', fn () => redirect()->route('admin.subjects.index'))->name('subjects.index');
+    Route::get('/subjects/{subject}', fn ($subject) => redirect()->route('admin.subjects.show', $subject))->name('subjects.show');
 });
