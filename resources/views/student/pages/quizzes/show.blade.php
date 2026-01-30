@@ -267,7 +267,73 @@
 @endpush
 
 @push('scripts')
-<script src="{{ asset('js/quiz-timer.js') }}?v={{ time() }}"></script>
+<script>
+(function() {
+    class QuizTimer {
+        constructor(options = {}) {
+            this.remainingSeconds = Math.max(0, parseInt(options.remainingTime, 10) || 0);
+            this.updateUrl = options.updateUrl || null;
+            this.onTimeout = typeof options.onTimeout === 'function' ? options.onTimeout : null;
+            this.onWarning = typeof options.onWarning === 'function' ? options.onWarning : null;
+            this.intervalId = null;
+            this.updateIntervalMs = 15000;
+            this.lastUpdateAt = 0;
+            this.warningFired = {};
+        }
+        start() {
+            const displayEl = document.getElementById('timer-display');
+            const cardEl = document.getElementById('timer-card');
+            const self = this;
+            const updateDisplay = function() {
+                if (self.remainingSeconds <= 0) {
+                    self.stop();
+                    if (self.onTimeout) self.onTimeout();
+                    if (displayEl) displayEl.textContent = '0:00';
+                    return;
+                }
+                const m = Math.floor(self.remainingSeconds / 60);
+                const s = self.remainingSeconds % 60;
+                if (displayEl) displayEl.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+                if (self.onWarning && cardEl) {
+                    if (self.remainingSeconds <= 60 && !self.warningFired[60]) {
+                        self.warningFired[60] = true;
+                        cardEl.classList.add('danger');
+                        cardEl.classList.remove('warning');
+                        self.onWarning(self.remainingSeconds);
+                    } else if (self.remainingSeconds <= 300 && self.remainingSeconds > 60 && !self.warningFired[300]) {
+                        self.warningFired[300] = true;
+                        cardEl.classList.add('warning');
+                        cardEl.classList.remove('danger');
+                        self.onWarning(self.remainingSeconds);
+                    }
+                }
+                self.remainingSeconds--;
+            };
+            updateDisplay();
+            self.intervalId = setInterval(updateDisplay, 1000);
+            if (self.updateUrl) {
+                const syncFromServer = function() {
+                    const now = Date.now();
+                    if (now - self.lastUpdateAt < self.updateIntervalMs) return;
+                    self.lastUpdateAt = now;
+                    const token = document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                    fetch(self.updateUrl, {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': token || '', 'X-Requested-With': 'XMLHttpRequest' }
+                    }).then(function(res) { return res.ok ? res.json() : null; }).then(function(data) {
+                        if (data && typeof data.remaining === 'number' && data.remaining >= 0) self.remainingSeconds = data.remaining;
+                    }).catch(function() {});
+                };
+                setInterval(syncFromServer, self.updateIntervalMs);
+            }
+        }
+        stop() {
+            if (this.intervalId !== null) { clearInterval(this.intervalId); this.intervalId = null; }
+        }
+    }
+    window.QuizTimer = QuizTimer;
+})();
+</script>
 <script src="{{ asset('js/auto-save-answer.js') }}"></script>
 <script src="{{ asset('js/question-types.js') }}"></script>
 <script>
@@ -1329,12 +1395,18 @@
     } else {
         initQuiz();
     }
-    // Fallback: ensure init runs after paint (e.g. if loader delayed DOM visibility)
+    // Fallback: ensure first question shows after paint (e.g. if loader delayed DOM visibility)
     setTimeout(function() {
-        const contentEl = document.getElementById('question-content');
+        var contentEl = document.getElementById('question-content');
         if (contentEl && !contentEl.innerHTML.trim()) {
             loadQuestion(0);
         }
     }, 100);
+    window.addEventListener('load', function() {
+        var contentEl = document.getElementById('question-content');
+        if (contentEl && !contentEl.innerHTML.trim()) {
+            loadQuestion(0);
+        }
+    });
 </script>
 @endpush
