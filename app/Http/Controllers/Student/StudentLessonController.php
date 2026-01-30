@@ -297,22 +297,24 @@ class StudentLessonController extends Controller
         $previousLesson = $currentIndex > 0 ? $unitLessons[$currentIndex - 1] : null;
         $nextLesson = $currentIndex < $unitLessons->count() - 1 ? $unitLessons[$currentIndex + 1] : null;
         
-        // اختبارات الدرس الحالي فقط
+        // اختبارات الدرس الحالي فقط (المعتمدة من المشرف فقط تظهر للطالب)
         $lessonQuizzes = Quiz::where('lesson_id', $lesson->id)
             ->where('is_active', true)
             ->where('is_published', true)
+            ->where('review_status', \App\Models\Quiz::REVIEW_STATUS_APPROVED)
             ->with(['questions' => function($query) {
                 $query->orderBy('quiz_questions.order');
             }])
             ->orderBy('order')
             ->get();
 
-        // اختبارات الوحدة العامة (غير مرتبطة بدرس محدد)
+        // اختبارات الوحدة العامة (غير مرتبطة بدرس محدد) - المعتمدة فقط
         $unitQuizzes = Quiz::where('unit_id', $lesson->unit_id)
             ->where('subject_id', $subject->id)
             ->whereNull('lesson_id') // اختبارات الوحدة فقط
             ->where('is_active', true)
             ->where('is_published', true)
+            ->where('review_status', \App\Models\Quiz::REVIEW_STATUS_APPROVED)
             ->with(['questions' => function($query) {
                 $query->orderBy('quiz_questions.order');
             }])
