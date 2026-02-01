@@ -193,57 +193,6 @@
                 </div>
             </div>
 
-            <!-- الواجبات -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h6 class="mb-0">الواجبات</h6>
-                </div>
-                <div class="card-body">
-                    @if($assignments->count() > 0)
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>اسم الواجب</th>
-                                        <th>الحالة</th>
-                                        <th>تاريخ الإنشاء</th>
-                                        <th>الإجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($assignments as $assignment)
-                                        <tr>
-                                            <td>{{ $loop->iteration + ($assignments->currentPage() - 1) * $assignments->perPage() }}</td>
-                                            <td>{{ $assignment->title }}</td>
-                                            <td>
-                                                @if($assignment->is_published)
-                                                    <span class="badge bg-success">منشور</span>
-                                                @else
-                                                    <span class="badge bg-warning">مسودة</span>
-                                                @endif
-                                            </td>
-                                            <td>{{ $assignment->created_at->format('Y-m-d') }}</td>
-                                            <td>
-                                                <a href="{{ route('admin.assignments.show', $assignment->id) }}" 
-                                                   class="btn btn-sm btn-primary">
-                                                    <i class="fas fa-eye me-1"></i> عرض
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="d-flex justify-content-center mt-3">
-                            {{ $assignments->links() }}
-                        </div>
-                    @else
-                        <p class="text-muted text-center py-4">لا توجد واجبات في هذه المادة</p>
-                    @endif
-                </div>
-            </div>
-
             <!-- الطلاب المسجلين -->
             <div class="card">
                 <div class="card-header">

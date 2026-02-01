@@ -6,7 +6,6 @@ use App\Models\EventReminder;
 use App\Models\User;
 use App\Models\CalendarEvent;
 use App\Models\Quiz;
-use App\Models\Assignment;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use App\Services\GamificationNotificationService;
@@ -166,7 +165,6 @@ class ReminderService
         return match($reminder->event_type) {
             'calendar_event' => CalendarEvent::find($reminder->event_id),
             'quiz' => Quiz::find($reminder->event_id),
-            'assignment' => Assignment::find($reminder->event_id),
             default => null,
         };
     }
@@ -179,7 +177,6 @@ class ReminderService
         return match($reminder->event_type) {
             'calendar_event' => $event->start_date ?? null,
             'quiz' => $event->available_from ?? null,
-            'assignment' => $event->due_date ?? null,
             default => null,
         };
     }
@@ -203,7 +200,6 @@ class ReminderService
         return match($reminder->event_type) {
             'calendar_event' => $this->getUsersForCalendarEvent($event),
             'quiz' => $this->getUsersForQuiz($event),
-            'assignment' => $this->getUsersForAssignment($event),
             default => collect(),
         };
     }
@@ -239,19 +235,6 @@ class ReminderService
     }
 
     /**
-     * الحصول على المستخدمين لواجب
-     */
-    private function getUsersForAssignment(Assignment $assignment): Collection
-    {
-        $assignable = $assignment->assignable;
-        if ($assignable instanceof \App\Models\Subject) {
-            return $assignable->students ?? collect();
-        }
-        // يمكن إضافة منطق إضافي للوحدات والدروس
-        return collect();
-    }
-
-    /**
      * الحصول على عنوان التذكير
      */
     private function getReminderTitle(EventReminder $reminder, $event): string
@@ -259,7 +242,6 @@ class ReminderService
         return match($reminder->event_type) {
             'calendar_event' => 'تذكير: ' . $event->title,
             'quiz' => 'تذكير: اختبار ' . $event->title,
-            'assignment' => 'تذكير: واجب ' . $event->title,
             default => 'تذكير بحدث',
         };
     }
@@ -274,7 +256,6 @@ class ReminderService
         return match($reminder->event_type) {
             'calendar_event' => "يبدأ الحدث '{$event->title}' خلال {$timeUntil}",
             'quiz' => "يبدأ الاختبار '{$event->title}' خلال {$timeUntil}",
-            'assignment' => "موعد تسليم الواجب '{$event->title}' خلال {$timeUntil}",
             default => "حدث قادم خلال {$timeUntil}",
         };
     }

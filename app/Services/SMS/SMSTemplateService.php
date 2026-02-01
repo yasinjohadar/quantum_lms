@@ -57,13 +57,6 @@ class SMSTemplateService
                 'variables' => ['quiz_name', 'date'],
                 'is_active' => true,
             ],
-            [
-                'name' => 'Assignment Reminder',
-                'slug' => 'assignment-reminder',
-                'body' => 'تذكير: آخر موعد لتسليم {{assignment_name}} هو {{due_date}}',
-                'variables' => ['assignment_name', 'due_date'],
-                'is_active' => true,
-            ],
         ];
     }
 }

@@ -9,7 +9,6 @@ use App\Services\AchievementService;
 use App\Services\LevelService;
 use App\Services\ChallengeService;
 use App\Services\RewardService;
-use App\Services\CertificateService;
 use App\Services\LeaderboardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,7 +22,6 @@ class GamificationController extends Controller
         private LevelService $levelService,
         private ChallengeService $challengeService,
         private RewardService $rewardService,
-        private CertificateService $certificateService,
         private LeaderboardService $leaderboardService
     ) {}
 
@@ -159,30 +157,6 @@ class GamificationController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
-    }
-
-    /**
-     * الشهادات
-     */
-    public function certificates()
-    {
-        $user = Auth::user();
-        $certificates = $user->certificates()->with('subject')->orderBy('issued_at', 'desc')->get();
-
-        return view('student.pages.gamification.certificates', [
-            'certificates' => $certificates
-        ]);
-    }
-
-    /**
-     * تحميل شهادة
-     */
-    public function downloadCertificate($certificateId)
-    {
-        $user = Auth::user();
-        $certificate = $user->certificates()->findOrFail($certificateId);
-
-        return $this->certificateService->downloadCertificate($certificate);
     }
 
     /**

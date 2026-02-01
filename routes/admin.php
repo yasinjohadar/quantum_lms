@@ -13,19 +13,12 @@ use App\Http\Controllers\Admin\QuestionController;
 use App\Http\Controllers\Admin\QuizController;
 use App\Http\Controllers\Admin\QuizAttemptController;
 use App\Http\Controllers\Admin\EnrollmentController;
-use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\LoginLogController;
 use App\Http\Controllers\Admin\UserSessionController;
 use App\Http\Controllers\Admin\NotificationController;
-use App\Http\Controllers\Admin\AssignmentController;
-use App\Http\Controllers\Admin\AssignmentQuestionController;
-use App\Http\Controllers\Admin\AssignmentSubmissionController;
 use App\Http\Controllers\Api\SessionActivityController;
 use App\Http\Controllers\Admin\AnalyticsDashboardController;
 use App\Http\Controllers\Admin\NotificationPreferenceController as AdminNotificationPreferenceController;
-use App\Http\Controllers\Admin\ZoomMeetingController;
-use App\Http\Controllers\Admin\AttendanceController;
-use App\Http\Controllers\Admin\LiveSessionController;
 
 Route::middleware(['auth', 'check.user.active', 'admin'])
     ->prefix('admin')
@@ -114,39 +107,6 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::post('questions-import', [QuestionController::class, 'import'])
             ->name('questions.import');
 
-        // الواجبات
-        Route::resource('assignments', AssignmentController::class);
-        Route::get('assignments/get-assignable-items', [AssignmentController::class, 'getAssignableItems'])
-            ->name('assignments.get-assignable-items');
-        Route::post('assignments/{assignment}/publish', [AssignmentController::class, 'publish'])
-            ->name('assignments.publish');
-        Route::post('assignments/{assignment}/unpublish', [AssignmentController::class, 'unpublish'])
-            ->name('assignments.unpublish');
-        Route::post('assignments/{assignment}/duplicate', [AssignmentController::class, 'duplicate'])
-            ->name('assignments.duplicate');
-        
-        // أسئلة الواجبات
-        Route::post('assignments/{assignment}/questions', [AssignmentQuestionController::class, 'store'])
-            ->name('assignments.questions.store');
-        Route::put('assignments/{assignment}/questions/{question}', [AssignmentQuestionController::class, 'update'])
-            ->name('assignments.questions.update');
-        Route::delete('assignments/{assignment}/questions/{question}', [AssignmentQuestionController::class, 'destroy'])
-            ->name('assignments.questions.destroy');
-        Route::post('assignments/{assignment}/questions/reorder', [AssignmentQuestionController::class, 'reorder'])
-            ->name('assignments.questions.reorder');
-        
-        // إرسالات الواجبات
-        Route::get('assignments/{assignment}/submissions', [AssignmentSubmissionController::class, 'index'])
-            ->name('assignments.submissions.index');
-        Route::get('assignments/{assignment}/submissions/{submission}', [AssignmentSubmissionController::class, 'show'])
-            ->name('assignments.submissions.show');
-        Route::post('assignments/{assignment}/submissions/{submission}/grade', [AssignmentSubmissionController::class, 'grade'])
-            ->name('assignments.submissions.grade');
-        Route::post('assignments/{assignment}/submissions/{submission}/return', [AssignmentSubmissionController::class, 'return'])
-            ->name('assignments.submissions.return');
-        Route::get('assignments/{assignment}/submissions/export', [AssignmentSubmissionController::class, 'export'])
-            ->name('assignments.submissions.export');
-
         // ===============================================
         // المكتبة الرقمية
         // ===============================================
@@ -176,12 +136,6 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('library.items.download');
         Route::get('library/items/{item}/stats', [\App\Http\Controllers\Admin\LibraryItemController::class, 'stats'])
             ->name('library.items.stats');
-        Route::resource('library/tags', \App\Http\Controllers\Admin\LibraryTagController::class)->except(['create', 'edit', 'update', 'show'])->names([
-            'index' => 'library.tags.index',
-            'store' => 'library.tags.store',
-            'destroy' => 'library.tags.destroy',
-        ]);
-        
         // تقارير المكتبة
         Route::get('library/reports/most-downloaded', [\App\Http\Controllers\Admin\LibraryReportController::class, 'exportMostDownloaded'])
             ->name('library.reports.most-downloaded');
@@ -337,12 +291,6 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::post('quizzes/{quiz}/reject-review', [QuizController::class, 'rejectReview'])
             ->name('quizzes.reject-review');
 
-        // مراجعة الواجبات
-        Route::post('assignments/{assignment}/approve-review', [AssignmentController::class, 'approveReview'])
-            ->name('assignments.approve-review');
-        Route::post('assignments/{assignment}/reject-review', [AssignmentController::class, 'rejectReview'])
-            ->name('assignments.reject-review');
-
         // قائمة المراجعة
         Route::get('review-queue', [\App\Http\Controllers\Admin\ReviewQueueController::class, 'index'])
             ->name('review-queue.index');
@@ -350,8 +298,6 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('review-queue.lessons');
         Route::get('review-queue/quizzes', [\App\Http\Controllers\Admin\ReviewQueueController::class, 'quizzes'])
             ->name('review-queue.quizzes');
-        Route::get('review-queue/assignments', [\App\Http\Controllers\Admin\ReviewQueueController::class, 'assignments'])
-            ->name('review-queue.assignments');
 
         // الملاحظات
         Route::post('review-comments', [\App\Http\Controllers\Admin\ReviewCommentController::class, 'store'])
@@ -465,31 +411,6 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::resource('enrollments', EnrollmentController::class)->except(['show', 'edit', 'update']);
 
         // ===============================================
-        // نظام المجموعات
-        // ===============================================
-        Route::resource('groups', GroupController::class);
-        Route::get('groups/{group}/manage-students', [GroupController::class, 'manageStudents'])
-            ->name('groups.manage-students');
-        Route::post('groups/{group}/add-students', [GroupController::class, 'addStudents'])
-            ->name('groups.add-students');
-        Route::delete('groups/{group}/remove-student/{user}', [GroupController::class, 'removeStudent'])
-            ->name('groups.remove-student');
-
-        Route::get('groups/{group}/manage-classes', [GroupController::class, 'manageClasses'])
-            ->name('groups.manage-classes');
-        Route::post('groups/{group}/add-classes', [GroupController::class, 'addClasses'])
-            ->name('groups.add-classes');
-        Route::delete('groups/{group}/remove-class/{class}', [GroupController::class, 'removeClass'])
-            ->name('groups.remove-class');
-
-        Route::get('groups/{group}/manage-subjects', [GroupController::class, 'manageSubjects'])
-            ->name('groups.manage-subjects');
-        Route::post('groups/{group}/add-subjects', [GroupController::class, 'addSubjects'])
-            ->name('groups.add-subjects');
-        Route::delete('groups/{group}/remove-subject/{subject}', [GroupController::class, 'removeSubject'])
-            ->name('groups.remove-subject');
-
-        // ===============================================
         // سجلات الدخول
         // ===============================================
         Route::get('login-logs', [LoginLogController::class, 'index'])
@@ -577,15 +498,6 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::resource('daily-tasks', \App\Http\Controllers\Admin\DailyTaskController::class);
         Route::resource('weekly-tasks', \App\Http\Controllers\Admin\WeeklyTaskController::class);
         
-        Route::prefix('certificates')->as('certificates.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\CertificateController::class, 'index'])->name('index');
-            Route::post('/generate', [\App\Http\Controllers\Admin\CertificateController::class, 'generate'])->name('generate');
-            Route::get('/{certificate}/preview', [\App\Http\Controllers\Admin\CertificateController::class, 'preview'])->name('preview');
-            Route::post('/{certificate}/regenerate', [\App\Http\Controllers\Admin\CertificateController::class, 'regenerate'])->name('regenerate');
-            Route::get('/{certificate}/download', [\App\Http\Controllers\Admin\CertificateController::class, 'download'])->name('download');
-            Route::get('/verify', [\App\Http\Controllers\Admin\CertificateController::class, 'verify'])->name('verify');
-        });
-
         Route::prefix('leaderboards')->as('leaderboards.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\LeaderboardController::class, 'index'])->name('index');
             Route::get('/create', [\App\Http\Controllers\Admin\LeaderboardController::class, 'create'])->name('create');
@@ -602,64 +514,6 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             Route::get('/target-users', [NotificationController::class, 'getTargetUsers'])->name('target-users');
             Route::get('/all-users', [NotificationController::class, 'getAllUsers'])->name('all-users');
         });
-
-        // التقييمات
-        Route::prefix('reviews')->as('reviews.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\ReviewController::class, 'index'])->name('index');
-            Route::get('/{review}', [\App\Http\Controllers\Admin\ReviewController::class, 'show'])->name('show');
-            Route::post('/{review}/approve', [\App\Http\Controllers\Admin\ReviewController::class, 'approve'])->name('approve');
-            Route::post('/{review}/reject', [\App\Http\Controllers\Admin\ReviewController::class, 'reject'])->name('reject');
-            Route::delete('/{review}', [\App\Http\Controllers\Admin\ReviewController::class, 'destroy'])->name('destroy');
-            Route::post('/bulk-approve', [\App\Http\Controllers\Admin\ReviewController::class, 'bulkApprove'])->name('bulk-approve');
-            Route::post('/bulk-reject', [\App\Http\Controllers\Admin\ReviewController::class, 'bulkReject'])->name('bulk-reject');
-            Route::get('/settings', [\App\Http\Controllers\Admin\ReviewController::class, 'settings'])->name('settings');
-            Route::post('/settings', [\App\Http\Controllers\Admin\ReviewController::class, 'saveSettings'])->name('settings.save');
-        });
-
-        // Live Sessions Routes
-        Route::resource('live-sessions', LiveSessionController::class);
-
-        // Zoom Settings Routes
-        Route::prefix('zoom')->name('zoom.')->group(function () {
-            Route::get('/settings', [\App\Http\Controllers\Admin\ZoomSettingsController::class, 'index'])->name('settings.index');
-            Route::put('/settings', [\App\Http\Controllers\Admin\ZoomSettingsController::class, 'update'])->name('settings.update');
-            
-            // Account Management
-            Route::post('/accounts', [\App\Http\Controllers\Admin\ZoomSettingsController::class, 'storeAccount'])->name('accounts.store');
-            Route::put('/accounts/{account}', [\App\Http\Controllers\Admin\ZoomSettingsController::class, 'updateAccount'])->name('accounts.update');
-            Route::delete('/accounts/{account}', [\App\Http\Controllers\Admin\ZoomSettingsController::class, 'deleteAccount'])->name('accounts.delete');
-            Route::post('/accounts/{account}/set-default', [\App\Http\Controllers\Admin\ZoomSettingsController::class, 'setDefault'])->name('accounts.set-default');
-        });
-
-        // Zoom Integration Routes
-        Route::prefix('live-sessions/{liveSession}/zoom')
-            ->name('live-sessions.zoom.')
-            ->group(function () {
-                Route::post('/create', [ZoomMeetingController::class, 'create'])
-                    ->name('create');
-                Route::post('/update', [ZoomMeetingController::class, 'update'])
-                    ->name('update');
-                Route::post('/cancel', [ZoomMeetingController::class, 'cancel'])
-                    ->name('cancel');
-                Route::get('/sync', [ZoomMeetingController::class, 'sync'])
-                    ->name('sync');
-                Route::get('/manage', [ZoomMeetingController::class, 'manage'])
-                    ->name('manage');
-            });
-
-        // Attendance management routes
-        Route::prefix('live-sessions/{liveSession}/attendance')
-            ->name('live-sessions.attendance.')
-            ->group(function () {
-                Route::get('/', [AttendanceController::class, 'index'])
-                    ->name('index');
-                Route::get('/users/{user}', [AttendanceController::class, 'show'])
-                    ->name('show');
-                Route::get('/export/{format}', [AttendanceController::class, 'export'])
-                    ->name('export');
-                Route::get('/stats', [AttendanceController::class, 'stats'])
-                    ->name('stats');
-            });
 
         // Email Settings Routes
         Route::prefix('email-settings')->name('email-settings.')->group(function () {

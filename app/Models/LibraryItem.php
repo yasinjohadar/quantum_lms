@@ -141,14 +141,6 @@ class LibraryItem extends Model
     }
 
     /**
-     * العلاقة مع الوسوم (many-to-many)
-     */
-    public function tags()
-    {
-        return $this->belongsToMany(LibraryTag::class, 'library_item_tags', 'library_item_id', 'tag_id');
-    }
-
-    /**
      * العلاقة مع المفضلة (many-to-many)
      */
     public function favorites()

@@ -4,13 +4,10 @@ namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
 use App\Services\StudentProgressService;
-use App\Services\AssignmentService;
 use App\Services\CalendarService;
 use App\Services\PointService;
 use App\Services\LevelService;
 use App\Services\BadgeService;
-use App\Models\QuizAttempt;
-use App\Models\Enrollment;
 use App\Models\UserBadge;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,7 +17,6 @@ class StudentController extends Controller
 {
     public function __construct(
         private StudentProgressService $progressService,
-        private AssignmentService $assignmentService,
         private CalendarService $calendarService,
         private PointService $pointService,
         private LevelService $levelService,
@@ -61,18 +57,12 @@ class StudentController extends Controller
             })
             ->take(4);
 
-        // الواجبات القادمة
-        $upcomingAssignments = $this->assignmentService->getStudentAssignments($user, [
-            'status' => 'upcoming',
-            'per_page' => 5,
-        ]);
-
-        // أحداث الأسبوع القادم (اختبارات + واجبات)
+        // أحداث الأسبوع القادم (اختبارات)
         $now = Carbon::now();
         $events = $this->calendarService->getEventsForUser($user, $now, $now->copy()->addWeek());
         $upcomingEvents = $events
             ->filter(function ($event) {
-                return in_array($event['type'] ?? $event['event_type'] ?? null, ['quiz', 'assignment']);
+                return ($event['type'] ?? $event['event_type'] ?? null) === 'quiz';
             })
             ->take(5);
 
@@ -83,18 +73,6 @@ class StudentController extends Controller
         $badgesCount = $user->badges()->count();
         $achievementsCount = $user->achievements()
             ->wherePivot('completed_at', '!=', null)
-            ->count();
-
-        // إحصائيات الاختبارات
-        $totalQuizAttempts = QuizAttempt::where('user_id', $user->id)->count();
-        $passedQuizAttempts = QuizAttempt::where('user_id', $user->id)->where('passed', true)->count();
-        $avgQuizScore = QuizAttempt::where('user_id', $user->id)
-            ->where('status', 'completed')
-            ->avg('percentage') ?? 0;
-        
-        // إجمالي الكورسات المسجلة
-        $totalEnrollments = Enrollment::where('user_id', $user->id)
-            ->where('status', 'active')
             ->count();
 
         // آخر الشارات (5 أحدث)
@@ -108,17 +86,12 @@ class StudentController extends Controller
             'user' => $user,
             'overallAverage' => round($overallAverage, 1),
             'topSubjects' => $topSubjects,
-            'upcomingAssignments' => $upcomingAssignments,
             'upcomingEvents' => $upcomingEvents,
             'totalPoints' => $totalPoints,
             'currentLevel' => $currentLevel,
             'levelProgress' => $levelProgress,
             'badgesCount' => $badgesCount,
             'achievementsCount' => $achievementsCount,
-            'totalQuizAttempts' => $totalQuizAttempts,
-            'passedQuizAttempts' => $passedQuizAttempts,
-            'avgQuizScore' => round($avgQuizScore, 1),
-            'totalEnrollments' => $totalEnrollments,
             'latestBadges' => $latestBadges,
         ]);
     }

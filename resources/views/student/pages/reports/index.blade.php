@@ -128,7 +128,6 @@
                     return $item['progress']['lessons_completed'] ?? 0;
                 });
                 $totalQuizzes = $quizzes['statistics']['total'] ?? 0;
-                $totalAssignments = $assignments['statistics']['total'] ?? 0;
                 $averageGrade = $grades['average'] ?? 0;
             @endphp
 
@@ -398,62 +397,6 @@
             </div>
         @endif
 
-        <!-- Recent Assignments -->
-        @if(count($assignments['list']) > 0)
-            <div class="card custom-card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-file-text me-2"></i>
-                        الواجبات الأخيرة
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>الواجب</th>
-                                    <th>المادة</th>
-                                    <th>الدرجة</th>
-                                    <th>الحالة</th>
-                                    <th>تاريخ التسليم</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach(array_slice($assignments['list'], 0, 10) as $assignment)
-                                    <tr>
-                                        <td>
-                                            <strong>{{ $assignment['assignment']->title ?? 'غير محدد' }}</strong>
-                                        </td>
-                                        <td>
-                                            {{ $assignment['subject']->name ?? 'غير محدد' }}
-                                        </td>
-                                        <td>
-                                            @if($assignment['grade'])
-                                                <strong>{{ $assignment['score'] ?? 0 }}/{{ $assignment['max_score'] ?? 0 }}</strong>
-                                            @else
-                                                <span class="text-muted">لم يتم التقييم</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if($assignment['status'] == 'submitted')
-                                                <span class="badge bg-info">تم التسليم</span>
-                                            @else
-                                                <span class="badge bg-warning">قيد الانتظار</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            {{ $assignment['submitted_at'] ? $assignment['submitted_at']->format('Y-m-d') : '-' }}
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        @endif
-
         <!-- Attendance (if available) -->
         @if(isset($attendance['total_sessions']) && $attendance['total_sessions'] > 0)
             <div class="card custom-card mb-4">
@@ -540,7 +483,7 @@
         @endif
 
         <!-- Empty State -->
-        @if($totalSubjects == 0 && count($quizzes['list']) == 0 && count($assignments['list']) == 0)
+        @if($totalSubjects == 0 && count($quizzes['list']) == 0)
             <div class="card custom-card">
                 <div class="card-body text-center py-5">
                     <i class="bi bi-file-text fs-1 text-muted mb-3 d-block"></i>

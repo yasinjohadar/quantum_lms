@@ -99,16 +99,6 @@
                                 </td>
                             </tr>
                             @endif
-                            @if($item->tags->count() > 0)
-                            <tr>
-                                <th>الوسوم</th>
-                                <td>
-                                    @foreach($item->tags as $tag)
-                                        <span class="badge bg-secondary me-1">{{ $tag->name }}</span>
-                                    @endforeach
-                                </td>
-                            </tr>
-                            @endif
                         </table>
                     </div>
                 </div>

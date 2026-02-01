@@ -7,11 +7,7 @@ use App\Http\Controllers\Student\StudentEnrollmentController;
 use App\Http\Controllers\Student\StudentQuestionController;
 use App\Http\Controllers\Student\StudentQuizController;
 use App\Http\Controllers\Student\StudentProgressController;
-use App\Http\Controllers\Student\StudentAssignmentController;
 use App\Http\Controllers\Student\NotificationPreferenceController as StudentNotificationPreferenceController;
-use App\Http\Controllers\Student\ZoomJoinController;
-use App\Http\Controllers\Student\AttendanceController;
-use App\Http\Controllers\Student\LiveSessionController;
 
 Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student.')->group(function () {
     // لوحة تحكم الطالب
@@ -28,14 +24,6 @@ Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student
     Route::get('/progress', [StudentProgressController::class, 'index'])->name('progress.index');
     Route::get('/progress/subject/{subject}', [StudentProgressController::class, 'showSubject'])->name('progress.subject');
     Route::get('/progress/section/{section}', [StudentProgressController::class, 'showSection'])->name('progress.section');
-    
-    // الواجبات
-    Route::get('/assignments', [StudentAssignmentController::class, 'index'])->name('assignments.index');
-    Route::get('/assignments/{assignment}', [StudentAssignmentController::class, 'show'])->name('assignments.show');
-    Route::post('/assignments/{assignment}/submit', [StudentAssignmentController::class, 'submit'])->name('assignments.submit');
-    Route::post('/assignments/{assignment}/resubmit', [StudentAssignmentController::class, 'resubmit'])->name('assignments.resubmit');
-    Route::get('/assignments/{assignment}/submission', [StudentAssignmentController::class, 'viewSubmission'])->name('assignments.submission');
-    Route::get('/assignments/{assignment}/submissions/{submission}/files/{fileId}/download', [StudentAssignmentController::class, 'downloadFile'])->name('assignments.files.download');
     
     // المكتبة الرقمية
     Route::get('/library', [\App\Http\Controllers\Student\StudentLibraryController::class, 'index'])->name('library.index');
@@ -146,8 +134,6 @@ Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student
         Route::get('/challenges', [\App\Http\Controllers\Student\GamificationController::class, 'challenges'])->name('challenges');
         Route::get('/rewards', [\App\Http\Controllers\Student\GamificationController::class, 'rewards'])->name('rewards');
         Route::post('/rewards/{reward}/claim', [\App\Http\Controllers\Student\GamificationController::class, 'claimReward'])->name('rewards.claim');
-        Route::get('/certificates', [\App\Http\Controllers\Student\GamificationController::class, 'certificates'])->name('certificates');
-        Route::get('/certificates/{certificate}/download', [\App\Http\Controllers\Student\GamificationController::class, 'downloadCertificate'])->name('certificates.download');
         Route::get('/stats', [\App\Http\Controllers\Student\GamificationController::class, 'stats'])->name('stats');
     });
     
@@ -168,51 +154,10 @@ Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student
         Route::get('/preferences', [StudentNotificationPreferenceController::class, 'index'])->name('preferences.index');
         Route::post('/preferences', [StudentNotificationPreferenceController::class, 'update'])->name('preferences.update');
     });
-    
-    // التقييمات
-    Route::prefix('reviews')->as('reviews.')->group(function () {
-        Route::get('/create', [\App\Http\Controllers\Student\ReviewController::class, 'create'])->name('create');
-        Route::post('/', [\App\Http\Controllers\Student\ReviewController::class, 'store'])->name('store');
-        Route::get('/{review}/edit', [\App\Http\Controllers\Student\ReviewController::class, 'edit'])->name('edit');
-        Route::put('/{review}', [\App\Http\Controllers\Student\ReviewController::class, 'update'])->name('update');
-        Route::delete('/{review}', [\App\Http\Controllers\Student\ReviewController::class, 'destroy'])->name('destroy');
-        Route::post('/{review}/helpful', [\App\Http\Controllers\Student\ReviewController::class, 'toggleHelpful'])->name('toggle-helpful');
-    });
+
     Route::post('/quizzes/attempt/{attempt}/answer', [StudentQuizController::class, 'saveAnswer'])->name('quizzes.save-answer');
     Route::post('/quizzes/attempt/{attempt}/submit', [StudentQuizController::class, 'submitQuiz'])->name('quizzes.submit');
     Route::get('/quizzes/{quiz}/attempt/{attempt}/result', [StudentQuizController::class, 'showResult'])->name('quizzes.result');
     Route::get('/quizzes/attempt/{attempt}/time', [StudentQuizController::class, 'getRemainingTime'])->name('quizzes.time');
 
-    // Live Sessions Routes
-    Route::get('/live-sessions', [LiveSessionController::class, 'index'])->name('live-sessions.index');
-    Route::get('/live-sessions/{liveSession}', [LiveSessionController::class, 'show'])->name('live-sessions.show');
-
-    // Zoom Integration Routes
-    Route::prefix('live-sessions/{liveSession}/zoom')
-        ->name('live-sessions.zoom.')
-        ->middleware(['throttle:10,1']) // 10 requests per minute
-        ->group(function () {
-            Route::post('/join-token', [ZoomJoinController::class, 'getJoinToken'])
-                ->name('join-token');
-            Route::get('/join', [ZoomJoinController::class, 'join'])
-                ->name('join');
-            Route::post('/on-join', [ZoomJoinController::class, 'onJoin'])
-                ->name('on-join');
-            Route::post('/on-leave', [ZoomJoinController::class, 'onLeave'])
-                ->name('on-leave');
-        });
-
-    // Attendance routes for students
-    Route::prefix('attendance')
-        ->name('attendance.')
-        ->group(function () {
-            Route::get('/', [AttendanceController::class, 'index'])
-                ->name('index');
-            Route::get('/sessions/{liveSession}', [AttendanceController::class, 'show'])
-                ->name('show');
-            Route::get('/stats', [AttendanceController::class, 'stats'])
-                ->name('stats');
-            Route::get('/stats/subject/{subject}', [AttendanceController::class, 'stats'])
-                ->name('stats.subject');
-        });
 });

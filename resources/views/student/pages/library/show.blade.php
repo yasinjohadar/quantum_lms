@@ -41,15 +41,6 @@
                             </div>
                         @endif
 
-                        @if($item->tags->count() > 0)
-                            <div class="mb-3">
-                                <strong>الوسوم:</strong>
-                                @foreach($item->tags as $tag)
-                                    <span class="badge bg-secondary me-1">{{ $tag->name }}</span>
-                                @endforeach
-                            </div>
-                        @endif
-
                         <div class="d-flex gap-2 mb-3">
                             @if($item->file_path)
                                 <form action="{{ route('student.library.download', $item->id) }}" method="POST" class="d-inline">

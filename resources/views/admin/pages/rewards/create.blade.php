@@ -43,7 +43,6 @@
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">النوع <span class="text-danger">*</span></label>
                                     <select name="type" class="form-select" required>
-                                        <option value="certificate" {{ old('type') == 'certificate' ? 'selected' : '' }}>شهادة</option>
                                         <option value="discount" {{ old('type') == 'discount' ? 'selected' : '' }}>خصم</option>
                                         <option value="badge" {{ old('type') == 'badge' ? 'selected' : '' }}>شارة</option>
                                         <option value="points" {{ old('type') == 'points' ? 'selected' : '' }}>نقاط</option>

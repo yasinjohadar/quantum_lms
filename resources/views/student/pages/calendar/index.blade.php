@@ -638,10 +638,6 @@
                     eventIcon = 'fa-clipboard-check';
                     eventTypeLabel = 'اختبار';
                     eventTypeClass = 'text-warning';
-                } else if (extendedProps.type === 'assignment') {
-                    eventIcon = 'fa-tasks';
-                    eventTypeLabel = 'واجب';
-                    eventTypeClass = 'text-danger';
                 } else if (extendedProps.event_type === 'meeting') {
                     eventIcon = 'fa-users';
                     eventTypeLabel = 'اجتماع';

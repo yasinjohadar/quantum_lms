@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\CalendarEvent;
 use App\Models\Quiz;
-use App\Models\Assignment;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -26,10 +25,6 @@ class CalendarService
         if ($user->hasRole('student')) {
             $quizEvents = $this->getQuizzesEvents($user, $startDate, $endDate);
             $events = $events->concat($quizEvents);
-
-            // أحداث الواجبات (للطلاب فقط)
-            $assignmentEvents = $this->getAssignmentsEvents($user, $startDate, $endDate);
-            $events = $events->concat($assignmentEvents);
         }
 
         return $events->sortBy('start')->values();
@@ -115,44 +110,6 @@ class CalendarService
                 'event_type' => 'quiz',
                 'event_id' => $quiz->id,
                 'url' => route('student.quizzes.show', $quiz->id),
-            ];
-        })->toArray();
-
-        return collect($events);
-    }
-
-    /**
-     * جمع أحداث الواجبات
-     */
-    public function getAssignmentsEvents(User $user, Carbon $startDate, Carbon $endDate): Collection
-    {
-        $assignments = Assignment::where('is_published', true)
-                                 ->whereNotNull('due_date')
-                                 ->whereBetween('due_date', [$startDate, $endDate])
-                                 ->whereHas('assignable', function($query) use ($user) {
-                                     // التحقق من أن الطالب مسجل في المادة/الوحدة/الدرس
-                                     if ($query->getModel() instanceof \App\Models\Subject) {
-                                         $query->whereHas('students', function($studentQuery) use ($user) {
-                                             $studentQuery->where('users.id', $user->id);
-                                         });
-                                     }
-                                 })
-                                 ->get();
-
-        $events = $assignments->map(function($assignment) {
-            return [
-                'id' => 'assignment_' . $assignment->id,
-                'title' => 'واجب: ' . $assignment->title,
-                'description' => $assignment->description ?? '',
-                'start' => $assignment->due_date->toIso8601String(),
-                'end' => $assignment->due_date->copy()->addHours(1)->toIso8601String(),
-                'allDay' => false,
-                'color' => '#ef4444',
-                'location' => '',
-                'type' => 'assignment',
-                'event_type' => 'assignment',
-                'event_id' => $assignment->id,
-                'url' => route('student.assignments.show', $assignment->id),
             ];
         })->toArray();
 

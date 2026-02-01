@@ -91,16 +91,6 @@ class User extends Authenticatable
     }
 
     /**
-     * العلاقة مع المجموعات
-     */
-    public function groups()
-    {
-        return $this->belongsToMany(Group::class, 'group_user')
-                    ->withPivot(['added_by', 'added_at', 'notes'])
-                    ->withTimestamps();
-    }
-
-    /**
      * العلاقة مع سجلات الدخول
      */
     public function loginLogs()
@@ -122,14 +112,6 @@ class User extends Authenticatable
     public function questionAttempts()
     {
         return $this->hasMany(QuestionAttempt::class);
-    }
-
-    /**
-     * العلاقة مع التقييمات
-     */
-    public function reviews()
-    {
-        return $this->hasMany(Review::class);
     }
 
     /**
@@ -207,11 +189,6 @@ class User extends Authenticatable
     public function userRewards()
     {
         return $this->hasMany(UserReward::class);
-    }
-
-    public function certificates()
-    {
-        return $this->hasMany(Certificate::class);
     }
 
     public function leaderboardEntries()

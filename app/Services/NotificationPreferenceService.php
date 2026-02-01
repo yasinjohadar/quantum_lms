@@ -94,13 +94,6 @@ class NotificationPreferenceService
                 'via_sms' => false,
                 'muted' => false,
             ],
-            'assignment' => [
-                'label' => 'الواجبات',
-                'via_database' => true,
-                'via_email' => true,
-                'via_sms' => false,
-                'muted' => false,
-            ],
             'quiz' => [
                 'label' => 'الاختبارات',
                 'via_database' => true,

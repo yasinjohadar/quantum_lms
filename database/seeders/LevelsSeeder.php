@@ -46,7 +46,7 @@ class LevelsSeeder extends Seeder
                 'points_required' => 1000,
                 'icon' => 'fe fe-trophy',
                 'color' => '#ffc107',
-                'benefits' => ['access_all_content', 'priority_support', 'exclusive_badges', 'certificate'],
+                'benefits' => ['access_all_content', 'priority_support', 'exclusive_badges'],
                 'order' => 4,
             ],
             [
@@ -55,7 +55,7 @@ class LevelsSeeder extends Seeder
                 'points_required' => 2500,
                 'icon' => 'fe fe-crown',
                 'color' => '#dc3545',
-                'benefits' => ['access_all_content', 'priority_support', 'exclusive_badges', 'certificate', 'mentor_access'],
+                'benefits' => ['access_all_content', 'priority_support', 'exclusive_badges', 'mentor_access'],
                 'order' => 5,
             ],
             [
@@ -64,7 +64,7 @@ class LevelsSeeder extends Seeder
                 'points_required' => 5000,
                 'icon' => 'fe fe-zap',
                 'color' => '#6f42c1',
-                'benefits' => ['access_all_content', 'priority_support', 'exclusive_badges', 'certificate', 'mentor_access', 'special_recognition'],
+                'benefits' => ['access_all_content', 'priority_support', 'exclusive_badges', 'mentor_access', 'special_recognition'],
                 'order' => 6,
             ],
             [
@@ -73,7 +73,7 @@ class LevelsSeeder extends Seeder
                 'points_required' => 10000,
                 'icon' => 'fe fe-shield',
                 'color' => '#e83e8c',
-                'benefits' => ['access_all_content', 'priority_support', 'exclusive_badges', 'certificate', 'mentor_access', 'special_recognition', 'admin_features'],
+                'benefits' => ['access_all_content', 'priority_support', 'exclusive_badges', 'mentor_access', 'special_recognition', 'admin_features'],
                 'order' => 7,
             ],
         ];

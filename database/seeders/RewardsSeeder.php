@@ -14,9 +14,9 @@ class RewardsSeeder extends Seeder
     {
         $rewards = [
             [
-                'name' => 'شهادة إكمال كورس',
-                'description' => 'شهادة PDF لإكمال كورس كامل',
-                'type' => 'certificate',
+                'name' => 'شارة إكمال كورس',
+                'description' => 'شارة لإكمال كورس كامل',
+                'type' => 'badge',
                 'points_cost' => 500,
                 'quantity_available' => null, // غير محدود
                 'is_active' => true,
@@ -54,9 +54,9 @@ class RewardsSeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'name' => 'شهادة تفوق',
-                'description' => 'شهادة PDF للتفوق في الكورس',
-                'type' => 'certificate',
+                'name' => 'شارة تفوق',
+                'description' => 'شارة للتفوق في الكورس',
+                'type' => 'badge',
                 'points_cost' => 600,
                 'quantity_available' => null,
                 'is_active' => true,

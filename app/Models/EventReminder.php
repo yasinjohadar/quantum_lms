@@ -34,7 +34,6 @@ class EventReminder extends Model
     public const EVENT_TYPES = [
         'calendar_event' => 'حدث تقويم',
         'quiz' => 'اختبار',
-        'assignment' => 'واجب',
     ];
 
     /**
@@ -53,7 +52,6 @@ class EventReminder extends Model
         return match($this->event_type) {
             'calendar_event' => CalendarEvent::find($this->event_id),
             'quiz' => Quiz::find($this->event_id),
-            'assignment' => Assignment::find($this->event_id),
             default => null,
         };
     }

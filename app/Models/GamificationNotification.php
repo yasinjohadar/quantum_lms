@@ -38,12 +38,6 @@ class GamificationNotification extends Model
         'leaderboard_update' => 'تحديث لوحة المتصدرين',
         'challenge_reminder' => 'تذكير بتحدي',
         'custom_notification' => 'إشعار مخصص',
-        'review_created' => 'إنشاء تقييم',
-        'review_approved' => 'موافقة على تقييم',
-        'review_rejected' => 'رفض تقييم',
-        'assignment_submitted' => 'إرسال واجب',
-        'assignment_graded' => 'تصحيح واجب',
-        'assignment_completed' => 'إكمال واجب',
         'event_reminder' => 'تذكير بحدث',
     ];
 

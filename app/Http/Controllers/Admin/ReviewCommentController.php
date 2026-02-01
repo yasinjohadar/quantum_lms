@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\ReviewComment;
 use App\Models\Lesson;
 use App\Models\Quiz;
-use App\Models\Assignment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -52,25 +51,6 @@ class ReviewCommentController extends Controller
                 $canAccess = $reviewable->subject->schoolClass
                     && $user->isAssignedToClassAsSupervisor($reviewable->subject->schoolClass->id)
                     || $user->isAssignedToSubjectAsSupervisor($reviewable->subject->id);
-                if (!$canAccess) {
-                    return response()->json(['error' => 'غير مصرح لك بإضافة ملاحظات على هذا العنصر'], 403);
-                }
-            } elseif ($reviewable instanceof Assignment) {
-                // التحقق من الواجب حسب assignable
-                $assignable = $reviewable->assignable;
-                if ($assignable instanceof \App\Models\Subject) {
-                    $canAccess = $user->isAssignedToClassAsSupervisor($assignable->class_id)
-                        || $user->isAssignedToSubjectAsSupervisor($assignable->id);
-                } else {
-                    // للـ Unit أو Lesson، التحقق من المادة
-                    $subject = $assignable->section->subject ?? $assignable->unit->section->subject ?? null;
-                    if ($subject) {
-                        $canAccess = $user->isAssignedToClassAsSupervisor($subject->class_id)
-                            || $user->isAssignedToSubjectAsSupervisor($subject->id);
-                    } else {
-                        $canAccess = false;
-                    }
-                }
                 if (!$canAccess) {
                     return response()->json(['error' => 'غير مصرح لك بإضافة ملاحظات على هذا العنصر'], 403);
                 }

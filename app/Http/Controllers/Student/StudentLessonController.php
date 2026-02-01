@@ -11,6 +11,7 @@ use App\Models\QuestionAttempt;
 use App\Models\QuizAttempt;
 use App\Models\SchoolClass;
 use App\Models\LessonCompletion;
+use App\Models\Purchase;
 use App\Services\GamificationService;
 use App\Services\AnalyticsService;
 use Illuminate\Http\Request;
@@ -65,27 +66,23 @@ class StudentLessonController extends Controller
         $classes = $classes->sortBy(function($item) {
             return $item['class']->order ?? 999;
         });
-        
-        return view('student.pages.lessons.classes', compact('classes'));
+
+        // مشتريات قيد المراجعة (لم يتم الموافقة عليها بعد)
+        $pendingPurchases = Purchase::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->with('purchasable')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('student.pages.lessons.classes', compact('classes', 'pendingPurchases'));
     }
     
     /**
-     * عرض قائمة المواد المسجل فيها الطالب
+     * قائمة المواد - إعادة توجيه إلى صفوفي (الصفوف والمواد تظهر ضمن صفوفي)
      */
     public function subjects()
     {
-        $user = Auth::user();
-        
-        // الحصول على المواد المسجل فيها الطالب
-        $subjects = $user->subjects()
-            ->with(['schoolClass.stage', 'enrollments' => function($query) use ($user) {
-                $query->where('user_id', $user->id);
-            }])
-            ->wherePivot('status', 'active')
-            ->orderBy('name')
-            ->get();
-        
-        return view('student.pages.lessons.subjects', compact('subjects'));
+        return redirect()->route('student.classes');
     }
     
     /**
@@ -103,32 +100,12 @@ class StudentLessonController extends Controller
             })
             ->findOrFail($subjectId);
         
-        // تحميل الأقسام مع الوحدات والدروس والاختبارات
+        // تحميل الأقسام مع الوحدات والدروس (الاختبارات تظهر في صفحة الدرس فقط)
         $sections = $subject->sections()
             ->with([
                 'units.lessons' => function($query) {
                     $query->where('is_active', true)
                           ->where('review_status', Lesson::REVIEW_STATUS_APPROVED)
-                          ->orderBy('order');
-                },
-                // اختبارات عامة للوحدة (المعتمدة من المشرف فقط تظهر للطالب)
-                'units.unitQuizzes' => function($query) {
-                    $query->where('is_published', true)
-                          ->where('review_status', Quiz::REVIEW_STATUS_APPROVED)
-                          ->withCount('questions')
-                          ->with(['attempts' => function($q) {
-                              $q->where('user_id', Auth::id());
-                          }])
-                          ->orderBy('order');
-                },
-                // تحميل اختبارات الدرس المعتمدة لكل درس
-                'units.lessons.quizzes' => function($query) {
-                    $query->where('is_published', true)
-                          ->where('review_status', Quiz::REVIEW_STATUS_APPROVED)
-                          ->withCount('questions')
-                          ->with(['attempts' => function($q) {
-                              $q->where('user_id', Auth::id());
-                          }])
                           ->orderBy('order');
                 },
                 'units.questions' => function($query) {
@@ -139,6 +116,20 @@ class StudentLessonController extends Controller
             ->where('is_active', true)
             ->orderBy('order')
             ->get();
+
+        // التوجيه المباشر إلى الدرس الأول إن وُجد (تخطي صفحة تفاصيل الدروس)
+        $firstLesson = null;
+        foreach ($sections as $section) {
+            foreach ($section->units as $unit) {
+                if ($unit->lessons->isNotEmpty()) {
+                    $firstLesson = $unit->lessons->first();
+                    break 2;
+                }
+            }
+        }
+        if ($firstLesson) {
+            return redirect()->route('student.lessons.show', $firstLesson->id);
+        }
         
         // #region agent log - Hypothesis A: Questions not loaded in eager loading
         $allUnits = $sections->flatMap(function($s) { return $s->units; });
@@ -213,20 +204,7 @@ class StudentLessonController extends Controller
         file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataC) . "\n", FILE_APPEND);
         // #endregion
         
-        // إحصائيات المادة
-        $stats = [
-            'total_sections' => $sections->count(),
-            'total_units' => $sections->sum(function($section) {
-                return $section->units->count();
-            }),
-            'total_lessons' => $sections->sum(function($section) {
-                return $section->units->sum(function($unit) {
-                    return $unit->lessons->count();
-                });
-            }),
-        ];
-        
-        return view('student.pages.lessons.subject-show', compact('subject', 'sections', 'stats'));
+        return view('student.pages.lessons.subject-show', compact('subject', 'sections'));
     }
     
     /**
@@ -261,31 +239,13 @@ class StudentLessonController extends Controller
             abort(403, 'هذا الدرس قيد المراجعة أو غير مفعّل ولا يمكن عرضه حالياً.');
         }
         
-        // تحميل جميع الأقسام والوحدات والدروس والاختبارات (للعرض في الأكورديون)
+        // تحميل جميع الأقسام والوحدات والدروس (للعرض في الأكورديون — الاختبارات تظهر في المحتوى الرئيسي فقط)
         $sections = $subject->sections()
             ->with([
                 'units.lessons' => function($query) {
                     $query->where('is_active', true)
                           ->orderBy('order');
                 },
-                // اختبارات عامة للوحدة
-                'units.unitQuizzes' => function($query) {
-                    $query->where('is_published', true)
-                          ->withCount('questions')
-                          ->with(['attempts' => function($q) {
-                              $q->where('user_id', Auth::id());
-                          }])
-                          ->orderBy('order');
-                },
-                // تحميل اختبارات الدرس المنشورة لكل درس
-                'units.lessons.quizzes' => function($query) {
-                    $query->where('is_published', true)
-                          ->withCount('questions')
-                          ->with(['attempts' => function($q) {
-                              $q->where('user_id', Auth::id());
-                          }])
-                          ->orderBy('order');
-                }
             ])
             ->where('is_active', true)
             ->orderBy('order')
@@ -393,7 +353,6 @@ class StudentLessonController extends Controller
         
         return view('student.pages.lessons.lesson-show', compact(
             'lesson',
-            'unitLessons',
             'previousLesson',
             'nextLesson',
             'subject',

@@ -91,9 +91,6 @@ class RoleSeeder extends Seeder
             'review-queue-list',
             'review-queue-lessons',
             'review-queue-quizzes',
-            'review-queue-assignments',
-            'assignment-approve-review',
-            'assignment-reject-review',
             
             // صلاحيات لوحة التحكم
             'dashboard-view',

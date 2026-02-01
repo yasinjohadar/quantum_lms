@@ -50,17 +50,6 @@
                             </a>
                         </li>
 
-                        <!-- موادي الدراسية -->
-                        <li class="slide {{ request()->is('student/subjects*') ? 'active' : '' }}">
-                            <a href="{{ route('student.subjects') }}" class="side-menu__item {{ request()->is('student/subjects*') ? 'active' : '' }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
-                                    <path d="M0 0h24v24H0z" fill="none"/>
-                                    <path d="M18 2H8a2 2 0 00-2 2v14a2 2 0 002 2h10l4-4V4a2 2 0 00-2-2zm0 13v3h-3a1 1 0 01-1-1v-2h4zm-6-4H8V9h4zm4-3H8V6h8z"/>
-                                </svg>
-                                <span class="side-menu__label">موادي الدراسية</span>
-                            </a>
-                        </li>
-
                         <!-- تقدمي الدراسي -->
                         <li class="slide {{ request()->is('student/progress*') ? 'active' : '' }}">
                             <a href="{{ route('student.progress.index') }}" class="side-menu__item {{ request()->is('student/progress*') ? 'active' : '' }}">
@@ -102,39 +91,6 @@
                                     <path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/>
                                 </svg>
                                 <span class="side-menu__label">نتائج الاختبارات</span>
-                            </a>
-                        </li>
-
-                        <!-- الواجبات -->
-                        <li class="slide {{ request()->is('student/assignments*') ? 'active' : '' }}">
-                            <a href="{{ route('student.assignments.index') }}" class="side-menu__item {{ request()->is('student/assignments*') ? 'active' : '' }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
-                                    <path d="M0 0h24v24H0z" fill="none"/>
-                                    <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
-                                </svg>
-                                <span class="side-menu__label">الواجبات</span>
-                            </a>
-                        </li>
-
-                        <!-- الجلسات الحية -->
-                        <li class="slide {{ request()->is('student/live-sessions*') ? 'active' : '' }}">
-                            <a href="{{ route('student.live-sessions.index') }}" class="side-menu__item {{ request()->is('student/live-sessions*') ? 'active' : '' }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
-                                    <path d="M0 0h24v24H0z" fill="none"/>
-                                    <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                                </svg>
-                                <span class="side-menu__label">الجلسات الحية</span>
-                            </a>
-                        </li>
-
-                        <!-- سجل الحضور -->
-                        <li class="slide {{ request()->is('student/attendance*') ? 'active' : '' }}">
-                            <a href="{{ route('student.attendance.index') }}" class="side-menu__item {{ request()->is('student/attendance*') ? 'active' : '' }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
-                                    <path d="M0 0h24v24H0z" fill="none"/>
-                                    <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
-                                </svg>
-                                <span class="side-menu__label">سجل الحضور</span>
                             </a>
                         </li>
 
@@ -200,18 +156,6 @@
                                             <path d="M20 7h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v3H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V9c0-1.11-.89-2-2-2zm-6 0h-4V4h4v3z"></path>
                                         </svg>
                                         <span class="side-menu__label">المكافآت</span>
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->is('student/gamification/certificates') ? 'active' : '' }}">
-                                    <a href="{{ route('student.gamification.certificates') }}" class="side-menu__item {{ request()->is('student/gamification/certificates') ? 'active' : '' }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                            <polyline points="14 2 14 8 20 8"></polyline>
-                                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                                            <polyline points="10 9 9 9 8 9"></polyline>
-                                        </svg>
-                                        <span class="side-menu__label">الشهادات</span>
                                     </a>
                                 </li>
                                 <li class="slide {{ request()->is('student/gamification/stats') ? 'active' : '' }}">
@@ -298,7 +242,7 @@
                             </a>
                         </li>
                         
-                        <!-- طلب الانضمام -->
+                        {{-- طلب الانضمام - مخفي حالياً
                         <li class="slide {{ request()->is('student/enrollments*') ? 'active' : '' }}">
                             <a href="{{ route('student.enrollments.index') }}" class="side-menu__item {{ request()->is('student/enrollments*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -308,19 +252,9 @@
                                 <span class="side-menu__label">طلب الانضمام</span>
                             </a>
                         </li>
+                        --}}
 
-                        <!-- المشتريات -->
-                        <li class="slide {{ request()->is('student/purchases*') ? 'active' : '' }}">
-                            <a href="{{ route('student.purchases.my-purchases') }}" class="side-menu__item {{ request()->is('student/purchases*') ? 'active' : '' }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
-                                    <path d="M0 0h24v24H0z" fill="none"/>
-                                    <path d="M7 18c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12L8.1 13h7.45c.75 0 1.41-.41 1.75-1.03L21.7 4H5.21l-.94-2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-                                </svg>
-                                <span class="side-menu__label">مشترياتي</span>
-                            </a>
-                        </li>
-
-                        <!-- المحفظة الإلكترونية -->
+                        {{-- المحفظة الإلكترونية - مخفية حالياً
                         <li class="slide {{ request()->is('student/wallet*') ? 'active' : '' }}">
                             <a href="{{ route('student.wallet.index') }}" class="side-menu__item {{ request()->is('student/wallet*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -330,6 +264,7 @@
                                 <span class="side-menu__label">المحفظة الإلكترونية</span>
                             </a>
                         </li>
+                        --}}
 
                         <!-- الملف الشخصي -->
                         <li class="slide {{ request()->is('student/profile') || request()->is('profile') ? 'active' : '' }}">

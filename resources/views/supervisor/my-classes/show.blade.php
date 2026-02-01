@@ -54,14 +54,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="card bg-warning text-white">
-                        <div class="card-body">
-                            <h6 class="text-white-50 mb-2">عدد الواجبات</h6>
-                            <h3 class="mb-0">{{ $stats['total_assignments'] }}</h3>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- معلومات الصف -->

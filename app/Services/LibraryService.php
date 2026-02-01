@@ -27,11 +27,6 @@ class LibraryService
 
         $item = LibraryItem::create($data);
 
-        // ربط الوسوم إذا كانت موجودة
-        if (isset($data['tags']) && is_array($data['tags'])) {
-            $item->tags()->sync($data['tags']);
-        }
-
         Log::info('Library item created successfully', ['item_id' => $item->id, 'uploader_id' => $uploader->id]);
 
         return $item;
@@ -48,11 +43,6 @@ class LibraryService
         }
 
         $item->update($data);
-
-        // تحديث الوسوم
-        if (isset($data['tags']) && is_array($data['tags'])) {
-            $item->tags()->sync($data['tags']);
-        }
 
         Log::info('Library item updated successfully', ['item_id' => $item->id]);
 
@@ -186,7 +176,7 @@ class LibraryService
      */
     public function getPublicItems(array $filters = [])
     {
-        $query = LibraryItem::with(['category', 'subject', 'uploader', 'tags'])
+        $query = LibraryItem::with(['category', 'subject', 'uploader'])
                            ->public()
                            ->where('access_level', 'public');
 
@@ -239,7 +229,7 @@ class LibraryService
             ->pluck('class_id')
             ->toArray();
 
-        $query = LibraryItem::with(['category', 'subject', 'schoolClass', 'uploader', 'tags'])
+        $query = LibraryItem::with(['category', 'subject', 'schoolClass', 'uploader'])
             ->where(function($q) use ($enrolledSubjectIds, $enrolledClassIds) {
                 // الكتب العامة (غير مرتبطة بمادة أو صف)
                 $q->where(function($subQ) {
@@ -309,7 +299,7 @@ class LibraryService
             ->pluck('class_id')
             ->toArray();
 
-        $query = LibraryItem::with(['category', 'subject', 'schoolClass', 'uploader', 'tags'])
+        $query = LibraryItem::with(['category', 'subject', 'schoolClass', 'uploader'])
             ->where(function($q) use ($searchQuery) {
                 $q->where('title', 'like', "%{$searchQuery}%")
                   ->orWhere('description', 'like', "%{$searchQuery}%");
@@ -367,7 +357,7 @@ class LibraryService
      */
     public function getSubjectItems(Subject $subject, ?User $user = null, array $filters = [])
     {
-        $query = LibraryItem::with(['category', 'uploader', 'tags'])
+        $query = LibraryItem::with(['category', 'uploader'])
                            ->where('subject_id', $subject->id);
 
         // التحقق من التسجيل إذا كان المستخدم موجوداً
@@ -412,7 +402,7 @@ class LibraryService
      */
     public function searchItems(string $query, array $filters = [])
     {
-        $searchQuery = LibraryItem::with(['category', 'subject', 'uploader', 'tags'])
+        $searchQuery = LibraryItem::with(['category', 'subject', 'uploader'])
                                  ->where(function($q) use ($query) {
                                      $q->where('title', 'like', "%{$query}%")
                                        ->orWhere('description', 'like', "%{$query}%");

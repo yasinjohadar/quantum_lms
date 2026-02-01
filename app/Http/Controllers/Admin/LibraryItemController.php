@@ -7,7 +7,6 @@ use App\Models\LibraryItem;
 use App\Models\LibraryCategory;
 use App\Models\Subject;
 use App\Models\SchoolClass;
-use App\Models\LibraryTag;
 use App\Services\LibraryService;
 use App\Services\LibraryStatsService;
 use App\Events\LibraryItemCreated;
@@ -110,9 +109,8 @@ class LibraryItemController extends Controller
         $categories = LibraryCategory::active()->ordered()->get();
         $classes = SchoolClass::active()->ordered()->get();
         $subjects = Subject::active()->ordered()->get();
-        $tags = LibraryTag::all();
 
-        return view('admin.pages.library.items.create', compact('categories', 'classes', 'subjects', 'tags'));
+        return view('admin.pages.library.items.create', compact('categories', 'classes', 'subjects'));
     }
 
     /**
@@ -133,8 +131,6 @@ class LibraryItemController extends Controller
             'is_featured' => 'nullable|boolean',
             'is_public' => 'nullable|boolean',
             'access_level' => 'required|in:public,enrolled,restricted',
-            'tags' => 'nullable|array',
-            'tags.*' => 'exists:library_tags,id',
         ], [
             'title.required' => 'العنوان مطلوب',
             'type.required' => 'نوع العنصر مطلوب',
@@ -240,9 +236,7 @@ class LibraryItemController extends Controller
             $subjects = $query->get();
         }
         
-        $tags = LibraryTag::all();
-
-        return view('admin.pages.library.items.edit', compact('item', 'categories', 'classes', 'subjects', 'tags'));
+        return view('admin.pages.library.items.edit', compact('item', 'categories', 'classes', 'subjects'));
     }
 
     /**
@@ -272,8 +266,6 @@ class LibraryItemController extends Controller
             'is_featured' => 'nullable|boolean',
             'is_public' => 'nullable|boolean',
             'access_level' => 'required|in:public,enrolled,restricted',
-            'tags' => 'nullable|array',
-            'tags.*' => 'exists:library_tags,id',
         ], [
             'title.required' => 'العنوان مطلوب',
             'type.required' => 'نوع العنصر مطلوب',

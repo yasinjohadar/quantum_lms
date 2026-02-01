@@ -43,7 +43,6 @@ class SystemSetting extends Model
         'notifications' => 'الإشعارات',
         'export' => 'التصدير',
         'gamification' => 'التحفيز',
-        'zoom' => 'Zoom',
         'ai' => 'الذكاء الاصطناعي',
         'email' => 'البريد الإلكتروني',
         'sms' => 'SMS',

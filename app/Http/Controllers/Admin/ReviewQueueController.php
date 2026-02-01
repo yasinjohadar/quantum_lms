@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Lesson;
 use App\Models\Quiz;
-use App\Models\Assignment;
 use App\Models\Subject;
 use App\Models\SchoolClass;
 use Illuminate\Http\Request;
@@ -17,7 +16,6 @@ class ReviewQueueController extends Controller
         $this->middleware(['permission:review-queue-list'])->only('index');
         $this->middleware(['permission:review-queue-lessons'])->only('lessons');
         $this->middleware(['permission:review-queue-quizzes'])->only('quizzes');
-        $this->middleware(['permission:review-queue-assignments'])->only('assignments');
     }
 
     /**
@@ -31,13 +29,11 @@ class ReviewQueueController extends Controller
         // إحصائيات
         $lessonsQuery = Lesson::with(['unit.section.subject.schoolClass.stage', 'unit.section.subject.assignedTeachers', 'reviewer', 'reviewComments']);
         $quizzesQuery = Quiz::with(['subject.schoolClass.stage', 'creator', 'reviewer', 'reviewComments']);
-        $assignmentsQuery = Assignment::with(['assignable', 'creator', 'reviewer', 'reviewComments']);
 
         // فلترة للمشرف
         if ($isSupervisor) {
             $lessonsQuery->forSupervisor($user->id);
             $quizzesQuery->forSupervisor($user->id);
-            $assignmentsQuery->forSupervisor($user->id);
         }
 
         $stats = [
@@ -51,11 +47,6 @@ class ReviewQueueController extends Controller
                 'approved' => (clone $quizzesQuery)->approved()->count(),
                 'rejected' => (clone $quizzesQuery)->rejected()->count(),
             ],
-            'assignments' => [
-                'pending' => (clone $assignmentsQuery)->pendingReview()->count(),
-                'approved' => (clone $assignmentsQuery)->approved()->count(),
-                'rejected' => (clone $assignmentsQuery)->rejected()->count(),
-            ],
         ];
 
         // فلترة حسب البحث
@@ -63,7 +54,6 @@ class ReviewQueueController extends Controller
             $search = $request->input('search');
             $lessonsQuery->where('title', 'like', "%{$search}%");
             $quizzesQuery->where('title', 'like', "%{$search}%");
-            $assignmentsQuery->where('title', 'like', "%{$search}%");
         }
 
         // فلترة حسب حالة المراجعة
@@ -71,7 +61,6 @@ class ReviewQueueController extends Controller
             $status = $request->input('review_status');
             $lessonsQuery->where('review_status', $status);
             $quizzesQuery->where('review_status', $status);
-            $assignmentsQuery->where('review_status', $status);
         }
 
         // فلترة حسب الصف
@@ -83,9 +72,6 @@ class ReviewQueueController extends Controller
             $quizzesQuery->whereHas('subject', function($q) use ($classId) {
                 $q->where('class_id', $classId);
             });
-            $assignmentsQuery->whereHasMorph('assignable', [Subject::class], function($q) use ($classId) {
-                $q->where('class_id', $classId);
-            });
         }
 
         // فلترة حسب المادة
@@ -95,15 +81,11 @@ class ReviewQueueController extends Controller
                 $q->where('id', $subjectId);
             });
             $quizzesQuery->where('subject_id', $subjectId);
-            $assignmentsQuery->whereHasMorph('assignable', [Subject::class], function($q) use ($subjectId) {
-                $q->where('id', $subjectId);
-            });
         }
 
         // جلب البيانات
         $lessons = $lessonsQuery->pendingReview()->orderBy('submitted_for_review_at', 'desc')->paginate(10, ['*'], 'lessons_page');
         $quizzes = $quizzesQuery->pendingReview()->orderBy('submitted_for_review_at', 'desc')->paginate(10, ['*'], 'quizzes_page');
-        $assignments = $assignmentsQuery->pendingReview()->orderBy('submitted_for_review_at', 'desc')->paginate(10, ['*'], 'assignments_page');
 
         // البيانات للفلترة
         $classes = SchoolClass::with('stage')->active()->ordered()->get();
@@ -112,7 +94,6 @@ class ReviewQueueController extends Controller
         return view('admin.pages.review-queue.index', compact(
             'lessons',
             'quizzes',
-            'assignments',
             'stats',
             'classes',
             'subjects'
@@ -217,56 +198,5 @@ class ReviewQueueController extends Controller
         $subjects = Subject::with('schoolClass.stage')->active()->ordered()->get();
 
         return view('admin.pages.review-queue.quizzes', compact('quizzes', 'classes', 'subjects'));
-    }
-
-    /**
-     * عرض الواجبات قيد المراجعة فقط
-     */
-    public function assignments(Request $request)
-    {
-        $user = auth()->user();
-        $isSupervisor = $user->hasRole('supervisor') && !$user->hasRole('admin');
-
-        $query = Assignment::with(['assignable', 'creator', 'reviewer', 'reviewComments']);
-
-        // فلترة للمشرف
-        if ($isSupervisor) {
-            $query->forSupervisor($user->id);
-        }
-
-        // فلترة حسب البحث
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where('title', 'like', "%{$search}%");
-        }
-
-        // فلترة حسب حالة المراجعة
-        if ($request->filled('review_status')) {
-            $query->where('review_status', $request->input('review_status'));
-        } else {
-            $query->pendingReview();
-        }
-
-        // فلترة حسب الصف
-        if ($request->filled('class_id')) {
-            $query->whereHasMorph('assignable', [Subject::class], function($q) use ($request) {
-                $q->where('class_id', $request->input('class_id'));
-            });
-        }
-
-        // فلترة حسب المادة
-        if ($request->filled('subject_id')) {
-            $query->whereHasMorph('assignable', [Subject::class], function($q) use ($request) {
-                $q->where('id', $request->input('subject_id'));
-            });
-        }
-
-        $assignments = $query->orderBy('submitted_for_review_at', 'desc')->paginate(20);
-
-        // البيانات للفلترة
-        $classes = SchoolClass::with('stage')->active()->ordered()->get();
-        $subjects = Subject::with('schoolClass.stage')->active()->ordered()->get();
-
-        return view('admin.pages.review-queue.assignments', compact('assignments', 'classes', 'subjects'));
     }
 }

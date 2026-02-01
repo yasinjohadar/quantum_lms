@@ -33,7 +33,7 @@ class RewardController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'type' => 'required|string|in:certificate,discount,badge,points,access',
+            'type' => 'required|string|in:discount,badge,points,access',
             'points_cost' => 'required|integer|min:0',
             'quantity_available' => 'nullable|integer|min:0',
             'is_active' => 'nullable|boolean',
@@ -62,7 +62,7 @@ class RewardController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'type' => 'required|string|in:certificate,discount,badge,points,access',
+            'type' => 'required|string|in:discount,badge,points,access',
             'points_cost' => 'required|integer|min:0',
             'quantity_available' => 'nullable|integer|min:0',
             'is_active' => 'nullable|boolean',

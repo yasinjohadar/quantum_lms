@@ -17,7 +17,6 @@ class GamificationSeeder extends Seeder
             LevelsSeeder::class,
             ChallengesSeeder::class,
             RewardsSeeder::class,
-            CertificateTemplatesSeeder::class,
         ]);
     }
 }

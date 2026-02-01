@@ -149,7 +149,7 @@ class ReportBuilderService
 
             // جمع بيانات إضافية
             $quizzes = $this->getStudentQuizzes($userId);
-            $assignments = $this->getStudentAssignments($userId);
+            $assignments = ['list' => [], 'statistics' => ['total' => 0, 'submitted' => 0, 'graded' => 0, 'pending' => 0, 'average_score' => 0]];
             $grades = $this->getStudentGrades($userId);
             $attendance = $this->getStudentAttendance($userId);
 
@@ -238,68 +238,20 @@ class ReportBuilderService
     }
 
     /**
-     * الحصول على جميع الواجبات مع الحالة للطالب
+     * الحصول على جميع الواجبات مع الحالة للطالب (معطّل - تم إزالة نظام الواجبات)
      */
     public function getStudentAssignments($userId)
     {
-        try {
-            $submissions = \App\Models\AssignmentSubmission::where('user_id', $userId)
-                ->with(['assignment' => function($query) {
-                    $query->with(['subject', 'unit.section.subject']);
-                }, 'grade'])
-                ->orderBy('submitted_at', 'desc')
-                ->get();
-
-            $assignments = [];
-            foreach ($submissions as $submission) {
-                if ($submission->assignment) {
-                    $assignments[] = [
-                        'assignment' => $submission->assignment,
-                        'submission' => $submission,
-                        'grade' => $submission->grade,
-                        'status' => $submission->status,
-                        'submitted_at' => $submission->submitted_at,
-                        'graded_at' => $submission->grade ? $submission->grade->graded_at : null,
-                        'score' => $submission->grade ? $submission->grade->score : null,
-                        'max_score' => $submission->grade ? $submission->grade->max_score : $submission->assignment->total_points,
-                        'subject' => $submission->assignment->subject ?? $submission->assignment->unit->section->subject ?? null,
-                    ];
-                }
-            }
-
-            // إحصائيات الواجبات
-            $totalAssignments = count($assignments);
-            $submittedAssignments = collect($assignments)->where('status', 'submitted')->count();
-            $gradedAssignments = collect($assignments)->whereNotNull('grade')->count();
-            $averageScore = $gradedAssignments > 0 
-                ? collect($assignments)->whereNotNull('grade')->avg(function($item) {
-                    return $item['max_score'] > 0 ? ($item['score'] / $item['max_score']) * 100 : 0;
-                }) 
-                : 0;
-
-            return [
-                'list' => $assignments,
-                'statistics' => [
-                    'total' => $totalAssignments,
-                    'submitted' => $submittedAssignments,
-                    'graded' => $gradedAssignments,
-                    'pending' => $totalAssignments - $submittedAssignments,
-                    'average_score' => round($averageScore, 2),
-                ],
-            ];
-        } catch (\Exception $e) {
-            \Log::error('Error getting student assignments: ' . $e->getMessage());
-            return [
-                'list' => [],
-                'statistics' => [
-                    'total' => 0,
-                    'submitted' => 0,
-                    'graded' => 0,
-                    'pending' => 0,
-                    'average_score' => 0,
-                ],
-            ];
-        }
+        return [
+            'list' => [],
+            'statistics' => [
+                'total' => 0,
+                'submitted' => 0,
+                'graded' => 0,
+                'pending' => 0,
+                'average_score' => 0,
+            ],
+        ];
     }
 
     /**
@@ -309,7 +261,6 @@ class ReportBuilderService
     {
         try {
             $quizzes = $this->getStudentQuizzes($userId);
-            $assignments = $this->getStudentAssignments($userId);
 
             $allScores = [];
             
@@ -317,14 +268,6 @@ class ReportBuilderService
             foreach ($quizzes['list'] as $quiz) {
                 if ($quiz['percentage'] !== null) {
                     $allScores[] = $quiz['percentage'];
-                }
-            }
-
-            // إضافة درجات الواجبات
-            foreach ($assignments['list'] as $assignment) {
-                if ($assignment['grade'] && $assignment['max_score'] > 0) {
-                    $percentage = ($assignment['score'] / $assignment['max_score']) * 100;
-                    $allScores[] = $percentage;
                 }
             }
 

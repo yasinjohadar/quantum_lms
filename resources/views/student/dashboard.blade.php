@@ -11,7 +11,7 @@
             <!-- Page Header -->
             <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
                 <div>
-                    <h4 class="mb-2" style="font-size: 1.5rem;">
+                    <h4 class="mb-0" style="font-size: 1.5rem;">
                         <span class="text-primary">مرحباً</span>
                         <span class="fw-bold" style="
                             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -23,135 +23,8 @@
                             margin: 0 5px;
                         ">{{ Auth::user()->name }}</span>
                         <span class="text-primary">! 👋</span>
+                        <span class="text-muted fs-13 ms-2 align-middle" style="font-weight: normal;">{{ now()->translatedFormat('l، d F Y') }}</span>
                     </h4>
-                    <div class="mt-3">
-                        <div class="d-inline-block position-relative" style="
-                            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-                            border-left: 4px solid #667eea;
-                            padding: 12px 20px;
-                            border-radius: 8px;
-                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                            transform: perspective(1000px) rotateY(-2deg);
-                            transition: all 0.3s ease;
-                        " onmouseover="this.style.transform='perspective(1000px) rotateY(0deg) scale(1.02)'" 
-                           onmouseout="this.style.transform='perspective(1000px) rotateY(-2deg) scale(1)'">
-                            <div class="d-flex align-items-center">
-                                <div class="me-3" style="
-                                    width: 40px;
-                                    height: 40px;
-                                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                                    border-radius: 50%;
-                                    display: flex;
-                                    align-items: center;
-                                    justify-content: center;
-                                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
-                                ">
-                                    <i class="fe fe-calendar text-white" style="font-size: 18px;"></i>
-                                </div>
-                                <div>
-                                    <div class="fw-bold text-dark mb-1" style="font-size: 0.95rem; letter-spacing: 0.5px;">
-                                        {{ now()->translatedFormat('l') }}
-                                    </div>
-                                    <div class="text-muted" style="font-size: 0.85rem;">
-                                        <span class="fw-semibold">{{ now()->translatedFormat('d') }}</span>
-                                        <span class="mx-1">{{ now()->translatedFormat('F') }}</span>
-                                        <span class="fw-semibold">{{ now()->translatedFormat('Y') }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- خطوط ورقية -->
-                            <div style="
-                                position: absolute;
-                                top: 0;
-                                left: 0;
-                                right: 0;
-                                bottom: 0;
-                                background-image: repeating-linear-gradient(
-                                    transparent,
-                                    transparent 2px,
-                                    rgba(102, 126, 234, 0.03) 2px,
-                                    rgba(102, 126, 234, 0.03) 4px
-                                );
-                                pointer-events: none;
-                                border-radius: 8px;
-                            "></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Statistics Cards -->
-            <div class="row mb-4">
-                <!-- إجمالي المحاولات -->
-                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
-                    <div class="card overflow-hidden sales-card bg-danger-gradient h-100">
-                        <div class="px-3 pt-3 pb-2 pt-0">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div>
-                                    <h6 class="mb-2 fs-12 text-fixed-white">إجمالي المحاولات</h6>
-                                    <h3 class="mb-1 text-fixed-white">{{ number_format($totalQuizAttempts ?? 0) }}</h3>
-                                    <p class="mb-0 fs-11 text-fixed-white op-7">جميع محاولات الاختبارات</p>
-                                </div>
-                                <div class="ms-auto">
-                                    <i class="fe fe-file-text fs-32 text-fixed-white op-5"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- اختبارات ناجحة -->
-                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
-                    <div class="card overflow-hidden sales-card bg-warning-gradient h-100">
-                        <div class="px-3 pt-3 pb-2 pt-0">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div>
-                                    <h6 class="mb-2 fs-12 text-fixed-white">اختبارات ناجحة</h6>
-                                    <h3 class="mb-1 text-fixed-white">{{ number_format($passedQuizAttempts ?? 0) }}</h3>
-                                    <p class="mb-0 fs-11 text-fixed-white op-7">اختبارات تم النجاح فيها</p>
-                                </div>
-                                <div class="ms-auto">
-                                    <i class="fe fe-award fs-32 text-fixed-white op-5"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- متوسط درجات الاختبارات -->
-                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
-                    <div class="card overflow-hidden sales-card bg-info-gradient h-100">
-                        <div class="px-3 pt-3 pb-2 pt-0">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div>
-                                    <h6 class="mb-2 fs-12 text-fixed-white">متوسط درجات الاختبارات</h6>
-                                    <h3 class="mb-1 text-fixed-white">{{ number_format($avgQuizScore ?? 0, 1) }}%</h3>
-                                    <p class="mb-0 fs-11 text-fixed-white op-7">متوسط أدائك في الاختبارات</p>
-                                </div>
-                                <div class="ms-auto">
-                                    <i class="fe fe-graduation-cap fs-32 text-fixed-white op-5"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- إجمالي الكورسات المسجلة -->
-                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
-                    <div class="card overflow-hidden sales-card bg-primary-gradient h-100">
-                        <div class="px-3 pt-3 pb-2 pt-0">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div>
-                                    <h6 class="mb-2 fs-12 text-fixed-white">إجمالي الكورسات المسجلة</h6>
-                                    <h3 class="mb-1 text-fixed-white">{{ number_format($totalEnrollments ?? 0) }}</h3>
-                                    <p class="mb-0 fs-11 text-fixed-white op-7">المواد الدراسية المسجلة</p>
-                                </div>
-                                <div class="ms-auto">
-                                    <i class="fe fe-book-open fs-32 text-fixed-white op-5"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -162,13 +35,13 @@
                     <p class="text-muted fs-12 mb-0">الوصول السريع لأقسام النظام</p>
                 </div>
                 <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mb-3">
-                    <a href="{{ route('student.subjects') }}" class="card text-center h-100 text-decoration-none">
+                    <a href="{{ route('student.classes') }}" class="card text-center h-100 text-decoration-none">
                         <div class="card-body">
                             <div class="fs-32 mb-2 text-primary">
-                                <i class="fe fe-book"></i>
+                                <i class="fe fe-layers"></i>
                             </div>
-                            <h6 class="mb-1">كورساتي</h6>
-                            <p class="text-muted fs-12 mb-0">عرض جميع المواد والدروس</p>
+                            <h6 class="mb-1">صفوفي</h6>
+                            <p class="text-muted fs-12 mb-0">الصفوف المشترك فيها والمواد</p>
                         </div>
                     </a>
                 </div>
@@ -228,17 +101,6 @@
                     </a>
                 </div>
                 <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mb-3">
-                    <a href="{{ route('student.assignments.index') }}" class="card text-center h-100 text-decoration-none">
-                        <div class="card-body">
-                            <div class="fs-32 mb-2 text-primary">
-                                <i class="fe fe-clipboard"></i>
-                            </div>
-                            <h6 class="mb-1">الواجبات</h6>
-                            <p class="text-muted fs-12 mb-0">إدارة وتقديم الواجبات</p>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mb-3">
                     <a href="{{ route('student.library.index') }}" class="card text-center h-100 text-decoration-none">
                         <div class="card-body">
                             <div class="fs-32 mb-2 text-info">
@@ -283,17 +145,6 @@
                     </a>
                 </div>
                 <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mb-3">
-                    <a href="{{ route('student.gamification.certificates') }}" class="card text-center h-100 text-decoration-none">
-                        <div class="card-body">
-                            <div class="fs-32 mb-2 text-info">
-                                <i class="fe fe-file-text"></i>
-                            </div>
-                            <h6 class="mb-1">الشهادات</h6>
-                            <p class="text-muted fs-12 mb-0">عرض وتحميل الشهادات</p>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mb-3">
                     <a href="{{ route('student.tasks.index') }}" class="card text-center h-100 text-decoration-none">
                         <div class="card-body">
                             <div class="fs-32 mb-2 text-success">
@@ -319,7 +170,7 @@
                                 </h4>
                                 <p class="fs-12 text-muted mb-0">موادك الدراسية والتقدم فيها</p>
                             </div>
-                            <a href="{{ route('student.subjects') }}" class="btn btn-sm btn-primary">
+                            <a href="{{ route('student.classes') }}" class="btn btn-sm btn-primary">
                                 عرض الكل
                             </a>
                         </div>
@@ -334,9 +185,9 @@
                                     </div>
                                     <h5 class="mb-2">لا توجد كورسات قيد التقدم</h5>
                                     <p class="text-muted mb-3">ابدأ رحلتك التعليمية الآن؟</p>
-                                    <a href="{{ route('student.subjects') }}" class="btn btn-primary">
+                                    <a href="{{ route('student.classes') }}" class="btn btn-primary">
                                         <i class="fe fe-search me-1"></i>
-                                        تصفح الكورسات
+                                        تصفح الصفوف والمواد
                                     </a>
                                 </div>
                             @else
@@ -463,15 +314,6 @@
                             </h4>
                         </div>
                         <div class="card-body">
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="fs-13 text-muted">الواجبات المسلمة</span>
-                                    <span class="fw-bold">{{ count($upcomingAssignments ?? []) }}/{{ count($upcomingAssignments ?? []) }}</span>
-                                </div>
-                                <div class="progress progress-sm">
-                                    <div class="progress-bar bg-success" style="width: 100%;" role="progressbar"></div>
-                                </div>
-                            </div>
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <span class="fs-13 text-muted">متوسط التقدم</span>

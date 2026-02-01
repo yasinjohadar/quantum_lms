@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Subject;
 use App\Models\SchoolClass;
-use App\Models\Group;
 use App\Models\User;
 use App\Services\GamificationNotificationService;
 use Illuminate\Http\Request;
@@ -36,12 +35,7 @@ class NotificationController extends Controller
             ->orderBy('order')
             ->get();
 
-        // جلب المجموعات النشطة
-        $groups = Group::where('is_active', true)
-            ->orderBy('name')
-            ->get();
-
-        return view('admin.pages.notifications.create', compact('subjects', 'classes', 'groups'));
+        return view('admin.pages.notifications.create', compact('subjects', 'classes'));
     }
 
     /**
@@ -52,10 +46,9 @@ class NotificationController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'message' => 'required|string|max:1000',
-            'target_type' => 'required|in:subject,class,group,individual',
+            'target_type' => 'required|in:subject,class,individual',
             'subject_id' => 'nullable|required_if:target_type,subject|exists:subjects,id',
             'class_id' => 'nullable|required_if:target_type,class|exists:classes,id',
-            'group_id' => 'nullable|required_if:target_type,group|exists:groups,id',
             'user_ids' => 'nullable|required_if:target_type,individual|array',
             'user_ids.*' => 'exists:users,id',
         ]);
@@ -80,7 +73,7 @@ class NotificationController extends Controller
                 [
                     'sent_by' => Auth::id(),
                     'target_type' => $validated['target_type'],
-                    'target_id' => $validated['subject_id'] ?? $validated['class_id'] ?? $validated['group_id'] ?? null,
+                    'target_id' => $validated['subject_id'] ?? $validated['class_id'] ?? null,
                 ]
             );
 
@@ -132,40 +125,6 @@ class NotificationController extends Controller
                 ->toArray();
                 break;
 
-            case 'group':
-                // جلب جميع الطلاب في المجموعة
-                $group = Group::findOrFail($validated['group_id']);
-                
-                // طلاب مباشرين في المجموعة
-                $directUsers = $group->users()->where('is_active', true)->pluck('users.id')->toArray();
-                
-                // طلاب من خلال الصفوف
-                $classUsers = User::whereHas('subjects', function($query) use ($group) {
-                    $classIds = $group->classes()->pluck('classes.id')->toArray();
-                    if (!empty($classIds)) {
-                        $query->whereIn('subjects.class_id', $classIds)
-                            ->where('enrollments.status', 'active');
-                    }
-                })
-                ->where('is_active', true)
-                ->pluck('id')
-                ->toArray();
-                
-                // طلاب من خلال المواد
-                $subjectUsers = User::whereHas('subjects', function($query) use ($group) {
-                    $subjectIds = $group->subjects()->pluck('subjects.id')->toArray();
-                    if (!empty($subjectIds)) {
-                        $query->whereIn('subjects.id', $subjectIds)
-                            ->where('enrollments.status', 'active');
-                    }
-                })
-                ->where('is_active', true)
-                ->pluck('id')
-                ->toArray();
-                
-                $userIds = array_unique(array_merge($directUsers, $classUsers, $subjectUsers));
-                break;
-
             case 'individual':
                 $userIds = $validated['user_ids'] ?? [];
                 break;
@@ -180,7 +139,7 @@ class NotificationController extends Controller
     public function getTargetUsers(Request $request)
     {
         $request->validate([
-            'target_type' => 'required|in:subject,class,group',
+            'target_type' => 'required|in:subject,class',
             'target_id' => 'required|integer',
         ]);
 
@@ -188,7 +147,6 @@ class NotificationController extends Controller
             'target_type' => $request->target_type,
             'subject_id' => $request->target_type === 'subject' ? $request->target_id : null,
             'class_id' => $request->target_type === 'class' ? $request->target_id : null,
-            'group_id' => $request->target_type === 'group' ? $request->target_id : null,
         ]);
 
         $users = User::whereIn('id', $userIds)

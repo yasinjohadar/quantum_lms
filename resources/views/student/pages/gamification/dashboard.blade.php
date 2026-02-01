@@ -349,14 +349,6 @@
                                 </a>
                             </div>
                             <div class="col-md-3 col-sm-6">
-                                <a href="{{ route('student.gamification.certificates') }}" class="card border text-center text-decoration-none h-100">
-                                    <div class="card-body">
-                                        <i class="bi bi-file-earmark-pdf fs-2 text-info mb-2 d-block"></i>
-                                        <h6 class="mb-0">الشهادات</h6>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="col-md-3 col-sm-6">
                                 <a href="{{ route('student.tasks.index') }}" class="card border text-center text-decoration-none h-100">
                                     <div class="card-body">
                                         <i class="bi bi-check2-square fs-2 text-success mb-2 d-block"></i>

@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.redirect) {
                     window.location.href = data.redirect;
                 } else {
-                    window.location.href = '{{ route("student.purchases.my-purchases") }}';
+                    window.location.href = '{{ route("student.classes") }}';
                 }
             } else {
                 alert(data.message || 'حدث خطأ أثناء معالجة الدفع');

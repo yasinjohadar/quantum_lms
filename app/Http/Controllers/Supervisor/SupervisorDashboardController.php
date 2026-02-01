@@ -81,9 +81,6 @@ class SupervisorDashboardController extends Controller
             'total_quizzes' => \App\Models\Quiz::whereHas('subject', function($q) use ($class) {
                 $q->where('class_id', $class->id);
             })->count(),
-            'total_assignments' => \App\Models\Assignment::whereHasMorph('assignable', [Subject::class], function($q) use ($class) {
-                $q->where('class_id', $class->id);
-            })->count(),
         ];
 
         return view('supervisor.my-classes.show', compact('class', 'subjects', 'enrolledStudents', 'stats'));
@@ -151,11 +148,6 @@ class SupervisorDashboardController extends Controller
             ->latest()
             ->paginate(10);
         
-        // جلب الواجبات
-        $assignments = \App\Models\Assignment::whereHasMorph('assignable', [Subject::class], function($q) use ($subject) {
-            $q->where('id', $subject->id);
-        })->latest()->paginate(10);
-        
         // إحصائيات
         $stats = [
             'total_sections' => $sections->count(),
@@ -171,9 +163,8 @@ class SupervisorDashboardController extends Controller
                 ->where('status', 'active')
                 ->count(),
             'total_quizzes' => $quizzes->total(),
-            'total_assignments' => $assignments->total(),
         ];
 
-        return view('supervisor.my-subjects.show', compact('subject', 'sections', 'enrolledStudents', 'quizzes', 'assignments', 'stats'));
+        return view('supervisor.my-subjects.show', compact('subject', 'sections', 'enrolledStudents', 'quizzes', 'stats'));
     }
 }

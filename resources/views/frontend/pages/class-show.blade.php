@@ -150,7 +150,7 @@
                                 </div>
                             </div>
                         @endif
-                        <a href="{{ route('student.purchases.my-purchases') }}" class="btn btn-warning pending-purchase-btn">
+                        <a href="{{ route('student.classes') }}" class="btn btn-warning pending-purchase-btn">
                             <i class="fa-solid fa-list me-2"></i>
                             عرض طلباتي
                         </a>

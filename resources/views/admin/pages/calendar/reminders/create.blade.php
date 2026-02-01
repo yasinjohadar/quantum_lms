@@ -49,7 +49,7 @@
                             <div class="mb-3">
                                 <label for="event_id" class="form-label">معرف الحدث <span class="text-danger">*</span></label>
                                 <input type="number" class="form-control" id="event_id" name="event_id" value="{{ old('event_id') }}" required>
-                                <small class="text-muted">أدخل ID الحدث (من جدول calendar_events أو quizzes أو assignments)</small>
+                                <small class="text-muted">أدخل ID الحدث (من جدول calendar_events أو quizzes)</small>
                             </div>
 
                             <div class="mb-3">

@@ -206,7 +206,7 @@ class PurchaseController extends Controller
                 ->first();
             
             if ($existingPurchase) {
-                return redirect()->route('student.purchases.my-purchases')
+                return redirect()->route('student.classes')
                     ->with('info', 'لقد قمت بشراء هذا العنصر مسبقاً');
             }
             
@@ -226,7 +226,7 @@ class PurchaseController extends Controller
         }
 
         if ($purchase->status === 'completed') {
-            return redirect()->route('student.purchases.my-purchases')
+            return redirect()->route('student.classes')
                 ->with('info', 'تم إكمال هذا الشراء مسبقاً');
         }
 
@@ -330,7 +330,7 @@ class PurchaseController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => $message,
-                'redirect' => route('student.purchases.my-purchases'),
+                'redirect' => route('student.classes'),
             ]);
 
         } catch (\Exception $e) {
@@ -379,16 +379,10 @@ class PurchaseController extends Controller
     }
 
     /**
-     * مشترياتي
+     * مشترياتي - إعادة توجيه إلى صفوفي (المشتريات قيد المراجعة تظهر ضمن صفوفي)
      */
     public function myPurchases()
     {
-        $user = Auth::user();
-        $purchases = Purchase::where('user_id', $user->id)
-            ->with(['purchasable', 'payment'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
-
-        return view('student.pages.purchases.index', compact('purchases'));
+        return redirect()->route('student.classes');
     }
 }

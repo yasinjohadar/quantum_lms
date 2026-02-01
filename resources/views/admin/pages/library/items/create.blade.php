@@ -168,15 +168,6 @@
                             </div>
                         </div>
                         <div class="col-12">
-                            <h6 class="text-primary mb-3">الوسوم (اختياري)</h6>
-                            <select name="tags[]" class="form-select" multiple>
-                                @foreach($tags as $tag)
-                                    <option value="{{ $tag->id }}" {{ in_array($tag->id, old('tags', [])) ? 'selected' : '' }}>{{ $tag->name }}</option>
-                                @endforeach
-                            </select>
-                            <small class="form-text text-muted">اضغط Ctrl (أو Cmd على Mac) لتحديد عدة وسوم</small>
-                        </div>
-                        <div class="col-12">
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-save me-1"></i> حفظ
                             </button>

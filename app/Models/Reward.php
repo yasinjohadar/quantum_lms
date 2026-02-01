@@ -35,7 +35,6 @@ class Reward extends Model
      * أنواع المكافآت
      */
     public const TYPES = [
-        'certificate' => 'شهادة',
         'discount' => 'خصم',
         'badge' => 'شارة',
         'points' => 'نقاط',

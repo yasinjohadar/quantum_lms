@@ -44,7 +44,6 @@
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">النوع <span class="text-danger">*</span></label>
                                     <select name="type" class="form-select" required>
-                                        <option value="certificate" {{ old('type', $reward->type) == 'certificate' ? 'selected' : '' }}>شهادة</option>
                                         <option value="discount" {{ old('type', $reward->type) == 'discount' ? 'selected' : '' }}>خصم</option>
                                         <option value="badge" {{ old('type', $reward->type) == 'badge' ? 'selected' : '' }}>شارة</option>
                                         <option value="points" {{ old('type', $reward->type) == 'points' ? 'selected' : '' }}>نقاط</option>

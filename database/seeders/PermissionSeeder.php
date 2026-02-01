@@ -130,10 +130,6 @@ class PermissionSeeder extends Seeder
             ['name' => 'review-queue-list', 'description' => 'عرض قائمة المراجعة'],
             ['name' => 'review-queue-lessons', 'description' => 'عرض الدروس قيد المراجعة'],
             ['name' => 'review-queue-quizzes', 'description' => 'عرض الاختبارات قيد المراجعة'],
-            ['name' => 'review-queue-assignments', 'description' => 'عرض الواجبات قيد المراجعة'],
-            ['name' => 'assignment-approve-review', 'description' => 'الموافقة على نشر الواجب'],
-            ['name' => 'assignment-reject-review', 'description' => 'رفض نشر الواجب'],
-            ['name' => 'assignment-submit-for-review', 'description' => 'إرسال الواجب للمراجعة'],
 
             // صلاحيات ملاحظات المراجعة
             ['name' => 'review-comment-create', 'description' => 'إنشاء ملاحظة مراجعة'],
@@ -172,17 +168,6 @@ class PermissionSeeder extends Seeder
             ['name' => 'enrollment-reject-class', 'description' => 'رفض طلب انضمام للصف'],
             ['name' => 'enrollment-approve-multiple-class', 'description' => 'قبول عدة طلبات صف دفعة واحدة'],
             ['name' => 'enrollment-reject-multiple-class', 'description' => 'رفض عدة طلبات صف دفعة واحدة'],
-
-            // صلاحيات إدارة الواجبات
-            ['name' => 'assignment-list', 'description' => 'عرض قائمة الواجبات'],
-            ['name' => 'assignment-create', 'description' => 'إنشاء واجب جديد'],
-            ['name' => 'assignment-edit', 'description' => 'تعديل الواجب'],
-            ['name' => 'assignment-delete', 'description' => 'حذف الواجب'],
-            ['name' => 'assignment-show', 'description' => 'عرض تفاصيل الواجب'],
-            ['name' => 'assignment-publish', 'description' => 'نشر الواجب'],
-            ['name' => 'assignment-unpublish', 'description' => 'إلغاء نشر الواجب'],
-            ['name' => 'assignment-duplicate', 'description' => 'نسخ الواجب'],
-            ['name' => 'assignment-get-assignable-items', 'description' => 'الحصول على العناصر القابلة للتعيين'],
 
             // صلاحيات إدارة المدفوعات
             ['name' => 'payment-list', 'description' => 'عرض قائمة المدفوعات'],
@@ -242,30 +227,6 @@ class PermissionSeeder extends Seeder
             ['name' => 'calendar-edit', 'description' => 'تعديل الحدث'],
             ['name' => 'calendar-delete', 'description' => 'حذف الحدث'],
             ['name' => 'calendar-get-events', 'description' => 'الحصول على الأحداث'],
-
-            // صلاحيات إدارة الحضور
-            ['name' => 'attendance-list', 'description' => 'عرض قائمة الحضور'],
-            ['name' => 'attendance-show', 'description' => 'عرض تفاصيل الحضور'],
-            ['name' => 'attendance-export', 'description' => 'تصدير بيانات الحضور'],
-            ['name' => 'attendance-stats', 'description' => 'عرض إحصائيات الحضور'],
-
-            // صلاحيات إدارة الجلسات الحية
-            ['name' => 'live-session-list', 'description' => 'عرض قائمة الجلسات الحية'],
-            ['name' => 'live-session-create', 'description' => 'إنشاء جلسة حية جديدة'],
-            ['name' => 'live-session-edit', 'description' => 'تعديل الجلسة الحية'],
-            ['name' => 'live-session-delete', 'description' => 'حذف الجلسة الحية'],
-            ['name' => 'live-session-show', 'description' => 'عرض تفاصيل الجلسة الحية'],
-
-            // صلاحيات إدارة Zoom
-            ['name' => 'zoom-settings-list', 'description' => 'عرض إعدادات Zoom'],
-            ['name' => 'zoom-settings-update', 'description' => 'تحديث إعدادات Zoom'],
-            ['name' => 'zoom-settings-update-account', 'description' => 'تحديث حساب Zoom'],
-            ['name' => 'zoom-settings-store-account', 'description' => 'حفظ حساب Zoom'],
-            ['name' => 'zoom-meeting-list', 'description' => 'عرض قائمة اجتماعات Zoom'],
-            ['name' => 'zoom-meeting-create', 'description' => 'إنشاء اجتماع Zoom'],
-            ['name' => 'zoom-meeting-edit', 'description' => 'تعديل اجتماع Zoom'],
-            ['name' => 'zoom-meeting-delete', 'description' => 'حذف اجتماع Zoom'],
-            ['name' => 'zoom-meeting-cancel', 'description' => 'إلغاء اجتماع Zoom'],
 
             // صلاحيات إدارة WhatsApp
             ['name' => 'whats-app-settings-list', 'description' => 'عرض إعدادات WhatsApp'],
@@ -387,18 +348,6 @@ class PermissionSeeder extends Seeder
             ['name' => 'student-progress-show-student-subject', 'description' => 'عرض تقدم طالب في مادة'],
             ['name' => 'student-progress-get-subjects-by-class', 'description' => 'الحصول على المواد حسب الصف'],
 
-            // صلاحيات إدارة التقييمات
-            ['name' => 'review-list', 'description' => 'عرض قائمة التقييمات'],
-            ['name' => 'review-create', 'description' => 'إنشاء تقييم جديد'],
-            ['name' => 'review-edit', 'description' => 'تعديل التقييم'],
-            ['name' => 'review-delete', 'description' => 'حذف التقييم'],
-
-            // صلاحيات إدارة المجموعات
-            ['name' => 'group-list', 'description' => 'عرض قائمة المجموعات'],
-            ['name' => 'group-create', 'description' => 'إنشاء مجموعة جديدة'],
-            ['name' => 'group-edit', 'description' => 'تعديل المجموعة'],
-            ['name' => 'group-delete', 'description' => 'حذف المجموعة'],
-
             // صلاحيات إدارة المهام الأسبوعية
             ['name' => 'weekly-task-list', 'description' => 'عرض قائمة المهام الأسبوعية'],
             ['name' => 'weekly-task-create', 'description' => 'إنشاء مهمة أسبوعية جديدة'],
@@ -416,12 +365,6 @@ class PermissionSeeder extends Seeder
             ['name' => 'reminder-create', 'description' => 'إنشاء تذكير جديد'],
             ['name' => 'reminder-edit', 'description' => 'تعديل التذكير'],
             ['name' => 'reminder-delete', 'description' => 'حذف التذكير'],
-
-            // صلاحيات إدارة الشهادات
-            ['name' => 'certificate-list', 'description' => 'عرض قائمة الشهادات'],
-            ['name' => 'certificate-create', 'description' => 'إنشاء شهادة جديدة'],
-            ['name' => 'certificate-edit', 'description' => 'تعديل الشهادة'],
-            ['name' => 'certificate-delete', 'description' => 'حذف الشهادة'],
 
             // صلاحيات إدارة تخصيصات المعلمين
             ['name' => 'teacher-assignment-list', 'description' => 'عرض قائمة تخصيصات المعلمين'],

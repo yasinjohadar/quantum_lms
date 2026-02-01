@@ -71,9 +71,6 @@
                                     <option value="class">
                                         صف معين
                                     </option>
-                                    <option value="group">
-                                        مجموعة
-                                    </option>
                                     <option value="individual">
                                         طلاب محددين
                                     </option>
@@ -112,23 +109,6 @@
                                     @endforeach
                                 </select>
                                 <div class="form-text" id="class-info"></div>
-                            </div>
-
-                            <!-- Group Selection -->
-                            <div class="mb-4" id="group-selection" style="display: none;">
-                                <label class="form-label">اختر المجموعة <span class="text-danger">*</span></label>
-                                <select class="form-select" name="group_id" id="group_id" onchange="loadTargetStats(); updatePreview();">
-                                    <option value="">-- اختر المجموعة --</option>
-                                    @foreach($groups as $group)
-                                        <option value="{{ $group->id }}">
-                                            {{ $group->name }}
-                                            @if($group->description)
-                                                - {{ Str::limit($group->description, 50) }}
-                                            @endif
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <div class="form-text" id="group-info"></div>
                             </div>
 
                             <!-- Individual Users Selection -->
@@ -214,10 +194,6 @@
                                 <i class="fe fe-users text-info me-2"></i>
                                 <strong>صف معين:</strong> سيتم إرسال الإشعار لجميع الطلاب المسجلين في مواد الصف
                             </li>
-                            <li class="mb-2">
-                                <i class="fe fe-layers text-success me-2"></i>
-                                <strong>مجموعة:</strong> سيتم إرسال الإشعار لجميع الطلاب في المجموعة
-                            </li>
                             <li>
                                 <i class="fe fe-user text-warning me-2"></i>
                                 <strong>طلاب محددين:</strong> يمكنك اختيار طلاب محددين يدوياً
@@ -239,19 +215,16 @@ function handleTargetTypeChange() {
     // Get all selection divs
     var subjectDiv = document.getElementById('subject-selection');
     var classDiv = document.getElementById('class-selection');
-    var groupDiv = document.getElementById('group-selection');
     var individualDiv = document.getElementById('individual-selection');
     
     // Hide all selection divs
     if (subjectDiv) subjectDiv.style.display = 'none';
     if (classDiv) classDiv.style.display = 'none';
-    if (groupDiv) groupDiv.style.display = 'none';
     if (individualDiv) individualDiv.style.display = 'none';
     
     // Reset all select values
     document.getElementById('subject_id').value = '';
     document.getElementById('class_id').value = '';
-    document.getElementById('group_id').value = '';
     
     var userSelect = document.getElementById('user_ids');
     for (var i = 0; i < userSelect.options.length; i++) {
@@ -263,8 +236,6 @@ function handleTargetTypeChange() {
         if (subjectDiv) subjectDiv.style.display = 'block';
     } else if (targetType === 'class') {
         if (classDiv) classDiv.style.display = 'block';
-    } else if (targetType === 'group') {
-        if (groupDiv) groupDiv.style.display = 'block';
     } else if (targetType === 'individual') {
         if (individualDiv) individualDiv.style.display = 'block';
         loadAllUsers();
@@ -318,8 +289,6 @@ function getTargetId() {
         return document.getElementById('subject_id').value;
     } else if (targetType === 'class') {
         return document.getElementById('class_id').value;
-    } else if (targetType === 'group') {
-        return document.getElementById('group_id').value;
     }
     return null;
 }
@@ -359,11 +328,6 @@ function updatePreview() {
         var classSelect = document.getElementById('class_id');
         if (classSelect.selectedIndex > 0) {
             targetText = classSelect.options[classSelect.selectedIndex].text;
-        }
-    } else if (targetType === 'group') {
-        var groupSelect = document.getElementById('group_id');
-        if (groupSelect.selectedIndex > 0) {
-            targetText = groupSelect.options[groupSelect.selectedIndex].text;
         }
     } else if (targetType === 'individual') {
         var userSelect = document.getElementById('user_ids');
