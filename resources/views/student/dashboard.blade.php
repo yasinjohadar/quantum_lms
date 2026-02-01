@@ -28,12 +28,8 @@
                 </div>
             </div>
 
-            <!-- Quick Links -->
+            <!-- Quick Links (without title) -->
             <div class="row mb-4">
-                <div class="col-12 mb-3">
-                    <h5 class="mb-0">روابط سريعة</h5>
-                    <p class="text-muted fs-12 mb-0">الوصول السريع لأقسام النظام</p>
-                </div>
                 <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mb-3">
                     <a href="{{ route('student.classes') }}" class="card text-center h-100 text-decoration-none">
                         <div class="card-body">

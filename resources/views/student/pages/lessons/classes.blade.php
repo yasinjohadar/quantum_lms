@@ -67,7 +67,13 @@
                             <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-3">
                                 <div class="card custom-card h-100">
                                     @if($subject->image)
-                                        <img src="{{ asset('storage/' . $subject->image) }}" class="card-img-top" alt="{{ $subject->name }}" style="height: 150px; object-fit: cover;">
+                                        <div class="card-img-top position-relative overflow-hidden" style="height: 150px;">
+                                            <div class="bg-primary-gradient d-flex align-items-center justify-content-center position-absolute top-0 start-0 w-100 h-100" id="subject-img-fallback-{{ $subject->id }}" style="display: none;">
+                                                <i class="bi bi-book text-white" style="font-size: 3rem;"></i>
+                                            </div>
+                                            <img src="{{ asset('storage/' . $subject->image) }}" class="position-relative w-100 h-100" style="object-fit: cover;" alt="{{ $subject->name }}"
+                                                 onerror="this.style.display='none'; document.getElementById('subject-img-fallback-{{ $subject->id }}').style.display='flex';">
+                                        </div>
                                     @else
                                         <div class="card-img-top bg-primary-gradient d-flex align-items-center justify-content-center" style="height: 150px;">
                                             <i class="bi bi-book text-white" style="font-size: 3rem;"></i>
