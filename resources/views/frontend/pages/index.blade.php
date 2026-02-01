@@ -87,33 +87,7 @@
                                 @if($class['stage'])
                                     <span class="class-badge">{{ $class['stage']->name }}</span>
                                 @endif
-                                
-                                <!-- Students Oval -->
-                                <div class="students-oval">
-                                    @if($class['enrolled_students_count'] > 0 && count($class['enrolled_students']) > 0)
-                                        <div class="students-avatars">
-                                            @foreach($class['enrolled_students'] as $student)
-                                                <div class="student-avatar">
-                                                    @if($student['avatar'])
-                                                        <img src="{{ asset('storage/' . $student['avatar']) }}" alt="{{ $student['name'] }}">
-                                                    @else
-                                                        <div class="avatar-placeholder">
-                                                            {{ strtoupper(mb_substr($student['name'], 0, 1)) }}
-            </div>
-                                                    @endif
-                </div>
-                                            @endforeach
-                </div>
-                                    @endif
-                                    <span class="students-count">
-                                        @if($class['enrolled_students_count'] > 0)
-                                            + {{ $class['enrolled_students_count'] }} طالب
-                                        @else
-                                            0 طالب
-                                        @endif
-                                    </span>
-                </div>
-            </div>
+                            </div>
                             <div class="class-card-body">
                                 <h3 class="class-card-title">{{ $class['name'] }}</h3>
                                 
