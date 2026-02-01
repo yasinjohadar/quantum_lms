@@ -82,6 +82,22 @@ class SchoolClass extends Model
     }
 
     /**
+     * العلاقة مع خصائص الصف (حتى 10).
+     */
+    public function features()
+    {
+        return $this->hasMany(ClassFeature::class, 'class_id')->orderBy('order');
+    }
+
+    /**
+     * العلاقة مع آراء المنصة المرتبطة بهذا الصف
+     */
+    public function platformReviews()
+    {
+        return $this->hasMany(PlatformReview::class, 'class_id');
+    }
+
+    /**
      * نطاق الصفوف النشطة فقط.
      */
     public function scopeActive($query)

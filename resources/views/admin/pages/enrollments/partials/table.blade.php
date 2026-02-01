@@ -3,21 +3,25 @@
         <td>{{ $enrollment->id }}</td>
         <td>
             <div class="d-flex align-items-center gap-2">
-                @if($enrollment->user->photo)
-                    <img src="{{ asset('storage/' . $enrollment->user->photo) }}" 
-                         alt="{{ $enrollment->user->name }}" 
-                         class="rounded-circle" 
-                         style="width: 40px; height: 40px; object-fit: cover;">
-                @else
-                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
-                         style="width: 40px; height: 40px;">
-                        {{ substr($enrollment->user->name, 0, 1) }}
+                @if($enrollment->user)
+                    @if($enrollment->user->photo)
+                        <img src="{{ asset('storage/' . $enrollment->user->photo) }}" 
+                             alt="{{ $enrollment->user->name }}" 
+                             class="rounded-circle" 
+                             style="width: 40px; height: 40px; object-fit: cover;">
+                    @else
+                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                             style="width: 40px; height: 40px;">
+                            {{ substr($enrollment->user->name, 0, 1) }}
+                        </div>
+                    @endif
+                    <div>
+                        <div class="fw-semibold">{{ $enrollment->user->name }}</div>
+                        <small class="text-muted">{{ $enrollment->user->email }}</small>
                     </div>
+                @else
+                    <span class="text-muted">—</span>
                 @endif
-                <div>
-                    <div class="fw-semibold">{{ $enrollment->user->name }}</div>
-                    <small class="text-muted">{{ $enrollment->user->email }}</small>
-                </div>
             </div>
         </td>
         <td>
@@ -102,7 +106,7 @@
                     </div>
                     <h6 class="mb-3">هل أنت متأكد من إلغاء هذا الانضمام؟</h6>
                     <p class="text-muted mb-3">
-                        سيتم إلغاء انضمام الطالب <strong>{{ $enrollment->user->name }}</strong> 
+                        سيتم إلغاء انضمام الطالب <strong>{{ $enrollment->user?->name ?? '—' }}</strong> 
                         @if($enrollment->subject)
                             لمادة <strong>{{ $enrollment->subject->name }}</strong>
                         @else

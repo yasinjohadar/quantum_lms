@@ -1,7 +1,7 @@
 @extends('admin.layouts.master')
 
 @section('page-title')
-    قائمة المستخدمون
+    كافة الطلاب
 @stop
 
 
@@ -17,7 +17,7 @@
             <!-- Page Header -->
             <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
                 <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">كافة المستخدمين</h5>
+                    <h5 class="page-title fs-21 mb-1">كافة الطلاب</h5>
 
                 </div>
             </div>
@@ -79,7 +79,7 @@
                                         class="d-flex align-items-center gap-2">
                                         {{-- حقل البحث --}}
                                         <input style="width: 300px" type="text" name="query" class="form-control"
-                                            placeholder="بحث بالاسم أو الإيميل أو الهاتف" value="{{ request('query') }}">
+                                            placeholder="بحث بالاسم أو الهاتف" value="{{ request('query') }}">
 
                                         {{-- فلتر الحالة النشطة --}}
                                         <select name="is_active" class="form-select">
@@ -120,22 +120,14 @@
                                                 </th>
                                                 <th scope="col" style="width: 40px;">#</th>
                                                 <th scope="col" style="min-width: 150px;">اسم المستخدم</th>
-                                                <th scope="col" style="min-width: 200px;">البريد</th>
                                                 <th scope="col" style="min-width: 120px;">الهاتف</th>
-                                                <th scope="col" style="min-width: 130px;">اخر دخول</th>
-                                                <th scope="col" style="min-width: 150px;">الأدوار</th>
                                                 <th scope="col" style="min-width: 140px;">حالة الحساب</th>
-                                                <th scope="col" style="min-width: 120px;">حالة الاتصال</th>
                                                 <th scope="col" style="min-width: 200px;">العمليات</th>
                                             </tr>
                                         </thead>
                                         <tbody>
 
                                             @forelse ($users as $user)
-                                                @php
-                                                    $userSessions = $sessions->get($user->id);
-                                                    $lastSession = $userSessions ? $userSessions->first() : null;
-                                                @endphp
                                                 <tr>
                                                     <td>
                                                         @if(!$user->is_archived)
@@ -151,26 +143,6 @@
                                                                 {{ $user->name }}
                                                             </a>
                                                         </div>
-                                                    </td>
-
-                                                    <td>
-                                                        @if ($user->email)
-                                                            <div class="d-flex align-items-center gap-2">
-                                                                <a href="mailto:{{ $user->email }}"
-                                                                    class="text-primary text-decoration-none"
-                                                                    title="إرسال بريد إلكتروني">
-                                                                    {{ $user->email }}
-                                                                </a>
-                                                                <button type="button" 
-                                                                        class="btn btn-sm btn-outline-secondary copy-btn p-1" 
-                                                                        data-copy-text="{{ $user->email }}"
-                                                                        title="نسخ الإيميل">
-                                                                    <i class="fas fa-copy"></i>
-                                                                </button>
-                                                            </div>
-                                                        @else
-                                                            -
-                                                        @endif
                                                     </td>
 
                                                     <td>
@@ -196,20 +168,6 @@
                                                     </td>
 
                                                     <td>
-                                                        @if ($lastSession)
-                                                            {{ \Carbon\Carbon::createFromTimestamp($lastSession->last_activity)->diffForHumans() }}
-                                                        @else
-                                                            لا توجد جلسات
-                                                        @endif
-                                                    </td>
-
-                                                    <td>
-                                                        @foreach ($user->getRoleNames() as $role)
-                                                            <span class="badge bg-primary me-1">{{ $role }}</span>
-                                                        @endforeach
-                                                    </td>
-
-                                                    <td>
                                                         <button type="button"
                                                                 class="btn btn-sm d-inline-flex align-items-center {{ $user->is_active ? 'btn-success' : 'btn-outline-danger' }}"
                                                                 data-bs-toggle="modal"
@@ -222,23 +180,6 @@
                                                                 <span>الحساب معطل</span>
                                                             @endif
                                                         </button>
-                                                    </td>
-
-                                                    <td>
-                                                        @php
-                                                            // اعتبر المستخدم متصلًا إذا كانت لديه جلسة حالية وآخر نشاط خلال آخر 15 دقيقة
-                                                            $isConnected = false;
-                                                            if ($lastSession) {
-                                                                $lastActivity = \Carbon\Carbon::createFromTimestamp($lastSession->last_activity);
-                                                                $isConnected = ($lastSession->is_current ?? true) && $lastActivity->gt(now()->subMinutes(15));
-                                                            }
-                                                        @endphp
-
-                                                        @if ($isConnected)
-                                                            <span class="badge bg-success">متصل الآن</span>
-                                                        @else
-                                                            <span class="badge bg-secondary">غير متصل</span>
-                                                        @endif
                                                     </td>
 
                                                     <td>

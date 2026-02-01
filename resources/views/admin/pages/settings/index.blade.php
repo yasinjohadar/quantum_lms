@@ -69,6 +69,8 @@
                                                     <small class="text-muted d-block mt-1">استخدم <code>{code}</code> للرمز و <code>{expires_in}</code> لوقت الصلاحية بالدقائق</small>
                                                 @elseif($setting->key === 'otp_provider')
                                                     <i class="fas fa-paper-plane me-2 text-success"></i>مزود إرسال كود التحقق
+                                                @elseif($setting->key === 'platform_reviews_display_limit')
+                                                    <i class="fas fa-star me-2 text-warning"></i>عدد آراء الطلاب المعروضة في السلايدر (الصفحة الرئيسية)
                                                 @else
                                                     {{ $setting->key }}
                                                 @endif

@@ -18,6 +18,13 @@
                 @if($class->description)
                     <p class="class-header-description">{{ $class->description }}</p>
                 @endif
+                @if($class->features->isNotEmpty())
+                    <ul class="class-features-list list-unstyled d-flex flex-wrap gap-2 justify-content-center mt-3 mb-0">
+                        @foreach($class->features as $feature)
+                            <li class="class-feature-badge"><i class="fa-solid fa-check me-1"></i>{{ $feature->label }}</li>
+                        @endforeach
+                    </ul>
+                @endif
             </div>
         </div>
     </div>

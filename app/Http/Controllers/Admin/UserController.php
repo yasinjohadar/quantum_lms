@@ -9,7 +9,6 @@ use App\Models\SystemSetting;
 use App\Services\SMS\OTPService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Spatie\Permission\Models\Role;
 use App\Http\Controllers\Controller;
@@ -68,23 +67,8 @@ public function index(Request $request)
     {
         $roles = Role::all();
 
-        // جلب آخر جلسات المستخدمين
-        $sessions = DB::table('sessions')
-            ->orderByDesc('last_activity')
-            ->get()
-            ->groupBy('user_id');
-
-        // بدء استعلام المستخدمين (استبعاد المؤرشفين)
-        $usersQuery = User::query()->notArchived();
-
-        // فلترة حسب الدور (إذا كان role=teacher أو role=supervisor)
-        if ($request->filled('role')) {
-            if ($request->input('role') === 'teacher') {
-                $usersQuery->teachers();
-            } elseif ($request->input('role') === 'supervisor') {
-                $usersQuery->supervisors();
-            }
-        }
+        // بدء استعلام المستخدمين — الطلاب فقط (غير المؤرشفين)
+        $usersQuery = User::query()->students();
 
         // فلترة حسب البحث (name, email, phone)
         if ($request->filled('query')) {
@@ -104,7 +88,7 @@ public function index(Request $request)
         // تنفيذ الاستعلام
         $users = $usersQuery->paginate(10);
 
-        return view("admin.pages.users.index", compact("users", "roles", "sessions"));
+        return view("admin.pages.users.index", compact("users", "roles"));
     }
 
 

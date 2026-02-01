@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\QuizController;
 use App\Http\Controllers\Admin\QuizAttemptController;
 use App\Http\Controllers\Admin\EnrollmentController;
 use App\Http\Controllers\Admin\LoginLogController;
+use App\Http\Controllers\Admin\PlatformReviewController;
 use App\Http\Controllers\Admin\UserSessionController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Api\SessionActivityController;
@@ -31,6 +32,13 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::resource('classes', ClassController::class);
         Route::get('classes/{class}/enrolled-students', [ClassController::class, 'enrolledStudents'])
             ->name('classes.enrolled-students');
+
+        // آراء الطلاب (المنصة)
+        Route::get('platform-reviews', [PlatformReviewController::class, 'index'])->name('platform-reviews.index');
+        Route::get('platform-reviews/{platform_review}/edit', [PlatformReviewController::class, 'edit'])->name('platform-reviews.edit');
+        Route::put('platform-reviews/{platform_review}', [PlatformReviewController::class, 'update'])->name('platform-reviews.update');
+        Route::post('platform-reviews/{platform_review}/approve', [PlatformReviewController::class, 'approve'])->name('platform-reviews.approve');
+        Route::post('platform-reviews/{platform_review}/reject', [PlatformReviewController::class, 'reject'])->name('platform-reviews.reject');
 
         // المواد الدراسية
         Route::resource('subjects', SubjectController::class);

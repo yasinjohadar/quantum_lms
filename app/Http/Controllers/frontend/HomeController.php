@@ -10,6 +10,8 @@ use App\Models\ClassEnrollment;
 use App\Models\Enrollment;
 use App\Models\User;
 use App\Models\Purchase;
+use App\Models\PlatformReview;
+use App\Models\SystemSetting;
 use App\Models\CustomPaymentMethod;
 use App\Services\PurchaseService;
 use App\Services\PaymentService;
@@ -43,8 +45,8 @@ class HomeController extends Controller
         // جلب العملة الافتراضية
         $defaultCurrency = Currency::getDefault();
         
-        // جلب الصفوف النشطة مع العلاقات
-        $classes = SchoolClass::with(['stage', 'subjects', 'defaultCurrency'])
+        // جلب جميع الصفوف النشطة مع العلاقات للواجهة الرئيسية (السلايدر)
+        $classes = SchoolClass::with(['stage', 'subjects', 'defaultCurrency', 'features'])
             ->active()
             ->ordered()
             ->get()
@@ -105,6 +107,7 @@ class HomeController extends Controller
                         'is_free' => $class->is_free ?? ($price == 0),
                         'enrolled_students_count' => $enrolledStudentsCount,
                         'enrolled_students' => $enrolledStudents,
+                        'features' => $class->features->pluck('label')->values(),
                         'created_at' => $class->created_at,
                         'updated_at' => $class->updated_at,
                     ];
@@ -124,13 +127,57 @@ class HomeController extends Controller
                         'is_free' => $class->is_free ?? true,
                         'enrolled_students_count' => 0,
                         'enrolled_students' => collect([]),
+                        'features' => $class->features->pluck('label')->values(),
                         'created_at' => $class->created_at,
                         'updated_at' => $class->updated_at,
                     ];
                 }
             });
 
-        return view('frontend.pages.index', compact('classes'));
+        // آراء الطلاب المعتمدة للصفحة الرئيسية (السلايدر)
+        $reviewsLimit = (int) (SystemSetting::get('platform_reviews_display_limit', 6) ?: 6);
+        $reviews = PlatformReview::with(['user', 'schoolClass'])
+            ->approved()
+            ->ordered()
+            ->limit($reviewsLimit)
+            ->get();
+
+        return view('frontend.pages.index', compact('classes', 'reviews'));
+    }
+
+    /**
+     * حفظ تقييم الطالب للمنصة (رأي واحد لكل مستخدم، يُحدَّث عند إعادة الإرسال)
+     */
+    public function storePlatformReview(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'stars' => 'required|integer|min:1|max:5',
+            'comment' => 'required|string|max:2000',
+        ]);
+
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('home')->with('error', 'يجب تسجيل الدخول لإضافة رأيك.');
+        }
+
+        // استنتاج الصف من أول انضمام معتمد للطالب
+        $enrollment = ClassEnrollment::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->orderBy('id')
+            ->first();
+        $classId = $enrollment?->class_id;
+
+        PlatformReview::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'class_id' => $classId,
+                'stars' => $request->stars,
+                'comment' => $request->comment,
+                'status' => 'pending',
+            ]
+        );
+
+        return redirect()->back()->with('success', 'تم إرسال رأيك بنجاح. سيظهر بعد المراجعة من الإدارة.');
     }
 
     /**
@@ -139,7 +186,7 @@ class HomeController extends Controller
     public function showClass($slug): View
     {
         // جلب الصف بالـ slug
-        $class = SchoolClass::with(['stage', 'defaultCurrency'])
+        $class = SchoolClass::with(['stage', 'defaultCurrency', 'features'])
             ->where('slug', $slug)
             ->active()
             ->firstOrFail();

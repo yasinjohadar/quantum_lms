@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreClassRequest;
 use App\Http\Requests\Admin\UpdateClassRequest;
+use App\Models\ClassFeature;
 use App\Models\Enrollment;
 use App\Models\SchoolClass;
 use App\Models\Stage;
@@ -141,6 +142,19 @@ class ClassController extends Controller
                 }
             }
 
+            // معالجة خصائص الصف (حتى 10)
+            if ($request->has('features')) {
+                $labels = array_values(array_filter(array_map('trim', (array) $request->features), fn ($v) => $v !== ''));
+                $labels = array_slice($labels, 0, 10);
+                foreach ($labels as $order => $label) {
+                    ClassFeature::create([
+                        'class_id' => $class->id,
+                        'label' => $label,
+                        'order' => $order,
+                    ]);
+                }
+            }
+
             return redirect()->route('admin.classes.index')
                 ->with('success', 'تم إضافة الصف بنجاح');
         } catch (\Exception $e) {
@@ -157,7 +171,7 @@ class ClassController extends Controller
     public function show(string $id)
     {
         try {
-            $class = SchoolClass::with(['stage', 'subjects'])->findOrFail($id);
+            $class = SchoolClass::with(['stage', 'subjects', 'features'])->findOrFail($id);
             
             // التحقق من التخصيص
             $user = auth()->user();
@@ -184,7 +198,7 @@ class ClassController extends Controller
     public function edit(string $id)
     {
         try {
-            $class = SchoolClass::findOrFail($id);
+            $class = SchoolClass::with('features')->findOrFail($id);
             
             // التحقق من التخصيص
             $user = auth()->user();
@@ -267,6 +281,20 @@ class ClassController extends Controller
             $data['default_currency_id'] = $request->input('default_currency_id');
 
             $class->update($data);
+
+            // معالجة خصائص الصف (حذف القديمة وإعادة إنشائها من الطلب، حتى 10)
+            ClassFeature::where('class_id', $class->id)->delete();
+            if ($request->has('features')) {
+                $labels = array_values(array_filter(array_map('trim', (array) $request->features), fn ($v) => $v !== ''));
+                $labels = array_slice($labels, 0, 10);
+                foreach ($labels as $order => $label) {
+                    ClassFeature::create([
+                        'class_id' => $class->id,
+                        'label' => $label,
+                        'order' => $order,
+                    ]);
+                }
+            }
 
             // معالجة الأسعار المتعددة
             if ($request->has('prices')) {

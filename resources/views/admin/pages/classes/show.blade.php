@@ -116,6 +116,21 @@
                         </div>
                     </div>
 
+                    @if ($class->features->isNotEmpty())
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">خصائص الصف</h6>
+                            </div>
+                            <div class="card-body">
+                                <ul class="mb-0 list-unstyled">
+                                    @foreach($class->features as $feature)
+                                        <li class="mb-1"><i class="bi bi-check2 text-success me-2"></i>{{ $feature->label }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h6 class="mb-0">المواد المرتبطة بهذا الصف</h6>

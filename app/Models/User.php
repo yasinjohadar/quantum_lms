@@ -81,6 +81,14 @@ class User extends Authenticatable
     }
 
     /**
+     * العلاقة مع آراء المنصة (تقييم الطالب للمنصة)
+     */
+    public function platformReviews()
+    {
+        return $this->hasMany(PlatformReview::class, 'user_id');
+    }
+
+    /**
      * العلاقة مع المواد (Many-to-Many through enrollments)
      */
     public function subjects()

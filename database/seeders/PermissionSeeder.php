@@ -379,6 +379,11 @@ class PermissionSeeder extends Seeder
 
             // صلاحيات تقارير المكتبة
             ['name' => 'library-report-list', 'description' => 'عرض تقارير المكتبة'],
+
+            // صلاحيات آراء الطلاب (المنصة)
+            ['name' => 'platform-reviews-list', 'description' => 'عرض قائمة آراء الطلاب'],
+            ['name' => 'platform-reviews-edit', 'description' => 'تعديل آراء الطلاب واعتمادها'],
+            ['name' => 'platform-reviews-approve', 'description' => 'اعتماد/رفض آراء الطلاب'],
         ];
 
         // حفظ الصلاحيات الأساسية

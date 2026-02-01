@@ -143,6 +143,28 @@
                                 </div>
                             </div>
 
+                            @php
+                                $editFeatureLabels = $class->features->pluck('label')->values()->all();
+                                $editFeatureLabels = array_pad($editFeatureLabels, 10, '');
+                            @endphp
+                            <div class="col-12 mt-3">
+                                <h6 class="text-primary mb-3">خصائص الصف (اختياري - حتى 10)</h6>
+                                <p class="text-muted small mb-2">أضف نصوصاً للخصائص التي تريد إظهارها مع الصف. اترك الحقول الفارغة دون استخدام.</p>
+                                <div id="class-features-edit">
+                                    @foreach(range(0, 9) as $i)
+                                        <div class="input-group mb-2">
+                                            <span class="input-group-text">{{ $i + 1 }}</span>
+                                            <input type="text" name="features[]" class="form-control @error('features.'.$i) is-invalid @enderror"
+                                                   placeholder="نص الخاصية {{ $i + 1 }}"
+                                                   value="{{ old('features.'.$i, $editFeatureLabels[$i] ?? '') }}">
+                                            @error('features.'.$i)
+                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+
                             <div class="col-md-12">
                                 <div class="form-floating">
                                     <textarea name="description" class="form-control @error('description') is-invalid @enderror"

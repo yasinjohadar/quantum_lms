@@ -41,6 +41,8 @@ class UpdateClassRequest extends FormRequest
             'og_image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'],
             'order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
+            'features' => ['nullable', 'array', 'max:10'],
+            'features.*' => ['nullable', 'string', 'max:255'],
         ];
     }
 

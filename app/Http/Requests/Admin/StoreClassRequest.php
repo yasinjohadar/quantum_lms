@@ -41,6 +41,8 @@ class StoreClassRequest extends FormRequest
             'prices.*.price' => ['nullable', 'numeric', 'min:0'],
             'prices.*.currency_id' => ['nullable', 'integer', 'exists:currencies,id'],
             'prices.*.is_active' => ['nullable', 'boolean'],
+            'features' => ['nullable', 'array', 'max:10'],
+            'features.*' => ['nullable', 'string', 'max:255'],
         ];
     }
 

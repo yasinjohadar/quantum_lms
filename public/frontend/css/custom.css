@@ -647,11 +647,11 @@ a {
 
 .class-card {
     background: var(--bg-white);
-    border-radius: 15px;
+    border-radius: 5px;
     overflow: hidden;
     box-shadow: var(--shadow-sm);
     transition: all 0.3s;
-    height: 100%;
+    min-height: 100%;
     display: flex;
     flex-direction: column;
     border: 1px solid var(--border-light);
@@ -659,7 +659,8 @@ a {
     cursor: pointer;
 }
 
-.class-card-link:hover .class-card {
+.class-card-link:hover .class-card,
+.class-card-wrapper:hover .class-card {
     transform: translateY(-5px);
     box-shadow: var(--shadow-lg);
     border-color: rgba(212, 175, 55, 0.55);
@@ -668,9 +669,10 @@ a {
 .class-card-image {
     position: relative;
     width: 100%;
-    height: 200px;
-    overflow: visible;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
     background: linear-gradient(135deg, var(--secondary-Color) 0%, var(--main-Color) 100%);
+    border-radius: 5px 5px 0 0;
 }
 
 /* Students Oval */
@@ -777,7 +779,7 @@ a {
     background-size: 200% 200%;
     color: #0b1b2b;
     padding: 5px 15px;
-    border-radius: 20px;
+    border-radius: 5px;
     font-size: 0.85rem;
     font-weight: 800;
     z-index: 2;
@@ -786,19 +788,58 @@ a {
 }
 
 .class-card-body {
+    background: var(--bg-white);
     padding: 25px;
-    padding-top: 40px;
+    padding-top: 20px;
     flex-grow: 1;
     display: flex;
     flex-direction: column;
+    text-align: right;
 }
 
 .class-card-title {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: var(--text-primary);
-    margin-bottom: 15px;
+    margin-bottom: 12px;
     line-height: 1.3;
+}
+
+.class-card-features {
+    text-align: right;
+    width: 100%;
+    padding-inline-start: 0;
+    max-height: 10rem;
+    overflow-y: auto;
+    margin-bottom: 0.5rem;
+}
+
+.class-card-features-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.6rem;
+}
+
+.class-card-features li {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-direction: row;
+    margin-bottom: 1.15rem;
+}
+
+.class-card-features li:last-child {
+    margin-bottom: 0;
+}
+
+.class-card-feature-label {
+    flex: 0 1 auto;
+}
+
+.class-card-feature-icon {
+    flex-shrink: 0;
+    margin-inline-end: 0.5rem;
 }
 
 .class-card-description {
@@ -823,10 +864,10 @@ a {
 }
 
 .price-free {
-    font-size: 1.3rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--brand-gold);
-    padding: 8px 16px;
+    padding: 6px 14px;
     background: rgba(212, 175, 55, 0.14);
     border-radius: 6px;
     display: inline-block;
@@ -849,14 +890,14 @@ a {
 }
 
 .price-amount {
-    font-size: 1.8rem;
+    font-size: 1.35rem;
     font-weight: 800;
     color: var(--brand-gold);
     line-height: 1;
 }
 
 .price-currency {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--brand-gold);
 }
@@ -985,31 +1026,57 @@ a {
     font-weight: 700;
 }
 
+.class-card-buttons {
+    margin-top: auto;
+    padding-top: 1rem;
+    gap: 0.5rem;
+    justify-content: flex-start;
+}
+
+.class-card-buttons .class-card-btn {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
 .class-card-btn.enroll-btn {
     background: var(--gold-gradient);
     background-size: 200% 200%;
     color: #0b1b2b;
     border: 1px solid rgba(212, 175, 55, 0.45);
     padding: 12px 24px;
-    border-radius: 8px;
+    border-radius: 5px;
     font-weight: 800;
     font-size: 1rem;
     transition: all 0.3s ease;
     text-align: center;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    width: 100%;
-    pointer-events: none;
     box-shadow: 0 10px 22px rgba(212, 175, 55, 0.18);
 }
 
-.class-card-link:hover .class-card-btn.enroll-btn {
+.class-card-wrapper:hover .class-card-btn.enroll-btn {
     background-position: 100% 0;
     transform: translateY(-2px);
     box-shadow: 0 16px 34px rgba(212, 175, 55, 0.28);
     color: #0b1b2b;
+}
+
+.class-card-btn.subscribe-btn {
+    background: transparent;
+    background-size: auto;
+    color: var(--secondary-Color);
+    border: 2px solid var(--secondary-Color);
+    box-shadow: none;
+}
+
+.class-card-btn.subscribe-btn:hover {
+    background: var(--secondary-Color);
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
 }
 
 .class-card-btn {
@@ -1019,13 +1086,13 @@ a {
     background: var(--gold-gradient);
     background-size: 200% 200%;
     color: #0b1b2b;
-    padding: 12px 25px;
-    border-radius: 25px;
+    padding: 12px 20px;
+    border-radius: 5px;
     text-decoration: none;
     font-weight: 800;
+    font-size: 0.95rem;
     transition: all 0.3s;
     border: 1px solid rgba(212, 175, 55, 0.45);
-    width: 100%;
     box-shadow: 0 10px 22px rgba(212, 175, 55, 0.18);
 }
 
@@ -1054,9 +1121,6 @@ a {
         font-size: 2rem;
     }
     
-    .class-card-image {
-        height: 180px;
-    }
 }
 
 @media (max-width: 768px) {
@@ -1072,16 +1136,353 @@ a {
         font-size: 1rem;
     }
     
-    .class-card-image {
-        height: 160px;
-    }
-    
     .class-card-body {
         padding: 20px;
     }
     
     .class-card-title {
         font-size: 1.25rem;
+    }
+}
+
+/* Classes Swiper (Homepage) */
+.classes-swiper-section {
+    padding-bottom: 2.5rem;
+}
+
+.classes-swiper {
+    overflow: hidden;
+    padding: 0 2px;
+}
+
+.classes-swiper .swiper-wrapper {
+    align-items: flex-start;
+}
+
+.classes-swiper .swiper-slide {
+    height: auto;
+    display: flex;
+    min-height: 0;
+}
+
+.classes-swiper .swiper-slide .class-card-wrapper {
+    width: 100%;
+}
+
+.classes-swiper .swiper-slide .class-card-link {
+    display: flex;
+    width: 100%;
+}
+
+.classes-swiper .swiper-slide .class-card {
+    width: 100%;
+    flex: 1;
+}
+
+.classes-swiper-nav-label {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 0.02em;
+}
+
+.classes-swiper-section .swiper-button-prev,
+.classes-swiper-section .swiper-button-next {
+    position: relative;
+    left: auto;
+    right: auto;
+    top: auto;
+    margin-top: 0;
+    width: 44px;
+    height: 44px;
+    background: var(--bg-white);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    color: var(--text-primary);
+    box-shadow: var(--shadow-sm);
+    transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.classes-swiper-section .swiper-button-prev::after,
+.classes-swiper-section .swiper-button-next::after {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.classes-swiper-section .swiper-button-prev:hover,
+.classes-swiper-section .swiper-button-next:hover {
+    background: var(--bg-light);
+    border-color: var(--secondary-Color);
+    color: var(--secondary-Color);
+    box-shadow: var(--shadow-lg);
+}
+
+.classes-swiper-section .swiper-button-prev.swiper-button-disabled,
+.classes-swiper-section .swiper-button-next.swiper-button-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.classes-swiper .swiper-pagination {
+    position: relative;
+    margin-top: 1.25rem;
+}
+
+.classes-swiper .swiper-pagination-bullet {
+    background: var(--text-muted);
+    opacity: 0.6;
+    width: 8px;
+    height: 8px;
+    border-radius: 5px;
+    transition: opacity 0.2s, background 0.2s;
+}
+
+.classes-swiper .swiper-pagination-bullet-active {
+    background: var(--secondary-Color);
+    opacity: 1;
+}
+
+/* Reviews Section (Homepage) */
+.reviews-section {
+    background: var(--bg-light);
+    padding: 80px 0;
+}
+
+.reviews-swiper-section {
+    padding-bottom: 2.5rem;
+}
+
+.reviews-swiper {
+    overflow: hidden;
+    padding: 0 2px;
+}
+
+.reviews-swiper .swiper-wrapper {
+    align-items: stretch;
+}
+
+.reviews-swiper .swiper-slide {
+    height: auto;
+    display: flex;
+}
+
+.reviews-swiper .swiper-slide .review-card {
+    width: 100%;
+    flex: 1;
+}
+
+.review-card {
+    background: var(--bg-white);
+    border-radius: 5px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-light);
+    padding: 1.5rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+}
+
+.reviews-swiper .swiper-slide:hover .review-card {
+    box-shadow: var(--shadow-lg);
+    border-color: rgba(212, 175, 55, 0.55);
+}
+
+.review-card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.review-photo-wrapper {
+    display: flex;
+    justify-content: center;
+}
+
+.review-photo {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    transition: transform 0.3s;
+}
+
+.reviews-swiper .swiper-slide:hover .review-card .review-photo {
+    transform: scale(1.1);
+}
+
+.review-photo-placeholder {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--secondary-Color) 0%, var(--main-Color) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 2rem;
+}
+
+.review-author-name {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.review-class-name {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.review-stars {
+    font-size: 1rem;
+}
+
+.review-comment {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    flex-grow: 1;
+    margin-bottom: 0;
+}
+
+.reviews-swiper-nav-label {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* زر تقييم المنصة — نفس تصميم الزر الذهبي في الهيرو */
+.reviews-section .btn-gold {
+    background: linear-gradient(
+        135deg,
+        #fff6b7 0%,
+        #f5d76e 20%,
+        #d4af37 45%,
+        #b8962e 60%,
+        #f5d76e 80%,
+        #fff6b7 100%
+    ) !important;
+    background-size: 200% 200% !important;
+    color: #0b1b2b !important;
+    border: none !important;
+    padding: 15px 35px !important;
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    border-radius: 5px !important;
+    box-shadow: 0 14px 28px rgba(212, 175, 55, 0.22);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.reviews-section .btn-gold::before {
+    content: "";
+    position: absolute;
+    top: -20%;
+    left: -60%;
+    width: 50%;
+    height: 140%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+    transform: rotate(18deg);
+    transition: left 0.5s ease;
+}
+
+.reviews-section .btn-gold:hover {
+    transform: translateY(-2px);
+    background-position: 100% 0 !important;
+    box-shadow: 0 18px 36px rgba(212, 175, 55, 0.28);
+    color: #0b1b2b !important;
+}
+
+.reviews-section .btn-gold:hover::before {
+    left: 120%;
+}
+
+.reviews-section .btn-gold:focus {
+    box-shadow: 0 0 0 0.25rem rgba(212, 175, 55, 0.25);
+    color: #0b1b2b !important;
+}
+
+.reviews-section .btn-gold.btn-sm {
+    padding: 10px 24px !important;
+    font-size: 1rem !important;
+}
+
+.reviews-swiper-section .swiper-button-prev,
+.reviews-swiper-section .swiper-button-next {
+    position: relative;
+    left: auto;
+    right: auto;
+    top: auto;
+    margin-top: 0;
+    width: 44px;
+    height: 44px;
+    background: var(--bg-white);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    color: var(--text-primary);
+    box-shadow: var(--shadow-sm);
+    transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.reviews-swiper-section .swiper-button-prev::after,
+.reviews-swiper-section .swiper-button-next::after {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.reviews-swiper-section .swiper-button-prev:hover,
+.reviews-swiper-section .swiper-button-next:hover {
+    background: var(--bg-light);
+    border-color: var(--secondary-Color);
+    color: var(--secondary-Color);
+    box-shadow: var(--shadow-lg);
+}
+
+.reviews-swiper-section .swiper-button-prev.swiper-button-disabled,
+.reviews-swiper-section .swiper-button-next.swiper-button-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.reviews-swiper .swiper-pagination {
+    position: relative;
+    margin-top: 1.25rem;
+}
+
+.reviews-swiper .swiper-pagination-bullet {
+    border-radius: 5px;
+}
+
+.review-form-card {
+    background: var(--bg-white);
+    border-radius: 5px;
+    padding: 2rem;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-light);
+    text-align: right;
+}
+
+.review-form .star-option {
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+}
+
+.review-form .star-option input {
+    margin-left: 0.35rem;
+}
+
+.review-form .star-label {
+    font-size: 1rem;
+}
+
+@media (max-width: 768px) {
+    .reviews-section {
+        padding: 40px 0;
+    }
+    .review-form-card {
+        padding: 1.25rem;
     }
 }
 
