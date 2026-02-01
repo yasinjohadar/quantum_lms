@@ -156,7 +156,7 @@
                                             </div>
                                         @endif
                                     </div>
-                                    <div class="class-card-buttons d-flex gap-2 flex-wrap">
+                                    <div class="class-card-buttons d-flex gap-2 flex-nowrap">
                                         <a href="{{ !empty($class['slug']) ? route('frontend.class.show', $class['slug']) : '#' }}" class="class-card-btn enroll-btn">
                                             عرض المواد
                                             <i class="fa-solid fa-angles-left ms-2"></i>

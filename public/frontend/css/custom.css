@@ -1031,6 +1031,7 @@ a {
     padding-top: 1rem;
     gap: 0.5rem;
     justify-content: flex-start;
+    flex-wrap: nowrap;
 }
 
 .class-card-buttons .class-card-btn {
