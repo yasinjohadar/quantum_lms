@@ -148,7 +148,7 @@
                                                 </button>
                                             </h2>
                                             <div id="sectionCollapse{{ $section->id }}"
-                                                 class="accordion-collapse collapse {{ $index === 0 ? 'show' : '' }}"
+                                                 class="accordion-collapse collapse"
                                                  aria-labelledby="sectionHeading{{ $section->id }}"
                                                  data-bs-parent="#subjectSectionsAccordion">
                                                 <div class="accordion-body">
@@ -389,6 +389,13 @@
                                                                                                    class="btn btn-sm btn-icon btn-warning-transparent" title="تعديل">
                                                                                                     <i class="bi bi-pencil"></i>
                                                                                                 </a>
+                                                                                                <form action="{{ route('admin.quizzes.destroy', $quiz->id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف هذا الاختبار؟');">
+                                                                                                    @csrf
+                                                                                                    @method('DELETE')
+                                                                                                    <button type="submit" class="btn btn-sm btn-icon btn-danger-transparent" title="حذف">
+                                                                                                        <i class="bi bi-trash"></i>
+                                                                                                    </button>
+                                                                                                </form>
                                                                                             </div>
                                                                                         </div>
                                                                                         @endforeach
@@ -410,65 +417,72 @@
                                                                                         <div class="list-group list-group-flush">
                                                                                             @foreach($unit->lessons as $lesson)
                                                                                                 <div class="list-group-item d-flex flex-column px-0 py-2">
-                                                                                                    <div class="d-flex align-items-center justify-content-between">
-                                                                                                    <div class="d-flex align-items-center">
-                                                                                                        <div class="me-3 position-relative">
-                                                                                                            @if($lesson->thumbnail)
-                                                                                                                <img src="{{ asset('storage/'.$lesson->thumbnail) }}" 
-                                                                                                                     alt="{{ $lesson->title }}"
-                                                                                                                     class="rounded" 
-                                                                                                                     style="width:60px;height:40px;object-fit:cover;">
-                                                                                                            @else
-                                                                                                                <div class="bg-danger-transparent text-danger rounded d-flex align-items-center justify-content-center" 
-                                                                                                                     style="width:60px;height:40px;">
-                                                                                                                    <i class="bi bi-play-circle fs-4"></i>
-                                                                                                                </div>
-                                                                                                            @endif
-                                                                                                            @if($lesson->is_free)
-                                                                                                                <span class="badge bg-success position-absolute top-0 start-0" style="font-size:0.6rem;">مجاني</span>
-                                                                                                            @endif
-                                                                                                        </div>
-<div>
-                                                                                                            <h6 class="mb-0 fw-semibold small">
-                                                                                                                {{ $lesson->title }}
-                                                                                                                @if(!$lesson->is_active)
-                                                                                                                    <span class="badge bg-secondary-transparent text-secondary ms-1">مخفي</span>
+                                                                                                    <div class="d-flex align-items-center justify-content-between gap-2 w-100">
+                                                                                                        <div class="d-flex align-items-center min-w-0 flex-grow-1">
+                                                                                                            <div class="me-3 position-relative flex-shrink-0">
+                                                                                                                @if($lesson->thumbnail)
+                                                                                                                    <img src="{{ asset('storage/'.$lesson->thumbnail) }}" 
+                                                                                                                         alt="{{ $lesson->title }}"
+                                                                                                                         class="rounded" 
+                                                                                                                         style="width:60px;height:40px;object-fit:cover;">
+                                                                                                                @else
+                                                                                                                    <div class="bg-danger-transparent text-danger rounded d-flex align-items-center justify-content-center" 
+                                                                                                                         style="width:60px;height:40px;">
+                                                                                                                        <i class="bi bi-play-circle fs-4"></i>
+                                                                                                                    </div>
                                                                                                                 @endif
-                                                                                                                @if($lesson->review_status === 'pending_review')
-                                                                                                                    <span class="badge bg-warning text-dark ms-1">
-                                                                                                                        <i class="bi bi-clock-history me-1"></i> قيد المراجعة
-                                                                                                                    </span>
-                                                                                                                @elseif($lesson->review_status === 'rejected')
-                                                                                                                    <span class="badge bg-danger ms-1">
-                                                                                                                        <i class="bi bi-x-circle me-1"></i> مرفوض
-                                                                                                                    </span>
-                                                                                                                @endif
-                                                                                                            </h6>
-                                                                                                            <div class="d-flex align-items-center gap-2 mt-1">
-                                                                                                                <span class="badge bg-{{ $lesson->video_type === 'youtube' ? 'danger' : ($lesson->video_type === 'vimeo' ? 'info' : 'primary') }}-transparent text-{{ $lesson->video_type === 'youtube' ? 'danger' : ($lesson->video_type === 'vimeo' ? 'info' : 'primary') }}" style="font-size:0.65rem;">
-                                                                                                                    <i class="bi bi-{{ $lesson->video_type === 'youtube' ? 'youtube' : ($lesson->video_type === 'vimeo' ? 'vimeo' : 'film') }} me-1"></i>
-                                                                                                                    {{ \App\Models\Lesson::VIDEO_TYPES[$lesson->video_type] ?? $lesson->video_type }}
-                                                                                                                </span>
-                                                                                                                @if($lesson->duration)
-                                                                                                                    <span class="text-muted" style="font-size:0.7rem;">
-                                                                                                                        <i class="bi bi-clock me-1"></i>{{ $lesson->formatted_duration }}
-                                                                                                                    </span>
-                                                                                                                @endif
-                                                                                                                @if($lesson->attachments->count() > 0)
-                                                                                                                    <span class="text-muted" style="font-size:0.7rem;">
-                                                                                                                        <i class="bi bi-paperclip me-1"></i>{{ $lesson->attachments->count() }}
-                                                                                                                    </span>
+                                                                                                                @if($lesson->is_free)
+                                                                                                                    <span class="badge bg-success position-absolute top-0 start-0" style="font-size:0.6rem;">مجاني</span>
                                                                                                                 @endif
                                                                                                             </div>
+                                                                                                            <div class="min-w-0">
+                                                                                                                <h6 class="mb-0 fw-semibold small">
+                                                                                                                    {{ $lesson->title }}
+                                                                                                                    @if(!$lesson->is_active)
+                                                                                                                        <span class="badge bg-secondary-transparent text-secondary ms-1">مخفي</span>
+                                                                                                                    @endif
+                                                                                                                    @if($lesson->review_status === 'pending_review')
+                                                                                                                        <span class="badge bg-warning text-dark ms-1">
+                                                                                                                            <i class="bi bi-clock-history me-1"></i> قيد المراجعة
+                                                                                                                        </span>
+                                                                                                                    @elseif($lesson->review_status === 'rejected')
+                                                                                                                        <span class="badge bg-danger ms-1">
+                                                                                                                            <i class="bi bi-x-circle me-1"></i> مرفوض
+                                                                                                                        </span>
+                                                                                                                    @endif
+                                                                                                                </h6>
+                                                                                                                <div class="d-flex align-items-center gap-2 mt-1">
+                                                                                                                    <span class="badge bg-{{ $lesson->video_type === 'youtube' ? 'danger' : ($lesson->video_type === 'vimeo' ? 'info' : 'primary') }}-transparent text-{{ $lesson->video_type === 'youtube' ? 'danger' : ($lesson->video_type === 'vimeo' ? 'info' : 'primary') }}" style="font-size:0.65rem;">
+                                                                                                                        <i class="bi bi-{{ $lesson->video_type === 'youtube' ? 'youtube' : ($lesson->video_type === 'vimeo' ? 'vimeo' : 'film') }} me-1"></i>
+                                                                                                                        {{ \App\Models\Lesson::VIDEO_TYPES[$lesson->video_type] ?? $lesson->video_type }}
+                                                                                                                    </span>
+                                                                                                                    @if($lesson->duration)
+                                                                                                                        <span class="text-muted" style="font-size:0.7rem;">
+                                                                                                                            <i class="bi bi-clock me-1"></i>{{ $lesson->formatted_duration }}
+                                                                                                                        </span>
+                                                                                                                    @endif
+                                                                                                                    @if($lesson->attachments->count() > 0)
+                                                                                                                        <span class="text-muted" style="font-size:0.7rem;">
+                                                                                                                            <i class="bi bi-paperclip me-1"></i>{{ $lesson->attachments->count() }}
+                                                                                                                        </span>
+                                                                                                                    @endif
+                                                                                                                </div>
+                                                                                                            </div>
                                                                                                         </div>
-                                                                                                    </div>
-                                                                                                    </div>
-                                                                                                    <div class="d-flex align-items-center justify-content-between mt-2">
-                                                                                                        <div class="d-flex align-items-center gap-1">
+                                                                                                        <div class="d-flex align-items-center gap-1 flex-shrink-0">
                                                                                                             <a href="{{ route('admin.lessons.show', $lesson->id) }}" 
                                                                                                                class="btn btn-sm btn-icon btn-success-transparent" title="مشاهدة">
                                                                                                                 <i class="bi bi-play-fill"></i>
                                                                                                             </a>
+                                                                                                            @if($lesson->embed_url || $lesson->video_url)
+                                                                                                            <button type="button"
+                                                                                                                    class="btn btn-sm btn-icon btn-warning-transparent"
+                                                                                                                    data-bs-toggle="modal"
+                                                                                                                    data-bs-target="#playVideoModal{{ $lesson->id }}"
+                                                                                                                    title="تشغيل الفيديو - معاينة سريعة">
+                                                                                                                <i class="bi bi-play-circle"></i>
+                                                                                                            </button>
+                                                                                                            @endif
                                                                                                             <button type="button"
                                                                                                                     class="btn btn-sm btn-icon btn-info-transparent"
                                                                                                                     data-bs-toggle="modal"
@@ -506,55 +520,20 @@
                                                                                                                     </button>
                                                                                                                 </div>
                                                                                                             @endif
+                                                                                                            <a href="{{ route('admin.quizzes.create', ['subject_id' => $subject->id, 'unit_id' => $unit->id, 'lesson_id' => $lesson->id, 'scope' => 'lesson']) }}" 
+                                                                                                               class="btn btn-sm btn-outline-info" title="اختبار لهذا الدرس">
+                                                                                                                <i class="bi bi-clipboard-check me-1"></i> اختبار الدرس
+                                                                                                            </a>
+                                                                            @if($lesson->quizzes && $lesson->quizzes->count() > 0)
+                                                                                                                @php $firstQuiz = $lesson->quizzes->first(); @endphp
+                                                                                                                <a href="{{ route('admin.quizzes.show', $firstQuiz->id) }}" 
+                                                                                                                   class="btn btn-sm btn-icon btn-info-transparent" 
+                                                                                                                   title="{{ $firstQuiz->title }}">
+                                                                                                                    <i class="bi bi-question-circle"></i>
+                                                                                                                </a>
+                                                                            @endif
                                                                                                         </div>
-                                                                                                        {{-- زر إنشاء اختبار لهذا الدرس --}}
-                                                                                                        <a href="{{ route('admin.quizzes.create', ['subject_id' => $subject->id, 'unit_id' => $unit->id, 'lesson_id' => $lesson->id, 'scope' => 'lesson']) }}" 
-                                                                                                           class="btn btn-sm btn-outline-info" title="اختبار لهذا الدرس">
-                                                                                                            <i class="bi bi-clipboard-check me-1"></i> اختبار الدرس
-                                                                                                        </a>
                                                                                                     </div>
-                                                                                                    {{-- اختبارات هذا الدرس --}}
-                                                                                                    @if($lesson->quizzes && $lesson->quizzes->count() > 0)
-                                                                                                        <div class="mt-2 pt-2 border-top">
-                                                                                                            <div class="d-flex align-items-center gap-2 mb-2">
-                                                                                                                <span class="text-info small fw-semibold">
-                                                                                                                    <i class="bi bi-clipboard-check me-1"></i> اختبارات هذا الدرس ({{ $lesson->quizzes->count() }})
-                                                                                                                </span>
-                                                                                                            </div>
-                                                                                                            <div class="list-group list-group-flush">
-                                                                                                                @php $isTeacherForQuiz = auth()->user()->hasRole('teacher') && !auth()->user()->hasAnyRole(['admin', 'supervisor']); @endphp
-                                                                                                                @foreach($lesson->quizzes as $lessonQuiz)
-                                                                                                                    <div class="list-group-item d-flex flex-column px-2 py-2 bg-info-transparent rounded mb-1 small">
-                                                                                                                        <div class="d-flex align-items-center justify-content-between">
-                                                                                                                            <div class="d-flex align-items-center flex-grow-1 flex-wrap gap-1">
-                                                                                                                                <i class="bi bi-clipboard-check text-info me-2"></i>
-                                                                                                                                <span class="fw-medium">{{ $lessonQuiz->title }}</span>
-                                                                                                                                <span class="badge bg-{{ $lessonQuiz->review_status_color }} ms-1" style="font-size:0.65rem;">{{ $lessonQuiz->review_status_name }}</span>
-                                                                                                                                @if($lessonQuiz->is_published)
-                                                                                                                                    <span class="badge bg-success-transparent text-success" style="font-size:0.6rem;">يظهر للطالب</span>
-                                                                                                                                @endif
-                                                                                                                            </div>
-                                                                                                                            <div class="d-flex align-items-center gap-1">
-                                                                                                                                <a href="{{ route('admin.quizzes.show', $lessonQuiz->id) }}" class="btn btn-sm btn-icon btn-info-transparent" title="عرض"><i class="bi bi-eye"></i></a>
-                                                                                                                                <a href="{{ route('admin.quizzes.edit', $lessonQuiz->id) }}" class="btn btn-sm btn-icon btn-warning-transparent" title="تعديل"><i class="bi bi-pencil"></i></a>
-                                                                                                                                @if($isTeacherForQuiz && in_array($lessonQuiz->review_status, [\App\Models\Quiz::REVIEW_STATUS_DRAFT, \App\Models\Quiz::REVIEW_STATUS_REJECTED]))
-                                                                                                                                    <form action="{{ route('admin.quizzes.submit-for-review', $lessonQuiz->id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من إرسال الاختبار للمراجعة؟');">
-                                                                                                                                        @csrf
-                                                                                                                                        <button type="submit" class="btn btn-sm btn-warning" title="إرسال للمراجعة"><i class="bi bi-send me-1"></i> إرسال للمراجعة</button>
-                                                                                                                                    </form>
-                                                                                                                                @endif
-                                                                                                                            </div>
-                                                                                                                        </div>
-                                                                                                                        @if($lessonQuiz->review_status === \App\Models\Quiz::REVIEW_STATUS_REJECTED && $lessonQuiz->review_notes)
-                                                                                                                            <div class="alert alert-danger py-2 px-2 mt-2 mb-0 small">
-                                                                                                                                <strong>ملاحظات المراجعة:</strong> {{ $lessonQuiz->review_notes }}
-                                                                                                                            </div>
-                                                                                                                        @endif
-                                                                                                                    </div>
-                                                                                                                @endforeach
-                                                                                                            </div>
-                                                                                                        </div>
-                                                                                                    @endif
                                                                                                 </div>
                                                                                             @endforeach
                                                                                         </div>
@@ -1252,6 +1231,72 @@
                                     </button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- مودال تشغيل الفيديو - معاينة سريعة --}}
+                <div class="modal fade" id="playVideoModal{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-xl">
+                        <div class="modal-content border-0 rounded-4">
+                            <div class="modal-header border-0 d-flex align-items-center">
+                                <h5 class="modal-title fw-bold">
+                                    <i class="bi bi-play-circle text-warning me-2"></i>
+                                    {{ $lesson->title }}
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                            </div>
+                            <div class="modal-body p-0">
+                                @if($lesson->embed_url)
+                                    @php $actualType = $lesson->actual_video_type; @endphp
+                                    <div class="ratio ratio-16x9 bg-dark">
+                                        @if($actualType === 'youtube')
+                                            <iframe
+                                                src="{{ $lesson->embed_url }}?rel=0&modestbranding=1"
+                                                title="{{ $lesson->title }}"
+                                                frameborder="0"
+                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                                allowfullscreen
+                                                loading="lazy"
+                                            ></iframe>
+                                        @elseif($actualType === 'vimeo')
+                                            <iframe
+                                                src="{{ $lesson->embed_url }}?title=0&byline=0&portrait=0"
+                                                title="{{ $lesson->title }}"
+                                                frameborder="0"
+                                                allow="autoplay; fullscreen; picture-in-picture"
+                                                allowfullscreen
+                                                loading="lazy"
+                                            ></iframe>
+                                        @elseif($actualType === 'upload')
+                                            <video controls class="w-100 h-100"
+                                                   poster="{{ $lesson->thumbnail ? asset('storage/'.$lesson->thumbnail) : '' }}"
+                                                   controlsList="nodownload">
+                                                <source src="{{ $lesson->embed_url }}" type="video/mp4">
+                                                <source src="{{ $lesson->embed_url }}" type="video/webm">
+                                                <source src="{{ $lesson->embed_url }}" type="video/ogg">
+                                                المتصفح لا يدعم تشغيل الفيديو.
+                                            </video>
+                                        @else
+                                            <video controls class="w-100 h-100"
+                                                   poster="{{ $lesson->thumbnail ? asset('storage/'.$lesson->thumbnail) : '' }}">
+                                                <source src="{{ $lesson->embed_url }}" type="video/mp4">
+                                                المتصفح لا يدعم تشغيل الفيديو.
+                                            </video>
+                                        @endif
+                                    </div>
+                                @elseif($lesson->video_url)
+                                    <div class="alert alert-warning m-3 mb-0">
+                                        <i class="bi bi-exclamation-triangle me-2"></i>
+                                        تعذر تشغيل الفيديو. تأكد من صحة الرابط.
+                                    </div>
+                                @else
+                                    <div class="text-center py-5 text-muted bg-light m-3 rounded">
+                                        <i class="bi bi-film display-4 d-block mb-2"></i>
+                                        لا يوجد فيديو لهذا الدرس.
+                                    </div>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>
