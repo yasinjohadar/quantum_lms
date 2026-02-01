@@ -102,6 +102,7 @@
                                                 <th>البريد الإلكتروني</th>
                                                 <th>الصفوف المخصصة</th>
                                                 <th>المواد المخصصة</th>
+                                                <th>حالة الحساب</th>
                                                 <th>الإجراءات</th>
                                             </tr>
                                         </thead>
@@ -167,12 +168,37 @@
                                                         @endif
                                                     </td>
                                                     <td>
+                                                        @can('user-toggle-status')
+                                                        <button type="button"
+                                                                class="btn btn-sm d-inline-flex align-items-center {{ $supervisor->is_active ? 'btn-success' : 'btn-outline-danger' }}"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#toggleStatus{{ $supervisor->id }}">
+                                                            @if($supervisor->is_active)
+                                                                <i class="fa-solid fa-check-circle me-1"></i>
+                                                                <span>الحساب مفعل</span>
+                                                            @else
+                                                                <i class="fa-solid fa-ban me-1"></i>
+                                                                <span>الحساب معطل</span>
+                                                            @endif
+                                                        </button>
+                                                        @else
+                                                            @if($supervisor->is_active)
+                                                                <span class="badge bg-success">مفعل</span>
+                                                            @else
+                                                                <span class="badge bg-secondary">معطل</span>
+                                                            @endif
+                                                        @endcan
+                                                    </td>
+                                                    <td>
                                                         <a href="{{ route('admin.supervisors.assignments', $supervisor->id) }}" 
                                                            class="btn btn-primary btn-sm">
                                                             <i class="fas fa-user-tie me-1"></i> تخصيص
                                                         </a>
                                                     </td>
                                                 </tr>
+                                                @can('user-toggle-status')
+                                                @include('admin.pages.users.toggle_status', ['user' => $supervisor])
+                                                @endcan
                                             @endforeach
                                         </tbody>
                                     </table>

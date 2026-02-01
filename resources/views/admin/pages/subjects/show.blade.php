@@ -76,9 +76,16 @@
                 </div>
             @endif
 
-            <div class="page-header d-flex justify-content-between align-items-center my-4">
-                <h5 class="page-title mb-0">تفاصيل المادة: {{ $subject->name }}</h5>
-                <div class="d-flex gap-2">
+            {{-- شريط علوي: صورة المادة + الاسم + أزرار --}}
+            <div class="d-flex align-items-center justify-content-between gap-3 py-3 mb-3 border-bottom">
+                <div class="d-flex align-items-center gap-3">
+                    <img src="{{ $subject->image ? asset('storage/'.$subject->image) : asset('assets/images/media/media-22.jpg') }}"
+                         alt="{{ $subject->name }}"
+                         class="rounded flex-shrink-0"
+                         style="width: 56px; height: 56px; object-fit: cover;">
+                    <h5 class="page-title mb-0">تفاصيل المادة: {{ $subject->name }}</h5>
+                </div>
+                <div class="d-flex gap-2 flex-shrink-0">
                     <a href="{{ route('admin.subjects.edit', $subject->id) }}" class="btn btn-warning btn-sm text-white">
                         <i class="fas fa-edit me-1"></i> تعديل
                     </a>
@@ -89,103 +96,13 @@
             </div>
 
             <div class="row g-3">
-                <div class="col-xl-4">
-                    <div class="card">
-                        <div class="card-body text-center">
-                            <div class="mb-3">
-                                <img src="{{ $subject->image ? asset('storage/'.$subject->image) : asset('assets/images/media/media-22.jpg') }}"
-                                     alt="{{ $subject->name }}"
-                                     class="rounded"
-                                     style="width: 180px; height: 180px; object-fit: cover;">
-                            </div>
-                            <h5 class="fw-bold mb-1">{{ $subject->name }}</h5>
-                            <p class="mb-1 text-muted">
-                                الصف: {{ $subject->schoolClass?->name ?? '-' }}
-                                @if($subject->schoolClass && $subject->schoolClass->stage)
-                                    <span class="d-block small">
-                                        ({{ $subject->schoolClass->stage->name }})
-                                    </span>
-                                @endif
-                            </p>
-                            <p class="mb-1">
-                                @if ($subject->is_active)
-                                    <span class="badge bg-success">مادة نشطة</span>
-                                @else
-                                    <span class="badge bg-danger">غير نشطة</span>
-                                @endif
-                            </p>
-                            <p class="mb-1">
-                                @if ($subject->display_in_class)
-                                    <span class="badge bg-info text-dark">تظهر في صفحة الصف</span>
-                                @else
-                                    <span class="badge bg-secondary">لا تظهر في صفحة الصف</span>
-                                @endif
-                            </p>
-                            <p class="text-muted mb-0">
-                                ترتيب العرض: <span class="fw-semibold">{{ $subject->order }}</span>
-                            </p>
-                        </div>
-                    </div>
-
-                    @if ($subject->meta_title || $subject->meta_description || $subject->meta_keywords || $subject->og_image)
-                        <div class="card mt-3">
-                            <div class="card-header">
-                                <h6 class="mb-0">بيانات الـ SEO</h6>
-                            </div>
-                            <div class="card-body">
-                                @if ($subject->meta_title)
-                                    <p class="mb-2"><span class="fw-semibold">Meta Title: </span>{{ $subject->meta_title }}</p>
-                                @endif
-                                @if ($subject->meta_description)
-                                    <p class="mb-2"><span class="fw-semibold">Meta Description: </span>{{ $subject->meta_description }}</p>
-                                @endif
-                                @if ($subject->meta_keywords)
-                                    <p class="mb-2"><span class="fw-semibold">Meta Keywords: </span>{{ $subject->meta_keywords }}</p>
-                                @endif
-                                @if ($subject->og_image)
-                                    <div class="mt-2">
-                                        <span class="fw-semibold d-block mb-1">صورة Open Graph:</span>
-                                        <img src="{{ asset('storage/'.$subject->og_image) }}" alt="{{ $subject->name }}"
-                                             class="rounded" style="width: 160px; height: 160px; object-fit: cover;">
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                    @endif
-                </div>
-
-                <div class="col-xl-8">
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h6 class="mb-0">معلومات المادة</h6>
-                        </div>
-                        <div class="card-body">
-                            <p class="mb-3">
-                                <span class="fw-semibold">الوصف:</span>
-                                <br>
-                                {{ $subject->description ?: 'لا يوجد وصف متاح لهذه المادة حالياً.' }}
-                            </p>
-                            <p class="mb-2">
-                                <span class="fw-semibold">الرابط الدائم:</span>
-                                {{ $subject->slug ?: 'لم يتم تعيين رابط دائم' }}
-                            </p>
-                            <p class="mb-2">
-                                <span class="fw-semibold">تاريخ الإنشاء:</span>
-                                {{ $subject->created_at?->format('Y-m-d H:i') }}
-                            </p>
-                            <p class="mb-0">
-                                <span class="fw-semibold">تاريخ آخر تحديث:</span>
-                                {{ $subject->updated_at?->format('Y-m-d H:i') }}
-                            </p>
-                        </div>
-                    </div>
-
-                    {{-- أقسام المادة (مثل أقسام الكورس في Moodle) --}}
+                <div class="col-12">
+                    {{-- محتويات المادة: أقسام المادة لبناء المحتوى --}}
                     <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h6 class="mb-0">
                                 <i class="bi bi-collection me-2"></i>
-                                أقسام المادة
+                                محتويات المادة
                             </h6>
                             <button type="button"
                                     class="btn btn-sm btn-primary d-inline-flex align-items-center"
