@@ -245,18 +245,18 @@ class QuizController extends Controller
             $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
 
             if ($isTeacher) {
-                // إذا حاول نشر الاختبار، ضعه في حالة قيد المراجعة
-                if ($request->has('is_published')) {
+                // خيار التفعيل الواحد: عند تفعيل يُرسل للمراجعة؛ النشر بعد الموافقة
+                if ($request->has('is_active')) {
                     $data['review_status'] = Quiz::REVIEW_STATUS_PENDING;
                     $data['submitted_for_review_at'] = now();
-                    $data['is_published'] = false; // لا يتم النشر مباشرة
+                    $data['is_published'] = false;
                 } else {
                     $data['review_status'] = Quiz::REVIEW_STATUS_DRAFT;
                     $data['is_published'] = false;
                 }
             } else {
-                // المشرف والمدير يمكنهم النشر مباشرة
-                $data['is_published'] = $request->has('is_published');
+                // المشرف والمدير: خيار التفعيل الواحد يحدد is_published أيضاً
+                $data['is_published'] = $request->has('is_active');
                 if ($data['is_published']) {
                     $data['review_status'] = Quiz::REVIEW_STATUS_APPROVED;
                 } else {
@@ -379,25 +379,19 @@ class QuizController extends Controller
             $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
 
             if ($isTeacher) {
-                // إذا كان الاختبار في حالة pending أو rejected وكان المعلم يحاول نشره
-                if ($request->has('is_published') && in_array($quiz->review_status, [Quiz::REVIEW_STATUS_PENDING, Quiz::REVIEW_STATUS_REJECTED])) {
+                // خيار التفعيل الواحد: عند تفعيل يُرسل للمراجعة؛ النشر بعد الموافقة
+                if ($request->has('is_active')) {
                     $data['review_status'] = Quiz::REVIEW_STATUS_PENDING;
                     $data['submitted_for_review_at'] = now();
-                    $data['review_notes'] = null; // مسح الملاحظات القديمة
-                    $data['is_published'] = false;
-                } elseif ($request->has('is_published')) {
-                    // إذا كان draft ويحاول نشره
-                    $data['review_status'] = Quiz::REVIEW_STATUS_PENDING;
-                    $data['submitted_for_review_at'] = now();
+                    $data['review_notes'] = null;
                     $data['is_published'] = false;
                 } else {
-                    // إذا لم يحاول نشره، يبقى draft
                     $data['review_status'] = Quiz::REVIEW_STATUS_DRAFT;
                     $data['is_published'] = false;
                 }
             } else {
-                // المشرف والمدير
-                $data['is_published'] = $request->has('is_published');
+                // المشرف والمدير: خيار التفعيل الواحد يحدد is_published أيضاً
+                $data['is_published'] = $request->has('is_active');
                 if ($data['is_published'] && $quiz->review_status !== Quiz::REVIEW_STATUS_APPROVED) {
                     $data['review_status'] = Quiz::REVIEW_STATUS_APPROVED;
                 } elseif (!$data['is_published']) {
@@ -445,6 +439,86 @@ class QuizController extends Controller
                 ->withInput()
                 ->with('error', 'حدث خطأ أثناء تحديث الاختبار: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * إرجاع الوحدات المرتبطة بالاختبار (للمودال).
+     */
+    public function getLinkedUnits(Quiz $quiz)
+    {
+        $linkedUnitIds = \Illuminate\Support\Facades\DB::table('quiz_units')
+            ->where('quiz_id', $quiz->id)
+            ->pluck('unit_id');
+        $units = \App\Models\Unit::with('section.subject.schoolClass.stage')
+            ->whereIn('id', $linkedUnitIds)
+            ->get();
+        $data = $units->map(function ($u) {
+            return [
+                'id' => $u->id,
+                'title' => $u->title ?? '',
+                'section_title' => optional($u->section)->title ?? '',
+                'subject_name' => optional(optional($u->section)->subject)->name ?? '',
+                'class_name' => optional(optional(optional($u->section)->subject)->schoolClass)->name ?? '',
+                'stage_name' => optional(optional(optional(optional($u->section)->subject)->schoolClass)->stage)->name ?? '',
+            ];
+        })->values();
+        return response()->json($data);
+    }
+
+    /**
+     * ربط الاختبار بوحدات إضافية (ظهوره في وحدات أخرى).
+     */
+    public function linkUnits(Request $request, Quiz $quiz)
+    {
+        $request->validate([
+            'linked_unit_ids' => ['nullable', 'array'],
+            'linked_unit_ids.*' => ['integer', 'exists:units,id'],
+        ]);
+
+        $linkedUnitIds = $request->input('linked_unit_ids', []);
+        $primaryUnitId = $quiz->unit_id;
+        $linkedUnitIds = array_values(array_unique(array_filter($linkedUnitIds)));
+
+        // دمج مع الوحدات المرتبطة حالياً حتى لا يُستبدل الربط السابق إذا وصلت وحدة جديدة فقط
+        $existingLinkedIds = \Illuminate\Support\Facades\DB::table('quiz_units')
+            ->where('quiz_id', $quiz->id)
+            ->pluck('unit_id')
+            ->toArray();
+        $linkedUnitIds = array_values(array_unique(array_merge($existingLinkedIds, $linkedUnitIds)));
+        $linkedUnitIds = array_values(array_diff($linkedUnitIds, [$primaryUnitId]));
+
+        $quiz->linkedUnits()->sync($linkedUnitIds);
+
+        $linkedUnits = $quiz->linkedUnits()->with('section.subject.schoolClass.stage')->get();
+        $count = $linkedUnits->count();
+        $labels = $linkedUnits->map(function ($u) {
+            return trim(collect([
+                data_get($u, 'section.subject.schoolClass.stage.name'),
+                data_get($u, 'section.subject.schoolClass.name'),
+                data_get($u, 'section.subject.name'),
+                data_get($u, 'section.title'),
+                $u->title,
+            ])->filter()->implode(' — '));
+        })->filter()->values()->toArray();
+
+        $message = 'تم تحديث ربط الاختبار بالوحدات بنجاح.';
+        if ($count > 0) {
+            $message .= ' الاختبار مربوط بـ ' . $count . ' وحدة';
+            if (!empty($labels)) {
+                $message .= ': ' . implode('، ', array_slice($labels, 0, 5));
+                if (count($labels) > 5) {
+                    $message .= '...';
+                }
+            } else {
+                $message .= '.';
+            }
+        } else {
+            $message .= ' لا يوجد ربط لوحدات إضافية حالياً.';
+        }
+
+        return redirect()
+            ->back()
+            ->with('success', $message);
     }
 
     /**

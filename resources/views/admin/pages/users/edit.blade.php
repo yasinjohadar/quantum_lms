@@ -14,43 +14,6 @@
         select.form-select {
             padding: 0.75rem;
         }
-        
-        .photo-preview {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #e9ecef;
-        }
-        
-        .photo-upload {
-            position: relative;
-            display: inline-block;
-        }
-        
-        .photo-upload input[type="file"] {
-            position: absolute;
-            opacity: 0;
-            width: 100%;
-            height: 100%;
-            cursor: pointer;
-        }
-        
-        .photo-upload-label {
-            cursor: pointer;
-            display: inline-block;
-            padding: 8px 16px;
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            color: #6c757d;
-            transition: all 0.3s;
-        }
-        
-        .photo-upload-label:hover {
-            background: #e9ecef;
-            color: #495057;
-        }
     </style>
 @stop
 
@@ -93,7 +56,7 @@
 
             <div class="card">
                 <div class="card-body">
-                    <form method="POST" action="{{ route('users.update', $user->id) }}" enctype="multipart/form-data">
+                    <form method="POST" action="{{ route('users.update', $user->id) }}">
                         @csrf
                         @method('PUT')
 
@@ -137,52 +100,6 @@
                                 </div>
                             </div>
 
-                            <!-- كلمة المرور (اختيارية في التعديل) -->
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input type="password" class="form-control @error('password') is-invalid @enderror" 
-                                           name="password" placeholder="كلمة المرور الجديدة">
-                                    <label>كلمة المرور الجديدة (اتركها فارغة إذا لم ترد تغييرها)</label>
-                                    @error('password')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input type="password" class="form-control @error('password_confirmation') is-invalid @enderror" 
-                                           name="password_confirmation" placeholder="تأكيد كلمة المرور الجديدة">
-                                    <label>تأكيد كلمة المرور الجديدة</label>
-                                    @error('password_confirmation')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-
-                            <!-- صورة المستخدم -->
-                            <div class="col-md-6">
-                                <label class="form-label">صورة المستخدم</label>
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="photo-upload">
-                                        <img id="photo-preview" 
-                                             src="{{ $user->photo ? asset('storage/' . $user->photo) : asset('assets/images/faces/default-avatar.jpg') }}" 
-                                             alt="صورة المستخدم" class="photo-preview">
-                                        <input type="file" name="photo" id="photo-input" accept="image/*" 
-                                               onchange="previewPhoto(this)">
-                                    </div>
-                                    <div>
-                                        <label for="photo-input" class="photo-upload-label">
-                                            <i class="fas fa-camera me-2"></i>اختر صورة
-                                        </label>
-                                    </div>
-                                </div>
-                                @error('photo')
-                                    <div class="text-danger small mt-1">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-
                             <!-- تفعيل الحساب -->
                             <div class="col-md-6">
                                 <div class="form-check form-switch">
@@ -192,23 +109,6 @@
                                         تفعيل الحساب
                                     </label>
                                 </div>
-                            </div>
-
-                            <!-- الأدوار -->
-                            <div class="col-12">
-                                <label class="form-label mt-3">الأدوار (Roles)</label>
-                                <select class="form-select @error('roles') is-invalid @enderror" name="roles[]" multiple>
-                                    @foreach ($roles as $role)
-                                        <option value="{{ $role->name }}" 
-                                                {{ in_array($role->name, old('roles', $user->getRoleNames()->toArray())) ? 'selected' : '' }}>
-                                            {{ $role->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('roles')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <div class="form-text">اضغط Ctrl (أو Cmd على Mac) لاختيار أكثر من دور</div>
                             </div>
                         </div>
 
@@ -231,25 +131,6 @@
 
 @section('script')
     <script>
-        function previewPhoto(input) {
-            if (input.files && input.files[0]) {
-                var reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('photo-preview').src = e.target.result;
-                };
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
-
-        // تفعيل Select2 للأدوار (اختياري)
-        $(document).ready(function() {
-            $('select[name="roles[]"]').select2({
-                placeholder: "اختر الأدوار",
-                allowClear: true,
-                dir: "rtl"
-            });
-        });
-        
         // إظهار الرسائل تلقائياً
         document.addEventListener('DOMContentLoaded', function() {
             const alerts = document.querySelectorAll('.alert');

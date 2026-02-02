@@ -56,14 +56,22 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         // أقسام المواد (داخل كل مادة)
         Route::post('subjects/{subject}/sections', [SubjectSectionController::class, 'store'])
             ->name('subjects.sections.store');
+        Route::post('subjects/{subject}/sections/reorder', [SubjectSectionController::class, 'reorder'])
+            ->name('subjects.sections.reorder');
         Route::put('subject-sections/{section}', [SubjectSectionController::class, 'update'])
             ->name('subject-sections.update');
         Route::delete('subject-sections/{section}', [SubjectSectionController::class, 'destroy'])
             ->name('subject-sections.destroy');
+        Route::get('sections/{section}/linked-subjects', [SubjectSectionController::class, 'getLinkedSubjects'])
+            ->name('sections.linked-subjects');
+        Route::post('sections/{section}/link-subjects', [SubjectSectionController::class, 'linkSubjects'])
+            ->name('sections.link-subjects');
 
         // الوحدات (داخل كل قسم)
         Route::post('sections/{section}/units', [UnitController::class, 'store'])
             ->name('sections.units.store');
+        Route::post('sections/{section}/units/reorder', [UnitController::class, 'reorder'])
+            ->name('sections.units.reorder');
         Route::put('units/{unit}', [UnitController::class, 'update'])
             ->name('units.update');
         Route::delete('units/{unit}', [UnitController::class, 'destroy'])
@@ -72,6 +80,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         // الدروس (داخل كل وحدة)
         Route::post('units/{unit}/lessons', [LessonController::class, 'store'])
             ->name('units.lessons.store');
+        Route::post('units/{unit}/lessons/reorder', [LessonController::class, 'reorder'])
+            ->name('units.lessons.reorder');
         Route::get('lessons/{lesson}', [LessonController::class, 'show'])
             ->name('lessons.show');
         Route::put('lessons/{lesson}', [LessonController::class, 'update'])
@@ -306,6 +316,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('quizzes.approve-review');
         Route::post('quizzes/{quiz}/reject-review', [QuizController::class, 'rejectReview'])
             ->name('quizzes.reject-review');
+        Route::get('quizzes/{quiz}/linked-units', [QuizController::class, 'getLinkedUnits'])
+            ->name('quizzes.linked-units');
+        Route::post('quizzes/{quiz}/link-units', [QuizController::class, 'linkUnits'])
+            ->name('quizzes.link-units');
 
         // قائمة المراجعة
         Route::get('review-queue', [\App\Http\Controllers\Admin\ReviewQueueController::class, 'index'])

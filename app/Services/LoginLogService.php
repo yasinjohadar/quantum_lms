@@ -24,7 +24,7 @@ class LoginLogService
         // تحليل User Agent
         $deviceInfo = self::parseUserAgent($userAgent ?? '');
 
-        return LoginLog::create([
+        $log = LoginLog::create([
             'user_id' => $user?->id,
             'ip_address' => $ipAddress,
             'user_agent' => $userAgent,
@@ -37,6 +37,16 @@ class LoginLogService
             'failure_reason' => $failureReason,
             'login_at' => now(),
         ]);
+
+        if ($isSuccessful && $user) {
+            $user->update([
+                'last_login_at' => now(),
+                'last_login_ip' => $ipAddress,
+                'last_login_user_agent' => $userAgent,
+            ]);
+        }
+
+        return $log;
     }
 
     /**

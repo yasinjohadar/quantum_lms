@@ -297,7 +297,7 @@
                                                                                     </div>
                                                                                     <div class="me-3">
                                                                                         <span class="badge bg-info-transparent text-info">
-                                                                                            <i class="bi bi-play-circle me-1"></i> {{ $unit->lessons->count() }} درس
+                                                                                            <i class="bi bi-play-circle me-1"></i> {{ $unit->allLessons()->count() }} درس
                                                                                         </span>
                                                                                     </div>
                                                                                 </div>
@@ -483,17 +483,17 @@
 
                                                                                 {{-- محتويات الوحدة (الدروس) --}}
                                                                                 <div class="unit-content">
-                                                                                    @if($unit->lessons->count() === 0 && $unit->questions->count() === 0)
+                                                                                    @if($unit->allLessons()->count() === 0 && $unit->questions->count() === 0)
                                                                                         <div class="text-center py-4 text-muted bg-light rounded">
                                                                                             <i class="bi bi-collection-play display-6 d-block mb-2"></i>
                                                                                             <span class="small">لا توجد محتويات في هذه الوحدة بعد</span>
                                                                                             <p class="small text-muted mb-0 mt-1">اضغط على "درس جديد" أو "الأسئلة" لإضافة محتوى</p>
                                                                                         </div>
-                                                                                    @elseif($unit->lessons->count() === 0)
+                                                                                    @elseif($unit->allLessons()->count() === 0)
                                                                                         {{-- لا شيء - الأسئلة موجودة أعلاه --}}
                                                                                     @else
                                                                                         <div class="list-group list-group-flush">
-                                                                                            @foreach($unit->lessons as $lesson)
+                                                                                            @foreach($unit->allLessons() as $lesson)
                                                                                                 <div class="list-group-item d-flex flex-column px-0 py-2">
                                                                                                     <div class="d-flex align-items-center justify-content-between">
                                                                                                     <div class="d-flex align-items-center">
@@ -1080,7 +1080,7 @@
             </div>
 
             {{-- مودالات تعديل وحذف الدروس --}}
-            @foreach($unit->lessons as $lesson)
+            @foreach($unit->allLessons() as $lesson)
                 {{-- تعديل درس --}}
                 <div class="modal fade" id="editLesson{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -1529,7 +1529,7 @@
     {{-- Modals للموافقة والرفض على الدروس --}}
     @foreach($subject->sections as $section)
         @foreach($section->units as $unit)
-            @foreach($unit->lessons as $lesson)
+            @foreach($unit->allLessons() as $lesson)
                 @if($lesson->review_status === 'pending_review' && auth()->user()->hasAnyRole(['admin', 'supervisor']))
                     {{-- Modal الموافقة على الدرس --}}
                     <div class="modal fade" id="approveLesson{{ $lesson->id }}" tabindex="-1" aria-hidden="true">

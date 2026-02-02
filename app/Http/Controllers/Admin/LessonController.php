@@ -17,7 +17,7 @@ class LessonController extends Controller
     public function __construct()
     {
         $this->middleware(['permission:lesson-create'])->only('store');
-        $this->middleware(['permission:lesson-edit'])->only('update');
+        $this->middleware(['permission:lesson-edit'])->only(['update', 'reorder']);
         $this->middleware(['permission:lesson-delete'])->only('destroy');
         $this->middleware(['permission:lesson-show'])->only('show');
         $this->middleware(['permission:lesson-approve-review'])->only('approveReview');
@@ -156,6 +156,10 @@ class LessonController extends Controller
             $data['is_free'] = $request->has('is_free');
             $data['is_preview'] = $request->has('is_preview');
 
+            // استبعاد linked_unit_ids من التحديث المباشر على الدرس
+            $linkedUnitIds = $data['linked_unit_ids'] ?? [];
+            unset($data['linked_unit_ids']);
+
             $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
 
             if ($isTeacher) {
@@ -218,6 +222,34 @@ class LessonController extends Controller
 
             $lesson->update($data);
 
+            // مزامنة الوحدات الإضافية (ربط الدرس بوحدات أخرى): استبعاد الوحدة الأصلية
+            $linkedUnitIds = array_values(array_unique(array_filter($linkedUnitIds)));
+            $primaryUnitId = $lesson->unit_id;
+            $linkedUnitIds = array_values(array_diff($linkedUnitIds, [$primaryUnitId]));
+
+            // للمعلم: السماح فقط بوحدات من مواد/صفوف مخصصة له
+            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+                $classIds = $user->assignedClasses()->pluck('classes.id');
+                $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
+                $allowedUnitIds = \App\Models\Unit::whereHas('section.subject', function ($q) use ($classIds, $subjectIds) {
+                    if ($classIds->isNotEmpty() || $subjectIds->isNotEmpty()) {
+                        $q->where(function ($sq) use ($classIds, $subjectIds) {
+                            if ($classIds->isNotEmpty()) {
+                                $sq->whereIn('class_id', $classIds);
+                            }
+                            if ($subjectIds->isNotEmpty()) {
+                                $sq->orWhereIn('id', $subjectIds);
+                            }
+                        });
+                    } else {
+                        $q->whereRaw('1 = 0');
+                    }
+                })->pluck('id')->toArray();
+                $linkedUnitIds = array_values(array_intersect($linkedUnitIds, $allowedUnitIds));
+            }
+
+            $lesson->linkedUnits()->sync($linkedUnitIds);
+
             $subjectId = $lesson->unit->section->subject_id;
 
             return redirect()
@@ -278,6 +310,40 @@ class LessonController extends Controller
                 ->route('admin.subjects.show', $subjectId)
                 ->with('error', 'حدث خطأ أثناء حذف الدرس: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * إعادة ترتيب الدروس ضمن الوحدة.
+     */
+    public function reorder(Request $request, Unit $unit)
+    {
+        // التحقق من التخصيص
+        $user = auth()->user();
+        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            $subject = $unit->section->subject;
+            if (!$user->isAssignedToSubject($subject->id) &&
+                !$user->isAssignedToClass($subject->class_id)) {
+                return response()->json(['success' => false, 'message' => 'غير مصرح لك بالوصول إلى هذه الوحدة.'], 403);
+            }
+        }
+
+        $request->validate([
+            'order' => ['required', 'array'],
+            'order.*' => ['integer', 'exists:lessons,id'],
+        ]);
+
+        $order = $request->input('order');
+        $unitLessonIds = Lesson::where('unit_id', $unit->id)->whereIn('id', $order)->pluck('id')->toArray();
+
+        $index = 0;
+        foreach ($order as $lessonId) {
+            if (in_array((int) $lessonId, $unitLessonIds, true)) {
+                Lesson::where('id', $lessonId)->update(['order' => $index]);
+                $index++;
+            }
+        }
+
+        return response()->json(['success' => true]);
     }
 
     /**

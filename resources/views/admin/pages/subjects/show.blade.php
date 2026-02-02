@@ -86,12 +86,18 @@
                     <h5 class="page-title mb-0">تفاصيل المادة: {{ $subject->name }}</h5>
                 </div>
                 <div class="d-flex gap-2 flex-shrink-0">
-                    <a href="{{ route('admin.subjects.edit', $subject->id) }}" class="btn btn-warning btn-sm text-white">
+                    <a href="{{ route('admin.subjects.edit', $subject->id) }}{{ request('return_to_class_id') ? '?return_to_class_id=' . request('return_to_class_id') : '' }}" class="btn btn-warning btn-sm text-white">
                         <i class="fas fa-edit me-1"></i> تعديل
                     </a>
-                    <a href="{{ route('admin.subjects.index') }}" class="btn btn-secondary btn-sm">
-                        <i class="fas fa-arrow-right me-1"></i> رجوع للقائمة
-                    </a>
+                    @if(request('return_to_class_id'))
+                        <a href="{{ route('admin.classes.show', request('return_to_class_id')) }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-right me-1"></i> رجوع للصف
+                        </a>
+                    @else
+                        <a href="{{ route('admin.subjects.index') }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-right me-1"></i> رجوع للقائمة
+                        </a>
+                    @endif
                 </div>
             </div>
 
@@ -122,455 +128,90 @@
                                     <p class="text-muted small">يمكنك إنشاء أول قسم من زر "إضافة قسم جديد"</p>
                                 </div>
                             @else
-                                <div class="accordion accordion-primary accordions-items-seperate" id="subjectSectionsAccordion">
-                                    @foreach($subject->sections as $index => $section)
-                                        <div class="accordion-item mb-3 rounded overflow-hidden">
-                                            <h2 class="accordion-header" id="sectionHeading{{ $section->id }}">
-                                                <button class="accordion-button {{ $index > 0 ? 'collapsed' : '' }}" type="button"
-                                                        data-bs-toggle="collapse"
-                                                        data-bs-target="#sectionCollapse{{ $section->id }}"
-                                                        aria-expanded="{{ $index === 0 ? 'true' : 'false' }}"
-                                                        aria-controls="sectionCollapse{{ $section->id }}">
-                                                    <div class="d-flex align-items-center justify-content-between w-100 me-3">
-                                                        <div class="d-flex align-items-center">
-                                                            <i class="bi bi-folder-fill text-primary me-2"></i>
-                                                            <span class="fw-semibold">{{ $section->title }}</span>
-                                                            @if($section->is_active)
-                                                                <span class="badge bg-success-transparent text-success ms-2">نشط</span>
-                                                            @else
-                                                                <span class="badge bg-secondary-transparent text-secondary ms-2">مخفي</span>
-                                                            @endif
-                                                        </div>
-                                                        <span class="badge bg-primary-transparent text-primary me-2">
-                                                            ترتيب: {{ $section->order }}
-                                                        </span>
-                                                    </div>
-                                                </button>
-                                            </h2>
-                                            <div id="sectionCollapse{{ $section->id }}"
-                                                 class="accordion-collapse collapse"
-                                                 aria-labelledby="sectionHeading{{ $section->id }}"
-                                                 data-bs-parent="#subjectSectionsAccordion">
-                                                <div class="accordion-body">
-                                                    {{-- وصف القسم --}}
-                                                    @if($section->description)
-                                                        <p class="text-muted mb-3">
-                                                            <i class="bi bi-info-circle me-1"></i>
-                                                            {{ $section->description }}
-                                                        </p>
-                                                    @endif
-
-                                                    {{-- الوحدات داخل القسم --}}
-                                                    <div class="section-units">
-                                                        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
-                                                            <span class="text-muted small">
-                                                                <i class="bi bi-layers me-1"></i>
-                                                                الوحدات ({{ $section->units->count() }})
-                                                            </span>
-                                                            <button type="button"
-                                                                    class="btn btn-sm btn-outline-primary"
-                                                                    data-bs-toggle="modal"
-                                                                    data-bs-target="#createUnitModal{{ $section->id }}">
-                                                                <i class="bi bi-plus-lg me-1"></i> إضافة وحدة
-                                                            </button>
-                                                        </div>
-
-                                                        @if($section->units->count() === 0)
-                                                            <div class="text-center py-4 text-muted">
-                                                                <i class="bi bi-inbox display-6 d-block mb-2"></i>
-                                                                <span class="small">لا توجد وحدات في هذا القسم بعد</span>
-                                                            </div>
-                                                        @else
-                                                            {{-- Accordion للوحدات --}}
-                                                            <div class="accordion accordion-secondary" id="unitsAccordion{{ $section->id }}">
-                                                                @foreach($section->units as $unitIndex => $unit)
-                                                                    <div class="accordion-item border rounded mb-2 shadow-sm">
-                                                                        <h2 class="accordion-header" id="unitHeading{{ $unit->id }}">
-                                                                            <button class="accordion-button collapsed py-3" type="button"
-                                                                                    data-bs-toggle="collapse"
-                                                                                    data-bs-target="#unitCollapse{{ $unit->id }}"
-                                                                                    aria-expanded="false"
-                                                                                    aria-controls="unitCollapse{{ $unit->id }}">
-                                                                                <div class="d-flex align-items-center w-100 me-3">
-                                                                                    <div class="me-3">
-                                                                                        <div class="avatar avatar-md bg-info-transparent text-info rounded">
-                                                                                            <i class="bi bi-journal-text fs-5"></i>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                    <div class="flex-grow-1">
-                                                                                        <div class="d-flex align-items-center">
-                                                                                            <span class="fw-semibold">{{ $unit->title }}</span>
-                                                                                            @if($unit->is_active)
-                                                                                                <span class="badge bg-success-transparent text-success ms-2">نشط</span>
-                                                                                            @else
-                                                                                                <span class="badge bg-secondary-transparent text-secondary ms-2">مخفي</span>
-                                                                                            @endif
-                                                                                        </div>
-                                                                                        @if($unit->description)
-                                                                                            <p class="text-muted small mb-0 mt-1">{{ Str::limit($unit->description, 60) }}</p>
-                                                                                        @endif
-                                                                                    </div>
-                                                                                    <div class="me-3">
-                                                                                        <span class="badge bg-info-transparent text-info">
-                                                                                            <i class="bi bi-play-circle me-1"></i> {{ $unit->lessons->count() }} درس
-                                                                                        </span>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </button>
-                                                                        </h2>
-                                                                        <div id="unitCollapse{{ $unit->id }}"
-                                                                             class="accordion-collapse collapse"
-                                                                             aria-labelledby="unitHeading{{ $unit->id }}"
-                                                                             data-bs-parent="#unitsAccordion{{ $section->id }}">
-                                                                            <div class="accordion-body pt-0">
-                                                                                {{-- شريط أدوات الوحدة --}}
-                                                                                <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
-                                                                                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                                                                                        <button type="button" class="btn btn-sm btn-success"
-                                                                                                data-bs-toggle="modal"
-                                                                                                data-bs-target="#createLessonModal{{ $unit->id }}"
-                                                                                                title="إضافة درس">
-                                                                                            <i class="bi bi-play-circle me-1"></i> درس جديد
-                                                                                        </button>
-                                                                                        {{-- اختبار عام للوحدة --}}
-                                                                                        <a href="{{ route('admin.quizzes.create', ['subject_id' => $subject->id, 'unit_id' => $unit->id, 'scope' => 'unit']) }}" class="btn btn-sm btn-info" title="إضافة اختبار للوحدة">
-                                                                                            <i class="bi bi-clipboard-check me-1"></i> اختبار الوحدة
-                                                                                        </a>
-                                                                                        <div class="btn-group">
-                                                                                            <button type="button" class="btn btn-sm btn-purple dropdown-toggle" 
-                                                                                                    data-bs-toggle="dropdown" aria-expanded="false"
-                                                                                                    title="إدارة الأسئلة">
-                                                                                                <i class="bi bi-question-circle me-1"></i> الأسئلة
-                                                                                                @if($unit->questions->count() > 0)
-                                                                                                    <span class="badge bg-light text-purple ms-1">{{ $unit->questions->count() }}</span>
-                                                                                                @endif
-                                                                                            </button>
-                                                                                            <ul class="dropdown-menu">
-                                                                                                <li>
-                                                                                                    <button type="button" class="dropdown-item" 
-                                                                                                            data-bs-toggle="modal" 
-                                                                                                            data-bs-target="#importQuestionsModal{{ $unit->id }}">
-                                                                                                        <i class="bi bi-download me-2 text-primary"></i> استيراد أسئلة من البنك
-                                                                                                    </button>
-                                                                                                </li>
-                                                                                                <li>
-                                                                                                    <a class="dropdown-item" href="{{ route('admin.questions.create', ['unit_id' => $unit->id]) }}">
-                                                                                                        <i class="bi bi-plus-circle me-2 text-success"></i> إنشاء سؤال جديد
-                                                                                                    </a>
-                                                                                                </li>
-                                                                                                @if($unit->questions->count() > 0)
-                                                                                                    <li><hr class="dropdown-divider"></li>
-                                                                                                    <li>
-                                                                                                        <button type="button" class="dropdown-item"
-                                                                                                                data-bs-toggle="modal"
-                                                                                                                data-bs-target="#viewQuestionsModal{{ $unit->id }}">
-                                                                                                            <i class="bi bi-eye me-2 text-info"></i> عرض الأسئلة ({{ $unit->questions->count() }})
-                                                                                                        </button>
-                                                                                                    </li>
-                                                                                                @endif
-                                                                                            </ul>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                    <div class="d-flex align-items-center gap-1">
-                                                                                        <button type="button"
-                                                                                                class="btn btn-sm btn-outline-primary"
-                                                                                                data-bs-toggle="modal"
-                                                                                                data-bs-target="#editUnit{{ $unit->id }}"
-                                                                                                title="تعديل الوحدة">
-                                                                                            <i class="bi bi-pencil me-1"></i> تعديل
-                                                                                        </button>
-                                                                                        <button type="button"
-                                                                                                class="btn btn-sm btn-outline-danger"
-                                                                                                data-bs-toggle="modal"
-                                                                                                data-bs-target="#deleteUnit{{ $unit->id }}"
-                                                                                                title="حذف الوحدة">
-                                                                                            <i class="bi bi-trash"></i>
-                                                                                        </button>
-                                                                                    </div>
-                                                                                </div>
-
-                                                                                {{-- الأسئلة المرتبطة بالوحدة --}}
-                                                                                @if($unit->questions->count() > 0)
-                                                                                <div class="unit-questions mb-3">
-                                                                                    <div class="d-flex align-items-center justify-content-between mb-2">
-                                                                                        <h6 class="mb-0 text-purple fw-semibold small">
-                                                                                            <i class="bi bi-question-circle me-1"></i>
-                                                                                            أسئلة الوحدة ({{ $unit->questions->count() }})
-                                                                                        </h6>
-                                                                                    </div>
-                                                                                    <div class="list-group list-group-flush">
-                                                                                        @foreach($unit->questions as $question)
-                                                                                        <div class="list-group-item d-flex align-items-center justify-content-between px-2 py-2 bg-purple-transparent rounded mb-1">
-                                                                                            <div class="d-flex align-items-center flex-grow-1">
-                                                                                                <div class="bg-{{ $question->type_color }} rounded-circle d-flex align-items-center justify-content-center me-2" style="width:32px;height:32px;">
-                                                                                                    <i class="bi {{ $question->type_icon }} text-white small"></i>
-                                                                                                </div>
-                                                                                                <div class="flex-grow-1">
-                                                                                                    <p class="mb-0 small fw-medium">{{ Str::limit($question->title, 60) }}</p>
-                                                                                                    <div class="d-flex align-items-center gap-2 mt-1">
-                                                                                                        <span class="badge bg-{{ $question->type_color }}-transparent text-{{ $question->type_color }}" style="font-size:0.6rem;">
-                                                                                                            {{ $question->type_name }}
-                                                                                                        </span>
-                                                                                                        <span class="badge bg-{{ $question->difficulty_color }}-transparent text-{{ $question->difficulty_color }}" style="font-size:0.6rem;">
-                                                                                                            {{ $question->difficulty_name }}
-                                                                                                        </span>
-                                                                                                        <span class="text-muted" style="font-size:0.65rem;">
-                                                                                                            {{ $question->default_points }} نقطة
-                                                                                                        </span>
-                                                                                                    </div>
-                                                                                                </div>
-                                                                                            </div>
-                                                                                            <div class="d-flex align-items-center gap-1">
-                                                                                                <a href="{{ route('admin.questions.show', $question->id) }}" 
-                                                                                                   class="btn btn-sm btn-icon btn-primary-transparent" title="عرض">
-                                                                                                    <i class="bi bi-eye"></i>
-                                                                                                </a>
-                                                                                                <a href="{{ route('admin.questions.edit', $question->id) }}" 
-                                                                                                   class="btn btn-sm btn-icon btn-warning-transparent" title="تعديل">
-                                                                                                    <i class="bi bi-pencil"></i>
-                                                                                                </a>
-                                                                                                <form action="{{ route('admin.units.questions.detach', [$unit->id, $question->id]) }}" 
-                                                                                                      method="POST" class="d-inline"
-                                                                                                      onsubmit="return confirm('هل أنت متأكد من فك ربط هذا السؤال؟')">
-                                                                                                    @csrf
-                                                                                                    @method('DELETE')
-                                                                                                    <button type="submit" class="btn btn-sm btn-icon btn-danger-transparent" title="فك الربط">
-                                                                                                        <i class="bi bi-x-lg"></i>
-                                                                                                    </button>
-                                                                                                </form>
-                                                                                            </div>
-                                                                                        </div>
-                                                                                        @endforeach
-                                                                                    </div>
-                                                                                </div>
-                                                                                @endif
-
-                                                                                {{-- الاختبارات المرتبطة بالوحدة (عامة) --}}
-                                                                                @if($unit->unitQuizzes && $unit->unitQuizzes->count() > 0)
-                                                                                <div class="unit-quizzes mb-3">
-                                                                                    <div class="d-flex align-items-center justify-content-between mb-2">
-                                                                                        <h6 class="mb-0 text-info fw-semibold small">
-                                                                                            <i class="bi bi-clipboard-check me-1"></i>
-                                                                                            اختبارات الوحدة ({{ $unit->unitQuizzes->count() }})
-                                                                                        </h6>
-                                                                                    </div>
-                                                                                    <div class="list-group list-group-flush">
-                                                                                        @foreach($unit->unitQuizzes as $quiz)
-                                                                                        <div class="list-group-item d-flex align-items-center justify-content-between px-2 py-2 bg-info-transparent rounded mb-1">
-                                                                                            <div class="d-flex align-items-center flex-grow-1">
-                                                                                                <div class="bg-info rounded-circle d-flex align-items-center justify-content-center me-2" style="width:32px;height:32px;">
-                                                                                                    <i class="bi bi-clipboard-check text-white small"></i>
-                                                                                                </div>
-                                                                                                <div class="flex-grow-1">
-                                                                                                    <p class="mb-0 small fw-medium">{{ $quiz->title }}</p>
-                                                                                                    <div class="d-flex align-items-center gap-2 mt-1">
-                                                                                                        @if($quiz->is_published)
-                                                                                                            <span class="badge bg-success-transparent text-success" style="font-size:0.6rem;">منشور</span>
-                                                                                                        @else
-                                                                                                            <span class="badge bg-warning-transparent text-warning" style="font-size:0.6rem;">غير منشور</span>
-                                                                                                        @endif
-                                                                                                        <span class="text-muted" style="font-size:0.65rem;">
-                                                                                                            <i class="bi bi-question-circle me-1"></i>{{ $quiz->questions_count ?? $quiz->questions->count() }} سؤال
-                                                                                                        </span>
-                                                                                                        @if($quiz->duration_minutes)
-                                                                                                        <span class="text-muted" style="font-size:0.65rem;">
-                                                                                                            <i class="bi bi-clock me-1"></i>{{ $quiz->duration_minutes }} دقيقة
-                                                                                                        </span>
-                                                                                                        @endif
-                                                                                                    </div>
-                                                                                                </div>
-                                                                                            </div>
-                                                                                            <div class="d-flex align-items-center gap-1">
-                                                                                                <a href="{{ route('admin.quizzes.show', $quiz->id) }}" 
-                                                                                                   class="btn btn-sm btn-icon btn-info-transparent" title="عرض">
-                                                                                                    <i class="bi bi-eye"></i>
-                                                                                                </a>
-                                                                                                <a href="{{ route('admin.quizzes.edit', $quiz->id) }}" 
-                                                                                                   class="btn btn-sm btn-icon btn-warning-transparent" title="تعديل">
-                                                                                                    <i class="bi bi-pencil"></i>
-                                                                                                </a>
-                                                                                                <form action="{{ route('admin.quizzes.destroy', $quiz->id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف هذا الاختبار؟');">
-                                                                                                    @csrf
-                                                                                                    @method('DELETE')
-                                                                                                    <button type="submit" class="btn btn-sm btn-icon btn-danger-transparent" title="حذف">
-                                                                                                        <i class="bi bi-trash"></i>
-                                                                                                    </button>
-                                                                                                </form>
-                                                                                            </div>
-                                                                                        </div>
-                                                                                        @endforeach
-                                                                                    </div>
-                                                                                </div>
-                                                                                @endif
-
-                                                                                {{-- محتويات الوحدة (الدروس) --}}
-                                                                                <div class="unit-content">
-                                                                                    @if($unit->lessons->count() === 0 && $unit->questions->count() === 0)
-                                                                                        <div class="text-center py-4 text-muted bg-light rounded">
-                                                                                            <i class="bi bi-collection-play display-6 d-block mb-2"></i>
-                                                                                            <span class="small">لا توجد محتويات في هذه الوحدة بعد</span>
-                                                                                            <p class="small text-muted mb-0 mt-1">اضغط على "درس جديد" أو "الأسئلة" لإضافة محتوى</p>
-                                                                                        </div>
-                                                                                    @elseif($unit->lessons->count() === 0)
-                                                                                        {{-- لا شيء - الأسئلة موجودة أعلاه --}}
-                                                                                    @else
-                                                                                        <div class="list-group list-group-flush">
-                                                                                            @foreach($unit->lessons as $lesson)
-                                                                                                <div class="list-group-item d-flex flex-column px-0 py-2">
-                                                                                                    <div class="d-flex align-items-center justify-content-between gap-2 w-100">
-                                                                                                        <div class="d-flex align-items-center min-w-0 flex-grow-1">
-                                                                                                            <div class="me-3 position-relative flex-shrink-0">
-                                                                                                                @if($lesson->thumbnail)
-                                                                                                                    <img src="{{ asset('storage/'.$lesson->thumbnail) }}" 
-                                                                                                                         alt="{{ $lesson->title }}"
-                                                                                                                         class="rounded" 
-                                                                                                                         style="width:60px;height:40px;object-fit:cover;">
-                                                                                                                @else
-                                                                                                                    <div class="bg-danger-transparent text-danger rounded d-flex align-items-center justify-content-center" 
-                                                                                                                         style="width:60px;height:40px;">
-                                                                                                                        <i class="bi bi-play-circle fs-4"></i>
-                                                                                                                    </div>
-                                                                                                                @endif
-                                                                                                                @if($lesson->is_free)
-                                                                                                                    <span class="badge bg-success position-absolute top-0 start-0" style="font-size:0.6rem;">مجاني</span>
-                                                                                                                @endif
-                                                                                                            </div>
-                                                                                                            <div class="min-w-0">
-                                                                                                                <h6 class="mb-0 fw-semibold small">
-                                                                                                                    {{ $lesson->title }}
-                                                                                                                    @if(!$lesson->is_active)
-                                                                                                                        <span class="badge bg-secondary-transparent text-secondary ms-1">مخفي</span>
-                                                                                                                    @endif
-                                                                                                                    @if($lesson->review_status === 'pending_review')
-                                                                                                                        <span class="badge bg-warning text-dark ms-1">
-                                                                                                                            <i class="bi bi-clock-history me-1"></i> قيد المراجعة
-                                                                                                                        </span>
-                                                                                                                    @elseif($lesson->review_status === 'rejected')
-                                                                                                                        <span class="badge bg-danger ms-1">
-                                                                                                                            <i class="bi bi-x-circle me-1"></i> مرفوض
-                                                                                                                        </span>
-                                                                                                                    @endif
-                                                                                                                </h6>
-                                                                                                                <div class="d-flex align-items-center gap-2 mt-1">
-                                                                                                                    <span class="badge bg-{{ $lesson->video_type === 'youtube' ? 'danger' : ($lesson->video_type === 'vimeo' ? 'info' : 'primary') }}-transparent text-{{ $lesson->video_type === 'youtube' ? 'danger' : ($lesson->video_type === 'vimeo' ? 'info' : 'primary') }}" style="font-size:0.65rem;">
-                                                                                                                        <i class="bi bi-{{ $lesson->video_type === 'youtube' ? 'youtube' : ($lesson->video_type === 'vimeo' ? 'vimeo' : 'film') }} me-1"></i>
-                                                                                                                        {{ \App\Models\Lesson::VIDEO_TYPES[$lesson->video_type] ?? $lesson->video_type }}
-                                                                                                                    </span>
-                                                                                                                    @if($lesson->duration)
-                                                                                                                        <span class="text-muted" style="font-size:0.7rem;">
-                                                                                                                            <i class="bi bi-clock me-1"></i>{{ $lesson->formatted_duration }}
-                                                                                                                        </span>
-                                                                                                                    @endif
-                                                                                                                    @if($lesson->attachments->count() > 0)
-                                                                                                                        <span class="text-muted" style="font-size:0.7rem;">
-                                                                                                                            <i class="bi bi-paperclip me-1"></i>{{ $lesson->attachments->count() }}
-                                                                                                                        </span>
-                                                                                                                    @endif
-                                                                                                                </div>
-                                                                                                            </div>
-                                                                                                        </div>
-                                                                                                        <div class="d-flex align-items-center gap-1 flex-shrink-0">
-                                                                                                            <a href="{{ route('admin.lessons.show', $lesson->id) }}" 
-                                                                                                               class="btn btn-sm btn-icon btn-success-transparent" title="مشاهدة">
-                                                                                                                <i class="bi bi-play-fill"></i>
-                                                                                                            </a>
-                                                                                                            @if($lesson->embed_url || $lesson->video_url)
-                                                                                                            <button type="button"
-                                                                                                                    class="btn btn-sm btn-icon btn-warning-transparent"
-                                                                                                                    data-bs-toggle="modal"
-                                                                                                                    data-bs-target="#playVideoModal{{ $lesson->id }}"
-                                                                                                                    title="تشغيل الفيديو - معاينة سريعة">
-                                                                                                                <i class="bi bi-play-circle"></i>
-                                                                                                            </button>
-                                                                                                            @endif
-                                                                                                            <button type="button"
-                                                                                                                    class="btn btn-sm btn-icon btn-info-transparent"
-                                                                                                                    data-bs-toggle="modal"
-                                                                                                                    data-bs-target="#addLessonAttachment{{ $lesson->id }}"
-                                                                                                                    title="إضافة مرفقات">
-                                                                                                                <i class="bi bi-paperclip"></i>
-                                                                                                            </button>
-                                                                                                            <button type="button"
-                                                                                                                    class="btn btn-sm btn-icon btn-primary-transparent"
-                                                                                                                    data-bs-toggle="modal"
-                                                                                                                    data-bs-target="#editLesson{{ $lesson->id }}"
-                                                                                                                    title="تعديل">
-                                                                                                                <i class="bi bi-pencil"></i>
-                                                                                                            </button>
-                                                                                                            <button type="button"
-                                                                                                                    class="btn btn-sm btn-icon btn-danger-transparent"
-                                                                                                                    data-bs-toggle="modal"
-                                                                                                                    data-bs-target="#deleteLesson{{ $lesson->id }}"
-                                                                                                                    title="حذف">
-                                                                                                                <i class="bi bi-trash"></i>
-                                                                                                            </button>
-                                                                                                            @if($lesson->review_status === 'pending_review' && auth()->user()->hasAnyRole(['admin', 'supervisor']))
-                                                                                                                <div class="btn-group btn-group-sm ms-2">
-                                                                                                                    <button type="button" class="btn btn-sm btn-success" 
-                                                                                                                            data-bs-toggle="modal" 
-                                                                                                                            data-bs-target="#approveLesson{{ $lesson->id }}"
-                                                                                                                            title="موافقة">
-                                                                                                                        <i class="bi bi-check-circle"></i>
-                                                                                                                    </button>
-                                                                                                                    <button type="button" class="btn btn-sm btn-danger" 
-                                                                                                                            data-bs-toggle="modal" 
-                                                                                                                            data-bs-target="#rejectLesson{{ $lesson->id }}"
-                                                                                                                            title="رفض">
-                                                                                                                        <i class="bi bi-x-circle"></i>
-                                                                                                                    </button>
-                                                                                                                </div>
-                                                                                                            @endif
-                                                                                                            <a href="{{ route('admin.quizzes.create', ['subject_id' => $subject->id, 'unit_id' => $unit->id, 'lesson_id' => $lesson->id, 'scope' => 'lesson']) }}" 
-                                                                                                               class="btn btn-sm btn-outline-info" title="اختبار لهذا الدرس">
-                                                                                                                <i class="bi bi-clipboard-check me-1"></i> اختبار الدرس
-                                                                                                            </a>
-                                                                            @if($lesson->quizzes && $lesson->quizzes->count() > 0)
-                                                                                                                @php $firstQuiz = $lesson->quizzes->first(); @endphp
-                                                                                                                <a href="{{ route('admin.quizzes.show', $firstQuiz->id) }}" 
-                                                                                                                   class="btn btn-sm btn-icon btn-info-transparent" 
-                                                                                                                   title="{{ $firstQuiz->title }}">
-                                                                                                                    <i class="bi bi-question-circle"></i>
-                                                                                                                </a>
-                                                                            @endif
-                                                                                                        </div>
-                                                                                                    </div>
-                                                                                                </div>
-                                                                                            @endforeach
-                                                                                        </div>
-                                                                                    @endif
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                @endforeach
-                                                            </div>
-                                                        @endif
-                                                    </div>
-
-                                                    {{-- أزرار التحكم بالقسم --}}
-                                                    <div class="d-flex justify-content-end gap-2 mt-3 pt-3 border-top">
-                                                        <button type="button"
-                                                                class="btn btn-sm btn-outline-primary"
-                                                                data-bs-toggle="modal"
-                                                                data-bs-target="#editSection{{ $section->id }}">
-                                                            <i class="bi bi-pencil me-1"></i> تعديل القسم
-                                                        </button>
-                                                        <button type="button"
-                                                                class="btn btn-sm btn-outline-danger"
-                                                                data-bs-toggle="modal"
-                                                                data-bs-target="#deleteSection{{ $section->id }}">
-                                                            <i class="bi bi-trash me-1"></i> حذف
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                <div class="accordion accordion-primary accordions-items-seperate" id="subjectSectionsAccordion" data-sortable="sections" data-subject-id="{{ $subject->id }}" data-parent-id="" data-reorder-url="{{ route('admin.subjects.sections.reorder', $subject) }}">
+                                    @foreach($subject->sections->whereNull('parent_id')->sortBy('order')->values() as $index => $section)
+                                        @include('admin.pages.subjects.partials.section-item', [
+                                            'section' => $section,
+                                            'allSections' => $subject->sections,
+                                            'subject' => $subject,
+                                            'sectionIndex' => $index,
+                                            'parentAccordionId' => 'subjectSectionsAccordion',
+                                        ])
                                     @endforeach
                                 </div>
                             @endif
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- مودال ربط الاختبار بوحدات إضافية --}}
+    <div class="modal fade" id="linkQuizUnitsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 rounded-4">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold" id="linkQuizUnitsModalTitle">ربط الاختبار بوحدات إضافية</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                </div>
+                <form id="linkQuizUnitsForm" method="POST" action="">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <p class="small fw-semibold mb-1">الاختبار مربوط حالياً بـ:</p>
+                            <div id="currentLinkedUnitsQuiz" class="small text-muted">
+                                {{-- يُملأ عبر JS من data-linked-units --}}
+                            </div>
+                        </div>
+                        <p class="text-muted small mb-3">اختر الصف ثم المادة ثم القسم ثم الوحدة، ثم اضغط إضافة. يمكنك إضافة أكثر من وحدة.</p>
+                        <div id="linkedUnitsListQuiz" class="mb-3">
+                            {{-- تُضاف الوحدات المختارة هنا via JS --}}
+                        </div>
+                        <div class="row g-2 align-items-end mb-2" id="quizLinkUnitsRow">
+                            <div class="col-md-3">
+                                <label class="form-label small">الصف</label>
+                                <select class="form-select form-select-sm quiz-link-class-select" id="quizLinkClassSelect">
+                                    <option value="">-- اختر الصف --</option>
+                                    @if(isset($linkableClasses))
+                                    @foreach($linkableClasses as $cls)
+                                    <option value="{{ $cls['id'] }}">{{ $cls['name'] }}</option>
+                                    @endforeach
+                                    @endif
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small">المادة</label>
+                                <select class="form-select form-select-sm quiz-link-subject-select" id="quizLinkSubjectSelect" disabled>
+                                    <option value="">-- اختر المادة --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small">القسم</label>
+                                <select class="form-select form-select-sm quiz-link-section-select" id="quizLinkSectionSelect" disabled>
+                                    <option value="">-- اختر القسم --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small">الوحدة</label>
+                                <select class="form-select form-select-sm quiz-link-unit-select" id="quizLinkUnitSelect" disabled>
+                                    <option value="">-- اختر الوحدة --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-1">
+                                <button type="button" class="btn btn-sm btn-success w-100 add-quiz-linked-unit" id="addQuizLinkedUnitBtn" title="إضافة وحدة">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i> حفظ الربط
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -586,6 +227,30 @@
                 <form action="{{ route('admin.subjects.sections.store', $subject->id) }}" method="POST">
                     @csrf
                     <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">القسم الأب (اختياري)</label>
+                            <select name="parent_id" id="createSectionParentId" class="form-select">
+                                <option value="">— قسم رئيسي (بدون أب) —</option>
+                                @php
+                                    $buildSectionOptions = function ($allSections, $parentId = null, $prefix = '') use (&$buildSectionOptions) {
+                                        $out = collect();
+                                        $items = $parentId === null
+                                            ? $allSections->whereNull('parent_id')
+                                            : $allSections->where('parent_id', $parentId);
+                                        foreach ($items->sortBy('order') as $s) {
+                                            $out->push(['id' => $s->id, 'title' => $prefix . $s->title]);
+                                            $out = $out->merge($buildSectionOptions($allSections, $s->id, $prefix . '— '));
+                                        }
+                                        return $out;
+                                    };
+                                    $sectionOptions = $buildSectionOptions($subject->sections);
+                                @endphp
+                                @foreach($sectionOptions as $opt)
+                                    <option value="{{ $opt['id'] }}">{{ $opt['title'] }}</option>
+                                @endforeach
+                            </select>
+                            <small class="text-muted">اتركه فارغاً لإنشاء قسم رئيسي، أو اختر قسماً لإنشاء قسم فرعي تحته.</small>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">عنوان القسم</label>
                             <input type="text" name="title" class="form-control" required>
@@ -630,6 +295,41 @@
                         @csrf
                         @method('PUT')
                         <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">القسم الأب (اختياري)</label>
+                                <select name="parent_id" class="form-select">
+                                    <option value="" {{ $section->parent_id === null ? 'selected' : '' }}>— قسم رئيسي (بدون أب) —</option>
+                                    @php
+                                        $excludeIds = collect([$section->id]);
+                                        $queue = [$section->id];
+                                        while (!empty($queue)) {
+                                            $pid = array_shift($queue);
+                                            foreach ($subject->sections->where('parent_id', $pid) as $c) {
+                                                $excludeIds->push($c->id);
+                                                $queue[] = $c->id;
+                                            }
+                                        }
+                                        $excludeIds = $excludeIds->unique()->values();
+                                        $buildEditSectionOptions = function ($allSections, $parentId, $prefix, $excludeIds) use (&$buildEditSectionOptions) {
+                                            $out = collect();
+                                            $items = $parentId === null
+                                                ? $allSections->whereNull('parent_id')
+                                                : $allSections->where('parent_id', $parentId);
+                                            foreach ($items->sortBy('order') as $s) {
+                                                if ($excludeIds->contains($s->id)) continue;
+                                                $out->push(['id' => $s->id, 'title' => $prefix . $s->title]);
+                                                $out = $out->merge($buildEditSectionOptions($allSections, $s->id, $prefix . '— ', $excludeIds));
+                                            }
+                                            return $out;
+                                        };
+                                        $editSectionOptions = $buildEditSectionOptions($subject->sections, null, '', $excludeIds);
+                                    @endphp
+                                    @foreach($editSectionOptions as $opt)
+                                        <option value="{{ $opt['id'] }}" {{ (string)$section->parent_id === (string)$opt['id'] ? 'selected' : '' }}>{{ $opt['title'] }}</option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">لا يمكن جعل القسم أباً لنفسه أو لأحد أحفاده.</small>
+                            </div>
                             <div class="mb-3">
                                 <label class="form-label">عنوان القسم</label>
                                 <input type="text" name="title" class="form-control" value="{{ $section->title }}" required>
@@ -709,6 +409,30 @@
                         @csrf
                         <div class="modal-body">
                             <div class="mb-3">
+                                <label class="form-label">الوحدة الأب (اختياري)</label>
+                                <select name="parent_id" class="form-select create-unit-parent-select" data-section-id="{{ $section->id }}">
+                                    <option value="">— وحدة رئيسية (بدون أب) —</option>
+                                    @php
+                                        $buildUnitOptions = function ($allUnits, $parentId, $prefix) use (&$buildUnitOptions) {
+                                            $out = collect();
+                                            $items = $parentId === null
+                                                ? $allUnits->whereNull('parent_id')
+                                                : $allUnits->where('parent_id', $parentId);
+                                            foreach ($items->sortBy('order') as $u) {
+                                                $out->push(['id' => $u->id, 'title' => $prefix . $u->title]);
+                                                $out = $out->merge($buildUnitOptions($allUnits, $u->id, $prefix . '— '));
+                                            }
+                                            return $out;
+                                        };
+                                        $unitOptions = $buildUnitOptions($section->units, null, '');
+                                    @endphp
+                                    @foreach($unitOptions as $opt)
+                                        <option value="{{ $opt['id'] }}">{{ $opt['title'] }}</option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">اتركه فارغاً لوحدة رئيسية، أو اختر وحدة لإنشاء وحدة فرعية تحتها.</small>
+                            </div>
+                            <div class="mb-3">
                                 <label class="form-label">عنوان الوحدة <span class="text-danger">*</span></label>
                                 <input type="text" name="title" class="form-control" placeholder="مثال: الوحدة الأولى - الأعداد" required>
                             </div>
@@ -763,6 +487,41 @@
                             @csrf
                             @method('PUT')
                             <div class="modal-body">
+                                @php
+                                    $unitExcludeIds = collect([$unit->id]);
+                                    $unitQueue = [$unit->id];
+                                    while (!empty($unitQueue)) {
+                                        $pid = array_shift($unitQueue);
+                                        foreach ($section->units->where('parent_id', $pid) as $c) {
+                                            $unitExcludeIds->push($c->id);
+                                            $unitQueue[] = $c->id;
+                                        }
+                                    }
+                                    $unitExcludeIds = $unitExcludeIds->unique()->values();
+                                    $buildEditUnitOptions = function ($allUnits, $parentId, $prefix, $excludeIds) use (&$buildEditUnitOptions) {
+                                        $out = collect();
+                                        $items = $parentId === null
+                                            ? $allUnits->whereNull('parent_id')
+                                            : $allUnits->where('parent_id', $parentId);
+                                        foreach ($items->sortBy('order') as $u) {
+                                            if ($excludeIds->contains($u->id)) continue;
+                                            $out->push(['id' => $u->id, 'title' => $prefix . $u->title]);
+                                            $out = $out->merge($buildEditUnitOptions($allUnits, $u->id, $prefix . '— ', $excludeIds));
+                                        }
+                                        return $out;
+                                    };
+                                    $editUnitOptions = $buildEditUnitOptions($section->units, null, '', $unitExcludeIds);
+                                @endphp
+                                <div class="mb-3">
+                                    <label class="form-label">الوحدة الأب (اختياري)</label>
+                                    <select name="parent_id" class="form-select">
+                                        <option value="" {{ $unit->parent_id === null ? 'selected' : '' }}>— وحدة رئيسية (بدون أب) —</option>
+                                        @foreach($editUnitOptions as $opt)
+                                            <option value="{{ $opt['id'] }}" {{ (string)$unit->parent_id === (string)$opt['id'] ? 'selected' : '' }}>{{ $opt['title'] }}</option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted">لا يمكن جعل الوحدة أباً لنفسها أو لأحد أحفادها.</small>
+                                </div>
                                 <div class="mb-3">
                                     <label class="form-label">عنوان الوحدة <span class="text-danger">*</span></label>
                                     <input type="text" name="title" class="form-control" value="{{ $unit->title }}" required>
@@ -972,7 +731,7 @@
             </div>
 
             {{-- مودالات تعديل وحذف الدروس --}}
-            @foreach($unit->lessons as $lesson)
+            @foreach($unit->allLessons() as $lesson)
                 {{-- تعديل درس --}}
                 <div class="modal fade" id="editLesson{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -1116,6 +875,61 @@
                                             </div>
                                         </div>
                                     </div>
+
+                                    @if(isset($linkableSubjects) && $linkableSubjects->isNotEmpty())
+                                    <hr class="my-3">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">
+                                            <i class="bi bi-link-45deg me-1"></i> ربط الدرس بمواد وأقسام إضافية
+                                        </label>
+                                        <p class="small text-muted mb-2">الوحدة الأصلية: {{ $lesson->unit->section->subject->name ?? '' }} — {{ $lesson->unit->section->title ?? '' }} — {{ $lesson->unit->title ?? '' }}</p>
+                                        <div id="linkedUnitsList{{ $lesson->id }}_{{ $unit->id }}" class="mb-2">
+                                            @foreach($lesson->linkedUnits as $linkedUnit)
+                                            <div class="d-flex align-items-center gap-2 mb-1 linked-unit-row" data-lesson-id="{{ $lesson->id }}">
+                                                <span class="badge bg-secondary">{{ $linkedUnit->section->subject->name ?? '' }} — {{ $linkedUnit->section->title ?? '' }} — {{ $linkedUnit->title }}</span>
+                                                <input type="hidden" name="linked_unit_ids[]" value="{{ $linkedUnit->id }}">
+                                                <button type="button" class="btn btn-sm btn-outline-danger py-0 remove-linked-unit" title="إزالة"><i class="bi bi-x"></i></button>
+                                            </div>
+                                            @endforeach
+                                        </div>
+                                        <div class="row g-2 align-items-end mb-2" data-lesson-id="{{ $lesson->id }}" data-current-subject-id="{{ $subject->id }}" data-current-class-id="{{ $subject->class_id ?? '' }}">
+                                            <div class="col-md-3">
+                                                <label class="form-label small">الصف</label>
+                                                <select class="form-select form-select-sm link-class-select" data-lesson-id="{{ $lesson->id }}">
+                                                    <option value="">-- اختر الصف --</option>
+                                                    @if(isset($linkableClasses))
+                                                    @foreach($linkableClasses as $cls)
+                                                    <option value="{{ $cls['id'] }}">{{ $cls['name'] }}</option>
+                                                    @endforeach
+                                                    @endif
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label small">مادة</label>
+                                                <select class="form-select form-select-sm link-subject-select" data-lesson-id="{{ $lesson->id }}" disabled>
+                                                    <option value="">-- اختر المادة --</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label small">القسم</label>
+                                                <select class="form-select form-select-sm link-section-select" data-lesson-id="{{ $lesson->id }}" disabled>
+                                                    <option value="">-- اختر القسم --</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label small">الوحدة</label>
+                                                <select class="form-select form-select-sm link-unit-select" data-lesson-id="{{ $lesson->id }}" data-primary-unit-id="{{ $lesson->unit_id }}" disabled>
+                                                    <option value="">-- اختر الوحدة --</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-1">
+                                                <button type="button" class="btn btn-sm btn-success add-linked-unit" data-lesson-id="{{ $lesson->id }}" data-list-id="linkedUnitsList{{ $lesson->id }}_{{ $unit->id }}" title="إضافة وحدة">
+                                                    <i class="bi bi-plus-lg"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endif
                                 </div>
                                 <div class="modal-footer border-0">
                                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
@@ -1304,190 +1118,10 @@
         @endforeach
     @endforeach
 
-    {{-- مودالات الأسئلة لكل وحدة --}}
-    @foreach($subject->sections as $section)
-        @foreach($section->units as $unit)
-            {{-- مودال استيراد أسئلة من البنك --}}
-            <div class="modal fade" id="importQuestionsModal{{ $unit->id }}" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-                    <div class="modal-content border-0">
-                        <div class="modal-header bg-primary-transparent border-0">
-                            <div class="d-flex align-items-center">
-                                <div class="bg-primary rounded-circle p-2 me-3">
-                                    <i class="bi bi-download text-white fs-5"></i>
-                                </div>
-                                <div>
-                                    <h5 class="modal-title mb-0 fw-bold">استيراد أسئلة من بنك الأسئلة</h5>
-                                    <small class="text-muted">الوحدة: {{ $unit->title }}</small>
-                                </div>
-                            </div>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
-                        </div>
-                        <form action="{{ route('admin.units.questions.attach', $unit->id) }}" method="POST" id="importQuestionsForm{{ $unit->id }}">
-                            @csrf
-                            <div class="modal-body p-4">
-                                {{-- أدوات البحث والفلترة --}}
-                                <div class="card border mb-4">
-                                    <div class="card-body">
-                                        <div class="row g-3">
-                                            <div class="col-md-4">
-                                                <label class="form-label small fw-semibold">البحث</label>
-                                                <input type="text" class="form-control question-search-input" 
-                                                       data-unit="{{ $unit->id }}" 
-                                                       placeholder="ابحث عن سؤال...">
-                                            </div>
-                                            <div class="col-md-3">
-                                                <label class="form-label small fw-semibold">نوع السؤال</label>
-                                                <select class="form-select question-type-filter" data-unit="{{ $unit->id }}">
-                                                    <option value="">كل الأنواع</option>
-                                                    @foreach(\App\Models\Question::TYPES as $key => $name)
-                                                        <option value="{{ $key }}">{{ $name }}</option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <label class="form-label small fw-semibold">مستوى الصعوبة</label>
-                                                <select class="form-select question-difficulty-filter" data-unit="{{ $unit->id }}">
-                                                    <option value="">كل المستويات</option>
-                                                    @foreach(\App\Models\Question::DIFFICULTIES as $key => $name)
-                                                        <option value="{{ $key }}">{{ $name }}</option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-                                            <div class="col-md-2 d-flex align-items-end">
-                                                <button type="button" class="btn btn-primary w-100 search-questions-btn" data-unit="{{ $unit->id }}">
-                                                    <i class="bi bi-search me-1"></i> بحث
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {{-- شريط التحكم العلوي (تحديد الكل + زر الاستيراد) --}}
-                                <div class="d-flex align-items-center justify-content-between mb-3 p-3 bg-light rounded border" id="selectAllBar{{ $unit->id }}" style="display: none;">
-                                    <div class="d-flex align-items-center gap-3">
-                                        <div class="form-check mb-0">
-                                            <input class="form-check-input select-all-checkbox" type="checkbox" id="selectAll{{ $unit->id }}" data-unit="{{ $unit->id }}" style="width: 1.2em; height: 1.2em;">
-                                            <label class="form-check-label fw-semibold" for="selectAll{{ $unit->id }}">
-                                                تحديد الكل
-                                            </label>
-                                        </div>
-                                        <span class="text-muted small questions-count-label" id="questionsCountLabel{{ $unit->id }}"></span>
-                                        {{-- شريط الأسئلة المحددة --}}
-                                        <div class="selected-info text-success fw-semibold" id="selectedInfo{{ $unit->id }}" style="display: none;">
-                                            <i class="bi bi-check2-square me-1"></i>
-                                            تم تحديد <span class="selected-count">0</span> سؤال
-                                        </div>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <button type="button" class="btn btn-sm btn-outline-danger clear-selection-btn" data-unit="{{ $unit->id }}" style="display: none;" id="clearBtn{{ $unit->id }}">
-                                            <i class="bi bi-x-lg me-1"></i> إلغاء التحديد
-                                        </button>
-                                        <button type="submit" class="btn btn-success" id="importBtn{{ $unit->id }}" disabled>
-                                            <i class="bi bi-plus-circle me-1"></i> 
-                                            <span>ربط الأسئلة المحددة</span>
-                                            <span class="badge bg-white text-success ms-1 import-count" style="display: none;">0</span>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {{-- قائمة الأسئلة --}}
-                                <div class="questions-list-container" id="questionsListContainer{{ $unit->id }}" style="max-height: 400px; overflow-y: auto;">
-                                    <div class="text-center py-5 text-muted">
-                                        <i class="bi bi-search display-4 d-block mb-3"></i>
-                                        <p>اضغط على زر "بحث" لعرض الأسئلة المتاحة</p>
-                                        <p class="small">سيتم عرض الأسئلة غير المرتبطة بهذه الوحدة</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="modal-footer border-0">
-                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                                    <i class="bi bi-x-lg me-1"></i> إغلاق
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            {{-- مودال عرض أسئلة الوحدة --}}
-            @if($unit->questions->count() > 0)
-            <div class="modal fade" id="viewQuestionsModal{{ $unit->id }}" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-                    <div class="modal-content border-0">
-                        <div class="modal-header bg-info-transparent border-0">
-                            <div class="d-flex align-items-center">
-                                <div class="bg-info rounded-circle p-2 me-3">
-                                    <i class="bi bi-question-circle text-white fs-5"></i>
-                                </div>
-                                <div>
-                                    <h5 class="modal-title mb-0 fw-bold">أسئلة الوحدة</h5>
-                                    <small class="text-muted">{{ $unit->title }} - {{ $unit->questions->count() }} سؤال</small>
-                                </div>
-                            </div>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
-                        </div>
-                        <div class="modal-body p-4">
-                            <div class="list-group list-group-flush">
-                                @foreach($unit->questions as $question)
-                                <div class="list-group-item px-0 py-3">
-                                    <div class="d-flex align-items-start justify-content-between">
-                                        <div class="flex-grow-1 me-3">
-                                            <div class="d-flex align-items-center gap-2 mb-2">
-                                                <span class="badge bg-{{ $question->type_color }}-transparent text-{{ $question->type_color }}">
-                                                    <i class="bi {{ $question->type_icon }} me-1"></i>
-                                                    {{ $question->type_name }}
-                                                </span>
-                                                <span class="badge bg-{{ $question->difficulty_color }}-transparent text-{{ $question->difficulty_color }}">
-                                                    {{ $question->difficulty_name }}
-                                                </span>
-                                                <span class="badge bg-secondary-transparent text-secondary">
-                                                    {{ $question->default_points }} نقطة
-                                                </span>
-                                            </div>
-                                            <p class="mb-0 fw-semibold">{{ Str::limit($question->title, 100) }}</p>
-                                        </div>
-                                        <div class="d-flex gap-1">
-                                            <a href="{{ route('admin.questions.show', $question->id) }}" 
-                                               class="btn btn-sm btn-icon btn-primary-transparent" title="عرض">
-                                                <i class="bi bi-eye"></i>
-                                            </a>
-                                            <a href="{{ route('admin.questions.edit', $question->id) }}" 
-                                               class="btn btn-sm btn-icon btn-warning-transparent" title="تعديل">
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
-                                            <form action="{{ route('admin.units.questions.detach', [$unit->id, $question->id]) }}" 
-                                                  method="POST" class="d-inline"
-                                                  onsubmit="return confirm('هل أنت متأكد من فك ربط هذا السؤال من الوحدة؟')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-icon btn-danger-transparent" title="فك الربط">
-                                                    <i class="bi bi-link-45deg"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                                @endforeach
-                            </div>
-                        </div>
-                        <div class="modal-footer border-0">
-                            <a href="{{ route('admin.questions.create', ['unit_id' => $unit->id]) }}" class="btn btn-success">
-                                <i class="bi bi-plus-lg me-1"></i> إضافة سؤال جديد
-                            </a>
-                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إغلاق</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            @endif
-        @endforeach
-    @endforeach
-
     {{-- Modals للموافقة والرفض على الدروس --}}
     @foreach($subject->sections as $section)
         @foreach($section->units as $unit)
-            @foreach($unit->lessons as $lesson)
+            @foreach($unit->allLessons() as $lesson)
                 @if($lesson->review_status === 'pending_review' && auth()->user()->hasAnyRole(['admin', 'supervisor']))
                     {{-- Modal الموافقة على الدرس --}}
                     <div class="modal fade" id="approveLesson{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
@@ -1558,8 +1192,411 @@
 @stop
 
 @section('js')
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+@isset($linkableStructure)
+<script>
+window.linkableStructure = @json($linkableStructure);
+window.adminQuizzesLinkUnitsBase = "{{ url('admin/quizzes') }}";
+</script>
+@endisset
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // تعيين القسم الأب عند فتح مودال إنشاء قسم من "إضافة قسم فرعي"
+    var createSectionModalEl = document.getElementById('createSectionModal');
+    if (createSectionModalEl) {
+        createSectionModalEl.addEventListener('show.bs.modal', function(e) {
+            var parentSelect = document.getElementById('createSectionParentId');
+            if (!parentSelect) return;
+            var trigger = e.relatedTarget;
+            if (trigger && trigger.classList && trigger.classList.contains('add-child-section-btn') && trigger.getAttribute('data-parent-id')) {
+                parentSelect.value = trigger.getAttribute('data-parent-id');
+            } else {
+                parentSelect.value = '';
+            }
+        });
+    }
+
+    // تعيين الوحدة الأب عند فتح مودال إنشاء وحدة من "إضافة وحدة فرعية"
+    document.querySelectorAll('[id^="createUnitModal"]').forEach(function(modalEl) {
+        modalEl.addEventListener('show.bs.modal', function(e) {
+            var modal = e.target;
+            var parentSelect = modal.querySelector('select[name="parent_id"].create-unit-parent-select') || modal.querySelector('select[name="parent_id"]');
+            if (!parentSelect) return;
+            var trigger = e.relatedTarget;
+            if (trigger && trigger.classList && trigger.classList.contains('add-child-unit-btn') && trigger.getAttribute('data-parent-id')) {
+                parentSelect.value = trigger.getAttribute('data-parent-id');
+            } else {
+                parentSelect.value = '';
+            }
+        });
+    });
+
+    // مودال ربط الاختبار بوحدات إضافية: تعيين الـ action والعنوان وجلب الأماكن المرتبطة من الخادم عند الفتح
+    var linkQuizUnitsModalEl = document.getElementById('linkQuizUnitsModal');
+    if (linkQuizUnitsModalEl) {
+        linkQuizUnitsModalEl.addEventListener('show.bs.modal', function(e) {
+            var form = document.getElementById('linkQuizUnitsForm');
+            var titleEl = document.getElementById('linkQuizUnitsModalTitle');
+            var listEl = document.getElementById('linkedUnitsListQuiz');
+            var currentLinkedEl = document.getElementById('currentLinkedUnitsQuiz');
+            var trigger = e.relatedTarget;
+            if (trigger && form && titleEl && listEl) {
+                var quizId = trigger.getAttribute('data-quiz-id');
+                var quizTitle = trigger.getAttribute('data-quiz-title') || '';
+                var primaryUnitId = trigger.getAttribute('data-quiz-primary-unit-id') || '';
+                if (quizId && window.adminQuizzesLinkUnitsBase) {
+                    form.action = window.adminQuizzesLinkUnitsBase + '/' + quizId + '/link-units';
+                    form.setAttribute('data-primary-unit-id', primaryUnitId);
+                    titleEl.textContent = 'ربط الاختبار بوحدات إضافية' + (quizTitle ? ': ' + quizTitle : '');
+                }
+                function esc(s) {
+                    if (s == null || s === '') return '';
+                    var div = document.createElement('div');
+                    div.textContent = s;
+                    return div.innerHTML;
+                }
+                function fillLinkedUnitsUI(linkedUnits) {
+                    listEl.innerHTML = '';
+                    linkedUnits.forEach(function(u) {
+                        var label = [u.stage_name, u.class_name, u.subject_name, u.section_title, u.title].filter(Boolean).join(' — ');
+                        var badgeText = esc(label || u.title || '#' + u.id);
+                        var row = document.createElement('div');
+                        row.className = 'd-flex align-items-center gap-2 mb-1 linked-unit-row';
+                        row.innerHTML = '<span class="badge bg-secondary">' + badgeText + '</span>' +
+                            '<input type="hidden" name="linked_unit_ids[]" value="' + esc(String(u.id)) + '">' +
+                            '<button type="button" class="btn btn-sm btn-outline-danger py-0 remove-linked-unit" title="إزالة"><i class="bi bi-x"></i></button>';
+                        listEl.appendChild(row);
+                    });
+                    var classSelect = document.getElementById('quizLinkClassSelect');
+                    var subjectSelect = document.getElementById('quizLinkSubjectSelect');
+                    var sectionSelect = document.getElementById('quizLinkSectionSelect');
+                    var unitSelect = document.getElementById('quizLinkUnitSelect');
+                    if (classSelect) classSelect.value = '';
+                    if (subjectSelect) { subjectSelect.innerHTML = '<option value="">-- اختر المادة --</option>'; subjectSelect.disabled = true; }
+                    if (sectionSelect) { sectionSelect.innerHTML = '<option value="">-- اختر القسم --</option>'; sectionSelect.disabled = true; }
+                    if (unitSelect) { unitSelect.innerHTML = '<option value="">-- اختر الوحدة --</option>'; unitSelect.disabled = true; }
+                    if (currentLinkedEl) {
+                        if (linkedUnits.length === 0) {
+                            currentLinkedEl.innerHTML = '<span class="text-muted">لا يوجد ربط لوحدات إضافية</span>';
+                        } else {
+                            var parts = linkedUnits.map(function(u) {
+                                var label = [u.stage_name, u.class_name, u.subject_name, u.section_title, u.title].filter(Boolean).join(' — ');
+                                return '<span class="badge bg-secondary me-1 mb-1">' + esc(label || u.title || '#' + u.id) + '</span>';
+                            });
+                            currentLinkedEl.innerHTML = parts.join('');
+                        }
+                    }
+                }
+                if (currentLinkedEl) currentLinkedEl.innerHTML = '<span class="text-muted">جاري التحميل...</span>';
+                listEl.innerHTML = '';
+                if (quizId && window.adminQuizzesLinkUnitsBase) {
+                    var linkedUnitsUrl = window.adminQuizzesLinkUnitsBase + '/' + quizId + '/linked-units';
+                    fetch(linkedUnitsUrl, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+                        .then(function(res) { return res.json(); })
+                        .then(function(linkedUnits) {
+                            fillLinkedUnitsUI(Array.isArray(linkedUnits) ? linkedUnits : []);
+                        })
+                        .catch(function() {
+                            var linkedUnitsJson = trigger.getAttribute('data-linked-units') || '[]';
+                            var linkedUnits = [];
+                            try {
+                                linkedUnits = JSON.parse(linkedUnitsJson);
+                            } catch (err) {
+                                linkedUnits = [];
+                            }
+                            fillLinkedUnitsUI(linkedUnits);
+                        });
+                } else {
+                    var linkedUnitsJson = trigger.getAttribute('data-linked-units') || '[]';
+                    var linkedUnits = [];
+                    try {
+                        linkedUnits = JSON.parse(linkedUnitsJson);
+                    } catch (err) {
+                        linkedUnits = [];
+                    }
+                    fillLinkedUnitsUI(linkedUnits);
+                }
+            }
+        });
+    }
+
+    // ربط الدرس بوحدات إضافية (صف / مادة / قسم / وحدة)
+    if (typeof window.linkableStructure !== 'undefined') {
+        const structure = window.linkableStructure;
+        document.querySelectorAll('.link-class-select').forEach(function(classSelect) {
+            classSelect.addEventListener('change', function() {
+                const modal = this.closest('.modal');
+                if (!modal) return;
+                const subjectSelect = modal.querySelector('.link-subject-select');
+                const sectionSelect = modal.querySelector('.link-section-select');
+                const unitSelect = modal.querySelector('.link-unit-select');
+                if (!subjectSelect || !sectionSelect || !unitSelect) return;
+                const classId = this.value;
+                subjectSelect.innerHTML = '<option value="">-- اختر المادة --</option>';
+                sectionSelect.innerHTML = '<option value="">-- اختر القسم --</option>';
+                unitSelect.innerHTML = '<option value="">-- اختر الوحدة --</option>';
+                sectionSelect.disabled = true;
+                unitSelect.disabled = true;
+                if (!classId) {
+                    subjectSelect.disabled = true;
+                    return;
+                }
+                const row = this.closest('[data-current-subject-id]');
+                const currentSubjectId = row ? row.getAttribute('data-current-subject-id') : null;
+                const currentClassId = row ? row.getAttribute('data-current-class-id') : null;
+                const filtered = structure.filter(s => String(s.class_id) === String(classId));
+                const currentFirst = currentSubjectId && String(currentClassId) === String(classId)
+                    ? filtered.find(s => String(s.id) === String(currentSubjectId))
+                    : null;
+                if (currentFirst) {
+                    const opt = document.createElement('option');
+                    opt.value = currentFirst.id;
+                    opt.textContent = 'المادة الحالية: ' + (currentFirst.stage_name ? currentFirst.stage_name + ' / ' : '') + (currentFirst.class_name ? currentFirst.class_name + ' — ' : '') + currentFirst.name + ' (#' + currentFirst.id + ')';
+                    subjectSelect.appendChild(opt);
+                }
+                filtered.forEach(function(s) {
+                    if (currentSubjectId && String(s.id) === String(currentSubjectId)) return;
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = (s.stage_name ? s.stage_name + ' / ' : '') + (s.class_name ? s.class_name + ' — ' : '') + s.name + ' (#' + s.id + ')';
+                    subjectSelect.appendChild(opt);
+                });
+                subjectSelect.disabled = false;
+            });
+        });
+        document.querySelectorAll('.link-subject-select').forEach(function(subjectSelect) {
+            subjectSelect.addEventListener('change', function() {
+                const modal = this.closest('.modal');
+                if (!modal) return;
+                const sectionSelect = modal.querySelector('.link-section-select');
+                const unitSelect = modal.querySelector('.link-unit-select');
+                if (!sectionSelect || !unitSelect) return;
+                const subjectId = this.value;
+                sectionSelect.innerHTML = '<option value="">-- اختر القسم --</option>';
+                unitSelect.innerHTML = '<option value="">-- اختر الوحدة --</option>';
+                unitSelect.disabled = true;
+                if (!subjectId) {
+                    sectionSelect.disabled = true;
+                    return;
+                }
+                const subject = structure.find(s => String(s.id) === String(subjectId));
+                if (subject && subject.sections) {
+                    subject.sections.forEach(function(sec) {
+                        const opt = document.createElement('option');
+                        opt.value = sec.id;
+                        opt.textContent = sec.title;
+                        sectionSelect.appendChild(opt);
+                    });
+                    sectionSelect.disabled = false;
+                }
+            });
+        });
+        document.querySelectorAll('.link-section-select').forEach(function(sectionSelect) {
+            sectionSelect.addEventListener('change', function() {
+                const modal = this.closest('.modal');
+                if (!modal) return;
+                const unitSelect = modal.querySelector('.link-unit-select');
+                const subjectSelect = modal.querySelector('.link-subject-select');
+                if (!unitSelect || !subjectSelect) return;
+                const subjectId = subjectSelect.value || null;
+                const sectionId = this.value;
+                unitSelect.innerHTML = '<option value="">-- اختر الوحدة --</option>';
+                if (!subjectId || !sectionId) {
+                    unitSelect.disabled = true;
+                    return;
+                }
+                const subject = structure.find(s => String(s.id) === String(subjectId));
+                if (subject && subject.sections) {
+                    const section = subject.sections.find(sec => String(sec.id) === String(sectionId));
+                    if (section && section.units) {
+                        section.units.forEach(function(u) {
+                            const opt = document.createElement('option');
+                            opt.value = u.id;
+                            opt.textContent = u.title;
+                            unitSelect.appendChild(opt);
+                        });
+                        unitSelect.disabled = false;
+                    }
+                }
+            });
+        });
+        document.querySelectorAll('.add-linked-unit').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const listId = this.getAttribute('data-list-id');
+                const list = listId ? document.getElementById(listId) : null;
+                if (!list) return;
+                const modal = this.closest('.modal');
+                if (!modal) return;
+                const unitSelect = modal.querySelector('.link-unit-select');
+                const subjectSelect = modal.querySelector('.link-subject-select');
+                const sectionSelect = modal.querySelector('.link-section-select');
+                const primaryUnitId = unitSelect ? unitSelect.getAttribute('data-primary-unit-id') : null;
+                const unitId = unitSelect ? unitSelect.value : null;
+                if (!unitId) {
+                    alert('يرجى اختيار الصف ثم المادة ثم القسم ثم الوحدة قبل الإضافة');
+                    return;
+                }
+                if (primaryUnitId && String(unitId) === String(primaryUnitId)) return;
+                const existing = list.querySelectorAll('input[name="linked_unit_ids[]"]');
+                for (let i = 0; i < existing.length; i++) {
+                    if (existing[i].value === unitId) return;
+                }
+                const subject = structure.find(s => String(s.id) === String(subjectSelect.value));
+                let subjectName = ''; let sectionName = ''; let unitTitle = ''; let className = ''; let stageName = '';
+                if (subject) {
+                    subjectName = subject.name || '';
+                    className = subject.class_name || '';
+                    stageName = subject.stage_name || '';
+                    const section = subject.sections && subject.sections.find(sec => String(sec.id) === String(sectionSelect.value));
+                    if (section) {
+                        sectionName = section.title || '';
+                        const u = section.units && section.units.find(ux => String(ux.id) === String(unitId));
+                        if (u) unitTitle = u.title || '';
+                    }
+                }
+                const badgeText = (stageName ? stageName + ' / ' : '') + (className ? className + ' — ' : '') + subjectName + ' — ' + sectionName + ' — ' + unitTitle;
+                const row = document.createElement('div');
+                row.className = 'd-flex align-items-center gap-2 mb-1 linked-unit-row';
+                row.setAttribute('data-lesson-id', subjectSelect.getAttribute('data-lesson-id'));
+                row.innerHTML = '<span class="badge bg-secondary">' + badgeText + '</span>' +
+                    '<input type="hidden" name="linked_unit_ids[]" value="' + unitId + '">' +
+                    '<button type="button" class="btn btn-sm btn-outline-danger py-0 remove-linked-unit" title="إزالة"><i class="bi bi-x"></i></button>';
+                list.appendChild(row);
+                unitSelect.value = '';
+                if (sectionSelect) sectionSelect.value = '';
+                if (subjectSelect) subjectSelect.value = '';
+                if (sectionSelect) sectionSelect.innerHTML = '<option value="">-- اختر القسم --</option>';
+                if (unitSelect) unitSelect.innerHTML = '<option value="">-- اختر الوحدة --</option>';
+                if (unitSelect) unitSelect.disabled = true;
+                if (sectionSelect) sectionSelect.disabled = true;
+            });
+        });
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.remove-linked-unit')) {
+                const row = e.target.closest('.linked-unit-row');
+                if (row) row.remove();
+            }
+        });
+
+        // مودال ربط الاختبار: تسلسل الصف -> المادة -> القسم -> الوحدة
+        var quizLinkClassSelect = document.getElementById('quizLinkClassSelect');
+        if (quizLinkClassSelect) {
+            quizLinkClassSelect.addEventListener('change', function() {
+                var subjectSelect = document.getElementById('quizLinkSubjectSelect');
+                var sectionSelect = document.getElementById('quizLinkSectionSelect');
+                var unitSelect = document.getElementById('quizLinkUnitSelect');
+                if (!subjectSelect || !sectionSelect || !unitSelect) return;
+                var classId = this.value;
+                subjectSelect.innerHTML = '<option value="">-- اختر المادة --</option>';
+                sectionSelect.innerHTML = '<option value="">-- اختر القسم --</option>';
+                unitSelect.innerHTML = '<option value="">-- اختر الوحدة --</option>';
+                sectionSelect.disabled = true;
+                unitSelect.disabled = true;
+                if (!classId) { subjectSelect.disabled = true; return; }
+                var filtered = structure.filter(s => String(s.class_id) === String(classId));
+                filtered.forEach(function(s) {
+                    var opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = s.name || '';
+                    subjectSelect.appendChild(opt);
+                });
+                subjectSelect.disabled = false;
+            });
+        }
+        var quizLinkSubjectSelect = document.getElementById('quizLinkSubjectSelect');
+        if (quizLinkSubjectSelect) {
+            quizLinkSubjectSelect.addEventListener('change', function() {
+                var sectionSelect = document.getElementById('quizLinkSectionSelect');
+                var unitSelect = document.getElementById('quizLinkUnitSelect');
+                if (!sectionSelect || !unitSelect) return;
+                var subjectId = this.value;
+                sectionSelect.innerHTML = '<option value="">-- اختر القسم --</option>';
+                unitSelect.innerHTML = '<option value="">-- اختر الوحدة --</option>';
+                unitSelect.disabled = true;
+                if (!subjectId) { sectionSelect.disabled = true; return; }
+                var subject = structure.find(s => String(s.id) === String(subjectId));
+                if (subject && subject.sections) {
+                    subject.sections.forEach(function(sec) {
+                        var opt = document.createElement('option');
+                        opt.value = sec.id;
+                        opt.textContent = sec.title;
+                        sectionSelect.appendChild(opt);
+                    });
+                    sectionSelect.disabled = false;
+                }
+            });
+        }
+        var quizLinkSectionSelect = document.getElementById('quizLinkSectionSelect');
+        if (quizLinkSectionSelect) {
+            quizLinkSectionSelect.addEventListener('change', function() {
+                var unitSelect = document.getElementById('quizLinkUnitSelect');
+                var subjectSelect = document.getElementById('quizLinkSubjectSelect');
+                var form = document.getElementById('linkQuizUnitsForm');
+                if (!unitSelect || !subjectSelect) return;
+                var subjectId = subjectSelect.value || null;
+                var sectionId = this.value;
+                var primaryUnitId = form ? form.getAttribute('data-primary-unit-id') : '';
+                unitSelect.innerHTML = '<option value="">-- اختر الوحدة --</option>';
+                if (!subjectId || !sectionId) { unitSelect.disabled = true; return; }
+                var subject = structure.find(s => String(s.id) === String(subjectId));
+                if (subject && subject.sections) {
+                    var section = subject.sections.find(sec => String(sec.id) === String(sectionId));
+                    if (section && section.units) {
+                        section.units.forEach(function(u) {
+                            if (primaryUnitId && String(u.id) === String(primaryUnitId)) return;
+                            var opt = document.createElement('option');
+                            opt.value = u.id;
+                            opt.textContent = u.title;
+                            unitSelect.appendChild(opt);
+                        });
+                        unitSelect.disabled = false;
+                    }
+                }
+            });
+        }
+        var addQuizLinkedUnitBtn = document.getElementById('addQuizLinkedUnitBtn');
+        if (addQuizLinkedUnitBtn) {
+            addQuizLinkedUnitBtn.addEventListener('click', function() {
+                var list = document.getElementById('linkedUnitsListQuiz');
+                var form = document.getElementById('linkQuizUnitsForm');
+                var unitSelect = document.getElementById('quizLinkUnitSelect');
+                var subjectSelect = document.getElementById('quizLinkSubjectSelect');
+                var sectionSelect = document.getElementById('quizLinkSectionSelect');
+                if (!list || !form || !unitSelect) return;
+                var unitId = unitSelect.value;
+                var primaryUnitId = form.getAttribute('data-primary-unit-id') || '';
+                if (!unitId) {
+                    alert('يرجى اختيار الصف ثم المادة ثم القسم ثم الوحدة قبل الإضافة');
+                    return;
+                }
+                if (primaryUnitId && String(unitId) === String(primaryUnitId)) return;
+                var existing = list.querySelectorAll('input[name="linked_unit_ids[]"]');
+                for (var i = 0; i < existing.length; i++) {
+                    if (existing[i].value === unitId) return;
+                }
+                var subject = structure.find(s => String(s.id) === String(subjectSelect.value));
+                var subjectName = ''; var sectionName = ''; var unitTitle = '';
+                if (subject) {
+                    subjectName = subject.name || '';
+                    var section = subject.sections && subject.sections.find(sec => String(sec.id) === String(sectionSelect.value));
+                    if (section) {
+                        sectionName = section.title || '';
+                        var u = section.units && section.units.find(ux => String(ux.id) === String(unitId));
+                        if (u) unitTitle = u.title || '';
+                    }
+                }
+                var badgeText = subjectName + ' — ' + sectionName + ' — ' + unitTitle;
+                var row = document.createElement('div');
+                row.className = 'd-flex align-items-center gap-2 mb-1 linked-unit-row';
+                row.innerHTML = '<span class="badge bg-secondary">' + badgeText + '</span>' +
+                    '<input type="hidden" name="linked_unit_ids[]" value="' + unitId + '">' +
+                    '<button type="button" class="btn btn-sm btn-outline-danger py-0 remove-linked-unit" title="إزالة"><i class="bi bi-x"></i></button>';
+                list.appendChild(row);
+                unitSelect.value = '';
+            });
+        }
+    }
+
     // التبديل بين حقل الرابط وحقل الملف حسب نوع الفيديو
     document.querySelectorAll('[id^="videoType"]').forEach(function(select) {
         select.addEventListener('change', function() {
@@ -1627,196 +1664,53 @@ document.addEventListener('DOMContentLoaded', function() {
         toField.addEventListener('blur', validatePages);
     });
 
-    // ==================================================
-    // نظام استيراد الأسئلة من بنك الأسئلة
-    // ==================================================
-    
-    // البحث عن الأسئلة المتاحة
-    document.querySelectorAll('.search-questions-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            const unitId = this.getAttribute('data-unit');
-            searchQuestions(unitId);
-        });
-    });
-
-    // البحث عند الضغط على Enter
-    document.querySelectorAll('.question-search-input').forEach(function(input) {
-        input.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const unitId = this.getAttribute('data-unit');
-                searchQuestions(unitId);
-            }
-        });
-    });
-
-    // إلغاء التحديد
-    document.querySelectorAll('.clear-selection-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            const unitId = this.getAttribute('data-unit');
-            clearSelection(unitId);
-        });
-    });
-
-    // تحديد الكل
-    document.querySelectorAll('.select-all-checkbox').forEach(function(cb) {
-        cb.addEventListener('change', function() {
-            const unitId = this.getAttribute('data-unit');
-            const isChecked = this.checked;
-            document.querySelectorAll(`.question-checkbox[data-unit="${unitId}"]`).forEach(function(checkbox) {
-                checkbox.checked = isChecked;
-            });
-            updateSelectionSummary(unitId);
-        });
-    });
-
-    function searchQuestions(unitId) {
-        const search = document.querySelector(`.question-search-input[data-unit="${unitId}"]`).value;
-        const type = document.querySelector(`.question-type-filter[data-unit="${unitId}"]`).value;
-        const difficulty = document.querySelector(`.question-difficulty-filter[data-unit="${unitId}"]`).value;
-        const container = document.getElementById('questionsListContainer' + unitId);
-
-        container.innerHTML = `
-            <div class="text-center py-5">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">جاري البحث...</span>
-                </div>
-                <p class="mt-2 text-muted">جاري البحث عن الأسئلة...</p>
-            </div>
-        `;
-
-        fetch(`{{ url('admin/units') }}/${unitId}/available-questions?search=${encodeURIComponent(search)}&type=${type}&difficulty=${difficulty}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.questions.length === 0) {
-                    container.innerHTML = `
-                        <div class="text-center py-5 text-muted">
-                            <i class="bi bi-inbox display-4 d-block mb-3"></i>
-                            <p>لا توجد أسئلة متاحة بهذه المعايير</p>
-                            <p class="small">جرب تغيير معايير البحث أو إنشاء أسئلة جديدة</p>
-                        </div>
-                    `;
-                    return;
+    // إعادة ترتيب الأقسام / الوحدات / الدروس بالسحب والإفلات
+    var csrfToken = document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '';
+    document.querySelectorAll('[data-sortable][data-reorder-url]').forEach(function(container) {
+        if (typeof Sortable === 'undefined') return;
+        var reorderUrl = container.getAttribute('data-reorder-url');
+        var parentIdAttr = container.getAttribute('data-parent-id');
+        new Sortable(container, {
+            handle: '.sortable-handle',
+            animation: 150,
+            onEnd: function(evt) {
+                var order = [];
+                var children = container.querySelectorAll(':scope > [data-id]');
+                for (var i = 0; i < children.length; i++) {
+                    var id = children[i].getAttribute('data-id');
+                    if (id) order.push(id);
                 }
-
-                // إظهار شريط تحديد الكل
-                const selectAllBar = document.getElementById('selectAllBar' + unitId);
-                const questionsCountLabel = document.getElementById('questionsCountLabel' + unitId);
-                selectAllBar.style.display = 'flex';
-                questionsCountLabel.textContent = `${data.questions.length} سؤال متاح`;
-
-                let html = '<div class="list-group list-group-flush">';
-                data.questions.forEach(function(q) {
-                    html += `
-                        <label class="list-group-item list-group-item-action py-3 border-start-0 border-end-0" style="cursor: pointer;">
-                            <div class="d-flex align-items-start">
-                                <input type="checkbox" name="question_ids[]" value="${q.id}" 
-                                       class="form-check-input me-3 mt-1 question-checkbox" 
-                                       data-unit="${unitId}" style="width: 1.2em; height: 1.2em;">
-                                <div class="flex-grow-1">
-                                    <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
-                                        <span class="badge bg-${q.type_color}-transparent text-${q.type_color}">
-                                            <i class="bi ${q.type_icon} me-1"></i>
-                                            ${q.type_name}
-                                        </span>
-                                        <span class="badge bg-${q.difficulty_color}-transparent text-${q.difficulty_color}">
-                                            ${q.difficulty_name}
-                                        </span>
-                                        <span class="badge bg-secondary-transparent text-secondary">
-                                            ${q.default_points} نقطة
-                                        </span>
-                                    </div>
-                                    <p class="mb-0 fw-medium">${q.title.substring(0, 150)}${q.title.length > 150 ? '...' : ''}</p>
-                                </div>
-                            </div>
-                        </label>
-                    `;
-                });
-                html += '</div>';
-                container.innerHTML = html;
-
-                // إضافة event listeners للـ checkboxes الجديدة
-                container.querySelectorAll('.question-checkbox').forEach(function(cb) {
-                    cb.addEventListener('change', function() {
-                        updateSelectionSummary(unitId);
-                        updateSelectAllState(unitId);
-                    });
-                });
-
-                // Reset select all checkbox
-                const selectAllCheckbox = document.getElementById('selectAll' + unitId);
-                if (selectAllCheckbox) selectAllCheckbox.checked = false;
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                container.innerHTML = `
-                    <div class="text-center py-5 text-danger">
-                        <i class="bi bi-exclamation-triangle display-4 d-block mb-3"></i>
-                        <p>حدث خطأ أثناء البحث</p>
-                        <p class="small">${error.message}</p>
-                    </div>
-                `;
-            });
-    }
-
-    function updateSelectionSummary(unitId) {
-        const checkboxes = document.querySelectorAll(`.question-checkbox[data-unit="${unitId}"]:checked`);
-        const selectedInfo = document.getElementById('selectedInfo' + unitId);
-        const clearBtn = document.getElementById('clearBtn' + unitId);
-        const importBtn = document.getElementById('importBtn' + unitId);
-        const importCount = importBtn.querySelector('.import-count');
-
-        if (checkboxes.length > 0) {
-            // إظهار معلومات التحديد
-            if (selectedInfo) {
-                selectedInfo.style.display = 'inline-flex';
-                selectedInfo.querySelector('.selected-count').textContent = checkboxes.length;
+                var body = { order: order, _token: csrfToken };
+                if (parentIdAttr !== null && parentIdAttr !== undefined && parentIdAttr !== '') {
+                    body.parent_id = parentIdAttr;
+                }
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', reorderUrl);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken);
+                xhr.setRequestHeader('Accept', 'application/json');
+                xhr.onload = function() {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        var indices = container.querySelectorAll(':scope > [data-id] .sortable-index');
+                        for (var j = 0; j < indices.length; j++) {
+                            indices[j].textContent = j + 1;
+                        }
+                    } else {
+                        var msg = 'فشل حفظ الترتيب.';
+                        try {
+                            var res = JSON.parse(xhr.responseText);
+                            if (res.message) msg = res.message;
+                        } catch (e) {}
+                        alert(msg);
+                    }
+                };
+                xhr.onerror = function() {
+                    alert('فشل حفظ الترتيب. تحقق من الاتصال.');
+                };
+                xhr.send(JSON.stringify(body));
             }
-            // إظهار زر إلغاء التحديد
-            if (clearBtn) clearBtn.style.display = 'inline-block';
-            // تفعيل زر الاستيراد
-            importBtn.disabled = false;
-            importBtn.classList.remove('btn-success');
-            importBtn.classList.add('btn-primary');
-            if (importCount) {
-                importCount.style.display = 'inline';
-                importCount.textContent = checkboxes.length;
-            }
-        } else {
-            // إخفاء معلومات التحديد
-            if (selectedInfo) selectedInfo.style.display = 'none';
-            // إخفاء زر إلغاء التحديد
-            if (clearBtn) clearBtn.style.display = 'none';
-            // تعطيل زر الاستيراد
-            importBtn.disabled = true;
-            importBtn.classList.remove('btn-primary');
-            importBtn.classList.add('btn-success');
-            if (importCount) importCount.style.display = 'none';
-        }
-    }
-
-    function clearSelection(unitId) {
-        document.querySelectorAll(`.question-checkbox[data-unit="${unitId}"]`).forEach(function(cb) {
-            cb.checked = false;
         });
-        const selectAllCheckbox = document.getElementById('selectAll' + unitId);
-        if (selectAllCheckbox) {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = false;
-        }
-        updateSelectionSummary(unitId);
-    }
-
-    function updateSelectAllState(unitId) {
-        const allCheckboxes = document.querySelectorAll(`.question-checkbox[data-unit="${unitId}"]`);
-        const checkedCheckboxes = document.querySelectorAll(`.question-checkbox[data-unit="${unitId}"]:checked`);
-        const selectAllCheckbox = document.getElementById('selectAll' + unitId);
-        
-        if (selectAllCheckbox && allCheckboxes.length > 0) {
-            selectAllCheckbox.checked = allCheckboxes.length === checkedCheckboxes.length;
-            selectAllCheckbox.indeterminate = checkedCheckboxes.length > 0 && checkedCheckboxes.length < allCheckboxes.length;
-        }
-    }
+    });
 });
 </script>
 @stop

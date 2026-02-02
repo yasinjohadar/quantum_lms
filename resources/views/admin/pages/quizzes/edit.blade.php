@@ -223,21 +223,11 @@
                             $user = auth()->user();
                             $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
                         @endphp
-                        
                         <div class="form-check form-switch mb-3">
                             <input class="form-check-input" type="checkbox" name="is_active" 
-                                   id="isActive" {{ old('is_active', $quiz->is_active) ? 'checked' : '' }}>
-                            <label class="form-check-label" for="isActive">الاختبار نشط</label>
+                                   id="isActive" {{ (old('is_active', $quiz->is_active) || $quiz->is_published) ? 'checked' : '' }}>
+                            <label class="form-check-label" for="isActive">تفعيل الاختبار</label>
                         </div>
-                        
-                        @if(!$isTeacher)
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" name="is_published" 
-                                       id="isPublished" {{ old('is_published', $quiz->is_published) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="isPublished">نشر للطلاب</label>
-                            </div>
-                        @endif
-                        
                         {{-- حالة المراجعة --}}
                         <div class="mb-3">
                             <label class="form-label">حالة المراجعة</label>

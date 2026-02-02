@@ -183,6 +183,12 @@ class SubjectController extends Controller
                 'sections.units.lessons' => function ($q) {
                     $q->orderBy('order');
                 },
+                'sections.units.linkedLessons' => function ($q) {
+                    $q->orderBy('lessons.order');
+                },
+                'sections.units.lessons.linkedUnits' => function ($q) {
+                    $q->orderBy('order')->with('section.subject');
+                },
                 'sections.units.lessons.attachments' => function ($q) {
                     $q->orderBy('order');
                 },
@@ -193,7 +199,12 @@ class SubjectController extends Controller
                     $q->orderBy('created_at', 'desc');
                 },
                 'sections.units.quizzes' => function ($q) {
-                    $q->orderBy('order')->orderBy('title');
+                    $q->with('linkedUnits.section.subject.schoolClass.stage')
+                        ->orderBy('order')->orderBy('title');
+                },
+                'sections.units.linkedQuizzes' => function ($q) {
+                    $q->with('linkedUnits.section.subject.schoolClass.stage')
+                        ->orderBy('order')->orderBy('title');
                 },
             ])->findOrFail($id);
             
@@ -205,7 +216,44 @@ class SubjectController extends Controller
                     abort(403, 'غير مصرح لك بالوصول إلى هذه المادة');
                 }
             }
-            return view('admin.pages.subjects.show', compact('subject'));
+
+            // هيكل المواد/أقسام/وحدات لربط الدرس بوحدات إضافية في مودال التعديل
+            $linkableSubjectsQuery = Subject::with([
+                'schoolClass.stage',
+                'sections' => fn ($q) => $q->orderBy('order')->orderBy('title'),
+                'sections.units' => fn ($q) => $q->orderBy('order')->orderBy('title'),
+            ]);
+            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+                $classIds = $user->assignedClasses()->pluck('classes.id');
+                $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
+                $linkableSubjectsQuery->where(function ($q) use ($classIds, $subjectIds) {
+                    if ($classIds->isNotEmpty()) {
+                        $q->whereIn('class_id', $classIds);
+                    }
+                    if ($subjectIds->isNotEmpty()) {
+                        $q->orWhereIn('id', $subjectIds);
+                    }
+                });
+            }
+            $linkableSubjects = $linkableSubjectsQuery->ordered()->get();
+            $linkableStructure = $linkableSubjects->map(function ($s) {
+                return [
+                    'id' => $s->id,
+                    'class_id' => $s->class_id ?? null,
+                    'name' => $s->name,
+                    'class_name' => $s->schoolClass->name ?? '',
+                    'stage_name' => $s->schoolClass->stage->name ?? '',
+                    'sections' => $s->sections->map(fn ($sec) => [
+                        'id' => $sec->id,
+                        'title' => $sec->title,
+                        'units' => $sec->units->map(fn ($u) => ['id' => $u->id, 'title' => $u->title])->values(),
+                    ])->values(),
+                ];
+            })->values();
+
+            $linkableClasses = $linkableSubjects->pluck('schoolClass')->filter()->unique('id')->values()->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])->values();
+
+            return view('admin.pages.subjects.show', compact('subject', 'linkableSubjects', 'linkableStructure', 'linkableClasses'));
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return redirect()->route('admin.subjects.index')
                 ->with('error', 'المادة المطلوبة غير موجودة');
@@ -340,6 +388,10 @@ class SubjectController extends Controller
                 }
             }
 
+            if ($request->filled('return_to_class_id')) {
+                return redirect()->route('admin.classes.show', $request->return_to_class_id)
+                    ->with('success', 'تم تحديث المادة بنجاح');
+            }
             return redirect()->route('admin.subjects.index')
                 ->with('success', 'تم تحديث المادة بنجاح');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {

@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\SchoolClass;
 use App\Models\Subject;
+use App\Models\LoginLog;
+use App\Models\UserSession;
 use Illuminate\Http\Request;
 
 class TeacherAssignmentController extends Controller
@@ -32,6 +34,18 @@ class TeacherAssignmentController extends Controller
         }
 
         $teachers = $teachersQuery->orderBy('name')->paginate(20);
+
+        $ids = $teachers->pluck('id');
+        $lastLogins = $ids->isNotEmpty()
+            ? LoginLog::whereIn('user_id', $ids)
+                ->where('is_successful', true)
+                ->selectRaw('user_id, max(login_at) as last_login_at')
+                ->groupBy('user_id')
+                ->pluck('last_login_at', 'user_id')
+            : collect();
+        $onlineUserIds = $ids->isNotEmpty()
+            ? UserSession::whereIn('user_id', $ids)->where('status', 'active')->distinct()->pluck('user_id')
+            : collect();
         
         // إحصائيات
         $totalTeachers = User::teachers()->count();
@@ -47,7 +61,9 @@ class TeacherAssignmentController extends Controller
             'teachers', 
             'totalTeachers', 
             'assignedTeachers', 
-            'unassignedTeachers'
+            'unassignedTeachers',
+            'lastLogins',
+            'onlineUserIds'
         ));
     }
 

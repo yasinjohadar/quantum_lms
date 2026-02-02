@@ -145,6 +145,14 @@ class Quiz extends Model
         return $this->belongsTo(Lesson::class);
     }
 
+    /**
+     * الوحدات الإضافية المرتبطة بالاختبار عبر quiz_units (ظهور الاختبار في وحدات أخرى).
+     */
+    public function linkedUnits(): BelongsToMany
+    {
+        return $this->belongsToMany(Unit::class, 'quiz_units', 'quiz_id', 'unit_id')->withTimestamps();
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

@@ -103,6 +103,8 @@
                                                 <th>الصفوف المخصصة</th>
                                                 <th>المواد المخصصة</th>
                                                 <th>حالة الحساب</th>
+                                                <th>آخر دخول</th>
+                                                <th>متصل الآن</th>
                                                 <th>الإجراءات</th>
                                             </tr>
                                         </thead>
@@ -188,6 +190,23 @@
                                                                 <span class="badge bg-secondary">معطل</span>
                                                             @endif
                                                         @endcan
+                                                    </td>
+                                                    <td>
+                                                        @php
+                                                            $lastLogin = $lastLogins[$supervisor->id] ?? $supervisor->last_login_at;
+                                                        @endphp
+                                                        @if($lastLogin)
+                                                            {{ \Carbon\Carbon::parse($lastLogin)->format('Y-m-d H:i') }}
+                                                        @else
+                                                            <span class="text-muted">—</span>
+                                                        @endif
+                                                    </td>
+                                                    <td>
+                                                        @if($onlineUserIds->contains($supervisor->id))
+                                                            <span class="badge bg-success"><i class="fa-solid fa-circle fa-fw" style="font-size: 0.5em; vertical-align: middle;"></i> متصل الآن</span>
+                                                        @else
+                                                            <span class="badge bg-secondary">غير متصل</span>
+                                                        @endif
                                                     </td>
                                                     <td>
                                                         <a href="{{ route('admin.supervisors.assignments', $supervisor->id) }}" 

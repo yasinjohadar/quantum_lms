@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SubjectSection extends Model
@@ -14,6 +15,7 @@ class SubjectSection extends Model
 
     protected $fillable = [
         'subject_id',
+        'parent_id',
         'title',
         'description',
         'order',
@@ -22,6 +24,7 @@ class SubjectSection extends Model
 
     protected $casts = [
         'subject_id' => 'integer',
+        'parent_id' => 'integer',
         'order' => 'integer',
         'is_active' => 'boolean',
     ];
@@ -32,6 +35,58 @@ class SubjectSection extends Model
     public function subject()
     {
         return $this->belongsTo(Subject::class);
+    }
+
+    /**
+     * المواد الإضافية المرتبطة بهذا القسم عبر section_subjects (ظهور القسم في مواد أخرى).
+     */
+    public function linkedSubjects(): BelongsToMany
+    {
+        return $this->belongsToMany(Subject::class, 'section_subjects', 'section_id', 'subject_id')->withTimestamps();
+    }
+
+    /**
+     * العلاقة مع القسم الأب.
+     */
+    public function parent()
+    {
+        return $this->belongsTo(SubjectSection::class, 'parent_id');
+    }
+
+    /**
+     * العلاقة مع الأقسام الأبناء.
+     */
+    public function children()
+    {
+        return $this->hasMany(SubjectSection::class, 'parent_id')->orderBy('order')->orderBy('title');
+    }
+
+    /**
+     * جمع معرفات كل الأحفاد فقط (أبناء + أحفادهم، بدون القسم الحالي) لمنع الحلقات عند تغيير الأب.
+     */
+    public function getDescendantIds(): \Illuminate\Support\Collection
+    {
+        $ids = collect();
+        foreach ($this->children as $child) {
+            $ids->push($child->id);
+            $ids = $ids->merge($child->getDescendantIds());
+        }
+        return $ids;
+    }
+
+    /**
+     * مسار القسم (للعرض في القوائم): الأجداد ثم العنوان.
+     */
+    public function getPathTitleAttribute(): string
+    {
+        $parts = [];
+        $current = $this->parent;
+        while ($current) {
+            array_unshift($parts, $current->title);
+            $current = $current->parent;
+        }
+        $parts[] = $this->title;
+        return implode(' › ', $parts);
     }
 
     /**

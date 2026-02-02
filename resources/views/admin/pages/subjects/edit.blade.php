@@ -35,11 +35,17 @@
 
     <div class="main-content app-content">
         <div class="container-fluid">
-            <div class="page-header d-flex justify-content-between align-items-center my-4">
+                <div class="page-header d-flex justify-content-between align-items-center my-4">
                 <h5 class="page-title mb-0">تعديل المادة: {{ $subject->name }}</h5>
-                <a href="{{ route('admin.subjects.index') }}" class="btn btn-secondary btn-sm">
-                    <i class="fas fa-arrow-right me-1"></i> رجوع للقائمة
-                </a>
+                @if(request('return_to_class_id'))
+                    <a href="{{ route('admin.classes.show', request('return_to_class_id')) }}" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-arrow-right me-1"></i> رجوع للصف
+                    </a>
+                @else
+                    <a href="{{ route('admin.subjects.index') }}" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-arrow-right me-1"></i> رجوع للقائمة
+                    </a>
+                @endif
             </div>
 
             <div class="card">
@@ -47,6 +53,9 @@
                     <form method="POST" action="{{ route('admin.subjects.update', $subject->id) }}" enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
+                        @if(request('return_to_class_id'))
+                            <input type="hidden" name="return_to_class_id" value="{{ request('return_to_class_id') }}">
+                        @endif
 
                         <div class="row g-3">
                             <div class="col-12">

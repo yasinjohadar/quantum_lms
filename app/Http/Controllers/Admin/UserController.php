@@ -222,29 +222,21 @@ public function index(Request $request)
                     $request->merge(['phone' => $normalized]);
                 }
             }
-            // التحقق من صحة البيانات
+            // التحقق من صحة البيانات (لا يتم تغيير الرول ولا كلمة المرور ولا الصورة من هذه الصفحة)
             $request->validate([
                 'name' => 'required|string|max:255',
                 'email' => 'required|string|email|max:255|unique:users,email,' . $id,
                 'phone' => 'nullable|string|max:20|regex:/^\+[1-9]\d{1,14}$/|unique:users,phone,' . $id,
-                'password' => 'nullable|string|min:8|confirmed',
                 'is_active' => 'boolean',
-                'roles' => 'array',
-                'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             ], [
                 'name.required' => 'الاسم مطلوب',
                 'email.required' => 'البريد الإلكتروني مطلوب',
                 'email.email' => 'البريد الإلكتروني غير صحيح',
                 'email.unique' => 'البريد الإلكتروني مستخدم بالفعل',
                 'phone.unique' => 'رقم الهاتف مستخدم بالفعل',
-                'password.min' => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
-                'password.confirmed' => 'تأكيد كلمة المرور غير متطابق',
-                'photo.image' => 'يجب أن يكون الملف صورة',
-                'photo.mimes' => 'نوع الصورة غير مدعوم',
-                'photo.max' => 'حجم الصورة يجب أن يكون أقل من 2 ميجابايت',
             ]);
 
-            // تجهيز البيانات للتحديث
+            // تجهيز البيانات للتحديث (الاسم، البريد، الهاتف، تفعيل الحساب فقط)
             $updateData = [
                 'name' => $request->name,
                 'email' => $request->email,
@@ -252,38 +244,7 @@ public function index(Request $request)
                 'is_active' => $request->has('is_active'),
             ];
 
-            // تحديث كلمة المرور فقط إذا تم إدخالها
-            if ($request->filled('password')) {
-                $updateData['password'] = Hash::make($request->password);
-            }
-
-            // معالجة الصورة
-            if ($request->hasFile('photo')) {
-                try {
-                    // حذف الصورة القديمة إذا كانت موجودة
-                    if ($user->photo) {
-                        StorageHelper::delete('avatars', $user->photo);
-                    }
-
-                    $photo = $request->file('photo');
-                    $photoName = time() . '_' . $photo->getClientOriginalName();
-                    $photoPath = 'users/photos/' . $photoName;
-                    $photoPath = StorageHelper::store('avatars', $photoPath, file_get_contents($photo->getRealPath()), 'image') ? $photoPath : $photo->storeAs('users/photos', $photoName, 'public');
-                    $updateData['photo'] = $photoPath;
-                } catch (\Exception $e) {
-                    return redirect()->back()
-                        ->withInput()
-                        ->with('error', 'فشل رفع الصورة: ' . $e->getMessage());
-                }
-            }
-
-            // تحديث المستخدم
             $user->update($updateData);
-
-            // تحديث الأدوار
-            if ($request->has('roles')) {
-                $user->syncRoles($request->roles);
-            }
 
             return redirect()->route('users.index')
                 ->with('success', "✅ تم تحديث بيانات المستخدم ({$user->name}) بنجاح");

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -81,6 +82,28 @@ class Subject extends Model
     public function sections()
     {
         return $this->hasMany(SubjectSection::class, 'subject_id')->orderBy('order');
+    }
+
+    /**
+     * الأقسام المرتبطة بهذه المادة عبر section_subjects (أقسام من مواد أخرى تظهر هنا).
+     */
+    public function linkedSections(): BelongsToMany
+    {
+        return $this->belongsToMany(SubjectSection::class, 'section_subjects', 'subject_id', 'section_id')->withTimestamps();
+    }
+
+    /**
+     * جميع الأقسام المعروضة في هذه المادة: الأصلية + المرتبطة.
+     */
+    public function allSections()
+    {
+        $primary = $this->relationLoaded('sections')
+            ? $this->sections
+            : $this->sections()->get();
+        $linked = $this->relationLoaded('linkedSections')
+            ? $this->linkedSections
+            : $this->linkedSections()->get();
+        return $primary->merge($linked)->unique('id')->sortBy('order')->values();
     }
 
     /**

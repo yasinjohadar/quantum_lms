@@ -16,7 +16,7 @@ class UnitController extends Controller
     public function __construct()
     {
         $this->middleware(['permission:unit-create'])->only('store');
-        $this->middleware(['permission:unit-edit'])->only('update');
+        $this->middleware(['permission:unit-edit'])->only(['update', 'reorder']);
         $this->middleware(['permission:unit-delete'])->only('destroy');
         $this->middleware(['permission:unit-questions'])->only('questions');
         $this->middleware(['permission:unit-attach-questions'])->only('attachQuestions');
@@ -46,10 +46,25 @@ class UnitController extends Controller
             $data['section_id'] = $section->id;
             $data['is_active'] = $request->has('is_active');
 
-            // لو لم يُرسل ترتيب نضعه في آخر القائمة
+            $parentId = $request->input('parent_id');
+            if ($parentId) {
+                $parent = Unit::find($parentId);
+                if (!$parent || $parent->section_id != $section->id) {
+                    return redirect()
+                        ->route('admin.subjects.show', $section->subject_id)
+                        ->with('error', 'الوحدة الأب يجب أن تنتمي لنفس القسم.');
+                }
+                $data['parent_id'] = $parentId;
+            } else {
+                $data['parent_id'] = null;
+            }
+
+            // لو لم يُرسل ترتيب نضعه في آخر القائمة (بين الأخوة فقط)
             if (!isset($data['order']) || $data['order'] === null) {
-                $maxOrder = $section->units()->max('order') ?? 0;
-                $data['order'] = $maxOrder + 1;
+                $maxOrder = Unit::where('section_id', $section->id)
+                    ->where('parent_id', $data['parent_id'])
+                    ->max('order');
+                $data['order'] = ($maxOrder ?? 0) + 1;
             }
 
             $unit = Unit::create($data);
@@ -77,6 +92,32 @@ class UnitController extends Controller
             $data = $request->validated();
             $data['is_active'] = $request->has('is_active');
 
+            $parentId = $request->input('parent_id');
+            if ($parentId !== null && $parentId !== '') {
+                $parentId = (int) $parentId;
+                if ($parentId === $unit->id) {
+                    return redirect()
+                        ->route('admin.subjects.show', $unit->section->subject_id)
+                        ->with('error', 'لا يمكن جعل الوحدة أباً لنفسها.');
+                }
+                $parent = Unit::find($parentId);
+                if (!$parent || $parent->section_id != $unit->section_id) {
+                    return redirect()
+                        ->route('admin.subjects.show', $unit->section->subject_id)
+                        ->with('error', 'الوحدة الأب يجب أن تنتمي لنفس القسم.');
+                }
+                $unit->load('children');
+                $descendantIds = $unit->getDescendantIds();
+                if ($descendantIds->contains($parentId)) {
+                    return redirect()
+                        ->route('admin.subjects.show', $unit->section->subject_id)
+                        ->with('error', 'لا يمكن جعل الوحدة أباً لأحد أحفادها (منع الحلقات).');
+                }
+                $data['parent_id'] = $parentId;
+            } else {
+                $data['parent_id'] = null;
+            }
+
             $unit->update($data);
 
             return redirect()
@@ -89,6 +130,36 @@ class UnitController extends Controller
                 ->route('admin.subjects.show', $unit->section->subject_id)
                 ->with('error', 'حدث خطأ أثناء تحديث الوحدة: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * إعادة ترتيب الوحدات (جذر أو أبناء وحدة معيّنة ضمن القسم).
+     */
+    public function reorder(Request $request, SubjectSection $section)
+    {
+        $request->validate([
+            'order' => ['required', 'array'],
+            'order.*' => ['integer', 'exists:units,id'],
+            'parent_id' => ['nullable', 'integer', 'exists:units,id'],
+        ]);
+
+        $order = $request->input('order');
+        $parentId = $request->input('parent_id') ?: null;
+
+        $units = Unit::where('section_id', $section->id)
+            ->where('parent_id', $parentId)
+            ->whereIn('id', $order)
+            ->get();
+
+        if ($units->count() !== count($order)) {
+            return response()->json(['success' => false, 'message' => 'بعض الوحدات لا تنتمي لهذا السياق.'], 422);
+        }
+
+        foreach ($order as $index => $unitId) {
+            Unit::where('id', $unitId)->update(['order' => $index]);
+        }
+
+        return response()->json(['success' => true]);
     }
 
     /**

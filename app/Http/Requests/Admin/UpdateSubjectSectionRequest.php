@@ -14,6 +14,7 @@ class UpdateSubjectSectionRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'parent_id' => ['nullable', 'integer', 'exists:subject_sections,id'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'order' => ['nullable', 'integer', 'min:0'],

@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\SchoolClass;
 use App\Models\Subject;
+use App\Models\LoginLog;
+use App\Models\UserSession;
 use Illuminate\Http\Request;
 
 class SupervisorAssignmentController extends Controller
@@ -34,6 +36,18 @@ class SupervisorAssignmentController extends Controller
         }
 
         $supervisors = $supervisorsQuery->orderBy('name')->paginate(20);
+
+        $ids = $supervisors->pluck('id');
+        $lastLogins = $ids->isNotEmpty()
+            ? LoginLog::whereIn('user_id', $ids)
+                ->where('is_successful', true)
+                ->selectRaw('user_id, max(login_at) as last_login_at')
+                ->groupBy('user_id')
+                ->pluck('last_login_at', 'user_id')
+            : collect();
+        $onlineUserIds = $ids->isNotEmpty()
+            ? UserSession::whereIn('user_id', $ids)->where('status', 'active')->distinct()->pluck('user_id')
+            : collect();
         
         // إحصائيات
         $totalSupervisors = User::supervisors()->count();
@@ -49,7 +63,9 @@ class SupervisorAssignmentController extends Controller
             'supervisors', 
             'totalSupervisors', 
             'assignedSupervisors', 
-            'unassignedSupervisors'
+            'unassignedSupervisors',
+            'lastLogins',
+            'onlineUserIds'
         ));
     }
 

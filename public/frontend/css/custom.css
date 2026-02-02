@@ -870,10 +870,23 @@ a {
     background: linear-gradient(135deg, var(--secondary-Color) 0%, var(--main-Color) 100%);
 }
 
-/* عرض المواد: 3 أعمدة ونسبة الصورة 998×1382 */
+/* عرض المواد: 3 أعمدة ونسبة الصورة 998×1382 ثابتة */
 .subjects-section .class-card-image {
     aspect-ratio: 998 / 1382;
     border-radius: 5px 5px 0 0;
+}
+.subjects-section .class-card-image img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.subjects-section .class-card-placeholder {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
 }
 
 /* Students Oval */

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
@@ -77,11 +78,36 @@ class Lesson extends Model
     ];
 
     /**
-     * العلاقة مع الوحدة.
+     * العلاقة مع الوحدة الأصلية (التي أنشئ فيها الدرس).
      */
     public function unit()
     {
         return $this->belongsTo(Unit::class);
+    }
+
+    /**
+     * الوحدات الإضافية المرتبطة بالدرس عبر lesson_units (ظهور الدرس في وحدات أخرى).
+     */
+    public function linkedUnits(): BelongsToMany
+    {
+        return $this->belongsToMany(Unit::class, 'lesson_units')->withTimestamps();
+    }
+
+    /**
+     * جميع الوحدات التي يظهر فيها الدرس (الوحدة الأصلية + الوحدات المرتبطة)، بدون تكرار.
+     */
+    public function allUnits()
+    {
+        $primary = $this->unit;
+        $linked = $this->linkedUnits;
+        if (!$primary) {
+            return $linked;
+        }
+        $linkedIds = $linked->pluck('id')->toArray();
+        if (in_array($primary->id, $linkedIds, true)) {
+            return $linked;
+        }
+        return $linked->prepend($primary);
     }
 
     /**

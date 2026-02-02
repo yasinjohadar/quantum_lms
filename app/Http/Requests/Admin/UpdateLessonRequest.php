@@ -24,6 +24,8 @@ class UpdateLessonRequest extends FormRequest
             'book_page_from' => ['nullable', 'integer', 'min:1'],
             'book_page_to' => ['nullable', 'integer', 'min:1', 'gte:book_page_from'],
             'order' => ['nullable', 'integer', 'min:0'],
+            'linked_unit_ids' => ['nullable', 'array'],
+            'linked_unit_ids.*' => ['integer', 'exists:units,id'],
         ];
     }
 

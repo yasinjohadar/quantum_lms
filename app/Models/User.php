@@ -54,6 +54,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'phone_verified_at' => 'datetime',
+            'last_login_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
         ];
@@ -112,6 +113,14 @@ class User extends Authenticatable
     public function userSessions()
     {
         return $this->hasMany(UserSession::class, 'user_id');
+    }
+
+    /**
+     * هل لدى المستخدم جلسة نشطة (متصل الآن)
+     */
+    public function hasActiveSession(): bool
+    {
+        return UserSession::where('user_id', $this->id)->where('status', 'active')->exists();
     }
 
     /**

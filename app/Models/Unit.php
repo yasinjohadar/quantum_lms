@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Unit extends Model
@@ -14,6 +15,7 @@ class Unit extends Model
 
     protected $fillable = [
         'section_id',
+        'parent_id',
         'title',
         'description',
         'order',
@@ -22,6 +24,7 @@ class Unit extends Model
 
     protected $casts = [
         'section_id' => 'integer',
+        'parent_id' => 'integer',
         'order' => 'integer',
         'is_active' => 'boolean',
     ];
@@ -35,11 +38,63 @@ class Unit extends Model
     }
 
     /**
-     * العلاقة مع الدروس.
+     * العلاقة مع الوحدة الأب.
+     */
+    public function parent()
+    {
+        return $this->belongsTo(Unit::class, 'parent_id');
+    }
+
+    /**
+     * العلاقة مع الوحدات الأبناء.
+     */
+    public function children()
+    {
+        return $this->hasMany(Unit::class, 'parent_id')->orderBy('order')->orderBy('title');
+    }
+
+    /**
+     * جمع معرفات كل الأحفاد فقط (أبناء + أحفادهم، بدون الوحدة الحالية) لمنع الحلقات عند تغيير الأب.
+     */
+    public function getDescendantIds(): \Illuminate\Support\Collection
+    {
+        $ids = collect();
+        foreach ($this->children as $child) {
+            $ids->push($child->id);
+            $ids = $ids->merge($child->getDescendantIds());
+        }
+        return $ids;
+    }
+
+    /**
+     * العلاقة مع الدروس التي أنشئت أصلاً في هذه الوحدة (unit_id = هذا).
      */
     public function lessons()
     {
         return $this->hasMany(Lesson::class)->orderBy('order');
+    }
+
+    /**
+     * الدروس المرتبطة بهذه الوحدة عبر lesson_units فقط (دروس من وحدات أخرى تظهر هنا).
+     */
+    public function linkedLessons(): BelongsToMany
+    {
+        return $this->belongsToMany(Lesson::class, 'lesson_units', 'unit_id', 'lesson_id')->withTimestamps();
+    }
+
+    /**
+     * جميع الدروس المعروضة في هذه الوحدة: الدروس الأصلية + الدروس المرتبطة، بدون تكرار، مرتبة.
+     */
+    public function allLessons()
+    {
+        $primary = $this->lessons()->get();
+        $primaryIds = $primary->pluck('id')->toArray();
+        if ($this->relationLoaded('linkedLessons')) {
+            $linked = $this->linkedLessons->whereNotIn('id', $primaryIds)->sortBy('order')->values();
+        } else {
+            $linked = $this->linkedLessons()->whereNotIn('lessons.id', $primaryIds)->orderBy('lessons.order')->get();
+        }
+        return $primary->concat($linked)->sortBy('order')->values();
     }
 
     /**
@@ -69,6 +124,46 @@ class Unit extends Model
         return $this->hasMany(Quiz::class)
             ->whereNotNull('lesson_id')
             ->orderBy('order');
+    }
+
+    /**
+     * الاختبارات المرتبطة بهذه الوحدة عبر quiz_units (اختبارات من وحدات أخرى تظهر هنا).
+     */
+    public function linkedQuizzes(): BelongsToMany
+    {
+        return $this->belongsToMany(Quiz::class, 'quiz_units', 'unit_id', 'quiz_id')->withTimestamps();
+    }
+
+    /**
+     * جميع اختبارات الوحدة المعروضة: الأصلية (unit_id = هذه الوحدة، بدون درس) + المرتبطة.
+     */
+    public function allUnitQuizzes()
+    {
+        // الاختبارات الأصلية للوحدة
+        if ($this->relationLoaded('quizzes')) {
+            $primary = $this->quizzes
+                ->filter(fn ($q) => is_null($q->lesson_id))
+                ->sortBy('order')
+                ->values();
+        } else {
+            $primary = $this->quizzes()
+                ->whereNull('lesson_id')
+                ->with('linkedUnits.section.subject.schoolClass.stage')
+                ->orderBy('order')
+                ->get();
+        }
+
+        // الاختبارات المرتبطة بالوحدة عبر quiz_units
+        if ($this->relationLoaded('linkedQuizzes')) {
+            $linked = $this->linkedQuizzes->sortBy('order')->values();
+        } else {
+            $linked = $this->linkedQuizzes()
+                ->with('linkedUnits.section.subject.schoolClass.stage')
+                ->orderBy('order')
+                ->get();
+        }
+
+        return $primary->merge($linked)->unique('id')->sortBy('order')->values();
     }
 
     /**
