@@ -46,6 +46,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'class-delete', 'description' => 'حذف الصف'],
             ['name' => 'class-show', 'description' => 'عرض تفاصيل الصف'],
             ['name' => 'class-enrolled-students', 'description' => 'عرض الطلاب المنضمين للصف'],
+            ['name' => 'class-toggle-status', 'description' => 'تبديل حالة الصف (تفعيل/تعطيل)'],
 
             // صلاحيات إدارة المراحل
             ['name' => 'stage-list', 'description' => 'عرض قائمة المراحل'],

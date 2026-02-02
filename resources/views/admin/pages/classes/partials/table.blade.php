@@ -17,11 +17,26 @@
         <td>{{ $class->stage?->name ?? '-' }}</td>
         <td>{{ $class->order }}</td>
         <td>
-            @if ($class->is_active)
-                <span class="badge bg-success">نشط</span>
+            @can('class-toggle-status')
+                <button type="button"
+                        class="btn btn-sm d-inline-flex align-items-center {{ $class->is_active ? 'btn-success' : 'btn-outline-danger' }}"
+                        data-bs-toggle="modal"
+                        data-bs-target="#toggleClassStatus{{ $class->id }}">
+                    @if($class->is_active)
+                        <i class="fas fa-check-circle me-1"></i>
+                        <span>نشط</span>
+                    @else
+                        <i class="fas fa-ban me-1"></i>
+                        <span>غير نشط</span>
+                    @endif
+                </button>
             @else
-                <span class="badge bg-danger">غير نشط</span>
-            @endif
+                @if ($class->is_active)
+                    <span class="badge bg-success">نشط</span>
+                @else
+                    <span class="badge bg-danger">غير نشط</span>
+                @endif
+            @endcan
         </td>
         <td>{{ $class->created_at?->format('Y-m-d H:i') }}</td>
         <td>
@@ -60,6 +75,9 @@
 
             @can('class-delete')
                 @include('admin.pages.classes.delete', ['class' => $class])
+            @endcan
+            @can('class-toggle-status')
+                @include('admin.pages.classes.partials.toggle-status', ['class' => $class])
             @endcan
         </td>
     </tr>

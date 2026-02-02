@@ -24,6 +24,7 @@ class ClassController extends Controller
         $this->middleware(['permission:class-delete'])->only('destroy');
         $this->middleware(['permission:class-show'])->only('show');
         $this->middleware(['permission:class-enrolled-students'])->only('enrolledStudents');
+        $this->middleware(['permission:class-toggle-status'])->only('toggleStatus');
     }
 
     /**
@@ -431,6 +432,28 @@ class ClassController extends Controller
             Log::error('Error showing enrolled students: ' . $e->getMessage());
             return redirect()->route('admin.classes.index')
                 ->with('error', 'حدث خطأ أثناء عرض الطلاب: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * تبديل حالة الصف (تفعيل / إلغاء تفعيل)
+     */
+    public function toggleStatus(SchoolClass $class)
+    {
+        try {
+            $class->is_active = !$class->is_active;
+            $class->save();
+
+            $statusText = $class->is_active ? 'نشط' : 'غير نشط';
+
+            return redirect()
+                ->back()
+                ->with('success', "تم تحديث حالة الصف إلى: {$statusText}");
+        } catch (\Exception $e) {
+            Log::error('Error toggling class status: ' . $e->getMessage());
+            return redirect()
+                ->back()
+                ->with('error', 'فشل تحديث حالة الصف');
         }
     }
 }

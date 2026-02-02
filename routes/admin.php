@@ -33,6 +33,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::resource('classes', ClassController::class);
         Route::get('classes/{class}/enrolled-students', [ClassController::class, 'enrolledStudents'])
             ->name('classes.enrolled-students');
+        Route::post('classes/{class}/toggle-status', [ClassController::class, 'toggleStatus'])
+            ->name('classes.toggle-status');
 
         // شرائح Hero (سلايدر الصفحة الرئيسية)
         Route::resource('hero-slides', HeroSlideController::class);

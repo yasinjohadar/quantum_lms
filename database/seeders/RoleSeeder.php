@@ -24,8 +24,8 @@ class RoleSeeder extends Seeder
         
         $supervisorPermissions = [
             // صلاحيات إدارة الصفوف
-            'class-list', 'class-show', 'class-enrolled-students',
-            
+            'class-list', 'class-show', 'class-enrolled-students', 'class-toggle-status',
+
             // صلاحيات إدارة المواد
             'subject-list', 'subject-create', 'subject-edit', 'subject-delete', 'subject-show',
             'subject-enrolled-students', 'subject-toggle-status',
