@@ -62,6 +62,26 @@
             </div>
         </div>
 
+        @if($class->whatsapp_group_url)
+        <div class="card custom-card mb-4 border-success">
+            <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-success bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
+                        <i class="fa-brands fa-whatsapp text-success" style="font-size: 1.75rem;"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-1">انضم لمجموعة واتساب الخاصة بهذا الصف</h6>
+                        <p class="text-muted mb-0 small">تواصل مع زملائك والمعلمين وكن على اطلاع بآخر المستجدات.</p>
+                    </div>
+                </div>
+                <a href="{{ $class->whatsapp_group_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-success">
+                    <i class="fa-brands fa-whatsapp me-2"></i>
+                    انضم للمجموعة
+                </a>
+            </div>
+        </div>
+        @endif
+
         <!-- كاردات المواد -->
         @if($class->subjects->count() > 0)
             <div class="row">

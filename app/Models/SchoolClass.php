@@ -24,6 +24,7 @@ class SchoolClass extends Model
         'stage_id',
         'image',
         'description',
+        'whatsapp_group_url',
         'meta_title',
         'meta_description',
         'meta_keywords',

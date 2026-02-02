@@ -18,18 +18,31 @@
                 @if($class->description)
                     <p class="class-header-description">{{ $class->description }}</p>
                 @endif
-                @if($class->features->isNotEmpty())
-                    <ul class="class-features-list list-unstyled d-flex flex-wrap gap-2 justify-content-center mt-3 mb-0">
-                        @foreach($class->features as $feature)
-                            <li class="class-feature-badge"><i class="fa-solid fa-check me-1"></i>{{ $feature->label }}</li>
-                        @endforeach
-                    </ul>
-                @endif
             </div>
         </div>
     </div>
 
     <div class="container">
+
+        @if($class->whatsapp_group_url)
+        <div class="card mb-4 border-success">
+            <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-success bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
+                        <i class="fa-brands fa-whatsapp text-success" style="font-size: 1.75rem;"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-1">انضم لمجموعة واتساب الخاصة بهذا الصف</h6>
+                        <p class="text-muted mb-0 small">تواصل مع زملائك والمعلمين وكن على اطلاع بآخر المستجدات.</p>
+                    </div>
+                </div>
+                <a href="{{ $class->whatsapp_group_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-success">
+                    <i class="fa-brands fa-whatsapp me-2"></i>
+                    انضم للمجموعة
+                </a>
+            </div>
+        </div>
+        @endif
 
         <!-- Purchase Options Section -->
         @auth
@@ -200,7 +213,7 @@
             
             <div class="row">
                 @forelse($subjects as $subject)
-                    <div class="col-lg-3 col-md-6 col-12 mb-4">
+                    <div class="col-lg-4 col-md-6 col-12 mb-4">
                         <div class="class-card">
                             <div class="class-card-image">
                                 @if($subject['image'])

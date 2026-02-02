@@ -34,6 +34,7 @@ class UpdateClassRequest extends FormRequest
             ],
             'stage_id' => ['required', 'integer', 'exists:stages,id'],
             'description' => ['nullable', 'string'],
+            'whatsapp_group_url' => ['nullable', 'string', 'max:500', 'url'],
             'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'],
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string'],

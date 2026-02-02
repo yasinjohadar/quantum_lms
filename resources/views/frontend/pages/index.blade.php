@@ -6,67 +6,96 @@
 
 @section('content')
 
-<!-- Hero Section Start -->
-<section class="hero-section">
-                    <div class="container">
-        <div class="row align-items-center">
-
-                <!-- الصور/الكروت - يسار في RTL -->
-            <div class="col-md-6 order-md-1">
-                <div class="hero-images position-relative">
-                    <!-- أيقونة قبعة التخرج -->
-                    <div class="graduation-icon position-absolute">
-                        <i class="fa-solid fa-graduation-cap"></i>
-                            </div>
-                    <div class="hero-main-image">
-                        <img src="{{ asset('frontend/images/hero-img.png') }}" alt="Hero" />
+<!-- Hero Swiper Section Start -->
+@php
+    $heroSlides = $heroSlides ?? collect();
+    if ($heroSlides->isEmpty()) {
+        $heroSlides = collect([(object)[
+            'title' => 'ابدأ التعلم اليوم',
+            'subtitle' => '# أفضل منصة تعليمية',
+            'description' => 'عزز رحلتك التعليمية مع منصة الكورسات المتطورة لدينا.',
+            'button_text' => 'ابدأ الآن',
+            'button_url' => '#',
+            'button2_text' => 'تصفح الصفوف',
+            'button2_url' => '#classes-section',
+            'background_image' => null,
+            'content_image' => asset('frontend/images/hero-img.png'),
+            'text_position' => 'right',
+        ]]);
+    }
+@endphp
+<section class="hero-swiper-section" id="hero-swiper-section">
+    <div class="swiper hero-swiper">
+        <div class="swiper-wrapper">
+            @foreach($heroSlides as $slide)
+                <div class="swiper-slide hero-slide">
+                    <div class="hero-slide-bg" @if($slide->background_image ?? null) style="background-image: url('{{ asset('storage/' . $slide->background_image) }}');" @endif></div>
+                    <div class="container hero-slide-content-wrapper h-100">
+                        @php
+                                $textPos = $slide->text_position ?? 'right';
+                                $textOrder = $textPos === 'right' ? 1 : 2;
+                                $imgOrder = $textPos === 'right' ? 2 : 1;
+                                $textAlign = $textPos === 'right' ? 'text-end' : 'text-start';
+                            @endphp
+                        <div class="row align-items-center h-100">
+                            <div class="col-md-6 col-lg-5 order-md-{{ $textOrder }}">
+                                <div class="hero-content {{ $textAlign }}">
+                                    @if(!empty($slide->subtitle ?? null))
+                                        <span class="hero-badge">{{ $slide->subtitle }}</span>
+                                    @endif
+                                    <h1 class="hero-title">{!! nl2br(e($slide->title ?? '')) !!}</h1>
+                                    @if(!empty($slide->description ?? null))
+                                        <p class="hero-description">{{ $slide->description }}</p>
+                                    @endif
+                                    @if(!empty($slide->button_text ?? null) && !empty($slide->button_url ?? null) || !empty($slide->button2_text ?? null) && !empty($slide->button2_url ?? null))
+                                        <div class="hero-actions d-flex align-items-center justify-content-end gap-3 mb-4 flex-wrap w-100">
+                                            @if(!empty($slide->button_text ?? null) && !empty($slide->button_url ?? null))
+                                                <a href="{{ $slide->button_url }}" class="btn btn-primary btn-lg btn-gold">
+                                                    {{ $slide->button_text }}
+                                                    <i class="fa-solid fa-angles-left ms-2"></i>
+                                                </a>
+                                            @endif
+                                            @if(!empty($slide->button2_text ?? null) && !empty($slide->button2_url ?? null))
+                                                <a href="{{ $slide->button2_url }}" class="btn btn-outline-light btn-lg hero-btn-outline">
+                                                    {{ $slide->button2_text }}
+                                                    <i class="fa-solid fa-angles-left ms-2"></i>
+                                                </a>
+                                            @endif
+                                        </div>
+                                    @endif
                                 </div>
-                    
-                    <!-- أيقونة الخبرة -->
-                    <div class="experience-badge position-absolute">
-                        <i class="fa-solid fa-lightbulb"></i>
-                        <span>25+ سنة من الخبرة</span>
-            </div>
-            </div>
-            </div>
-            <!-- النص - يمين في RTL -->
-            <div class="col-md-6 order-md-2">
-                <div class="hero-content text-end">
-                    <span class="hero-badge"># أفضل منصة تعليمية</span>
-                    <h1 class="hero-title">
-                        ابدأ التعلم <span class="text-primary">اليوم</span><br>
-                        <span class="text-primary">اكتشف</span> مهارتك القادمة<br>
-                        العظيمة
-                    </h1>
-                    <p class="hero-description">
-                        عزز رحلتك التعليمية مع منصة الكورسات المتطورة لدينا.
-                    </p>
-                    <div class="hero-actions d-flex align-items-center justify-content-end gap-3 mb-4">
-                        <a href="#" class="btn btn-primary btn-lg btn-gold">
-                            ابدأ الآن
-                            <i class="fa-solid fa-angles-left ms-2"></i>
-                                    </a>
-                                </div>
-                    <div class="hero-stats d-flex align-items-center justify-content-end gap-2">
-                        <div class="stats-dots d-flex gap-1">
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                            <span class="dot"></span>
                             </div>
-                        <span class="stats-text">2000+ طالب ناجح</span>
+                            <div class="col-md-6 col-lg-7 order-md-{{ $imgOrder }} hero-image-col h-100">
+                                <div class="hero-images position-relative h-100 w-100">
+                                    @if(!empty($slide->content_image ?? null))
+                                        <div class="hero-main-image">
+                                            @php
+                                                $ci = $slide->content_image ?? '';
+                                                $contentImgSrc = (is_string($ci) && (str_starts_with($ci, 'http') || str_starts_with($ci, '//'))) ? $ci : (str_starts_with($ci, 'hero-slides') ? asset('storage/' . $ci) : asset($ci));
+                                            @endphp
+                                            <img src="{{ $contentImgSrc }}" alt="{{ $slide->title ?? 'Hero' }}" />
+                                        </div>
+                                    @else
+                                        <div class="hero-main-image">
+                                            <img src="{{ asset('frontend/images/hero-img.png') }}" alt="Hero" />
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            
-    
-
-                                </div>
-            </div>
-        </section>
-<!-- Hero Section End -->
+            @endforeach
+        </div>
+        <div class="swiper-button-prev hero-swiper-prev" aria-label="السابق"></div>
+        <div class="swiper-button-next hero-swiper-next" aria-label="التالي"></div>
+        <div class="swiper-pagination hero-swiper-pagination"></div>
+    </div>
+</section>
+<!-- Hero Swiper Section End -->
 
 <!-- Classes Section Start -->
-<section class="classes-section py-5">
+<section class="classes-section py-5" id="classes-section">
     <div class="container classes-swiper-section">
         <div class="row mb-3">
             <div class="col-12 text-center">
@@ -318,6 +347,24 @@
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js" crossorigin="anonymous"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    var heroSwiperEl = document.querySelector('.hero-swiper');
+    if (heroSwiperEl) {
+        new Swiper('.hero-swiper', {
+            dir: 'rtl',
+            loop: true,
+            effect: 'slide',
+            autoHeight: true,
+            autoplay: { delay: 5000, disableOnInteraction: false },
+            navigation: {
+                nextEl: '.hero-swiper-next',
+                prevEl: '.hero-swiper-prev'
+            },
+            pagination: {
+                el: '.hero-swiper-pagination',
+                clickable: true
+            }
+        });
+    }
     new Swiper('.classes-swiper', {
         dir: 'rtl',
         loop: true,

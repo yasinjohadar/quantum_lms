@@ -653,6 +653,13 @@
                                 </li>
                                 @endcan
 
+                                {{-- شرائح Hero (سلايدر الصفحة الرئيسية) --}}
+                                <li class="slide {{ request()->is('admin/hero-slides*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.hero-slides.index') }}" class="side-menu__item {{ request()->is('admin/hero-slides*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">شرائح Hero</span>
+                                    </a>
+                                </li>
+
                                 {{-- محاولات الاختبارات --}}
                                 @can('quiz-attempt-needs-grading')
                                 <li class="slide has-sub {{ request()->is('admin/quiz-attempts/needs-grading*') ? 'open' : '' }}">

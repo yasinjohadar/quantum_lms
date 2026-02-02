@@ -28,8 +28,8 @@ class RoleSeeder extends Seeder
             
             // صلاحيات إدارة المواد
             'subject-list', 'subject-create', 'subject-edit', 'subject-delete', 'subject-show',
-            'subject-enrolled-students',
-            
+            'subject-enrolled-students', 'subject-toggle-status',
+
             // صلاحيات إدارة أقسام المواد
             'subject-section-create', 'subject-section-edit', 'subject-section-delete',
             

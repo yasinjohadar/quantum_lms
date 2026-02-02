@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\QuizAttemptController;
 use App\Http\Controllers\Admin\EnrollmentController;
 use App\Http\Controllers\Admin\LoginLogController;
 use App\Http\Controllers\Admin\PlatformReviewController;
+use App\Http\Controllers\Admin\HeroSlideController;
 use App\Http\Controllers\Admin\UserSessionController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Api\SessionActivityController;
@@ -33,6 +34,9 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::get('classes/{class}/enrolled-students', [ClassController::class, 'enrolledStudents'])
             ->name('classes.enrolled-students');
 
+        // شرائح Hero (سلايدر الصفحة الرئيسية)
+        Route::resource('hero-slides', HeroSlideController::class);
+
         // آراء الطلاب (المنصة)
         Route::get('platform-reviews', [PlatformReviewController::class, 'index'])->name('platform-reviews.index');
         Route::get('platform-reviews/{platform_review}/edit', [PlatformReviewController::class, 'edit'])->name('platform-reviews.edit');
@@ -44,6 +48,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::resource('subjects', SubjectController::class);
         Route::get('subjects/{subject}/enrolled-students', [SubjectController::class, 'enrolledStudents'])
             ->name('subjects.enrolled-students');
+        Route::post('subjects/{subject}/toggle-status', [SubjectController::class, 'toggleStatus'])
+            ->name('subjects.toggle-status');
 
         // أقسام المواد (داخل كل مادة)
         Route::post('subjects/{subject}/sections', [SubjectSectionController::class, 'store'])

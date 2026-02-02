@@ -64,17 +64,6 @@
                     </a>
                 </div>
                 <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mb-3">
-                    <a href="{{ route('student.gamification.dashboard') }}" class="card text-center h-100 text-decoration-none">
-                        <div class="card-body">
-                            <div class="fs-32 mb-2 text-warning">
-                                <i class="fe fe-award"></i>
-                            </div>
-                            <h6 class="mb-1">لوحة التلعيب</h6>
-                            <p class="text-muted fs-12 mb-0">النقاط والإنجازات والشارات</p>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mb-3">
                     <a href="{{ route('student.gamification.badges') }}" class="card text-center h-100 text-decoration-none">
                         <div class="card-body">
                             <div class="fs-32 mb-2 text-danger">
@@ -104,50 +93,6 @@
                             </div>
                             <h6 class="mb-1">المكتبة الرقمية</h6>
                             <p class="text-muted fs-12 mb-0">الكتب والموارد التعليمية</p>
-                        </div>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="row mb-4">
-                <div class="col-12 mb-3">
-                    <h5 class="mb-0">
-                        <i class="fe fe-zap me-2 text-warning"></i>
-                        إجراءات سريعة
-                    </h5>
-                    <p class="text-muted fs-12 mb-0">الوصول السريع لإجراءات نظام التحفيز</p>
-                </div>
-                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mb-3">
-                    <a href="{{ route('student.gamification.challenges') }}" class="card text-center h-100 text-decoration-none">
-                        <div class="card-body">
-                            <div class="fs-32 mb-2 text-danger">
-                                <i class="fe fe-zap"></i>
-                            </div>
-                            <h6 class="mb-1">التحديات</h6>
-                            <p class="text-muted fs-12 mb-0">عرض التحديات النشطة</p>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mb-3">
-                    <a href="{{ route('student.gamification.rewards') }}" class="card text-center h-100 text-decoration-none">
-                        <div class="card-body">
-                            <div class="fs-32 mb-2 text-primary">
-                                <i class="fe fe-gift"></i>
-                            </div>
-                            <h6 class="mb-1">المكافآت</h6>
-                            <p class="text-muted fs-12 mb-0">استبدل نقاطك بمكافآت</p>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mb-3">
-                    <a href="{{ route('student.tasks.index') }}" class="card text-center h-100 text-decoration-none">
-                        <div class="card-body">
-                            <div class="fs-32 mb-2 text-success">
-                                <i class="fe fe-check-square"></i>
-                            </div>
-                            <h6 class="mb-1">المهام</h6>
-                            <p class="text-muted fs-12 mb-0">عرض ومتابعة المهام</p>
                         </div>
                     </a>
                 </div>
@@ -234,27 +179,6 @@
 
                 <!-- Right Sidebar -->
                 <div class="col-xl-5 col-lg-12">
-                    <!-- Important Notifications -->
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h4 class="card-title mb-0">
-                                <i class="fe fe-bell me-2"></i>
-                                تنبيهات مهمة
-                            </h4>
-                        </div>
-                        <div class="card-body">
-                            <div class="text-center py-4">
-                                <div class="mb-2">
-                                    <i class="fe fe-check-circle fs-32 text-success"></i>
-                                </div>
-                                <p class="text-muted mb-0">لا توجد تنبيهات جديدة</p>
-                                <a href="{{ route('student.notifications.index') }}" class="btn btn-sm btn-outline-primary mt-3">
-                                    عرض جميع الإشعارات
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Latest Badges -->
                     <div class="card mb-3">
                         <div class="card-header">

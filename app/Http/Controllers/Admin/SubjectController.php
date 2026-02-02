@@ -23,6 +23,7 @@ class SubjectController extends Controller
         $this->middleware(['permission:subject-delete'])->only('destroy');
         $this->middleware(['permission:subject-show'])->only('show');
         $this->middleware(['permission:subject-enrolled-students'])->only('enrolledStudents');
+        $this->middleware(['permission:subject-toggle-status'])->only('toggleStatus');
     }
 
     /**
@@ -430,6 +431,28 @@ class SubjectController extends Controller
             Log::error('Error showing enrolled students: ' . $e->getMessage());
             return redirect()->route('admin.subjects.index')
                 ->with('error', 'حدث خطأ أثناء عرض الطلاب: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * تبديل حالة المادة (تفعيل / إلغاء تفعيل)
+     */
+    public function toggleStatus(Subject $subject)
+    {
+        try {
+            $subject->is_active = !$subject->is_active;
+            $subject->save();
+
+            $statusText = $subject->is_active ? 'نشطة' : 'غير نشطة';
+
+            return redirect()
+                ->back()
+                ->with('success', "تم تحديث حالة المادة إلى: {$statusText}");
+        } catch (\Exception $e) {
+            Log::error('Error toggling subject status: ' . $e->getMessage());
+            return redirect()
+                ->back()
+                ->with('error', 'فشل تحديث حالة المادة');
         }
     }
 }

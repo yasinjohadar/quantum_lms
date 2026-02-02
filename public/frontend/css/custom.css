@@ -77,11 +77,23 @@ html[data-bs-theme="dark"] {
     --hero-card-text: rgba(255, 255, 255, 0.72);
 }
 
-/* Header: use gold instead of orange */
-header,
-.top-header,
-.buttom-header {
+/* Header: use gold instead of orange – تطبيق اللون الذهبي على كل عناصر الهيدر */
+#siteHeader,
+#siteHeader .top-header,
+#siteHeader .buttom-header {
     --main-Color: var(--brand-gold);
+}
+
+#siteHeader .nav-link,
+#siteHeader .buttom-header .nav-link {
+    color: var(--text-primary);
+}
+
+#siteHeader .nav-link:hover,
+#siteHeader .nav-link.active,
+#siteHeader .buttom-header .nav-link:hover,
+#siteHeader .buttom-header .nav-link.active {
+    color: var(--brand-gold) !important;
 }
 
 /* Header social (bottom header - left) */
@@ -255,7 +267,141 @@ a {
 }
 
 /* /////////////////////////////////////////////////// */
-/* ////////////////Hero Section/////////////////////// */
+/* ////////////////Hero Swiper Section//////////////// */
+/* /////////////////////////////////////////////////// */
+
+.hero-swiper-section {
+    height: 600px;
+    min-height: 600px;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-swiper-section .hero-swiper {
+    height: 100%;
+    width: 100%;
+}
+
+.hero-swiper-section .swiper-slide.hero-slide {
+    height: 100%;
+    position: relative;
+}
+
+.hero-swiper-section .hero-slide-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-color: var(--hero-bg);
+}
+
+.hero-swiper-section .hero-slide-content-wrapper {
+    position: relative;
+    z-index: 2;
+}
+
+.hero-swiper-section .hero-content {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.hero-swiper-section .hero-content .hero-title,
+.hero-swiper-section .hero-content .hero-description {
+    width: 100%;
+}
+
+.hero-swiper-section .hero-actions {
+    width: 100%;
+}
+
+[dir="rtl"] .hero-swiper-section .hero-actions {
+    justify-content: flex-start;
+}
+
+.hero-swiper-section .hero-image-col {
+    align-self: stretch;
+    height: auto;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hero-swiper-section .hero-images {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hero-swiper-section .hero-main-image {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hero-swiper-section .hero-main-image img {
+    max-height: 100%;
+    max-width: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    object-position: center;
+    filter: drop-shadow(var(--hero-img-shadow));
+}
+
+.hero-swiper-section .swiper-button-prev,
+.hero-swiper-section .swiper-button-next {
+    color: var(--hero-title);
+    width: 44px;
+    height: 56px;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 0;
+    transition: background 0.2s ease;
+}
+
+.hero-swiper-section .swiper-button-prev:hover,
+.hero-swiper-section .swiper-button-next:hover {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.hero-swiper-section .swiper-button-prev::after,
+.hero-swiper-section .swiper-button-next::after {
+    font-size: 1.25rem;
+}
+
+.hero-swiper-section .swiper-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.hero-swiper-section .swiper-pagination-bullet {
+    width: 28px;
+    height: 4px;
+    margin: 0 !important;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.4);
+    opacity: 1;
+    transition: background 0.2s ease, width 0.2s ease;
+}
+
+.hero-swiper-section .swiper-pagination-bullet-active {
+    background: rgba(255, 255, 255, 1);
+    width: 36px;
+}
+
+/* /////////////////////////////////////////////////// */
+/* ////////////////Hero Section (legacy)////////////// */
 /* /////////////////////////////////////////////////// */
 
 .hero-section {
@@ -312,7 +458,7 @@ a {
 }
 
 .hero-title {
-    font-size: 3.5rem;
+    font-size: 3rem;
     font-weight: 800;
     line-height: 1.2;
     margin-bottom: 20px;
@@ -363,6 +509,21 @@ a {
     box-shadow: 0 14px 28px rgba(212, 175, 55, 0.22);
     position: relative;
     overflow: hidden;
+    border-radius: 5px !important;
+}
+
+.hero-actions .btn-outline-light.hero-btn-outline {
+    border-radius: 5px;
+    border-width: 2px;
+    padding: 15px 35px;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.hero-actions .btn-outline-light.hero-btn-outline:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #fff;
+    color: #fff;
 }
 
 .hero-actions .btn-gold::before {
@@ -571,6 +732,41 @@ a {
 
 /* Responsive */
 @media (max-width: 768px) {
+    /* Hero swiper – ارتفاع واستيعاب المحتوى على الجوال */
+    .hero-swiper-section {
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .hero-swiper-section .hero-swiper,
+    .hero-swiper-section .swiper-slide.hero-slide {
+        height: auto;
+        min-height: 100%;
+    }
+
+    .hero-swiper-section .hero-slide-content-wrapper {
+        min-height: 100%;
+    }
+
+    /* Hero swiper – إظهار الصورة ومنحها ارتفاعاً على الجوال */
+    .hero-swiper-section .hero-image-col {
+        min-height: 220px;
+    }
+
+    .hero-swiper-section .hero-images {
+        min-height: 220px;
+    }
+
+    /* Hero swiper – توسيط كل العناصر على الجوال */
+    .hero-swiper-section .hero-content {
+        align-items: center;
+        text-align: center;
+    }
+
+    .hero-swiper-section .hero-actions {
+        justify-content: center;
+    }
+
     .hero-section {
         padding: 40px 0;
         min-height: auto;
@@ -672,6 +868,11 @@ a {
     aspect-ratio: 16 / 9;
     overflow: hidden;
     background: linear-gradient(135deg, var(--secondary-Color) 0%, var(--main-Color) 100%);
+}
+
+/* عرض المواد: 3 أعمدة ونسبة الصورة 998×1382 */
+.subjects-section .class-card-image {
+    aspect-ratio: 998 / 1382;
     border-radius: 5px 5px 0 0;
 }
 
@@ -867,11 +1068,7 @@ a {
     font-size: 1.1rem;
     font-weight: 700;
     color: var(--brand-gold);
-    padding: 6px 14px;
-    background: rgba(212, 175, 55, 0.14);
-    border-radius: 6px;
     display: inline-block;
-    border: 1px solid rgba(212, 175, 55, 0.25);
 }
 
 .price-content {
@@ -1500,6 +1697,10 @@ a {
     position: relative;
 }
 
+html[data-bs-theme="dark"] .class-header {
+    background: #0f2847;
+}
+
 .class-header-content {
     position: relative;
     z-index: 2;
@@ -1560,6 +1761,7 @@ a {
 
 /* Frontend Footer */
 .frontend-footer {
+    --main-Color: var(--brand-gold);
     background: #0b1b2b;
     color: rgba(255, 255, 255, 0.92);
     padding: 50px 0 18px;
@@ -1601,7 +1803,7 @@ a {
     top: 6px;
     width: 6px;
     height: 18px;
-    background: var(--main-Color);
+    background: var(--brand-gold);
     border-radius: 3px;
 }
 
@@ -1656,7 +1858,7 @@ a {
     justify-content: center;
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.06);
-    color: var(--main-Color);
+    color: var(--brand-gold);
 }
 
 .frontend-footer__social {
@@ -1679,8 +1881,8 @@ a {
 }
 
 .frontend-footer__social .social-link:hover {
-    background: rgba(242, 145, 37, 0.18);
-    color: #fff;
+    background: rgba(212, 175, 55, 0.18);
+    color: var(--brand-gold);
     transform: translateY(-2px);
 }
 

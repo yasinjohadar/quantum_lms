@@ -61,6 +61,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'subject-delete', 'description' => 'حذف المادة'],
             ['name' => 'subject-show', 'description' => 'عرض تفاصيل المادة'],
             ['name' => 'subject-enrolled-students', 'description' => 'عرض الطلاب المنضمين للمادة'],
+            ['name' => 'subject-toggle-status', 'description' => 'تبديل حالة المادة (تفعيل/تعطيل)'],
 
             // صلاحيات إدارة أقسام المواد
             ['name' => 'subject-section-create', 'description' => 'إنشاء قسم للمادة'],

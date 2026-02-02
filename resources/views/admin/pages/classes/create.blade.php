@@ -227,6 +227,20 @@
                                 </div>
                             </div>
 
+                            <div class="col-md-12">
+                                <div class="form-floating">
+                                    <input type="url" name="whatsapp_group_url"
+                                           class="form-control @error('whatsapp_group_url') is-invalid @enderror"
+                                           placeholder="https://chat.whatsapp.com/..."
+                                           value="{{ old('whatsapp_group_url') }}">
+                                    <label>رابط مجموعة واتساب (اختياري)</label>
+                                    @error('whatsapp_group_url')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <small class="text-muted">مثال: https://chat.whatsapp.com/xxxxxxxxxxxxx</small>
+                                </div>
+                            </div>
+
                             <div class="col-md-6">
                                 <label class="form-label">صورة الصف (اختياري)</label>
                                 <input type="file" name="image"

@@ -44,80 +44,7 @@
             </div>
         @endif
 
-        @if($classes->count() > 0)
-            @foreach($classes as $classData)
-                @php
-                    $class = $classData['class'];
-                    $subjects = $classData['subjects'];
-                @endphp
-                
-                <!-- مواد الصف -->
-                @if($subjects->count() > 0)
-                    <div class="row mb-5">
-                        <div class="col-12 mb-3">
-                            <h5 class="fw-semibold">
-                                <i class="bi bi-book-half me-2 text-primary"></i>
-                                المواد الدراسية في {{ $class->name }}
-                                @if($class->stage)
-                                    <small class="text-muted">({{ $class->stage->name }})</small>
-                                @endif
-                            </h5>
-                        </div>
-                        @foreach($subjects as $subject)
-                            <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-3">
-                                <div class="card custom-card h-100">
-                                    @if($subject->image)
-                                        <div class="card-img-top position-relative overflow-hidden" style="height: 150px;">
-                                            <div class="bg-primary-gradient d-flex align-items-center justify-content-center position-absolute top-0 start-0 w-100 h-100" id="subject-img-fallback-{{ $subject->id }}" style="display: none;">
-                                                <i class="bi bi-book text-white" style="font-size: 3rem;"></i>
-                                            </div>
-                                            <img src="{{ asset('storage/' . $subject->image) }}" class="position-relative w-100 h-100" style="object-fit: cover;" alt="{{ $subject->name }}"
-                                                 onerror="this.style.display='none'; document.getElementById('subject-img-fallback-{{ $subject->id }}').style.display='flex';">
-                                        </div>
-                                    @else
-                                        <div class="card-img-top bg-primary-gradient d-flex align-items-center justify-content-center" style="height: 150px;">
-                                            <i class="bi bi-book text-white" style="font-size: 3rem;"></i>
-                                        </div>
-                                    @endif
-                                    <div class="card-body">
-                                        <h6 class="card-title fw-semibold">{{ $subject->name }}</h6>
-                                        @if($subject->description)
-                                            <p class="card-text text-muted">{{ \Illuminate\Support\Str::limit($subject->description, 100) }}</p>
-                                        @endif
-                                        <a href="{{ route('student.subjects.show', $subject->id) }}" class="btn btn-primary btn-sm">
-                                            <i class="bi bi-eye me-1"></i>
-                                            عرض المحتوى
-                                        </a>
-                                    </div>
-                                    @php
-                                        $enrollment = $subject->enrollments->first();
-                                    @endphp
-                                    @if($enrollment && $enrollment->enrolled_at)
-                                        <div class="card-footer">
-                                            <span class="card-text text-muted">
-                                                <i class="bi bi-calendar me-1"></i>
-                                                تاريخ الانضمام: {{ $enrollment->enrolled_at->format('Y-m-d') }}
-                                            </span>
-                                        </div>
-                                    @endif
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                @else
-                    <div class="row mb-5">
-                        <div class="col-12">
-                            <div class="card custom-card">
-                                <div class="card-body text-center py-4">
-                                    <i class="bi bi-book fs-1 text-muted mb-3 d-block"></i>
-                                    <p class="text-muted mb-0">لا توجد مواد دراسية في هذا الصف</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                @endif
-            @endforeach
-        @else
+        @if($classes->count() === 0)
             <div class="card">
                 <div class="card-body text-center py-5">
                     <i class="bi bi-building fs-1 text-muted mb-3 d-block"></i>
@@ -127,6 +54,59 @@
                         <i class="bi bi-plus-circle me-1"></i>
                         طلب الانضمام
                     </a>
+                </div>
+            </div>
+        @elseif($classes->count() === 1)
+            {{-- صف واحد: عرض بدون تبويبات --}}
+            @php $classData = $classes->first(); @endphp
+            <div class="row mb-5">
+                @include('student.pages.lessons.partials.class-section-content', [
+                    'class' => $classData['class'],
+                    'subjects' => $classData['subjects'],
+                ])
+            </div>
+        @else
+            {{-- أكثر من صف: تبويبات أنيقة --}}
+            <div class="card custom-card">
+                <div class="card-header border-bottom-0 pb-0">
+                    <ul class="nav nav-tabs student-class-tabs card-header-tabs" role="tablist">
+                        @foreach($classes as $classData)
+                            @php
+                                $class = $classData['class'];
+                            @endphp
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link {{ $loop->first ? 'active' : '' }}"
+                                   id="class-{{ $class->id }}-tab"
+                                   data-bs-toggle="tab"
+                                   data-bs-target="#class-{{ $class->id }}"
+                                   href="#class-{{ $class->id }}"
+                                   role="tab"
+                                   aria-controls="class-{{ $class->id }}"
+                                   aria-selected="{{ $loop->first ? 'true' : 'false' }}">
+                                    {{ $class->name }}
+                                </a>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+                <div class="card-body pt-4">
+                    <div class="tab-content" id="student-class-tab-content">
+                        @foreach($classes as $classData)
+                            @php
+                                $class = $classData['class'];
+                                $subjects = $classData['subjects'];
+                            @endphp
+                            <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}"
+                                 id="class-{{ $class->id }}"
+                                 role="tabpanel"
+                                 aria-labelledby="class-{{ $class->id }}-tab">
+                                @include('student.pages.lessons.partials.class-section-content', [
+                                    'class' => $class,
+                                    'subjects' => $subjects,
+                                ])
+                            </div>
+                        @endforeach
+                    </div>
                 </div>
             </div>
         @endif

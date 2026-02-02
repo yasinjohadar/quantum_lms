@@ -11,6 +11,7 @@ use App\Models\Enrollment;
 use App\Models\User;
 use App\Models\Purchase;
 use App\Models\PlatformReview;
+use App\Models\HeroSlide;
 use App\Models\SystemSetting;
 use App\Models\CustomPaymentMethod;
 use App\Services\PurchaseService;
@@ -134,6 +135,9 @@ class HomeController extends Controller
                 }
             });
 
+        // شرائح Hero للصفحة الرئيسية (سلايدر Hero)
+        $heroSlides = HeroSlide::active()->ordered()->get();
+
         // آراء الطلاب المعتمدة للصفحة الرئيسية (السلايدر)
         $reviewsLimit = (int) (SystemSetting::get('platform_reviews_display_limit', 6) ?: 6);
         $reviews = PlatformReview::with(['user', 'schoolClass'])
@@ -142,7 +146,7 @@ class HomeController extends Controller
             ->limit($reviewsLimit)
             ->get();
 
-        return view('frontend.pages.index', compact('classes', 'reviews'));
+        return view('frontend.pages.index', compact('classes', 'heroSlides', 'reviews'));
     }
 
     /**

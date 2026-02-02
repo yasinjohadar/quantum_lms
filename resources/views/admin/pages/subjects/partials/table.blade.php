@@ -31,11 +31,26 @@
             @endif
         </td>
         <td>
-            @if ($subject->is_active)
-                <span class="badge bg-success">نشطة</span>
+            @can('subject-toggle-status')
+                <button type="button"
+                        class="btn btn-sm d-inline-flex align-items-center {{ $subject->is_active ? 'btn-success' : 'btn-outline-danger' }}"
+                        data-bs-toggle="modal"
+                        data-bs-target="#toggleSubjectStatus{{ $subject->id }}">
+                    @if($subject->is_active)
+                        <i class="fas fa-check-circle me-1"></i>
+                        <span>نشطة</span>
+                    @else
+                        <i class="fas fa-ban me-1"></i>
+                        <span>غير نشطة</span>
+                    @endif
+                </button>
             @else
-                <span class="badge bg-danger">غير نشطة</span>
-            @endif
+                @if ($subject->is_active)
+                    <span class="badge bg-success">نشطة</span>
+                @else
+                    <span class="badge bg-danger">غير نشطة</span>
+                @endif
+            @endcan
         </td>
         <td>{{ $subject->created_at?->format('Y-m-d H:i') }}</td>
         <td>
@@ -74,6 +89,9 @@
 
             @can('subject-delete')
                 @include('admin.pages.subjects.force-delete', ['subject' => $subject])
+            @endcan
+            @can('subject-toggle-status')
+                @include('admin.pages.subjects.partials.toggle-status', ['subject' => $subject])
             @endcan
         </td>
     </tr>
