@@ -17,8 +17,13 @@ Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student
     Route::get('/classes', [StudentLessonController::class, 'classes'])->name('classes');
     Route::get('/subjects', [StudentLessonController::class, 'subjects'])->name('subjects');
     Route::get('/subjects/{subject}', [StudentLessonController::class, 'showSubject'])->name('subjects.show');
+    Route::get('/subjects/{subject}/folders', [StudentLessonController::class, 'showSubjectFolders'])->name('subjects.folders');
+    Route::get('/subjects/{subject}/folders/section/{section}', [StudentLessonController::class, 'showSubjectFolderSection'])->name('subjects.folders.section');
+    Route::get('/subjects/{subject}/folders/section/{section}/unit/{unit}', [StudentLessonController::class, 'showSubjectFolderUnit'])->name('subjects.folders.unit');
     Route::get('/lessons/{lesson}', [StudentLessonController::class, 'showLesson'])->name('lessons.show');
+    Route::get('/lessons/{lesson}/folders', [StudentLessonController::class, 'showLessonFolders'])->name('lessons.show.folders');
     Route::post('/lessons/{lesson}/mark-status', [StudentLessonController::class, 'markLessonStatus'])->name('lessons.mark-status');
+    Route::post('/lessons/{lesson}/progress', [StudentLessonController::class, 'updateLessonProgress'])->name('lessons.progress');
     
     // مراقبة التقدم
     Route::get('/progress', [StudentProgressController::class, 'index'])->name('progress.index');

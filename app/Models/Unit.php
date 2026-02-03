@@ -175,6 +175,16 @@ class Unit extends Model
     }
 
     /**
+     * إجمالي مدة الدروس في هذه الوحدة بالثواني (دروس أصلية + مرتبطة، بدون تكرار).
+     * الدروس بدون مدة (null) تُحسب كـ 0.
+     */
+    public function getTotalDurationSeconds(): int
+    {
+        $lessons = $this->allLessons();
+        return (int) $lessons->sum(fn ($lesson) => (int) ($lesson->duration ?? 0));
+    }
+
+    /**
      * Scope للوحدات النشطة.
      */
     public function scopeActive($query)

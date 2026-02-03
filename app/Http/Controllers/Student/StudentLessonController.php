@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
 use App\Models\Subject;
+use App\Models\SubjectSection;
+use App\Models\Unit;
 use App\Models\Lesson;
 use App\Models\Quiz;
 use App\Models\Question;
@@ -117,20 +119,6 @@ class StudentLessonController extends Controller
             ->orderBy('order')
             ->get();
 
-        // التوجيه المباشر إلى الدرس الأول إن وُجد (تخطي صفحة تفاصيل الدروس)
-        $firstLesson = null;
-        foreach ($sections as $section) {
-            foreach ($section->units as $unit) {
-                if ($unit->lessons->isNotEmpty()) {
-                    $firstLesson = $unit->lessons->first();
-                    break 2;
-                }
-            }
-        }
-        if ($firstLesson) {
-            return redirect()->route('student.lessons.show', $firstLesson->id);
-        }
-        
         // #region agent log - Hypothesis A: Questions not loaded in eager loading
         $allUnits = $sections->flatMap(function($s) { return $s->units; });
         $unitsWithQuestions = $allUnits->map(function($u) { 
@@ -206,152 +194,246 @@ class StudentLessonController extends Controller
         
         return view('student.pages.lessons.subject-show', compact('subject', 'sections'));
     }
-    
+
+    /**
+     * عرض محتوى المادة بأسلوب المجلدات (مستوى المادة: كاردات الأقسام الجذرية).
+     */
+    public function showSubjectFolders($subjectId)
+    {
+        $user = Auth::user();
+        $subject = Subject::with(['schoolClass.stage'])
+            ->whereHas('students', function ($query) use ($user) {
+                $query->where('users.id', $user->id)
+                    ->where('enrollments.status', 'active');
+            })
+            ->findOrFail($subjectId);
+
+        $sections = $subject->sections()
+            ->whereNull('parent_id')
+            ->where('is_active', true)
+            ->orderBy('order')
+            ->get();
+
+        return view('student.pages.lessons.subject-folders', compact('subject', 'sections'));
+    }
+
+    /**
+     * عرض مستوى القسم في عرض المجلدات (حسب نوع القسم: دروس = مشغّل فيديو + أقسام/وحدات، اختبارات = قائمة الاختبارات).
+     */
+    public function showSubjectFolderSection($subjectId, $sectionId)
+    {
+        $user = Auth::user();
+        $subject = Subject::with(['schoolClass.stage'])
+            ->whereHas('students', function ($query) use ($user) {
+                $query->where('users.id', $user->id)
+                    ->where('enrollments.status', 'active');
+            })
+            ->findOrFail($subjectId);
+
+        $section = SubjectSection::where('subject_id', $subject->id)
+            ->where('id', $sectionId)
+            ->where('is_active', true)
+            ->with([
+                'children' => function ($q) {
+                    $q->where('is_active', true)->orderBy('order');
+                },
+                'units' => function ($q) {
+                    $q->where('is_active', true)->orderBy('order');
+                },
+            ])
+            ->firstOrFail();
+
+        $section->load(['units.quizzes', 'units.linkedQuizzes']);
+
+        $children = $section->children;
+        $units = $section->units;
+
+        $sectionQuizzes = collect();
+        $firstLessonWithVideo = null;
+
+        // الاختبارات تظهر داخل صفحة الوحدة فقط، لا نجمع sectionQuizzes في صفحة القسم
+        // الفيديو يظهر فقط داخل صفحة الوحدة، لا نحسب firstLessonWithVideo في صفحة القسم
+
+        return view('student.pages.lessons.subject-folders-section', compact('subject', 'section', 'children', 'units', 'sectionQuizzes', 'firstLessonWithVideo'));
+    }
+
+    /**
+     * عرض مستوى الوحدة في عرض المجلدات (اختبارات الوحدة + أوكورديون دروس + أسئلة الوحدة).
+     * نفس ترتيب الأدمن: allUnitQuizzes ثم allLessons ثم questions.
+     */
+    public function showSubjectFolderUnit($subjectId, $sectionId, $unitId)
+    {
+        $user = Auth::user();
+        $subject = Subject::with(['schoolClass.stage'])
+            ->whereHas('students', function ($query) use ($user) {
+                $query->where('users.id', $user->id)
+                    ->where('enrollments.status', 'active');
+            })
+            ->findOrFail($subjectId);
+
+        $section = SubjectSection::where('subject_id', $subject->id)
+            ->where('id', $sectionId)
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        $unit = Unit::where('section_id', $section->id)
+            ->where('id', $unitId)
+            ->where('is_active', true)
+            ->with([
+                'lessons' => function ($query) {
+                    $query->orderBy('order');
+                },
+                'linkedLessons' => function ($query) {
+                    $query->orderBy('lessons.order');
+                },
+                'quizzes' => function ($query) {
+                    $query->orderBy('order');
+                },
+                'linkedQuizzes' => function ($query) {
+                    $query->orderBy('order');
+                },
+                'questions' => function ($query) {
+                    $query->where('is_active', true)->orderBy('created_at', 'desc');
+                },
+            ])
+            ->firstOrFail();
+
+        $visibleLessons = $unit->allLessons()
+            ->filter(fn ($lesson) => $lesson->is_active && $lesson->review_status === Lesson::REVIEW_STATUS_APPROVED)
+            ->values();
+
+        $unitQuizzes = $unit->allUnitQuizzes()
+            ->filter(fn ($quiz) => $quiz->is_active && $quiz->is_published && $quiz->review_status === Quiz::REVIEW_STATUS_APPROVED)
+            ->values();
+
+        return view('student.pages.lessons.subject-folders-unit', compact('subject', 'section', 'unit', 'visibleLessons', 'unitQuizzes'));
+    }
+
     /**
      * عرض الدرس مع الفيديو والمرفقات
      */
     public function showLesson($lessonId)
     {
+        return view('student.pages.lessons.lesson-show', $this->getLessonShowData($lessonId));
+    }
+
+    /**
+     * عرض الدرس بأسلوب المجلدات (فيديو أعلى ثم أوكورديون)
+     */
+    public function showLessonFolders($lessonId)
+    {
+        $data = $this->getLessonShowData($lessonId);
+        return view('student.pages.lessons.lesson-show-folders', $data);
+    }
+
+    /**
+     * تحضير بيانات عرض الدرس (مشترك بين showLesson و showLessonFolders)
+     */
+    protected function getLessonShowData($lessonId)
+    {
         $user = Auth::user();
-        
-        // تحميل الدرس مع العلاقات
+
         $lesson = Lesson::with([
             'unit.section.subject',
             'attachments' => function($query) {
-                $query->where('is_active', true)
-                      ->orderBy('order');
+                $query->where('is_active', true)->orderBy('order');
             }
         ])->findOrFail($lessonId);
-        
-        // التحقق من أن الطالب مسجل في مادة الدرس
+
         $subject = $lesson->unit->section->subject;
         $isEnrolled = $subject->students()
             ->where('users.id', $user->id)
             ->where('enrollments.status', 'active')
             ->exists();
-        
+
         if (!$isEnrolled && !$lesson->is_free) {
             abort(403, 'ليس لديك صلاحية للوصول إلى هذا الدرس. يجب أن تكون مسجلاً في المادة.');
         }
 
-        // الدروس تظهر للطالب فقط بعد موافقة المشرف
         if ($lesson->review_status !== Lesson::REVIEW_STATUS_APPROVED || !$lesson->is_active) {
             abort(403, 'هذا الدرس قيد المراجعة أو غير مفعّل ولا يمكن عرضه حالياً.');
         }
-        
-        // تحميل جميع الأقسام والوحدات والدروس (للعرض في الأكورديون — الاختبارات تظهر في المحتوى الرئيسي فقط)
+
         $sections = $subject->sections()
             ->with([
                 'units.lessons' => function($query) {
-                    $query->where('is_active', true)
-                          ->orderBy('order');
+                    $query->where('is_active', true)->orderBy('order');
                 },
             ])
             ->where('is_active', true)
             ->orderBy('order')
             ->get();
-        
-        // الحصول على الدروس الأخرى في نفس الوحدة (المعتمدة فقط تظهر للطالب)
+
         $unitLessons = $lesson->unit->lessons()
             ->where('is_active', true)
             ->where('review_status', Lesson::REVIEW_STATUS_APPROVED)
             ->orderBy('order')
             ->get();
-        
-        // العثور على الدرس التالي والسابق
-        $currentIndex = $unitLessons->search(function($item) use ($lesson) {
-            return $item->id === $lesson->id;
-        });
-        
+
+        $currentIndex = $unitLessons->search(fn($item) => $item->id === $lesson->id);
         $previousLesson = $currentIndex > 0 ? $unitLessons[$currentIndex - 1] : null;
-        $nextLesson = $currentIndex < $unitLessons->count() - 1 ? $unitLessons[$currentIndex + 1] : null;
-        
-        // اختبارات الدرس الحالي فقط (المعتمدة من المشرف فقط تظهر للطالب)
+        $nextLesson = $currentIndex !== false && $currentIndex < $unitLessons->count() - 1 ? $unitLessons[$currentIndex + 1] : null;
+
         $lessonQuizzes = Quiz::where('lesson_id', $lesson->id)
             ->where('is_active', true)
             ->where('is_published', true)
             ->where('review_status', \App\Models\Quiz::REVIEW_STATUS_APPROVED)
-            ->with(['questions' => function($query) {
-                $query->orderBy('quiz_questions.order');
-            }])
+            ->with(['questions' => fn($q) => $q->orderBy('quiz_questions.order')])
             ->orderBy('order')
             ->get();
 
-        // اختبارات الوحدة العامة (غير مرتبطة بدرس محدد) - المعتمدة فقط
         $unitQuizzes = Quiz::where('unit_id', $lesson->unit_id)
             ->where('subject_id', $subject->id)
-            ->whereNull('lesson_id') // اختبارات الوحدة فقط
+            ->whereNull('lesson_id')
             ->where('is_active', true)
             ->where('is_published', true)
             ->where('review_status', \App\Models\Quiz::REVIEW_STATUS_APPROVED)
-            ->with(['questions' => function($query) {
-                $query->orderBy('quiz_questions.order');
-            }])
+            ->with(['questions' => fn($q) => $q->orderBy('quiz_questions.order')])
             ->orderBy('order')
             ->get();
-        
-        // دمج جميع الاختبارات للحصول على IDs الأسئلة
+
         $allQuizzes = $lessonQuizzes->merge($unitQuizzes);
-        $quizQuestionIds = [];
-        foreach ($allQuizzes as $quiz) {
-            foreach ($quiz->questions as $question) {
-                $quizQuestionIds[] = $question->id;
-            }
-        }
-        $quizQuestionIds = array_unique($quizQuestionIds);
-        
-        // الحصول على الأسئلة المرتبطة بنفس الوحدة (غير مرتبطة باختبارات)
-        $questionsQuery = Question::whereHas('units', function($query) use ($lesson) {
-                $query->where('units.id', $lesson->unit_id);
-            })
+        $quizQuestionIds = $allQuizzes->flatMap(fn($q) => $q->questions->pluck('id'))->unique()->values()->all();
+
+        $questionsQuery = Question::whereHas('units', fn($q) => $q->where('units.id', $lesson->unit_id))
             ->where('is_active', true)
             ->with('units')
             ->orderBy('created_at', 'desc');
-        
         if (!empty($quizQuestionIds)) {
             $questionsQuery->whereNotIn('id', $quizQuestionIds);
         }
-        
         $questions = $questionsQuery->get();
-        
-        // الحصول على محاولات الطالب للأسئلة
-        $user = Auth::user();
+
         $questionAttempts = \App\Models\QuestionAttempt::where('user_id', $user->id)
             ->whereIn('question_id', $questions->pluck('id'))
             ->where('lesson_id', $lesson->id)
             ->with('answer')
             ->get()
             ->keyBy('question_id');
-        
-        // الحصول على محاولات الطالب للاختبارات (كلا النوعين)
+
         $quizAttempts = \App\Models\QuizAttempt::where('user_id', $user->id)
             ->whereIn('quiz_id', $allQuizzes->pluck('id'))
             ->with('answers')
             ->get()
             ->keyBy('quiz_id');
-        
-        // تمرير أنواع الفيديو للـ view
-        $videoTypes = \App\Models\Lesson::VIDEO_TYPES;
-        
-        // تمرير ثوابت الأسئلة للـ view
-        $questionTypes = \App\Models\Question::TYPES;
-        $questionTypeIcons = \App\Models\Question::TYPE_ICONS;
-        $questionTypeColors = \App\Models\Question::TYPE_COLORS;
-        $questionDifficulties = \App\Models\Question::DIFFICULTIES;
-        
-        // الحصول على حالة الدرس للطالب
+
         $lessonCompletion = LessonCompletion::where('user_id', $user->id)
             ->where('lesson_id', $lesson->id)
             ->first();
 
-        // تسجيل حدث في Analytics
+        $videoTypes = \App\Models\Lesson::VIDEO_TYPES;
+        $questionTypes = \App\Models\Question::TYPES;
+        $questionTypeIcons = \App\Models\Question::TYPE_ICONS;
+        $questionTypeColors = \App\Models\Question::TYPE_COLORS;
+        $questionDifficulties = \App\Models\Question::DIFFICULTIES;
+
         $this->analyticsService->trackEvent('view_lesson', $user->id, [
             'lesson_id' => $lesson->id,
             'subject_id' => $subject->id,
             'unit_id' => $lesson->unit_id,
         ]);
-        
-        return view('student.pages.lessons.lesson-show', compact(
+
+        return compact(
             'lesson',
             'previousLesson',
             'nextLesson',
@@ -368,9 +450,88 @@ class StudentLessonController extends Controller
             'questionAttempts',
             'quizAttempts',
             'lessonCompletion'
-        ));
+        );
     }
-    
+
+    /**
+     * تحديث تقدم مشاهدة الدرس (وقت المشاهدة، الموضع، النسبة).
+     * يُستدعى تلقائياً من الواجهة أثناء تشغيل الفيديو.
+     */
+    public function updateLessonProgress(Request $request, Lesson $lesson)
+    {
+        $request->validate([
+            'time_spent_seconds' => 'nullable|integer|min:0',
+            'last_position_seconds' => 'nullable|integer|min:0',
+            'progress_percentage' => 'nullable|numeric|min:0|max:100',
+        ]);
+
+        $user = Auth::user();
+        $subject = $lesson->unit->section->subject;
+        $isEnrolled = $subject->students()
+            ->where('users.id', $user->id)
+            ->where('enrollments.status', 'active')
+            ->exists();
+
+        if (!$isEnrolled && !$lesson->is_free) {
+            return response()->json([
+                'success' => false,
+                'message' => 'ليس لديك صلاحية للوصول إلى هذا الدرس',
+            ], 403);
+        }
+
+        if ($lesson->review_status !== Lesson::REVIEW_STATUS_APPROVED || !$lesson->is_active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'هذا الدرس غير متاح حالياً',
+            ], 403);
+        }
+
+        try {
+            $timeSpent = $request->has('time_spent_seconds') ? (int) $request->time_spent_seconds : null;
+            $lastPosition = $request->has('last_position_seconds') ? (int) $request->last_position_seconds : null;
+            $progressPercentage = $request->has('progress_percentage') ? round((float) $request->progress_percentage, 2) : null;
+
+            $completion = LessonCompletion::firstOrNew([
+                'user_id' => $user->id,
+                'lesson_id' => $lesson->id,
+            ]);
+
+            if ($timeSpent !== null) {
+                $completion->time_spent = max($completion->time_spent ?? 0, $timeSpent);
+            }
+            if ($lastPosition !== null) {
+                $completion->last_position = max($completion->last_position ?? 0, $lastPosition);
+            }
+            if ($progressPercentage !== null) {
+                $completion->progress_percentage = max($completion->progress_percentage ?? 0, $progressPercentage);
+            }
+
+            $now = now();
+            $completion->marked_at = $completion->marked_at ?? $now;
+
+            if (($completion->progress_percentage ?? 0) >= 90 && $completion->status !== 'completed') {
+                $completion->status = 'completed';
+                $completion->completed_at = $now;
+                $completion->marked_at = $now;
+            } elseif ($completion->status !== 'completed' && ($completion->time_spent ?? 0) > 0) {
+                $completion->status = $completion->status ?? 'attended';
+            }
+
+            $completion->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تحديث التقدم',
+                'completion' => $completion->fresh(),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء حفظ التقدم: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     /**
      * حفظ/تحديث حالة الدرس (حضور أو إكمال)
      */

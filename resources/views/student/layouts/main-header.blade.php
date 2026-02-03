@@ -58,6 +58,15 @@
                         </ul>
                     </div>
 
+                    <!-- نقاط الطالب مع أيقونة محفزة -->
+                    <div class="header-element student-points-header">
+                        <a href="{{ route('student.gamification.dashboard') }}" class="header-link text-decoration-none d-flex align-items-center gap-1" title="لوحة التحفيز">
+                            <i class="bi bi-star-fill text-warning" style="font-size: 1.1rem;"></i>
+                            <span class="fw-semibold text-default small">نقاطي</span>
+                            <span class="badge bg-warning text-dark rounded-pill">{{ $student_total_points ?? 0 }}</span>
+                        </a>
+                    </div>
+
                     <!-- Start::header-element -->
                     <div class="header-element header-theme-mode">
                         <!-- Start::header-link|layout-setting -->

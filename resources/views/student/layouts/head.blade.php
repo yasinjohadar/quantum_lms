@@ -35,3 +35,15 @@
 
 <!-- Custom Css -->
 <link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}">
+
+<!-- إخفاء أيقونة إعدادات العرض (المسنن) وأيقونة الرسائل في واجهة الطالب -->
+<style>
+.switcher-icon { display: none !important; }
+.messages-dropdown { display: none !important; }
+</style>
+<!-- إخفاء أيقونة البحث على الجوال لتوفير مساحة -->
+<style>
+@media (max-width: 991px) {
+    .Search-element { display: none !important; }
+}
+</style>

@@ -17,6 +17,8 @@ class DatabaseSeeder extends Seeder
             PermissionSeeder::class,
             RoleSeeder::class,
             AdminUserSeeder::class,
+            GamificationSettingsSeeder::class,
+            GamificationSeeder::class,
             // StageSeeder::class,
             // ClassSeeder::class,
             // SubjectSeeder::class,
@@ -24,7 +26,6 @@ class DatabaseSeeder extends Seeder
             // QuestionsSeeder::class,
             // ReportTemplatesSeeder::class, // Empty file
             // SystemSettingsSeeder::class, // Empty file
-            // GamificationSeeder::class, // Check if needed
             // AIModelsSeeder::class, // Check if needed
             // AnalyticsEventsSeeder::class, // Check if needed
             PlatformReviewSeeder::class, // يعتمد على وجود طلاب وانضمامات معتمدة

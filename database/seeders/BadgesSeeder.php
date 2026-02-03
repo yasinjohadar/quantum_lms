@@ -148,7 +148,7 @@ class BadgesSeeder extends Seeder
         ];
 
         foreach ($badges as $badge) {
-            Badge::create($badge);
+            Badge::updateOrCreate(['name' => $badge['name']], $badge);
         }
     }
 }

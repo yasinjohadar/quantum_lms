@@ -17,6 +17,7 @@ class StoreSubjectSectionRequest extends FormRequest
             'parent_id' => ['nullable', 'integer', 'exists:subject_sections,id'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'type' => ['required', 'string', 'in:lessons,quizzes'],
             'order' => ['nullable', 'integer', 'min:0'],
             // is_active يتم معالجته في الكنترولر، لا حاجة للتحقق هنا
         ];

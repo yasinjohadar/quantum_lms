@@ -79,7 +79,7 @@ class LevelsSeeder extends Seeder
         ];
 
         foreach ($levels as $level) {
-            Level::create($level);
+            Level::updateOrCreate(['level_number' => $level['level_number']], $level);
         }
     }
 }

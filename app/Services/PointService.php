@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\PointTransaction;
 use App\Models\User;
 use App\Models\SystemSetting;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class PointService
@@ -93,17 +94,24 @@ class PointService
             // تحديث إجمالي النقاط في UserLevel
             $this->updateUserTotalPoints($user);
 
+            // إبطال الكاش ليعكس الرقم الجديد في الهيدر وغيره
+            Cache::forget('user_total_points_' . $user->id);
+
             return $transaction;
         });
     }
 
     /**
-     * إجمالي نقاط المستخدم
+     * إجمالي نقاط المستخدم (مع كاش دقيقتين لتخفيف الحمل على الهيدر وكل طلب)
      */
     public function getUserTotalPoints(User $user): int
     {
-        return PointTransaction::where('user_id', $user->id)
-            ->sum('points');
+        $cacheKey = 'user_total_points_' . $user->id;
+
+        return (int) Cache::remember($cacheKey, 120, function () use ($user) {
+            return PointTransaction::where('user_id', $user->id)
+                ->sum('points');
+        });
     }
 
     /**

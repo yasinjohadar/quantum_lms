@@ -314,6 +314,14 @@
                             <small class="text-muted">اتركه فارغاً لإنشاء قسم رئيسي، أو اختر قسماً لإنشاء قسم فرعي تحته.</small>
                         </div>
                         <div class="mb-3">
+                            <label class="form-label">نوع القسم</label>
+                            <select name="type" id="createSectionType" class="form-select" required>
+                                <option value="lessons">دروس</option>
+                                <option value="quizzes">اختبارات</option>
+                            </select>
+                            <small class="text-muted">قسم الدروس: يظهر مشغّل الفيديو والأقسام/الوحدات. قسم الاختبارات: يظهر قائمة الاختبارات.</small>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label">عنوان القسم</label>
                             <input type="text" name="title" class="form-control" required>
                         </div>
@@ -391,6 +399,13 @@
                                     @endforeach
                                 </select>
                                 <small class="text-muted">لا يمكن جعل القسم أباً لنفسه أو لأحد أحفاده.</small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">نوع القسم</label>
+                                <select name="type" class="form-select" required>
+                                    <option value="lessons" {{ ($section->type ?? 'lessons') === 'lessons' ? 'selected' : '' }}>دروس</option>
+                                    <option value="quizzes" {{ ($section->type ?? '') === 'quizzes' ? 'selected' : '' }}>اختبارات</option>
+                                </select>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">عنوان القسم</label>

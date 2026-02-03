@@ -72,7 +72,7 @@ class RewardsSeeder extends Seeder
         ];
 
         foreach ($rewards as $reward) {
-            Reward::create($reward);
+            Reward::updateOrCreate(['name' => $reward['name']], $reward);
         }
     }
 }

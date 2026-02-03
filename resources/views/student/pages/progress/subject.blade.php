@@ -77,6 +77,18 @@
                                 </div>
                             </div>
                         </div>
+                        @if(isset($stats['attendance']))
+                        <div class="row mt-3 pt-3 border-top">
+                            <div class="col-12">
+                                <h6 class="text-muted mb-2"><i class="bi bi-clock-history me-1"></i> الحضور ومدة المشاهدة</h6>
+                                <p class="mb-0 small">
+                                    حضرت <strong>{{ $stats['attendance']['attended_lessons'] }}</strong> من <strong>{{ $stats['attendance']['total_lessons'] }}</strong> درس
+                                    ({{ $stats['attendance']['lessons_attendance_percentage'] }}%).
+                                    شاهدت <strong>{{ $stats['attendance']['watch_time_percentage'] }}%</strong> من مدة الكورس.
+                                </p>
+                            </div>
+                        </div>
+                        @endif
                     </div>
                 </div>
             </div>

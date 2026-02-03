@@ -209,6 +209,87 @@
             </div>
         </div>
 
+        <!-- تفاصيل مشاهدة الدروس -->
+        <div class="card custom-card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">تفاصيل مشاهدة الدروس (تقدم مشاهدة الفيديوهات)</h5>
+            </div>
+            <div class="card-body">
+                @if(isset($stats['attendance']) && ($stats['attendance']['total_lessons'] ?? 0) > 0)
+                    <p class="text-muted small mb-3">
+                        إجمالي وقت المشاهدة في المادة: {{ \App\Models\LessonCompletion::formatDurationSeconds($stats['attendance']['time_spent_sum'] ?? 0) }} —
+                        نسبة الحضور: {{ $stats['attendance']['lessons_attendance_percentage'] ?? 0 }}% —
+                        شاهد {{ $stats['attendance']['watch_time_percentage'] ?? 0 }}% من مدة الكورس
+                    </p>
+                @endif
+                @if(!empty($lessonCompletions))
+                    <div class="table-responsive">
+                        <table class="table table-hover table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>اسم الدرس</th>
+                                    <th>الحالة</th>
+                                    <th>نسبة المشاهدة</th>
+                                    <th>وقت المشاهدة</th>
+                                    <th>آخر موضع</th>
+                                    <th>آخر تحديث</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($lessonCompletions as $row)
+                                    <tr>
+                                        <td>{{ $row['lesson_title'] }}</td>
+                                        <td>
+                                            @if($row['completion'])
+                                                <span class="badge bg-{{ $row['completion']['status'] === 'completed' ? 'success' : 'info' }}">
+                                                    {{ \App\Models\LessonCompletion::STATUSES[$row['completion']['status']] ?? $row['completion']['status'] }}
+                                                </span>
+                                            @else
+                                                <span class="text-muted">لم يشاهد</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if($row['completion'] && $row['completion']['progress_percentage'] !== null)
+                                                {{ number_format((float) $row['completion']['progress_percentage'], 1) }}%
+                                            @else
+                                                —
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if($row['completion'] && $row['completion']['time_spent'] !== null)
+                                                {{ \App\Models\LessonCompletion::formatDurationSeconds((int) $row['completion']['time_spent']) }}
+                                            @else
+                                                —
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if($row['completion'] && $row['completion']['last_position'] !== null)
+                                                {{ \App\Models\LessonCompletion::formatDurationSeconds((int) $row['completion']['last_position']) }}
+                                            @else
+                                                —
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if($row['completion'] && isset($row['completion']['updated_at']))
+                                                {{ $row['completion']['updated_at']->format('Y-m-d H:i') }}
+                                            @else
+                                                —
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-collection-play fs-1 d-block mb-2"></i>
+                        <p class="mb-0">لا توجد دروس في هذه المادة أو لم يسجّل الطالب أي مشاهدة بعد.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
         <!-- Back Button -->
         <div class="mt-4">
             <a href="{{ route('admin.student-progress.show', $student->id) }}" class="btn btn-secondary">

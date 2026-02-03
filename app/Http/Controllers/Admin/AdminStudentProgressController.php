@@ -152,8 +152,9 @@ class AdminStudentProgressController extends Controller
         }
 
         $stats = $this->progressService->getStudentSubjectStats($userId, $subjectId);
+        $lessonCompletions = $this->progressService->getStudentSubjectLessonCompletions($userId, $subjectId);
 
-        return view('admin.pages.student-progress.subject', compact('student', 'stats', 'subject'));
+        return view('admin.pages.student-progress.subject', compact('student', 'stats', 'subject', 'lessonCompletions'));
     }
 
     /**

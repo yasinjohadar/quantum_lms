@@ -32,30 +32,17 @@ class StudentQuizController extends Controller
     /**
      * بدء اختبار
      */
-    public function startQuiz($quizId)
+    public function startQuiz(Quiz $quiz)
     {
-        // #region agent log - Hypothesis A: Entry point
-        $logDataA = [
-            'sessionId' => 'debug-session',
-            'runId' => 'run1',
-            'hypothesisId' => 'A',
-            'location' => 'StudentQuizController.php:35',
-            'message' => 'startQuiz method called',
-            'data' => [
-                'quiz_id' => $quizId,
-                'user_id' => Auth::id(),
-            ],
-            'timestamp' => time() * 1000
-        ];
-        file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataA) . "\n", FILE_APPEND);
-        // #endregion
-        
         $user = Auth::user();
-        $quiz = Quiz::with(['questions' => function($query) {
+
+        $quiz->load(['questions' => function ($query) {
             $query->orderBy('quiz_questions.order');
-        }])->where('is_active', true)
-        ->where('is_published', true)
-        ->findOrFail($quizId);
+        }]);
+
+        if (!$quiz->is_active || !$quiz->is_published) {
+            return redirect()->back()->with('error', 'الاختبار غير متاح حالياً');
+        }
 
         // #region agent log - Hypothesis B: Quiz loaded
         $logDataB = [
@@ -79,82 +66,20 @@ class StudentQuizController extends Controller
         // التحقق من إمكانية بدء الاختبار
         $canAttempt = $quiz->canUserAttempt($user);
         
-        // #region agent log - Hypothesis C: canUserAttempt check
-        $logDataC = [
-            'sessionId' => 'debug-session',
-            'runId' => 'run1',
-            'hypothesisId' => 'C',
-            'location' => 'StudentQuizController.php:45',
-            'message' => 'canUserAttempt result',
-            'data' => [
-                'can' => $canAttempt['can'] ?? false,
-                'reason' => $canAttempt['reason'] ?? null,
-                'canAttempt_full' => $canAttempt,
-            ],
-            'timestamp' => time() * 1000
-        ];
-        file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataC) . "\n", FILE_APPEND);
-        // #endregion
-        
         if (!$canAttempt['can']) {
-            // #region agent log - Hypothesis D: Redirect back due to canAttempt failure
-            $logDataD = [
-                'sessionId' => 'debug-session',
-                'runId' => 'run1',
-                'hypothesisId' => 'D',
-                'location' => 'StudentQuizController.php:47',
-                'message' => 'Redirecting back - canAttempt failed',
-                'data' => [
-                    'reason' => $canAttempt['reason'] ?? 'Unknown reason',
-                ],
-                'timestamp' => time() * 1000
-            ];
-            file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataD) . "\n", FILE_APPEND);
-            // #endregion
             return redirect()->back()
                 ->with('error', $canAttempt['reason']);
         }
 
         // التحقق من وجود محاولة جارية
         $inProgressAttempt = QuizAttempt::where('user_id', $user->id)
-            ->where('quiz_id', $quizId)
+            ->where('quiz_id', $quiz->id)
             ->where('status', 'in_progress')
             ->first();
 
-        // #region agent log - Hypothesis G: In-progress attempt check
-        $logDataG = [
-            'sessionId' => 'debug-session',
-            'runId' => 'run1',
-            'hypothesisId' => 'G',
-            'location' => 'StudentQuizController.php:119',
-            'message' => 'Checking for in-progress attempt',
-            'data' => [
-                'has_in_progress_attempt' => $inProgressAttempt !== null,
-                'in_progress_attempt_id' => $inProgressAttempt ? $inProgressAttempt->id : null,
-            ],
-            'timestamp' => time() * 1000
-        ];
-        file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataG) . "\n", FILE_APPEND);
-        // #endregion
-
         if ($inProgressAttempt) {
-            // #region agent log - Hypothesis H: Redirect to existing attempt
-            $logDataH = [
-                'sessionId' => 'debug-session',
-                'runId' => 'run1',
-                'hypothesisId' => 'H',
-                'location' => 'StudentQuizController.php:130',
-                'message' => 'Redirecting to existing in-progress attempt',
-                'data' => [
-                    'quiz_id' => $quizId,
-                    'attempt_id' => $inProgressAttempt->id,
-                ],
-                'timestamp' => time() * 1000
-            ];
-            file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataH) . "\n", FILE_APPEND);
-            // #endregion
             return redirect()->route('student.quizzes.show', [
-                'quiz' => $quizId,
+                'quiz' => $quiz,
                 'attempt' => $inProgressAttempt->id
             ]);
         }
@@ -164,7 +89,7 @@ class StudentQuizController extends Controller
 
             // الحصول على آخر رقم محاولة
             $lastAttempt = QuizAttempt::where('user_id', $user->id)
-                ->where('quiz_id', $quizId)
+                ->where('quiz_id', $quiz->id)
                 ->orderBy('attempt_number', 'desc')
                 ->first();
 
@@ -173,7 +98,7 @@ class StudentQuizController extends Controller
             // إنشاء محاولة جديدة
             $attempt = QuizAttempt::create([
                 'user_id' => $user->id,
-                'quiz_id' => $quizId,
+                'quiz_id' => $quiz->id,
                 'attempt_number' => $attemptNumber,
                 'started_at' => now(),
                 'status' => 'in_progress',
@@ -205,25 +130,8 @@ class StudentQuizController extends Controller
 
             DB::commit();
 
-            // #region agent log - Hypothesis E: Success redirect
-            $logDataE = [
-                'sessionId' => 'debug-session',
-                'runId' => 'run1',
-                'hypothesisId' => 'E',
-                'location' => 'StudentQuizController.php:175',
-                'message' => 'Redirecting to quiz show page',
-                'data' => [
-                    'quiz_id' => $quizId,
-                    'attempt_id' => $attempt->id,
-                    'redirect_url' => route('student.quizzes.show', ['quiz' => $quizId, 'attempt' => $attempt->id]),
-                ],
-                'timestamp' => time() * 1000
-            ];
-            file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataE) . "\n", FILE_APPEND);
-            // #endregion
-
             return redirect()->route('student.quizzes.show', [
-                'quiz' => $quizId,
+                'quiz' => $quiz,
                 'attempt' => $attempt->id
             ]);
         } catch (\Exception $e) {

@@ -21,13 +21,20 @@
                     @endif
                 </p>
             </div>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('student.subjects') }}">المواد الدراسية</a></li>
-                    <li class="breadcrumb-item active">{{ $subject->name }}</li>
-                </ol>
-            </nav>
+            <div class="d-flex align-items-center gap-2">
+                @if($sections->count() > 0)
+                    <a href="{{ route('student.subjects.folders', $subject) }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-folder2-open me-1"></i> عرض المجلدات
+                    </a>
+                @endif
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('student.subjects') }}">المواد الدراسية</a></li>
+                        <li class="breadcrumb-item active">{{ $subject->name }}</li>
+                    </ol>
+                </nav>
+            </div>
         </div>
         <!-- End Page Header -->
 

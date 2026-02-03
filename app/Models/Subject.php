@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class Subject extends Model
@@ -167,6 +168,29 @@ class Subject extends Model
         return $this->belongsToMany(User::class, 'enrollments', 'subject_id', 'user_id')
                     ->withPivot(['enrolled_by', 'enrolled_at', 'status', 'notes'])
                     ->withTimestamps();
+    }
+
+    /**
+     * إجمالي مدة كل الدروس في المادة بالثواني (كل درس يُحسب مرة واحدة فقط).
+     * يجمع الدروس من الأقسام الأصلية والمرتبطة ثم يجمع duration للدروس المميزة بـ id.
+     */
+    public function getTotalDurationSeconds(): int
+    {
+        $sectionIds = $this->allSections()->pluck('id')->toArray();
+        if (empty($sectionIds)) {
+            return 0;
+        }
+        $unitIds = Unit::whereIn('section_id', $sectionIds)->pluck('id')->toArray();
+        if (empty($unitIds)) {
+            return 0;
+        }
+        $lessonIdsFromUnits = Lesson::whereIn('unit_id', $unitIds)->pluck('id');
+        $lessonIdsFromLinked = DB::table('lesson_units')->whereIn('unit_id', $unitIds)->pluck('lesson_id');
+        $uniqueIds = $lessonIdsFromUnits->merge($lessonIdsFromLinked)->unique()->values()->all();
+        if (empty($uniqueIds)) {
+            return 0;
+        }
+        return (int) Lesson::whereIn('id', $uniqueIds)->sum(DB::raw('COALESCE(duration, 0)'));
     }
 
     /**

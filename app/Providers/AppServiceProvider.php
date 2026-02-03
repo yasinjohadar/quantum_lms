@@ -57,6 +57,20 @@ class AppServiceProvider extends ServiceProvider
             $view->with('footerClasses', $footerClasses);
         });
 
+        // نقاط الطالب في الهيدر (لوحة التحفيز)
+        View::composer('student.layouts.main-header', function ($view) {
+            $student_total_points = 0;
+            if (\Illuminate\Support\Facades\Auth::check()) {
+                try {
+                    $pointService = app(\App\Services\PointService::class);
+                    $student_total_points = $pointService->getUserTotalPoints(\Illuminate\Support\Facades\Auth::user());
+                } catch (\Exception $e) {
+                    $student_total_points = 0;
+                }
+            }
+            $view->with('student_total_points', $student_total_points);
+        });
+
         // Apply email settings from database
         try {
             $emailSettingsService = app(\App\Services\Email\EmailSettingsService::class);

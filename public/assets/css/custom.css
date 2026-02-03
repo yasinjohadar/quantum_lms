@@ -103,3 +103,59 @@ body .page {
     padding-bottom: 0.5rem;
 }
 
+/* كروت المجلدات (عرض المجلدات): شكل حديث وحركة هوفر سلسة */
+.folder-card {
+    border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    transition: transform 0.28s ease, box-shadow 0.28s ease;
+}
+.folder-card .card-body {
+    transition: color 0.28s ease;
+}
+.folder-card .card-body i[class*="bi-"] {
+    transition: transform 0.28s ease;
+}
+a:hover .folder-card {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+}
+a:hover .folder-card .card-body i[class*="bi-"] {
+    transform: scale(1.08);
+}
+[data-theme-mode="dark"] .folder-card {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+}
+[data-theme-mode="dark"] a:hover .folder-card {
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* أيقونات مجلدات على طراز لينكس (Papirus/Tango): استبدال أيقونة الخط بـ SVG */
+.folder-card .card-body i.bi-folder2-open.text-warning,
+.folder-card .card-body i.bi-folder2-open {
+    font-size: 0 !important;
+    display: inline-block;
+    width: 3rem;
+    height: 3rem;
+    background: url("../images/svgicons/folder-amber-open.svg") no-repeat center;
+    background-size: contain;
+    vertical-align: middle;
+}
+.folder-card .card-body i.bi-folder2.text-warning {
+    font-size: 0 !important;
+    display: inline-block;
+    width: 2.5rem;
+    height: 2.5rem;
+    background: url("../images/svgicons/folder-amber.svg") no-repeat center;
+    background-size: contain;
+    vertical-align: middle;
+}
+.folder-card .card-body i.bi-folder2.text-secondary {
+    font-size: 0 !important;
+    display: inline-block;
+    width: 2.5rem;
+    height: 2.5rem;
+    background: url("../images/svgicons/folder-gray.svg") no-repeat center;
+    background-size: contain;
+    vertical-align: middle;
+}
+

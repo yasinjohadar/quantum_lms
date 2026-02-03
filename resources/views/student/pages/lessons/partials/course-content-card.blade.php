@@ -46,7 +46,12 @@
                                             @if($unit->lessons->count() > 0)
                                                 <div class="list-group mb-2">
                                                     @foreach($unit->lessons as $unitLesson)
-                                                        <a href="{{ route('student.lessons.show', $unitLesson->id) }}" 
+                                                        @php
+                                                            $lessonUrl = (isset($lesson_route) && $lesson_route === 'student.lessons.show.folders')
+                                                                ? route('student.lessons.show.folders', $unitLesson)
+                                                                : route('student.lessons.show', $unitLesson->id);
+                                                        @endphp
+                                                        <a href="{{ $lessonUrl }}" 
                                                            class="list-group-item list-group-item-action border-0 mb-2 rounded {{ $unitLesson->id === $lesson->id ? 'current-lesson' : '' }} {{ $unitLesson->id === $lesson->id ? 'text-white' : 'text-reset' }}">
                                                             <div class="d-flex justify-content-between align-items-center">
                                                                 <div class="flex-grow-1">

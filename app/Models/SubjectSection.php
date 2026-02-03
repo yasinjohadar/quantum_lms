@@ -11,6 +11,14 @@ class SubjectSection extends Model
 {
     use HasFactory, SoftDeletes;
 
+    public const TYPE_LESSONS = 'lessons';
+    public const TYPE_QUIZZES = 'quizzes';
+
+    public const TYPE_LABELS = [
+        self::TYPE_LESSONS => 'دروس',
+        self::TYPE_QUIZZES => 'اختبارات',
+    ];
+
     protected $table = 'subject_sections';
 
     protected $fillable = [
@@ -18,6 +26,7 @@ class SubjectSection extends Model
         'parent_id',
         'title',
         'description',
+        'type',
         'order',
         'is_active',
     ];

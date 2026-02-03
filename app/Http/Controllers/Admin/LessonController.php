@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreLessonRequest;
 use App\Http\Requests\Admin\UpdateLessonRequest;
 use App\Models\Lesson;
+use App\Models\LessonCompletion;
 use App\Models\Unit;
+use App\Services\VimeoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -75,6 +77,10 @@ class LessonController extends Controller
                 $data['video_id'] = Lesson::extractYoutubeId($data['video_url']);
             } elseif ($data['video_type'] === 'vimeo' && !empty($data['video_url'])) {
                 $data['video_id'] = Lesson::extractVimeoId($data['video_url']);
+                $duration = app(VimeoService::class)->getVideoDuration($data['video_url']);
+                if ($duration !== null) {
+                    $data['duration'] = (int) $duration;
+                }
             }
 
             // رفع ملف الفيديو
@@ -132,8 +138,18 @@ class LessonController extends Controller
                 abort(403, 'غير مصرح لك بالوصول إلى هذا الدرس');
             }
         }
+
+        $subject = $lesson->unit->section->subject;
+        $enrolledUserIds = $subject->students()->wherePivot('status', 'active')->pluck('users.id')->toArray();
+        $lessonCompletions = empty($enrolledUserIds)
+            ? collect()
+            : LessonCompletion::where('lesson_id', $lesson->id)
+                ->whereIn('user_id', $enrolledUserIds)
+                ->with('user')
+                ->orderBy('updated_at', 'desc')
+                ->get();
         
-        return view('admin.pages.lessons.show', compact('lesson'));
+        return view('admin.pages.lessons.show', compact('lesson', 'lessonCompletions'));
     }
 
     /**
@@ -194,6 +210,10 @@ class LessonController extends Controller
                 $data['video_id'] = Lesson::extractYoutubeId($data['video_url']);
             } elseif ($data['video_type'] === 'vimeo' && !empty($data['video_url'])) {
                 $data['video_id'] = Lesson::extractVimeoId($data['video_url']);
+                $duration = app(VimeoService::class)->getVideoDuration($data['video_url']);
+                if ($duration !== null) {
+                    $data['duration'] = (int) $duration;
+                }
             }
 
             // رفع ملف الفيديو الجديد

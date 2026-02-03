@@ -41,18 +41,17 @@
                     </h6>
                 </div>
                 <div class="card-body p-2">
-                    <div class="d-grid gap-2" id="questions-list">
+                    <div class="d-flex flex-wrap gap-2" id="questions-list">
                         @foreach($questions as $index => $question)
                             @php
                                 $answer = $answers[$question->id] ?? null;
                                 $isAnswered = $answer && ($answer->answer || $answer->answer_text || $answer->selected_options || $answer->numeric_answer);
                             @endphp
                             <button type="button" 
-                                    class="btn {{ $index === 0 ? 'btn-primary' : ($isAnswered ? 'btn-success' : 'btn-outline-secondary') }} question-nav-btn text-start"
+                                    class="btn {{ $index === 0 ? 'btn-primary' : ($isAnswered ? 'btn-success' : 'btn-outline-secondary') }} question-nav-btn question-nav-btn-compact"
                                     data-question-id="{{ $question->id }}"
                                     data-question-index="{{ $index }}">
-                                <i class="bi bi-{{ $isAnswered ? 'check-circle-fill' : 'circle' }} me-2"></i>
-                                سؤال {{ $index + 1 }}
+                                {{ $index + 1 }}
                             </button>
                         @endforeach
                     </div>
@@ -126,12 +125,6 @@
                     <i class="bi bi-arrow-right me-1"></i>
                     السابق
                 </button>
-                <div>
-                    <button type="button" class="btn btn-outline-primary" id="save-btn">
-                        <i class="bi bi-save me-1"></i>
-                        حفظ
-                    </button>
-                </div>
                 <button type="button" class="btn btn-outline-primary" id="next-btn">
                     التالي
                     <i class="bi bi-arrow-left ms-1"></i>
@@ -161,6 +154,22 @@
     @keyframes pulse {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.7; }
+    }
+    #questions-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .question-nav-btn-compact {
+        width: 2.5rem;
+        height: 2.5rem;
+        min-width: 2.5rem;
+        min-height: 2.5rem;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.5rem;
     }
     .question-nav-btn {
         transition: all 0.2s ease;
@@ -418,7 +427,15 @@
         
         // تحديث أزرار التنقل
         document.getElementById('prev-btn').disabled = index === 0;
-        document.getElementById('next-btn').disabled = index === questions.length - 1;
+        const nextBtn = document.getElementById('next-btn');
+        nextBtn.disabled = false;
+        if (index === questions.length - 1) {
+            nextBtn.className = 'btn btn-danger';
+            nextBtn.innerHTML = '<i class="bi bi-send me-1"></i> إرسال الاختبار';
+        } else {
+            nextBtn.className = 'btn btn-outline-primary';
+            nextBtn.innerHTML = 'التالي <i class="bi bi-arrow-left ms-1"></i>';
+        }
         
         // تحديث Progress
         const answeredCount = Object.keys(answers).length;
@@ -1324,7 +1341,9 @@
     });
     
     document.getElementById('next-btn').addEventListener('click', () => {
-        if (currentQuestionIndex < questions.length - 1) {
+        if (currentQuestionIndex === questions.length - 1) {
+            document.getElementById('submit-quiz-btn').click();
+        } else {
             loadQuestion(currentQuestionIndex + 1);
         }
     });

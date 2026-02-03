@@ -48,6 +48,7 @@
                                     ></iframe>
                                 @elseif($actualType === 'vimeo')
                                     <iframe
+                                        id="vimeo-player-iframe"
                                         src="{{ $lesson->embed_url }}?title=0&byline=0&portrait=0"
                                         title="{{ $lesson->title }}"
                                         frameborder="0"
@@ -93,6 +94,19 @@
                                             <i class="bi bi-clock me-1"></i>
                                             {{ $lessonCompletion->marked_at->format('Y-m-d H:i') }}
                                         </small>
+                                        @if($lessonCompletion->progress_percentage !== null || $lessonCompletion->time_spent !== null)
+                                            <div class="mt-2">
+                                                @if($lessonCompletion->progress_percentage !== null)
+                                                    <small class="d-block mb-1">نسبة المشاهدة: <strong>{{ number_format((float) $lessonCompletion->progress_percentage, 1) }}%</strong></small>
+                                                    <div class="progress" style="height: 8px;">
+                                                        <div class="progress-bar bg-primary" role="progressbar" style="width: {{ min(100, (float) $lessonCompletion->progress_percentage) }}%" aria-valuenow="{{ $lessonCompletion->progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                                    </div>
+                                                @endif
+                                                @if($lessonCompletion->time_spent !== null)
+                                                    <small class="text-muted d-block mt-1"><i class="bi bi-clock-history me-1"></i> وقت المشاهدة: {{ \App\Models\LessonCompletion::formatDurationSeconds((int) $lessonCompletion->time_spent) }}</small>
+                                                @endif
+                                            </div>
+                                        @endif
                                     @else
                                         <span class="badge bg-secondary fs-6">
                                             <i class="bi bi-circle me-1"></i>
@@ -430,6 +444,88 @@
 @stop
 
 @push('scripts')
+@if($lesson->embed_url && $lesson->actual_video_type === 'vimeo')
+<script src="https://player.vimeo.com/api/player.js"></script>
+<script>
+(function() {
+    const lessonId = {{ $lesson->id }};
+    const progressUrl = '{{ route("student.lessons.progress", $lesson) }}';
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const THROTTLE_MS = 15000;
+    let lastSentAt = 0;
+    let vimeoPlayer = null;
+
+    function sendProgress(timeSpentSeconds, lastPositionSeconds, progressPercentage) {
+        if (Date.now() - lastSentAt < THROTTLE_MS && progressPercentage < 100) return;
+        lastSentAt = Date.now();
+        fetch(progressUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                time_spent_seconds: timeSpentSeconds,
+                last_position_seconds: lastPositionSeconds,
+                progress_percentage: progressPercentage
+            })
+        }).catch(function() {});
+    }
+
+    function initVimeoProgress() {
+        var iframe = document.getElementById('vimeo-player-iframe');
+        if (!iframe || typeof Vimeo === 'undefined') return;
+        vimeoPlayer = new Vimeo.Player(iframe);
+        vimeoPlayer.getDuration().then(function(duration) {
+            vimeoPlayer.on('timeupdate', function(data) {
+                var sec = Math.floor(data.seconds);
+                var pct = duration > 0 ? Math.min(100, (data.seconds / duration) * 100) : 0;
+                sendProgress(sec, sec, pct);
+            });
+            vimeoPlayer.on('pause', function(data) {
+                var sec = Math.floor(data.seconds);
+                var pct = duration > 0 ? Math.min(100, (data.seconds / duration) * 100) : 0;
+                sendProgress(sec, sec, pct);
+            });
+            vimeoPlayer.on('ended', function() {
+                sendProgress(Math.floor(duration), Math.floor(duration), 100);
+            });
+        }).catch(function() {});
+        window.addEventListener('pagehide', function() {
+            if (vimeoPlayer) {
+                vimeoPlayer.getCurrentTime().then(function(sec) {
+                    vimeoPlayer.getDuration().then(function(dur) {
+                        var pct = dur > 0 ? Math.min(100, (sec / dur) * 100) : 0;
+                        fetch(progressUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({
+                                time_spent_seconds: Math.floor(sec),
+                                last_position_seconds: Math.floor(sec),
+                                progress_percentage: pct
+                            }),
+                            keepalive: true
+                        }).catch(function() {});
+                    });
+                }).catch(function() {});
+            }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initVimeoProgress);
+    } else {
+        initVimeoProgress();
+    }
+})();
+</script>
+@endif
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const markCompletedBtn = document.getElementById('mark-completed-btn');

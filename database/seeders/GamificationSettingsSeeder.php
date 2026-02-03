@@ -56,6 +56,27 @@ class GamificationSettingsSeeder extends Seeder
                 'group' => 'gamification',
                 'description' => 'نقاط إكمال الكورس',
             ],
+            [
+                'key' => 'gamification_points_lesson_attended',
+                'value' => '10',
+                'type' => 'integer',
+                'group' => 'gamification',
+                'description' => 'نقاط حضور الدرس',
+            ],
+            [
+                'key' => 'gamification_points_library_item_viewed',
+                'value' => '2',
+                'type' => 'integer',
+                'group' => 'gamification',
+                'description' => 'نقاط مشاهدة عنصر في المكتبة',
+            ],
+            [
+                'key' => 'gamification_points_library_item_downloaded',
+                'value' => '5',
+                'type' => 'integer',
+                'group' => 'gamification',
+                'description' => 'نقاط تحميل عنصر من المكتبة',
+            ],
             
             // إعدادات الشارات
             [

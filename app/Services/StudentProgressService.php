@@ -260,6 +260,131 @@ class StudentProgressService
     }
     
     /**
+     * إحصائيات الحضور لمادة معينة: عدد الدروس المحضورة، وقت المشاهدة، ونسب الحضور.
+     *
+     * @return array{
+     *   total_lessons: int,
+     *   attended_lessons: int,
+     *   time_spent_sum: int,
+     *   subject_duration_seconds: int,
+     *   lessons_attendance_percentage: float,
+     *   watch_time_percentage: float
+     * }
+     */
+    public function getSubjectAttendanceStats($userId, $subjectId): array
+    {
+        $subject = Subject::findOrFail($subjectId);
+        $sectionIds = $subject->allSections()->pluck('id')->toArray();
+        if (empty($sectionIds)) {
+            return [
+                'total_lessons' => 0,
+                'attended_lessons' => 0,
+                'time_spent_sum' => 0,
+                'subject_duration_seconds' => 0,
+                'lessons_attendance_percentage' => 0.0,
+                'watch_time_percentage' => 0.0,
+            ];
+        }
+        $unitIds = \App\Models\Unit::whereIn('section_id', $sectionIds)->pluck('id')->toArray();
+        if (empty($unitIds)) {
+            return [
+                'total_lessons' => 0,
+                'attended_lessons' => 0,
+                'time_spent_sum' => 0,
+                'subject_duration_seconds' => 0,
+                'lessons_attendance_percentage' => 0.0,
+                'watch_time_percentage' => 0.0,
+            ];
+        }
+        $lessonIdsFromUnits = Lesson::whereIn('unit_id', $unitIds)->pluck('id');
+        $lessonIdsFromLinked = DB::table('lesson_units')->whereIn('unit_id', $unitIds)->pluck('lesson_id');
+        $allLessonIds = $lessonIdsFromUnits->merge($lessonIdsFromLinked)->unique()->values()->all();
+        $totalLessons = count($allLessonIds);
+        $subjectDurationSeconds = $subject->getTotalDurationSeconds();
+
+        $attendedCount = LessonCompletion::where('user_id', $userId)
+            ->whereIn('lesson_id', $allLessonIds)
+            ->where(function ($q) {
+                $q->where('time_spent', '>', 0)
+                    ->orWhereIn('status', ['attended', 'completed']);
+            })
+            ->pluck('lesson_id')
+            ->unique()
+            ->count();
+
+        $timeSpentSum = (int) LessonCompletion::where('user_id', $userId)
+            ->whereIn('lesson_id', $allLessonIds)
+            ->sum('time_spent');
+
+        $lessonsAttendancePercentage = $totalLessons > 0
+            ? round(($attendedCount / $totalLessons) * 100, 2)
+            : 0.0;
+        $watchTimePercentage = $subjectDurationSeconds > 0
+            ? round(($timeSpentSum / $subjectDurationSeconds) * 100, 2)
+            : 0.0;
+
+        return [
+            'total_lessons' => $totalLessons,
+            'attended_lessons' => $attendedCount,
+            'time_spent_sum' => $timeSpentSum,
+            'subject_duration_seconds' => $subjectDurationSeconds,
+            'lessons_attendance_percentage' => $lessonsAttendancePercentage,
+            'watch_time_percentage' => $watchTimePercentage,
+        ];
+    }
+
+    /**
+     * قائمة كل دروس المادة مع تفاصيل LessonCompletion للطالب (للأدمن).
+     * كل درس يظهر مرة واحدة مع completion إن وُجد، وإلا completion = null.
+     */
+    public function getStudentSubjectLessonCompletions($userId, $subjectId): array
+    {
+        $subject = Subject::findOrFail($subjectId);
+        $sectionIds = $subject->allSections()->pluck('id')->toArray();
+        if (empty($sectionIds)) {
+            return [];
+        }
+        $unitIds = \App\Models\Unit::whereIn('section_id', $sectionIds)->pluck('id')->toArray();
+        if (empty($unitIds)) {
+            return [];
+        }
+        $lessonIdsFromUnits = Lesson::whereIn('unit_id', $unitIds)->pluck('id');
+        $lessonIdsFromLinked = DB::table('lesson_units')->whereIn('unit_id', $unitIds)->pluck('lesson_id');
+        $allLessonIds = $lessonIdsFromUnits->merge($lessonIdsFromLinked)->unique()->values()->all();
+        if (empty($allLessonIds)) {
+            return [];
+        }
+
+        $lessons = Lesson::whereIn('id', $allLessonIds)->orderBy('title')->get()->keyBy('id');
+        $completions = LessonCompletion::where('user_id', $userId)
+            ->whereIn('lesson_id', $allLessonIds)
+            ->with('lesson')
+            ->get()
+            ->keyBy('lesson_id');
+
+        $rows = [];
+        foreach ($allLessonIds as $lid) {
+            $lesson = $lessons->get($lid);
+            $completion = $completions->get($lid);
+            $rows[] = [
+                'lesson_id' => $lid,
+                'lesson_title' => $lesson ? $lesson->title : '',
+                'lesson_duration' => $lesson ? ($lesson->duration ?? null) : null,
+                'completion' => $completion ? [
+                    'status' => $completion->status,
+                    'progress_percentage' => $completion->progress_percentage,
+                    'time_spent' => $completion->time_spent,
+                    'last_position' => $completion->last_position,
+                    'marked_at' => $completion->marked_at,
+                    'updated_at' => $completion->updated_at,
+                ] : null,
+            ];
+        }
+        usort($rows, fn ($a, $b) => strcmp($a['lesson_title'], $b['lesson_title']));
+        return $rows;
+    }
+
+    /**
      * إحصائيات شاملة لكورس معين
      */
     public function getStudentSubjectStats($userId, $subjectId): array
@@ -279,13 +404,16 @@ class StudentProgressService
             ];
         }
         
+        $attendance = $this->getSubjectAttendanceStats($userId, $subjectId);
+
         return [
             'subject' => $subject,
             'progress' => $progress,
             'sections' => $sectionsStats,
+            'attendance' => $attendance,
         ];
     }
-    
+
     /**
      * جميع الكورسات مع نسب التقدم
      */

@@ -28,6 +28,7 @@ class LessonCompletion extends Model
         'time_spent' => 'integer',
         'last_position' => 'integer',
         'marked_at' => 'datetime',
+        'completed_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -77,6 +78,19 @@ class LessonCompletion extends Model
     public function scopeForLesson($query, $lessonId)
     {
         return $query->where('lesson_id', $lessonId);
+    }
+
+    /**
+     * تحويل الثواني إلى صيغة mm:ss للعرض.
+     */
+    public static function formatDurationSeconds(?int $seconds): string
+    {
+        if ($seconds === null || $seconds < 0) {
+            return '0:00';
+        }
+        $m = (int) floor($seconds / 60);
+        $s = (int) ($seconds % 60);
+        return $m . ':' . str_pad((string) $s, 2, '0', STR_PAD_LEFT);
     }
 }
 

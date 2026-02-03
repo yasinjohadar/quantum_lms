@@ -324,6 +324,83 @@
                     </div>
                 </div>
             </div>
+
+            {{-- متابعة مشاهدات الطلاب --}}
+            <div class="card custom-card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-people me-2"></i> متابعة مشاهدات الطلاب (تقدم مشاهدة الفيديو)</h5>
+                </div>
+                <div class="card-body">
+                    @if(isset($lessonCompletions) && $lessonCompletions->isNotEmpty())
+                        <div class="table-responsive">
+                            <table class="table table-hover table-bordered mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>الطالب</th>
+                                        <th>الحالة</th>
+                                        <th>نسبة المشاهدة</th>
+                                        <th>وقت المشاهدة</th>
+                                        <th>آخر موضع</th>
+                                        <th>آخر تحديث</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($lessonCompletions as $lc)
+                                        <tr>
+                                            <td>
+                                                @if($lc->user)
+                                                    <span class="fw-semibold">{{ $lc->user->name }}</span>
+                                                    <br><small class="text-muted">{{ $lc->user->email }}</small>
+                                                @else
+                                                —
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{{ $lc->status === 'completed' ? 'success' : 'info' }}">
+                                                    {{ \App\Models\LessonCompletion::STATUSES[$lc->status] ?? $lc->status }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @if($lc->progress_percentage !== null)
+                                                    {{ number_format((float) $lc->progress_percentage, 1) }}%
+                                                @else
+                                                    —
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if($lc->time_spent !== null)
+                                                    {{ \App\Models\LessonCompletion::formatDurationSeconds((int) $lc->time_spent) }}
+                                                @else
+                                                    —
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if($lc->last_position !== null)
+                                                    {{ \App\Models\LessonCompletion::formatDurationSeconds((int) $lc->last_position) }}
+                                                @else
+                                                    —
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if($lc->updated_at)
+                                                    {{ $lc->updated_at->format('Y-m-d H:i') }}
+                                                @else
+                                                    —
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-person-video3 fs-1 d-block mb-2"></i>
+                            <p class="mb-0">لا توجد مشاهدات مسجلة لهذا الدرس بعد.</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
         </div>
     </div>
 

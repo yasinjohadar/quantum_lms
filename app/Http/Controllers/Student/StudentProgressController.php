@@ -57,6 +57,7 @@ class StudentProgressController extends Controller
         return view('student.pages.progress.subject', [
             'subject' => $subject,
             'progress' => $progress,
+            'stats' => $stats,
             'sections' => $sections,
             'sectionsProgress' => $sectionsProgress,
         ]);
