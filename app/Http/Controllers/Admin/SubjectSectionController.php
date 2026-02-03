@@ -16,7 +16,7 @@ class SubjectSectionController extends Controller
     public function __construct()
     {
         $this->middleware(['permission:subject-section-create'])->only('store');
-        $this->middleware(['permission:subject-section-edit'])->only(['update', 'reorder']);
+        $this->middleware(['permission:subject-section-edit'])->only(['update', 'reorder', 'getLinkedSubjects', 'linkSubjects']);
         $this->middleware(['permission:subject-section-delete'])->only('destroy');
     }
 

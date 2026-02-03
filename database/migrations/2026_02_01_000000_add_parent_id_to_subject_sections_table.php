@@ -11,14 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('subject_sections', function (Blueprint $table) {
-            $table->foreignId('parent_id')
-                ->nullable()
-                ->after('subject_id')
-                ->constrained('subject_sections')
-                ->onDelete('cascade');
-            $table->index('parent_id');
-        });
+        if (!Schema::hasColumn('subject_sections', 'parent_id')) {
+            Schema::table('subject_sections', function (Blueprint $table) {
+                $table->foreignId('parent_id')
+                    ->nullable()
+                    ->after('subject_id')
+                    ->constrained('subject_sections')
+                    ->onDelete('cascade');
+                $table->index('parent_id');
+            });
+        }
     }
 
     /**
@@ -26,9 +28,12 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('subject_sections', function (Blueprint $table) {
-            $table->dropForeign(['parent_id']);
-            $table->dropIndex(['parent_id']);
-        });
+        if (Schema::hasColumn('subject_sections', 'parent_id')) {
+            Schema::table('subject_sections', function (Blueprint $table) {
+                $table->dropForeign(['parent_id']);
+                $table->dropIndex(['parent_id']);
+                $table->dropColumn('parent_id');
+            });
+        }
     }
 };

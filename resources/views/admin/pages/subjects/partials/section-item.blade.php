@@ -1,10 +1,15 @@
 @php
     $childSections = $allSections->where('parent_id', $section->id)->sortBy('order');
     $isChildSection = $section->parent_id !== null;
+    $isLinkedSection = $section->subject_id != $subject->id;
 @endphp
-<div class="accordion-item mb-3 rounded overflow-hidden {{ $isChildSection ? 'section-item-child border-start border-primary border-3 bg-primary-transparent' : '' }}" data-id="{{ $section->id }}">
+<div class="accordion-item mb-3 rounded overflow-hidden {{ $isChildSection ? 'section-item-child border-start border-primary border-3 bg-primary-transparent' : '' }}{{ $isLinkedSection ? ' section-item-linked' : '' }}" data-id="{{ $section->id }}">
     <h2 class="accordion-header d-flex" id="sectionHeading{{ $section->id }}">
+        @if(!$isLinkedSection)
         <span class="sortable-handle d-flex align-items-center px-2 cursor-grab text-muted" title="اسحب لإعادة الترتيب"><i class="bi bi-grip-vertical"></i></span>
+        @else
+        <span class="d-flex align-items-center px-2 text-muted" style="width: 28px;"><i class="bi bi-link-45deg"></i></span>
+        @endif
         <button class="accordion-button flex-grow-1 {{ $sectionIndex > 0 ? 'collapsed' : '' }}" type="button"
                 data-bs-toggle="collapse"
                 data-bs-target="#sectionCollapse{{ $section->id }}"
@@ -14,6 +19,9 @@
             <div class="d-flex align-items-center justify-content-between w-100 me-3">
                 <div class="d-flex align-items-center">
                     <i class="bi bi-folder-fill text-primary me-2"></i>
+                    @if($isLinkedSection)
+                        <span class="badge bg-info-transparent text-info me-2" style="font-size:0.7rem;">مرتبط بمادة أخرى</span>
+                    @endif
                     @if($isChildSection)
                         <span class="badge bg-primary-transparent text-primary me-2" style="font-size:0.7rem;">قسم فرعي</span>
                     @endif
@@ -31,6 +39,17 @@
         </button>
         <div class="d-flex align-items-center gap-1 pe-2 flex-shrink-0" onclick="event.stopPropagation()">
             <button type="button"
+                    class="btn btn-sm btn-icon btn-info-transparent link-section-subjects-btn"
+                    data-bs-toggle="modal"
+                    data-bs-target="#linkSectionSubjectsModal"
+                    data-section-id="{{ $section->id }}"
+                    data-section-title="{{ e($section->title) }}"
+                    data-section-primary-subject-id="{{ $section->subject_id }}"
+                    title="ربط القسم بمواد أخرى">
+                <i class="bi bi-link-45deg"></i>
+            </button>
+            @if(!$isLinkedSection)
+            <button type="button"
                     class="btn btn-sm btn-icon btn-primary-transparent"
                     data-bs-toggle="modal"
                     data-bs-target="#editSection{{ $section->id }}"
@@ -44,6 +63,7 @@
                     title="حذف القسم">
                 <i class="bi bi-trash"></i>
             </button>
+            @endif
         </div>
     </h2>
     <div id="sectionCollapse{{ $section->id }}"
@@ -66,6 +86,7 @@
                         <i class="bi bi-layers me-1"></i>
                         الوحدات ({{ $section->units->count() }})
                     </span>
+                    @if(!$isLinkedSection)
                     <div class="d-flex align-items-center gap-2">
                         <button type="button"
                                 class="btn btn-sm btn-outline-primary"
@@ -82,6 +103,7 @@
                             <i class="bi bi-folder-plus me-1"></i> إضافة قسم فرعي
                         </button>
                     </div>
+                    @endif
                 </div>
 
                 @php
@@ -116,6 +138,7 @@
                         <span class="text-muted small">
                             <i class="bi bi-folder2 me-1"></i> الأقسام الفرعية ({{ $childSections->count() }})
                         </span>
+                        @if(!$isLinkedSection)
                         <button type="button"
                                 class="btn btn-sm btn-outline-secondary add-child-section-btn"
                                 data-bs-toggle="modal"
@@ -124,6 +147,7 @@
                                 title="إضافة قسم فرعي">
                             <i class="bi bi-folder-plus me-1"></i> إضافة قسم فرعي
                         </button>
+                        @endif
                     </div>
                     <div class="accordion accordion-primary" id="childSectionsAccordion{{ $section->id }}" data-sortable="sections" data-subject-id="{{ $subject->id }}" data-parent-id="{{ $section->id }}" data-reorder-url="{{ route('admin.subjects.sections.reorder', $subject) }}">
                         @foreach($childSections->values() as $childIndex => $childSection)
@@ -143,6 +167,7 @@
                         <span class="text-muted small">
                             <i class="bi bi-folder2 me-1"></i> الأقسام الفرعية
                         </span>
+                        @if(!$isLinkedSection)
                         <button type="button"
                                 class="btn btn-sm btn-outline-secondary add-child-section-btn"
                                 data-bs-toggle="modal"
@@ -151,6 +176,7 @@
                                 title="إضافة قسم فرعي">
                             <i class="bi bi-folder-plus me-1"></i> إضافة قسم فرعي
                         </button>
+                        @endif
                     </div>
                     <div class="text-center py-3 text-muted small">لا أقسام فرعية</div>
                 </div>

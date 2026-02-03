@@ -206,6 +206,24 @@ class SubjectController extends Controller
                     $q->with('linkedUnits.section.subject.schoolClass.stage')
                         ->orderBy('order')->orderBy('title');
                 },
+                'linkedSections' => function ($q) {
+                    $q->orderBy('order')->orderBy('title');
+                },
+                'linkedSections.units' => function ($q) {
+                    $q->orderBy('order')->orderBy('title');
+                },
+                'linkedSections.units.lessons' => function ($q) {
+                    $q->orderBy('order');
+                },
+                'linkedSections.units.lessons.attachments' => function ($q) {
+                    $q->orderBy('order');
+                },
+                'linkedSections.units.quizzes' => function ($q) {
+                    $q->orderBy('order')->orderBy('title');
+                },
+                'linkedSections.units.questions' => function ($q) {
+                    $q->orderBy('created_at', 'desc');
+                },
             ])->findOrFail($id);
             
             // التحقق من التخصيص
