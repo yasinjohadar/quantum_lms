@@ -437,6 +437,21 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('enrollments.class.approve-multiple');
         Route::post('enrollments/class/reject-multiple', [EnrollmentController::class, 'rejectMultipleClassEnrollments'])
             ->name('enrollments.class.reject-multiple');
+        Route::post('enrollments/destroy-multiple', [EnrollmentController::class, 'destroyMultiple'])
+            ->name('enrollments.destroy-multiple');
+        Route::get('enrollments/destroy-multiple', function () {
+            return redirect()->route('admin.enrollments.index');
+        })->name('enrollments.destroy-multiple.redirect');
+        Route::get('enrollments/by-class', [EnrollmentController::class, 'enrollmentsByClass'])
+            ->name('enrollments.by-class');
+        Route::get('enrollments/count-by-class', [EnrollmentController::class, 'countByClass'])
+            ->name('enrollments.count-by-class');
+        Route::get('enrollments/count-by-subject', [EnrollmentController::class, 'countBySubject'])
+            ->name('enrollments.count-by-subject');
+        Route::post('enrollments/destroy-by-class', [EnrollmentController::class, 'destroyByClass'])
+            ->name('enrollments.destroy-by-class');
+        Route::post('enrollments/destroy-by-subject', [EnrollmentController::class, 'destroyBySubject'])
+            ->name('enrollments.destroy-by-subject');
 
         Route::resource('enrollments', EnrollmentController::class)->except(['show', 'edit', 'update']);
 

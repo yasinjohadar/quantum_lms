@@ -20,7 +20,7 @@ class EnrollmentController extends Controller
         $this->middleware('auth');
         $this->middleware(['permission:enrollment-list'])->only('index');
         $this->middleware(['permission:enrollment-create'])->only(['create', 'store']);
-        $this->middleware(['permission:enrollment-delete'])->only('destroy');
+        $this->middleware(['permission:enrollment-delete'])->only('destroy', 'destroyMultiple', 'enrollmentsByClass', 'destroyByClass', 'destroyBySubject', 'countByClass', 'countBySubject');
         $this->middleware(['permission:enrollment-pending-requests'])->only('pendingRequests');
         $this->middleware(['permission:enrollment-approve'])->only('approve');
         $this->middleware(['permission:enrollment-reject'])->only('reject');
@@ -444,6 +444,306 @@ class EnrollmentController extends Controller
             
             return redirect()->back()
                 ->with('error', 'حدث خطأ أثناء إلغاء الانضمام');
+        }
+    }
+
+    /**
+     * فصل عدة انضمامات دفعة واحدة.
+     */
+    public function destroyMultiple(Request $request)
+    {
+        $request->validate([
+            'enrollment_ids' => 'required|array|min:1',
+            'enrollment_ids.*' => 'required|integer|exists:enrollments,id',
+        ]);
+
+        $ids = array_values(array_unique($request->input('enrollment_ids')));
+        $user = auth()->user();
+
+        $query = Enrollment::whereIn('id', $ids);
+        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            $classIds = $user->assignedClasses()->pluck('classes.id');
+            $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
+            $query->whereHas('subject', function ($q) use ($classIds, $subjectIds) {
+                if ($classIds->isNotEmpty()) {
+                    $q->whereIn('class_id', $classIds);
+                }
+                if ($subjectIds->isNotEmpty()) {
+                    $q->orWhereIn('id', $subjectIds);
+                }
+            });
+        }
+        $enrollments = $query->get();
+        $count = $enrollments->count();
+
+        try {
+            foreach ($enrollments as $enrollment) {
+                $enrollment->delete();
+            }
+            $message = 'تم فصل ' . $count . ' انضمام بنجاح';
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'count' => $count,
+                    'redirect' => route('admin.enrollments.index'),
+                ]);
+            }
+            return redirect()
+                ->route('admin.enrollments.index')
+                ->with('success', $message);
+        } catch (\Exception $e) {
+            Log::error('Error bulk deleting enrollments: ' . $e->getMessage());
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'حدث خطأ أثناء فصل الانضمامات'], 500);
+            }
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء فصل الانضمامات');
+        }
+    }
+
+    /**
+     * إرجاع انضمامات صف معيّن (للمودال).
+     */
+    public function enrollmentsByClass(Request $request)
+    {
+        $request->validate([
+            'class_id' => 'required|integer|exists:classes,id',
+        ]);
+
+        $enrollmentsQuery = Enrollment::with(['user', 'subject.schoolClass.stage'])
+            ->whereHas('subject', function ($q) use ($request) {
+                $q->where('class_id', $request->input('class_id'));
+            });
+
+        $user = auth()->user();
+        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            $classIds = $user->assignedClasses()->pluck('classes.id');
+            $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
+            $enrollmentsQuery->whereHas('subject', function ($q) use ($classIds, $subjectIds) {
+                if ($classIds->isNotEmpty()) {
+                    $q->whereIn('class_id', $classIds);
+                }
+                if ($subjectIds->isNotEmpty()) {
+                    $q->orWhereIn('id', $subjectIds);
+                }
+            });
+        }
+
+        $enrollments = $enrollmentsQuery->latest('enrolled_at')->get();
+        $data = $enrollments->map(function ($e) {
+            return [
+                'id' => $e->id,
+                'user_id' => $e->user_id,
+                'user_name' => $e->user ? $e->user->name : '',
+                'user_email' => $e->user ? $e->user->email : '',
+                'subject_id' => $e->subject_id,
+                'subject_name' => $e->subject ? $e->subject->name : '',
+                'status' => $e->status,
+            ];
+        })->values();
+
+        return response()->json($data);
+    }
+
+    /**
+     * عدد الانضمامات التي ستُحذف عند فصل انضمامات صف محدد (للعرض في المودال).
+     */
+    public function countByClass(Request $request)
+    {
+        $request->validate([
+            'class_id' => 'required|integer|exists:classes,id',
+        ]);
+
+        $enrollmentsQuery = Enrollment::whereHas('subject', function ($q) use ($request) {
+            $q->where('class_id', $request->input('class_id'));
+        });
+
+        $user = auth()->user();
+        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            $classIds = $user->assignedClasses()->pluck('classes.id');
+            $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
+            $enrollmentsQuery->whereHas('subject', function ($q) use ($classIds, $subjectIds) {
+                if ($classIds->isNotEmpty()) {
+                    $q->whereIn('class_id', $classIds);
+                }
+                if ($subjectIds->isNotEmpty()) {
+                    $q->orWhereIn('id', $subjectIds);
+                }
+            });
+        }
+
+        $count = $enrollmentsQuery->count();
+
+        return response()->json([
+            'success' => true,
+            'count' => $count,
+        ]);
+    }
+
+    /**
+     * فصل جميع انضمامات صف محدد دفعة واحدة (بدون تحميل القائمة).
+     */
+    public function destroyByClass(Request $request)
+    {
+        $request->validate([
+            'class_id' => 'required|integer|exists:classes,id',
+        ]);
+
+        $enrollmentsQuery = Enrollment::whereHas('subject', function ($q) use ($request) {
+            $q->where('class_id', $request->input('class_id'));
+        });
+
+        $user = auth()->user();
+        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            $classIds = $user->assignedClasses()->pluck('classes.id');
+            $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
+            $enrollmentsQuery->whereHas('subject', function ($q) use ($classIds, $subjectIds) {
+                if ($classIds->isNotEmpty()) {
+                    $q->whereIn('class_id', $classIds);
+                }
+                if ($subjectIds->isNotEmpty()) {
+                    $q->orWhereIn('id', $subjectIds);
+                }
+            });
+        }
+
+        $enrollments = $enrollmentsQuery->get();
+        $count = $enrollments->count();
+
+        try {
+            foreach ($enrollments as $enrollment) {
+                $enrollment->delete();
+            }
+            $message = 'تم فصل ' . $count . ' انضمام بنجاح';
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'count' => $count,
+                    'redirect' => route('admin.enrollments.index'),
+                ]);
+            }
+            return redirect()
+                ->route('admin.enrollments.index')
+                ->with('success', $message);
+        } catch (\Exception $e) {
+            Log::error('Error destroying enrollments by class: ' . $e->getMessage());
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'حدث خطأ أثناء فصل الانضمامات'], 500);
+            }
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء فصل الانضمامات');
+        }
+    }
+
+    /**
+     * عدد الانضمامات التي ستُحذف عند فصل انضمامات مادة معينة (للعرض في المودال).
+     */
+    public function countBySubject(Request $request)
+    {
+        $request->validate([
+            'subject_id' => 'required|integer|exists:subjects,id',
+            'class_id' => 'nullable|integer|exists:classes,id',
+        ]);
+
+        $subjectId = $request->input('subject_id');
+        $classId = $request->input('class_id');
+        if ($classId) {
+            $subject = Subject::find($subjectId);
+            if (!$subject || (int) $subject->class_id !== (int) $classId) {
+                return response()->json(['success' => false, 'message' => 'المادة المحددة لا تنتمي إلى الصف المحدد.'], 422);
+            }
+        }
+
+        $enrollmentsQuery = Enrollment::where('subject_id', $subjectId);
+
+        $user = auth()->user();
+        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            $classIds = $user->assignedClasses()->pluck('classes.id');
+            $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
+            $enrollmentsQuery->whereHas('subject', function ($q) use ($classIds, $subjectIds) {
+                if ($classIds->isNotEmpty()) {
+                    $q->whereIn('class_id', $classIds);
+                }
+                if ($subjectIds->isNotEmpty()) {
+                    $q->orWhereIn('id', $subjectIds);
+                }
+            });
+        }
+
+        $count = $enrollmentsQuery->count();
+
+        return response()->json([
+            'success' => true,
+            'count' => $count,
+        ]);
+    }
+
+    /**
+     * فصل جميع انضمامات مادة معينة ضمن صف محدد (يجب تحديد الصف ثم المادة).
+     */
+    public function destroyBySubject(Request $request)
+    {
+        $request->validate([
+            'class_id' => 'required|integer|exists:classes,id',
+            'subject_id' => 'required|integer|exists:subjects,id',
+        ]);
+
+        $subject = Subject::find($request->input('subject_id'));
+        if (!$subject || (int) $subject->class_id !== (int) $request->input('class_id')) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'المادة المحددة لا تنتمي إلى الصف المحدد.',
+                ], 422);
+            }
+            return redirect()->back()
+                ->with('error', 'المادة المحددة لا تنتمي إلى الصف المحدد.');
+        }
+
+        $enrollmentsQuery = Enrollment::where('subject_id', $request->input('subject_id'));
+
+        $user = auth()->user();
+        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            $classIds = $user->assignedClasses()->pluck('classes.id');
+            $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
+            $enrollmentsQuery->whereHas('subject', function ($q) use ($classIds, $subjectIds) {
+                if ($classIds->isNotEmpty()) {
+                    $q->whereIn('class_id', $classIds);
+                }
+                if ($subjectIds->isNotEmpty()) {
+                    $q->orWhereIn('id', $subjectIds);
+                }
+            });
+        }
+
+        $enrollments = $enrollmentsQuery->get();
+        $count = $enrollments->count();
+
+        try {
+            foreach ($enrollments as $enrollment) {
+                $enrollment->delete();
+            }
+            $message = 'تم فصل ' . $count . ' انضمام بنجاح';
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'count' => $count,
+                    'redirect' => route('admin.enrollments.index'),
+                ]);
+            }
+            return redirect()
+                ->route('admin.enrollments.index')
+                ->with('success', $message);
+        } catch (\Exception $e) {
+            Log::error('Error destroying enrollments by subject: ' . $e->getMessage());
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'حدث خطأ أثناء فصل الانضمامات'], 500);
+            }
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء فصل الانضمامات');
         }
     }
 

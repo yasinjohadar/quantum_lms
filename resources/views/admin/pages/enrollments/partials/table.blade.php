@@ -1,5 +1,8 @@
 @forelse($enrollments as $enrollment)
     <tr>
+        <td class="text-center align-middle">
+            <input type="checkbox" name="enrollment_ids[]" value="{{ $enrollment->id }}" class="form-check-input enrollment-row-checkbox" aria-label="تحديد">
+        </td>
         <td>{{ $enrollment->id }}</td>
         <td>
             <div class="d-flex align-items-center gap-2">
@@ -135,7 +138,7 @@
     </div>
 @empty
     <tr>
-        <td colspan="8" class="text-center text-danger fw-bold">
+        <td colspan="9" class="text-center text-danger fw-bold">
             لا توجد انضمامات مسجلة حالياً
         </td>
     </tr>
