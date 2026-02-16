@@ -139,6 +139,18 @@
                                 @if($lesson->attachments->count() > 0)
                                     <span class="text-muted" style="font-size:0.7rem;"><i class="bi bi-paperclip me-1"></i>{{ $lesson->attachments->count() }}</span>
                                 @endif
+                                @if($lesson->book_page_from !== null || $lesson->book_page_to !== null)
+                                    <span class="text-muted" style="font-size:0.7rem;">
+                                        <i class="bi bi-journal-bookmark me-1"></i>
+                                        @if($lesson->book_page_from !== null && $lesson->book_page_to !== null)
+                                            صفحات من {{ $lesson->book_page_from }} إلى {{ $lesson->book_page_to }}
+                                        @elseif($lesson->book_page_from !== null)
+                                            من صفحة {{ $lesson->book_page_from }}
+                                        @else
+                                            إلى صفحة {{ $lesson->book_page_to }}
+                                        @endif
+                                    </span>
+                                @endif
                             </div>
                         </div>
                     </div>

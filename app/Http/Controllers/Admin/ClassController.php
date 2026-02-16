@@ -25,6 +25,7 @@ class ClassController extends Controller
         $this->middleware(['permission:class-show'])->only('show');
         $this->middleware(['permission:class-enrolled-students'])->only('enrolledStudents');
         $this->middleware(['permission:class-toggle-status'])->only('toggleStatus');
+        $this->middleware(['permission:class-edit'])->only('reorder');
     }
 
     /**
@@ -75,6 +76,72 @@ class ClassController extends Controller
         }
 
         return view('admin.pages.classes.index', compact('classes', 'stages'));
+    }
+
+    /**
+     * إعادة ترتيب الصفوف (السحب والإفلات). يستقبل ترتيب الصفوف في الصفحة الحالية
+     * ويعيد تعيين عمود order لجميع الصفوف المطابقة للفلاتر.
+     */
+    public function reorder(Request $request)
+    {
+        $request->validate([
+            'order' => ['required', 'array'],
+            'order.*' => ['integer', 'exists:classes,id'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'query' => ['nullable', 'string'],
+            'stage_id' => ['nullable', 'integer', 'exists:stages,id'],
+            'is_active' => ['nullable', 'string', 'in:0,1'],
+        ]);
+
+        $order = array_map('intval', $request->input('order'));
+        $page = (int) $request->input('page', 1);
+        $perPage = (int) $request->input('per_page', 10);
+
+        $classesQuery = SchoolClass::query();
+        $user = auth()->user();
+        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            $classesQuery->whereHas('assignedTeachers', function ($q) use ($user) {
+                $q->where('users.id', $user->id);
+            });
+        }
+        if ($request->filled('query')) {
+            $classesQuery->search($request->input('query'));
+        }
+        if ($request->filled('stage_id')) {
+            $classesQuery->byStage($request->input('stage_id'));
+        }
+        if ($request->filled('is_active')) {
+            $classesQuery->where('is_active', $request->boolean('is_active'));
+        }
+
+        $allIds = $classesQuery->ordered()->pluck('id')->toArray();
+        $offset = ($page - 1) * $perPage;
+        $expectedPageIds = array_slice($allIds, $offset, $perPage);
+
+        $sortedOrder = $order;
+        sort($sortedOrder);
+        $sortedExpected = $expectedPageIds;
+        sort($sortedExpected);
+        if (count($order) !== count($expectedPageIds) || $sortedOrder !== $sortedExpected) {
+            return response()->json([
+                'success' => false,
+                'message' => 'ترتيب الصفوف لا يطابق الصفحة الحالية.',
+            ], 422);
+        }
+
+        $order = array_map('intval', $request->input('order'));
+        $newAllIds = array_merge(
+            array_slice($allIds, 0, $offset),
+            $order,
+            array_slice($allIds, $offset + count($order))
+        );
+
+        foreach ($newAllIds as $index => $id) {
+            SchoolClass::where('id', $id)->update(['order' => $index]);
+        }
+
+        return response()->json(['success' => true]);
     }
 
     /**

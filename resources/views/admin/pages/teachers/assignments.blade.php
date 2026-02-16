@@ -160,15 +160,19 @@
                                     </div>
                                     <div class="list-group" style="max-height: 500px; overflow-y: auto;">
                                         @foreach($allSubjects as $subject)
+                                            @php
+                                                $assignedSubject = $assignedSubjects->firstWhere('id', $subject->id);
+                                                $currentRequiredPages = $assignedSubject?->pivot?->required_pages ?? '';
+                                            @endphp
                                             <div class="list-group-item" data-class-id="{{ $subject->class_id ?? '' }}">
-                                                <div class="form-check">
+                                                <div class="form-check d-flex align-items-center flex-wrap gap-2">
                                                     <input class="form-check-input subject-checkbox" 
                                                            type="checkbox" 
                                                            name="subjects[]" 
                                                            value="{{ $subject->id }}" 
                                                            id="subject_{{ $subject->id }}"
                                                            {{ $assignedSubjects->contains('id', $subject->id) ? 'checked' : '' }}>
-                                                    <label class="form-check-label w-100" for="subject_{{ $subject->id }}">
+                                                    <label class="form-check-label flex-grow-1" for="subject_{{ $subject->id }}">
                                                         <div class="d-flex justify-content-between align-items-center">
                                                             <div>
                                                                 <strong>{{ $subject->name }}</strong>
@@ -188,6 +192,15 @@
                                                             @endif
                                                         </div>
                                                     </label>
+                                                    <div class="d-flex align-items-center gap-1" style="min-width: 140px;">
+                                                        <label class="form-label mb-0 small text-muted">صفحات مطلوبة:</label>
+                                                        <input type="number" 
+                                                               name="required_pages[{{ $subject->id }}]" 
+                                                               class="form-control form-control-sm" 
+                                                               min="0" 
+                                                               placeholder="0" 
+                                                               value="{{ $currentRequiredPages !== '' ? (int)$currentRequiredPages : '' }}">
+                                                    </div>
                                                 </div>
                                             </div>
                                         @endforeach
@@ -224,6 +237,10 @@
                                             <strong>المواد المخصصة حالياً:</strong> 
                                             <span class="badge bg-primary">{{ $assignedSubjects->count() }}</span>
                                         </p>
+                                    </div>
+                                    <div class="col-md-4 mt-2">
+                                        <label class="form-label mb-1 small"><strong>عدد الدروس الأسبوعية المطلوبة:</strong></label>
+                                        <input type="number" name="weekly_lessons_target" class="form-control form-control-sm" min="0" placeholder="0" value="{{ $teacher->weekly_lessons_target ?? '' }}">
                                     </div>
                                 </div>
                             </div>

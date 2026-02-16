@@ -18,9 +18,9 @@
         <!-- End Page Header -->
 
         @if($subjects->count() > 0)
-            <div class="row">
+            <div class="row row-cols-2 row-cols-lg-5 g-3">
                 @foreach($subjects as $subject)
-                    <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
+                    <div class="col">
                         <div class="card">
                             <div class="card-body">
                                 <div class="d-flex align-items-center mb-3">

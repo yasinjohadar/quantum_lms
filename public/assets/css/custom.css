@@ -67,6 +67,25 @@ body .page {
     border-bottom-color: var(--primary);
 }
 
+
+/* تخطيط بطاقات المواد: 2 في الصف على الجوال، 5 في الصف على الشاشة الكبيرة (احتياطي إذا لم تُطبَّق row-cols) */
+.subject-cards-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+.subject-cards-row > .col {
+    flex: 0 0 calc(50% - 0.375rem);
+    max-width: calc(50% - 0.375rem);
+    box-sizing: border-box;
+}
+@media (min-width: 992px) {
+    .subject-cards-row > .col {
+        flex: 0 0 calc((100% - 4 * 0.75rem) / 5);
+        max-width: calc((100% - 4 * 0.75rem) / 5);
+    }
+}
+
 /* نسبة قياس صور المواد: 998 × 1382 ثابتة */
 .subject-card-image {
     width: 100%;
@@ -97,6 +116,13 @@ body .page {
 /* تقليل المسافة بين الزر وأسفل كارد المادة */
 .subject-card-body {
     padding-bottom: 0.5rem;
+}
+/* تصغير زر "عرض المحتوى" على الجوال */
+@media (max-width: 991px) {
+    .subject-card-btn {
+        font-size: 0.75rem !important;
+        padding: 0.25rem 0.5rem;
+    }
 }
 .card.custom-card .subject-card-body + .card-footer {
     padding-top: 0.35rem;

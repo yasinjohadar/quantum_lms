@@ -35,6 +35,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('classes.enrolled-students');
         Route::post('classes/{class}/toggle-status', [ClassController::class, 'toggleStatus'])
             ->name('classes.toggle-status');
+        Route::post('classes/reorder', [ClassController::class, 'reorder'])
+            ->name('classes.reorder');
 
         // شرائح Hero (سلايدر الصفحة الرئيسية)
         Route::resource('hero-slides', HeroSlideController::class);
@@ -52,6 +54,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('subjects.enrolled-students');
         Route::post('subjects/{subject}/toggle-status', [SubjectController::class, 'toggleStatus'])
             ->name('subjects.toggle-status');
+        Route::post('subjects/reorder', [SubjectController::class, 'reorder'])
+            ->name('subjects.reorder');
 
         // أقسام المواد (داخل كل مادة)
         Route::post('subjects/{subject}/sections', [SubjectSectionController::class, 'store'])
@@ -485,6 +489,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('users.bulk-archive');
 
         // تخصيص المعلمين
+        Route::get('teachers/progress', [\App\Http\Controllers\Admin\TeacherProgressController::class, 'index'])
+            ->name('teachers.progress.index');
+        Route::get('teachers/{teacher}/progress', [\App\Http\Controllers\Admin\TeacherProgressController::class, 'show'])
+            ->name('teachers.progress.show');
         Route::get('teachers/assignments', [\App\Http\Controllers\Admin\TeacherAssignmentController::class, 'index'])
             ->name('teachers.assignments.index');
         Route::get('teachers/{teacher}/assignments', [\App\Http\Controllers\Admin\TeacherAssignmentController::class, 'show'])

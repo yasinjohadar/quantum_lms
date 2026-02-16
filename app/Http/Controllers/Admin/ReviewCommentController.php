@@ -25,7 +25,7 @@ class ReviewCommentController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'reviewable_type' => 'required|string|in:App\Models\Lesson,App\Models\Quiz,App\Models\Assignment',
+            'reviewable_type' => 'required|string|in:App\Models\Lesson,App\Models\Quiz',
             'reviewable_id' => 'required|integer',
             'comment' => 'required|string|min:3|max:5000',
         ]);

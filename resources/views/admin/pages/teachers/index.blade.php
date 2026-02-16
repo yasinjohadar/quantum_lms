@@ -71,21 +71,60 @@
             <div class="row">
                 <div class="col-xl-12">
                     <div class="card shadow-sm border-0">
-                        <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                        <div class="card-header d-flex flex-column justify-content-between gap-3">
                             <h5 class="mb-0 fw-bold">قائمة المعلمين</h5>
 
                             <form method="GET" action="{{ route('admin.teachers.assignments.index') }}"
-                                  class="d-flex gap-2 align-items-center">
-                                <input type="text" name="search" class="form-control form-control-sm"
-                                       placeholder="بحث بالاسم أو البريد الإلكتروني"
-                                       value="{{ request('search') }}" style="min-width: 250px;">
-
+                                  class="d-flex flex-wrap gap-2 align-items-end">
+                                <div class="d-flex align-items-center gap-1">
+                                    <label class="form-label mb-0 small text-muted">بحث</label>
+                                    <input type="text" name="search" class="form-control form-control-sm"
+                                           placeholder="الاسم أو البريد"
+                                           value="{{ request('search') }}" style="min-width: 180px;">
+                                </div>
+                                <div class="d-flex align-items-center gap-1">
+                                    <label class="form-label mb-0 small text-muted">التخصيص</label>
+                                    <select name="assignment" class="form-select form-select-sm" style="min-width: 120px;">
+                                        <option value="all" {{ request('assignment', 'all') === 'all' ? 'selected' : '' }}>الكل</option>
+                                        <option value="assigned" {{ request('assignment') === 'assigned' ? 'selected' : '' }}>مخصصون فقط</option>
+                                        <option value="unassigned" {{ request('assignment') === 'unassigned' ? 'selected' : '' }}>غير مخصصين</option>
+                                    </select>
+                                </div>
+                                <div class="d-flex align-items-center gap-1">
+                                    <label class="form-label mb-0 small text-muted">نسبة الصفحات</label>
+                                    <select name="pages_progress" class="form-select form-select-sm" style="min-width: 130px;">
+                                        <option value="all" {{ request('pages_progress', 'all') === 'all' ? 'selected' : '' }}>الكل</option>
+                                        <option value="below_50" {{ request('pages_progress') === 'below_50' ? 'selected' : '' }}>أقل من 50%</option>
+                                        <option value="below_100" {{ request('pages_progress') === 'below_100' ? 'selected' : '' }}>أقل من 100%</option>
+                                        <option value="completed" {{ request('pages_progress') === 'completed' ? 'selected' : '' }}>منجز 100%</option>
+                                    </select>
+                                </div>
+                                <div class="d-flex align-items-center gap-1">
+                                    <label class="form-label mb-0 small text-muted">النسبة الأسبوعية</label>
+                                    <select name="weekly_progress" class="form-select form-select-sm" style="min-width: 130px;">
+                                        <option value="all" {{ request('weekly_progress', 'all') === 'all' ? 'selected' : '' }}>الكل</option>
+                                        <option value="below_50" {{ request('weekly_progress') === 'below_50' ? 'selected' : '' }}>أقل من 50%</option>
+                                        <option value="below_100" {{ request('weekly_progress') === 'below_100' ? 'selected' : '' }}>أقل من 100%</option>
+                                        <option value="completed" {{ request('weekly_progress') === 'completed' ? 'selected' : '' }}>منجز 100%</option>
+                                    </select>
+                                </div>
+                                <div class="d-flex align-items-center gap-1">
+                                    <label class="form-label mb-0 small text-muted">الترتيب</label>
+                                    <select name="sort" class="form-select form-select-sm" style="min-width: 160px;">
+                                        <option value="name_asc" {{ request('sort', 'name_asc') === 'name_asc' ? 'selected' : '' }}>الاسم (أ→ي)</option>
+                                        <option value="name_desc" {{ request('sort') === 'name_desc' ? 'selected' : '' }}>الاسم (ي→أ)</option>
+                                        <option value="pages_asc" {{ request('sort') === 'pages_asc' ? 'selected' : '' }}>نسبة الصفحات (تصاعدي)</option>
+                                        <option value="pages_desc" {{ request('sort') === 'pages_desc' ? 'selected' : '' }}>نسبة الصفحات (تنازلي)</option>
+                                        <option value="weekly_asc" {{ request('sort') === 'weekly_asc' ? 'selected' : '' }}>النسبة الأسبوعية (تصاعدي)</option>
+                                        <option value="weekly_desc" {{ request('sort') === 'weekly_desc' ? 'selected' : '' }}>النسبة الأسبوعية (تنازلي)</option>
+                                    </select>
+                                </div>
                                 <button type="submit" class="btn btn-primary btn-sm">
                                     <i class="fas fa-search me-1"></i> بحث
                                 </button>
-                                @if(request('search'))
+                                @if(request()->hasAny(['search', 'assignment', 'pages_progress', 'weekly_progress', 'sort']) && (request('search') || request('assignment', 'all') !== 'all' || request('pages_progress', 'all') !== 'all' || request('weekly_progress', 'all') !== 'all' || request('sort', 'name_asc') !== 'name_asc'))
                                     <a href="{{ route('admin.teachers.assignments.index') }}" class="btn btn-secondary btn-sm">
-                                        <i class="fas fa-times me-1"></i> إلغاء
+                                        <i class="fas fa-times me-1"></i> إلغاء الفلاتر
                                     </a>
                                 @endif
                             </form>
@@ -105,6 +144,7 @@
                                                 <th>حالة الحساب</th>
                                                 <th>آخر دخول</th>
                                                 <th>متصل الآن</th>
+                                                <th>مؤشرات التقدم</th>
                                                 <th>الإجراءات</th>
                                             </tr>
                                         </thead>
@@ -125,7 +165,7 @@
                                                                     {{ substr($teacher->name, 0, 1) }}
                                                                 </div>
                                                             @endif
-                                                            <span class="fw-semibold">{{ $teacher->name }}</span>
+                                                            <a href="{{ route('admin.teachers.progress.show', $teacher->id) }}" class="fw-semibold text-decoration-none">{{ $teacher->name }}</a>
                                                         </div>
                                                     </td>
                                                     <td>{{ $teacher->email }}</td>
@@ -206,6 +246,43 @@
                                                             <span class="badge bg-success"><i class="fa-solid fa-circle fa-fw" style="font-size: 0.5em; vertical-align: middle;"></i> متصل الآن</span>
                                                         @else
                                                             <span class="badge bg-secondary">غير متصل</span>
+                                                        @endif
+                                                    </td>
+                                                    <td class="text-nowrap">
+                                                        @php
+                                                            $prog = $teachersProgress[$teacher->id] ?? null;
+                                                        @endphp
+                                                        @if($prog)
+                                                            <div class="d-flex flex-column gap-1 small">
+                                                                <div>
+                                                                    <span class="text-muted">الصفحات:</span>
+                                                                    @if($prog['pages_required'] > 0)
+                                                                        {{ $prog['pages_completed'] }} / {{ $prog['pages_required'] }}
+                                                                        @if($prog['pages_percentage'] !== null)
+                                                                            <span class="badge {{ $prog['pages_percentage'] >= 100 ? 'bg-success' : ($prog['pages_percentage'] >= 50 ? 'bg-info' : 'bg-warning text-dark') }} ms-1">{{ number_format($prog['pages_percentage'], 1) }}%</span>
+                                                                        @endif
+                                                                    @else
+                                                                        <span class="text-muted">—</span>
+                                                                    @endif
+                                                                </div>
+                                                                <div>
+                                                                    <span class="text-muted">الأسبوع:</span>
+                                                                    @if($prog['weekly_target'] > 0)
+                                                                        {{ $prog['weekly_completed'] }}/{{ $prog['weekly_target'] }}
+                                                                        @if($prog['weekly_percentage'] !== null)
+                                                                            <span class="badge {{ $prog['weekly_percentage'] >= 100 ? 'bg-success' : ($prog['weekly_percentage'] >= 50 ? 'bg-info' : 'bg-warning text-dark') }} ms-1">{{ number_format($prog['weekly_percentage'], 1) }}%</span>
+                                                                        @endif
+                                                                    @else
+                                                                        <span class="text-muted">—</span>
+                                                                    @endif
+                                                                </div>
+                                                                <div>
+                                                                    <span class="text-muted">دروس مسجلة:</span> {{ $prog['total_approved_lessons'] }}
+                                                                </div>
+                                                                <a href="{{ route('admin.teachers.progress.show', $teacher->id) }}" class="small">تفاصيل</a>
+                                                            </div>
+                                                        @else
+                                                            <span class="text-muted">—</span>
                                                         @endif
                                                     </td>
                                                     <td>

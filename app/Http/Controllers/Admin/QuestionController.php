@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StoreQuestionRequest;
 use App\Http\Requests\Admin\UpdateQuestionRequest;
 use App\Models\Question;
 use App\Models\QuestionOption;
+use App\Models\QuizQuestion;
 use App\Models\Unit;
 use App\Models\Subject;
 use App\Imports\QuestionsImport;
@@ -133,8 +134,14 @@ class QuestionController extends Controller
         // إذا تم تمرير unit_id فسيتم تحديد الوحدة تلقائياً
         $preselectedUnitId = $request->unit_id;
         $preselectedUnit = $preselectedUnitId ? Unit::with('section.subject')->find($preselectedUnitId) : null;
-        
-        return view('admin.pages.questions.create', compact('units', 'categories', 'selectedType', 'preselectedUnitId', 'preselectedUnit'));
+
+        // إذا تم فتح الصفحة من صفحة أسئلة اختبار، نمرر quiz_id للعودة للاختبار بعد الحفظ (ونحفظه في الجلسة كنسخة احتياطية)
+        $preselectedQuizId = $request->query('quiz_id') ?? $request->input('quiz_id');
+        if ($preselectedQuizId !== null && $preselectedQuizId !== '') {
+            session(['create_question_return_quiz_id' => $preselectedQuizId]);
+        }
+
+        return view('admin.pages.questions.create', compact('units', 'categories', 'selectedType', 'preselectedUnitId', 'preselectedUnit', 'preselectedQuizId'));
     }
 
     /**
@@ -193,6 +200,38 @@ class QuestionController extends Controller
 
             DB::commit();
 
+            // إذا تم إنشاء السؤال من داخل صفحة اختبار، نضيفه للاختبار ونرجع لصفحة الاختبار (نستخدم الطلب أو الجلسة)
+            $quizId = $request->input('quiz_id') ?? session('create_question_return_quiz_id');
+            $quizId = is_numeric($quizId) ? (int) $quizId : $quizId;
+            if ($quizId !== null && $quizId !== '') {
+                $quiz = \App\Models\Quiz::find($quizId);
+                if ($quiz) {
+                    if (!$quiz->questions()->where('question_id', $question->id)->exists()) {
+                        $maxOrder = $quiz->quizQuestions()->max('order') ?? 0;
+                        QuizQuestion::create([
+                            'quiz_id' => $quiz->id,
+                            'question_id' => $question->id,
+                            'order' => $maxOrder + 1,
+                            'points' => $question->default_points,
+                            'is_required' => true,
+                        ]);
+                        $quiz->calculateTotalPoints();
+                    }
+                    session()->forget('create_question_return_quiz_id');
+                    // إذا ضغط "حفظ وإنشاء سؤال جديد" نرجع لصفحة إنشاء سؤال مع نفس الاختبار
+                    if ($request->has('save_and_new')) {
+                        return redirect()
+                            ->route('admin.questions.create', ['quiz_id' => $quiz->id])
+                            ->with('success', 'تم حفظ السؤال وإضافته للاختبار. أضف سؤالاً جديداً أدناه.');
+                    }
+                    return redirect()
+                        ->route('admin.quizzes.questions', $quiz->id)
+                        ->with('success', 'تم إنشاء السؤال وإضافته للاختبار بنجاح')
+                        ->with('added_question_id', $question->id);
+                }
+                session()->forget('create_question_return_quiz_id');
+            }
+
             return redirect()
                 ->route('admin.questions.index')
                 ->with('success', 'تم إنشاء السؤال بنجاح');
@@ -222,13 +261,17 @@ class QuestionController extends Controller
     /**
      * عرض صفحة تعديل سؤال
      */
-    public function edit(string $id)
+    public function edit(Request $request, string $id)
     {
         $question = Question::with(['units', 'options'])->findOrFail($id);
         $units = Unit::with('section.subject.schoolClass')->orderBy('title')->get();
         $categories = Question::distinct()->whereNotNull('category')->pluck('category');
-        
-        return view('admin.pages.questions.edit', compact('question', 'units', 'categories'));
+        $preselectedQuizId = $request->query('quiz_id');
+        if ($preselectedQuizId !== null && $preselectedQuizId !== '') {
+            session(['edit_question_return_quiz_id' => $preselectedQuizId]);
+        }
+
+        return view('admin.pages.questions.edit', compact('question', 'units', 'categories', 'preselectedQuizId'));
     }
 
     /**
@@ -294,10 +337,12 @@ class QuestionController extends Controller
 
             DB::commit();
 
-            // إذا كان هناك quiz_id في الـ request، العودة إلى صفحة عرض الاختبار
-            if ($request->filled('quiz_id')) {
+            // إذا كان هناك quiz_id في الـ request، العودة إلى صفحة إدارة أسئلة الاختبار
+            $quizId = $request->input('quiz_id') ?? session('edit_question_return_quiz_id');
+            if ($quizId) {
+                session()->forget('edit_question_return_quiz_id');
                 return redirect()
-                    ->route('admin.quizzes.show', $request->input('quiz_id'))
+                    ->route('admin.quizzes.questions', $quizId)
                     ->with('success', 'تم تحديث السؤال بنجاح');
             }
 

@@ -32,6 +32,7 @@ class User extends Authenticatable
         'last_login_at',
         'last_login_ip',
         'last_login_user_agent',
+        'weekly_lessons_target',
     ];
 
     /**
@@ -57,6 +58,7 @@ class User extends Authenticatable
             'last_login_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'weekly_lessons_target' => 'integer',
         ];
     }
 
@@ -360,7 +362,7 @@ class User extends Authenticatable
     public function assignedSubjects()
     {
         return $this->belongsToMany(Subject::class, 'teacher_subjects', 'teacher_id', 'subject_id')
-                    ->withPivot(['assigned_by', 'assigned_at', 'notes'])
+                    ->withPivot(['assigned_by', 'assigned_at', 'notes', 'required_pages'])
                     ->withTimestamps();
     }
 

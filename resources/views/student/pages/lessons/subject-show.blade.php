@@ -68,13 +68,13 @@
                                         @foreach($section->units as $unitIndex => $unit)
                                             <div class="accordion-item">
                                                 <h2 class="accordion-header" id="unit-heading-{{ $unit->id }}">
-                                                    <button class="accordion-button {{ $unitIndex > 0 ? 'collapsed' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#unit-{{ $unit->id }}" aria-expanded="{{ $unitIndex === 0 ? 'true' : 'false' }}">
+                                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#unit-{{ $unit->id }}" aria-expanded="false">
                                                         <i class="bi bi-file-text me-2"></i>
                                                         {{ $unit->title }}
                                                         <span class="badge bg-secondary ms-2">{{ $unit->lessons->count() }} درس</span>
                                                     </button>
                                                 </h2>
-                                                <div id="unit-{{ $unit->id }}" class="accordion-collapse collapse {{ $unitIndex === 0 ? 'show' : '' }}" data-bs-parent="#section-{{ $section->id }}">
+                                                <div id="unit-{{ $unit->id }}" class="accordion-collapse collapse" data-bs-parent="#section-{{ $section->id }}">
                                                     <div class="accordion-body">
                                                         @if($unit->description)
                                                             <p class="text-muted mb-3">{{ $unit->description }}</p>

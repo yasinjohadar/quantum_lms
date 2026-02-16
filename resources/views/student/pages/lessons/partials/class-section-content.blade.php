@@ -14,15 +14,17 @@
                 @endif
             </h5>
             @if($class->whatsapp_group_url)
-                <a href="{{ $class->whatsapp_group_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-success btn-sm mt-2">
+                <a href="{{ $class->whatsapp_group_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-success btn-sm mt-2 whatsapp-cta-btn">
                     <i class="fa-brands fa-whatsapp me-1"></i>
-                    انضم لمجموعة واتساب لهذا الصف
+                    انضم لمجموعة واتساب — {{ $class->name }}
                 </a>
             @endif
         </div>
         @if($subjects->count() > 0)
+            <div class="col-12">
+            <div class="row row-cols-2 row-cols-lg-5 g-3 subject-cards-row">
             @foreach($subjects as $subject)
-                <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-3">
+                <div class="col">
                     <div class="card custom-card h-100 position-relative text-decoration-none">
                         <a href="{{ route('student.subjects.show', $subject->id) }}" class="stretched-link" aria-label="عرض محتوى {{ $subject->name }}"></a>
                         @if($subject->image)
@@ -40,10 +42,7 @@
                         @endif
                         <div class="card-body subject-card-body">
                             <h6 class="card-title fw-semibold">{{ $subject->name }}</h6>
-                            <span class="btn btn-primary btn-sm">
-                                <i class="bi bi-eye me-1"></i>
-                                عرض المحتوى
-                            </span>
+                            <span class="btn btn-primary btn-sm subject-card-btn">عرض المحتوى</span>
                         </div>
                         @php
                             $enrollment = $subject->enrollments->first();
@@ -59,6 +58,8 @@
                     </div>
                 </div>
             @endforeach
+            </div>
+            </div>
         @else
             <div class="col-12">
                 <div class="card custom-card">

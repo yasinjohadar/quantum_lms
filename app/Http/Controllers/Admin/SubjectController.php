@@ -24,6 +24,7 @@ class SubjectController extends Controller
         $this->middleware(['permission:subject-show'])->only('show');
         $this->middleware(['permission:subject-enrolled-students'])->only('enrolledStudents');
         $this->middleware(['permission:subject-toggle-status'])->only('toggleStatus');
+        $this->middleware(['permission:subject-edit'])->only('reorder');
     }
 
     /**
@@ -84,6 +85,98 @@ class SubjectController extends Controller
         }
 
         return view('admin.pages.subjects.index', compact('subjects', 'classes'));
+    }
+
+    /**
+     * إعادة ترتيب المواد (السحب والإفلات). يستقبل ترتيب المواد في الصفحة الحالية
+     * ويعيد تعيين عمود order لجميع المواد المطابقة للفلاتر.
+     */
+    public function reorder(Request $request)
+    {
+        $request->validate([
+            'order' => ['required', 'array'],
+            'order.*' => ['integer', 'exists:subjects,id'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'query' => ['nullable', 'string'],
+            'class_id' => ['nullable', 'integer', 'exists:classes,id'],
+            'is_active' => ['nullable', 'string', 'in:0,1'],
+        ]);
+
+        $order = array_map('intval', $request->input('order'));
+        $page = (int) $request->input('page', 1);
+        $perPage = (int) $request->input('per_page', 10);
+
+        $subjectsQuery = Subject::query();
+        $user = auth()->user();
+        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            $classIds = $user->assignedClasses()->pluck('classes.id');
+            $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
+            $subjectsQuery->where(function ($q) use ($classIds, $subjectIds) {
+                if ($classIds->isNotEmpty()) {
+                    $q->whereIn('class_id', $classIds);
+                }
+                if ($subjectIds->isNotEmpty()) {
+                    $q->orWhereIn('id', $subjectIds);
+                }
+            });
+        }
+        if ($request->filled('query')) {
+            $subjectsQuery->search($request->input('query'));
+        }
+        if ($request->filled('class_id')) {
+            $subjectsQuery->byClass($request->input('class_id'));
+        }
+        if ($request->filled('is_active')) {
+            $subjectsQuery->where('is_active', $request->boolean('is_active'));
+        }
+
+        $allIds = $subjectsQuery->ordered()->pluck('id')->toArray();
+        $orderCount = count($order);
+
+        $offset = ($page - 1) * $perPage;
+        $expectedPageIds = array_slice($allIds, $offset, $perPage);
+        $sortedOrder = $order;
+        sort($sortedOrder);
+        $sortedExpected = $expectedPageIds;
+        sort($sortedExpected);
+        $strictMatch = (count($expectedPageIds) === $orderCount && $sortedOrder === $sortedExpected);
+
+        if (!$strictMatch) {
+            $foundOffset = null;
+            for ($i = 0; $i <= count($allIds) - $orderCount; $i++) {
+                $segment = array_slice($allIds, $i, $orderCount);
+                $segSorted = $segment;
+                sort($segSorted);
+                if ($segSorted === $sortedOrder) {
+                    if ($foundOffset !== null) {
+                        $foundOffset = null;
+                        break;
+                    }
+                    $foundOffset = $i;
+                }
+            }
+            if ($foundOffset === null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'ترتيب المواد لا يطابق الصفحة الحالية.',
+                ], 422);
+            }
+            $offset = $foundOffset;
+        }
+
+        $order = array_map('intval', $request->input('order'));
+        $newAllIds = array_merge(
+            array_slice($allIds, 0, $offset),
+            $order,
+            array_slice($allIds, $offset + count($order))
+        );
+
+        foreach ($newAllIds as $index => $id) {
+            Subject::where('id', $id)->update(['order' => $index]);
+        }
+
+        return response()->json(['success' => true]);
     }
 
     /**

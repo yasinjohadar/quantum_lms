@@ -37,6 +37,13 @@
     .questions-list-container .form-check-input:checked + .flex-grow-1 {
         background-color: rgba(98, 89, 202, 0.05);
     }
+    /* تمييز مستويات الأقسام (0 = جذر، 1–5 = أبناء) */
+    .section-level-0 { border-start: 3px solid var(--bs-primary); background-color: rgba(var(--bs-primary-rgb), 0.06); }
+    .section-level-1 { border-start: 3px solid var(--bs-info); background-color: rgba(var(--bs-info-rgb), 0.08); }
+    .section-level-2 { border-start: 3px solid var(--bs-danger); background-color: rgba(var(--bs-danger-rgb), 0.06); }
+    .section-level-3 { border-start: 3px solid var(--bs-success); background-color: rgba(var(--bs-success-rgb), 0.06); }
+    .section-level-4 { border-start: 3px solid var(--bs-warning); background-color: rgba(var(--bs-warning-rgb), 0.08); }
+    .section-level-5 { border-start: 3px solid var(--bs-secondary); background-color: rgba(var(--bs-secondary-rgb), 0.08); }
 </style>
 @stop
 
@@ -101,6 +108,11 @@
                 </div>
             </div>
 
+            @php
+                $primaryRoots = $subject->sections->whereNull('parent_id')->sortBy('order')->values();
+                $linkedRoots = $subject->linkedSections;
+                $rootSections = $primaryRoots->concat($linkedRoots)->unique('id')->values();
+            @endphp
             <div class="row g-3">
                 <div class="col-12">
                     {{-- محتويات المادة: أقسام المادة لبناء المحتوى --}}
@@ -119,11 +131,6 @@
                             </button>
                         </div>
                         <div class="card-body">
-                            @php
-                                $primaryRoots = $subject->sections->whereNull('parent_id')->sortBy('order')->values();
-                                $linkedRoots = $subject->linkedSections;
-                                $rootSections = $primaryRoots->concat($linkedRoots)->unique('id')->values();
-                            @endphp
                             @if($rootSections->isEmpty())
                                 <div class="text-center py-5">
                                     <div class="mb-3">
@@ -141,6 +148,7 @@
                                             'subject' => $subject,
                                             'sectionIndex' => $index,
                                             'parentAccordionId' => 'subjectSectionsAccordion',
+                                            'sectionLevel' => 0,
                                         ])
                                     @endforeach
                                 </div>
@@ -1921,6 +1929,33 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert('فشل حفظ الترتيب. تحقق من الاتصال.');
                 };
                 xhr.send(JSON.stringify(body));
+            }
+        });
+    });
+
+    // إيقاف الفيديو عند إغلاق مودال المعاينة (يوتيوب/فيميو/HTML5) واستعادته عند الفتح
+    document.querySelectorAll('[id^="playVideoModal"]').forEach(function(modalEl) {
+        modalEl.addEventListener('hidden.bs.modal', function(e) {
+            var modal = e.target;
+            var iframe = modal.querySelector('iframe');
+            if (iframe && iframe.src) {
+                iframe.setAttribute('data-video-src', iframe.src);
+                iframe.src = '';
+            }
+            var video = modal.querySelector('video');
+            if (video) {
+                video.pause();
+                video.currentTime = 0;
+            }
+        });
+        modalEl.addEventListener('show.bs.modal', function(e) {
+            var modal = e.target;
+            var iframe = modal.querySelector('iframe');
+            if (iframe) {
+                var saved = iframe.getAttribute('data-video-src');
+                if (saved) {
+                    iframe.src = saved;
+                }
             }
         });
     });

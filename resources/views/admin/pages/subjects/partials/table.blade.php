@@ -1,5 +1,8 @@
 @forelse($subjects as $subject)
-    <tr>
+    <tr data-id="{{ $subject->id }}">
+        <td class="sortable-handle d-flex align-items-center justify-content-center cursor-grab text-muted py-2" style="width: 36px; min-width: 36px;" title="اسحب لإعادة الترتيب">
+            <i class="bi bi-grip-vertical"></i>
+        </td>
         <td>{{ $loop->iteration + ($subjects->currentPage() - 1) * $subjects->perPage() }}</td>
         <td>
             <div class="d-flex justify-content-center">
@@ -20,14 +23,6 @@
                 <span class="text-muted small d-block">
                     ({{ $subject->schoolClass->stage->name }})
                 </span>
-            @endif
-        </td>
-        <td>{{ $subject->order }}</td>
-        <td>
-            @if ($subject->display_in_class)
-                <span class="badge bg-info text-dark">نعم</span>
-            @else
-                <span class="badge bg-secondary">لا</span>
             @endif
         </td>
         <td>
@@ -97,7 +92,7 @@
     </tr>
 @empty
     <tr>
-        <td colspan="9" class="text-center text-danger fw-bold">
+        <td colspan="8" class="text-center text-danger fw-bold">
             لا توجد مواد مسجلة حالياً
         </td>
     </tr>

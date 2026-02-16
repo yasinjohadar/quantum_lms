@@ -115,13 +115,12 @@
                                     <table class="table table-striped align-middle table-hover table-bordered mb-0 text-center">
                                         <thead class="table-light">
                                         <tr>
+                                            <th style="width: 36px; min-width: 36px;"></th>
                                             <th style="width: 50px;">#</th>
                                             <th style="min-width: 140px;">الصورة</th>
                                             <th style="min-width: 180px;">اسم الصف</th>
                                             <th style="min-width: 180px;">المرحلة</th>
-                                            <th style="min-width: 90px;">الترتيب</th>
                                             <th style="min-width: 100px;">الحالة</th>
-                                            <th style="min-width: 160px;">تاريخ الإنشاء</th>
                                             <th style="min-width: 200px;">العمليات</th>
                                         </tr>
                                         </thead>
@@ -145,6 +144,7 @@
 @stop
 
 @section('js')
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const filterForm = document.getElementById('classesFilterForm');
@@ -160,9 +160,65 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const csrfToken = '{{ csrf_token() }}';
     const filterUrl = '{{ route("admin.classes.index") }}';
+    const reorderUrl = '{{ route("admin.classes.reorder") }}';
+    const perPage = {{ $classes->perPage() }};
     
     let searchTimeout;
     let currentPage = 1;
+    let sortableInstance = null;
+
+    function initSortable() {
+        if (sortableInstance) {
+            sortableInstance.destroy();
+            sortableInstance = null;
+        }
+        var tbody = document.getElementById('classesTableBody');
+        var rows = tbody.querySelectorAll('tr[data-id]');
+        if (typeof Sortable === 'undefined' || rows.length === 0) return;
+        sortableInstance = Sortable.create(tbody, {
+            handle: '.sortable-handle',
+            animation: 150,
+            onEnd: function(evt) {
+                var order = [];
+                tbody.querySelectorAll('tr[data-id]').forEach(function(tr) {
+                    var id = tr.getAttribute('data-id');
+                    if (id) order.push(parseInt(id, 10));
+                });
+                var payload = {
+                    order: order,
+                    page: currentPage,
+                    per_page: perPage,
+                    _token: csrfToken
+                };
+                if (filterForm.querySelector('[name="query"]').value) payload.query = filterForm.querySelector('[name="query"]').value;
+                if (filterForm.querySelector('[name="stage_id"]').value) payload.stage_id = filterForm.querySelector('[name="stage_id"]').value;
+                if (filterForm.querySelector('[name="is_active"]').value) payload.is_active = filterForm.querySelector('[name="is_active"]').value;
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', reorderUrl);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken);
+                xhr.setRequestHeader('Accept', 'application/json');
+                xhr.onload = function() {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        fetchClasses(currentPage);
+                    } else {
+                        var msg = 'فشل حفظ الترتيب.';
+                        try {
+                            var res = JSON.parse(xhr.responseText);
+                            if (res.message) msg = res.message;
+                        } catch (e) {}
+                        alert(msg);
+                        fetchClasses(currentPage);
+                    }
+                };
+                xhr.onerror = function() {
+                    alert('فشل حفظ الترتيب. تحقق من الاتصال.');
+                    fetchClasses(currentPage);
+                };
+                xhr.send(JSON.stringify(payload));
+            }
+        });
+    }
 
     // دالة لجلب البيانات عبر Ajax
     function fetchClasses(page = 1) {
@@ -208,6 +264,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 // إعادة ربط event listeners للـ pagination
                 attachPaginationListeners();
                 
+                // إعادة تهيئة Sortable بعد تحديث الصفوف
+                initSortable();
+                
                 // تحديث URL بدون إعادة تحميل الصفحة
                 const newUrl = `${filterUrl}?${params.toString()}`;
                 window.history.pushState({}, '', newUrl);
@@ -241,9 +300,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // دالة لإظهار رسالة خطأ
     function showError(message) {
+        if (sortableInstance) {
+            sortableInstance.destroy();
+            sortableInstance = null;
+        }
         classesTableBody.innerHTML = `
             <tr>
-                <td colspan="8" class="text-center text-danger fw-bold">
+                <td colspan="9" class="text-center text-danger fw-bold">
                     ${message}
                 </td>
             </tr>
@@ -293,6 +356,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // تهيئة pagination listeners عند تحميل الصفحة
     attachPaginationListeners();
+    // تهيئة السحب والإفلات لترتيب الصفوف
+    initSortable();
 });
 </script>
 @stop

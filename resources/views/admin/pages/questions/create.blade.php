@@ -4,12 +4,13 @@
     إضافة سؤال جديد
 @stop
 
-@section('css')
+@push('styles')
 <style>
     .question-type-card {
         cursor: pointer;
         transition: all 0.3s ease;
         border: 3px solid transparent !important;
+        position: relative;
     }
     .question-type-card:hover {
         border-color: #6259ca !important;
@@ -18,12 +19,14 @@
     }
     .question-type-card.selected {
         border-color: #6259ca !important;
-        background-color: rgba(98, 89, 202, 0.1) !important;
-        box-shadow: 0 4px 20px rgba(98, 89, 202, 0.4) !important;
-        transform: scale(1.02);
+        background: linear-gradient(135deg, rgba(98, 89, 202, 0.22) 0%, rgba(98, 89, 202, 0.1) 100%) !important;
+        box-shadow: 0 8px 28px rgba(98, 89, 202, 0.4), 0 0 0 2px rgba(98, 89, 202, 0.25) !important;
+        transform: scale(1.03);
+        transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
     }
     .question-type-card.selected i {
-        transform: scale(1.1);
+        transform: scale(1.08);
+        transition: transform 0.3s ease;
     }
     .option-item {
         background: var(--custom-white);
@@ -49,7 +52,7 @@
         align-items: center;
     }
 </style>
-@stop
+@endpush
 
 @section('content')
     <!-- Start::app-content -->
@@ -86,6 +89,9 @@
     <form action="{{ route('admin.questions.store') }}" method="POST" enctype="multipart/form-data" id="questionForm">
         @csrf
         <input type="hidden" name="_tinymce_sync" value="1">
+        @if(isset($preselectedQuizId) && $preselectedQuizId !== '' && $preselectedQuizId !== null)
+        <input type="hidden" name="quiz_id" value="{{ $preselectedQuizId }}">
+        @endif
         
         <div class="row">
             <div class="col-lg-8">
@@ -301,7 +307,12 @@
                         <button type="submit" class="btn btn-primary w-100 mb-2">
                             <i class="bi bi-check-lg me-1"></i> حفظ السؤال
                         </button>
-                        <a href="{{ route('admin.questions.index') }}" class="btn btn-outline-secondary w-100">
+                        @if(isset($preselectedQuizId) && $preselectedQuizId !== '' && $preselectedQuizId !== null)
+                        <button type="submit" class="btn btn-success w-100 mb-2" name="save_and_new" value="1">
+                            <i class="bi bi-plus-circle me-1"></i> حفظ وإنشاء سؤال جديد
+                        </button>
+                        @endif
+                        <a href="{{ isset($preselectedQuizId) && $preselectedQuizId ? route('admin.quizzes.questions', $preselectedQuizId) : route('admin.questions.index') }}" class="btn btn-outline-secondary w-100">
                             <i class="bi bi-x-lg me-1"></i> إلغاء
                         </a>
                     </div>
@@ -400,13 +411,24 @@ document.addEventListener('DOMContentLoaded', function() {
         remove_script_host: false,
     });
 
-    // التأكد من حفظ محتوى TinyMCE قبل إرسال النموذج
+    // التأكد من حفظ محتوى TinyMCE قبل إرسال النموذج، ونقل قيمة الزر المُنقَر لأن form.submit() لا يرسلها
     const form = document.getElementById('questionForm');
     if (form) {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             tinymce.triggerSave();
             var f = form;
+            var submitter = e.submitter;
+            if (submitter && submitter.name === 'save_and_new' && submitter.value === '1') {
+                var existing = f.querySelector('input[name="save_and_new"]');
+                if (!existing) {
+                    var hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = 'save_and_new';
+                    hidden.value = '1';
+                    f.appendChild(hidden);
+                }
+            }
             setTimeout(function() {
                 f.submit();
             }, 150);

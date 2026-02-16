@@ -289,9 +289,9 @@
     }
 
     document.querySelectorAll('.unit-lesson-video-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', function(e) {
             switchToLesson(this);
-        });
+        }, true);
     });
 
     document.addEventListener('DOMContentLoaded', function() {

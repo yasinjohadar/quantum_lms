@@ -107,13 +107,20 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <button type="button" 
-                                                class="btn btn-sm btn-icon btn-danger-transparent remove-question-btn" 
-                                                title="إزالة من الاختبار"
-                                                data-question-id="{{ $question->id }}"
-                                                data-quiz-id="{{ $quiz->id }}">
-                                            <i class="bi bi-x-lg"></i>
-                                        </button>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <a href="{{ route('admin.questions.edit', [$question->id, 'quiz_id' => $quiz->id]) }}" 
+                                               class="btn btn-sm btn-icon btn-info-transparent" 
+                                               title="تعديل السؤال">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-icon btn-danger-transparent remove-question-btn" 
+                                                    title="إزالة من الاختبار"
+                                                    data-question-id="{{ $question->id }}"
+                                                    data-quiz-id="{{ $quiz->id }}">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             @endforeach
@@ -198,7 +205,7 @@
                         <div class="text-center py-4">
                             <i class="bi bi-search display-6 text-muted"></i>
                             <p class="text-muted mt-2">لا توجد أسئلة متاحة</p>
-                            <a href="{{ route('admin.questions.create') }}" class="btn btn-sm btn-primary">
+                            <a href="{{ route('admin.questions.create', ['quiz_id' => $quiz->id]) }}" class="btn btn-sm btn-primary">
                                 <i class="bi bi-plus-lg me-1"></i> إنشاء سؤال جديد
                             </a>
                         </div>
@@ -285,7 +292,7 @@
                         <a href="{{ route('admin.ai.question-generations.create-advanced', ['quiz_id' => $quiz->id, 'subject_id' => $quiz->subject_id]) }}" class="btn btn-outline-info">
                             <i class="fas fa-magic me-1"></i> توليد أسئلة بالذكاء الاصطناعي
                         </a>
-                        <a href="{{ route('admin.questions.create') }}" class="btn btn-outline-primary">
+                        <a href="{{ route('admin.questions.create', ['quiz_id' => $quiz->id]) }}" class="btn btn-outline-primary">
                             <i class="bi bi-plus-lg me-1"></i> إنشاء سؤال جديد
                         </a>
                         <a href="{{ route('admin.quizzes.show', $quiz->id) }}" class="btn btn-primary">
@@ -306,6 +313,17 @@
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    @if(session('added_question_id'))
+    (function() {
+        var el = document.querySelector('.question-item[data-id="{{ session('added_question_id') }}"]');
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('border', 'border-primary', 'border-2');
+            setTimeout(function() { el.classList.remove('border', 'border-primary', 'border-2'); }, 2500);
+        }
+    })();
+    @endif
+
     const quizQuestions = document.getElementById('quizQuestions');
     
     if (quizQuestions) {

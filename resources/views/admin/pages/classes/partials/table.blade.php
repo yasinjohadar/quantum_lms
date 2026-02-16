@@ -1,5 +1,8 @@
 @forelse($classes as $class)
-    <tr>
+    <tr data-id="{{ $class->id }}">
+        <td class="sortable-handle d-flex align-items-center justify-content-center cursor-grab text-muted py-2" style="width: 36px; min-width: 36px;" title="اسحب لإعادة الترتيب">
+            <i class="bi bi-grip-vertical"></i>
+        </td>
         <td>{{ $loop->iteration + ($classes->currentPage() - 1) * $classes->perPage() }}</td>
         <td>
             <div class="d-flex justify-content-center">
@@ -15,7 +18,6 @@
             </a>
         </td>
         <td>{{ $class->stage?->name ?? '-' }}</td>
-        <td>{{ $class->order }}</td>
         <td>
             @can('class-toggle-status')
                 <button type="button"
@@ -38,7 +40,6 @@
                 @endif
             @endcan
         </td>
-        <td>{{ $class->created_at?->format('Y-m-d H:i') }}</td>
         <td>
             <div class="d-flex gap-1 flex-wrap justify-content-center">
                 @can('class-show')
@@ -83,7 +84,7 @@
     </tr>
 @empty
     <tr>
-        <td colspan="8" class="text-center text-danger fw-bold">
+        <td colspan="7" class="text-center text-danger fw-bold">
             لا توجد صفوف مسجلة حالياً
         </td>
     </tr>

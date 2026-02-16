@@ -2,8 +2,13 @@
     $childSections = $allSections->where('parent_id', $section->id)->sortBy('order');
     $isChildSection = $section->parent_id !== null;
     $isLinkedSection = $section->subject_id != $subject->id;
+    $level = (int) ($sectionLevel ?? 0);
+    $levelIcons = ['bi-folder-fill', 'bi-folder2', 'bi-folder-symlink-fill', 'bi-journal-bookmark', 'bi-collection-fill', 'bi-journal-text'];
+    $levelIcon = $levelIcons[min($level, 5)] ?? 'bi-folder-fill';
+    $levelColorClasses = ['text-primary', 'text-info', 'text-danger', 'text-success', 'text-warning', 'text-secondary'];
+    $levelColorClass = $levelColorClasses[min($level, 5)] ?? 'text-primary';
 @endphp
-<div class="accordion-item mb-3 rounded overflow-hidden {{ $isChildSection ? 'section-item-child border-start border-primary border-3 bg-primary-transparent' : '' }}{{ $isLinkedSection ? ' section-item-linked' : '' }}" data-id="{{ $section->id }}">
+<div class="accordion-item mb-3 rounded overflow-hidden section-level-{{ $level }}{{ $isLinkedSection ? ' section-item-linked' : '' }}" data-id="{{ $section->id }}">
     <h2 class="accordion-header d-flex" id="sectionHeading{{ $section->id }}">
         @if(!$isLinkedSection)
         <span class="sortable-handle d-flex align-items-center px-2 cursor-grab text-muted" title="اسحب لإعادة الترتيب"><i class="bi bi-grip-vertical"></i></span>
@@ -18,14 +23,14 @@
                 data-bs-parent="#{{ $parentAccordionId }}">
             <div class="d-flex align-items-center justify-content-between w-100 me-3">
                 <div class="d-flex align-items-center">
-                    <i class="bi bi-folder-fill text-primary me-2"></i>
+                    <i class="bi {{ $levelIcon }} {{ $levelColorClass }} me-2"></i>
                     @if($isLinkedSection)
                         <span class="badge bg-info-transparent text-info me-2" style="font-size:0.7rem;">مرتبط بمادة أخرى</span>
                     @endif
                     @if($isChildSection)
                         <span class="badge bg-primary-transparent text-primary me-2" style="font-size:0.7rem;">قسم فرعي</span>
                     @endif
-                    <span class="fw-semibold"><span class="sortable-index">{{ ($sectionIndex ?? 0) + 1 }}</span> - {{ $section->title }}</span>
+                    <span class="fw-semibold"><span class="sortable-index">{{ (int)($section->order ?? 0) + 1 }}</span> - {{ $section->title }}</span>
                     @if($section->is_active)
                         <span class="badge bg-success-transparent text-success ms-2">نشط</span>
                     @else
@@ -157,6 +162,7 @@
                                 'subject' => $subject,
                                 'sectionIndex' => $childIndex,
                                 'parentAccordionId' => 'childSectionsAccordion' . $section->id,
+                                'sectionLevel' => min(5, $level + 1),
                             ])
                         @endforeach
                     </div>

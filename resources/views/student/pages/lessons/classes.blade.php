@@ -12,7 +12,6 @@
         <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
             <div>
                 <h4 class="mb-0">الصفوف المشترك فيها</h4>
-                <p class="mb-0 text-muted">عرض الصفوف الدراسية التي أنت مشترك فيها مع المواد الدراسية</p>
             </div>
         </div>
         <!-- End Page Header -->
@@ -25,7 +24,6 @@
                     <h5 class="mb-0 text-warning">مشتريات قيد المراجعة</h5>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted small mb-3">الصفوف أو المواد التي تم شراؤها ولم يتم الموافقة على الدفع بعد</p>
                     <div class="row">
                         @foreach($pendingPurchases as $purchase)
                             <div class="col-md-6 col-lg-4 mb-3">

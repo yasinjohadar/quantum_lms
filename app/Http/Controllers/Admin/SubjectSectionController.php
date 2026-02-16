@@ -45,12 +45,12 @@ class SubjectSectionController extends Controller
                 $data['parent_id'] = null;
             }
 
-            // لو لم يُرسل ترتيب نضعه في آخر القائمة (بين الأخوة فقط)
+            // لو لم يُرسل ترتيب نضعه في آخر القائمة (بين الأخوة فقط)، بأرقام 0، 1، 2... لعرض 1، 2، 3
             if (!isset($data['order']) || $data['order'] === null) {
                 $maxOrder = SubjectSection::where('subject_id', $subject->id)
                     ->where('parent_id', $data['parent_id'])
                     ->max('order');
-                $data['order'] = ($maxOrder ?? 0) + 1;
+                $data['order'] = ($maxOrder ?? -1) + 1;
             }
 
             Log::info('البيانات المجهزة للحفظ:', $data);

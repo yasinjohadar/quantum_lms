@@ -116,12 +116,10 @@
                                             $isSupervisor = $user->hasRole('supervisor') && !$user->hasRole('admin');
                                             if ($isSupervisor) {
                                                 $pendingCount = \App\Models\Lesson::forSupervisor($user->id)->pendingReview()->count() + 
-                                                               \App\Models\Quiz::forSupervisor($user->id)->pendingReview()->count() + 
-                                                               \App\Models\Assignment::forSupervisor($user->id)->pendingReview()->count();
+                                                               \App\Models\Quiz::forSupervisor($user->id)->pendingReview()->count();
                                             } else {
                                                 $pendingCount = \App\Models\Lesson::pendingReview()->count() + 
-                                                               \App\Models\Quiz::pendingReview()->count() + 
-                                                               \App\Models\Assignment::pendingReview()->count();
+                                                               \App\Models\Quiz::pendingReview()->count();
                                             }
                                         @endphp
                                         @if($pendingCount > 0)
@@ -173,6 +171,15 @@
                                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                                         </svg>
                                         <span class="side-menu__label">تخصيص المعلمين</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/teachers/progress*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.teachers.progress.index') }}" class="side-menu__item {{ request()->is('admin/teachers/progress*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
+                                        </svg>
+                                        <span class="side-menu__label">تقدم المعلمين</span>
                                     </a>
                                 </li>
                                 @endcan

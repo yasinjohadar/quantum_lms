@@ -263,12 +263,12 @@
                             <div class="col-md-6">
                                 <div class="form-check form-switch mb-2">
                                     <input class="form-check-input" type="checkbox" name="shuffle_questions" 
-                                           id="shuffleQuestions" {{ old('shuffle_questions') ? 'checked' : '' }}>
+                                           id="shuffleQuestions" {{ old('shuffle_questions', true) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="shuffleQuestions">خلط ترتيب الأسئلة</label>
                                 </div>
                                 <div class="form-check form-switch mb-2">
                                     <input class="form-check-input" type="checkbox" name="shuffle_options" 
-                                           id="shuffleOptions" {{ old('shuffle_options') ? 'checked' : '' }}>
+                                           id="shuffleOptions" {{ old('shuffle_options', true) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="shuffleOptions">خلط ترتيب الخيارات</label>
                                 </div>
                                 <div class="form-check form-switch mb-2">
@@ -304,12 +304,12 @@
                                 </div>
                                 <div class="form-check form-switch mb-2">
                                     <input class="form-check-input" type="checkbox" name="show_correct_answers" 
-                                           id="showCorrect" {{ old('show_correct_answers') ? 'checked' : '' }}>
+                                           id="showCorrect" {{ old('show_correct_answers', true) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="showCorrect">إظهار الإجابات الصحيحة</label>
                                 </div>
                                 <div class="form-check form-switch mb-2">
                                     <input class="form-check-input" type="checkbox" name="show_explanation" 
-                                           id="showExplanation" {{ old('show_explanation') ? 'checked' : '' }}>
+                                           id="showExplanation" {{ old('show_explanation', true) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="showExplanation">إظهار شرح الإجابات</label>
                                 </div>
                                 <div class="form-check form-switch mb-2">

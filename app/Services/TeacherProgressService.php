@@ -1,0 +1,322 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Lesson;
+use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+
+class TeacherProgressService
+{
+    /**
+     * عدد صفحات الدرس (من book_page_from و book_page_to)، أو 1 إذا كانت null.
+     */
+    public static function lessonPageCount(Lesson $lesson): int
+    {
+        $from = $lesson->book_page_from;
+        $to = $lesson->book_page_to;
+        if ($from !== null && $to !== null) {
+            return max(0, $to - $from + 1);
+        }
+        return 1;
+    }
+
+    /**
+     * عدد الدروس المعتمدة في مادة معينة.
+     */
+    public static function getSubjectApprovedLessonsCount(int $subjectId): int
+    {
+        return Lesson::query()
+            ->where('review_status', Lesson::REVIEW_STATUS_APPROVED)
+            ->whereHas('unit', function ($q) use ($subjectId) {
+                $q->whereHas('section', function ($q2) use ($subjectId) {
+                    $q2->where('subject_id', $subjectId);
+                });
+            })
+            ->count();
+    }
+
+    /**
+     * إجمالي الصفحات المنجزة لمادة معينة (دروس معتمدة فقط).
+     */
+    public static function getSubjectCompletedPages(int $subjectId): int
+    {
+        $lessons = Lesson::query()
+            ->where('review_status', Lesson::REVIEW_STATUS_APPROVED)
+            ->whereHas('unit', function ($q) use ($subjectId) {
+                $q->whereHas('section', function ($q2) use ($subjectId) {
+                    $q2->where('subject_id', $subjectId);
+                });
+            })
+            ->get();
+
+        return $lessons->sum(fn (Lesson $l) => self::lessonPageCount($l));
+    }
+
+    /**
+     * تقدم المعلم في الصفحات لكل مادة مخصصة له.
+     * المفتاح: subject_id، القيمة: ['subject' => Subject, 'required_pages' => int, 'completed_pages' => int, 'remaining_pages' => int, 'percentage' => float|null]
+     */
+    public static function getTeacherPagesProgress(User $teacher): array
+    {
+        $result = [];
+        $teacher->load('assignedSubjects');
+        foreach ($teacher->assignedSubjects as $subject) {
+            $required = (int) ($subject->pivot->required_pages ?? 0);
+            $completed = self::getSubjectCompletedPages($subject->id);
+            $remaining = max(0, $required - $completed);
+            $percentage = $required > 0
+                ? min(100.0, round(($completed / $required) * 100, 1))
+                : null;
+
+            $result[] = [
+                'subject' => $subject,
+                'required_pages' => $required,
+                'completed_pages' => $completed,
+                'remaining_pages' => $remaining,
+                'percentage' => $percentage,
+            ];
+        }
+        return $result;
+    }
+
+    /**
+     * عدد الدروس المعتمدة هذا الأسبوع في مواد المعلم (حسب reviewed_at).
+     */
+    public static function getTeacherWeeklyLessonsCompleted(User $teacher): int
+    {
+        $subjectIds = $teacher->assignedSubjects()->pluck('subjects.id')->toArray();
+        if (empty($subjectIds)) {
+            return 0;
+        }
+
+        $startOfWeek = Carbon::now()->startOfWeek();
+        $endOfWeek = Carbon::now()->endOfWeek();
+
+        return Lesson::query()
+            ->where('review_status', Lesson::REVIEW_STATUS_APPROVED)
+            ->whereNotNull('reviewed_at')
+            ->whereBetween('reviewed_at', [$startOfWeek, $endOfWeek])
+            ->whereHas('unit', function ($q) use ($subjectIds) {
+                $q->whereHas('section', function ($q2) use ($subjectIds) {
+                    $q2->whereIn('subject_id', $subjectIds);
+                });
+            })
+            ->count();
+    }
+
+    /**
+     * تقدم المعلم في الدروس الأسبوعية: الهدف، المنفذ، النسبة.
+     */
+    public static function getTeacherWeeklyLessonsProgress(User $teacher): array
+    {
+        $target = (int) ($teacher->weekly_lessons_target ?? 0);
+        $completed = self::getTeacherWeeklyLessonsCompleted($teacher);
+        $percentage = $target > 0
+            ? min(100.0, round(($completed / $target) * 100, 1))
+            : null;
+
+        return [
+            'target' => $target,
+            'completed' => $completed,
+            'percentage' => $percentage,
+        ];
+    }
+
+    /**
+     * تجميع بيانات تقدم كل المعلمين للأدمن.
+     */
+    public static function getAllTeachersProgress(): array
+    {
+        $teachers = User::role('teacher')->with('assignedSubjects')->orderBy('name')->get();
+        $out = [];
+        foreach ($teachers as $teacher) {
+            $out[] = [
+                'teacher' => $teacher,
+                'pages_progress' => self::getTeacherPagesProgress($teacher),
+                'weekly_progress' => self::getTeacherWeeklyLessonsProgress($teacher),
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * ملخص مؤشرات التقدم لعدة معلمين دفعة واحدة (لجدول قائمة المعلمين).
+     * المفتاح: teacher_id، القيمة: مصفوفة تحتوي pages_required, pages_completed, pages_percentage,
+     * weekly_target, weekly_completed, weekly_percentage, total_approved_lessons.
+     *
+     * @param  Collection<int, User>  $teachers  المعلمون مع تحميل assignedSubjects
+     * @return array<int, array{pages_required: int, pages_completed: int, pages_percentage: float|null, weekly_target: int, weekly_completed: int, weekly_percentage: float|null, total_approved_lessons: int}>
+     */
+    public static function getTeachersProgressSummary(Collection $teachers): array
+    {
+        if ($teachers->isEmpty()) {
+            return [];
+        }
+
+        $teacherIds = $teachers->pluck('id')->toArray();
+        $subjectIds = [];
+        $teacherSubjectRequired = []; // teacher_id => subject_id => required_pages
+        $teacherSubjectIds = [];      // teacher_id => [subject_id, ...]
+
+        foreach ($teachers as $teacher) {
+            $tid = $teacher->id;
+            $teacherSubjectRequired[$tid] = [];
+            $teacherSubjectIds[$tid] = [];
+            foreach ($teacher->assignedSubjects ?? [] as $subject) {
+                $sid = $subject->id;
+                $subjectIds[$sid] = true;
+                $teacherSubjectIds[$tid][] = $sid;
+                $teacherSubjectRequired[$tid][$sid] = (int) ($subject->pivot->required_pages ?? 0);
+            }
+        }
+
+        $subjectIds = array_keys($subjectIds);
+        if (empty($subjectIds)) {
+            $bySubjectPages = [];
+            $bySubjectCount = [];
+            $bySubjectWeekly = [];
+        } else {
+            $bySubjectPages = DB::table('lessons as l')
+                ->join('units as u', 'u.id', '=', 'l.unit_id')
+                ->join('subject_sections as ss', 'ss.id', '=', 'u.section_id')
+                ->where('l.review_status', Lesson::REVIEW_STATUS_APPROVED)
+                ->whereIn('ss.subject_id', $subjectIds)
+                ->whereNull('l.deleted_at')
+                ->whereNull('u.deleted_at')
+                ->whereNull('ss.deleted_at')
+                ->selectRaw('ss.subject_id as subject_id, SUM(CASE WHEN l.book_page_from IS NOT NULL AND l.book_page_to IS NOT NULL THEN GREATEST(0, l.book_page_to - l.book_page_from + 1) ELSE 1 END) as completed_pages')
+                ->groupBy('ss.subject_id')
+                ->pluck('completed_pages', 'subject_id')
+                ->map(fn ($v) => (int) $v)
+                ->all();
+
+            $bySubjectCount = DB::table('lessons as l')
+                ->join('units as u', 'u.id', '=', 'l.unit_id')
+                ->join('subject_sections as ss', 'ss.id', '=', 'u.section_id')
+                ->where('l.review_status', Lesson::REVIEW_STATUS_APPROVED)
+                ->whereIn('ss.subject_id', $subjectIds)
+                ->whereNull('l.deleted_at')
+                ->whereNull('u.deleted_at')
+                ->whereNull('ss.deleted_at')
+                ->selectRaw('ss.subject_id as subject_id, COUNT(*) as cnt')
+                ->groupBy('ss.subject_id')
+                ->pluck('cnt', 'subject_id')
+                ->map(fn ($v) => (int) $v)
+                ->all();
+
+            $startOfWeek = Carbon::now()->startOfWeek();
+            $endOfWeek = Carbon::now()->endOfWeek();
+            $bySubjectWeekly = DB::table('lessons as l')
+                ->join('units as u', 'u.id', '=', 'l.unit_id')
+                ->join('subject_sections as ss', 'ss.id', '=', 'u.section_id')
+                ->where('l.review_status', Lesson::REVIEW_STATUS_APPROVED)
+                ->whereNotNull('l.reviewed_at')
+                ->whereBetween('l.reviewed_at', [$startOfWeek, $endOfWeek])
+                ->whereIn('ss.subject_id', $subjectIds)
+                ->whereNull('l.deleted_at')
+                ->whereNull('u.deleted_at')
+                ->whereNull('ss.deleted_at')
+                ->selectRaw('ss.subject_id as subject_id, COUNT(*) as cnt')
+                ->groupBy('ss.subject_id')
+                ->pluck('cnt', 'subject_id')
+                ->map(fn ($v) => (int) $v)
+                ->all();
+        }
+
+        $result = [];
+        foreach ($teachers as $teacher) {
+            $tid = $teacher->id;
+            $subjectIdsForTeacher = $teacherSubjectIds[$tid] ?? [];
+            $requiredBySubject = $teacherSubjectRequired[$tid] ?? [];
+
+            $pages_required = 0;
+            $pages_completed = 0;
+            $total_approved_lessons = 0;
+            $weekly_completed = 0;
+
+            foreach ($subjectIdsForTeacher as $sid) {
+                $pages_required += $requiredBySubject[$sid] ?? 0;
+                $pages_completed += (int) ($bySubjectPages[$sid] ?? 0);
+                $total_approved_lessons += (int) ($bySubjectCount[$sid] ?? 0);
+                $weekly_completed += (int) ($bySubjectWeekly[$sid] ?? 0);
+            }
+
+            $pages_percentage = $pages_required > 0
+                ? min(100.0, round(($pages_completed / $pages_required) * 100, 1))
+                : null;
+
+            $weekly_target = (int) ($teacher->weekly_lessons_target ?? 0);
+            $weekly_percentage = $weekly_target > 0
+                ? min(100.0, round(($weekly_completed / $weekly_target) * 100, 1))
+                : null;
+
+            $result[$tid] = [
+                'pages_required' => $pages_required,
+                'pages_completed' => $pages_completed,
+                'pages_percentage' => $pages_percentage,
+                'weekly_target' => $weekly_target,
+                'weekly_completed' => $weekly_completed,
+                'weekly_percentage' => $weekly_percentage,
+                'total_approved_lessons' => $total_approved_lessons,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * إحصائيات تفصيلية لمعلم واحد (لصفحة تفاصيل التقدم).
+     * ترجع: teacher, pages_progress (مع approved_lessons_count لكل مادة), weekly_progress,
+     * total_approved_lessons, total_pages_required, total_pages_completed, total_pages_percentage.
+     */
+    public static function getTeacherDetailStats(User $teacher): array
+    {
+        $teacher->load('assignedSubjects');
+        $pages_progress = self::getTeacherPagesProgress($teacher);
+        $subjectIds = array_map(fn ($row) => $row['subject']->id, $pages_progress);
+
+        $bySubjectCount = [];
+        if (! empty($subjectIds)) {
+            $bySubjectCount = DB::table('lessons as l')
+                ->join('units as u', 'u.id', '=', 'l.unit_id')
+                ->join('subject_sections as ss', 'ss.id', '=', 'u.section_id')
+                ->where('l.review_status', Lesson::REVIEW_STATUS_APPROVED)
+                ->whereIn('ss.subject_id', $subjectIds)
+                ->whereNull('l.deleted_at')
+                ->whereNull('u.deleted_at')
+                ->whereNull('ss.deleted_at')
+                ->selectRaw('ss.subject_id as subject_id, COUNT(*) as cnt')
+                ->groupBy('ss.subject_id')
+                ->pluck('cnt', 'subject_id')
+                ->map(fn ($v) => (int) $v)
+                ->all();
+        }
+
+        $total_approved_lessons = 0;
+        foreach ($pages_progress as &$row) {
+            $cnt = (int) ($bySubjectCount[$row['subject']->id] ?? 0);
+            $row['approved_lessons_count'] = $cnt;
+            $total_approved_lessons += $cnt;
+        }
+        unset($row);
+
+        $total_pages_required = array_sum(array_column($pages_progress, 'required_pages'));
+        $total_pages_completed = array_sum(array_column($pages_progress, 'completed_pages'));
+        $total_pages_percentage = $total_pages_required > 0
+            ? min(100.0, round(($total_pages_completed / $total_pages_required) * 100, 1))
+            : null;
+
+        return [
+            'teacher' => $teacher,
+            'pages_progress' => $pages_progress,
+            'weekly_progress' => self::getTeacherWeeklyLessonsProgress($teacher),
+            'total_approved_lessons' => $total_approved_lessons,
+            'total_pages_required' => $total_pages_required,
+            'total_pages_completed' => $total_pages_completed,
+            'total_pages_percentage' => $total_pages_percentage,
+        ];
+    }
+}
