@@ -191,6 +191,7 @@ class ClassController extends Controller
             $data['order'] = $request->input('order', 0);
             $data['price'] = $request->input('price', 0);
             $data['is_free'] = $request->has('is_free') || $request->input('price', 0) == 0;
+            $data['allow_subjects_purchase'] = $request->has('allow_subjects_purchase');
             $data['default_currency_id'] = $request->input('default_currency_id');
 
             $class = SchoolClass::create($data);
@@ -346,6 +347,7 @@ class ClassController extends Controller
             $data['order'] = $request->input('order', $class->order);
             $data['price'] = $request->input('price', 0);
             $data['is_free'] = $request->has('is_free') || $request->input('price', 0) == 0;
+            $data['allow_subjects_purchase'] = $request->has('allow_subjects_purchase');
             $data['default_currency_id'] = $request->input('default_currency_id');
 
             $class->update($data);

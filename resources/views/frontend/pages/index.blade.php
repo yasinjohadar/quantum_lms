@@ -32,14 +32,11 @@
                     <div class="hero-slide-bg" @if($slide->background_image ?? null) style="background-image: url('{{ asset('storage/' . $slide->background_image) }}');" @endif></div>
                     <div class="container hero-slide-content-wrapper h-100">
                         @php
-                                $textPos = $slide->text_position ?? 'right';
-                                $textOrder = $textPos === 'right' ? 1 : 2;
-                                $imgOrder = $textPos === 'right' ? 2 : 1;
-                                $textAlign = $textPos === 'right' ? 'text-end' : 'text-start';
-                            @endphp
-                        <div class="row align-items-center h-100">
-                            <div class="col-md-6 col-lg-5 order-md-{{ $textOrder }}">
-                                <div class="hero-content {{ $textAlign }}">
+                            $textPos = $slide->text_position ?? 'right';
+                        @endphp
+                        <div class="row align-items-center justify-content-center h-100">
+                            <div class="col-12 col-lg-8">
+                                <div class="hero-content text-center">
                                     @if(!empty($slide->subtitle ?? null))
                                         <span class="hero-badge">{{ $slide->subtitle }}</span>
                                     @endif
@@ -61,23 +58,6 @@
                                                     <i class="fa-solid fa-angles-left ms-2"></i>
                                                 </a>
                                             @endif
-                                        </div>
-                                    @endif
-                                </div>
-                            </div>
-                            <div class="col-md-6 col-lg-7 order-md-{{ $imgOrder }} hero-image-col h-100">
-                                <div class="hero-images position-relative h-100 w-100">
-                                    @if(!empty($slide->content_image ?? null))
-                                        <div class="hero-main-image">
-                                            @php
-                                                $ci = $slide->content_image ?? '';
-                                                $contentImgSrc = (is_string($ci) && (str_starts_with($ci, 'http') || str_starts_with($ci, '//'))) ? $ci : (str_starts_with($ci, 'hero-slides') ? asset('storage/' . $ci) : asset($ci));
-                                            @endphp
-                                            <img src="{{ $contentImgSrc }}" alt="{{ $slide->title ?? 'Hero' }}" />
-                                        </div>
-                                    @else
-                                        <div class="hero-main-image">
-                                            <img src="{{ asset('frontend/images/hero-img.png') }}" alt="Hero" />
                                         </div>
                                     @endif
                                 </div>
@@ -213,16 +193,8 @@
     <div class="container reviews-swiper-section">
         <div class="row mb-3">
             <div class="col-12 text-center">
-                <h2 class="section-title">آراء الطلاب</h2>
-                <p class="section-description mb-0">ماذا يقول طلابنا عن المنصة</p>
+                <h2 class="section-title">متفوقو أكاديمية كوانتم</h2>
             </div>
-            @auth
-            <div class="col-12 text-center mt-3">
-                <button type="button" class="btn btn-primary btn-gold" data-bs-toggle="modal" data-bs-target="#reviewModal">
-                    <i class="fa-solid fa-star me-2"></i>تقييم المنصة
-                </button>
-            </div>
-            @endauth
         </div>
 
         @auth
@@ -368,11 +340,12 @@ document.addEventListener('DOMContentLoaded', function () {
     new Swiper('.classes-swiper', {
         dir: 'rtl',
         loop: true,
-        spaceBetween: 24,
-        slidesPerView: 1,
+        spaceBetween: 16,
+        centeredSlides: true,
+        centeredSlidesBounds: true,
+        slidesPerView: 'auto',
         breakpoints: {
-            576: { slidesPerView: 2 },
-            992: { slidesPerView: 3 }
+            992: { slidesPerView: 3, centeredSlides: false }
         },
         navigation: {
             nextEl: '.classes-swiper-section .swiper-button-next',

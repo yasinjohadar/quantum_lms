@@ -9,7 +9,7 @@
             <div class="col-lg-4 col-md-6">
                 <div class="frontend-footer__brand">
                     <a href="/" class="frontend-footer__logo">
-                        <img src="{{ asset('frontend/images/logo-footer.webp') }}" alt="logo">
+                        <img src="{{ asset('frontend/images/logo.png') }}" alt="logo">
                     </a>
                     <p class="frontend-footer__desc">
                         منصة تعليمية حديثة تساعدك على اختيار الصف والمادة المناسبة والبدء بالتعلم بسهولة.

@@ -18,11 +18,13 @@ a {
     max-height: none !important;
 }
 
-/* التأكد من أن صفحة الإشعارات تعرض المحتوى بشكل صحيح */
-body .main-content.app-content,
-body .container-fluid,
-body .page {
-    overflow: visible !important;
+/* التأكد من أن صفحة الإشعارات تعرض المحتوى بشكل صحيح (شاشات كبيرة فقط) */
+@media (min-width: 992px) {
+    body .main-content.app-content,
+    body .container-fluid,
+    body .page {
+        overflow: visible !important;
+    }
 }
 
 /* تبويبات الصفوف في صفحة صفوفي (الطالب) */
@@ -83,6 +85,19 @@ body .page {
     .subject-cards-row > .col {
         flex: 0 0 calc((100% - 4 * 0.75rem) / 5);
         max-width: calc((100% - 4 * 0.75rem) / 5);
+    }
+}
+@media (max-width: 991px) {
+    .subject-cards-row {
+        gap: 0.35rem;
+    }
+    .subject-cards-row > .col {
+        flex: 0 0 calc(50% - 0.175rem);
+        max-width: calc(50% - 0.175rem);
+        padding: 0.2rem !important;
+    }
+    .subject-cards-row .card.custom-card {
+        margin: 0;
     }
 }
 
@@ -155,6 +170,93 @@ a:hover .folder-card .card-body i[class*="bi-"] {
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
 }
 
+/* تصفير الهوامش على الجوال لاستغلال أكبر مساحة للمحتوى */
+@media (max-width: 991px) {
+    .main-content.app-content {
+        padding-inline: 0 !important;
+    }
+    .main-content.app-content .container-fluid {
+        padding-inline: 0.5rem !important;
+        max-width: 100%;
+    }
+    /* تقليل هوامش كارد التبويبات (الصفوف) */
+    .card.custom-card:has(.student-class-tabs) .card-header {
+        padding-inline: 0.35rem !important;
+        padding-block: 0.4rem !important;
+    }
+    .card.custom-card:has(.student-class-tabs) .card-body {
+        padding-inline: 0.35rem !important;
+        padding-top: 0.5rem !important;
+    }
+    .student-class-tabs .nav-link {
+        padding: 0.5rem 0.6rem !important;
+        font-size: 0.9rem;
+    }
+}
+
+/* منع السكرول الأفقي وضبط عرض المحتوى على الجوال */
+@media (max-width: 991.98px) {
+    html, body {
+        overflow-x: hidden !important;
+        max-width: 100vw;
+    }
+    .page {
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+    }
+    .app-header {
+        max-width: 100vw;
+    }
+    .main-content.app-content {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin-inline-start: 0 !important;
+        overflow-x: hidden !important;
+        min-width: 0 !important;
+    }
+    .main-content.app-content .container-fluid {
+        max-width: 100% !important;
+        min-width: 0 !important;
+    }
+    .main-content.app-content .row {
+        max-width: 100%;
+        min-width: 0;
+    }
+    /* منع النص الطويل (مثل breadcrumb) من توسيع الصفحة */
+    .main-content .page-header-breadcrumb .breadcrumb,
+    .main-content .breadcrumb {
+        flex-wrap: wrap;
+    }
+    .main-content .page-header-breadcrumb .breadcrumb-item,
+    .main-content .breadcrumb .breadcrumb-item {
+        white-space: normal;
+    }
+    .app-header .main-header-container {
+        max-width: 100%;
+    }
+    /* منع السايدبار المغلوق من إضافة عرض للصفحة */
+    [data-toggled=close] .app-sidebar {
+        overflow: hidden;
+    }
+}
+/* ضبط الهوامش الأفقية (صفحة الاختبار وغيرها) على الشاشات الصغيرة */
+@media (max-width: 767.98px) {
+    .main-content.app-content .container-fluid {
+        padding-inline: 0.35rem !important;
+    }
+    .main-content.app-content .row {
+        --bs-gutter-x: 0.5rem;
+    }
+}
+@media (max-width: 575.98px) {
+    .main-content.app-content .container-fluid {
+        padding-inline: 0.25rem !important;
+    }
+    .main-content.app-content .row {
+        --bs-gutter-x: 0.5rem;
+    }
+}
+
 /* أيقونات مجلدات على طراز لينكس (Papirus/Tango): استبدال أيقونة الخط بـ SVG */
 .folder-card .card-body i.bi-folder2-open.text-warning,
 .folder-card .card-body i.bi-folder2-open {
@@ -185,3 +287,16 @@ a:hover .folder-card .card-body i[class*="bi-"] {
     vertical-align: middle;
 }
 
+/* إخفاء فوتر لوحة الطالب على الهاتف */
+@media (max-width: 767.98px) {
+    .student-footer {
+        display: none !important;
+    }
+}
+
+/* رفع المحتوى لأعلى الشاشة على الجوال — إزالة الفراغ الرمادي فوق الهيدر */
+@media (max-width: 991.98px) {
+    .page {
+        justify-content: flex-start !important;
+    }
+}

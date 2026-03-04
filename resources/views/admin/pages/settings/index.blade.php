@@ -71,6 +71,10 @@
                                                     <i class="fas fa-paper-plane me-2 text-success"></i>مزود إرسال كود التحقق
                                                 @elseif($setting->key === 'platform_reviews_display_limit')
                                                     <i class="fas fa-star me-2 text-warning"></i>عدد آراء الطلاب المعروضة في السلايدر (الصفحة الرئيسية)
+                                                @elseif($setting->key === 'whatsapp_contact_number')
+                                                    <i class="fab fa-whatsapp me-2 text-success"></i>رقم واتساب للتواصل
+                                                @elseif($setting->key === 'whatsapp_float_button_enabled')
+                                                    <i class="fas fa-eye me-2 text-info"></i>إظهار أيقونة واتساب العائمة
                                                 @else
                                                     {{ $setting->key }}
                                                 @endif
@@ -87,8 +91,16 @@
                                                     <option value="whatsapp" {{ $setting->value === 'whatsapp' ? 'selected' : '' }}>WhatsApp</option>
                                                     <option value="sms" {{ $setting->value === 'sms' ? 'selected' : '' }}>SMS</option>
                                                 </select>
+                                            @elseif($setting->key === 'whatsapp_contact_number')
+                                                <input type="text" 
+                                                       class="form-control" 
+                                                       name="settings[{{ $setting->key }}]" 
+                                                       id="setting_{{ $setting->id }}" 
+                                                       value="{{ $setting->value }}" 
+                                                       placeholder="963912345678">
                                             @elseif($setting->type === 'boolean')
                                                 <div class="form-check form-switch">
+                                                    <input type="hidden" name="settings[{{ $setting->key }}]" value="0">
                                                     <input class="form-check-input" type="checkbox" 
                                                            name="settings[{{ $setting->key }}]" 
                                                            value="1" 

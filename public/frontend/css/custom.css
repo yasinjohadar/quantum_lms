@@ -126,7 +126,7 @@ html[data-bs-theme="dark"] {
     border-radius: 12px;
     background: rgba(5, 85, 162, 0.06);
     border: 1px solid rgba(5, 85, 162, 0.12);
-    color: var(--secondary-Color);
+    color: var(--brand-gold);
     transition: all 0.2s ease;
 }
 
@@ -149,6 +149,31 @@ html[data-bs-theme="dark"] {
     color: var(--secondary-Color);
     transition: all 0.2s ease;
     cursor: pointer;
+}
+
+@media (max-width: 991px) {
+    .buttom-header .navbar .container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .header-social {
+        position: static;
+        transform: none;
+        left: auto;
+        top: auto;
+        gap: 8px;
+    }
+
+    /* إخفاء أيقونات السوشيال على الجوال، والإبقاء على زر الثيم فقط */
+    .header-social__icons {
+        display: none;
+    }
+
+    .header-theme-toggle {
+        margin-inline-end: 6px;
+    }
 }
 
 .header-theme-toggle:hover {
@@ -238,9 +263,10 @@ a {
 
 /* Header Dark Mode (Bootstrap data-bs-theme) */
 #siteHeader[data-bs-theme="dark"] .top-header {
-    background-color: var(--bs-body-bg);
+    /* خلفية داكنة ثابتة قريبة من صورة المثال */
+    background-color: #020817;
     border-bottom-color: rgba(255, 255, 255, 0.12);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
 }
 
 #siteHeader[data-bs-theme="dark"] .left-header a {
@@ -263,7 +289,37 @@ a {
 }
 
 #siteHeader[data-bs-theme="dark"] .buttom-header {
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    /* نفس لون الخلفية العلوية لضبط التناسق */
+    background-color: #020817;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.65);
+}
+
+/* إلغاء خلفية Bootstrap للـ nav الداخلي في الوضع الليلي */
+#siteHeader[data-bs-theme="dark"] .buttom-header .navbar,
+#siteHeader[data-bs-theme="dark"] .buttom-header .navbar.bg-body-tertiary {
+    background-color: #020817 !important;
+    background: #020817 !important;
+}
+
+/* Navbar links color confirmation in dark mode */
+#siteHeader[data-bs-theme="dark"] .buttom-header .nav-link {
+    color: var(--text-primary);
+}
+
+/* Header social & theme toggle in dark mode */
+#siteHeader[data-bs-theme="dark"] .header-social__link,
+#siteHeader[data-bs-theme="dark"] .header-theme-toggle {
+    background-color: #020817;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: var(--brand-gold);
+}
+
+#siteHeader[data-bs-theme="dark"] .header-social__link:hover,
+#siteHeader[data-bs-theme="dark"] .header-theme-toggle:hover {
+    background-color: #111827;
+    border-color: rgba(212, 175, 55, 0.55);
+    color: var(--brand-gold);
 }
 
 /* /////////////////////////////////////////////////// */
@@ -299,6 +355,9 @@ a {
 .hero-swiper-section .hero-slide-content-wrapper {
     position: relative;
     z-index: 2;
+    height: 100%;
+    display: flex;
+    align-items: center;
 }
 
 .hero-swiper-section .hero-content {
@@ -307,7 +366,10 @@ a {
     width: 100%;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
+    text-align: center;
+    justify-content: center;
+    min-height: 100%;
 }
 
 .hero-swiper-section .hero-content .hero-title,
@@ -317,10 +379,8 @@ a {
 
 .hero-swiper-section .hero-actions {
     width: 100%;
-}
-
-[dir="rtl"] .hero-swiper-section .hero-actions {
-    justify-content: flex-start;
+    display: flex;
+    justify-content: center !important;
 }
 
 .hero-swiper-section .hero-image-col {
@@ -390,13 +450,13 @@ a {
     height: 4px;
     margin: 0 !important;
     border-radius: 2px;
-    background: rgba(255, 255, 255, 0.4);
+    background: rgba(212, 175, 55, 0.35);
     opacity: 1;
     transition: background 0.2s ease, width 0.2s ease;
 }
 
 .hero-swiper-section .swiper-pagination-bullet-active {
-    background: rgba(255, 255, 255, 1);
+    background: rgba(212, 175, 55, 1);
     width: 36px;
 }
 
@@ -735,7 +795,7 @@ a {
     /* Hero swiper – ارتفاع واستيعاب المحتوى على الجوال */
     .hero-swiper-section {
         height: auto;
-        min-height: 100vh;
+        min-height: auto;
     }
 
     .hero-swiper-section .hero-swiper,
@@ -813,7 +873,12 @@ a {
 
 .classes-section {
     background: var(--bg-light);
-    padding: 80px 0;
+    padding: 48px 0 40px;
+}
+
+.classes-section.py-5 {
+    padding-top: 48px !important;
+    padding-bottom: 40px !important;
 }
 
 .section-title {
@@ -1325,7 +1390,21 @@ a {
 /* Responsive Classes Section */
 @media (max-width: 991px) {
     .classes-section {
-        padding: 60px 0;
+        padding: 36px 0 32px;
+    }
+    
+    .classes-section.py-5 {
+        padding-top: 36px !important;
+        padding-bottom: 32px !important;
+    }
+    
+    .reviews-section {
+        padding: 32px 0 40px;
+    }
+    
+    .reviews-section.py-5 {
+        padding-top: 32px !important;
+        padding-bottom: 40px !important;
     }
     
     .section-title {
@@ -1336,7 +1415,49 @@ a {
 
 @media (max-width: 768px) {
     .classes-section {
-        padding: 40px 0;
+        padding: 20px 0 16px;
+    }
+    
+    .classes-section.py-5 {
+        padding-top: 20px !important;
+        padding-bottom: 16px !important;
+    }
+    
+    .classes-swiper-section {
+        padding-bottom: 0.75rem;
+    }
+    
+    .classes-swiper .swiper-pagination {
+        margin-top: 0.5rem;
+    }
+    
+    .classes-section .row.mb-3 {
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .reviews-section {
+        padding: 20px 0 28px;
+    }
+    
+    .reviews-section.py-5 {
+        padding-top: 20px !important;
+        padding-bottom: 28px !important;
+    }
+    
+    .reviews-swiper-section {
+        padding-bottom: 0.75rem;
+    }
+    
+    .reviews-swiper .swiper-pagination {
+        margin-top: 0.5rem;
+    }
+    
+    .reviews-section .row.mb-3 {
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .reviews-section .mt-3 {
+        margin-top: 0.75rem !important;
     }
     
     .section-title {
@@ -1358,7 +1479,7 @@ a {
 
 /* Classes Swiper (Homepage) */
 .classes-swiper-section {
-    padding-bottom: 2.5rem;
+    padding-bottom: 1.25rem;
 }
 
 .classes-swiper {
@@ -1374,6 +1495,12 @@ a {
     height: auto;
     display: flex;
     min-height: 0;
+}
+
+@media (max-width: 991px) {
+    .classes-swiper .swiper-slide {
+        width: 82%;
+    }
 }
 
 .classes-swiper .swiper-slide .class-card-wrapper {
@@ -1436,12 +1563,12 @@ a {
 
 .classes-swiper .swiper-pagination {
     position: relative;
-    margin-top: 1.25rem;
+    margin-top: 0.75rem;
 }
 
 .classes-swiper .swiper-pagination-bullet {
-    background: var(--text-muted);
-    opacity: 0.6;
+    background: rgba(212, 175, 55, 0.35);
+    opacity: 0.7;
     width: 8px;
     height: 8px;
     border-radius: 5px;
@@ -1449,18 +1576,23 @@ a {
 }
 
 .classes-swiper .swiper-pagination-bullet-active {
-    background: var(--secondary-Color);
+    background: rgba(212, 175, 55, 1);
     opacity: 1;
 }
 
 /* Reviews Section (Homepage) */
 .reviews-section {
     background: var(--bg-light);
-    padding: 80px 0;
+    padding: 40px 0 48px;
+}
+
+.reviews-section.py-5 {
+    padding-top: 40px !important;
+    padding-bottom: 48px !important;
 }
 
 .reviews-swiper-section {
-    padding-bottom: 2.5rem;
+    padding-bottom: 1.25rem;
 }
 
 .reviews-swiper {
@@ -1658,11 +1790,21 @@ a {
 
 .reviews-swiper .swiper-pagination {
     position: relative;
-    margin-top: 1.25rem;
+    margin-top: 0.75rem;
 }
 
 .reviews-swiper .swiper-pagination-bullet {
+    background: rgba(212, 175, 55, 0.35);
+    opacity: 0.7;
+    width: 8px;
+    height: 8px;
     border-radius: 5px;
+    transition: opacity 0.2s, background 0.2s;
+}
+
+.reviews-swiper .swiper-pagination-bullet-active {
+    background: rgba(212, 175, 55, 1);
+    opacity: 1;
 }
 
 .review-form-card {
@@ -1690,7 +1832,7 @@ a {
 
 @media (max-width: 768px) {
     .reviews-section {
-        padding: 40px 0;
+        padding: 20px 0 28px;
     }
     .review-form-card {
         padding: 1.25rem;
@@ -2818,5 +2960,43 @@ html[data-bs-theme="dark"] .payment-info-item {
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
+    }
+}
+
+/* WhatsApp floating button – أيقونة واتساب عائمة */
+.whatsapp-float-btn {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #25d366;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    box-shadow: 0 4px 20px rgba(37, 211, 102, 0.45);
+    z-index: 9999;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    text-decoration: none;
+    animation: whatsapp-float-pulse 2s ease-in-out infinite;
+}
+
+.whatsapp-float-btn:hover {
+    color: #fff;
+    transform: scale(1.08);
+    box-shadow: 0 6px 24px rgba(37, 211, 102, 0.55);
+}
+
+@keyframes whatsapp-float-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 4px 20px rgba(37, 211, 102, 0.45);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 6px 28px rgba(37, 211, 102, 0.55);
     }
 }

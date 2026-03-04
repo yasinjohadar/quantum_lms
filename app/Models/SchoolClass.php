@@ -34,6 +34,7 @@ class SchoolClass extends Model
         'price',
         'is_free',
         'default_currency_id',
+        'allow_subjects_purchase',
     ];
 
     /**
@@ -47,6 +48,7 @@ class SchoolClass extends Model
         'stage_id' => 'integer',
         'price' => 'decimal:2',
         'is_free' => 'boolean',
+        'allow_subjects_purchase' => 'boolean',
     ];
 
     protected static function boot()

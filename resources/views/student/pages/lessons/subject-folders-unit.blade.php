@@ -6,25 +6,7 @@
 
 @section('content')
 <div class="main-content app-content">
-    <div class="container-fluid">
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div>
-                <h4 class="mb-0">{{ $unit->title }}</h4>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('student.subjects') }}">المواد الدراسية</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('student.subjects.show', $subject) }}">{{ $subject->name }}</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('student.subjects.folders', $subject) }}">عرض المجلدات</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('student.subjects.folders.section', [$subject, $section]) }}">{{ $section->title }}</a></li>
-                        <li class="breadcrumb-item active">{{ $unit->title }}</li>
-                    </ol>
-                </nav>
-            </div>
-            <a href="{{ route('student.subjects.show', $subject) }}" class="btn btn-outline-primary btn-sm">
-                <i class="bi bi-card-list me-1"></i> العرض العادي
-            </a>
-        </div>
+    <div class="container-fluid pt-3">
 
         @if(session('error'))
             <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
@@ -118,8 +100,8 @@
                         $posterUrl = $lesson->thumbnail ? asset('storage/' . $lesson->thumbnail) : '';
                     @endphp
                     <div class="accordion-item">
-                        <h2 class="accordion-header" id="lesson-heading-{{ $lesson->id }}">
-                            <button class="accordion-button unit-lesson-video-btn {{ $lessonIndex > 0 ? 'collapsed' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#lesson-{{ $lesson->id }}" aria-expanded="{{ $lessonIndex === 0 ? 'true' : 'false' }}"
+                        <h2 class="accordion-header d-flex align-items-stretch" id="lesson-heading-{{ $lesson->id }}">
+                            <button class="accordion-button unit-lesson-video-btn flex-grow-1 {{ $lessonIndex > 0 ? 'collapsed' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#lesson-{{ $lesson->id }}" aria-expanded="{{ $lessonIndex === 0 ? 'true' : 'false' }}"
                                 data-lesson-id="{{ $lesson->id }}"
                                 data-embed-url="{{ $hasVideo ? e($embedUrl) : '' }}"
                                 data-video-type="{{ e($actualType) }}"
@@ -128,16 +110,22 @@
                                 <i class="bi bi-play-circle me-2 text-primary"></i>
                                 {{ $lesson->title }}
                             </button>
+                            <div class="d-flex align-items-center gap-1 px-2 flex-shrink-0" onclick="event.stopPropagation()">
+                                @if($lesson->quizzes && $lesson->quizzes->count() > 0)
+                                    <a href="{{ route('student.quizzes.start', $lesson->quizzes->first()) }}" class="btn btn-sm btn-link p-1 text-info" title="بدء الاختبار" aria-label="بدء الاختبار">
+                                        <i class="bi bi-clipboard-check fs-5"></i>
+                                    </a>
+                                @endif
+                                @if($lesson->attachments && $lesson->attachments->count() > 0)
+                                    @php $firstAtt = $lesson->attachments->first(); @endphp
+                                    <a href="{{ $firstAtt->access_url }}" target="_blank" rel="noopener noreferrer" @if($firstAtt->type !== 'link' && $firstAtt->is_downloadable) download @endif class="btn btn-sm btn-link p-1 text-success" title="تحميل/عرض الملحق" aria-label="الملحق">
+                                        <i class="bi bi-paperclip fs-5"></i>
+                                    </a>
+                                @endif
+                            </div>
                         </h2>
                         <div id="lesson-{{ $lesson->id }}" class="accordion-collapse collapse {{ $lessonIndex === 0 ? 'show' : '' }}" data-bs-parent="#unitContentAccordion">
-                            <div class="accordion-body">
-                                @if($lesson->description)
-                                    <p class="text-muted small mb-3">{{ \Illuminate\Support\Str::limit($lesson->description, 150) }}</p>
-                                @endif
-                                <a href="{{ route('student.lessons.show.folders', $lesson) }}" class="btn btn-primary btn-sm">
-                                    <i class="bi bi-play-fill me-1"></i> عرض الدرس
-                                </a>
-                            </div>
+                            <div class="accordion-body py-1"></div>
                         </div>
                     </div>
                 @endforeach

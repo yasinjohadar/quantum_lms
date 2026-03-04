@@ -6,27 +6,9 @@
 <!-- Start::app-content -->
 <div class="main-content app-content">
     <div class="container-fluid">
-        <!-- Page Header -->
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div>
-                <h4 class="mb-0">{{ $quiz->title }}</h4>
-                <p class="mb-0 text-muted">
-                    @if($quiz->subject)
-                        {{ $quiz->subject->name }}
-                        @if($quiz->unit) - {{ $quiz->unit->title }} @endif
-                    @endif
-                </p>
-            </div>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('student.subjects') }}">المواد الدراسية</a></li>
-                    @if($quiz->subject)
-                        <li class="breadcrumb-item"><a href="{{ route('student.subjects.show', $quiz->subject->id) }}">{{ $quiz->subject->name }}</a></li>
-                    @endif
-                    <li class="breadcrumb-item active">{{ $quiz->title }}</li>
-                </ol>
-            </nav>
+        <!-- Page Header: العنوان الرئيسي فقط -->
+        <div class="my-2 my-md-3">
+            <h5 class="mb-0 fw-semibold text-body">{{ $quiz->title }}</h5>
         </div>
         <!-- End Page Header -->
 

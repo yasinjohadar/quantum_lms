@@ -17,6 +17,8 @@
     
     @stack('scripts')
 
+    @include('frontend.partials.whatsapp-float')
+
 </body>
 
 </html>

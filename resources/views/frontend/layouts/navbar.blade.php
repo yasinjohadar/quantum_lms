@@ -39,7 +39,7 @@ header .navbar-nav .nav-link {
 
                 <div class="col-6 col-md-4">
                     <a href="/">
-                        <img width="55" style="max-height:42px;height:auto;width:auto;" src="{{ asset('frontend/images/logo-footer.webp') }}" alt="logo">
+                        <img width="55" style="max-height:42px;height:auto;width:auto;" src="{{ asset('frontend/images/logo.png') }}" alt="logo">
                     </a>
                 </div>
 

@@ -24,6 +24,7 @@ use App\Listeners\SendRealTimeNotification;
 use App\Listeners\SendLibraryItemNotification;
 use App\Listeners\SendEventReminderNotification;
 use App\Models\SchoolClass;
+use App\Models\SystemSetting;
 use Illuminate\Pagination\Paginator;
 
 class AppServiceProvider extends ServiceProvider
@@ -55,6 +56,17 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $view->with('footerClasses', $footerClasses);
+        });
+
+        // WhatsApp floating button settings for frontend
+        View::composer('frontend.layouts.master', function ($view) {
+            try {
+                $whatsappContactNumber = SystemSetting::get('whatsapp_contact_number', '');
+                $whatsappFloatButtonEnabled = (bool) SystemSetting::get('whatsapp_float_button_enabled', false);
+                $view->with(compact('whatsappContactNumber', 'whatsappFloatButtonEnabled'));
+            } catch (\Exception $e) {
+                $view->with('whatsappContactNumber', '')->with('whatsappFloatButtonEnabled', false);
+            }
         });
 
         // نقاط الطالب في الهيدر (لوحة التحفيز)

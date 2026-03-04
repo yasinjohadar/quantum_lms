@@ -54,17 +54,8 @@
                     </a>
                 </div>
             </div>
-        @elseif($classes->count() === 1)
-            {{-- صف واحد: عرض بدون تبويبات --}}
-            @php $classData = $classes->first(); @endphp
-            <div class="row mb-5">
-                @include('student.pages.lessons.partials.class-section-content', [
-                    'class' => $classData['class'],
-                    'subjects' => $classData['subjects'],
-                ])
-            </div>
         @else
-            {{-- أكثر من صف: تبويبات أنيقة --}}
+            {{-- صف واحد أو أكثر: تبويبات --}}
             <div class="card custom-card">
                 <div class="card-header border-bottom-0 pb-0">
                     <ul class="nav nav-tabs student-class-tabs card-header-tabs" role="tablist">

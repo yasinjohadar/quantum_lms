@@ -5,21 +5,6 @@
 @endphp
 @if($class)
     <div class="row">
-        <div class="col-12 mb-3">
-            <h5 class="fw-semibold">
-                <i class="bi bi-book-half me-2 text-primary"></i>
-                المواد الدراسية في {{ $class->name }}
-                @if($class->stage)
-                    <small class="text-muted">({{ $class->stage->name }})</small>
-                @endif
-            </h5>
-            @if($class->whatsapp_group_url)
-                <a href="{{ $class->whatsapp_group_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-success btn-sm mt-2 whatsapp-cta-btn">
-                    <i class="fa-brands fa-whatsapp me-1"></i>
-                    انضم لمجموعة واتساب — {{ $class->name }}
-                </a>
-            @endif
-        </div>
         @if($subjects->count() > 0)
             <div class="col-12">
             <div class="row row-cols-2 row-cols-lg-5 g-3 subject-cards-row">
@@ -38,21 +23,6 @@
                         @else
                             <div class="card-img-top subject-card-image bg-primary-gradient d-flex align-items-center justify-content-center">
                                 <i class="bi bi-book text-white" style="font-size: 3rem;"></i>
-                            </div>
-                        @endif
-                        <div class="card-body subject-card-body">
-                            <h6 class="card-title fw-semibold">{{ $subject->name }}</h6>
-                            <span class="btn btn-primary btn-sm subject-card-btn">عرض المحتوى</span>
-                        </div>
-                        @php
-                            $enrollment = $subject->enrollments->first();
-                        @endphp
-                        @if($enrollment && $enrollment->enrolled_at)
-                            <div class="card-footer">
-                                <span class="card-text text-muted">
-                                    <i class="bi bi-calendar me-1"></i>
-                                    تاريخ الانضمام: {{ $enrollment->enrolled_at->format('Y-m-d') }}
-                                </span>
                             </div>
                         @endif
                     </div>

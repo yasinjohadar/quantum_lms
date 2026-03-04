@@ -6,24 +6,7 @@
 
 @section('content')
 <div class="main-content app-content">
-    <div class="container-fluid">
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div>
-                <h4 class="mb-0">{{ $section->title }}</h4>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('student.subjects') }}">المواد الدراسية</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('student.subjects.show', $subject) }}">{{ $subject->name }}</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('student.subjects.folders', $subject) }}">عرض المجلدات</a></li>
-                        <li class="breadcrumb-item active">{{ $section->title }}</li>
-                    </ol>
-                </nav>
-            </div>
-            <a href="{{ route('student.subjects.show', $subject) }}" class="btn btn-outline-primary btn-sm">
-                <i class="bi bi-card-list me-1"></i> العرض العادي
-            </a>
-        </div>
+    <div class="container-fluid pt-3">
 
         @if($section->type === \App\Models\SubjectSection::TYPE_QUIZZES)
             {{-- قسم الاختبارات: أقسام فرعية ثم الوحدات، الاختبارات تظهر داخل صفحة الوحدة --}}

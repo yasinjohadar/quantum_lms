@@ -1,5 +1,5 @@
     <!-- Footer Start -->
-        <footer class="footer mt-auto py-3 bg-white text-center">
+        <footer class="footer student-footer mt-auto py-3 bg-white text-center">
             <div class="container">
                 <span class="text-muted"> حقوق النشر © <span id="year"></span> <a
                         href="https://claudsoft.com" target="_blank" rel="noopener noreferrer" class="text-dark fw-semibold">كلاوسوفت</a>.

@@ -62,7 +62,7 @@
             </div>
         </div>
 
-        @if($class->whatsapp_group_url)
+        @if($class->whatsapp_group_url && $allEnrolled)
         <div class="card custom-card mb-4 border-success">
             <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
                 <div class="d-flex align-items-center gap-3">

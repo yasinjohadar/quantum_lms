@@ -24,7 +24,8 @@
 
     <div class="container">
 
-        @if($class->whatsapp_group_url)
+        @auth
+        @if($class->whatsapp_group_url && $isEnrolled)
         <div class="card mb-4 border-success">
             <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
                 <div class="d-flex align-items-center gap-3">
@@ -44,10 +45,93 @@
         </div>
         @endif
 
+        <!-- Subjects Section -->
+        <div class="subjects-section mb-5">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h2 class="section-title">المواد الدراسية</h2>
+                    <p class="section-description">اختر المادة المناسبة لك وابدأ التعلم</p>
+                </div>
+            </div>
+            
+            <div class="row">
+                @forelse($subjects as $subject)
+                    <div class="col-lg-3 col-md-6 col-12 mb-4">
+                        <div class="class-card">
+                            <div class="class-card-image">
+                                @if($subject['image'])
+                                    <img src="{{ asset('storage/' . $subject['image']) }}" alt="{{ $subject['name'] }}" class="img-fluid">
+                                @else
+                                    <div class="class-card-placeholder">
+                                        <i class="fa-solid fa-book"></i>
+                                    </div>
+                                @endif
+                                
+                                <!-- Students Oval -->
+                                @if($subject['enrolled_students_count'] > 0)
+                                    <div class="students-oval">
+                                        <div class="students-avatars">
+                                            @foreach($subject['enrolled_students'] as $student)
+                                                <div class="student-avatar">
+                                                    @if($student['avatar'])
+                                                        <img src="{{ asset('storage/' . $student['avatar']) }}" alt="{{ $student['name'] }}">
+                                                    @else
+                                                        <div class="avatar-placeholder">
+                                                            {{ strtoupper(mb_substr($student['name'], 0, 1)) }}
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                        <span class="students-count">+ {{ $subject['enrolled_students_count'] }} طالب</span>
+                                    </div>
+                                @endif
+                            </div>
+                            <div class="class-card-body">
+                                <h3 class="class-card-title">{{ $subject['name'] }}</h3>
+                                
+                                <!-- Price Section -->
+                                <div class="class-card-price">
+                                    @if($subject['is_free'] || $subject['price'] == 0)
+                                        <div class="price-free-wrapper">
+                                            <span class="price-free">مجاني</span>
+                                        </div>
+                                    @else
+                                        <div class="price-content">
+                                            <div class="price-current">
+                                                <span class="price-amount">{{ number_format($subject['price'], 2) }}</span>
+                                                <span class="price-currency">{{ $subject['currency']->symbol ?? $subject['currency']->code ?? '' }}</span>
+                                            </div>
+                                            @if($subject['old_price'] > $subject['price'])
+                                                <span class="price-old">
+                                                    {{ number_format($subject['old_price'], 2) }} {{ $subject['currency']->symbol ?? $subject['currency']->code ?? '' }}
+                                                </span>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+                                
+                                <a href="#purchase-section" class="class-card-btn enroll-btn">
+                                    سجل الآن
+                                    <i class="fa-solid fa-angles-left ms-2"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <div class="col-12">
+                        <div class="text-center py-5">
+                            <p class="text-muted">لا توجد مواد متاحة حالياً</p>
+                        </div>
+                    </div>
+                @endforelse
+            </div>
+        </div>
+
         <!-- Purchase Options Section -->
         @auth
         @if(!$isEnrolled && $purchaseStatus !== 'pending')
-        <div class="purchase-options-section mb-5">
+        <div id="purchase-section" class="purchase-options-section mb-5">
             <div class="row">
                 <div class="col-12">
                     <div class="purchase-options-card">
@@ -84,6 +168,7 @@
                                 </label>
                             </div>
                             
+                            @if($class->allow_subjects_purchase)
                             <!-- Option 2: Buy Individual Subjects -->
                             <div class="purchase-option mb-3">
                                 <label class="purchase-option-label">
@@ -120,6 +205,7 @@
                                     </div>
                                 </label>
                             </div>
+                            @endif
                             
                             <!-- Total Price Display -->
                             <div class="purchase-total mb-3" id="purchaseTotal" style="display: none;">
@@ -195,6 +281,7 @@
                 </div>
             </div>
         @endif
+        @endauth
         @else
         <div class="alert alert-info text-center mb-5">
             <i class="fa-solid fa-info-circle me-2"></i>
@@ -202,88 +289,6 @@
         </div>
         @endauth
 
-        <!-- Subjects Section -->
-        <div class="subjects-section">
-            <div class="row mb-4">
-                <div class="col-12">
-                    <h2 class="section-title">المواد الدراسية</h2>
-                    <p class="section-description">اختر المادة المناسبة لك وابدأ التعلم</p>
-                </div>
-            </div>
-            
-            <div class="row">
-                @forelse($subjects as $subject)
-                    <div class="col-lg-3 col-md-6 col-12 mb-4">
-                        <div class="class-card">
-                            <div class="class-card-image">
-                                @if($subject['image'])
-                                    <img src="{{ asset('storage/' . $subject['image']) }}" alt="{{ $subject['name'] }}" class="img-fluid">
-                                @else
-                                    <div class="class-card-placeholder">
-                                        <i class="fa-solid fa-book"></i>
-                                    </div>
-                                @endif
-                                
-                                <!-- Students Oval -->
-                                @if($subject['enrolled_students_count'] > 0)
-                                    <div class="students-oval">
-                                        <div class="students-avatars">
-                                            @foreach($subject['enrolled_students'] as $student)
-                                                <div class="student-avatar">
-                                                    @if($student['avatar'])
-                                                        <img src="{{ asset('storage/' . $student['avatar']) }}" alt="{{ $student['name'] }}">
-                                                    @else
-                                                        <div class="avatar-placeholder">
-                                                            {{ strtoupper(mb_substr($student['name'], 0, 1)) }}
-                                                        </div>
-                                                    @endif
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                        <span class="students-count">+ {{ $subject['enrolled_students_count'] }} طالب</span>
-                                    </div>
-                                @endif
-                            </div>
-                            <div class="class-card-body">
-                                <h3 class="class-card-title">{{ $subject['name'] }}</h3>
-                                
-                                <!-- Price Section -->
-                                <div class="class-card-price">
-                                    @if($subject['is_free'] || $subject['price'] == 0)
-                                        <div class="price-free-wrapper">
-                                            <span class="price-free">مجاني</span>
-                                        </div>
-                                    @else
-                                        <div class="price-content">
-                                            <div class="price-current">
-                                                <span class="price-amount">{{ number_format($subject['price'], 2) }}</span>
-                                                <span class="price-currency">{{ $subject['currency']->symbol ?? $subject['currency']->code ?? '' }}</span>
-                                            </div>
-                                            @if($subject['old_price'] > $subject['price'])
-                                                <span class="price-old">
-                                                    {{ number_format($subject['old_price'], 2) }} {{ $subject['currency']->symbol ?? $subject['currency']->code ?? '' }}
-                                                </span>
-                                            @endif
-                                        </div>
-                                    @endif
-                                </div>
-                                
-                                <a href="#" class="class-card-btn enroll-btn">
-                                    سجل الآن
-                                    <i class="fa-solid fa-angles-left ms-2"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                @empty
-                    <div class="col-12">
-                        <div class="text-center py-5">
-                            <p class="text-muted">لا توجد مواد متاحة حالياً</p>
-                        </div>
-                    </div>
-                @endforelse
-            </div>
-        </div>
     </div>
 </section>
 <!-- Class Show Section End -->
@@ -300,21 +305,32 @@ document.addEventListener('DOMContentLoaded', function() {
     const totalPriceEl = document.getElementById('totalPrice');
     const totalCurrencyEl = document.getElementById('totalCurrency');
     const purchaseForm = document.getElementById('purchaseForm');
+    const enrollButtons = document.querySelectorAll('.enroll-btn');
+    
+    // Smooth scroll to purchase section when clicking "سجل الآن" on a subject
+    enrollButtons.forEach(btn => {
+        btn.addEventListener('click', function (e) {
+            const target = document.getElementById('purchase-section');
+            if (target) {
+                e.preventDefault();
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    });
     
     // Get class price and currency
     const classPrice = {{ $class->getPrice($class->defaultCurrency->id ?? null) ?? 0 }};
     const classCurrency = '{{ $class->defaultCurrency->symbol ?? $class->defaultCurrency->code ?? "" }}';
     const classIsFree = {{ $class->is_free || $class->getPrice($class->defaultCurrency->id ?? null) == 0 ? 'true' : 'false' }};
     
-    // Toggle subjects checkboxes visibility
+    // Toggle subjects checkboxes visibility (only when subjects option exists)
     purchaseTypeRadios.forEach(radio => {
         radio.addEventListener('change', function() {
-            if (this.value === 'subjects') {
+            if (this.value === 'subjects' && subjectsCheckboxes) {
                 subjectsCheckboxes.style.display = 'block';
                 calculateTotal();
             } else {
-                subjectsCheckboxes.style.display = 'none';
-                // Uncheck all subject checkboxes
+                if (subjectsCheckboxes) subjectsCheckboxes.style.display = 'none';
                 subjectCheckboxes.forEach(cb => cb.checked = false);
                 calculateTotal();
             }
@@ -327,7 +343,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     function calculateTotal() {
-        const selectedType = document.querySelector('.purchase-radio:checked').value;
+        const selectedRadio = document.querySelector('.purchase-radio:checked');
+        const selectedType = selectedRadio ? selectedRadio.value : 'class';
         let total = 0;
         let currency = classCurrency;
         
@@ -335,7 +352,6 @@ document.addEventListener('DOMContentLoaded', function() {
             total = classPrice;
             currency = classCurrency;
         } else {
-            // Calculate from selected subjects
             subjectCheckboxes.forEach(checkbox => {
                 if (checkbox.checked) {
                     total += parseFloat(checkbox.dataset.price) || 0;
@@ -346,30 +362,33 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
         
-        if (total > 0 || selectedType === 'class') {
-            purchaseTotal.style.display = 'block';
-            totalPriceEl.textContent = total.toFixed(2);
-            totalCurrencyEl.textContent = currency;
-        } else {
-            purchaseTotal.style.display = 'none';
+        if (purchaseTotal) {
+            if (total > 0 || selectedType === 'class') {
+                purchaseTotal.style.display = 'block';
+                if (totalPriceEl) totalPriceEl.textContent = total.toFixed(2);
+                if (totalCurrencyEl) totalCurrencyEl.textContent = currency;
+            } else {
+                purchaseTotal.style.display = 'none';
+            }
         }
     }
     
     // Form validation and data collection
-    purchaseForm.addEventListener('submit', function(e) {
-        const selectedType = document.querySelector('.purchase-radio:checked').value;
-        
-        if (selectedType === 'subjects') {
-            const checkedSubjects = document.querySelectorAll('.subject-checkbox:checked');
-            if (checkedSubjects.length === 0) {
-                e.preventDefault();
-                alert('يرجى اختيار مادة واحدة على الأقل');
-                return false;
+    if (purchaseForm) {
+        purchaseForm.addEventListener('submit', function(e) {
+            const selectedRadio = document.querySelector('.purchase-radio:checked');
+            const selectedType = selectedRadio ? selectedRadio.value : 'class';
+            
+            if (selectedType === 'subjects') {
+                const checkedSubjects = document.querySelectorAll('.subject-checkbox:checked');
+                if (checkedSubjects.length === 0) {
+                    e.preventDefault();
+                    alert('يرجى اختيار مادة واحدة على الأقل');
+                    return false;
+                }
             }
-        }
-        
-        // Form will submit with GET parameters automatically
-    });
+        });
+    }
     
     // Initial calculation
     calculateTotal();

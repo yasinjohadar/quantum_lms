@@ -6,32 +6,7 @@
 
 @section('content')
 <div class="main-content app-content">
-    <div class="container-fluid">
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div>
-                <h4 class="mb-0">{{ $subject->name }}</h4>
-                <p class="mb-0 text-muted">
-                    @if($subject->schoolClass)
-                        {{ $subject->schoolClass->name }}
-                        @if($subject->schoolClass->stage)
-                            - {{ $subject->schoolClass->stage->name }}
-                        @endif
-                    @endif
-                </p>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-                <a href="{{ route('student.subjects.show', $subject) }}" class="btn btn-outline-primary btn-sm">
-                    <i class="bi bi-card-list me-1"></i> العرض العادي
-                </a>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('student.subjects') }}">المواد الدراسية</a></li>
-                        <li class="breadcrumb-item active">{{ $subject->name }}</li>
-                    </ol>
-                </nav>
-            </div>
-        </div>
+    <div class="container-fluid pt-3">
 
         @if($sections->count() > 0)
             <div class="row">

@@ -88,119 +88,12 @@ class StudentLessonController extends Controller
     }
     
     /**
-     * عرض محتوى المادة (أقسام، وحدات، دروس)
+     * عرض محتوى المادة (عرض المجلدات: كروت الأقسام الجذرية).
      */
     public function showSubject($subjectId)
     {
         $user = Auth::user();
-        
-        // التحقق من أن الطالب مسجل في هذه المادة
-        $subject = Subject::with(['schoolClass.stage'])
-            ->whereHas('students', function($query) use ($user) {
-                $query->where('users.id', $user->id)
-                      ->where('enrollments.status', 'active');
-            })
-            ->findOrFail($subjectId);
-        
-        // تحميل الأقسام مع الوحدات والدروس (الاختبارات تظهر في صفحة الدرس فقط)
-        $sections = $subject->sections()
-            ->with([
-                'units.lessons' => function($query) {
-                    $query->where('is_active', true)
-                          ->where('review_status', Lesson::REVIEW_STATUS_APPROVED)
-                          ->orderBy('order');
-                },
-                'units.questions' => function($query) {
-                    $query->where('is_active', true)
-                          ->orderBy('created_at', 'desc');
-                }
-            ])
-            ->where('is_active', true)
-            ->orderBy('order')
-            ->get();
 
-        // #region agent log - Hypothesis A: Questions not loaded in eager loading
-        $allUnits = $sections->flatMap(function($s) { return $s->units; });
-        $unitsWithQuestions = $allUnits->map(function($u) { 
-            return [
-                'unit_id' => $u->id, 
-                'unit_title' => $u->title,
-                'questions_count' => $u->questions ? $u->questions->count() : 0,
-                'questions_ids' => $u->questions ? $u->questions->pluck('id')->toArray() : []
-            ]; 
-        })->toArray();
-        $logDataA = [
-            'sessionId' => 'debug-session',
-            'runId' => 'run1',
-            'hypothesisId' => 'A',
-            'location' => 'StudentLessonController.php:107',
-            'message' => 'Sections loaded - checking if questions are loaded',
-            'data' => [
-                'subject_id' => $subjectId,
-                'sections_count' => $sections->count(),
-                'total_units' => $allUnits->count(),
-                'units_with_questions' => $unitsWithQuestions,
-            ],
-            'timestamp' => time() * 1000
-        ];
-        file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataA) . "\n", FILE_APPEND);
-        // #endregion
-        
-        // #region agent log - Hypothesis B: Check if questions are active
-        $allQuestions = $allUnits->flatMap(function($u) { return $u->questions ?? collect(); });
-        $activeQuestions = $allQuestions->where('is_active', true);
-        $logDataB = [
-            'sessionId' => 'debug-session',
-            'runId' => 'run1',
-            'hypothesisId' => 'B',
-            'location' => 'StudentLessonController.php:107',
-            'message' => 'Checking question active status',
-            'data' => [
-                'total_questions' => $allQuestions->count(),
-                'active_questions' => $activeQuestions->count(),
-                'inactive_questions' => $allQuestions->where('is_active', false)->count(),
-                'question_ids_and_status' => $allQuestions->map(function($q) { return ['id' => $q->id, 'is_active' => $q->is_active]; })->toArray(),
-            ],
-            'timestamp' => time() * 1000
-        ];
-        file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataB) . "\n", FILE_APPEND);
-        // #endregion
-        
-        // #region agent log - Hypothesis C: Check question-unit relationship
-        $questionUnitRelations = [];
-        foreach($allUnits as $unit) {
-            $unitQuestions = \App\Models\Question::whereHas('units', function($q) use ($unit) {
-                $q->where('units.id', $unit->id);
-            })->where('is_active', true)->get();
-            $questionUnitRelations[] = [
-                'unit_id' => $unit->id,
-                'questions_via_relationship' => $unitQuestions->count(),
-                'questions_via_eager_loading' => $unit->questions ? $unit->questions->count() : 0,
-            ];
-        }
-        $logDataC = [
-            'sessionId' => 'debug-session',
-            'runId' => 'run1',
-            'hypothesisId' => 'C',
-            'location' => 'StudentLessonController.php:107',
-            'message' => 'Checking question-unit relationship',
-            'data' => [
-                'question_unit_relations' => $questionUnitRelations,
-            ],
-            'timestamp' => time() * 1000
-        ];
-        file_put_contents('d:\\Web Programming\\Projects\\Quantum LMS1\\.cursor\\debug.log', json_encode($logDataC) . "\n", FILE_APPEND);
-        // #endregion
-        
-        return view('student.pages.lessons.subject-show', compact('subject', 'sections'));
-    }
-
-    /**
-     * عرض محتوى المادة بأسلوب المجلدات (مستوى المادة: كاردات الأقسام الجذرية).
-     */
-    public function showSubjectFolders($subjectId)
-    {
-        $user = Auth::user();
         $subject = Subject::with(['schoolClass.stage'])
             ->whereHas('students', function ($query) use ($user) {
                 $query->where('users.id', $user->id)
@@ -215,6 +108,22 @@ class StudentLessonController extends Controller
             ->get();
 
         return view('student.pages.lessons.subject-folders', compact('subject', 'sections'));
+    }
+
+    /**
+     * إعادة توجيه عرض المجلدات إلى صفحة المادة (للتوافق مع الروابط القديمة).
+     */
+    public function showSubjectFolders($subjectId)
+    {
+        $user = Auth::user();
+        $subject = Subject::with(['schoolClass.stage'])
+            ->whereHas('students', function ($query) use ($user) {
+                $query->where('users.id', $user->id)
+                    ->where('enrollments.status', 'active');
+            })
+            ->findOrFail($subjectId);
+
+        return redirect()->route('student.subjects.show', $subject);
     }
 
     /**
@@ -301,6 +210,18 @@ class StudentLessonController extends Controller
         $visibleLessons = $unit->allLessons()
             ->filter(fn ($lesson) => $lesson->is_active && $lesson->review_status === Lesson::REVIEW_STATUS_APPROVED)
             ->values();
+
+        $visibleLessons->load([
+            'quizzes' => function ($q) {
+                $q->where('is_active', true)
+                    ->where('is_published', true)
+                    ->where('review_status', Quiz::REVIEW_STATUS_APPROVED)
+                    ->orderBy('order');
+            },
+            'attachments' => function ($q) {
+                $q->where('is_active', true)->orderBy('order');
+            },
+        ]);
 
         $unitQuizzes = $unit->allUnitQuizzes()
             ->filter(fn ($quiz) => $quiz->is_active && $quiz->is_published && $quiz->review_status === Quiz::REVIEW_STATUS_APPROVED)

@@ -270,6 +270,14 @@
                                 </div>
                             </div>
 
+                            <div class="col-md-4 d-flex align-items-center">
+                                <div class="form-check form-switch mt-3">
+                                    <input class="form-check-input" type="checkbox" name="allow_subjects_purchase"
+                                           id="allow_subjects_purchase" value="1"
+                                           {{ old('allow_subjects_purchase', false) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="allow_subjects_purchase">السماح بشراء المواد المتفرقة</label>
+                                </div>
+                            </div>
                             <div class="col-12 mt-3">
                                 <h6 class="text-primary mb-3">إعدادات الـ SEO (اختيارية)</h6>
                             </div>
