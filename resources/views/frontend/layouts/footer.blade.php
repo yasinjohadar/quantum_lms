@@ -16,18 +16,11 @@
                     </p>
 
                     <div class="frontend-footer__social">
-                        <a href="#" class="social-link" aria-label="facebook">
-                            <i class="fa-brands fa-facebook-f"></i>
-                        </a>
-                        <a href="#" class="social-link" aria-label="instagram">
-                            <i class="fa-brands fa-instagram"></i>
-                        </a>
-                        <a href="#" class="social-link" aria-label="telegram">
-                            <i class="fa-brands fa-telegram"></i>
-                        </a>
-                        <a href="#" class="social-link" aria-label="youtube">
-                            <i class="fa-brands fa-youtube"></i>
-                        </a>
+                        @foreach($socialLinks ?? [] as $link)
+                            <a href="{{ $link->url }}" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="{{ $link->name }}">
+                                <i class="{{ $link->icon_class }}"></i>
+                            </a>
+                        @endforeach
                     </div>
                 </div>
             </div>
@@ -36,9 +29,6 @@
                 <h5 class="frontend-footer__title">روابط سريعة</h5>
                 <ul class="frontend-footer__links">
                     <li><a href="/">الرئيسية</a></li>
-                    <li><a href="/courses">الكورسات</a></li>
-                    <li><a href="/blog">المدونة</a></li>
-                    <li><a href="#">من نحن</a></li>
                     <li><a href="#">اتصل بنا</a></li>
                 </ul>
             </div>
@@ -58,33 +48,36 @@
                 </ul>
             </div>
 
+            @if(!empty($footerContactAddress ?? '') || !empty($footerContactPhone ?? '') || !empty($footerContactEmail ?? ''))
             <div class="col-lg-3 col-md-6">
                 <h5 class="frontend-footer__title">تواصل معنا</h5>
                 <ul class="frontend-footer__meta">
+                    @if(!empty($footerContactAddress ?? ''))
                     <li>
                         <i class="fa-solid fa-location-dot"></i>
-                        <span>العنوان: دمشق - سوريا</span>
+                        <span>العنوان: {{ $footerContactAddress }}</span>
                     </li>
+                    @endif
+                    @if(!empty($footerContactPhone ?? ''))
                     <li>
                         <i class="fa-solid fa-phone"></i>
-                        <span>الهاتف: 000 000 000</span>
+                        <span>الهاتف: {{ $footerContactPhone }}</span>
                     </li>
+                    @endif
+                    @if(!empty($footerContactEmail ?? ''))
                     <li>
                         <i class="fa-solid fa-envelope"></i>
-                        <span>البريد: info@example.com</span>
+                        <span>البريد: {{ $footerContactEmail }}</span>
                     </li>
+                    @endif
                 </ul>
             </div>
+            @endif
         </div>
 
         <div class="frontend-footer__bottom">
             <div class="frontend-footer__copy">
                 © {{ date('Y') }} جميع الحقوق محفوظة
-            </div>
-            <div class="frontend-footer__mini-links">
-                <a href="#">سياسة الخصوصية</a>
-                <span class="sep">|</span>
-                <a href="#">الشروط والأحكام</a>
             </div>
         </div>
     </div>

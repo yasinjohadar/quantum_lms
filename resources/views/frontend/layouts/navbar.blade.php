@@ -46,17 +46,20 @@ header .navbar-nav .nav-link {
 
 
                 <div class="col-6 col-md-4 d-flex align-items-center">
-                    <input type="text" class="form-control" placeholder="اكتب   للبحث ">
+                    <form action="{{ route('frontend.search') }}" method="GET" class="w-100 header-search-form" role="search">
+                        <div class="input-group">
+                            <button type="submit" class="btn btn-gold header-search-btn" aria-label="تنفيذ البحث">
+                                <i class="fa-solid fa-search"></i>
+                            </button>
+                            <input type="text" name="q" class="form-control" placeholder="ابحث عن صفوف ومواد" value="{{ request('q') }}" aria-label="بحث">
+                        </div>
+                    </form>
                 </div>
 
 
 
 
                 <div class="col-md-4 left-header d-flex align-items-center d-none d-lg-flex justify-content-end">
-                    <a href="/blog" role="button" >
-                        <span>المدونة</span>
-                        <i class="fa-solid fa-book"></i>
-                    </a>
                     @auth
                         @php
                             $user = auth()->user();
@@ -72,10 +75,6 @@ header .navbar-nav .nav-link {
                             <i class="fa-solid fa-user"></i>
                         </a>
                     @endauth
-                    <a href="/courses">
-                        <span>الكورسات</span>
-                        <i class="fa-solid fa-computer"></i>
-                    </a>
                 </div>
 
 
@@ -96,10 +95,9 @@ header .navbar-nav .nav-link {
               <!-- Social + theme toggle (left side) -->
               <div class="header-social d-flex" aria-label="social-links">
                 <div class="header-social__icons d-none d-lg-flex">
-                  <a href="#" class="header-social__link" aria-label="facebook"><i class="fa-brands fa-facebook-f"></i></a>
-                  <a href="#" class="header-social__link" aria-label="instagram"><i class="fa-brands fa-instagram"></i></a>
-                  <a href="#" class="header-social__link" aria-label="telegram"><i class="fa-brands fa-telegram"></i></a>
-                  <a href="#" class="header-social__link" aria-label="youtube"><i class="fa-brands fa-youtube"></i></a>
+                  @foreach($socialLinks ?? [] as $link)
+                    <a href="{{ $link->url }}" target="_blank" rel="noopener noreferrer" class="header-social__link" aria-label="{{ $link->name }}"><i class="{{ $link->icon_class }}"></i></a>
+                  @endforeach
                 </div>
 
                 <button type="button" class="header-theme-toggle" id="headerThemeToggle" aria-label="toggle-header-theme">
@@ -134,23 +132,8 @@ header .navbar-nav .nav-link {
                     <a class="nav-link active" style="border:none!important;outline:none!important;box-shadow:none!important;" aria-current="page" href="/">الرئيسية</a>
                   </li>
                   <li class="nav-item" style="border:none!important;outline:none!important;box-shadow:none!important;">
-                    <a class="nav-link" style="border:none!important;outline:none!important;box-shadow:none!important;" href="#">الكورسات</a>
-                  </li>
-                  <li class="nav-item" style="border:none!important;outline:none!important;box-shadow:none!important;">
-                    <a class="nav-link" style="border:none!important;outline:none!important;box-shadow:none!important;" href="#">آراء الطلاب</a>
-                  </li>
-         
-                  <li class="nav-item" style="border:none!important;outline:none!important;box-shadow:none!important;">
-                    <a class="nav-link" style="border:none!important;outline:none!important;box-shadow:none!important;" href="#">من نحن</a>
-                  </li>
-                  <li class="nav-item" style="border:none!important;outline:none!important;box-shadow:none!important;">
-                    <a class="nav-link" style="border:none!important;outline:none!important;box-shadow:none!important;" href="#">المدونة</a>
-                  </li>
-                  <li class="nav-item" style="border:none!important;outline:none!important;box-shadow:none!important;">
                     <a class="nav-link" style="border:none!important;outline:none!important;box-shadow:none!important;" href="#">اتصل بنا</a>
                   </li>
-
-
                 </ul>
 
               </div>

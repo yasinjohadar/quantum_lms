@@ -55,6 +55,18 @@ class PermissionSeeder extends Seeder
             ['name' => 'stage-delete', 'description' => 'حذف المرحلة'],
             ['name' => 'stage-show', 'description' => 'عرض تفاصيل المرحلة'],
 
+            // صلاحيات الطلاب المتميزين (الصفحة الرئيسية)
+            ['name' => 'distinguished-students-list', 'description' => 'عرض قائمة الطلاب المتميزين'],
+            ['name' => 'distinguished-students-create', 'description' => 'إضافة طالب متميز'],
+            ['name' => 'distinguished-students-edit', 'description' => 'تعديل الطالب المتميز'],
+            ['name' => 'distinguished-students-delete', 'description' => 'حذف الطالب المتميز'],
+
+            // صلاحيات روابط التواصل الاجتماعي (ديناميكية)
+            ['name' => 'social-links-list', 'description' => 'عرض روابط التواصل الاجتماعي'],
+            ['name' => 'social-links-create', 'description' => 'إضافة رابط تواصل'],
+            ['name' => 'social-links-edit', 'description' => 'تعديل رابط التواصل'],
+            ['name' => 'social-links-delete', 'description' => 'حذف رابط التواصل'],
+
             // صلاحيات إدارة المواد
             ['name' => 'subject-list', 'description' => 'عرض قائمة المواد'],
             ['name' => 'subject-create', 'description' => 'إنشاء مادة جديدة'],
@@ -381,11 +393,6 @@ class PermissionSeeder extends Seeder
 
             // صلاحيات تقارير المكتبة
             ['name' => 'library-report-list', 'description' => 'عرض تقارير المكتبة'],
-
-            // صلاحيات آراء الطلاب (المنصة)
-            ['name' => 'platform-reviews-list', 'description' => 'عرض قائمة آراء الطلاب'],
-            ['name' => 'platform-reviews-edit', 'description' => 'تعديل آراء الطلاب واعتمادها'],
-            ['name' => 'platform-reviews-approve', 'description' => 'اعتماد/رفض آراء الطلاب'],
         ];
 
         // حفظ الصلاحيات الأساسية

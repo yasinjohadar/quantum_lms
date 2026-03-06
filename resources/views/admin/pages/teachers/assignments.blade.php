@@ -21,6 +21,12 @@
                     <a href="{{ route('admin.teachers.assignments.index') }}" class="btn btn-secondary btn-sm">
                         <i class="bi bi-arrow-right me-1"></i> رجوع
                     </a>
+                    <a href="{{ route('admin.teachers.progress.history', $teacher->id) }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-clock-history me-1"></i> إحصائيات سابقة
+                    </a>
+                    <a href="{{ route('admin.teachers.progress.show', $teacher->id) }}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-graph-up me-1"></i> تفاصيل التقدم
+                    </a>
                 </div>
             </div>
             <!-- End Page Header -->

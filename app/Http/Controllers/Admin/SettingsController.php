@@ -19,17 +19,22 @@ class SettingsController extends Controller
     /**
      * عرض صفحة الإعدادات العامة
      */
-    public function index(Request $request): View
+    public function index(Request $request): View|RedirectResponse
     {
         $group = $request->get('group', 'general');
-        
+
+        // إدارة روابط التواصل من صفحة "روابط التواصل الاجتماعي" وليس من هنا
+        if ($group === 'social') {
+            return redirect()->route('admin.social-links.index');
+        }
+
         $settings = SystemSetting::where('group', $group)
             ->orderBy('key')
             ->get()
             ->keyBy('key');
-        
-        $groups = SystemSetting::GROUPS;
-        
+
+        $groups = collect(SystemSetting::GROUPS)->except('social')->all();
+
         return view('admin.pages.settings.index', compact('settings', 'groups', 'group'));
     }
 

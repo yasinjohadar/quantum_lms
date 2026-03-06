@@ -132,7 +132,7 @@
                         @endif
 
                         @canany(['user-list', 'enrollment-list', 'role-list'])
-                        <li class="slide has-sub {{ request()->is('users*') || request()->is('admin/archived-users*') || request()->is('admin/teachers/assignments*') || request()->is('admin/supervisors/assignments*') || request()->is('roles*') || request()->is('admin/platform-reviews*') || (request()->is('admin/enrollments*') && !request()->is('admin/enrollments/pending*') && !request()->is('admin/enrollments/class-pending*')) ? 'open' : '' }}">
+                        <li class="slide has-sub {{ request()->is('users*') || request()->is('admin/archived-users*') || request()->is('admin/teachers/assignments*') || request()->is('admin/supervisors/assignments*') || request()->is('roles*') || (request()->is('admin/enrollments*') && !request()->is('admin/enrollments/pending*') && !request()->is('admin/enrollments/class-pending*')) ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -182,6 +182,12 @@
                                         <span class="side-menu__label">تقدم المعلمين</span>
                                     </a>
                                 </li>
+                                <li class="slide {{ request()->is('admin/academic-years*') || request()->is('admin/academic-weeks*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.academic-years.index') }}" class="side-menu__item {{ request()->is('admin/academic-years*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;"><path d="M0 0h24v24H0z" fill="none"/><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/></svg>
+                                        <span class="side-menu__label">السنوات والأسابيع الدراسية</span>
+                                    </a>
+                                </li>
                                 @endcan
                                 @can('user-list')
                                 <li class="slide {{ request()->is('admin/archived-users*') ? 'active' : '' }}">
@@ -202,17 +208,6 @@
                                             <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
                                         </svg>
                                         <span class="side-menu__label">جميع الانضمامات</span>
-                                    </a>
-                                </li>
-                                @endcan
-                                @can('platform-reviews-list')
-                                <li class="slide {{ request()->is('admin/platform-reviews*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.platform-reviews.index') }}" class="side-menu__item {{ request()->is('admin/platform-reviews*') ? 'active' : '' }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                                            <path d="M0 0h24v24H0z" fill="none"/>
-                                            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-                                        </svg>
-                                        <span class="side-menu__label">إدارة التقييمات</span>
                                     </a>
                                 </li>
                                 @endcan
@@ -666,6 +661,24 @@
                                         <span class="side-menu__label">شرائح Hero</span>
                                     </a>
                                 </li>
+
+                                {{-- الطلاب المتميزون (الصفحة الرئيسية) --}}
+                                @can('distinguished-students-list')
+                                <li class="slide {{ request()->is('admin/distinguished-students*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.distinguished-students.index') }}" class="side-menu__item {{ request()->is('admin/distinguished-students*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">الطلاب المتميزون</span>
+                                    </a>
+                                </li>
+                                @endcan
+
+                                {{-- روابط التواصل الاجتماعي --}}
+                                @can('social-links-list')
+                                <li class="slide {{ request()->is('admin/social-links*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.social-links.index') }}" class="side-menu__item {{ request()->is('admin/social-links*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">روابط التواصل الاجتماعي</span>
+                                    </a>
+                                </li>
+                                @endcan
 
                                 {{-- محاولات الاختبارات --}}
                                 @can('quiz-attempt-needs-grading')

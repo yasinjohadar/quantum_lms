@@ -74,8 +74,28 @@
                         <div class="card-header d-flex flex-column justify-content-between gap-3">
                             <h5 class="mb-0 fw-bold">قائمة المعلمين</h5>
 
+                            @if(isset($activeWeeks) && $activeWeeks->isNotEmpty())
+                                <div class="w-100 mb-2 small text-muted">
+                                    @if(isset($currentWeek) && $currentWeek)
+                                        <strong>الأسبوع المعتمد في الإحصائيات:</strong> {{ $currentWeek->title ?? 'الأسبوع ' . $currentWeek->week_number }} ({{ $currentWeek->start_date->format('Y-m-d') }} - {{ $currentWeek->end_date->format('Y-m-d') }})
+                                    @else
+                                        <strong>الأسبوع:</strong> أسبوع النظام (حسب التاريخ الحالي)
+                                    @endif
+                                </div>
+                            @endif
                             <form method="GET" action="{{ route('admin.teachers.assignments.index') }}"
                                   class="d-flex flex-wrap gap-2 align-items-end">
+                                @if(isset($activeWeeks) && $activeWeeks->isNotEmpty())
+                                    <div class="d-flex align-items-center gap-1">
+                                        <label class="form-label mb-0 small text-muted">الأسبوع</label>
+                                        <select name="week_id" class="form-select form-select-sm" style="min-width: 180px;">
+                                            <option value="">الأسبوع الحالي</option>
+                                            @foreach($activeWeeks as $w)
+                                                <option value="{{ $w->id }}" {{ request('week_id') == $w->id ? 'selected' : '' }}>{{ $w->title ?? 'الأسبوع ' . $w->week_number }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                @endif
                                 <div class="d-flex align-items-center gap-1">
                                     <label class="form-label mb-0 small text-muted">بحث</label>
                                     <input type="text" name="search" class="form-control form-control-sm"
@@ -122,7 +142,7 @@
                                 <button type="submit" class="btn btn-primary btn-sm">
                                     <i class="fas fa-search me-1"></i> بحث
                                 </button>
-                                @if(request()->hasAny(['search', 'assignment', 'pages_progress', 'weekly_progress', 'sort']) && (request('search') || request('assignment', 'all') !== 'all' || request('pages_progress', 'all') !== 'all' || request('weekly_progress', 'all') !== 'all' || request('sort', 'name_asc') !== 'name_asc'))
+                                @if(request()->hasAny(['search', 'assignment', 'pages_progress', 'weekly_progress', 'sort', 'week_id']) && (request('search') || request('assignment', 'all') !== 'all' || request('pages_progress', 'all') !== 'all' || request('weekly_progress', 'all') !== 'all' || request('sort', 'name_asc') !== 'name_asc' || request('week_id')))
                                     <a href="{{ route('admin.teachers.assignments.index') }}" class="btn btn-secondary btn-sm">
                                         <i class="fas fa-times me-1"></i> إلغاء الفلاتر
                                     </a>
@@ -267,6 +287,9 @@
                                                                 </div>
                                                                 <div>
                                                                     <span class="text-muted">الأسبوع:</span>
+                                                                    @if(isset($prog['current_week']) && $prog['current_week'])
+                                                                        <span class="small text-muted" title="{{ $prog['current_week']->start_date->format('Y-m-d') }} - {{ $prog['current_week']->end_date->format('Y-m-d') }}">({{ $prog['current_week']->title ?? 'أسبوع ' . $prog['current_week']->week_number }})</span>
+                                                                    @endif
                                                                     @if($prog['weekly_target'] > 0)
                                                                         {{ $prog['weekly_completed'] }}/{{ $prog['weekly_target'] }}
                                                                         @if($prog['weekly_percentage'] !== null)
@@ -289,6 +312,10 @@
                                                         <a href="{{ route('admin.teachers.assignments', $teacher->id) }}" 
                                                            class="btn btn-primary btn-sm">
                                                             <i class="fas fa-user-tie me-1"></i> تخصيص
+                                                        </a>
+                                                        <a href="{{ route('admin.teachers.progress.history', $teacher->id) }}"
+                                                           class="btn btn-outline-secondary btn-sm mt-1">
+                                                            <i class="bi bi-clock-history me-1"></i> إحصائيات سابقة
                                                         </a>
                                                     </td>
                                                 </tr>

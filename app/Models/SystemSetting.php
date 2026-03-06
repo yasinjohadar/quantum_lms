@@ -48,6 +48,7 @@ class SystemSetting extends Model
         'sms' => 'SMS',
         'whatsapp' => 'WhatsApp',
         'phone_verification' => 'Phone Verification',
+        'social' => 'روابط التواصل الاجتماعي',
     ];
 
     /**

@@ -19,11 +19,43 @@
                     <a href="{{ route('admin.teachers.assignments.index') }}" class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-list me-1"></i> قائمة المعلمين
                     </a>
+                    <a href="{{ route('admin.teachers.progress.history', $teacher) }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-clock-history me-1"></i> إحصائيات سابقة
+                    </a>
                     <a href="{{ route('admin.teachers.assignments', $teacher->id) }}" class="btn btn-primary btn-sm">
                         <i class="fas fa-user-tie me-1"></i> تخصيص
                     </a>
                 </div>
             </div>
+
+            @if (session('success'))
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    {{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
+
+            {{-- فلتر الأسبوع وعرض السياق --}}
+            @if(isset($activeWeeks) && $activeWeeks->isNotEmpty())
+                <div class="card shadow-sm border-0 mb-3">
+                    <div class="card-body py-2">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <label class="form-label mb-0">عرض إحصائيات الأسبوع:</label>
+                            <select class="form-select form-select-sm" style="width: auto;" onchange="if(this.value){ window.location.href = '{{ route('admin.teachers.progress.show', $teacher) }}?week_id=' + this.value; }">
+                                <option value="">الأسبوع الحالي</option>
+                                @foreach($activeWeeks as $w)
+                                    <option value="{{ $w->id }}" {{ isset($displayWeekId) && $displayWeekId == $w->id ? 'selected' : '' }}>
+                                        {{ $w->title ?? 'الأسبوع ' . $w->week_number }} ({{ $w->start_date->format('Y-m-d') }} → {{ $w->end_date->format('Y-m-d') }})
+                                    </option>
+                                @endforeach
+                            </select>
+                            @if(isset($currentWeek) && $currentWeek)
+                                <span class="small text-muted">الأسبوع المعروض: {{ $currentWeek->title ?? 'الأسبوع ' . $currentWeek->week_number }} ({{ $currentWeek->start_date->format('Y-m-d') }} - {{ $currentWeek->end_date->format('Y-m-d') }})</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             {{-- بطاقات الملخص --}}
             <div class="row mb-4">
@@ -64,6 +96,85 @@
                     </div>
                 </div>
             </div>
+
+            {{-- أهداف الأسابيع (Bulk override per week) --}}
+            @if(isset($activeWeeks) && $activeWeeks->isNotEmpty())
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                        <h6 class="mb-0 fw-bold"><i class="bi bi-calendar-week me-2"></i>أهداف الدروس لكل أسابيع السنة (لهذا المعلم)</h6>
+                        <span class="small text-muted">يمكنك إدخال قيمة مختلفة لكل أسبوع ثم حفظها دفعة واحدة. الأسابيع المنتهية مقفلة.</span>
+                    </div>
+                    <div class="card-body">
+                        @if ($errors->any())
+                            <div class="alert alert-danger">
+                                <ul class="mb-0">
+                                    @foreach ($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+
+                        <form action="{{ route('admin.teachers.week-targets.bulk.store', $teacher) }}" method="POST">
+                            @csrf
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered align-middle mb-3">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 90px;">الأسبوع</th>
+                                            <th>الفترة</th>
+                                            <th style="width: 170px;">هدف الدروس</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($activeWeeks as $w)
+                                            @php
+                                                $isPastWeek = $w->end_date->copy()->endOfDay()->lt(now()->startOfDay());
+                                            @endphp
+                                            <tr>
+                                                <td class="fw-semibold">
+                                                    {{ $w->week_number }}
+                                                    @if($w->title)
+                                                        <div class="small text-muted">{{ $w->title }}</div>
+                                                    @endif
+                                                    @if($isPastWeek)
+                                                        <div class="small text-muted">
+                                                            <span class="badge bg-secondary">مقفل</span>
+                                                        </div>
+                                                    @endif
+                                                </td>
+                                                <td class="text-muted small">
+                                                    {{ $w->start_date->format('Y-m-d') }} → {{ $w->end_date->format('Y-m-d') }}
+                                                </td>
+                                                <td>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        required
+                                                        class="form-control form-control-sm {{ $isPastWeek ? 'bg-light' : '' }}"
+                                                        name="required_lessons_targets[{{ $w->id }}]"
+                                                        value="{{ old('required_lessons_targets.' . $w->id, $weekTargets[$w->id] ?? 0) }}"
+                                                        style="max-width: 140px;"
+                                                        @if($isPastWeek) disabled @endif
+                                                    >
+                                                    @if(isset($weekTargets[$w->id]))
+                                                        <div class="small text-success mt-1">override محفوظ</div>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                                <span class="small text-muted">ملاحظة: إذا تركت القيمة فارغة سيعتبرها النظام 0.</span>
+                                <button type="submit" class="btn btn-primary btn-sm">حفظ أهداف الأسابيع</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            @endif
 
             {{-- جدول تقدم الصفحات حسب المادة --}}
             <div class="card shadow-sm border-0">

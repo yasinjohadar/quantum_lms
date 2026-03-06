@@ -8,6 +8,7 @@ use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\LoginLog;
 use App\Models\UserSession;
+use App\Services\AcademicWeekService;
 use App\Services\TeacherProgressService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -59,10 +60,12 @@ class TeacherAssignmentController extends Controller
         $sortByProgress = in_array($sort, ['pages_asc', 'pages_desc', 'weekly_asc', 'weekly_desc'], true);
         $needProgressData = $hasProgressFilter || $sortByProgress;
 
+        $weekId = $request->input('week_id') ? (int) $request->input('week_id') : null;
+
         if ($needProgressData) {
             // جلب كل المعلمين المطابقين (حد أقصى 500) ثم فلترة وترتيب حسب النسب
             $allTeachers = $teachersQuery->orderBy('name')->limit(500)->get();
-            $progress = TeacherProgressService::getTeachersProgressSummary($allTeachers);
+            $progress = TeacherProgressService::getTeachersProgressSummary($allTeachers, $weekId);
 
             $filtered = $allTeachers->filter(function ($teacher) use ($progress, $pagesProgressFilter, $weeklyProgressFilter) {
                 $p = $progress[$teacher->id] ?? null;
@@ -143,12 +146,12 @@ class TeacherAssignmentController extends Controller
                 $page,
                 ['path' => $request->url(), 'query' => $request->query()]
             );
-            $teachersProgress = TeacherProgressService::getTeachersProgressSummary(new Collection($slice->all()));
+            $teachersProgress = TeacherProgressService::getTeachersProgressSummary(new Collection($slice->all()), $weekId);
         } else {
             $nameDir = $sort === 'name_desc' ? 'desc' : 'asc';
             $teachers = $teachersQuery->orderBy('name', $nameDir)->paginate(20);
             $teachers->withQueryString();
-            $teachersProgress = TeacherProgressService::getTeachersProgressSummary($teachers->getCollection());
+            $teachersProgress = TeacherProgressService::getTeachersProgressSummary($teachers->getCollection(), $weekId);
         }
 
         $ids = $teachers->pluck('id');
@@ -173,6 +176,9 @@ class TeacherAssignmentController extends Controller
             ->count();
         $unassignedTeachers = $totalTeachers - $assignedTeachers;
 
+        $activeWeeks = AcademicWeekService::getActiveYearWeeks();
+        $currentWeek = AcademicWeekService::getCurrentAcademicWeek();
+
         return view('admin.pages.teachers.index', compact(
             'teachers',
             'teachersProgress',
@@ -180,7 +186,9 @@ class TeacherAssignmentController extends Controller
             'assignedTeachers',
             'unassignedTeachers',
             'lastLogins',
-            'onlineUserIds'
+            'onlineUserIds',
+            'activeWeeks',
+            'currentWeek'
         ));
     }
 

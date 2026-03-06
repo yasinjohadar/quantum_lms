@@ -28,7 +28,6 @@ class DatabaseSeeder extends Seeder
             // SystemSettingsSeeder::class, // Empty file
             // AIModelsSeeder::class, // Check if needed
             // AnalyticsEventsSeeder::class, // Check if needed
-            PlatformReviewSeeder::class, // يعتمد على وجود طلاب وانضمامات معتمدة
         ]);
 
         // إنشاء مستخدم تجريبي إضافي (إن لم يكن موجوداً)

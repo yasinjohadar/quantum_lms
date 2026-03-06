@@ -84,11 +84,11 @@ class User extends Authenticatable
     }
 
     /**
-     * العلاقة مع آراء المنصة (تقييم الطالب للمنصة)
+     * العلاقة مع الطلاب المتميزين (عروض الصفحة الرئيسية)
      */
-    public function platformReviews()
+    public function distinguishedStudents()
     {
-        return $this->hasMany(PlatformReview::class, 'user_id');
+        return $this->hasMany(DistinguishedStudent::class);
     }
 
     /**
@@ -364,6 +364,14 @@ class User extends Authenticatable
         return $this->belongsToMany(Subject::class, 'teacher_subjects', 'teacher_id', 'subject_id')
                     ->withPivot(['assigned_by', 'assigned_at', 'notes', 'required_pages'])
                     ->withTimestamps();
+    }
+
+    /**
+     * أهداف الدروس الأسبوعية المخصصة للمعلم (حسب الأسبوع الدراسي)
+     */
+    public function teacherWeekTargets()
+    {
+        return $this->hasMany(TeacherWeekTarget::class, 'teacher_id');
     }
 
     /**

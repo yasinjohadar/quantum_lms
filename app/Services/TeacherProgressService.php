@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AcademicWeek;
 use App\Models\Lesson;
 use App\Models\User;
 use Carbon\Carbon;
@@ -83,17 +84,39 @@ class TeacherProgressService
     }
 
     /**
-     * عدد الدروس المعتمدة هذا الأسبوع في مواد المعلم (حسب reviewed_at).
+     * حدود التاريخ للأسبوع: من AcademicWeek إن وُجد، وإلا أسبوع Carbon الحالي.
+     *
+     * @return array{0: Carbon, 1: Carbon}
      */
-    public static function getTeacherWeeklyLessonsCompleted(User $teacher): int
+    public static function getWeekDateRange(?AcademicWeek $week): array
+    {
+        if ($week !== null) {
+            $start = $week->start_date->copy()->startOfDay();
+            $end = $week->end_date->copy()->endOfDay();
+
+            return [$start, $end];
+        }
+
+        $start = Carbon::now()->startOfWeek();
+        $end = Carbon::now()->endOfWeek();
+
+        return [$start, $end];
+    }
+
+    /**
+     * عدد الدروس المعتمدة في الفترة الأسبوعية في مواد المعلم (حسب reviewed_at).
+     *
+     * @param  int|null  $weekId  معرف الأسبوع الدراسي، أو null للأسبوع الحالي (دراسي أو Carbon)
+     */
+    public static function getTeacherWeeklyLessonsCompleted(User $teacher, ?int $weekId = null): int
     {
         $subjectIds = $teacher->assignedSubjects()->pluck('subjects.id')->toArray();
         if (empty($subjectIds)) {
             return 0;
         }
 
-        $startOfWeek = Carbon::now()->startOfWeek();
-        $endOfWeek = Carbon::now()->endOfWeek();
+        $week = AcademicWeekService::getWeekForProgress($weekId);
+        [$startOfWeek, $endOfWeek] = self::getWeekDateRange($week);
 
         return Lesson::query()
             ->where('review_status', Lesson::REVIEW_STATUS_APPROVED)
@@ -108,12 +131,15 @@ class TeacherProgressService
     }
 
     /**
-     * تقدم المعلم في الدروس الأسبوعية: الهدف، المنفذ، النسبة.
+     * تقدم المعلم في الدروس الأسبوعية: الهدف، المنفذ، النسبة، والأسبوع المستخدم.
+     *
+     * @param  int|null  $weekId  معرف الأسبوع الدراسي، أو null للأسبوع الحالي
      */
-    public static function getTeacherWeeklyLessonsProgress(User $teacher): array
+    public static function getTeacherWeeklyLessonsProgress(User $teacher, ?int $weekId = null): array
     {
-        $target = (int) ($teacher->weekly_lessons_target ?? 0);
-        $completed = self::getTeacherWeeklyLessonsCompleted($teacher);
+        $week = AcademicWeekService::getWeekForProgress($weekId);
+        $target = AcademicWeekService::getWeeklyTargetForTeacher($teacher, $week);
+        $completed = self::getTeacherWeeklyLessonsCompleted($teacher, $weekId);
         $percentage = $target > 0
             ? min(100.0, round(($completed / $target) * 100, 1))
             : null;
@@ -122,13 +148,16 @@ class TeacherProgressService
             'target' => $target,
             'completed' => $completed,
             'percentage' => $percentage,
+            'current_week' => $week,
         ];
     }
 
     /**
      * تجميع بيانات تقدم كل المعلمين للأدمن.
+     *
+     * @param  int|null  $weekId  أسبوع محدد أو null للأسبوع الحالي
      */
-    public static function getAllTeachersProgress(): array
+    public static function getAllTeachersProgress(?int $weekId = null): array
     {
         $teachers = User::role('teacher')->with('assignedSubjects')->orderBy('name')->get();
         $out = [];
@@ -136,7 +165,7 @@ class TeacherProgressService
             $out[] = [
                 'teacher' => $teacher,
                 'pages_progress' => self::getTeacherPagesProgress($teacher),
-                'weekly_progress' => self::getTeacherWeeklyLessonsProgress($teacher),
+                'weekly_progress' => self::getTeacherWeeklyLessonsProgress($teacher, $weekId),
             ];
         }
         return $out;
@@ -145,21 +174,25 @@ class TeacherProgressService
     /**
      * ملخص مؤشرات التقدم لعدة معلمين دفعة واحدة (لجدول قائمة المعلمين).
      * المفتاح: teacher_id، القيمة: مصفوفة تحتوي pages_required, pages_completed, pages_percentage,
-     * weekly_target, weekly_completed, weekly_percentage, total_approved_lessons.
+     * weekly_target, weekly_completed, weekly_percentage, total_approved_lessons, current_week.
      *
      * @param  Collection<int, User>  $teachers  المعلمون مع تحميل assignedSubjects
-     * @return array<int, array{pages_required: int, pages_completed: int, pages_percentage: float|null, weekly_target: int, weekly_completed: int, weekly_percentage: float|null, total_approved_lessons: int}>
+     * @param  int|null  $weekId  أسبوع دراسي محدد أو null للأسبوع الحالي
+     * @return array<int, array{pages_required: int, pages_completed: int, pages_percentage: float|null, weekly_target: int, weekly_completed: int, weekly_percentage: float|null, total_approved_lessons: int, current_week: AcademicWeek|null}>
      */
-    public static function getTeachersProgressSummary(Collection $teachers): array
+    public static function getTeachersProgressSummary(Collection $teachers, ?int $weekId = null): array
     {
         if ($teachers->isEmpty()) {
             return [];
         }
 
+        $week = AcademicWeekService::getWeekForProgress($weekId);
+        [$startOfWeek, $endOfWeek] = self::getWeekDateRange($week);
+
         $teacherIds = $teachers->pluck('id')->toArray();
         $subjectIds = [];
-        $teacherSubjectRequired = []; // teacher_id => subject_id => required_pages
-        $teacherSubjectIds = [];      // teacher_id => [subject_id, ...]
+        $teacherSubjectRequired = [];
+        $teacherSubjectIds = [];
 
         foreach ($teachers as $teacher) {
             $tid = $teacher->id;
@@ -207,8 +240,6 @@ class TeacherProgressService
                 ->map(fn ($v) => (int) $v)
                 ->all();
 
-            $startOfWeek = Carbon::now()->startOfWeek();
-            $endOfWeek = Carbon::now()->endOfWeek();
             $bySubjectWeekly = DB::table('lessons as l')
                 ->join('units as u', 'u.id', '=', 'l.unit_id')
                 ->join('subject_sections as ss', 'ss.id', '=', 'u.section_id')
@@ -248,7 +279,7 @@ class TeacherProgressService
                 ? min(100.0, round(($pages_completed / $pages_required) * 100, 1))
                 : null;
 
-            $weekly_target = (int) ($teacher->weekly_lessons_target ?? 0);
+            $weekly_target = AcademicWeekService::getWeeklyTargetForTeacher($teacher, $week);
             $weekly_percentage = $weekly_target > 0
                 ? min(100.0, round(($weekly_completed / $weekly_target) * 100, 1))
                 : null;
@@ -261,6 +292,7 @@ class TeacherProgressService
                 'weekly_completed' => $weekly_completed,
                 'weekly_percentage' => $weekly_percentage,
                 'total_approved_lessons' => $total_approved_lessons,
+                'current_week' => $week,
             ];
         }
 
@@ -271,8 +303,10 @@ class TeacherProgressService
      * إحصائيات تفصيلية لمعلم واحد (لصفحة تفاصيل التقدم).
      * ترجع: teacher, pages_progress (مع approved_lessons_count لكل مادة), weekly_progress,
      * total_approved_lessons, total_pages_required, total_pages_completed, total_pages_percentage.
+     *
+     * @param  int|null  $weekId  أسبوع دراسي محدد أو null للأسبوع الحالي
      */
-    public static function getTeacherDetailStats(User $teacher): array
+    public static function getTeacherDetailStats(User $teacher, ?int $weekId = null): array
     {
         $teacher->load('assignedSubjects');
         $pages_progress = self::getTeacherPagesProgress($teacher);
@@ -312,11 +346,42 @@ class TeacherProgressService
         return [
             'teacher' => $teacher,
             'pages_progress' => $pages_progress,
-            'weekly_progress' => self::getTeacherWeeklyLessonsProgress($teacher),
+            'weekly_progress' => self::getTeacherWeeklyLessonsProgress($teacher, $weekId),
             'total_approved_lessons' => $total_approved_lessons,
             'total_pages_required' => $total_pages_required,
             'total_pages_completed' => $total_pages_completed,
             'total_pages_percentage' => $total_pages_percentage,
         ];
+    }
+
+    /**
+     * تقدم الدروس الأسبوعية للمعلم لكل الأسابيع الماضية ضمن السنة الدراسية النشطة فقط.
+     *
+     * @return array<int, array{week: AcademicWeek, target: int, completed: int, percentage: float|null}>
+     */
+    public static function getTeacherPastWeeksProgress(User $teacher): array
+    {
+        $weeks = AcademicWeekService::getPastActiveYearWeeks();
+        if ($weeks->isEmpty()) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($weeks as $week) {
+            $target = AcademicWeekService::getWeeklyTargetForTeacher($teacher, $week);
+            $completed = self::getTeacherWeeklyLessonsCompleted($teacher, $week->id);
+            $percentage = $target > 0
+                ? min(100.0, round(($completed / $target) * 100, 1))
+                : null;
+
+            $out[] = [
+                'week' => $week,
+                'target' => $target,
+                'completed' => $completed,
+                'percentage' => $percentage,
+            ];
+        }
+
+        return $out;
     }
 }

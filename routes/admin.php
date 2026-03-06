@@ -14,8 +14,9 @@ use App\Http\Controllers\Admin\QuizController;
 use App\Http\Controllers\Admin\QuizAttemptController;
 use App\Http\Controllers\Admin\EnrollmentController;
 use App\Http\Controllers\Admin\LoginLogController;
-use App\Http\Controllers\Admin\PlatformReviewController;
 use App\Http\Controllers\Admin\HeroSlideController;
+use App\Http\Controllers\Admin\DistinguishedStudentController;
+use App\Http\Controllers\Admin\SocialLinkController;
 use App\Http\Controllers\Admin\UserSessionController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Api\SessionActivityController;
@@ -41,12 +42,13 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         // شرائح Hero (سلايدر الصفحة الرئيسية)
         Route::resource('hero-slides', HeroSlideController::class);
 
-        // آراء الطلاب (المنصة)
-        Route::get('platform-reviews', [PlatformReviewController::class, 'index'])->name('platform-reviews.index');
-        Route::get('platform-reviews/{platform_review}/edit', [PlatformReviewController::class, 'edit'])->name('platform-reviews.edit');
-        Route::put('platform-reviews/{platform_review}', [PlatformReviewController::class, 'update'])->name('platform-reviews.update');
-        Route::post('platform-reviews/{platform_review}/approve', [PlatformReviewController::class, 'approve'])->name('platform-reviews.approve');
-        Route::post('platform-reviews/{platform_review}/reject', [PlatformReviewController::class, 'reject'])->name('platform-reviews.reject');
+        // الطلاب المتميزون (الصفحة الرئيسية)
+        Route::get('distinguished-students/students-by-class', [DistinguishedStudentController::class, 'studentsByClass'])
+            ->name('distinguished-students.students-by-class');
+        Route::resource('distinguished-students', DistinguishedStudentController::class);
+
+        // روابط التواصل الاجتماعي (ديناميكية)
+        Route::resource('social-links', SocialLinkController::class);
 
         // المواد الدراسية
         Route::resource('subjects', SubjectController::class);
@@ -488,11 +490,25 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::post('users/bulk-archive', [\App\Http\Controllers\Admin\ArchivedUserController::class, 'bulkArchive'])
             ->name('users.bulk-archive');
 
+        // السنوات الدراسية والأسابيع
+        Route::resource('academic-years', \App\Http\Controllers\Admin\AcademicYearController::class);
+        Route::post('academic-years/{academic_year}/activate', [\App\Http\Controllers\Admin\AcademicYearController::class, 'activate'])
+            ->name('academic-years.activate');
+        Route::resource('academic-weeks', \App\Http\Controllers\Admin\AcademicWeekController::class);
+        Route::post('academic-years/{academic_year}/weeks/generate', [\App\Http\Controllers\Admin\AcademicWeekController::class, 'generate'])
+            ->name('academic-years.weeks.generate');
+
         // تخصيص المعلمين
         Route::get('teachers/progress', [\App\Http\Controllers\Admin\TeacherProgressController::class, 'index'])
             ->name('teachers.progress.index');
         Route::get('teachers/{teacher}/progress', [\App\Http\Controllers\Admin\TeacherProgressController::class, 'show'])
             ->name('teachers.progress.show');
+        Route::get('teachers/{teacher}/progress-history', [\App\Http\Controllers\Admin\TeacherProgressController::class, 'history'])
+            ->name('teachers.progress.history');
+        Route::post('teachers/{teacher}/week-target', [\App\Http\Controllers\Admin\TeacherProgressController::class, 'storeWeekTarget'])
+            ->name('teachers.week-target.store');
+        Route::post('teachers/{teacher}/week-targets-bulk', [\App\Http\Controllers\Admin\TeacherProgressController::class, 'storeWeekTargetsBulk'])
+            ->name('teachers.week-targets.bulk.store');
         Route::get('teachers/assignments', [\App\Http\Controllers\Admin\TeacherAssignmentController::class, 'index'])
             ->name('teachers.assignments.index');
         Route::get('teachers/{teacher}/assignments', [\App\Http\Controllers\Admin\TeacherAssignmentController::class, 'show'])

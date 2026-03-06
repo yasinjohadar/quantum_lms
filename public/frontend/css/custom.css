@@ -278,6 +278,27 @@ a {
     color: rgba(255, 255, 255, 0.85) !important;
 }
 
+/* زر البحث في الهيدر — لون ذهبي مثل أزرار الهيرو */
+#siteHeader .top-header .header-search-btn.btn-gold,
+#siteHeader .top-header .header-search-form .btn-gold {
+    background: var(--gold-gradient) !important;
+    background-size: 200% 200% !important;
+    color: #0b1b2b !important;
+    border: 1px solid rgba(212, 175, 55, 0.45) !important;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.22);
+    padding: 0.375rem 1rem;
+    font-weight: 600;
+    border-radius: 0.375rem;
+    transition: all 0.3s ease;
+}
+#siteHeader .top-header .header-search-btn.btn-gold:hover,
+#siteHeader .top-header .header-search-form .btn-gold:hover {
+    background-position: 100% 0 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(212, 175, 55, 0.28);
+    color: #0b1b2b !important;
+}
+
 #siteHeader[data-bs-theme="dark"] .top-header .form-control {
     background-color: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.16);
@@ -578,12 +599,24 @@ a {
     padding: 15px 35px;
     font-size: 1.1rem;
     font-weight: 600;
+    transition: all 0.3s;
 }
 
 .hero-actions .btn-outline-light.hero-btn-outline:hover {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: #fff;
-    color: #fff;
+    background: linear-gradient(
+        135deg,
+        #fff6b7 0%,
+        #f5d76e 20%,
+        #d4af37 45%,
+        #b8962e 60%,
+        #f5d76e 80%,
+        #fff6b7 100%
+    ) !important;
+    background-size: 200% 200% !important;
+    border-color: #d4af37;
+    color: #0b1b2b !important;
+    transform: translateY(-2px);
+    box-shadow: 0 14px 28px rgba(212, 175, 55, 0.22);
 }
 
 .hero-actions .btn-gold::before {

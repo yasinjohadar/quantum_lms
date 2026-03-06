@@ -10,8 +10,8 @@ use App\Models\ClassEnrollment;
 use App\Models\Enrollment;
 use App\Models\User;
 use App\Models\Purchase;
-use App\Models\PlatformReview;
 use App\Models\HeroSlide;
+use App\Models\DistinguishedStudent;
 use App\Models\SystemSetting;
 use App\Models\CustomPaymentMethod;
 use App\Services\PurchaseService;
@@ -138,50 +138,53 @@ class HomeController extends Controller
         // شرائح Hero للصفحة الرئيسية (سلايدر Hero)
         $heroSlides = HeroSlide::active()->ordered()->get();
 
-        // آراء الطلاب المعتمدة للصفحة الرئيسية (السلايدر)
-        $reviewsLimit = (int) (SystemSetting::get('platform_reviews_display_limit', 6) ?: 6);
-        $reviews = PlatformReview::with(['user', 'schoolClass'])
-            ->approved()
+        // الطلاب المتميزون (سلايدر الصفحة الرئيسية)
+        $limit = (int) SystemSetting::get('distinguished_students_display_limit', 12);
+        $distinguishedStudents = DistinguishedStudent::active()
             ->ordered()
-            ->limit($reviewsLimit)
+            ->with(['user', 'schoolClass'])
+            ->when($limit > 0, fn ($q) => $q->limit($limit))
             ->get();
 
-        return view('frontend.pages.index', compact('classes', 'heroSlides', 'reviews'));
+        return view('frontend.pages.index', compact('classes', 'heroSlides', 'distinguishedStudents'));
     }
 
     /**
-     * حفظ تقييم الطالب للمنصة (رأي واحد لكل مستخدم، يُحدَّث عند إعادة الإرسال)
+     * بحث الصفوف والمواد (صفحة النتائج)
      */
-    public function storePlatformReview(Request $request): RedirectResponse
+    public function search(Request $request): View
     {
-        $request->validate([
-            'stars' => 'required|integer|min:1|max:5',
-            'comment' => 'required|string|max:2000',
-        ]);
+        $query = trim((string) $request->get('q', ''));
 
-        $user = Auth::user();
-        if (!$user) {
-            return redirect()->route('home')->with('error', 'يجب تسجيل الدخول لإضافة رأيك.');
+        $classes = collect();
+        $subjects = collect();
+
+        if ($query !== '') {
+            $like = '%' . $query . '%';
+            $classes = SchoolClass::query()
+                ->active()
+                ->where(function ($q) use ($like) {
+                    $q->where('name', 'like', $like)
+                        ->orWhere('slug', 'like', $like);
+                })
+                ->ordered()
+                ->limit(20)
+                ->get(['id', 'name', 'slug', 'description', 'image']);
+
+            $subjects = Subject::query()
+                ->with('schoolClass:id,name,slug')
+                ->whereHas('schoolClass', fn ($c) => $c->active())
+                ->active()
+                ->where(function ($q) use ($like) {
+                    $q->where('name', 'like', $like)
+                        ->orWhere('slug', 'like', $like);
+                })
+                ->ordered()
+                ->limit(30)
+                ->get(['id', 'name', 'slug', 'class_id']);
         }
 
-        // استنتاج الصف من أول انضمام معتمد للطالب
-        $enrollment = ClassEnrollment::where('user_id', $user->id)
-            ->where('status', 'approved')
-            ->orderBy('id')
-            ->first();
-        $classId = $enrollment?->class_id;
-
-        PlatformReview::updateOrCreate(
-            ['user_id' => $user->id],
-            [
-                'class_id' => $classId,
-                'stars' => $request->stars,
-                'comment' => $request->comment,
-                'status' => 'pending',
-            ]
-        );
-
-        return redirect()->back()->with('success', 'تم إرسال رأيك بنجاح. سيظهر بعد المراجعة من الإدارة.');
+        return view('frontend.pages.search', compact('query', 'classes', 'subjects'));
     }
 
     /**

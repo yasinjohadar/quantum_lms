@@ -56,7 +56,7 @@
             
             <div class="row">
                 @forelse($subjects as $subject)
-                    <div class="col-lg-3 col-md-6 col-12 mb-4">
+                    <div class="col-lg-3 col-md-6 col-12 mb-4" id="subject-{{ $subject['id'] }}">
                         <div class="class-card">
                             <div class="class-card-image">
                                 @if($subject['image'])

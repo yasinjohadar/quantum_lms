@@ -42,7 +42,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Frontend footer data (dynamic classes list)
+        // Frontend footer data (dynamic classes list + contact info)
         View::composer('frontend.layouts.footer', function ($view) {
             try {
                 $footerClasses = SchoolClass::query()
@@ -51,11 +51,27 @@ class AppServiceProvider extends ServiceProvider
                     ->limit(6)
                     ->get(['id', 'name', 'slug']);
             } catch (\Exception $e) {
-                // Avoid breaking rendering if tables not ready yet
                 $footerClasses = collect();
             }
 
-            $view->with('footerClasses', $footerClasses);
+            $footerContactAddress = trim((string) SystemSetting::get('contact_address', ''));
+            $footerContactPhone   = trim((string) SystemSetting::get('contact_phone', ''));
+            $footerContactEmail   = trim((string) SystemSetting::get('contact_email', ''));
+
+            $view->with('footerClasses', $footerClasses)
+                ->with('footerContactAddress', $footerContactAddress)
+                ->with('footerContactPhone', $footerContactPhone)
+                ->with('footerContactEmail', $footerContactEmail);
+        });
+
+        // Social links for frontend header and footer (dynamic from social_links table)
+        View::composer(['frontend.layouts.navbar', 'frontend.layouts.footer'], function ($view) {
+            try {
+                $socialLinks = \App\Models\SocialLink::active()->ordered()->get();
+                $view->with('socialLinks', $socialLinks);
+            } catch (\Exception $e) {
+                $view->with('socialLinks', collect());
+            }
         });
 
         // WhatsApp floating button settings for frontend

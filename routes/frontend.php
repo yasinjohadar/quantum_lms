@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\frontend\HomeController;
 
 // Routes للـ Frontend
+Route::get('/search', [HomeController::class, 'search'])->name('frontend.search');
 Route::get('/class/{slug}', [HomeController::class, 'showClass'])->name('frontend.class.show');
 
 // Checkout Routes (require auth)
@@ -14,7 +15,4 @@ Route::middleware('auth')->group(function () {
     // Payment Routes
     Route::get('/payment/{purchaseId}', [HomeController::class, 'showPayment'])->name('frontend.payment');
     Route::post('/payment/{purchaseId}/process', [HomeController::class, 'processPayment'])->name('frontend.payment.process');
-
-    // آراء الطلاب (تقييم المنصة)
-    Route::post('/platform-review', [HomeController::class, 'storePlatformReview'])->name('frontend.platform-review.store');
 });

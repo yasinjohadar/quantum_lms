@@ -93,14 +93,6 @@ class SchoolClass extends Model
     }
 
     /**
-     * العلاقة مع آراء المنصة المرتبطة بهذا الصف
-     */
-    public function platformReviews()
-    {
-        return $this->hasMany(PlatformReview::class, 'class_id');
-    }
-
-    /**
      * نطاق الصفوف النشطة فقط.
      */
     public function scopeActive($query)
@@ -216,6 +208,14 @@ class SchoolClass extends Model
         return $this->belongsToMany(User::class, 'teacher_classes', 'class_id', 'teacher_id')
                     ->withPivot(['assigned_by', 'assigned_at', 'notes'])
                     ->withTimestamps();
+    }
+
+    /**
+     * العلاقة مع الطلاب المتميزين (عروض الصفحة الرئيسية)
+     */
+    public function distinguishedStudents()
+    {
+        return $this->hasMany(DistinguishedStudent::class, 'class_id');
     }
 }
 

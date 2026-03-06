@@ -69,12 +69,24 @@
                                                     <small class="text-muted d-block mt-1">استخدم <code>{code}</code> للرمز و <code>{expires_in}</code> لوقت الصلاحية بالدقائق</small>
                                                 @elseif($setting->key === 'otp_provider')
                                                     <i class="fas fa-paper-plane me-2 text-success"></i>مزود إرسال كود التحقق
-                                                @elseif($setting->key === 'platform_reviews_display_limit')
-                                                    <i class="fas fa-star me-2 text-warning"></i>عدد آراء الطلاب المعروضة في السلايدر (الصفحة الرئيسية)
                                                 @elseif($setting->key === 'whatsapp_contact_number')
                                                     <i class="fab fa-whatsapp me-2 text-success"></i>رقم واتساب للتواصل
                                                 @elseif($setting->key === 'whatsapp_float_button_enabled')
                                                     <i class="fas fa-eye me-2 text-info"></i>إظهار أيقونة واتساب العائمة
+                                                @elseif($setting->key === 'contact_address')
+                                                    <i class="fas fa-location-dot me-2 text-primary"></i>العنوان (الفوتر)
+                                                @elseif($setting->key === 'contact_phone')
+                                                    <i class="fas fa-phone me-2 text-success"></i>الهاتف (الفوتر)
+                                                @elseif($setting->key === 'contact_email')
+                                                    <i class="fas fa-envelope me-2 text-info"></i>البريد الإلكتروني (الفوتر)
+                                                @elseif($setting->key === 'social_facebook_url')
+                                                    <i class="fab fa-facebook-f me-2 text-primary"></i>رابط فيسبوك
+                                                @elseif($setting->key === 'social_instagram_url')
+                                                    <i class="fab fa-instagram me-2 text-danger"></i>رابط انستغرام
+                                                @elseif($setting->key === 'social_telegram_url')
+                                                    <i class="fab fa-telegram me-2 text-info"></i>رابط تيليجرام
+                                                @elseif($setting->key === 'social_youtube_url')
+                                                    <i class="fab fa-youtube me-2 text-danger"></i>رابط يوتيوب
                                                 @else
                                                     {{ $setting->key }}
                                                 @endif
@@ -98,6 +110,20 @@
                                                        id="setting_{{ $setting->id }}" 
                                                        value="{{ $setting->value }}" 
                                                        placeholder="963912345678">
+                                            @elseif(in_array($setting->key, ['contact_address', 'contact_phone', 'contact_email']))
+                                                <input type="{{ $setting->key === 'contact_email' ? 'email' : 'text' }}" 
+                                                       class="form-control" 
+                                                       name="settings[{{ $setting->key }}]" 
+                                                       id="setting_{{ $setting->id }}" 
+                                                       value="{{ $setting->value }}" 
+                                                       placeholder="{{ $setting->key === 'contact_email' ? 'info@example.com' : '' }}">
+                                            @elseif(in_array($setting->key, ['social_facebook_url', 'social_instagram_url', 'social_telegram_url', 'social_youtube_url']))
+                                                <input type="url" 
+                                                       class="form-control" 
+                                                       name="settings[{{ $setting->key }}]" 
+                                                       id="setting_{{ $setting->id }}" 
+                                                       value="{{ $setting->value }}" 
+                                                       placeholder="https://">
                                             @elseif($setting->type === 'boolean')
                                                 <div class="form-check form-switch">
                                                     <input type="hidden" name="settings[{{ $setting->key }}]" value="0">

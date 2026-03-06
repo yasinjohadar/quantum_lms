@@ -19,6 +19,28 @@
                 </div>
             </div>
 
+            @if(isset($activeWeeks) && $activeWeeks->isNotEmpty())
+                <div class="card shadow-sm border-0 mb-3">
+                    <div class="card-body py-2">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <label class="form-label mb-0">عرض إحصائيات الأسبوع:</label>
+                            <form method="GET" action="{{ route('admin.teachers.progress.index') }}" class="d-flex gap-2 align-items-center flex-wrap">
+                                <select name="week_id" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
+                                    <option value="">الأسبوع الحالي</option>
+                                    @foreach($activeWeeks as $w)
+                                        <option value="{{ $w->id }}" {{ request('week_id') == $w->id ? 'selected' : '' }}>{{ $w->title ?? 'الأسبوع ' . $w->week_number }} ({{ $w->start_date->format('Y-m-d') }} → {{ $w->end_date->format('Y-m-d') }})</option>
+                                    @endforeach
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-secondary">عرض</button>
+                            </form>
+                            @if(isset($currentWeek) && $currentWeek)
+                                <span class="small text-muted">الأسبوع المعروض: {{ $currentWeek->title ?? 'الأسبوع ' . $currentWeek->week_number }} ({{ $currentWeek->start_date->format('Y-m-d') }} - {{ $currentWeek->end_date->format('Y-m-d') }})</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             @if(empty($progress))
                 <div class="card shadow-sm border-0">
                     <div class="card-body text-center py-5">
@@ -95,6 +117,9 @@
                                             <h6 class="text-muted mb-2">
                                                 <i class="bi bi-calendar-week me-1"></i>
                                                 الدروس الأسبوعية
+                                                @if(isset($weekly['current_week']) && $weekly['current_week'])
+                                                    <span class="small fw-normal">({{ $weekly['current_week']->title ?? 'أسبوع ' . $weekly['current_week']->week_number }})</span>
+                                                @endif
                                             </h6>
                                             <div class="border rounded p-3 bg-light">
                                                 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -102,7 +127,7 @@
                                                     <strong>{{ $weekly['target'] ?: '—' }}</strong>
                                                 </div>
                                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                                    <span>المنجز هذا الأسبوع:</span>
+                                                    <span>المنجز في الفترة:</span>
                                                     <strong>{{ $weekly['completed'] }}</strong>
                                                 </div>
                                                 <div class="d-flex justify-content-between align-items-center">
