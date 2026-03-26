@@ -89,7 +89,7 @@
 <!-- Hero Swiper Section End -->
 
 <!-- Classes Section Start -->
-<section class="classes-section py-5" id="classes-section">
+<section class="classes-section py-5 homepage-classes" id="classes-section">
     <div class="container classes-swiper-section">
         <div class="row mb-3">
             <div class="col-12 text-center">
@@ -145,11 +145,9 @@
                                                 <i class="fa-solid fa-graduation-cap"></i>
                                             </div>
                                         @endif
-                                        <span class="class-badge">{{ isset($class['stage']) && $class['stage'] ? $class['stage']->name : ($class['stage_name'] ?? 'مرحلة تجريبية') }}</span>
                                     </div>
                                 </a>
                                 <div class="class-card-body">
-                                    <h3 class="class-card-title">{{ $class['name'] }}</h3>
                                     @if(isset($class['features']) && $class['features']->isNotEmpty())
                                         <h4 class="class-card-features-title">خصائص الاشتراك</h4>
                                         <ul class="class-card-features list-unstyled small text-muted mb-2">
@@ -260,13 +258,25 @@
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js" crossorigin="anonymous"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    var rootEl = document.documentElement;
+    var siteHeaderEl = document.getElementById('siteHeader');
+
+    function updateSiteHeaderHeight() {
+        if (!siteHeaderEl) return;
+        rootEl.style.setProperty('--site-header-height', siteHeaderEl.offsetHeight + 'px');
+    }
+
+    updateSiteHeaderHeight();
+    window.addEventListener('resize', updateSiteHeaderHeight);
+    window.addEventListener('orientationchange', updateSiteHeaderHeight);
+
     var heroSwiperEl = document.querySelector('.hero-swiper');
     if (heroSwiperEl) {
         new Swiper('.hero-swiper', {
             dir: 'rtl',
             loop: true,
             effect: 'slide',
-            autoHeight: true,
+            autoHeight: false,
             autoplay: { delay: 5000, disableOnInteraction: false },
             navigation: {
                 nextEl: '.hero-swiper-next',

@@ -348,8 +348,10 @@ a {
 /* /////////////////////////////////////////////////// */
 
 .hero-swiper-section {
-    height: 600px;
-    min-height: 600px;
+    height: calc(100vh - var(--site-header-height, 0px));
+    min-height: calc(100vh - var(--site-header-height, 0px));
+    height: calc(100dvh - var(--site-header-height, 0px));
+    min-height: calc(100dvh - var(--site-header-height, 0px));
     position: relative;
     overflow: hidden;
 }
@@ -825,19 +827,22 @@ a {
 
 /* Responsive */
 @media (max-width: 768px) {
-    /* Hero swiper – ارتفاع واستيعاب المحتوى على الجوال */
+    /* Hero swiper – occupy viewport height minus header on mobile */
     .hero-swiper-section {
-        height: auto;
-        min-height: auto;
+        height: calc(100vh - var(--site-header-height, 0px));
+        min-height: calc(100vh - var(--site-header-height, 0px));
+        height: calc(100dvh - var(--site-header-height, 0px));
+        min-height: calc(100dvh - var(--site-header-height, 0px));
     }
 
     .hero-swiper-section .hero-swiper,
     .hero-swiper-section .swiper-slide.hero-slide {
-        height: auto;
+        height: 100%;
         min-height: 100%;
     }
 
     .hero-swiper-section .hero-slide-content-wrapper {
+        height: 100%;
         min-height: 100%;
     }
 
@@ -858,6 +863,20 @@ a {
 
     .hero-swiper-section .hero-actions {
         justify-content: center;
+        flex-wrap: nowrap !important;
+        gap: 0.5rem !important;
+    }
+
+    .hero-swiper-section .hero-actions .btn {
+        flex: 1 1 0;
+        min-width: 0;
+        white-space: nowrap;
+        padding: 10px 12px;
+        font-size: 0.95rem;
+    }
+
+    .hero-swiper-section .hero-actions .btn i {
+        margin-inline-start: 0.25rem !important;
     }
 
     .hero-section {
@@ -1124,6 +1143,12 @@ a {
     max-height: 10rem;
     overflow-y: auto;
     margin-bottom: 0.5rem;
+}
+
+/* Homepage: allow features list to expand (no inner scroll) */
+.homepage-classes .class-card-features {
+    max-height: none;
+    overflow: visible;
 }
 
 .class-card-features-title {
