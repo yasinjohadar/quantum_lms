@@ -234,6 +234,11 @@ a {
     box-shadow: none !important;
 }
 
+.menu-icon .fa-user,
+.menu-icon .fa-cart-shopping {
+    color: var(--brand-gold) !important;
+}
+
 .nav-link {
     font-weight: 600 !important;
 }
@@ -1532,6 +1537,19 @@ a {
     
     .class-card-title {
         font-size: 1.25rem;
+    }
+
+    .homepage-classes .class-card-buttons {
+        gap: 0.4rem;
+    }
+
+    .homepage-classes .class-card-btn,
+    .homepage-classes .class-card-btn.enroll-btn,
+    .homepage-classes .class-card-btn.subscribe-btn {
+        font-size: 0.9rem;
+        padding: 10px 12px;
+        line-height: 1.1;
+        white-space: nowrap;
     }
 }
 

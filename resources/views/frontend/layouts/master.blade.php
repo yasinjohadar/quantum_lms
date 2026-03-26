@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" dir="rtl" data-bs-theme="light">
+<html lang="en" dir="rtl" data-bs-theme="dark">
 
 <head>
     @include('frontend.layouts.head')

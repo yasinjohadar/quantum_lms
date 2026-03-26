@@ -37,7 +37,7 @@ header .navbar-nav .nav-link {
         <div class="container">
             <div class="row">
 
-                <div class="col-6 col-md-4">
+                <div class="col-auto col-md-4">
                     <a href="/">
                         <img width="55" style="max-height:42px;height:auto;width:auto;" src="{{ asset('frontend/images/logo.png') }}" alt="logo">
                     </a>
@@ -45,7 +45,7 @@ header .navbar-nav .nav-link {
 
 
 
-                <div class="col-6 col-md-4 d-flex align-items-center">
+                <div class="col col-md-4 d-flex align-items-center">
                     <form action="{{ route('frontend.search') }}" method="GET" class="w-100 header-search-form" role="search">
                         <div class="input-group">
                             <button type="submit" class="btn btn-gold header-search-btn" aria-label="تنفيذ البحث">
@@ -100,9 +100,6 @@ header .navbar-nav .nav-link {
                   @endforeach
                 </div>
 
-                <button type="button" class="header-theme-toggle" id="headerThemeToggle" aria-label="toggle-header-theme">
-                  <i class="fa-solid fa-moon"></i>
-                </button>
               </div>
 
 
