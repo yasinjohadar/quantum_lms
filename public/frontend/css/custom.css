@@ -864,6 +864,7 @@ a {
     .hero-swiper-section .hero-content {
         align-items: center;
         text-align: center;
+        transform: translateY(-36px);
     }
 
     .hero-swiper-section .hero-actions {
