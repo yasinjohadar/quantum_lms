@@ -6,6 +6,10 @@ use HashContext;
 use App\Models\User;
 use App\Models\LoginLog;
 use App\Models\SystemSetting;
+use App\Models\SchoolClass;
+use App\Models\ClassEnrollment;
+use App\Models\Enrollment;
+use App\Models\Subject;
 use App\Services\SMS\OTPService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -48,6 +52,12 @@ class UserController extends Controller
         $this->middleware('permission:user-list')->only('index');
         $this->middleware('permission:user-create')->only(['create', 'store']);
         $this->middleware('permission:user-edit')->only(['edit', 'update']);
+        $this->middleware('permission:user-edit')->only([
+            'detachFromClass',
+            'detachMultipleFromClass',
+            'detachAllFromClass',
+            'detachAllFromSubject',
+        ]);
         $this->middleware('permission:user-delete')->only('destroy');
         $this->middleware('permission:user-show')->only('show');
         $this->middleware('permission:user-update-password')->only('updatePassword');
@@ -67,8 +77,13 @@ public function index(Request $request)
     {
         $roles = Role::all();
 
+        $classes = SchoolClass::active()->ordered()->get(['id', 'name']);
+
         // بدء استعلام المستخدمين — الطلاب فقط (غير المؤرشفين)
         $usersQuery = User::query()->students();
+        $usersQuery->with(['classEnrollments' => function ($q) {
+            $q->approved()->with('schoolClass');
+        }]);
 
         // فلترة حسب البحث (name, email, phone)
         if ($request->filled('query')) {
@@ -85,10 +100,28 @@ public function index(Request $request)
             $usersQuery->where('is_active', $request->input('is_active'));
         }
 
+        // فلترة حسب الصف
+        if ($request->filled('class_id')) {
+            $classId = (int) $request->input('class_id');
+            $usersQuery->whereHas('classEnrollments', function ($q) use ($classId) {
+                $q->approved()->where('class_id', $classId);
+            });
+        }
+
         // تنفيذ الاستعلام
         $users = $usersQuery->paginate(10);
 
-        return view("admin.pages.users.index", compact("users", "roles"));
+        // AJAX response for class filter + pagination
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'html' => view('admin.pages.users.partials.users-tbody', compact('users'))->render(),
+                'pagination' => view('admin.pages.users.partials.pagination-links', compact('users'))->render(),
+                'impersonate_modals' => view('admin.pages.users.partials.impersonate-modals', compact('users'))->render(),
+            ]);
+        }
+
+        return view("admin.pages.users.index", compact("users", "roles", "classes"));
     }
 
 
@@ -351,6 +384,219 @@ public function index(Request $request)
             return redirect()
                 ->back()
                 ->with('error', 'فشل تحديث حالة المستخدم (ID: ' . $id . '): ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * فصل الطالب عن صف (بدون اعتبار status في ClassEnrollment).
+     * يتم حذف ClassEnrollment للصف + حذف Enrollments الخاصة بمواد هذا الصف.
+     */
+    public function detachFromClass(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'user_id' => 'required|integer|exists:users,id',
+                'class_id' => 'required|integer|exists:classes,id',
+            ]);
+
+            $userId = (int) $validated['user_id'];
+            $classId = (int) $validated['class_id'];
+
+            // فصل الطالب عن هذا الصف (approved + pending + rejected ...).
+            $deletedClassEnrollments = ClassEnrollment::where('user_id', $userId)
+                ->where('class_id', $classId)
+                ->delete();
+
+            // حذف انضمامات الطالب للمواد التابعة لهذا الصف.
+            $deletedEnrollments = Enrollment::where('user_id', $userId)
+                ->whereHas('subject', function ($q) use ($classId) {
+                    $q->where('class_id', $classId);
+                })
+                ->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم فصل الطالب عن الصف بنجاح.',
+                'deleted' => [
+                    'class_enrollments' => $deletedClassEnrollments,
+                    'enrollments' => $deletedEnrollments,
+                ],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'بيانات الفصل غير صحيحة.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Error detaching user from class', [
+                'user_id' => $request->input('user_id'),
+                'class_id' => $request->input('class_id'),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء فصل الطالب عن الصف.',
+            ], 500);
+        }
+    }
+
+    /**
+     * فصل جماعي للطلاب المحددين عن صف محدد.
+     * يتم حذف ClassEnrollment + Enrollment للمواد التابعة لنفس الصف.
+     */
+    public function detachMultipleFromClass(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'user_ids' => 'required|array|min:1',
+                'user_ids.*' => 'required|integer|exists:users,id',
+                'class_id' => 'required|integer|exists:classes,id',
+            ]);
+
+            $userIds = array_map('intval', $validated['user_ids']);
+            $classId = (int) $validated['class_id'];
+
+            $deletedClassEnrollments = ClassEnrollment::whereIn('user_id', $userIds)
+                ->where('class_id', $classId)
+                ->delete();
+
+            $deletedEnrollments = Enrollment::whereIn('user_id', $userIds)
+                ->whereHas('subject', function ($q) use ($classId) {
+                    $q->where('class_id', $classId);
+                })
+                ->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم فصل الطلاب عن الصف بنجاح.',
+                'deleted' => [
+                    'class_enrollments' => $deletedClassEnrollments,
+                    'enrollments' => $deletedEnrollments,
+                ],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'بيانات الفصل غير صحيحة.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Error detaching multiple users from class', [
+                'user_ids' => $request->input('user_ids'),
+                'class_id' => $request->input('class_id'),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء فصل الطلاب عن الصف.',
+            ], 500);
+        }
+    }
+
+    /**
+     * فصل جميع الطلاب عن صف محدد:
+     * - حذف ClassEnrollment لهذا الصف
+     * - حذف Enrollment للمواد التابعة لنفس الصف (Enrollment عبر subject.class_id)
+     */
+    public function detachAllFromClass(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'class_id' => 'required|integer|exists:classes,id',
+            ]);
+
+            $classId = (int) $validated['class_id'];
+
+            $deletedClassEnrollments = ClassEnrollment::where('class_id', $classId)->delete();
+
+            $deletedEnrollments = Enrollment::whereHas('subject', function ($q) use ($classId) {
+                $q->where('class_id', $classId);
+            })->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم فصل جميع الطلاب عن الصف بنجاح.',
+                'deleted' => [
+                    'class_enrollments' => $deletedClassEnrollments,
+                    'enrollments' => $deletedEnrollments,
+                ],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'بيانات الفصل غير صحيحة.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Error detaching all users from class', [
+                'class_id' => $request->input('class_id'),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء فصل جميع الطلاب عن الصف.',
+            ], 500);
+        }
+    }
+
+    /**
+     * فصل جميع الطلاب عن مادة ضمن صف محدد (Enrollment فقط):
+     * - لا يتم حذف ClassEnrollment
+     * - يتم حذف Enrollment لهذه المادة فقط (مع التحقق أن المادة ضمن class_id)
+     */
+    public function detachAllFromSubject(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'class_id' => 'required|integer|exists:classes,id',
+                'subject_id' => 'required|integer|exists:subjects,id',
+            ]);
+
+            $classId = (int) $validated['class_id'];
+            $subjectId = (int) $validated['subject_id'];
+
+            $subject = Subject::findOrFail($subjectId);
+            if ((int) $subject->class_id !== $classId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'المادة لا تنتمي إلى الصف المحدد.',
+                ], 422);
+            }
+
+            $deletedEnrollments = Enrollment::where('subject_id', $subjectId)
+                ->whereHas('subject', function ($q) use ($classId) {
+                    $q->where('class_id', $classId);
+                })
+                ->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم فصل جميع الطلاب عن المادة بنجاح.',
+                'deleted' => [
+                    'enrollments' => $deletedEnrollments,
+                ],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'بيانات الفصل غير صحيحة.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Error detaching all users from subject', [
+                'class_id' => $request->input('class_id'),
+                'subject_id' => $request->input('subject_id'),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء فصل جميع الطلاب عن المادة.',
+            ], 500);
         }
     }
 

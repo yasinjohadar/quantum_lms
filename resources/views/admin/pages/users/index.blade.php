@@ -88,6 +88,16 @@
                                             <option value="0" {{ request('is_active') == '0' ? 'selected' : '' }}>غير نشط</option>
                                         </select>
 
+                                        {{-- فلتر الصف --}}
+                                        <select name="class_id" id="classFilter" class="form-select">
+                                            <option value="">كل الصفوف</option>
+                                            @foreach ($classes as $class)
+                                                <option value="{{ $class->id }}" {{ request('class_id') == (string)$class->id ? 'selected' : '' }}>
+                                                    {{ $class->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+
 
                                         <button type="submit" class="btn btn-secondary">بحث</button>
                                         <a href="{{ route('users.index') }}" class="btn btn-danger">مسح </a>
@@ -107,6 +117,18 @@
                                     <button type="button" class="btn btn-warning btn-sm" id="bulk-archive-btn" style="display: none;">
                                         <i class="fas fa-archive me-1"></i> أرشفة المحدد
                                     </button>
+                                    <button type="button"
+                                            class="btn btn-danger btn-sm"
+                                            id="bulk-detach-class-btn"
+                                            style="display: none;">
+                                        <i class="fas fa-user-slash me-1"></i> فصل المحدد عن الصف
+                                        <span class="badge bg-light text-dark ms-1" id="bulkDetachSelectedCount">0</span>
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-outline-danger btn-sm ms-2"
+                                            id="detachAllByScopeBtn">
+                                        <i class="fas fa-user-slash me-1"></i> فصل الكل حسب الصف/المادة
+                                    </button>
                                 </div>
 
                             <p class="text-muted">
@@ -122,142 +144,19 @@
                                                 <th scope="col" style="min-width: 150px;">اسم المستخدم</th>
                                                 <th scope="col" style="min-width: 120px;">الهاتف</th>
                                                 <th scope="col" style="min-width: 140px;">حالة الحساب</th>
+                                                <th scope="col" style="min-width: 180px;">الصفوف</th>
                                                 <th scope="col" style="min-width: 200px;">العمليات</th>
                                             </tr>
                                         </thead>
-                                        <tbody>
-
-                                            @forelse ($users as $user)
-                                                <tr>
-                                                    <td>
-                                                        @if(!$user->is_archived)
-                                                        <input type="checkbox" name="selected_user_ids[]" value="{{ $user->id }}" class="form-check-input user-checkbox">
-                                                        @endif
-                                                    </td>
-                                                    <th scope="row">{{ $loop->iteration }}</th>
-
-                                                    <td>
-                                                        <div class="d-flex align-items-center">
-                                                            <a href="{{ route('users.show', $user->id) }}"
-                                                                class="text-decoration-none">
-                                                                {{ $user->name }}
-                                                            </a>
-                                                        </div>
-                                                    </td>
-
-                                                    <td>
-                                                        @if ($user->phone)
-                                                            <div class="d-flex align-items-center gap-2">
-                                                                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $user->phone) }}"
-                                                                    target="_blank"
-                                                                    class="text-success text-decoration-none"
-                                                                    title="فتح WhatsApp">
-                                                                    <i class="fab fa-whatsapp me-1"></i>
-                                                                    {{ $user->phone }}
-                                                                </a>
-                                                                <button type="button" 
-                                                                        class="btn btn-sm btn-outline-secondary copy-btn p-1" 
-                                                                        data-copy-text="{{ $user->phone }}"
-                                                                        title="نسخ الرقم">
-                                                                    <i class="fas fa-copy"></i>
-                                                                </button>
-                                                            </div>
-                                                        @else
-                                                            -
-                                                        @endif
-                                                    </td>
-
-                                                    <td>
-                                                        <button type="button"
-                                                                class="btn btn-sm d-inline-flex align-items-center {{ $user->is_active ? 'btn-success' : 'btn-outline-danger' }}"
-                                                                data-bs-toggle="modal"
-                                                                data-bs-target="#toggleStatus{{ $user->id }}">
-                                                            @if($user->is_active)
-                                                                <i class="fa-solid fa-check-circle me-1"></i>
-                                                                <span>الحساب مفعل</span>
-                                                            @else
-                                                                <i class="fa-solid fa-ban me-1"></i>
-                                                                <span>الحساب معطل</span>
-                                                            @endif
-                                                        </button>
-                                                    </td>
-
-                                                    <td>
-                                                        <div class="d-flex gap-1 flex-wrap">
-                                                            @can('user-impersonate')
-                                                            <button type="button" class="btn btn-info btn-sm" 
-                                                                    data-bs-toggle="modal" 
-                                                                    data-bs-target="#impersonateModal{{ $user->id }}"
-                                                                    title="تسجيل الدخول كالمستخدم">
-                                                                <i class="fas fa-user-secret"></i>
-                                                            </button>
-                                                            @endcan
-                                                            <a class="btn btn-info btn-sm"
-                                                                href="{{ route('users.edit', $user->id) }}"
-                                                                title="تعديل المستخدم">
-                                                                <i class="fa-solid fa-pen-to-square"></i>
-                                                            </a>
-                                                            @if($user->hasRole('teacher'))
-                                                            <a class="btn btn-success btn-sm"
-                                                                href="{{ route('admin.teachers.assignments', $user->id) }}"
-                                                                title="تخصيص الصفوف والمواد">
-                                                                <i class="fa-solid fa-user-tie"></i>
-                                                            </a>
-                                                            @endif
-                                                            <a class="btn btn-secondary btn-sm"
-                                                                href="{{ route('users.login-logs', $user->id) }}"
-                                                                title="سجلات الدخول">
-                                                                <i class="fa-solid fa-sign-in-alt"></i>
-                                                            </a>
-                                                            @if($user->phone && !$user->phone_verified_at)
-                                                            <button type="button" 
-                                                                    class="btn btn-success btn-sm send-otp-btn"
-                                                                    data-user-id="{{ $user->id }}"
-                                                                    data-user-name="{{ $user->name }}"
-                                                                    data-user-phone="{{ $user->phone }}"
-                                                                    title="إرسال كود التحقق">
-                                                                <i class="fa-solid fa-message"></i>
-                                                            </button>
-                                                            @endif
-                                                            @if(!$user->is_archived)
-                                                            <button type="button" class="btn btn-warning btn-sm archive-user-btn"
-                                                                    data-user-id="{{ $user->id }}"
-                                                                    data-user-name="{{ $user->name }}"
-                                                                    title="أرشفة المستخدم">
-                                                                <i class="fas fa-archive"></i>
-                                                            </button>
-                                                            @endif
-                                                            <a class="btn btn-danger btn-sm" data-bs-toggle="modal"
-                                                                data-bs-target="#delete{{ $user->id }}"
-                                                                title="حذف المستخدم">
-                                                                <i class="fa-solid fa-trash-can"></i>
-                                                            </a>
-                                                            <a href="#" class="btn btn-warning btn-sm"
-                                                                data-bs-toggle="modal"
-                                                                data-bs-target="#change_password{{ $user->id }}"
-                                                                title="تعديل كلمة السر">
-                                                                <i class="fa-solid fa-key"></i>
-                                                            </a>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                                {{-- Modals for each user --}}
-                                                @include('admin.pages.users.toggle_status', ['user' => $user])
-                                                @include('admin.pages.users.delete', ['user' => $user])
-                                                @include('admin.pages.users.change_password', ['user' => $user])
-                                            @empty
-                                                <tr>
-                                                    <td colspan="8" class="text-center text-danger fw-bold">لا توجد
-                                                        بيانات متاحة
-                                                    </td>
-                                                </tr>
-                                            @endforelse
-
+                                        <tbody id="usersTableBody">
+                                            @include('admin.pages.users.partials.users-tbody', ['users' => $users])
                                         </tbody>
                                     </table>
 
                                     <div class="mt-3">
-                                        {{ $users->withQueryString()->links() }}
+                                        <div id="usersPaginationContainer">
+                                            {{ $users->withQueryString()->links() }}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -320,6 +219,111 @@
     </div>
 </div>
 
+<!-- Modal فصل جماعي عن الصف -->
+<div class="modal fade" id="bulkDetachClassModal" tabindex="-1" aria-labelledby="bulkDetachClassModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="bulkDetachClassModalLabel">
+                    <i class="fas fa-user-slash me-2"></i> فصل جماعي عن الصف
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4">
+                <div class="alert alert-info">
+                    سيتم فصل الطلاب المحددين من الصف الذي تختاره.
+                </div>
+
+                <div class="mb-3">
+                    <label for="bulkDetachClassId" class="form-label">اختر الصف</label>
+                    <select id="bulkDetachClassId" class="form-select">
+                        @foreach ($classes as $class)
+                            <option value="{{ $class->id }}" {{ request('class_id') == (string)$class->id ? 'selected' : '' }}>
+                                {{ $class->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i> إلغاء
+                </button>
+                <button type="button" class="btn btn-danger" id="bulkDetachConfirmBtn">
+                    <i class="fas fa-user-slash me-1"></i> تأكيد الفصل
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal فصل الكل حسب الصف/المادة -->
+<div class="modal fade" id="detachAllByScopeModal" tabindex="-1" aria-labelledby="detachAllByScopeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="detachAllByScopeModalLabel">
+                    <i class="fas fa-user-slash me-2"></i> فصل الكل حسب الصف/المادة
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4">
+                <div class="mb-3">
+                    <div class="d-flex gap-4 flex-wrap">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="detachAllScope" id="detachAllScopeClass" value="class" checked>
+                            <label class="form-check-label" for="detachAllScopeClass">حسب الصف</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="detachAllScope" id="detachAllScopeSubject" value="subject">
+                            <label class="form-check-label" for="detachAllScopeSubject">حسب مادة ضمن صف</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="detachAllClassSection" class="mb-3">
+                    <label for="detachAllClassId" class="form-label">اختر الصف</label>
+                    <select id="detachAllClassId" class="form-select">
+                        @foreach ($classes as $class)
+                            <option value="{{ $class->id }}" {{ request('class_id') == (string)$class->id ? 'selected' : '' }}>
+                                {{ $class->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div id="detachAllSubjectSection" class="mb-3" style="display: none;">
+                    <label class="form-label">اختر الصف</label>
+                    <select id="detachAllSubjectClassId" class="form-select mb-2">
+                        @foreach ($classes as $class)
+                            <option value="{{ $class->id }}" {{ request('class_id') == (string)$class->id ? 'selected' : '' }}>
+                                {{ $class->name }}
+                            </option>
+                        @endforeach
+                    </select>
+
+                    <label for="detachAllSubjectId" class="form-label">اختر المادة</label>
+                    <select id="detachAllSubjectId" class="form-select" disabled>
+                        <option value="">اختر المادة</option>
+                    </select>
+                    <div class="form-text mt-2">
+                        سيتم فصل انضمامات المادة فقط (لا يتم حذف انضمام الصف).
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i> إلغاء
+                </button>
+                <button type="button" class="btn btn-danger" id="detachAllConfirmBtn">
+                    <i class="fas fa-user-slash me-1"></i> تأكيد الفصل
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @stop
 
 @section('js')
@@ -328,16 +332,36 @@
     document.addEventListener('DOMContentLoaded', function() {
         // Bulk archive functionality
         const selectAllUsers = document.getElementById('select-all-users');
-        const userCheckboxes = document.querySelectorAll('.user-checkbox');
+        const usersTableBody = document.getElementById('usersTableBody');
+        const getUserCheckboxes = () => document.querySelectorAll('.user-checkbox');
         const bulkArchiveBtn = document.getElementById('bulk-archive-btn');
+            const bulkDetachBtn = document.getElementById('bulk-detach-class-btn');
         const bulkArchiveForm = document.getElementById('bulk-archive-form');
         const userIdsInput = document.getElementById('user_ids_input');
         const archiveReasonInput = document.getElementById('archive_reason_input');
+            const bulkDetachModalEl = document.getElementById('bulkDetachClassModal');
+            const bulkDetachClassIdEl = document.getElementById('bulkDetachClassId');
+            const bulkDetachConfirmBtn = document.getElementById('bulkDetachConfirmBtn');
+            const bulkDetachSelectedCountEl = document.getElementById('bulkDetachSelectedCount');
+            const classFilterEl = document.getElementById('classFilter');
+
+        // Detach-all UI
+        const detachAllByScopeBtn = document.getElementById('detachAllByScopeBtn');
+        const detachAllByScopeModalEl = document.getElementById('detachAllByScopeModal');
+        const detachAllConfirmBtn = document.getElementById('detachAllConfirmBtn');
+        const detachAllScopeClassRadio = document.getElementById('detachAllScopeClass');
+        const detachAllScopeSubjectRadio = document.getElementById('detachAllScopeSubject');
+        const detachAllClassSectionEl = document.getElementById('detachAllClassSection');
+        const detachAllSubjectSectionEl = document.getElementById('detachAllSubjectSection');
+        const detachAllClassIdEl = document.getElementById('detachAllClassId');
+        const detachAllSubjectClassIdEl = document.getElementById('detachAllSubjectClassId');
+        const detachAllSubjectIdEl = document.getElementById('detachAllSubjectId');
+        const getSubjectsUrl = '{{ route("admin.enrollments.get-subjects-by-class") }}';
 
         // Select all functionality
         if (selectAllUsers) {
             selectAllUsers.addEventListener('change', function() {
-                userCheckboxes.forEach(checkbox => {
+                getUserCheckboxes().forEach(checkbox => {
                     checkbox.checked = this.checked;
                 });
                 toggleBulkArchiveBtn();
@@ -345,8 +369,9 @@
         }
 
         // Individual checkbox change
-        userCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
+        getUserCheckboxes().forEach(checkbox => {
+            checkbox.addEventListener('change', function(e) {
+                e.stopPropagation();
                 toggleBulkArchiveBtn();
                 updateSelectAllUsers();
             });
@@ -357,11 +382,18 @@
             if (bulkArchiveBtn) {
                 bulkArchiveBtn.style.display = checked.length > 0 ? 'inline-block' : 'none';
             }
+            if (bulkDetachBtn) {
+                bulkDetachBtn.style.display = checked.length > 0 ? 'inline-block' : 'none';
+                if (bulkDetachSelectedCountEl) {
+                    bulkDetachSelectedCountEl.textContent = checked.length;
+                }
+            }
         }
 
         function updateSelectAllUsers() {
             if (selectAllUsers) {
-                const allChecked = userCheckboxes.length > 0 && Array.from(userCheckboxes).every(cb => cb.checked);
+                const checkboxes = getUserCheckboxes();
+                const allChecked = checkboxes.length > 0 && Array.from(checkboxes).every(cb => cb.checked);
                 selectAllUsers.checked = allChecked;
             }
         }
@@ -406,6 +438,277 @@
                     }
                     
                     bulkArchiveForm.submit();
+                }
+            });
+        }
+
+        // Bulk detach class
+        if (bulkDetachBtn && bulkDetachModalEl && bulkDetachConfirmBtn) {
+            bulkDetachBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                const checkedIds = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
+                if (checkedIds.length === 0) {
+                    alert('يرجى اختيار طلاب للفصل');
+                    return;
+                }
+
+                if (bulkDetachSelectedCountEl) {
+                    bulkDetachSelectedCountEl.textContent = checkedIds.length;
+                }
+
+                // افتراضي: نفس قيمة فلتر الصف
+                if (classFilterEl && bulkDetachClassIdEl) {
+                    bulkDetachClassIdEl.value = classFilterEl.value;
+                }
+
+                const modal = bootstrap.Modal.getOrCreateInstance(bulkDetachModalEl);
+                modal.show();
+            });
+
+            bulkDetachConfirmBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                const checkedIds = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
+                const classId = bulkDetachClassIdEl ? bulkDetachClassIdEl.value : '';
+
+                if (checkedIds.length === 0) {
+                    alert('لا يوجد طلاب محددين');
+                    return;
+                }
+
+                if (!classId) {
+                    alert('يرجى اختيار الصف');
+                    return;
+                }
+
+                this.disabled = true;
+
+                fetch('{{ route("users.detach-multiple-from-class") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ user_ids: checkedIds, class_id: classId })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.success) {
+                        const modal = bootstrap.Modal.getOrCreateInstance(bulkDetachModalEl);
+                        modal.hide();
+                        const deleted = data.deleted || {};
+                        const classEnrollmentsDeleted = deleted.class_enrollments ?? 0;
+                        const enrollmentsDeleted = deleted.enrollments ?? 0;
+                        alert(`تم فصل الطلاب بنجاح.\nتم حذف ClassEnrollment: ${classEnrollmentsDeleted}\nتم حذف Enrollment: ${enrollmentsDeleted}`);
+                        fetchUsers(1);
+                    } else {
+                        alert((data && data.message) ? data.message : 'حدث خطأ أثناء الفصل');
+                    }
+                })
+                .catch(err => {
+                    console.error('Bulk detach error:', err);
+                    alert('حدث خطأ أثناء الفصل');
+                })
+                .finally(() => {
+                    bulkDetachConfirmBtn.disabled = false;
+                });
+            });
+        }
+
+        // Detach all (by class or by subject) without selecting checkboxes
+        if (detachAllByScopeBtn && detachAllByScopeModalEl && detachAllConfirmBtn) {
+            const detachAllScopeSelector = () => document.querySelector('input[name="detachAllScope"]:checked');
+
+            function showDetachAllSections() {
+                const scopeVal = detachAllScopeSelector() ? detachAllScopeSelector().value : 'class';
+                const isClass = scopeVal === 'class';
+
+                if (detachAllClassSectionEl) {
+                    detachAllClassSectionEl.style.display = isClass ? '' : 'none';
+                }
+                if (detachAllSubjectSectionEl) {
+                    detachAllSubjectSectionEl.style.display = isClass ? 'none' : '';
+                }
+            }
+
+            function loadSubjectsForDetachAllByClass(classId) {
+                if (!detachAllSubjectIdEl || !detachAllSubjectClassIdEl) return;
+
+                if (!classId) {
+                    detachAllSubjectIdEl.disabled = true;
+                    detachAllSubjectIdEl.innerHTML = '<option value="">اختر المادة</option>';
+                    return;
+                }
+
+                detachAllSubjectIdEl.disabled = true;
+                detachAllSubjectIdEl.innerHTML = '<option value="">جاري التحميل...</option>';
+
+                fetch(`${getSubjectsUrl}?class_id=${encodeURIComponent(classId)}`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin'
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.success && Array.isArray(data.data)) {
+                        if (data.data.length === 0) {
+                            detachAllSubjectIdEl.innerHTML = '<option value="">لا توجد مواد</option>';
+                        } else {
+                            detachAllSubjectIdEl.innerHTML = '';
+                            const emptyOpt = document.createElement('option');
+                            emptyOpt.value = '';
+                            emptyOpt.textContent = 'اختر المادة';
+                            detachAllSubjectIdEl.appendChild(emptyOpt);
+
+                            data.data.forEach(subject => {
+                                const opt = document.createElement('option');
+                                opt.value = subject.id;
+                                opt.textContent = subject.name;
+                                detachAllSubjectIdEl.appendChild(opt);
+                            });
+                        }
+                        detachAllSubjectIdEl.disabled = false;
+                    } else {
+                        detachAllSubjectIdEl.innerHTML = '<option value="">لا توجد مواد</option>';
+                        detachAllSubjectIdEl.disabled = true;
+                    }
+                })
+                .catch(() => {
+                    detachAllSubjectIdEl.innerHTML = '<option value="">خطأ في التحميل</option>';
+                    detachAllSubjectIdEl.disabled = true;
+                });
+            }
+
+            if (detachAllScopeClassRadio) {
+                detachAllScopeClassRadio.addEventListener('change', function() {
+                    showDetachAllSections();
+                });
+            }
+            if (detachAllScopeSubjectRadio) {
+                detachAllScopeSubjectRadio.addEventListener('change', function() {
+                    showDetachAllSections();
+                    if (detachAllSubjectClassIdEl) {
+                        loadSubjectsForDetachAllByClass(detachAllSubjectClassIdEl.value);
+                    }
+                });
+            }
+
+            if (detachAllSubjectClassIdEl) {
+                detachAllSubjectClassIdEl.addEventListener('change', function() {
+                    loadSubjectsForDetachAllByClass(this.value);
+                });
+            }
+
+            detachAllByScopeBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                // set default values
+                if (detachAllScopeClassRadio) detachAllScopeClassRadio.checked = true;
+                if (detachAllScopeSubjectRadio) detachAllScopeSubjectRadio.checked = false;
+
+                if (detachAllSubjectIdEl) {
+                    detachAllSubjectIdEl.disabled = true;
+                    detachAllSubjectIdEl.innerHTML = '<option value="">اختر المادة</option>';
+                }
+
+                showDetachAllSections();
+
+                const modal = bootstrap.Modal.getOrCreateInstance(detachAllByScopeModalEl);
+                modal.show();
+            });
+
+            detachAllConfirmBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                const scopeVal = detachAllScopeSelector() ? detachAllScopeSelector().value : 'class';
+
+                const payload = {};
+
+                if (scopeVal === 'class') {
+                    const classId = detachAllClassIdEl ? detachAllClassIdEl.value : '';
+                    if (!classId) {
+                        alert('يرجى اختيار الصف');
+                        return;
+                    }
+                    payload.class_id = classId;
+                    detachAllConfirmBtn.disabled = true;
+                    fetch('{{ route("users.detach-all-from-class") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.success) {
+                            const modal = bootstrap.Modal.getOrCreateInstance(detachAllByScopeModalEl);
+                            modal.hide();
+                            const deleted = data.deleted || {};
+                            const classEnrollmentsDeleted = deleted.class_enrollments ?? 0;
+                            const enrollmentsDeleted = deleted.enrollments ?? 0;
+                            alert(`تم فصل جميع الطلاب بنجاح.\nتم حذف ClassEnrollment: ${classEnrollmentsDeleted}\nتم حذف Enrollment: ${enrollmentsDeleted}`);
+                            fetchUsers(1);
+                        } else {
+                            alert((data && data.message) ? data.message : 'حدث خطأ');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Detach all (class) error:', err);
+                        alert('حدث خطأ أثناء الفصل');
+                    })
+                    .finally(() => {
+                        detachAllConfirmBtn.disabled = false;
+                    });
+                } else {
+                    const classId = detachAllSubjectClassIdEl ? detachAllSubjectClassIdEl.value : '';
+                    const subjectId = detachAllSubjectIdEl ? detachAllSubjectIdEl.value : '';
+
+                    if (!classId || !subjectId) {
+                        alert('يرجى اختيار الصف والمادة');
+                        return;
+                    }
+
+                    payload.class_id = classId;
+                    payload.subject_id = subjectId;
+
+                    detachAllConfirmBtn.disabled = true;
+                    fetch('{{ route("users.detach-all-from-subject") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.success) {
+                            const modal = bootstrap.Modal.getOrCreateInstance(detachAllByScopeModalEl);
+                            modal.hide();
+                            const deleted = data.deleted || {};
+                            const enrollmentsDeleted = deleted.enrollments ?? 0;
+                            alert(`تم فصل جميع الطلاب عن المادة بنجاح.\nتم حذف Enrollment: ${enrollmentsDeleted}`);
+                            fetchUsers(1);
+                        } else {
+                            alert((data && data.message) ? data.message : 'حدث خطأ');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Detach all (subject) error:', err);
+                        alert('حدث خطأ أثناء الفصل');
+                    })
+                    .finally(() => {
+                        detachAllConfirmBtn.disabled = false;
+                    });
                 }
             });
         }
@@ -474,7 +777,8 @@
 
         // إرسال OTP يدوياً
         document.querySelectorAll('.send-otp-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
                 const button = this;
                 const userId = button.getAttribute('data-user-id');
                 const userName = button.getAttribute('data-user-name');
@@ -553,7 +857,8 @@
 
         // وظيفة نسخ النص للواتساب والإيميل
         document.querySelectorAll('.copy-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
                 const textToCopy = this.getAttribute('data-copy-text');
                 
                 // نسخ النص إلى الحافظة
@@ -578,56 +883,264 @@
                 });
             });
         });
+
+        // Delegation (works for AJAX-updated rows too)
+        if (usersTableBody) {
+            // Bulk selection checkbox (new rows)
+            usersTableBody.addEventListener('change', function(e) {
+                const target = e.target;
+                if (!target || !target.matches('.user-checkbox')) return;
+                toggleBulkArchiveBtn();
+                updateSelectAllUsers();
+            });
+
+            // Individual actions for AJAX-updated rows
+            usersTableBody.addEventListener('click', function(e) {
+                const detachBtn = e.target.closest('.detach-class-btn');
+                if (detachBtn) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const userId = detachBtn.getAttribute('data-user-id');
+                    const classId = detachBtn.getAttribute('data-class-id');
+
+                    if (!userId || !classId) return;
+
+                    if (!confirm('متأكد من فصل الطالب عن هذا الصف؟')) return;
+
+                    fetch('{{ route("users.detach-from-class") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ user_id: userId, class_id: classId })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.success) {
+                            const deleted = data.deleted || {};
+                            const classEnrollmentsDeleted = deleted.class_enrollments ?? 0;
+                            const enrollmentsDeleted = deleted.enrollments ?? 0;
+                            alert(`تم فصل الطالب بنجاح.\nتم حذف ClassEnrollment: ${classEnrollmentsDeleted}\nتم حذف Enrollment: ${enrollmentsDeleted}`);
+                            fetchUsers(1);
+                        } else {
+                            alert((data && data.message) ? data.message : 'حدث خطأ أثناء الفصل');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Detach error:', err);
+                        alert('حدث خطأ أثناء الفصل');
+                    });
+
+                    return;
+                }
+
+                const archiveBtn = e.target.closest('.archive-user-btn');
+                if (archiveBtn) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const userId = archiveBtn.getAttribute('data-user-id');
+                    const userName = archiveBtn.getAttribute('data-user-name');
+
+                    if (!userId || !userName) return;
+
+                    const archiveUserNameEl = document.getElementById('archiveUserName');
+                    const archiveFormEl = document.getElementById('archiveForm');
+                    const archiveModalEl = document.getElementById('archiveModal');
+                    if (!archiveUserNameEl || !archiveFormEl || !archiveModalEl) return;
+
+                    archiveUserNameEl.textContent = userName;
+                    archiveFormEl.action = '{{ route("admin.users.archive", ":id") }}'.replace(':id', userId);
+                    const archiveReasonEl = document.getElementById('archiveReason');
+                    if (archiveReasonEl) archiveReasonEl.value = '';
+
+                    const archiveModal = new bootstrap.Modal(archiveModalEl);
+                    archiveModal.show();
+                    return;
+                }
+
+                const otpBtn = e.target.closest('.send-otp-btn');
+                if (otpBtn) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const button = otpBtn;
+                    const userId = button.getAttribute('data-user-id');
+                    const userName = button.getAttribute('data-user-name');
+                    const userPhone = button.getAttribute('data-user-phone');
+
+                    // تعطيل الزر وإظهار loading
+                    const originalHTML = button.innerHTML;
+                    button.disabled = true;
+                    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+                    fetch(`/users/${userId}/send-verification-otp`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        const container = document.querySelector('.container-fluid');
+                        const alertDiv = document.createElement('div');
+                        if (data.success) {
+                            alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                            alertDiv.innerHTML = `
+                                <i class="bi bi-check-circle me-2"></i>
+                                <strong>نجح!</strong> ${data.message}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                            `;
+                        } else {
+                            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                            alertDiv.innerHTML = `
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                <strong>خطأ!</strong> ${data.message}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                            `;
+                        }
+                        if (container) {
+                            container.insertBefore(alertDiv, container.firstChild);
+                        }
+
+                        setTimeout(() => {
+                            alertDiv.remove();
+                        }, 5000);
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        const container = document.querySelector('.container-fluid');
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                        alertDiv.innerHTML = `
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            <strong>خطأ!</strong> حدث خطأ أثناء إرسال كود التحقق
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                        `;
+                        if (container) {
+                            container.insertBefore(alertDiv, container.firstChild);
+                        }
+                        setTimeout(() => {
+                            alertDiv.remove();
+                        }, 5000);
+                    })
+                    .finally(() => {
+                        button.disabled = false;
+                        button.innerHTML = originalHTML;
+                    });
+                    return;
+                }
+
+                const copyBtn = e.target.closest('.copy-btn');
+                if (copyBtn) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const textToCopy = copyBtn.getAttribute('data-copy-text');
+                    navigator.clipboard.writeText(textToCopy).then(function() {
+                        const icon = copyBtn.querySelector('i');
+                        const originalClass = icon ? icon.className : '';
+                        if (icon) icon.className = 'fas fa-check text-success';
+
+                        const originalTitle = copyBtn.getAttribute('title');
+                        copyBtn.setAttribute('title', 'تم النسخ!');
+
+                        setTimeout(function() {
+                            if (icon) icon.className = originalClass;
+                            copyBtn.setAttribute('title', originalTitle);
+                        }, 2000);
+                    }).catch(function(err) {
+                        console.error('فشل النسخ:', err);
+                        alert('فشل نسخ النص');
+                    });
+                }
+            });
+        }
+
+        // AJAX class filter + pagination (no full page reload)
+        const classFilter = document.getElementById('classFilter');
+        const usersPaginationContainer = document.getElementById('usersPaginationContainer');
+        const impersonateModalsWrapper = document.getElementById('impersonateModalsWrapper');
+        const queryInput = document.querySelector('input[name="query"]');
+        const isActiveSelect = document.querySelector('select[name="is_active"]');
+        const fetchUrl = '{{ route("users.index") }}';
+
+        function buildFetchParams(page) {
+            const params = new URLSearchParams();
+            const query = queryInput ? queryInput.value.trim() : '';
+            const isActive = isActiveSelect ? isActiveSelect.value : '';
+            const classId = classFilter ? classFilter.value : '';
+
+            if (query) params.set('query', query);
+            if (isActive !== '') params.set('is_active', isActive);
+            if (classId) params.set('class_id', classId);
+            params.set('page', page || 1);
+
+            return params.toString();
+        }
+
+        function fetchUsers(page) {
+            const url = `${fetchUrl}?${buildFetchParams(page)}`;
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data || !data.success) return;
+
+                if (usersTableBody && data.html !== undefined) {
+                    usersTableBody.innerHTML = data.html;
+                }
+                if (usersPaginationContainer && data.pagination !== undefined) {
+                    usersPaginationContainer.innerHTML = data.pagination;
+                }
+                if (impersonateModalsWrapper && data.impersonate_modals !== undefined) {
+                    impersonateModalsWrapper.innerHTML = data.impersonate_modals;
+                }
+
+                // Reset bulk selection UI after table change
+                if (selectAllUsers) selectAllUsers.checked = false;
+                toggleBulkArchiveBtn();
+                updateSelectAllUsers();
+            })
+            .catch(err => console.error('AJAX fetchUsers error:', err));
+        }
+
+        if (classFilter) {
+            classFilter.addEventListener('change', function() {
+                fetchUsers(1);
+            });
+        }
+
+        if (usersPaginationContainer) {
+            usersPaginationContainer.addEventListener('click', function(e) {
+                const link = e.target.closest('a');
+                if (!link) return;
+                const href = link.getAttribute('href');
+                if (!href || !href.includes('page=')) return;
+                e.preventDefault();
+
+                const url = new URL(href, window.location.origin);
+                const page = url.searchParams.get('page') || 1;
+                fetchUsers(page);
+            });
+        }
     });
 </script>
 
-@foreach($users as $user)
-    @can('user-impersonate')
-    <div class="modal fade" id="impersonateModal{{ $user->id }}" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">تسجيل الدخول كالمستخدم</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>هل تريد تسجيل الدخول كالمستخدم <strong>{{ $user->name }}</strong>؟</p>
-                    <p class="text-muted small">سيتم حفظ حسابك الأصلي ويمكنك العودة إليه في أي وقت.</p>
-                    <div class="alert alert-info">
-                        <strong>الرابط المباشر (صلاحية ساعة واحدة):</strong><br>
-                        @php
-                            $impersonateUrl = URL::temporarySignedRoute(
-                                'users.impersonate.link',
-                                now()->addHour(), // صلاحية ساعة واحدة
-                                ['user' => $user->id]
-                            );
-                        @endphp
-                        <input type="text" class="form-control mt-2" 
-                               value="{{ $impersonateUrl }}" 
-                               readonly id="impersonateLink{{ $user->id }}">
-                        <button type="button" class="btn btn-sm btn-secondary mt-2" 
-                                onclick="copyLink({{ $user->id }})">
-                            <i class="fas fa-copy me-1"></i> نسخ الرابط
-                        </button>
-                        <small class="text-muted d-block mt-1">
-                            <i class="fas fa-info-circle me-1"></i> هذا الرابط صالح لمدة ساعة واحدة فقط
-                        </small>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <form action="{{ route('users.impersonate', $user->id) }}" method="POST" class="d-inline">
-                        @csrf
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-sign-in-alt me-1"></i> تسجيل الدخول
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-    @endcan
-@endforeach
+<div id="impersonateModalsWrapper">
+    @include('admin.pages.users.partials.impersonate-modals', ['users' => $users])
+</div>
 
 @push('scripts')
 <script>

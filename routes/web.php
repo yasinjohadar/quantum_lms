@@ -72,6 +72,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])->group(function () {
     Route::resource('roles', RoleController::class);
     Route::get('roles/search-permissions', [RoleController::class, 'searchPermissions'])->name('roles.search-permissions');
     Route::put('users/{user}/change-password', [UserController::class, 'updatePassword'])->name('users.update-password');
+    Route::post('users/detach-from-class', [UserController::class, 'detachFromClass'])->name('users.detach-from-class');
+    Route::post('users/detach-multiple-from-class', [UserController::class, 'detachMultipleFromClass'])->name('users.detach-multiple-from-class');
+    Route::post('users/detach-all-from-class', [UserController::class, 'detachAllFromClass'])->name('users.detach-all-from-class');
+    Route::post('users/detach-all-from-subject', [UserController::class, 'detachAllFromSubject'])->name('users.detach-all-from-subject');
     Route::post('users/{id}/send-verification-otp', [UserController::class, 'sendVerificationOTP'])->name('users.send-verification-otp');
     
     // تسجيل الدخول كالمستخدم (POST فقط من form)
