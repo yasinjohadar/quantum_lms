@@ -51,6 +51,7 @@
             <select name="text_position" class="form-select @error('text_position') is-invalid @enderror">
                 <option value="right" {{ old('text_position', isset($heroSlide) ? $heroSlide->text_position : 'right') === 'right' ? 'selected' : '' }}>النص يمين — الصورة يسار</option>
                 <option value="left" {{ old('text_position', isset($heroSlide) ? $heroSlide->text_position : 'right') === 'left' ? 'selected' : '' }}>النص يسار — الصورة يمين</option>
+                <option value="center" {{ old('text_position', isset($heroSlide) ? $heroSlide->text_position : 'right') === 'center' ? 'selected' : '' }}>النص والأزرار بالوسط</option>
             </select>
             @error('text_position')
             <div class="invalid-feedback">{{ $message }}</div>

@@ -57,6 +57,7 @@ class HeroSlideController extends Controller
             'button2_url' => 'nullable|string|max:500',
             'background_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'content_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'text_position' => 'nullable|in:left,right,center',
             'order' => 'nullable|integer|min:0',
             'is_active' => 'nullable',
         ];
@@ -75,6 +76,7 @@ class HeroSlideController extends Controller
         try {
             $data = $validated;
             $data['is_active'] = $request->has('is_active');
+            $data['text_position'] = $request->input('text_position', 'right');
             $data['order'] = (int) ($request->input('order', 0));
 
             if ($request->hasFile('background_image')) {
@@ -121,7 +123,7 @@ class HeroSlideController extends Controller
             'button2_url' => 'nullable|string|max:500',
             'background_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'content_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-            'text_position' => 'nullable|in:left,right',
+            'text_position' => 'nullable|in:left,right,center',
             'order' => 'nullable|integer|min:0',
             'is_active' => 'nullable',
         ];
