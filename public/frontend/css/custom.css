@@ -413,7 +413,7 @@ a {
 
 @media (min-width: 992px) {
     .hero-swiper-section .hero-layout-center {
-        justify-content: center;
+        justify-content: center !important;
     }
 
     .hero-swiper-section .hero-layout-right {
@@ -427,6 +427,7 @@ a {
     .hero-swiper-section .hero-content.hero-pos-center {
         align-items: center;
         text-align: center;
+        margin-inline: auto;
     }
 
     .hero-swiper-section .hero-content.hero-pos-center .hero-actions {
@@ -452,6 +453,22 @@ a {
     .hero-swiper-section .hero-content.hero-pos-left .hero-actions {
         justify-content: flex-start !important;
         flex-wrap: nowrap;
+    }
+
+    .hero-swiper-section .hero-content-col {
+        flex: 0 0 auto;
+        width: min(760px, 100%);
+    }
+
+    .hero-swiper-section .hero-actions {
+        gap: 0.75rem;
+        flex-wrap: nowrap;
+    }
+
+    .hero-swiper-section .hero-actions .btn {
+        white-space: nowrap;
+        padding: 12px 22px;
+        font-size: 1rem;
     }
 }
 
@@ -647,6 +664,9 @@ a {
 .hero-actions .btn-outline-light.hero-btn-outline {
     border-radius: 5px;
     border-width: 2px;
+    border-color: rgba(212, 175, 55, 0.75);
+    color: #f5d76e;
+    background: transparent;
     padding: 15px 35px;
     font-size: 1.1rem;
     font-weight: 600;
@@ -664,7 +684,7 @@ a {
         #fff6b7 100%
     ) !important;
     background-size: 200% 200% !important;
-    border-color: #d4af37;
+    border-color: rgba(212, 175, 55, 0.45);
     color: #0b1b2b !important;
     transform: translateY(-2px);
     box-shadow: 0 14px 28px rgba(212, 175, 55, 0.22);
