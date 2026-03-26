@@ -1406,16 +1406,18 @@ a {
 .class-card-btn.subscribe-btn {
     background: transparent;
     background-size: auto;
-    color: var(--secondary-Color);
-    border: 2px solid var(--secondary-Color);
+    color: var(--brand-gold);
+    border: 2px solid rgba(212, 175, 55, 0.75);
     box-shadow: none;
 }
 
 .class-card-btn.subscribe-btn:hover {
-    background: var(--secondary-Color);
-    color: #fff;
+    background: var(--gold-gradient);
+    background-size: 200% 200%;
+    color: #0b1b2b;
+    border-color: rgba(212, 175, 55, 0.45);
     transform: translateY(-2px);
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 16px 34px rgba(212, 175, 55, 0.28);
 }
 
 .class-card-btn {
