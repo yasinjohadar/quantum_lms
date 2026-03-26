@@ -51,7 +51,7 @@
                                 $textPos = 'right';
                             }
                         @endphp
-                        <div class="row align-items-center h-100 hero-layout-{{ $textPos }}">
+                        <div class="row align-items-center justify-content-center h-100 hero-layout-{{ $textPos }}">
                             <div class="col-12 col-lg-8 hero-content-col">
                                 <div class="hero-content hero-pos-{{ $textPos }}">
                                     @if(!empty($slide->subtitle ?? null))
@@ -62,7 +62,7 @@
                                         <p class="hero-description">{{ $slide->description }}</p>
                                     @endif
                                     @if(!empty($slide->button_text ?? null) && !empty($slide->button_url ?? null) || !empty($slide->button2_text ?? null) && !empty($slide->button2_url ?? null))
-                                        <div class="hero-actions d-flex align-items-center gap-3 mb-4 w-100">
+                                        <div class="hero-actions d-flex align-items-center justify-content-center gap-3 mb-4 w-100">
                                             @if(!empty($slide->button_text ?? null) && !empty($slide->button_url ?? null))
                                                 <a href="{{ $slide->button_url }}" class="btn btn-primary btn-lg btn-gold">
                                                     {{ $slide->button_text }}
