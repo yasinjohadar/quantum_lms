@@ -309,18 +309,39 @@
                                                         @endif
                                                     </td>
                                                     <td>
-                                                        <a href="{{ route('admin.teachers.assignments', $teacher->id) }}" 
-                                                           class="btn btn-primary btn-sm">
-                                                            <i class="fas fa-user-tie me-1"></i> تخصيص
-                                                        </a>
-                                                        <a href="{{ route('admin.teachers.progress.history', $teacher->id) }}"
-                                                           class="btn btn-outline-secondary btn-sm mt-1">
-                                                            <i class="bi bi-clock-history me-1"></i> إحصائيات سابقة
-                                                        </a>
+                                                        <div class="d-flex gap-1 flex-wrap">
+                                                            <a href="{{ route('admin.teachers.assignments', $teacher->id) }}"
+                                                               class="btn btn-primary btn-sm">
+                                                                <i class="fas fa-user-tie me-1"></i> تخصيص
+                                                            </a>
+                                                            <a href="{{ route('admin.teachers.progress.history', $teacher->id) }}"
+                                                               class="btn btn-outline-secondary btn-sm">
+                                                                <i class="bi bi-clock-history me-1"></i> إحصائيات سابقة
+                                                            </a>
+                                                            @can('user-edit')
+                                                                <a href="{{ route('users.edit', $teacher->id) }}"
+                                                                   class="btn btn-info btn-sm"
+                                                                   title="تعديل المعلم">
+                                                                    <i class="fa-solid fa-pen-to-square me-1"></i> تعديل
+                                                                </a>
+                                                            @endcan
+                                                            @can('user-delete')
+                                                                <button type="button"
+                                                                        class="btn btn-danger btn-sm"
+                                                                        data-bs-toggle="modal"
+                                                                        data-bs-target="#delete{{ $teacher->id }}"
+                                                                        title="حذف المعلم">
+                                                                    <i class="fa-solid fa-trash-can me-1"></i> حذف
+                                                                </button>
+                                                            @endcan
+                                                        </div>
                                                     </td>
                                                 </tr>
                                                 @can('user-toggle-status')
                                                 @include('admin.pages.users.toggle_status', ['user' => $teacher])
+                                                @endcan
+                                                @can('user-delete')
+                                                @include('admin.pages.users.delete', ['user' => $teacher])
                                                 @endcan
                                             @endforeach
                                         </tbody>

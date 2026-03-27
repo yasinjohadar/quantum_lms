@@ -209,14 +209,37 @@
                                                         @endif
                                                     </td>
                                                     <td>
-                                                        <a href="{{ route('admin.supervisors.assignments', $supervisor->id) }}" 
-                                                           class="btn btn-primary btn-sm">
-                                                            <i class="fas fa-user-tie me-1"></i> تخصيص
-                                                        </a>
+                                                        <div class="d-flex gap-1 flex-wrap">
+                                                            <a href="{{ route('admin.supervisors.assignments', $supervisor->id) }}"
+                                                               class="btn btn-primary btn-sm">
+                                                                <i class="fas fa-user-tie me-1"></i> تخصيص
+                                                            </a>
+
+                                                            @can('user-edit')
+                                                                <a href="{{ route('users.edit', $supervisor->id) }}"
+                                                                   class="btn btn-info btn-sm"
+                                                                   title="تعديل المشرف">
+                                                                    <i class="fa-solid fa-pen-to-square me-1"></i> تعديل
+                                                                </a>
+                                                            @endcan
+
+                                                            @can('user-delete')
+                                                                <button type="button"
+                                                                        class="btn btn-danger btn-sm"
+                                                                        data-bs-toggle="modal"
+                                                                        data-bs-target="#delete{{ $supervisor->id }}"
+                                                                        title="حذف المشرف">
+                                                                    <i class="fa-solid fa-trash-can me-1"></i> حذف
+                                                                </button>
+                                                            @endcan
+                                                        </div>
                                                     </td>
                                                 </tr>
                                                 @can('user-toggle-status')
                                                 @include('admin.pages.users.toggle_status', ['user' => $supervisor])
+                                                @endcan
+                                                @can('user-delete')
+                                                @include('admin.pages.users.delete', ['user' => $supervisor])
                                                 @endcan
                                             @endforeach
                                         </tbody>
