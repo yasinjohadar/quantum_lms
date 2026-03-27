@@ -110,6 +110,32 @@
                                     </label>
                                 </div>
                             </div>
+
+                            @can('user-edit')
+                            <div class="col-12 mt-2">
+                                <h6 class="text-primary mb-2">الأدوار</h6>
+                            </div>
+                            <div class="col-12">
+                                @php
+                                    $selectedRoles = old('roles', $user->roles->pluck('name')->toArray());
+                                @endphp
+                                <label class="form-label">اختر دورًا واحدًا أو أكثر</label>
+                                <select name="roles[]" class="form-select @error('roles') is-invalid @enderror @error('roles.*') is-invalid @enderror" multiple size="8">
+                                    @foreach ($roles as $role)
+                                        <option value="{{ $role->name }}" {{ in_array($role->name, $selectedRoles, true) ? 'selected' : '' }}>
+                                            {{ $role->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted d-block mt-1">اضغط Ctrl/Command لاختيار أكثر من Role.</small>
+                                @error('roles')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                                @error('roles.*')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            @endcan
                         </div>
 
                         <div class="text-end mt-4">

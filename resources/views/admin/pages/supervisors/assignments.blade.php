@@ -48,6 +48,7 @@
 
                 <div class="row">
                     <!-- الصفوف المخصصة -->
+                    @can('supervisor-assignment-manage-classes')
                     <div class="col-xl-6">
                         <div class="card" id="classSection">
                             <div class="card-header">
@@ -122,8 +123,10 @@
                             </div>
                         </div>
                     </div>
+                    @endcan
 
                     <!-- المواد المخصصة -->
+                    @can('supervisor-assignment-manage-subjects')
                     <div class="col-xl-6">
                         <div class="card" id="subjectSection">
                             <div class="card-header">
@@ -198,7 +201,16 @@
                             </div>
                         </div>
                     </div>
+                    @endcan
                 </div>
+
+                @cannot('supervisor-assignment-manage-classes')
+                    @cannot('supervisor-assignment-manage-subjects')
+                        <div class="alert alert-warning mt-3 mb-0">
+                            لا تملك صلاحية إدارة تخصيصات الصفوف أو المواد لهذا المشرف.
+                        </div>
+                    @endcannot
+                @endcannot
 
                 <!-- معلومات المشرف -->
                 <div class="row mt-3">
@@ -238,9 +250,13 @@
                             <a href="{{ route('admin.supervisors.assignments.index') }}" class="btn btn-secondary">
                                 <i class="bi bi-x-lg me-1"></i> إلغاء
                             </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-lg me-1"></i> حفظ التغييرات
-                            </button>
+                            @can('supervisor-assignment-update')
+                                @canany(['supervisor-assignment-manage-classes', 'supervisor-assignment-manage-subjects'])
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check-lg me-1"></i> حفظ التغييرات
+                                    </button>
+                                @endcanany
+                            @endcan
                         </div>
                     </div>
                 </div>

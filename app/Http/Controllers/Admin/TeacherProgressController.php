@@ -15,7 +15,7 @@ class TeacherProgressController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['permission:user-list']);
+        $this->middleware(['permission:teacher-progress-view']);
     }
 
     /**

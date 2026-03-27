@@ -12,8 +12,8 @@
                 <!-- Page Header -->
                 <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
                     <div>
-                        <h4 class="mb-0">مرحباً، أهلاً بعودتك!</h4>
-                        <p class="mb-0 text-muted">لوحة تحكم إدارة النظام التعليمي</p>
+                        <h4 class="mb-0">مرحباً {{ $greetingUserName ?? (auth()->user()->name ?? 'مستخدم') }}، أهلاً بعودتك!</h4>
+                        <p class="mb-0 text-muted">أنت مسجل الدخول كـ {{ $greetingPrimaryRoleLabel ?? (auth()->user()->primary_role_label ?? 'مستخدم') }}</p>
                     </div>
                 </div>
                 <!-- End Page Header -->

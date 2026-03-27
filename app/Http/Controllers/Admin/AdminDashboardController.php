@@ -22,7 +22,11 @@ class AdminDashboardController extends Controller
      */
     public function dashboard()
     {
+        $user = Auth::user();
         $data = $this->dashboardService->getDashboardData(Auth::id());
+        $data['greetingUserName'] = $user?->name ?? 'مستخدم';
+        $data['greetingPrimaryRoleLabel'] = $user?->primary_role_label ?? 'مستخدم';
+
         return view('admin.dashboard', $data);
     }
 

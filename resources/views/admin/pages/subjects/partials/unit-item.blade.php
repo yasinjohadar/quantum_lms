@@ -41,6 +41,7 @@
             </div>
         </button>
         <div class="d-flex align-items-center gap-1 pe-2 flex-shrink-0" onclick="event.stopPropagation()">
+            @can('unit-edit')
             <button type="button"
                     class="btn btn-sm btn-icon btn-primary-transparent"
                     data-bs-toggle="modal"
@@ -48,6 +49,8 @@
                     title="تعديل الوحدة">
                 <i class="bi bi-pencil"></i>
             </button>
+            @endcan
+            @can('unit-delete')
             <button type="button"
                     class="btn btn-sm btn-icon btn-danger-transparent"
                     data-bs-toggle="modal"
@@ -55,6 +58,7 @@
                     title="حذف الوحدة">
                 <i class="bi bi-trash"></i>
             </button>
+            @endcan
         </div>
     </h2>
     <div id="unitCollapse{{ $unit->id }}"
@@ -66,6 +70,7 @@
 
             {{-- زر إضافة وحدة فرعية --}}
             <div class="d-flex align-items-center gap-2 mt-3 pt-2 border-top">
+                @can('unit-create')
                 <button type="button"
                         class="btn btn-sm btn-outline-secondary add-child-unit-btn"
                         data-bs-toggle="modal"
@@ -75,6 +80,7 @@
                         title="إضافة وحدة فرعية">
                     <i class="bi bi-layers"></i> إضافة وحدة فرعية
                 </button>
+                @endcan
             </div>
 
             {{-- الوحدات الفرعية --}}
@@ -84,6 +90,7 @@
                         <span class="text-muted small">
                             <i class="bi bi-layers me-1"></i> الوحدات الفرعية ({{ $childUnits->count() }})
                         </span>
+                        @can('unit-create')
                         <button type="button"
                                 class="btn btn-sm btn-outline-secondary add-child-unit-btn"
                                 data-bs-toggle="modal"
@@ -93,6 +100,7 @@
                                 title="إضافة وحدة فرعية">
                             <i class="bi bi-layers"></i> إضافة وحدة فرعية
                         </button>
+                        @endcan
                     </div>
                     <div class="accordion accordion-secondary" id="childUnitsAccordion{{ $unit->id }}" data-sortable="units" data-section-id="{{ $section->id }}" data-parent-id="{{ $unit->id }}" data-reorder-url="{{ route('admin.sections.units.reorder', $section) }}">
                         @foreach($childUnits->values() as $childIndex => $childUnit)
@@ -111,6 +119,7 @@
                 <div class="unit-children mt-3 pt-2 border-top">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <span class="text-muted small"><i class="bi bi-layers me-1"></i> الوحدات الفرعية</span>
+                        @can('unit-create')
                         <button type="button"
                                 class="btn btn-sm btn-outline-secondary add-child-unit-btn"
                                 data-bs-toggle="modal"
@@ -120,6 +129,7 @@
                                 title="إضافة وحدة فرعية">
                             <i class="bi bi-layers"></i> إضافة وحدة فرعية
                         </button>
+                        @endcan
                     </div>
                     <div class="text-center py-2 text-muted small">لا وحدات فرعية</div>
                 </div>

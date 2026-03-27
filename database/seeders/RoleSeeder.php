@@ -91,6 +91,14 @@ class RoleSeeder extends Seeder
             'review-queue-list',
             'review-queue-lessons',
             'review-queue-quizzes',
+
+            // صلاحيات تخصيص المعلمين/المشرفين والمتابعة
+            'teacher-assignment-list', 'teacher-assignment-show', 'teacher-assignment-update',
+            'teacher-assignment-manage-classes', 'teacher-assignment-manage-subjects',
+            'supervisor-assignment-list', 'supervisor-assignment-show', 'supervisor-assignment-update',
+            'supervisor-assignment-manage-classes', 'supervisor-assignment-manage-subjects',
+            'teacher-progress-view',
+            'academic-year-list', 'academic-week-list',
             
             // صلاحيات لوحة التحكم
             'dashboard-view',
@@ -108,54 +116,140 @@ class RoleSeeder extends Seeder
         }
         
         $teacherPermissions = [
-            // صلاحيات عرض الصفوف والمواد
+            // صلاحيات أساسية فقط (Read-only)
+            'dashboard-view',
             'class-list', 'class-show',
             'subject-list', 'subject-show',
-            
-            // صلاحيات إدارة الوحدات
-            'unit-create', 'unit-edit', 'unit-delete', 'unit-questions',
-            'unit-attach-questions', 'unit-detach-question', 'unit-available-questions',
-            
-            // صلاحيات إدارة الدروس
-            'lesson-create', 'lesson-edit', 'lesson-delete', 'lesson-show',
-            'lesson-approve-review', 'lesson-reject-review',
-            
-            // صلاحيات إدارة مرفقات الدروس
-            'lesson-attachment-create', 'lesson-attachment-edit', 'lesson-attachment-delete',
-            
-            // صلاحيات إدارة الأسئلة
-            'question-list', 'question-create', 'question-edit', 'question-delete', 'question-show',
-            'question-duplicate', 'question-toggle-status', 'question-upload-image',
-            
-            // صلاحيات إدارة الاختبارات
-            'quiz-list', 'quiz-create', 'quiz-edit', 'quiz-delete', 'quiz-show',
-            'quiz-questions', 'quiz-add-question', 'quiz-remove-question',
-            'quiz-reorder-questions', 'quiz-update-question-points', 'quiz-duplicate',
-            'quiz-toggle-publish', 'quiz-preview', 'quiz-results',
-            'quiz-get-subjects-by-class', 'quiz-get-units',
-            
-            // صلاحيات تصحيح الاختبارات
-            'quiz-attempt-list', 'quiz-attempt-show', 'quiz-attempt-grade',
-            'quiz-attempt-save-grade', 'quiz-attempt-regrade',
-            'quiz-attempt-needs-grading', 'quiz-attempt-statistics',
-            'quiz-attempt-grade-with-ai', 'quiz-attempt-grade-multiple-with-ai',
-            
-            // صلاحيات عرض الطلاب (في مواده فقط)
-            'enrollment-list', 'enrollment-show',
-            'subject-enrolled-students',
-            
-            // صلاحيات إدارة المكتبة (إضافة وتعديل فقط)
-            'library-list', 'library-create', 'library-edit', 'library-show',
-            'library-preview', 'library-download',
-            
-            // صلاحيات التقارير (في مواده فقط)
-            'report-view',
-            
-            // صلاحيات لوحة التحكم
-            'dashboard-view',
         ];
         
         $teacherRole->syncPermissions($teacherPermissions);
+
+        // قوالب أدوار تشغيلية مرنة (يمكن دمجها مع أدوار أخرى)
+        $supervisorContentReviewRole = Role::firstOrCreate([
+            'name' => 'supervisor-content-review',
+            'guard_name' => 'web',
+        ]);
+        $supervisorContentReviewRole->syncPermissions([
+            'review-queue-list',
+            'review-queue-lessons',
+            'review-queue-quizzes',
+            'lesson-approve-review',
+            'lesson-reject-review',
+            'quiz-approve-review',
+            'quiz-reject-review',
+            'report-view',
+            'dashboard-view',
+        ]);
+
+        $supervisorQuizFollowupRole = Role::firstOrCreate([
+            'name' => 'supervisor-quiz-followup',
+            'guard_name' => 'web',
+        ]);
+        $supervisorQuizFollowupRole->syncPermissions([
+            'quiz-attempt-list',
+            'quiz-attempt-show',
+            'quiz-attempt-needs-grading',
+            'quiz-attempt-statistics',
+            'quiz-results',
+            'report-view',
+            'dashboard-view',
+        ]);
+
+        $teacherContentUploaderRole = Role::firstOrCreate([
+            'name' => 'teacher-content-uploader',
+            'guard_name' => 'web',
+        ]);
+        $teacherContentUploaderRole->syncPermissions([
+            'unit-create',
+            'unit-edit',
+            'unit-delete',
+            'unit-questions',
+            'unit-attach-questions',
+            'unit-detach-question',
+            'unit-available-questions',
+            'subject-section-create',
+            'subject-section-edit',
+            'subject-section-delete',
+            'lesson-create',
+            'lesson-edit',
+            'lesson-delete',
+            'lesson-show',
+            'lesson-submit-for-review',
+            'lesson-attachment-create',
+            'lesson-attachment-edit',
+            'lesson-attachment-delete',
+            'quiz-create',
+            'quiz-edit',
+            'quiz-delete',
+            'quiz-show',
+            'quiz-list',
+            'quiz-questions',
+            'quiz-add-question',
+            'quiz-remove-question',
+            'quiz-reorder-questions',
+            'quiz-update-question-points',
+            'quiz-duplicate',
+            'quiz-toggle-publish',
+            'quiz-preview',
+            'quiz-get-subjects-by-class',
+            'quiz-get-units',
+            'quiz-submit-for-review',
+            'question-list',
+            'question-create',
+            'question-edit',
+            'question-delete',
+            'question-show',
+            'question-duplicate',
+            'question-toggle-status',
+            'question-upload-image',
+            'subject-enrolled-students',
+            'dashboard-view',
+        ]);
+
+        $teacherAssistantRole = Role::firstOrCreate([
+            'name' => 'teacher-assistant',
+            'guard_name' => 'web',
+        ]);
+        $teacherAssistantRole->syncPermissions([
+            'class-list',
+            'class-show',
+            'subject-list',
+            'subject-show',
+            'unit-questions',
+            'question-list',
+            'question-show',
+            'quiz-list',
+            'quiz-show',
+            'quiz-preview',
+            'subject-enrolled-students',
+            'enrollment-list',
+            'enrollment-show',
+            'library-list',
+            'library-show',
+            'library-preview',
+            'library-download',
+            'report-view',
+            'dashboard-view',
+        ]);
+
+        $teacherQuizFollowupRole = Role::firstOrCreate([
+            'name' => 'teacher-quiz-followup',
+            'guard_name' => 'web',
+        ]);
+        $teacherQuizFollowupRole->syncPermissions([
+            'quiz-attempt-list',
+            'quiz-attempt-show',
+            'quiz-attempt-grade',
+            'quiz-attempt-save-grade',
+            'quiz-attempt-regrade',
+            'quiz-attempt-needs-grading',
+            'quiz-attempt-statistics',
+            'quiz-attempt-grade-with-ai',
+            'quiz-attempt-grade-multiple-with-ai',
+            'quiz-results',
+            'report-view',
+            'dashboard-view',
+        ]);
         
         // تحديث الأدوار الموجودة لتحديد نوع الواجهة (مع حماية في حال عدم وجود العمود)
         try {

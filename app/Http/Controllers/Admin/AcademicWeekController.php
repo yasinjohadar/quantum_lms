@@ -12,7 +12,11 @@ class AcademicWeekController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['permission:user-edit']);
+        $this->middleware(['permission:academic-week-list'])->only('index');
+        $this->middleware(['permission:academic-week-create'])->only(['create', 'store']);
+        $this->middleware(['permission:academic-week-edit'])->only(['edit', 'update']);
+        $this->middleware(['permission:academic-week-delete'])->only('destroy');
+        $this->middleware(['permission:academic-week-generate'])->only('generate');
     }
 
     public function index(Request $request)

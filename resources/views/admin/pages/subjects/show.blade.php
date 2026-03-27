@@ -93,9 +93,11 @@
                     <h5 class="page-title mb-0">تفاصيل المادة: {{ $subject->name }}</h5>
                 </div>
                 <div class="d-flex gap-2 flex-shrink-0">
+                    @can('subject-edit')
                     <a href="{{ route('admin.subjects.edit', $subject->id) }}{{ request('return_to_class_id') ? '?return_to_class_id=' . request('return_to_class_id') : '' }}" class="btn btn-warning btn-sm text-white">
                         <i class="fas fa-edit me-1"></i> تعديل
                     </a>
+                    @endcan
                     @if(request('return_to_class_id'))
                         <a href="{{ route('admin.classes.show', request('return_to_class_id')) }}" class="btn btn-secondary btn-sm">
                             <i class="fas fa-arrow-right me-1"></i> رجوع للصف
@@ -122,13 +124,15 @@
                                 <i class="bi bi-collection me-2"></i>
                                 محتويات المادة
                             </h6>
-                            <button type="button"
-                                    class="btn btn-sm btn-primary d-inline-flex align-items-center"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#createSectionModal">
-                                <i class="bi bi-plus-lg me-1"></i>
-                                إضافة قسم جديد
-                            </button>
+                            @can('subject-section-create')
+                                <button type="button"
+                                        class="btn btn-sm btn-primary d-inline-flex align-items-center"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#createSectionModal">
+                                    <i class="bi bi-plus-lg me-1"></i>
+                                    إضافة قسم جديد
+                                </button>
+                            @endcan
                         </div>
                         <div class="card-body">
                             @if($rootSections->isEmpty())
@@ -161,6 +165,7 @@
     </div>
 
     {{-- مودال ربط الاختبار بوحدات إضافية --}}
+    @can('quiz-edit')
     <div class="modal fade" id="linkQuizUnitsModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 rounded-4">
@@ -228,8 +233,10 @@
             </div>
         </div>
     </div>
+    @endcan
 
     {{-- مودال ربط القسم بمواد إضافية --}}
+    @can('subject-section-edit')
     <div class="modal fade" id="linkSectionSubjectsModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 rounded-4">
@@ -285,8 +292,10 @@
             </div>
         </div>
     </div>
+    @endcan
 
     {{-- مودال إنشاء قسم جديد --}}
+    @can('subject-section-create')
     <div class="modal fade" id="createSectionModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 rounded-4">
@@ -358,10 +367,12 @@
             </div>
         </div>
     </div>
+    @endcan
 
     {{-- مودالات تعديل / حذف الأقسام --}}
     @foreach($subject->sections as $section)
         {{-- تعديل قسم --}}
+        @can('subject-section-edit')
         <div class="modal fade" id="editSection{{ $section->id }}" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 rounded-4">
@@ -445,8 +456,10 @@
                 </div>
             </div>
         </div>
+        @endcan
 
         {{-- حذف قسم --}}
+        @can('subject-section-delete')
         <div class="modal fade" id="deleteSection{{ $section->id }}" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 rounded-4">
@@ -478,8 +491,10 @@
                 </div>
             </div>
         </div>
+        @endcan
 
         {{-- مودال إنشاء وحدة جديدة --}}
+        @can('unit-create')
         <div class="modal fade" id="createUnitModal{{ $section->id }}" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 rounded-4">
@@ -554,10 +569,12 @@
                 </div>
             </div>
         </div>
+        @endcan
 
         {{-- مودالات تعديل وحذف الوحدات --}}
         @foreach($section->units as $unit)
             {{-- تعديل وحدة --}}
+            @can('unit-edit')
             <div class="modal fade" id="editUnit{{ $unit->id }}" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content border-0 rounded-4">
@@ -645,8 +662,10 @@
                     </div>
                 </div>
             </div>
+            @endcan
 
             {{-- حذف وحدة --}}
+            @can('unit-delete')
             <div class="modal fade" id="deleteUnit{{ $unit->id }}" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content border-0 rounded-4">
@@ -685,8 +704,10 @@
                     </div>
                 </div>
             </div>
+            @endcan
 
             {{-- مودال إنشاء درس جديد --}}
+            @can('lesson-create')
             <div class="modal fade" id="createLessonModal{{ $unit->id }}" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-lg">
                     <div class="modal-content border-0 rounded-4">
@@ -775,7 +796,7 @@
 
                                 <div class="row">
                                     <div class="col-md-4">
-                                        @if(auth()->user()->hasAnyRole(['admin', 'supervisor']))
+                                        @if(auth()->user()->canReviewContent())
                                             {{-- المشرف والمدير يمكنهم التفعيل مباشرة --}}
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input" type="checkbox" name="is_active" id="lessonActive{{ $unit->id }}" checked>
@@ -814,10 +835,12 @@
                     </div>
                 </div>
             </div>
+            @endcan
 
             {{-- مودالات تعديل وحذف الدروس --}}
             @foreach($unit->allLessons() as $lesson)
                 {{-- تعديل درس --}}
+                @can('lesson-edit')
                 <div class="modal fade" id="editLesson{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered modal-lg">
                         <div class="modal-content border-0 rounded-4">
@@ -902,7 +925,7 @@
 
                                     <div class="row">
                                         <div class="col-md-4">
-                                            @if(auth()->user()->hasAnyRole(['admin', 'supervisor']))
+                                            @if(auth()->user()->canReviewContent())
                                                 {{-- المشرف والمدير يمكنهم التفعيل مباشرة --}}
                                                 <div class="form-check form-switch">
                                                     <input class="form-check-input" type="checkbox" name="is_active" 
@@ -1026,8 +1049,10 @@
                         </div>
                     </div>
 </div>
+                @endcan
 
                 {{-- حذف درس --}}
+                @can('lesson-delete')
                 <div class="modal fade" id="deleteLesson{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content border-0 rounded-4">
@@ -1066,8 +1091,10 @@
                         </div>
                     </div>
                 </div>
+                @endcan
 
                 {{-- مودال إضافة مرفقات للدرس --}}
+                @can('lesson-attachment-create')
                 <div class="modal fade" id="addLessonAttachment{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content border-0 rounded-4">
@@ -1133,8 +1160,10 @@
                         </div>
                     </div>
                 </div>
+                @endcan
 
                 {{-- مودال تشغيل الفيديو - معاينة سريعة --}}
+                @can('lesson-show')
                 <div class="modal fade" id="playVideoModal{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered modal-xl">
                         <div class="modal-content border-0 rounded-4">
@@ -1199,6 +1228,7 @@
                         </div>
                     </div>
                 </div>
+                @endcan
             @endforeach
         @endforeach
     @endforeach
@@ -1207,8 +1237,12 @@
     @foreach($subject->sections as $section)
         @foreach($section->units as $unit)
             @foreach($unit->allLessons() as $lesson)
-                @if($lesson->review_status === 'pending_review' && auth()->user()->hasAnyRole(['admin', 'supervisor']))
+                @if(
+                    $lesson->review_status === 'pending_review' &&
+                    auth()->user()->canAny(['lesson-approve-review', 'lesson-reject-review'])
+                )
                     {{-- Modal الموافقة على الدرس --}}
+                    @can('lesson-approve-review')
                     <div class="modal fade" id="approveLesson{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
                         <div class="modal-dialog modal-dialog-centered">
                             <div class="modal-content border-0 rounded-4">
@@ -1238,8 +1272,10 @@
                             </div>
                         </div>
                     </div>
+                    @endcan
 
                     {{-- Modal رفض الدرس --}}
+                    @can('lesson-reject-review')
                     <div class="modal fade" id="rejectLesson{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
                         <div class="modal-dialog modal-dialog-centered">
                             <div class="modal-content border-0 rounded-4">
@@ -1270,6 +1306,7 @@
                             </div>
                         </div>
                     </div>
+                    @endcan
                 @endif
             @endforeach
         @endforeach

@@ -221,7 +221,7 @@
                     <div class="card-body">
                         @php
                             $user = auth()->user();
-                            $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
+                            $isTeacher = $user->shouldSubmitContentForReview();
                         @endphp
                         <div class="form-check form-switch mb-3">
                             <input class="form-check-input" type="checkbox" name="is_active" 

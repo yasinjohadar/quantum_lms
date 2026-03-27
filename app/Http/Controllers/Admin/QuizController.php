@@ -56,7 +56,7 @@ class QuizController extends Controller
 
         // إذا كان المستخدم معلم وليس مشرف/مدير
         $user = auth()->user();
-        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+        if ($user->usesTeacherAssignmentScope()) {
             $classIds = $user->assignedClasses()->pluck('classes.id');
             $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
             
@@ -73,7 +73,7 @@ class QuizController extends Controller
         }
 
         // إذا كان المستخدم مشرف وليس مدير
-        if ($user->hasRole('supervisor') && !$user->hasRole('admin')) {
+        if ($user->usesSupervisorAssignmentScope()) {
             $query->forSupervisor($user->id);
         }
 
@@ -242,7 +242,7 @@ class QuizController extends Controller
 
             // منطق المراجعة: إذا كان المستخدم معلم وليس مشرف أو مدير
             $user = auth()->user();
-            $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
+            $isTeacher = $user->shouldSubmitContentForReview();
 
             if ($isTeacher) {
                 // خيار التفعيل الواحد: عند تفعيل يُرسل للمراجعة؛ النشر بعد الموافقة
@@ -332,7 +332,7 @@ class QuizController extends Controller
         
         // التحقق من التخصيص
         $user = auth()->user();
-        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+        if ($user->usesTeacherAssignmentScope()) {
             if (!$user->isAssignedToSubject($quiz->subject_id) && 
                 !$user->isAssignedToClass($quiz->subject->class_id)) {
                 abort(403, 'غير مصرح لك بالوصول إلى هذا الاختبار');
@@ -376,7 +376,7 @@ class QuizController extends Controller
 
             // منطق المراجعة: إذا كان المستخدم معلم وليس مشرف أو مدير
             $user = auth()->user();
-            $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
+            $isTeacher = $user->shouldSubmitContentForReview();
 
             if ($isTeacher) {
                 // خيار التفعيل الواحد: عند تفعيل يُرسل للمراجعة؛ النشر بعد الموافقة
@@ -531,7 +531,7 @@ class QuizController extends Controller
 
             // التحقق من التخصيص
             $user = auth()->user();
-            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            if ($user->usesTeacherAssignmentScope()) {
                 if (!$user->isAssignedToSubject($quiz->subject_id) && 
                     !$user->isAssignedToClass($quiz->subject->class_id)) {
                     abort(403, 'غير مصرح لك بالوصول إلى هذا الاختبار');
@@ -942,7 +942,7 @@ class QuizController extends Controller
         try {
             $quiz = Quiz::findOrFail($id);
             $user = auth()->user();
-            $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
+            $isTeacher = $user->shouldSubmitContentForReview();
             
             // إذا كان المستخدم معلم، لا يمكنه النشر مباشرة
             if ($isTeacher) {
@@ -1026,7 +1026,7 @@ class QuizController extends Controller
             $user = auth()->user();
             
             // التحقق من أن المستخدم معلم
-            if (!$user->hasRole('teacher') || $user->hasAnyRole(['admin', 'supervisor'])) {
+            if (!$user->shouldSubmitContentForReview()) {
                 abort(403, 'غير مصرح لك بإرسال الاختبار للمراجعة');
             }
             
@@ -1070,7 +1070,7 @@ class QuizController extends Controller
             
             // التحقق من الصلاحية (admin/supervisor فقط)
             $user = auth()->user();
-            if (!$user->hasAnyRole(['admin', 'supervisor'])) {
+            if (!$user->canReviewContent()) {
                 abort(403, 'غير مصرح لك بالموافقة على نشر الاختبار');
             }
             
@@ -1111,7 +1111,7 @@ class QuizController extends Controller
             
             // التحقق من الصلاحية (admin/supervisor فقط)
             $user = auth()->user();
-            if (!$user->hasAnyRole(['admin', 'supervisor'])) {
+            if (!$user->canReviewContent()) {
                 abort(403, 'غير مصرح لك برفض نشر الاختبار');
             }
 

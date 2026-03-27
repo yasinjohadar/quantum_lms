@@ -163,7 +163,7 @@
             {{-- حالة المراجعة --}}
             @php
                 $user = auth()->user();
-                $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
+                $isTeacher = $user->shouldSubmitContentForReview();
             @endphp
             <div class="card custom-card mb-3">
                 <div class="card-header">

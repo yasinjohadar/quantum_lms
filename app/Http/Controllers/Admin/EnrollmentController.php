@@ -44,7 +44,7 @@ class EnrollmentController extends Controller
 
         // إذا كان المستخدم معلم وليس مشرف/مدير
         $user = auth()->user();
-        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+        if ($user->usesTeacherAssignmentScope()) {
             $classIds = $user->assignedClasses()->pluck('classes.id');
             $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
             
@@ -461,7 +461,7 @@ class EnrollmentController extends Controller
         $user = auth()->user();
 
         $query = Enrollment::whereIn('id', $ids);
-        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+        if ($user->usesTeacherAssignmentScope()) {
             $classIds = $user->assignedClasses()->pluck('classes.id');
             $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
             $query->whereHas('subject', function ($q) use ($classIds, $subjectIds) {
@@ -517,7 +517,7 @@ class EnrollmentController extends Controller
             });
 
         $user = auth()->user();
-        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+        if ($user->usesTeacherAssignmentScope()) {
             $classIds = $user->assignedClasses()->pluck('classes.id');
             $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
             $enrollmentsQuery->whereHas('subject', function ($q) use ($classIds, $subjectIds) {
@@ -560,7 +560,7 @@ class EnrollmentController extends Controller
         });
 
         $user = auth()->user();
-        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+        if ($user->usesTeacherAssignmentScope()) {
             $classIds = $user->assignedClasses()->pluck('classes.id');
             $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
             $enrollmentsQuery->whereHas('subject', function ($q) use ($classIds, $subjectIds) {
@@ -595,7 +595,7 @@ class EnrollmentController extends Controller
         });
 
         $user = auth()->user();
-        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+        if ($user->usesTeacherAssignmentScope()) {
             $classIds = $user->assignedClasses()->pluck('classes.id');
             $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
             $enrollmentsQuery->whereHas('subject', function ($q) use ($classIds, $subjectIds) {
@@ -659,7 +659,7 @@ class EnrollmentController extends Controller
         $enrollmentsQuery = Enrollment::where('subject_id', $subjectId);
 
         $user = auth()->user();
-        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+        if ($user->usesTeacherAssignmentScope()) {
             $classIds = $user->assignedClasses()->pluck('classes.id');
             $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
             $enrollmentsQuery->whereHas('subject', function ($q) use ($classIds, $subjectIds) {
@@ -705,7 +705,7 @@ class EnrollmentController extends Controller
         $enrollmentsQuery = Enrollment::where('subject_id', $request->input('subject_id'));
 
         $user = auth()->user();
-        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+        if ($user->usesTeacherAssignmentScope()) {
             $classIds = $user->assignedClasses()->pluck('classes.id');
             $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
             $enrollmentsQuery->whereHas('subject', function ($q) use ($classIds, $subjectIds) {

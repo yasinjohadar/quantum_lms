@@ -62,28 +62,9 @@ class SupervisorDashboardController extends Controller
         if (!$user->isAssignedToClassAsSupervisor($class->id)) {
             abort(403, 'غير مصرح لك بالوصول إلى هذا الصف');
         }
-
-        // جلب المواد التابعة للصف
-        $subjects = $class->subjects()->with('schoolClass.stage')->orderBy('order')->get();
         
-        // جلب الطلاب المسجلين في الصف
-        $enrolledStudents = \App\Models\ClassEnrollment::where('class_id', $class->id)
-            ->where('status', 'active')
-            ->with('user')
-            ->paginate(20);
-        
-        // إحصائيات
-        $stats = [
-            'total_subjects' => $subjects->count(),
-            'total_students' => \App\Models\ClassEnrollment::where('class_id', $class->id)
-                ->where('status', 'active')
-                ->count(),
-            'total_quizzes' => \App\Models\Quiz::whereHas('subject', function($q) use ($class) {
-                $q->where('class_id', $class->id);
-            })->count(),
-        ];
-
-        return view('supervisor.my-classes.show', compact('class', 'subjects', 'enrolledStudents', 'stats'));
+        // توحيد التجربة: افتح نفس صفحة تفاصيل الصف الخاصة بالأدمن
+        return redirect()->route('admin.classes.show', $class->id);
     }
 
     /**
@@ -132,39 +113,8 @@ class SupervisorDashboardController extends Controller
         if (!$isAssignedDirectly && !$isAssignedViaClass) {
             abort(403, 'غير مصرح لك بالوصول إلى هذه المادة');
         }
-
-        // جلب أقسام المادة
-        $sections = $subject->sections()->with('units.lessons')->get();
         
-        // جلب الطلاب المسجلين في المادة
-        $enrolledStudents = \App\Models\Enrollment::where('subject_id', $subject->id)
-            ->where('status', 'active')
-            ->with('user')
-            ->paginate(20);
-        
-        // جلب الاختبارات
-        $quizzes = \App\Models\Quiz::where('subject_id', $subject->id)
-            ->with('subject')
-            ->latest()
-            ->paginate(10);
-        
-        // إحصائيات
-        $stats = [
-            'total_sections' => $sections->count(),
-            'total_units' => $sections->sum(function($section) {
-                return $section->units->count();
-            }),
-            'total_lessons' => $sections->sum(function($section) {
-                return $section->units->sum(function($unit) {
-                    return $unit->lessons->count();
-                });
-            }),
-            'total_students' => \App\Models\Enrollment::where('subject_id', $subject->id)
-                ->where('status', 'active')
-                ->count(),
-            'total_quizzes' => $quizzes->total(),
-        ];
-
-        return view('supervisor.my-subjects.show', compact('subject', 'sections', 'enrolledStudents', 'quizzes', 'stats'));
+        // توحيد التجربة: افتح نفس صفحة إدارة المادة الخاصة بالأدمن
+        return redirect()->route('admin.subjects.show', $subject->id);
     }
 }

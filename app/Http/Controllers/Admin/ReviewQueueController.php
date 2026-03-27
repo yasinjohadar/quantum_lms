@@ -24,7 +24,7 @@ class ReviewQueueController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        $isSupervisor = $user->hasRole('supervisor') && !$user->hasRole('admin');
+        $isSupervisor = $user->usesSupervisorAssignmentScope();
 
         // إحصائيات
         $lessonsQuery = Lesson::with(['unit.section.subject.schoolClass.stage', 'unit.section.subject.assignedTeachers', 'reviewer', 'reviewComments']);
@@ -106,7 +106,7 @@ class ReviewQueueController extends Controller
     public function lessons(Request $request)
     {
         $user = auth()->user();
-        $isSupervisor = $user->hasRole('supervisor') && !$user->hasRole('admin');
+        $isSupervisor = $user->usesSupervisorAssignmentScope();
 
         $query = Lesson::with(['unit.section.subject.schoolClass.stage', 'unit.section.subject.assignedTeachers', 'reviewer', 'reviewComments']);
 
@@ -157,7 +157,7 @@ class ReviewQueueController extends Controller
     public function quizzes(Request $request)
     {
         $user = auth()->user();
-        $isSupervisor = $user->hasRole('supervisor') && !$user->hasRole('admin');
+        $isSupervisor = $user->usesSupervisorAssignmentScope();
 
         $query = Quiz::with(['subject.schoolClass.stage', 'reviewer', 'reviewComments']);
 

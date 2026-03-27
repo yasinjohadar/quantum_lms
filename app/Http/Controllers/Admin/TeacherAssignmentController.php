@@ -18,7 +18,9 @@ class TeacherAssignmentController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['permission:user-edit']);
+        $this->middleware(['permission:teacher-assignment-list'])->only('index');
+        $this->middleware(['permission:teacher-assignment-show'])->only('show');
+        $this->middleware(['permission:teacher-assignment-update'])->only('update');
     }
 
     /**
@@ -223,6 +225,10 @@ class TeacherAssignmentController extends Controller
      */
     public function update(Request $request, User $teacher)
     {
+        if (! $teacher->hasRole('teacher')) {
+            return redirect()->back()->with('error', 'المستخدم المحدد ليس معلم');
+        }
+
         $request->validate([
             'classes' => 'nullable|array',
             'classes.*' => 'exists:classes,id',
@@ -235,38 +241,46 @@ class TeacherAssignmentController extends Controller
 
         $assignedBy = auth()->id();
         $assignedAt = now();
+        $canManageClasses = auth()->user()?->can('teacher-assignment-manage-classes');
+        $canManageSubjects = auth()->user()?->can('teacher-assignment-manage-subjects');
 
         // تحديث الصفوف المخصصة
-        $classesData = [];
-        if ($request->has('classes') && is_array($request->input('classes'))) {
-            foreach ($request->input('classes') as $classId) {
-                $classesData[$classId] = [
-                    'assigned_by' => $assignedBy,
-                    'assigned_at' => $assignedAt,
-                ];
+        if ($canManageClasses) {
+            $classesData = [];
+            if ($request->has('classes') && is_array($request->input('classes'))) {
+                foreach ($request->input('classes') as $classId) {
+                    $classesData[$classId] = [
+                        'assigned_by' => $assignedBy,
+                        'assigned_at' => $assignedAt,
+                    ];
+                }
             }
+            $teacher->assignedClasses()->sync($classesData);
         }
-        $teacher->assignedClasses()->sync($classesData);
 
         // تحديث المواد المخصصة (مع عدد الصفحات المطلوبة)
-        $subjectsData = [];
-        if ($request->has('subjects') && is_array($request->input('subjects'))) {
-            foreach ($request->input('subjects') as $subjectId) {
-                $requiredPages = $request->input('required_pages.' . $subjectId);
-                $subjectsData[$subjectId] = [
-                    'assigned_by' => $assignedBy,
-                    'assigned_at' => $assignedAt,
-                    'required_pages' => $requiredPages !== null && $requiredPages !== '' ? (int) $requiredPages : null,
-                ];
+        if ($canManageSubjects) {
+            $subjectsData = [];
+            if ($request->has('subjects') && is_array($request->input('subjects'))) {
+                foreach ($request->input('subjects') as $subjectId) {
+                    $requiredPages = $request->input('required_pages.' . $subjectId);
+                    $subjectsData[$subjectId] = [
+                        'assigned_by' => $assignedBy,
+                        'assigned_at' => $assignedAt,
+                        'required_pages' => $requiredPages !== null && $requiredPages !== '' ? (int) $requiredPages : null,
+                    ];
+                }
             }
+            $teacher->assignedSubjects()->sync($subjectsData);
         }
-        $teacher->assignedSubjects()->sync($subjectsData);
 
         // تحديث عدد الدروس الأسبوعية المطلوبة
-        $teacher->weekly_lessons_target = $request->input('weekly_lessons_target') !== null && $request->input('weekly_lessons_target') !== ''
-            ? (int) $request->input('weekly_lessons_target')
-            : null;
-        $teacher->save();
+        if ($canManageSubjects || $canManageClasses) {
+            $teacher->weekly_lessons_target = $request->input('weekly_lessons_target') !== null && $request->input('weekly_lessons_target') !== ''
+                ? (int) $request->input('weekly_lessons_target')
+                : null;
+            $teacher->save();
+        }
 
         return redirect()->back()->with('success', 'تم تحديث تخصيصات المعلم بنجاح');
     }

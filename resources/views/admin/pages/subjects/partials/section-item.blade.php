@@ -43,6 +43,7 @@
             </div>
         </button>
         <div class="d-flex align-items-center gap-1 pe-2 flex-shrink-0" onclick="event.stopPropagation()">
+            @can('subject-section-edit')
             <button type="button"
                     class="btn btn-sm btn-icon btn-info-transparent link-section-subjects-btn"
                     data-bs-toggle="modal"
@@ -53,7 +54,9 @@
                     title="ربط القسم بمواد أخرى">
                 <i class="bi bi-link-45deg"></i>
             </button>
+            @endcan
             @if(!$isLinkedSection)
+            @can('subject-section-edit')
             <button type="button"
                     class="btn btn-sm btn-icon btn-primary-transparent"
                     data-bs-toggle="modal"
@@ -61,6 +64,8 @@
                     title="تعديل القسم">
                 <i class="bi bi-pencil"></i>
             </button>
+            @endcan
+            @can('subject-section-delete')
             <button type="button"
                     class="btn btn-sm btn-icon btn-danger-transparent"
                     data-bs-toggle="modal"
@@ -68,6 +73,7 @@
                     title="حذف القسم">
                 <i class="bi bi-trash"></i>
             </button>
+            @endcan
             @endif
         </div>
     </h2>
@@ -93,12 +99,15 @@
                     </span>
                     @if(!$isLinkedSection)
                     <div class="d-flex align-items-center gap-2">
+                        @can('unit-create')
                         <button type="button"
                                 class="btn btn-sm btn-outline-primary"
                                 data-bs-toggle="modal"
                                 data-bs-target="#createUnitModal{{ $section->id }}">
                             <i class="bi bi-plus-lg me-1"></i> إضافة وحدة
                         </button>
+                        @endcan
+                        @can('subject-section-create')
                         <button type="button"
                                 class="btn btn-sm btn-outline-secondary add-child-section-btn"
                                 data-bs-toggle="modal"
@@ -107,6 +116,7 @@
                                 title="إضافة قسم فرعي">
                             <i class="bi bi-folder-plus me-1"></i> إضافة قسم فرعي
                         </button>
+                        @endcan
                     </div>
                     @endif
                 </div>
@@ -144,6 +154,7 @@
                             <i class="bi bi-folder2 me-1"></i> الأقسام الفرعية ({{ $childSections->count() }})
                         </span>
                         @if(!$isLinkedSection)
+                        @can('subject-section-create')
                         <button type="button"
                                 class="btn btn-sm btn-outline-secondary add-child-section-btn"
                                 data-bs-toggle="modal"
@@ -152,6 +163,7 @@
                                 title="إضافة قسم فرعي">
                             <i class="bi bi-folder-plus me-1"></i> إضافة قسم فرعي
                         </button>
+                        @endcan
                         @endif
                     </div>
                     <div class="accordion accordion-primary" id="childSectionsAccordion{{ $section->id }}" data-sortable="sections" data-subject-id="{{ $subject->id }}" data-parent-id="{{ $section->id }}" data-reorder-url="{{ route('admin.subjects.sections.reorder', $subject) }}">
@@ -174,6 +186,7 @@
                             <i class="bi bi-folder2 me-1"></i> الأقسام الفرعية
                         </span>
                         @if(!$isLinkedSection)
+                        @can('subject-section-create')
                         <button type="button"
                                 class="btn btn-sm btn-outline-secondary add-child-section-btn"
                                 data-bs-toggle="modal"
@@ -182,6 +195,7 @@
                                 title="إضافة قسم فرعي">
                             <i class="bi bi-folder-plus me-1"></i> إضافة قسم فرعي
                         </button>
+                        @endcan
                         @endif
                     </div>
                     <div class="text-center py-3 text-muted small">لا أقسام فرعية</div>

@@ -17,11 +17,9 @@ class SubjectController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['permission:subject-list'])->only('index');
         $this->middleware(['permission:subject-create'])->only(['create', 'store']);
         $this->middleware(['permission:subject-edit'])->only(['edit', 'update']);
         $this->middleware(['permission:subject-delete'])->only('destroy');
-        $this->middleware(['permission:subject-show'])->only('show');
         $this->middleware(['permission:subject-enrolled-students'])->only('enrolledStudents');
         $this->middleware(['permission:subject-toggle-status'])->only('toggleStatus');
         $this->middleware(['permission:subject-edit'])->only('reorder');
@@ -32,24 +30,19 @@ class SubjectController extends Controller
      */
     public function index(Request $request)
     {
+        $this->authorizeSubjectIndexAccess(auth()->user());
+
         $subjectsQuery = Subject::with(['schoolClass.stage']);
 
         // إذا كان المستخدم معلم وليس مشرف/مدير
         $user = auth()->user();
-        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
-            $classIds = $user->assignedClasses()->pluck('classes.id');
-            $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
-            
-            $subjectsQuery->where(function($q) use ($classIds, $subjectIds) {
-                // المواد من الصفوف المخصصة
-                if ($classIds->isNotEmpty()) {
-                    $q->whereIn('class_id', $classIds);
-                }
-                // أو المواد المخصصة مباشرة
-                if ($subjectIds->isNotEmpty()) {
-                    $q->orWhereIn('id', $subjectIds);
-                }
-            });
+        if ($user->usesTeacherAssignmentScope()) {
+            $allowedSubjectIds = $user->getTeacherAllowedSubjectIds();
+            if ($allowedSubjectIds->isEmpty()) {
+                $subjectsQuery->whereRaw('1 = 0');
+            } else {
+                $subjectsQuery->whereIn('id', $allowedSubjectIds);
+            }
         }
 
         // فلترة حسب البحث
@@ -109,17 +102,13 @@ class SubjectController extends Controller
 
         $subjectsQuery = Subject::query();
         $user = auth()->user();
-        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
-            $classIds = $user->assignedClasses()->pluck('classes.id');
-            $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
-            $subjectsQuery->where(function ($q) use ($classIds, $subjectIds) {
-                if ($classIds->isNotEmpty()) {
-                    $q->whereIn('class_id', $classIds);
-                }
-                if ($subjectIds->isNotEmpty()) {
-                    $q->orWhereIn('id', $subjectIds);
-                }
-            });
+        if ($user->usesTeacherAssignmentScope()) {
+            $allowedSubjectIds = $user->getTeacherAllowedSubjectIds();
+            if ($allowedSubjectIds->isEmpty()) {
+                $subjectsQuery->whereRaw('1 = 0');
+            } else {
+                $subjectsQuery->whereIn('id', $allowedSubjectIds);
+            }
         }
         if ($request->filled('query')) {
             $subjectsQuery->search($request->input('query'));
@@ -321,12 +310,8 @@ class SubjectController extends Controller
             
             // التحقق من التخصيص
             $user = auth()->user();
-            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
-                if (!$user->isAssignedToSubject($subject->id) && 
-                    !$user->isAssignedToClass($subject->class_id)) {
-                    abort(403, 'غير مصرح لك بالوصول إلى هذه المادة');
-                }
-            }
+            $this->authorizeSubjectShowAccess($user);
+            $this->authorizeManagedSubjectAccess($user, $subject);
 
             // هيكل المواد/أقسام/وحدات لربط الدرس بوحدات إضافية في مودال التعديل
             $linkableSubjectsQuery = Subject::with([
@@ -334,7 +319,7 @@ class SubjectController extends Controller
                 'sections' => fn ($q) => $q->orderBy('order')->orderBy('title'),
                 'sections.units' => fn ($q) => $q->orderBy('order')->orderBy('title'),
             ]);
-            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            if ($user->usesTeacherAssignmentScope()) {
                 $classIds = $user->assignedClasses()->pluck('classes.id');
                 $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
                 $linkableSubjectsQuery->where(function ($q) use ($classIds, $subjectIds) {
@@ -343,6 +328,20 @@ class SubjectController extends Controller
                     }
                     if ($subjectIds->isNotEmpty()) {
                         $q->orWhereIn('id', $subjectIds);
+                    }
+                });
+            } elseif ($user->usesSupervisorAssignmentScope()) {
+                $classIds = $user->assignedClassesAsSupervisor()->pluck('classes.id');
+                $subjectIds = $user->assignedSubjectsAsSupervisor()->pluck('subjects.id');
+                $linkableSubjectsQuery->where(function ($q) use ($classIds, $subjectIds) {
+                    if ($classIds->isNotEmpty()) {
+                        $q->whereIn('class_id', $classIds);
+                    }
+                    if ($subjectIds->isNotEmpty()) {
+                        $q->orWhereIn('id', $subjectIds);
+                    }
+                    if ($classIds->isEmpty() && $subjectIds->isEmpty()) {
+                        $q->whereRaw('1 = 0');
                     }
                 });
             }
@@ -385,12 +384,7 @@ class SubjectController extends Controller
             
             // التحقق من التخصيص
             $user = auth()->user();
-            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
-                if (!$user->isAssignedToSubject($subject->id) && 
-                    !$user->isAssignedToClass($subject->class_id)) {
-                    abort(403, 'غير مصرح لك بالوصول إلى هذه المادة');
-                }
-            }
+            $this->authorizeManagedSubjectAccess($user, $subject);
             
             $classes = SchoolClass::with('stage')->ordered()->get();
             return view('admin.pages.subjects.edit', compact('subject', 'classes'));
@@ -413,12 +407,7 @@ class SubjectController extends Controller
             
             // التحقق من التخصيص
             $user = auth()->user();
-            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
-                if (!$user->isAssignedToSubject($subject->id) && 
-                    !$user->isAssignedToClass($subject->class_id)) {
-                    abort(403, 'غير مصرح لك بالوصول إلى هذه المادة');
-                }
-            }
+            $this->authorizeManagedSubjectAccess($user, $subject);
             $data = $request->validated();
 
             // صورة المادة
@@ -526,12 +515,7 @@ class SubjectController extends Controller
             
             // التحقق من التخصيص
             $user = auth()->user();
-            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
-                if (!$user->isAssignedToSubject($subject->id) && 
-                    !$user->isAssignedToClass($subject->class_id)) {
-                    abort(403, 'غير مصرح لك بالوصول إلى هذه المادة');
-                }
-            }
+            $this->authorizeManagedSubjectAccess($user, $subject);
 
             try {
                 if ($subject->image) {
@@ -616,6 +600,44 @@ class SubjectController extends Controller
             return redirect()
                 ->back()
                 ->with('error', 'فشل تحديث حالة المادة');
+        }
+    }
+
+    private function authorizeManagedSubjectAccess($user, Subject $subject): void
+    {
+        if ($user->usesTeacherAssignmentScope()) {
+            if (!$user->isAssignedToSubject($subject->id) && !$user->isAssignedToClass($subject->class_id)) {
+                abort(403, 'غير مصرح لك بالوصول إلى هذه المادة');
+            }
+            return;
+        }
+
+        if ($user->usesSupervisorAssignmentScope()) {
+            if (!$user->isAssignedToSubjectAsSupervisor($subject->id) && !$user->isAssignedToClassAsSupervisor($subject->class_id)) {
+                abort(403, 'غير مصرح لك بالوصول إلى هذه المادة');
+            }
+        }
+    }
+
+    private function authorizeSubjectIndexAccess($user): void
+    {
+        if ($user->usesTeacherAssignmentScope()) {
+            return;
+        }
+
+        if (!$user->can('subject-list')) {
+            abort(403, 'غير مصرح لك بالوصول');
+        }
+    }
+
+    private function authorizeSubjectShowAccess($user): void
+    {
+        if ($user->usesTeacherAssignmentScope() || $user->usesSupervisorAssignmentScope()) {
+            return;
+        }
+
+        if (!$user->can('subject-show')) {
+            abort(403, 'غير مصرح لك بالوصول');
         }
     }
 }

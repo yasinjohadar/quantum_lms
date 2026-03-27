@@ -255,18 +255,22 @@ public function index(Request $request)
                     $request->merge(['phone' => $normalized]);
                 }
             }
-            // التحقق من صحة البيانات (لا يتم تغيير الرول ولا كلمة المرور ولا الصورة من هذه الصفحة)
+            // التحقق من صحة البيانات
             $request->validate([
                 'name' => 'required|string|max:255',
                 'email' => 'required|string|email|max:255|unique:users,email,' . $id,
                 'phone' => 'nullable|string|max:20|regex:/^\+[1-9]\d{1,14}$/|unique:users,phone,' . $id,
                 'is_active' => 'boolean',
+                'roles' => 'nullable|array',
+                'roles.*' => 'string|exists:roles,name',
             ], [
                 'name.required' => 'الاسم مطلوب',
                 'email.required' => 'البريد الإلكتروني مطلوب',
                 'email.email' => 'البريد الإلكتروني غير صحيح',
                 'email.unique' => 'البريد الإلكتروني مستخدم بالفعل',
                 'phone.unique' => 'رقم الهاتف مستخدم بالفعل',
+                'roles.array' => 'صيغة الأدوار غير صحيحة',
+                'roles.*.exists' => 'أحد الأدوار المختارة غير موجود',
             ]);
 
             // تجهيز البيانات للتحديث (الاسم، البريد، الهاتف، تفعيل الحساب فقط)
@@ -278,6 +282,30 @@ public function index(Request $request)
             ];
 
             $user->update($updateData);
+
+            $roles = $request->input('roles', []);
+            if (!is_array($roles)) {
+                $roles = [];
+            }
+
+            // حماية: منع إسقاط آخر Admin من النظام
+            $hadAdminRole = $user->hasRole('admin');
+            $willKeepAdminRole = in_array('admin', $roles, true);
+            if ($hadAdminRole && !$willKeepAdminRole) {
+                $otherAdminsCount = User::where('id', '!=', $user->id)
+                    ->whereHas('roles', function ($q) {
+                        $q->where('name', 'admin');
+                    })
+                    ->count();
+
+                if ($otherAdminsCount === 0) {
+                    return redirect()->back()
+                        ->withInput()
+                        ->with('error', '❌ لا يمكن إزالة دور admin من آخر مدير في النظام.');
+                }
+            }
+
+            $user->syncRoles($roles);
 
             return redirect()->route('users.index')
                 ->with('success', "✅ تم تحديث بيانات المستخدم ({$user->name}) بنجاح");

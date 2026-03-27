@@ -1,15 +1,19 @@
 {{-- شريط أدوات الوحدة --}}
 <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
     <div class="d-flex align-items-center gap-2 flex-wrap">
+        @can('lesson-create')
         <button type="button" class="btn btn-sm btn-success"
                 data-bs-toggle="modal"
                 data-bs-target="#createLessonModal{{ $unit->id }}"
                 title="إضافة درس">
             <i class="bi bi-play-circle me-1"></i> درس جديد
         </button>
+        @endcan
+        @can('quiz-create')
         <a href="{{ route('admin.quizzes.create', ['subject_id' => $subject->id, 'unit_id' => $unit->id, 'scope' => 'unit']) }}" class="btn btn-sm btn-info" title="إضافة اختبار للوحدة">
             <i class="bi bi-clipboard-check me-1"></i> اختبار الوحدة
         </a>
+        @endcan
     </div>
 </div>
 
@@ -70,19 +74,27 @@
                         ];
                     })->values()->toJson();
                 @endphp
-                <button type="button" class="btn btn-sm btn-icon btn-outline-secondary" title="ربط بوحدات أخرى"
-                        data-bs-toggle="modal" data-bs-target="#linkQuizUnitsModal"
-                        data-quiz-id="{{ $quiz->id }}" data-quiz-title="{{ $quiz->title }}" data-quiz-primary-unit-id="{{ $quiz->unit_id }}"
-                        data-linked-units="{{ e($quizLinkedUnitsData) }}">
-                    <i class="bi bi-link-45deg"></i>
-                </button>
-                <a href="{{ route('admin.quizzes.show', $quiz->id) }}" class="btn btn-sm btn-icon btn-info-transparent" title="عرض"><i class="bi bi-eye"></i></a>
-                <a href="{{ route('admin.quizzes.edit', $quiz->id) }}" class="btn btn-sm btn-icon btn-warning-transparent" title="تعديل"><i class="bi bi-pencil"></i></a>
-                <form action="{{ route('admin.quizzes.destroy', $quiz->id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف هذا الاختبار؟');">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-sm btn-icon btn-danger-transparent" title="حذف"><i class="bi bi-trash"></i></button>
-                </form>
+                @can('quiz-edit')
+                    <button type="button" class="btn btn-sm btn-icon btn-outline-secondary" title="ربط بوحدات أخرى"
+                            data-bs-toggle="modal" data-bs-target="#linkQuizUnitsModal"
+                            data-quiz-id="{{ $quiz->id }}" data-quiz-title="{{ $quiz->title }}" data-quiz-primary-unit-id="{{ $quiz->unit_id }}"
+                            data-linked-units="{{ e($quizLinkedUnitsData) }}">
+                        <i class="bi bi-link-45deg"></i>
+                    </button>
+                @endcan
+                @can('quiz-show')
+                    <a href="{{ route('admin.quizzes.show', $quiz->id) }}" class="btn btn-sm btn-icon btn-info-transparent" title="عرض"><i class="bi bi-eye"></i></a>
+                @endcan
+                @can('quiz-edit')
+                    <a href="{{ route('admin.quizzes.edit', $quiz->id) }}" class="btn btn-sm btn-icon btn-warning-transparent" title="تعديل"><i class="bi bi-pencil"></i></a>
+                @endcan
+                @can('quiz-delete')
+                    <form action="{{ route('admin.quizzes.destroy', $quiz->id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف هذا الاختبار؟');">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-sm btn-icon btn-danger-transparent" title="حذف"><i class="bi bi-trash"></i></button>
+                    </form>
+                @endcan
             </div>
         </div>
         @endforeach
@@ -95,7 +107,9 @@
         <div class="text-center py-4 text-muted bg-light rounded">
             <i class="bi bi-collection-play display-6 d-block mb-2"></i>
             <span class="small">لا توجد محتويات في هذه الوحدة بعد</span>
-            <p class="small text-muted mb-0 mt-1">اضغط على "درس جديد" لإضافة محتوى</p>
+            @can('lesson-create')
+                <p class="small text-muted mb-0 mt-1">اضغط على "درس جديد" لإضافة محتوى</p>
+            @endcan
         </div>
     @else
         <div class="list-group list-group-flush" data-sortable="lessons" data-unit-id="{{ $unit->id }}" data-reorder-url="{{ route('admin.units.lessons.reorder', $unit) }}">
@@ -155,23 +169,43 @@
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-1 flex-shrink-0">
-                        <a href="{{ route('admin.lessons.show', $lesson->id) }}" class="btn btn-sm btn-icon btn-success-transparent" title="مشاهدة"><i class="bi bi-play-fill"></i></a>
-                        @if($lesson->embed_url || $lesson->video_url)
-                        <button type="button" class="btn btn-sm btn-icon btn-warning-transparent" data-bs-toggle="modal" data-bs-target="#playVideoModal{{ $lesson->id }}" title="تشغيل الفيديو - معاينة سريعة"><i class="bi bi-play-circle"></i></button>
+                        @can('lesson-show')
+                            <a href="{{ route('admin.lessons.show', $lesson->id) }}" class="btn btn-sm btn-icon btn-success-transparent" title="مشاهدة"><i class="bi bi-play-fill"></i></a>
+                        @endcan
+                        @can('lesson-show')
+                            @if($lesson->embed_url || $lesson->video_url)
+                            <button type="button" class="btn btn-sm btn-icon btn-warning-transparent" data-bs-toggle="modal" data-bs-target="#playVideoModal{{ $lesson->id }}" title="تشغيل الفيديو - معاينة سريعة"><i class="bi bi-play-circle"></i></button>
+                            @endif
+                        @endcan
+                        @can('lesson-attachment-create')
+                            <button type="button" class="btn btn-sm btn-icon btn-info-transparent" data-bs-toggle="modal" data-bs-target="#addLessonAttachment{{ $lesson->id }}" title="إضافة مرفقات"><i class="bi bi-paperclip"></i></button>
+                        @endcan
+                        @can('lesson-edit')
+                            <button type="button" class="btn btn-sm btn-icon btn-primary-transparent" data-bs-toggle="modal" data-bs-target="#editLesson{{ $lesson->id }}" title="تعديل"><i class="bi bi-pencil"></i></button>
+                        @endcan
+                        @can('lesson-delete')
+                            <button type="button" class="btn btn-sm btn-icon btn-danger-transparent" data-bs-toggle="modal" data-bs-target="#deleteLesson{{ $lesson->id }}" title="حذف"><i class="bi bi-trash"></i></button>
+                        @endcan
+                        @if($lesson->review_status === 'pending_review')
+                            @canany(['lesson-approve-review', 'lesson-reject-review'])
+                            <div class="btn-group btn-group-sm ms-2">
+                                @can('lesson-approve-review')
+                                    <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#approveLesson{{ $lesson->id }}" title="موافقة"><i class="bi bi-check-circle"></i></button>
+                                @endcan
+                                @can('lesson-reject-review')
+                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectLesson{{ $lesson->id }}" title="رفض"><i class="bi bi-x-circle"></i></button>
+                                @endcan
+                            </div>
+                            @endcanany
                         @endif
-                        <button type="button" class="btn btn-sm btn-icon btn-info-transparent" data-bs-toggle="modal" data-bs-target="#addLessonAttachment{{ $lesson->id }}" title="إضافة مرفقات"><i class="bi bi-paperclip"></i></button>
-                        <button type="button" class="btn btn-sm btn-icon btn-primary-transparent" data-bs-toggle="modal" data-bs-target="#editLesson{{ $lesson->id }}" title="تعديل"><i class="bi bi-pencil"></i></button>
-                        <button type="button" class="btn btn-sm btn-icon btn-danger-transparent" data-bs-toggle="modal" data-bs-target="#deleteLesson{{ $lesson->id }}" title="حذف"><i class="bi bi-trash"></i></button>
-                        @if($lesson->review_status === 'pending_review' && auth()->user()->hasAnyRole(['admin', 'supervisor']))
-                        <div class="btn-group btn-group-sm ms-2">
-                            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#approveLesson{{ $lesson->id }}" title="موافقة"><i class="bi bi-check-circle"></i></button>
-                            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectLesson{{ $lesson->id }}" title="رفض"><i class="bi bi-x-circle"></i></button>
-                        </div>
-                        @endif
-                        <a href="{{ route('admin.quizzes.create', ['subject_id' => $subject->id, 'unit_id' => $unit->id, 'lesson_id' => $lesson->id, 'scope' => 'lesson']) }}" class="btn btn-sm btn-outline-info" title="اختبار لهذا الدرس"><i class="bi bi-clipboard-check me-1"></i> اختبار الدرس</a>
+                        @can('quiz-create')
+                            <a href="{{ route('admin.quizzes.create', ['subject_id' => $subject->id, 'unit_id' => $unit->id, 'lesson_id' => $lesson->id, 'scope' => 'lesson']) }}" class="btn btn-sm btn-outline-info" title="اختبار لهذا الدرس"><i class="bi bi-clipboard-check me-1"></i> اختبار الدرس</a>
+                        @endcan
                         @if($lesson->quizzes && $lesson->quizzes->count() > 0)
                             @php $firstQuiz = $lesson->quizzes->first(); @endphp
-                            <a href="{{ route('admin.quizzes.show', $firstQuiz->id) }}" class="btn btn-sm btn-icon btn-info-transparent" title="{{ $firstQuiz->title }}"><i class="bi bi-question-circle"></i></a>
+                            @can('quiz-show')
+                                <a href="{{ route('admin.quizzes.show', $firstQuiz->id) }}" class="btn btn-sm btn-icon btn-info-transparent" title="{{ $firstQuiz->title }}"><i class="bi bi-question-circle"></i></a>
+                            @endcan
                         @endif
                     </div>
                 </div>

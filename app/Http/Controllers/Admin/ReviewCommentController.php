@@ -38,7 +38,7 @@ class ReviewCommentController extends Controller
         $reviewable = $reviewableType::findOrFail($reviewableId);
 
         // التحقق من الصلاحيات
-        if ($user->hasRole('supervisor') && !$user->hasRole('admin')) {
+        if ($user->usesSupervisorAssignmentScope()) {
             // المشرف يمكنه إضافة ملاحظات فقط على العناصر المخصصة له
             if ($reviewable instanceof Lesson) {
                 $canAccess = $reviewable->unit->section->subject->schoolClass
@@ -66,7 +66,7 @@ class ReviewCommentController extends Controller
         ]);
 
         // إرسال إشعار للمعلم إذا كانت الملاحظة من المشرف
-        if ($user->hasRole('supervisor') && $reviewable->created_by) {
+        if ($user->usesSupervisorAssignmentScope() && $reviewable->created_by) {
             // TODO: إرسال إشعار للمعلم
         }
 
@@ -96,7 +96,7 @@ class ReviewCommentController extends Controller
         $user = auth()->user();
 
         // التحقق من أن المستخدم هو صاحب الملاحظة أو أدمن/مشرف
-        if ($comment->user_id !== $user->id && !$user->hasAnyRole(['admin', 'supervisor'])) {
+        if ($comment->user_id !== $user->id && !$user->canReviewContent()) {
             return response()->json(['error' => 'غير مصرح لك بتعديل هذه الملاحظة'], 403);
         }
 
@@ -119,7 +119,7 @@ class ReviewCommentController extends Controller
         $user = auth()->user();
 
         // التحقق من أن المستخدم هو صاحب الملاحظة أو أدمن
-        if ($comment->user_id !== $user->id && !$user->hasRole('admin')) {
+        if ($comment->user_id !== $user->id && !$user->isPlatformAdmin()) {
             return response()->json(['error' => 'غير مصرح لك بحذف هذه الملاحظة'], 403);
         }
 
@@ -146,7 +146,7 @@ class ReviewCommentController extends Controller
         $reviewable = $parent->reviewable;
 
         // التحقق من الصلاحيات
-        if ($user->hasRole('supervisor') && !$user->hasRole('admin')) {
+        if ($user->usesSupervisorAssignmentScope()) {
             // نفس التحقق من store
             if ($reviewable instanceof Lesson) {
                 $canAccess = $reviewable->unit->section->subject->schoolClass
@@ -156,7 +156,7 @@ class ReviewCommentController extends Controller
                     return response()->json(['error' => 'غير مصرح لك بالرد على هذه الملاحظة'], 403);
                 }
             }
-        } elseif ($user->hasRole('teacher')) {
+        } elseif ($user->usesTeacherAssignmentScope()) {
             // المعلم يمكنه الرد على أي ملاحظة متعلقة بعناصره
             if ($reviewable->created_by !== $user->id) {
                 return response()->json(['error' => 'غير مصرح لك بالرد على هذه الملاحظة'], 403);
@@ -192,7 +192,7 @@ class ReviewCommentController extends Controller
         $user = auth()->user();
 
         // فقط صاحب الملاحظة أو المشرف/الأدمن يمكنهم حل الملاحظة
-        if ($comment->user_id !== $user->id && !$user->hasAnyRole(['admin', 'supervisor'])) {
+        if ($comment->user_id !== $user->id && !$user->canReviewContent()) {
             return response()->json(['error' => 'غير مصرح لك بحل هذه الملاحظة'], 403);
         }
 
@@ -213,7 +213,7 @@ class ReviewCommentController extends Controller
         $user = auth()->user();
 
         // فقط صاحب الملاحظة أو المشرف/الأدمن يمكنهم إلغاء حل الملاحظة
-        if ($comment->user_id !== $user->id && !$user->hasAnyRole(['admin', 'supervisor'])) {
+        if ($comment->user_id !== $user->id && !$user->canReviewContent()) {
             return response()->json(['error' => 'غير مصرح لك بإلغاء حل هذه الملاحظة'], 403);
         }
 

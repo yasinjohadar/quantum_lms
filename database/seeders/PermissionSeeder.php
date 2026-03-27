@@ -38,6 +38,8 @@ class PermissionSeeder extends Seeder
             ['name' => 'supervisor-assignment-list', 'description' => 'عرض قائمة تخصيصات المشرفين'],
             ['name' => 'supervisor-assignment-show', 'description' => 'عرض صفحة تخصيص المشرف'],
             ['name' => 'supervisor-assignment-update', 'description' => 'تحديث تخصيصات المشرف'],
+            ['name' => 'supervisor-assignment-manage-classes', 'description' => 'إدارة تخصيص صفوف المشرف'],
+            ['name' => 'supervisor-assignment-manage-subjects', 'description' => 'إدارة تخصيص مواد المشرف'],
 
             // صلاحيات إدارة الصفوف
             ['name' => 'class-list', 'description' => 'عرض قائمة الصفوف'],
@@ -384,6 +386,21 @@ class PermissionSeeder extends Seeder
             ['name' => 'teacher-assignment-list', 'description' => 'عرض قائمة تخصيصات المعلمين'],
             ['name' => 'teacher-assignment-show', 'description' => 'عرض تفاصيل تخصيص المعلم'],
             ['name' => 'teacher-assignment-update', 'description' => 'تحديث تخصيص المعلم'],
+            ['name' => 'teacher-assignment-manage-classes', 'description' => 'إدارة تخصيص صفوف المعلم'],
+            ['name' => 'teacher-assignment-manage-subjects', 'description' => 'إدارة تخصيص مواد المعلم'],
+            ['name' => 'teacher-progress-view', 'description' => 'عرض تقدم المعلمين'],
+
+            // صلاحيات إدارة السنوات والأسابيع الدراسية
+            ['name' => 'academic-year-list', 'description' => 'عرض السنوات الدراسية'],
+            ['name' => 'academic-year-create', 'description' => 'إنشاء سنة دراسية'],
+            ['name' => 'academic-year-edit', 'description' => 'تعديل سنة دراسية'],
+            ['name' => 'academic-year-delete', 'description' => 'حذف سنة دراسية'],
+            ['name' => 'academic-year-activate', 'description' => 'تفعيل سنة دراسية'],
+            ['name' => 'academic-week-list', 'description' => 'عرض الأسابيع الدراسية'],
+            ['name' => 'academic-week-create', 'description' => 'إنشاء أسبوع دراسي'],
+            ['name' => 'academic-week-edit', 'description' => 'تعديل أسبوع دراسي'],
+            ['name' => 'academic-week-delete', 'description' => 'حذف أسبوع دراسي'],
+            ['name' => 'academic-week-generate', 'description' => 'توليد أسابيع السنة الدراسية'],
 
             // صلاحيات لوحة التحليلات
             ['name' => 'analytics-dashboard-view', 'description' => 'عرض لوحة التحليلات'],

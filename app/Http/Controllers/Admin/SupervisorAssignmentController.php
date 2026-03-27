@@ -100,6 +100,10 @@ class SupervisorAssignmentController extends Controller
      */
     public function update(Request $request, User $supervisor)
     {
+        if (! $supervisor->hasRole('supervisor')) {
+            return redirect()->back()->with('error', 'المستخدم المحدد ليس مشرف');
+        }
+
         $request->validate([
             'classes' => 'nullable|array',
             'classes.*' => 'exists:classes,id',
@@ -109,30 +113,36 @@ class SupervisorAssignmentController extends Controller
 
         $assignedBy = auth()->id();
         $assignedAt = now();
+        $canManageClasses = auth()->user()?->can('supervisor-assignment-manage-classes');
+        $canManageSubjects = auth()->user()?->can('supervisor-assignment-manage-subjects');
 
         // تحديث الصفوف المخصصة
-        $classesData = [];
-        if ($request->has('classes') && is_array($request->input('classes'))) {
-            foreach ($request->input('classes') as $classId) {
-                $classesData[$classId] = [
-                    'assigned_by' => $assignedBy,
-                    'assigned_at' => $assignedAt,
-                ];
+        if ($canManageClasses) {
+            $classesData = [];
+            if ($request->has('classes') && is_array($request->input('classes'))) {
+                foreach ($request->input('classes') as $classId) {
+                    $classesData[$classId] = [
+                        'assigned_by' => $assignedBy,
+                        'assigned_at' => $assignedAt,
+                    ];
+                }
             }
+            $supervisor->assignedClassesAsSupervisor()->sync($classesData);
         }
-        $supervisor->assignedClassesAsSupervisor()->sync($classesData);
 
         // تحديث المواد المخصصة
-        $subjectsData = [];
-        if ($request->has('subjects') && is_array($request->input('subjects'))) {
-            foreach ($request->input('subjects') as $subjectId) {
-                $subjectsData[$subjectId] = [
-                    'assigned_by' => $assignedBy,
-                    'assigned_at' => $assignedAt,
-                ];
+        if ($canManageSubjects) {
+            $subjectsData = [];
+            if ($request->has('subjects') && is_array($request->input('subjects'))) {
+                foreach ($request->input('subjects') as $subjectId) {
+                    $subjectsData[$subjectId] = [
+                        'assigned_by' => $assignedBy,
+                        'assigned_at' => $assignedAt,
+                    ];
+                }
             }
+            $supervisor->assignedSubjectsAsSupervisor()->sync($subjectsData);
         }
-        $supervisor->assignedSubjectsAsSupervisor()->sync($subjectsData);
 
         return redirect()->back()->with('success', 'تم تحديث تخصيصات المشرف بنجاح');
     }

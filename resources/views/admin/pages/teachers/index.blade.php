@@ -310,14 +310,18 @@
                                                     </td>
                                                     <td>
                                                         <div class="d-flex gap-1 flex-wrap">
-                                                            <a href="{{ route('admin.teachers.assignments', $teacher->id) }}"
-                                                               class="btn btn-primary btn-sm">
-                                                                <i class="fas fa-user-tie me-1"></i> تخصيص
-                                                            </a>
-                                                            <a href="{{ route('admin.teachers.progress.history', $teacher->id) }}"
-                                                               class="btn btn-outline-secondary btn-sm">
-                                                                <i class="bi bi-clock-history me-1"></i> إحصائيات سابقة
-                                                            </a>
+                                                            @can('teacher-assignment-show')
+                                                                <a href="{{ route('admin.teachers.assignments', $teacher->id) }}"
+                                                                   class="btn btn-primary btn-sm">
+                                                                    <i class="fas fa-user-tie me-1"></i> تخصيص
+                                                                </a>
+                                                            @endcan
+                                                            @can('teacher-progress-view')
+                                                                <a href="{{ route('admin.teachers.progress.history', $teacher->id) }}"
+                                                                   class="btn btn-outline-secondary btn-sm">
+                                                                    <i class="bi bi-clock-history me-1"></i> إحصائيات سابقة
+                                                                </a>
+                                                            @endcan
                                                             @can('user-edit')
                                                                 <a href="{{ route('users.edit', $teacher->id) }}"
                                                                    class="btn btn-info btn-sm"

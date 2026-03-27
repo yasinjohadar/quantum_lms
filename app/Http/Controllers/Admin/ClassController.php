@@ -18,11 +18,9 @@ class ClassController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['permission:class-list'])->only('index');
         $this->middleware(['permission:class-create'])->only(['create', 'store']);
         $this->middleware(['permission:class-edit'])->only(['edit', 'update']);
         $this->middleware(['permission:class-delete'])->only('destroy');
-        $this->middleware(['permission:class-show'])->only('show');
         $this->middleware(['permission:class-enrolled-students'])->only('enrolledStudents');
         $this->middleware(['permission:class-toggle-status'])->only('toggleStatus');
         $this->middleware(['permission:class-edit'])->only('reorder');
@@ -33,14 +31,19 @@ class ClassController extends Controller
      */
     public function index(Request $request)
     {
+        $this->authorizeClassIndexAccess(auth()->user());
+
         $classesQuery = SchoolClass::with('stage');
 
         // إذا كان المستخدم معلم وليس مشرف/مدير، عرض فقط الصفوف المخصصة له
         $user = auth()->user();
-        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
-            $classesQuery->whereHas('assignedTeachers', function($q) use ($user) {
-                $q->where('users.id', $user->id);
-            });
+        if ($user->usesTeacherAssignmentScope()) {
+            $allowedClassIds = $user->getTeacherAllowedClassIds();
+            if ($allowedClassIds->isEmpty()) {
+                $classesQuery->whereRaw('1 = 0');
+            } else {
+                $classesQuery->whereIn('id', $allowedClassIds);
+            }
         }
 
         // فلترة حسب البحث
@@ -100,10 +103,13 @@ class ClassController extends Controller
 
         $classesQuery = SchoolClass::query();
         $user = auth()->user();
-        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
-            $classesQuery->whereHas('assignedTeachers', function ($q) use ($user) {
-                $q->where('users.id', $user->id);
-            });
+        if ($user->usesTeacherAssignmentScope()) {
+            $allowedClassIds = $user->getTeacherAllowedClassIds();
+            if ($allowedClassIds->isEmpty()) {
+                $classesQuery->whereRaw('1 = 0');
+            } else {
+                $classesQuery->whereIn('id', $allowedClassIds);
+            }
         }
         if ($request->filled('query')) {
             $classesQuery->search($request->input('query'));
@@ -244,11 +250,8 @@ class ClassController extends Controller
             
             // التحقق من التخصيص
             $user = auth()->user();
-            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
-                if (!$user->isAssignedToClass($class->id)) {
-                    abort(403, 'غير مصرح لك بالوصول إلى هذا الصف');
-                }
-            }
+            $this->authorizeClassShowAccess($user);
+            $this->authorizeManagedClassAccess($user, $class);
             
             return view('admin.pages.classes.show', compact('class'));
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -271,11 +274,7 @@ class ClassController extends Controller
             
             // التحقق من التخصيص
             $user = auth()->user();
-            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
-                if (!$user->isAssignedToClass($class->id)) {
-                    abort(403, 'غير مصرح لك بالوصول إلى هذا الصف');
-                }
-            }
+            $this->authorizeManagedClassAccess($user, $class);
             
             $stages = Stage::ordered()->get();
             return view('admin.pages.classes.edit', compact('class', 'stages'));
@@ -298,11 +297,7 @@ class ClassController extends Controller
             
             // التحقق من التخصيص
             $user = auth()->user();
-            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
-                if (!$user->isAssignedToClass($class->id)) {
-                    abort(403, 'غير مصرح لك بالوصول إلى هذا الصف');
-                }
-            }
+            $this->authorizeManagedClassAccess($user, $class);
             $data = $request->validated();
 
             // صورة الصف
@@ -420,11 +415,7 @@ class ClassController extends Controller
             
             // التحقق من التخصيص
             $user = auth()->user();
-            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
-                if (!$user->isAssignedToClass($class->id)) {
-                    abort(403, 'غير مصرح لك بالوصول إلى هذا الصف');
-                }
-            }
+            $this->authorizeManagedClassAccess($user, $class);
 
             try {
                 if ($class->image) {
@@ -458,6 +449,7 @@ class ClassController extends Controller
     {
         try {
             $class = SchoolClass::with('stage')->findOrFail($id);
+            $this->authorizeManagedClassAccess(auth()->user(), $class);
             
             // جلب enrollments للمواد التابعة لهذا الصف
             $enrollmentsQuery = Enrollment::with(['user', 'subject', 'enrolledBy'])
@@ -523,6 +515,44 @@ class ClassController extends Controller
             return redirect()
                 ->back()
                 ->with('error', 'فشل تحديث حالة الصف');
+        }
+    }
+
+    private function authorizeManagedClassAccess($user, SchoolClass $class): void
+    {
+        if ($user->usesTeacherAssignmentScope()) {
+            if (!$user->isAssignedToClass($class->id)) {
+                abort(403, 'غير مصرح لك بالوصول إلى هذا الصف');
+            }
+            return;
+        }
+
+        if ($user->usesSupervisorAssignmentScope()) {
+            if (!$user->isAssignedToClassAsSupervisor($class->id)) {
+                abort(403, 'غير مصرح لك بالوصول إلى هذا الصف');
+            }
+        }
+    }
+
+    private function authorizeClassIndexAccess($user): void
+    {
+        if ($user->usesTeacherAssignmentScope()) {
+            return;
+        }
+
+        if (!$user->can('class-list')) {
+            abort(403, 'غير مصرح لك بالوصول');
+        }
+    }
+
+    private function authorizeClassShowAccess($user): void
+    {
+        if ($user->usesTeacherAssignmentScope() || $user->usesSupervisorAssignmentScope()) {
+            return;
+        }
+
+        if (!$user->can('class-show')) {
+            abort(403, 'غير مصرح لك بالوصول');
         }
     }
 }

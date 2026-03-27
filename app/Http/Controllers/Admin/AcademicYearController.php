@@ -10,7 +10,11 @@ class AcademicYearController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['permission:user-edit']);
+        $this->middleware(['permission:academic-year-list'])->only('index');
+        $this->middleware(['permission:academic-year-create'])->only(['create', 'store']);
+        $this->middleware(['permission:academic-year-edit'])->only(['edit', 'update']);
+        $this->middleware(['permission:academic-year-delete'])->only('destroy');
+        $this->middleware(['permission:academic-year-activate'])->only('activate');
     }
 
     public function index(Request $request)

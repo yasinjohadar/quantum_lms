@@ -36,7 +36,7 @@ class LessonController extends Controller
         try {
             // التحقق من التخصيص
             $user = auth()->user();
-            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            if ($user->usesTeacherAssignmentScope()) {
                 $subject = $unit->section->subject;
                 if (!$user->isAssignedToSubject($subject->id) && 
                     !$user->isAssignedToClass($subject->class_id)) {
@@ -50,7 +50,7 @@ class LessonController extends Controller
             $data['is_preview'] = $request->has('is_preview');
 
             // منطق المراجعة: إذا كان المستخدم معلم وليس مشرف أو مدير
-            $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
+            $isTeacher = $user->shouldSubmitContentForReview();
 
             if ($isTeacher) {
                 // إذا حاول تفعيل الدرس، ضعه في حالة قيد المراجعة
@@ -131,7 +131,7 @@ class LessonController extends Controller
         
         // التحقق من التخصيص
         $user = auth()->user();
-        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+        if ($user->usesTeacherAssignmentScope()) {
             $subject = $lesson->unit->section->subject;
             if (!$user->isAssignedToSubject($subject->id) && 
                 !$user->isAssignedToClass($subject->class_id)) {
@@ -160,7 +160,7 @@ class LessonController extends Controller
         try {
             // التحقق من التخصيص
             $user = auth()->user();
-            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            if ($user->usesTeacherAssignmentScope()) {
                 $subject = $lesson->unit->section->subject;
                 if (!$user->isAssignedToSubject($subject->id) && 
                     !$user->isAssignedToClass($subject->class_id)) {
@@ -176,7 +176,7 @@ class LessonController extends Controller
             $linkedUnitIds = $data['linked_unit_ids'] ?? [];
             unset($data['linked_unit_ids']);
 
-            $isTeacher = $user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor']);
+            $isTeacher = $user->shouldSubmitContentForReview();
 
             if ($isTeacher) {
                 // إذا كان الدرس في حالة pending أو rejected وكان المعلم يحاول تفعيله
@@ -248,7 +248,7 @@ class LessonController extends Controller
             $linkedUnitIds = array_values(array_diff($linkedUnitIds, [$primaryUnitId]));
 
             // للمعلم: السماح فقط بوحدات من مواد/صفوف مخصصة له
-            if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+            if ($user->usesTeacherAssignmentScope()) {
                 $classIds = $user->assignedClasses()->pluck('classes.id');
                 $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
                 $allowedUnitIds = \App\Models\Unit::whereHas('section.subject', function ($q) use ($classIds, $subjectIds) {
@@ -291,7 +291,7 @@ class LessonController extends Controller
     {
         // التحقق من التخصيص
         $user = auth()->user();
-        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+        if ($user->usesTeacherAssignmentScope()) {
             $subject = $lesson->unit->section->subject;
             if (!$user->isAssignedToSubject($subject->id) && 
                 !$user->isAssignedToClass($subject->class_id)) {
@@ -339,7 +339,7 @@ class LessonController extends Controller
     {
         // التحقق من التخصيص
         $user = auth()->user();
-        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
+        if ($user->usesTeacherAssignmentScope()) {
             $subject = $unit->section->subject;
             if (!$user->isAssignedToSubject($subject->id) &&
                 !$user->isAssignedToClass($subject->class_id)) {

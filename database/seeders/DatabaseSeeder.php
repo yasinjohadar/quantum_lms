@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             PermissionSeeder::class,
             RoleSeeder::class,
             AdminUserSeeder::class,
+            TestSupervisorsSeeder::class,
             GamificationSettingsSeeder::class,
             GamificationSeeder::class,
             // StageSeeder::class,

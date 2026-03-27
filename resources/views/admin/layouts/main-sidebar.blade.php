@@ -36,7 +36,7 @@
                         </li>
                         @endcan
 
-                        @if(auth()->user()->hasRole('teacher') && !auth()->user()->hasAnyRole(['admin', 'supervisor']))
+                        @if(auth()->user()->hasRole('teacher'))
                         <li class="slide has-sub {{ request()->is('teacher/classes*') || request()->is('teacher/subjects*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -72,7 +72,7 @@
                         </li>
                         @endif
 
-                        @if(auth()->user()->hasRole('supervisor') && !auth()->user()->hasRole('admin'))
+                        @if(auth()->user()->usesSupervisorAssignmentScope())
                         <li class="slide has-sub {{ request()->is('admin/my-classes*') || request()->is('admin/my-subjects*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -113,7 +113,7 @@
                                         <span class="side-menu__label">قائمة المراجعة</span>
                                         @php
                                             $user = auth()->user();
-                                            $isSupervisor = $user->hasRole('supervisor') && !$user->hasRole('admin');
+                                            $isSupervisor = $user->usesSupervisorAssignmentScope();
                                             if ($isSupervisor) {
                                                 $pendingCount = \App\Models\Lesson::forSupervisor($user->id)->pendingReview()->count() + 
                                                                \App\Models\Quiz::forSupervisor($user->id)->pendingReview()->count();
@@ -131,7 +131,7 @@
                         </li>
                         @endif
 
-                        @canany(['user-list', 'enrollment-list', 'role-list'])
+                        @canany(['user-list', 'enrollment-list', 'role-list', 'teacher-assignment-list', 'supervisor-assignment-list', 'teacher-progress-view', 'academic-year-list', 'academic-week-list'])
                         <li class="slide has-sub {{ request()->is('users*') || request()->is('admin/archived-users*') || request()->is('admin/teachers/assignments*') || request()->is('admin/supervisors/assignments*') || request()->is('roles*') || (request()->is('admin/enrollments*') && !request()->is('admin/enrollments/pending*') && !request()->is('admin/enrollments/class-pending*')) ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -163,7 +163,7 @@
                                     </a>
                                 </li>
                                 @endcan
-                                @can('user-list')
+                                @can('teacher-assignment-list')
                                 <li class="slide {{ request()->is('admin/teachers/assignments*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.teachers.assignments.index') }}" class="side-menu__item {{ request()->is('admin/teachers/assignments*') ? 'active' : '' }}">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
@@ -173,6 +173,8 @@
                                         <span class="side-menu__label">تخصيص المعلمين</span>
                                     </a>
                                 </li>
+                                @endcan
+                                @can('teacher-progress-view')
                                 <li class="slide {{ request()->is('admin/teachers/progress*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.teachers.progress.index') }}" class="side-menu__item {{ request()->is('admin/teachers/progress*') ? 'active' : '' }}">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
@@ -182,13 +184,15 @@
                                         <span class="side-menu__label">تقدم المعلمين</span>
                                     </a>
                                 </li>
+                                @endcan
+                                @canany(['academic-year-list', 'academic-week-list'])
                                 <li class="slide {{ request()->is('admin/academic-years*') || request()->is('admin/academic-weeks*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.academic-years.index') }}" class="side-menu__item {{ request()->is('admin/academic-years*') ? 'active' : '' }}">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;"><path d="M0 0h24v24H0z" fill="none"/><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/></svg>
                                         <span class="side-menu__label">السنوات والأسابيع الدراسية</span>
                                     </a>
                                 </li>
-                                @endcan
+                                @endcanany
                                 @can('user-list')
                                 <li class="slide {{ request()->is('admin/archived-users*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.archived-users.index') }}" class="side-menu__item {{ request()->is('admin/archived-users*') ? 'active' : '' }}">

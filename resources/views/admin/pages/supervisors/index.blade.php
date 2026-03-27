@@ -100,9 +100,9 @@
                                                 <th>#</th>
                                                 <th>الاسم</th>
                                                 <th>البريد الإلكتروني</th>
+                                                <th>الأدوار</th>
                                                 <th>الصفوف المخصصة</th>
                                                 <th>المواد المخصصة</th>
-                                                <th>حالة الحساب</th>
                                                 <th>آخر دخول</th>
                                                 <th>متصل الآن</th>
                                                 <th>الإجراءات</th>
@@ -129,6 +129,17 @@
                                                         </div>
                                                     </td>
                                                     <td>{{ $supervisor->email }}</td>
+                                                    <td>
+                                                        @if($supervisor->roles->count() > 0)
+                                                            <div class="d-flex flex-wrap gap-1">
+                                                                @foreach($supervisor->roles as $role)
+                                                                    <span class="badge bg-secondary">{{ $role->name }}</span>
+                                                                @endforeach
+                                                            </div>
+                                                        @else
+                                                            <span class="text-muted">لا يوجد</span>
+                                                        @endif
+                                                    </td>
                                                     <td>
                                                         @php
                                                             $assignedClasses = $supervisor->assignedClassesAsSupervisor;
@@ -170,28 +181,6 @@
                                                         @endif
                                                     </td>
                                                     <td>
-                                                        @can('user-toggle-status')
-                                                        <button type="button"
-                                                                class="btn btn-sm d-inline-flex align-items-center {{ $supervisor->is_active ? 'btn-success' : 'btn-outline-danger' }}"
-                                                                data-bs-toggle="modal"
-                                                                data-bs-target="#toggleStatus{{ $supervisor->id }}">
-                                                            @if($supervisor->is_active)
-                                                                <i class="fa-solid fa-check-circle me-1"></i>
-                                                                <span>الحساب مفعل</span>
-                                                            @else
-                                                                <i class="fa-solid fa-ban me-1"></i>
-                                                                <span>الحساب معطل</span>
-                                                            @endif
-                                                        </button>
-                                                        @else
-                                                            @if($supervisor->is_active)
-                                                                <span class="badge bg-success">مفعل</span>
-                                                            @else
-                                                                <span class="badge bg-secondary">معطل</span>
-                                                            @endif
-                                                        @endcan
-                                                    </td>
-                                                    <td>
                                                         @php
                                                             $lastLogin = $lastLogins[$supervisor->id] ?? $supervisor->last_login_at;
                                                         @endphp
@@ -210,10 +199,12 @@
                                                     </td>
                                                     <td>
                                                         <div class="d-flex gap-1 flex-wrap">
-                                                            <a href="{{ route('admin.supervisors.assignments', $supervisor->id) }}"
-                                                               class="btn btn-primary btn-sm">
-                                                                <i class="fas fa-user-tie me-1"></i> تخصيص
-                                                            </a>
+                                                            @can('supervisor-assignment-show')
+                                                                <a href="{{ route('admin.supervisors.assignments', $supervisor->id) }}"
+                                                                   class="btn btn-primary btn-sm">
+                                                                    <i class="fas fa-user-tie me-1"></i> تخصيص
+                                                                </a>
+                                                            @endcan
 
                                                             @can('user-edit')
                                                                 <a href="{{ route('users.edit', $supervisor->id) }}"
@@ -235,9 +226,6 @@
                                                         </div>
                                                     </td>
                                                 </tr>
-                                                @can('user-toggle-status')
-                                                @include('admin.pages.users.toggle_status', ['user' => $supervisor])
-                                                @endcan
                                                 @can('user-delete')
                                                 @include('admin.pages.users.delete', ['user' => $supervisor])
                                                 @endcan

@@ -430,6 +430,43 @@ class User extends Authenticatable
     }
 
     /**
+     * الحصول على IDs الصفوف المسموح بها للمدرس
+     * (صفوف مخصصة مباشرة + صفوف المواد المخصصة مباشرة)
+     */
+    public function getTeacherAllowedClassIds()
+    {
+        $directClassIds = $this->assignedClasses()->pluck('classes.id');
+        $derivedClassIds = $this->assignedSubjects()->pluck('subjects.class_id');
+
+        return $directClassIds
+            ->merge($derivedClassIds)
+            ->filter()
+            ->unique()
+            ->values();
+    }
+
+    /**
+     * الحصول على IDs المواد المسموح بها للمدرس
+     * (مواد مخصصة مباشرة + مواد الصفوف المخصصة)
+     */
+    public function getTeacherAllowedSubjectIds()
+    {
+        $directSubjectIds = $this->assignedSubjects()->pluck('subjects.id');
+        $classIds = $this->getTeacherAllowedClassIds();
+
+        $classSubjectIds = collect();
+        if ($classIds->isNotEmpty()) {
+            $classSubjectIds = Subject::whereIn('class_id', $classIds)->pluck('id');
+        }
+
+        return $directSubjectIds
+            ->merge($classSubjectIds)
+            ->filter()
+            ->unique()
+            ->values();
+    }
+
+    /**
      * العلاقة مع الصفوف المخصصة للمشرف
      */
     public function assignedClassesAsSupervisor()
@@ -522,6 +559,139 @@ class User extends Authenticatable
         return $query->whereHas('roles', function($q) {
             $q->where('name', 'supervisor');
         });
+    }
+
+    /**
+     * الحصول على اسم الرول الأساسية (أول رول تم إسناده للمستخدم)
+     */
+    public function getPrimaryRoleName(): ?string
+    {
+        return $this->roles()
+            ->orderBy('model_has_roles.role_id')
+            ->value('name');
+    }
+
+    /**
+     * الحصول على مسمى عربي للرول الأساسية
+     */
+    public function getPrimaryRoleLabelAttribute(): string
+    {
+        $roleName = $this->getPrimaryRoleName();
+
+        return match ($roleName) {
+            'admin' => 'أدمن',
+            'supervisor' => 'مشرف',
+            'teacher' => 'معلم',
+            'student' => 'طالب',
+            default => 'مستخدم',
+        };
+    }
+
+    public function isPlatformAdmin(): bool
+    {
+        return $this->hasRole('admin');
+    }
+
+    public function usesTeacherAssignmentScope(): bool
+    {
+        return $this->hasRole('teacher') && ! $this->isPlatformAdmin() && ! $this->hasRole('supervisor');
+    }
+
+    public function isTeacherBaseOnly(): bool
+    {
+        return $this->usesTeacherAssignmentScope() && ! $this->canAny([
+            'unit-create',
+            'unit-edit',
+            'unit-delete',
+            'subject-section-create',
+            'subject-section-edit',
+            'subject-section-delete',
+            'lesson-create',
+            'lesson-edit',
+            'lesson-delete',
+            'lesson-attachment-create',
+            'quiz-create',
+            'quiz-edit',
+            'quiz-delete',
+            'quiz-attempt-grade',
+            'quiz-attempt-needs-grading',
+            'question-create',
+            'question-edit',
+            'question-delete',
+        ]);
+    }
+
+    public function hasTeacherExtendedCapabilities(): bool
+    {
+        return $this->usesTeacherAssignmentScope() && $this->canAny([
+            'unit-create',
+            'unit-edit',
+            'unit-delete',
+            'subject-section-create',
+            'subject-section-edit',
+            'subject-section-delete',
+            'lesson-create',
+            'lesson-edit',
+            'lesson-delete',
+            'lesson-attachment-create',
+            'quiz-create',
+            'quiz-edit',
+            'quiz-delete',
+            'quiz-attempt-grade',
+            'quiz-attempt-needs-grading',
+            'question-create',
+            'question-edit',
+            'question-delete',
+        ]);
+    }
+
+    public function usesSupervisorAssignmentScope(): bool
+    {
+        return $this->hasRole('supervisor') && ! $this->isPlatformAdmin();
+    }
+
+    public function canReviewContent(): bool
+    {
+        if ($this->isPlatformAdmin()) {
+            return true;
+        }
+
+        return $this->canAny([
+            'review-queue-list',
+            'review-queue-lessons',
+            'review-queue-quizzes',
+            'lesson-approve-review',
+            'lesson-reject-review',
+            'quiz-approve-review',
+            'quiz-reject-review',
+        ]);
+    }
+
+    public function shouldSubmitContentForReview(): bool
+    {
+        return $this->usesTeacherAssignmentScope() && ! $this->canReviewContent();
+    }
+
+    public function canManageTeacherAssignments(): bool
+    {
+        return $this->isPlatformAdmin() || $this->canAny([
+            'teacher-assignment-list',
+            'teacher-assignment-show',
+            'teacher-assignment-update',
+            'teacher-assignment-manage-classes',
+            'teacher-assignment-manage-subjects',
+        ]);
+    }
+
+    public function canManageSupervisorAssignments(): bool
+    {
+        return $this->isPlatformAdmin() || $this->canAny([
+            'supervisor-assignment-list',
+            'supervisor-assignment-show',
+            'supervisor-assignment-update',
+            'supervisor-assignment-manage-classes',
+            'supervisor-assignment-manage-subjects',
+        ]);
     }
 
     /**
