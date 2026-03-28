@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
@@ -542,22 +543,40 @@ class User extends Authenticatable
     }
 
     /**
-     * Scope للمعلمين فقط
+     * Scope للمعلمين فقط (staff_profile أو الاسم الافتراضي teacher للتوافق مع البيانات القديمة)
      */
     public function scopeTeachers($query)
     {
-        return $query->whereHas('roles', function ($q) {
-            $q->where('name', 'teacher');
+        $rolesTable = config('permission.table_names.roles', 'roles');
+
+        return $query->whereHas('roles', function ($q) use ($rolesTable) {
+            if (Schema::hasColumn($rolesTable, 'staff_profile')) {
+                $q->where(function ($inner) {
+                    $inner->where('staff_profile', 'teacher')
+                        ->orWhere('name', 'teacher');
+                });
+            } else {
+                $q->where('name', 'teacher');
+            }
         });
     }
 
     /**
-     * Scope للمشرفين فقط
+     * Scope للمشرفين فقط (staff_profile أو الاسم الافتراضي supervisor)
      */
     public function scopeSupervisors($query)
     {
-        return $query->whereHas('roles', function ($q) {
-            $q->where('name', 'supervisor');
+        $rolesTable = config('permission.table_names.roles', 'roles');
+
+        return $query->whereHas('roles', function ($q) use ($rolesTable) {
+            if (Schema::hasColumn($rolesTable, 'staff_profile')) {
+                $q->where(function ($inner) {
+                    $inner->where('staff_profile', 'supervisor')
+                        ->orWhere('name', 'supervisor');
+                });
+            } else {
+                $q->where('name', 'supervisor');
+            }
         });
     }
 
@@ -594,7 +613,7 @@ class User extends Authenticatable
 
     public function usesTeacherAssignmentScope(): bool
     {
-        return $this->hasRole('teacher') && ! $this->isPlatformAdmin() && ! $this->hasRole('supervisor');
+        return $this->hasTeacherStaffIdentity() && ! $this->hasSupervisorStaffIdentity();
     }
 
     public function isTeacherBaseOnly(): bool
@@ -646,6 +665,28 @@ class User extends Authenticatable
     }
 
     /**
+     * هل يُعتبر المستخدم معلماً (رول باسم teacher أو staff_profile = teacher على أي دور)؟
+     * الأدمن المنصّة لا يُعد معلماً لهذا الغرض.
+     */
+    public function hasTeacherStaffIdentity(): bool
+    {
+        if ($this->isPlatformAdmin()) {
+            return false;
+        }
+
+        if ($this->hasRole('teacher')) {
+            return true;
+        }
+
+        $rolesTable = config('permission.table_names.roles', 'roles');
+        if (! Schema::hasColumn($rolesTable, 'staff_profile')) {
+            return false;
+        }
+
+        return $this->roles()->where('staff_profile', 'teacher')->exists();
+    }
+
+    /**
      * هل يُعتبر المستخدم مشرفاً (رول باسم supervisor أو staff_profile = supervisor على أي دور)؟
      * الأدمن المنصّة لا يُعد مشرفاً لهذا الغرض.
      */
@@ -660,7 +701,7 @@ class User extends Authenticatable
         }
 
         $rolesTable = config('permission.table_names.roles', 'roles');
-        if (! \Illuminate\Support\Facades\Schema::hasColumn($rolesTable, 'staff_profile')) {
+        if (! Schema::hasColumn($rolesTable, 'staff_profile')) {
             return false;
         }
 

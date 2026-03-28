@@ -58,12 +58,12 @@
                             <form method="POST" action="{{ route('roles.store', 'test') }}">
                                 @csrf
 
-                                <div class="row mb-3">
-                                    <div class="col-md-6">
+                                <div class="row mb-3 g-3 align-items-start">
+                                    <div class="col-12 col-lg-4">
                                         <label class="form-label fw-bold">اسم الدور</label>
                                         <input type="text" class="form-control" name="name" placeholder="مثال: مشرف عام">
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-12 col-lg-4">
                                         <label class="form-label fw-bold">نوع الواجهة</label>
                                         <select class="form-select" name="dashboard_type" required>
                                             <option value="admin">لوحة تحكم الأدمن</option>
@@ -71,6 +71,20 @@
                                         </select>
                                         <small class="text-muted">حدد نوع الواجهة التي يجب أن يصل إليها المستخدمون بهذا الدور</small>
                                     </div>
+                                    @php
+                                        $rolesTable = config('permission.table_names.roles', 'roles');
+                                    @endphp
+                                    @if(\Illuminate\Support\Facades\Schema::hasColumn($rolesTable, 'staff_profile'))
+                                        <div class="col-12 col-lg-4">
+                                            <label class="form-label fw-bold">تصنيف المشرف / المعلم</label>
+                                            <select class="form-select" name="staff_profile" required>
+                                                <option value="none" selected>لا شيء (طالب، أدمن، دور عام)</option>
+                                                <option value="supervisor">مشرف</option>
+                                                <option value="teacher">معلم</option>
+                                            </select>
+                                            <small class="text-muted">يحدد ظهور حاملي هذا الدور في صفحات تخصيص المشرفين والمعلمين.</small>
+                                        </div>
+                                    @endif
                                 </div>
 
                                 <div class="mb-4">

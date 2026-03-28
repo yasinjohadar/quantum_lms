@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Models\LoginLog;
 use App\Models\SchoolClass;
 use App\Models\Subject;
-use App\Models\LoginLog;
+use App\Models\User;
 use App\Models\UserSession;
 use App\Services\AcademicWeekService;
 use App\Services\TeacherProgressService;
@@ -34,8 +34,8 @@ class TeacherAssignmentController extends Controller
         if ($request->filled('search')) {
             $search = $request->input('search');
             $teachersQuery->where(function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%')
-                    ->orWhere('email', 'like', '%' . $search . '%');
+                $q->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('email', 'like', '%'.$search.'%');
             });
         }
 
@@ -94,6 +94,7 @@ class TeacherAssignmentController extends Controller
                         default => true,
                     };
                 }
+
                 return $matchPages && $matchWeekly;
             });
 
@@ -133,6 +134,7 @@ class TeacherAssignmentController extends Controller
                     if ($cmp !== 0) {
                         return ($sort === 'pages_desc' || $sort === 'weekly_desc') ? -$cmp : $cmp;
                     }
+
                     return strcmp($a->name, $b->name);
                 })->values();
             }
@@ -199,14 +201,13 @@ class TeacherAssignmentController extends Controller
      */
     public function show(User $teacher)
     {
-        // التحقق من أن المستخدم معلم
-        if (!$teacher->hasRole('teacher')) {
+        if (! $teacher->hasTeacherStaffIdentity()) {
             return redirect()->back()->with('error', 'المستخدم المحدد ليس معلم');
         }
 
         $assignedClasses = $teacher->assignedClasses()->with('stage')->get();
         $assignedSubjects = $teacher->assignedSubjects()->with('schoolClass.stage')->get();
-        
+
         // جميع الصفوف والمواد المتاحة
         $allClasses = SchoolClass::with('stage')->ordered()->get();
         $allSubjects = Subject::with('schoolClass.stage')->ordered()->get();
@@ -225,7 +226,7 @@ class TeacherAssignmentController extends Controller
      */
     public function update(Request $request, User $teacher)
     {
-        if (! $teacher->hasRole('teacher')) {
+        if (! $teacher->hasTeacherStaffIdentity()) {
             return redirect()->back()->with('error', 'المستخدم المحدد ليس معلم');
         }
 
@@ -263,7 +264,7 @@ class TeacherAssignmentController extends Controller
             $subjectsData = [];
             if ($request->has('subjects') && is_array($request->input('subjects'))) {
                 foreach ($request->input('subjects') as $subjectId) {
-                    $requiredPages = $request->input('required_pages.' . $subjectId);
+                    $requiredPages = $request->input('required_pages.'.$subjectId);
                     $subjectsData[$subjectId] = [
                         'assigned_by' => $assignedBy,
                         'assigned_at' => $assignedAt,

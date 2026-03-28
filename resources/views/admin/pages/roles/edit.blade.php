@@ -63,14 +63,14 @@
                             <form id="role-edit-form" method="POST" action="{{ route('roles.update', 'test') }}">
                                 @csrf
                                 @method('PUT')
-                                <div class="row">
+                                <div class="row g-3 align-items-start">
 
-                                    <div class="mb-3 col-md-6">
+                                    <div class="mb-3 col-12 col-lg-4">
                                         <label class="form-label">اسم الروول</label>
                                         <input type="text" class="form-control" name="name"
                                             value="{{ $role->name }}">
                                     </div>
-                                    <div class="mb-3 col-md-6">
+                                    <div class="mb-3 col-12 col-lg-4">
                                         <label class="form-label">نوع الواجهة</label>
                                         <select class="form-select" name="dashboard_type" required>
                                             <option value="admin" {{ ($role->dashboard_type ?? 'student') === 'admin' ? 'selected' : '' }}>لوحة تحكم الأدمن</option>
@@ -78,6 +78,20 @@
                                         </select>
                                         <small class="text-muted">حدد نوع الواجهة التي يجب أن يصل إليها المستخدمون بهذا الدور</small>
                                     </div>
+                                    @php
+                                        $rolesTable = config('permission.table_names.roles', 'roles');
+                                    @endphp
+                                    @if(\Illuminate\Support\Facades\Schema::hasColumn($rolesTable, 'staff_profile'))
+                                        <div class="mb-3 col-12 col-lg-4">
+                                            <label class="form-label">تصنيف المشرف / المعلم</label>
+                                            <select class="form-select" name="staff_profile" required>
+                                                <option value="none" {{ ($role->staff_profile ?? 'none') === 'none' ? 'selected' : '' }}>لا شيء (طالب، أدمن، دور عام)</option>
+                                                <option value="supervisor" {{ ($role->staff_profile ?? 'none') === 'supervisor' ? 'selected' : '' }}>مشرف</option>
+                                                <option value="teacher" {{ ($role->staff_profile ?? 'none') === 'teacher' ? 'selected' : '' }}>معلم</option>
+                                            </select>
+                                            <small class="text-muted">يحدد ظهور حاملي هذا الدور في صفحات تخصيص المشرفين والمعلمين حتى لو غيّرت اسم الدور.</small>
+                                        </div>
+                                    @endif
                                 </div>
 
 
