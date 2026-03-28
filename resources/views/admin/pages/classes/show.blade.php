@@ -76,6 +76,10 @@
                                         <div class="col-md-6 col-lg-4">
                                             <div class="card h-100 border">
                                                 <div class="card-body text-center">
+                                                    <img src="{{ $subject->image ? asset('storage/'.$subject->image) : asset('assets/images/media/media-22.jpg') }}"
+                                                         alt="{{ $subject->name }}"
+                                                         class="rounded mx-auto d-block mb-3"
+                                                         style="width: 100%; max-width: 200px; height: 120px; object-fit: cover;">
                                                     <h6 class="fw-semibold mb-1">{{ $subject->name }}</h6>
                                                     <p class="mb-1 text-muted small">
                                                         ترتيب: {{ $subject->order ?? 0 }}
