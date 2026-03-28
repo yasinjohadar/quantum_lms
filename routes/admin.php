@@ -1,27 +1,26 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-
-use App\Http\Controllers\Admin\StageController;
+use App\Http\Controllers\Admin\AnalyticsDashboardController;
 use App\Http\Controllers\Admin\ClassController;
+use App\Http\Controllers\Admin\DistinguishedStudentController;
+use App\Http\Controllers\Admin\EnrollmentController;
+use App\Http\Controllers\Admin\HeroSlideController;
+use App\Http\Controllers\Admin\LessonAttachmentController;
+use App\Http\Controllers\Admin\LessonController;
+use App\Http\Controllers\Admin\LoginLogController;
+use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\NotificationPreferenceController as AdminNotificationPreferenceController;
+use App\Http\Controllers\Admin\QuestionController;
+use App\Http\Controllers\Admin\QuizAttemptController;
+use App\Http\Controllers\Admin\QuizController;
+use App\Http\Controllers\Admin\SocialLinkController;
+use App\Http\Controllers\Admin\StageController;
 use App\Http\Controllers\Admin\SubjectController;
 use App\Http\Controllers\Admin\SubjectSectionController;
 use App\Http\Controllers\Admin\UnitController;
-use App\Http\Controllers\Admin\LessonController;
-use App\Http\Controllers\Admin\LessonAttachmentController;
-use App\Http\Controllers\Admin\QuestionController;
-use App\Http\Controllers\Admin\QuizController;
-use App\Http\Controllers\Admin\QuizAttemptController;
-use App\Http\Controllers\Admin\EnrollmentController;
-use App\Http\Controllers\Admin\LoginLogController;
-use App\Http\Controllers\Admin\HeroSlideController;
-use App\Http\Controllers\Admin\DistinguishedStudentController;
-use App\Http\Controllers\Admin\SocialLinkController;
 use App\Http\Controllers\Admin\UserSessionController;
-use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Api\SessionActivityController;
-use App\Http\Controllers\Admin\AnalyticsDashboardController;
-use App\Http\Controllers\Admin\NotificationPreferenceController as AdminNotificationPreferenceController;
+use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'check.user.active', 'admin'])
     ->prefix('admin')
@@ -281,7 +280,7 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('students.notification-preferences.show');
 
         // App Storage
-        Route::prefix('app-storage')->name('app-storage.')->group(function() {
+        Route::prefix('app-storage')->name('app-storage.')->group(function () {
             Route::resource('configs', \App\Http\Controllers\Admin\AppStorageController::class);
             Route::post('configs/{config}/test', [\App\Http\Controllers\Admin\AppStorageController::class, 'test'])->name('configs.test');
             Route::get('analytics', [\App\Http\Controllers\Admin\AppStorageAnalyticsController::class, 'index'])->name('analytics');
@@ -431,7 +430,7 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('enrollments.approve-multiple');
         Route::post('enrollments/reject-multiple', [EnrollmentController::class, 'rejectMultiple'])
             ->name('enrollments.reject-multiple');
-        
+
         // طلبات الانضمام للصف
         Route::get('enrollments/class-pending', [EnrollmentController::class, 'classPendingRequests'])
             ->name('enrollments.class-pending');
@@ -517,6 +516,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('teachers.assignments.update');
 
         // تخصيص المشرفين
+        Route::get('supervisors/assignments/subjects-by-class', [\App\Http\Controllers\Admin\SupervisorAssignmentController::class, 'getSubjectsByClass'])
+            ->name('supervisors.assignments.subjects-by-class');
         Route::get('supervisors/assignments', [\App\Http\Controllers\Admin\SupervisorAssignmentController::class, 'index'])
             ->name('supervisors.assignments.index');
         Route::get('supervisors/{supervisor}/assignments', [\App\Http\Controllers\Admin\SupervisorAssignmentController::class, 'show'])
@@ -566,7 +567,7 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::resource('rewards', \App\Http\Controllers\Admin\RewardController::class);
         Route::resource('daily-tasks', \App\Http\Controllers\Admin\DailyTaskController::class);
         Route::resource('weekly-tasks', \App\Http\Controllers\Admin\WeeklyTaskController::class);
-        
+
         Route::prefix('leaderboards')->as('leaderboards.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\LeaderboardController::class, 'index'])->name('index');
             Route::get('/create', [\App\Http\Controllers\Admin\LeaderboardController::class, 'create'])->name('create');

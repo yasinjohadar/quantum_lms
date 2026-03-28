@@ -3,18 +3,18 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Spatie\Permission\Traits\HasRoles;
-use Illuminate\Notifications\Notifiable;
-use Symfony\Component\HttpFoundation\Session\Session;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, SoftDeletes;
-      use HasRoles;
+
+    use HasRoles;
 
     /**
      * The attributes that are mass assignable.
@@ -62,7 +62,7 @@ class User extends Authenticatable
         ];
     }
 
-     public function sessions()
+    public function sessions()
     {
         return $this->hasMany(\App\Models\Session::class, 'user_id');
     }
@@ -97,8 +97,8 @@ class User extends Authenticatable
     public function subjects()
     {
         return $this->belongsToMany(Subject::class, 'enrollments', 'user_id', 'subject_id')
-                    ->withPivot(['enrolled_by', 'enrolled_at', 'status', 'notes'])
-                    ->withTimestamps();
+            ->withPivot(['enrolled_by', 'enrolled_at', 'status', 'notes'])
+            ->withTimestamps();
     }
 
     /**
@@ -160,8 +160,8 @@ class User extends Authenticatable
     public function badges()
     {
         return $this->belongsToMany(Badge::class, 'user_badges')
-                    ->withPivot('earned_at', 'metadata')
-                    ->withTimestamps();
+            ->withPivot('earned_at', 'metadata')
+            ->withTimestamps();
     }
 
     public function userBadges()
@@ -172,8 +172,8 @@ class User extends Authenticatable
     public function achievements()
     {
         return $this->belongsToMany(Achievement::class, 'user_achievements')
-                    ->withPivot('progress', 'completed_at', 'metadata')
-                    ->withTimestamps();
+            ->withPivot('progress', 'completed_at', 'metadata')
+            ->withTimestamps();
     }
 
     public function userAchievements()
@@ -189,8 +189,8 @@ class User extends Authenticatable
     public function challenges()
     {
         return $this->belongsToMany(Challenge::class, 'user_challenges')
-                    ->withPivot('progress', 'completed_at', 'reward_claimed')
-                    ->withTimestamps();
+            ->withPivot('progress', 'completed_at', 'reward_claimed')
+            ->withTimestamps();
     }
 
     public function userChallenges()
@@ -201,8 +201,8 @@ class User extends Authenticatable
     public function rewards()
     {
         return $this->belongsToMany(Reward::class, 'user_rewards')
-                    ->withPivot('claimed_at', 'status', 'metadata')
-                    ->withTimestamps();
+            ->withPivot('claimed_at', 'status', 'metadata')
+            ->withTimestamps();
     }
 
     public function userRewards()
@@ -319,7 +319,7 @@ class User extends Authenticatable
     public function favorites()
     {
         return $this->belongsToMany(LibraryItem::class, 'library_favorites', 'user_id', 'library_item_id')
-                    ->withTimestamps();
+            ->withTimestamps();
     }
 
     /**
@@ -352,8 +352,8 @@ class User extends Authenticatable
     public function assignedClasses()
     {
         return $this->belongsToMany(SchoolClass::class, 'teacher_classes', 'teacher_id', 'class_id')
-                    ->withPivot(['assigned_by', 'assigned_at', 'notes'])
-                    ->withTimestamps();
+            ->withPivot(['assigned_by', 'assigned_at', 'notes'])
+            ->withTimestamps();
     }
 
     /**
@@ -362,8 +362,8 @@ class User extends Authenticatable
     public function assignedSubjects()
     {
         return $this->belongsToMany(Subject::class, 'teacher_subjects', 'teacher_id', 'subject_id')
-                    ->withPivot(['assigned_by', 'assigned_at', 'notes', 'required_pages'])
-                    ->withTimestamps();
+            ->withPivot(['assigned_by', 'assigned_at', 'notes', 'required_pages'])
+            ->withTimestamps();
     }
 
     /**
@@ -398,12 +398,12 @@ class User extends Authenticatable
     {
         // المواد من الصفوف المخصصة
         $classIds = $this->assignedClasses()->pluck('classes.id');
-        
+
         // المواد المخصصة مباشرة
         $directSubjectIds = $this->assignedSubjects()->pluck('subjects.id');
-        
+
         // إرجاع query builder
-        return Subject::where(function($query) use ($classIds, $directSubjectIds) {
+        return Subject::where(function ($query) use ($classIds, $directSubjectIds) {
             if ($classIds->isNotEmpty()) {
                 $query->whereIn('class_id', $classIds);
             }
@@ -472,8 +472,8 @@ class User extends Authenticatable
     public function assignedClassesAsSupervisor()
     {
         return $this->belongsToMany(SchoolClass::class, 'supervisor_classes', 'supervisor_id', 'class_id')
-                    ->withPivot(['assigned_by', 'assigned_at', 'notes'])
-                    ->withTimestamps();
+            ->withPivot(['assigned_by', 'assigned_at', 'notes'])
+            ->withTimestamps();
     }
 
     /**
@@ -482,8 +482,8 @@ class User extends Authenticatable
     public function assignedSubjectsAsSupervisor()
     {
         return $this->belongsToMany(Subject::class, 'supervisor_subjects', 'supervisor_id', 'subject_id')
-                    ->withPivot(['assigned_by', 'assigned_at', 'notes'])
-                    ->withTimestamps();
+            ->withPivot(['assigned_by', 'assigned_at', 'notes'])
+            ->withTimestamps();
     }
 
     /**
@@ -510,12 +510,12 @@ class User extends Authenticatable
     {
         // المواد من الصفوف المخصصة
         $classIds = $this->assignedClassesAsSupervisor()->pluck('classes.id');
-        
+
         // المواد المخصصة مباشرة
         $directSubjectIds = $this->assignedSubjectsAsSupervisor()->pluck('subjects.id');
-        
+
         // إرجاع query builder
-        return Subject::where(function($query) use ($classIds, $directSubjectIds) {
+        return Subject::where(function ($query) use ($classIds, $directSubjectIds) {
             if ($classIds->isNotEmpty()) {
                 $query->whereIn('class_id', $classIds);
             }
@@ -546,7 +546,7 @@ class User extends Authenticatable
      */
     public function scopeTeachers($query)
     {
-        return $query->whereHas('roles', function($q) {
+        return $query->whereHas('roles', function ($q) {
             $q->where('name', 'teacher');
         });
     }
@@ -556,7 +556,7 @@ class User extends Authenticatable
      */
     public function scopeSupervisors($query)
     {
-        return $query->whereHas('roles', function($q) {
+        return $query->whereHas('roles', function ($q) {
             $q->where('name', 'supervisor');
         });
     }
@@ -645,9 +645,31 @@ class User extends Authenticatable
         ]);
     }
 
+    /**
+     * هل يُعتبر المستخدم مشرفاً (رول باسم supervisor أو staff_profile = supervisor على أي دور)؟
+     * الأدمن المنصّة لا يُعد مشرفاً لهذا الغرض.
+     */
+    public function hasSupervisorStaffIdentity(): bool
+    {
+        if ($this->isPlatformAdmin()) {
+            return false;
+        }
+
+        if ($this->hasRole('supervisor')) {
+            return true;
+        }
+
+        $rolesTable = config('permission.table_names.roles', 'roles');
+        if (! \Illuminate\Support\Facades\Schema::hasColumn($rolesTable, 'staff_profile')) {
+            return false;
+        }
+
+        return $this->roles()->where('staff_profile', 'supervisor')->exists();
+    }
+
     public function usesSupervisorAssignmentScope(): bool
     {
-        return $this->hasRole('supervisor') && ! $this->isPlatformAdmin();
+        return $this->hasSupervisorStaffIdentity();
     }
 
     public function canReviewContent(): bool

@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Models\LoginLog;
 use App\Models\SchoolClass;
 use App\Models\Subject;
-use App\Models\LoginLog;
+use App\Models\User;
 use App\Models\UserSession;
 use Illuminate\Http\Request;
 
@@ -14,7 +14,7 @@ class SupervisorAssignmentController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['permission:supervisor-assignment-list'])->only('index');
+        $this->middleware(['permission:supervisor-assignment-list'])->only(['index', 'getSubjectsByClass']);
         $this->middleware(['permission:supervisor-assignment-show'])->only('show');
         $this->middleware(['permission:supervisor-assignment-update'])->only('update');
     }
@@ -24,14 +24,36 @@ class SupervisorAssignmentController extends Controller
      */
     public function index(Request $request)
     {
-        $supervisorsQuery = User::supervisors()->with(['assignedClassesAsSupervisor', 'assignedSubjectsAsSupervisor']);
+        $request->validate([
+            'class_id' => 'nullable|exists:classes,id',
+            'subject_id' => 'nullable|exists:subjects,id',
+        ]);
 
-        // فلترة حسب البحث
+        $supervisorsQuery = User::supervisors()->with(['roles', 'assignedClassesAsSupervisor', 'assignedSubjectsAsSupervisor']);
+
         if ($request->filled('search')) {
             $search = $request->input('search');
-            $supervisorsQuery->where(function($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%')
-                  ->orWhere('email', 'like', '%' . $search . '%');
+            $supervisorsQuery->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('email', 'like', '%'.$search.'%');
+            });
+        }
+
+        if ($request->filled('class_id')) {
+            $classId = (int) $request->input('class_id');
+            $supervisorsQuery->where(function ($q) use ($classId) {
+                $q->whereHas('assignedClassesAsSupervisor', function ($q2) use ($classId) {
+                    $q2->where('classes.id', $classId);
+                })->orWhereHas('assignedSubjectsAsSupervisor', function ($q2) use ($classId) {
+                    $q2->where('subjects.class_id', $classId);
+                });
+            });
+        }
+
+        if ($request->filled('subject_id')) {
+            $subjectId = (int) $request->input('subject_id');
+            $supervisorsQuery->whereHas('assignedSubjectsAsSupervisor', function ($q) use ($subjectId) {
+                $q->where('subjects.id', $subjectId);
             });
         }
 
@@ -48,25 +70,78 @@ class SupervisorAssignmentController extends Controller
         $onlineUserIds = $ids->isNotEmpty()
             ? UserSession::whereIn('user_id', $ids)->where('status', 'active')->distinct()->pluck('user_id')
             : collect();
-        
-        // إحصائيات
+
         $totalSupervisors = User::supervisors()->count();
         $assignedSupervisors = User::supervisors()
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->whereHas('assignedClassesAsSupervisor')
-                  ->orWhereHas('assignedSubjectsAsSupervisor');
+                    ->orWhereHas('assignedSubjectsAsSupervisor');
             })
             ->count();
         $unassignedSupervisors = $totalSupervisors - $assignedSupervisors;
 
+        $filterClasses = SchoolClass::with('stage')->ordered()->get();
+        $filterSubjects = collect();
+        if ($request->filled('class_id')) {
+            $filterSubjects = Subject::active()->ordered()->where('class_id', $request->input('class_id'))->get();
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            $html = view('admin.pages.supervisors.partials.table-rows', compact('supervisors', 'lastLogins', 'onlineUserIds'))->render();
+            $pagination = view('admin.pages.supervisors.partials.pagination', compact('supervisors'))->render();
+            $modals = view('admin.pages.supervisors.partials.delete-modals', compact('supervisors'))->render();
+            $impersonateModals = view('admin.pages.users.partials.impersonate-modals', ['users' => $supervisors])->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'pagination' => $pagination,
+                'modals' => $modals,
+                'impersonate_modals' => $impersonateModals,
+                'count' => $supervisors->total(),
+            ]);
+        }
+
         return view('admin.pages.supervisors.index', compact(
-            'supervisors', 
-            'totalSupervisors', 
-            'assignedSupervisors', 
+            'supervisors',
+            'totalSupervisors',
+            'assignedSupervisors',
             'unassignedSupervisors',
             'lastLogins',
-            'onlineUserIds'
+            'onlineUserIds',
+            'filterClasses',
+            'filterSubjects',
         ));
+    }
+
+    /**
+     * المواد النشطة حسب الصف (للفلاتر عبر Ajax)
+     */
+    public function getSubjectsByClass(Request $request)
+    {
+        $classId = $request->input('class_id');
+
+        if (! $classId) {
+            return response()->json([
+                'success' => true,
+                'data' => [],
+            ]);
+        }
+
+        $request->validate([
+            'class_id' => 'exists:classes,id',
+        ]);
+
+        $subjects = Subject::with('schoolClass.stage')
+            ->active()
+            ->ordered()
+            ->where('class_id', $classId)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $subjects,
+        ]);
     }
 
     /**
@@ -75,13 +150,13 @@ class SupervisorAssignmentController extends Controller
     public function show(User $supervisor)
     {
         // التحقق من أن المستخدم مشرف
-        if (!$supervisor->hasRole('supervisor')) {
+        if (! $supervisor->hasSupervisorStaffIdentity()) {
             return redirect()->back()->with('error', 'المستخدم المحدد ليس مشرف');
         }
 
         $assignedClasses = $supervisor->assignedClassesAsSupervisor()->with('stage')->get();
         $assignedSubjects = $supervisor->assignedSubjectsAsSupervisor()->with('schoolClass.stage')->get();
-        
+
         // جميع الصفوف والمواد المتاحة
         $allClasses = SchoolClass::with('stage')->ordered()->get();
         $allSubjects = Subject::with('schoolClass.stage')->ordered()->get();
@@ -100,7 +175,7 @@ class SupervisorAssignmentController extends Controller
      */
     public function update(Request $request, User $supervisor)
     {
-        if (! $supervisor->hasRole('supervisor')) {
+        if (! $supervisor->hasSupervisorStaffIdentity()) {
             return redirect()->back()->with('error', 'المستخدم المحدد ليس مشرف');
         }
 

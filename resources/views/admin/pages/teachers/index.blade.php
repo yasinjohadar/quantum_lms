@@ -38,34 +38,33 @@
                 </div>
             @endif
 
-            <!-- بطاقات الإحصائيات -->
             @if(isset($totalTeachers))
-            <div class="row mb-4">
-                <div class="col-md-4">
-                    <div class="card bg-primary text-white">
-                        <div class="card-body">
-                            <h6 class="text-white-50 mb-2">إجمالي المعلمين</h6>
-                            <h3 class="mb-0">{{ $totalTeachers }}</h3>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm bg-primary text-white overflow-hidden">
+                            <div class="card-body py-2 px-3 d-flex align-items-center justify-content-between gap-2">
+                                <span class="small text-white-50 mb-0">إجمالي المعلمين</span>
+                                <span class="fs-5 fw-bold mb-0">{{ $totalTeachers }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm bg-info text-white overflow-hidden">
+                            <div class="card-body py-2 px-3 d-flex align-items-center justify-content-between gap-2">
+                                <span class="small text-white-50 mb-0">معلمون مخصصون</span>
+                                <span class="fs-5 fw-bold mb-0">{{ $assignedTeachers }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm bg-warning text-white overflow-hidden">
+                            <div class="card-body py-2 px-3 d-flex align-items-center justify-content-between gap-2">
+                                <span class="small text-white-50 mb-0">معلمون غير مخصصين</span>
+                                <span class="fs-5 fw-bold mb-0">{{ $unassignedTeachers }}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="card bg-info text-white">
-                        <div class="card-body">
-                            <h6 class="text-white-50 mb-2">معلمون مخصصون</h6>
-                            <h3 class="mb-0">{{ $assignedTeachers }}</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card bg-warning text-white">
-                        <div class="card-body">
-                            <h6 class="text-white-50 mb-2">معلمون غير مخصصين</h6>
-                            <h3 class="mb-0">{{ $unassignedTeachers }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
             @endif
 
             <div class="row">
@@ -308,37 +307,71 @@
                                                             <span class="text-muted">—</span>
                                                         @endif
                                                     </td>
-                                                    <td>
-                                                        <div class="d-flex gap-1 flex-wrap">
-                                                            @can('teacher-assignment-show')
-                                                                <a href="{{ route('admin.teachers.assignments', $teacher->id) }}"
-                                                                   class="btn btn-primary btn-sm">
-                                                                    <i class="fas fa-user-tie me-1"></i> تخصيص
-                                                                </a>
-                                                            @endcan
-                                                            @can('teacher-progress-view')
-                                                                <a href="{{ route('admin.teachers.progress.history', $teacher->id) }}"
-                                                                   class="btn btn-outline-secondary btn-sm">
-                                                                    <i class="bi bi-clock-history me-1"></i> إحصائيات سابقة
-                                                                </a>
-                                                            @endcan
-                                                            @can('user-edit')
-                                                                <a href="{{ route('users.edit', $teacher->id) }}"
-                                                                   class="btn btn-info btn-sm"
-                                                                   title="تعديل المعلم">
-                                                                    <i class="fa-solid fa-pen-to-square me-1"></i> تعديل
-                                                                </a>
-                                                            @endcan
-                                                            @can('user-delete')
-                                                                <button type="button"
-                                                                        class="btn btn-danger btn-sm"
-                                                                        data-bs-toggle="modal"
-                                                                        data-bs-target="#delete{{ $teacher->id }}"
-                                                                        title="حذف المعلم">
-                                                                    <i class="fa-solid fa-trash-can me-1"></i> حذف
+                                                    <td class="text-center">
+                                                        @canany(['user-impersonate', 'teacher-assignment-show', 'teacher-progress-view', 'user-edit', 'user-delete'])
+                                                            <div class="dropdown">
+                                                                <button class="btn btn-sm btn-icon btn-light"
+                                                                        type="button"
+                                                                        data-bs-toggle="dropdown"
+                                                                        data-bs-auto-close="true"
+                                                                        aria-expanded="false"
+                                                                        title="الإجراءات"
+                                                                        aria-label="الإجراءات">
+                                                                    <i class="bi bi-three-dots-vertical"></i>
                                                                 </button>
-                                                            @endcan
-                                                        </div>
+                                                                <ul class="dropdown-menu dropdown-menu-end">
+                                                                    @can('user-impersonate')
+                                                                        <li>
+                                                                            <button type="button"
+                                                                                    class="dropdown-item"
+                                                                                    data-bs-toggle="modal"
+                                                                                    data-bs-target="#impersonateModal{{ $teacher->id }}">
+                                                                                <i class="fas fa-user-secret me-2 text-info"></i> تسجيل الدخول كالمستخدم
+                                                                            </button>
+                                                                        </li>
+                                                                    @endcan
+                                                                    @can('teacher-assignment-show')
+                                                                        <li>
+                                                                            <a class="dropdown-item"
+                                                                               href="{{ route('admin.teachers.assignments', $teacher->id) }}">
+                                                                                <i class="fas fa-user-tie me-2 text-primary"></i> تخصيص
+                                                                            </a>
+                                                                        </li>
+                                                                    @endcan
+                                                                    @can('teacher-progress-view')
+                                                                        <li>
+                                                                            <a class="dropdown-item"
+                                                                               href="{{ route('admin.teachers.progress.history', $teacher->id) }}">
+                                                                                <i class="bi bi-clock-history me-2 text-secondary"></i> إحصائيات سابقة
+                                                                            </a>
+                                                                        </li>
+                                                                    @endcan
+                                                                    @can('user-edit')
+                                                                        <li>
+                                                                            <a class="dropdown-item"
+                                                                               href="{{ route('users.edit', $teacher->id) }}">
+                                                                                <i class="fa-solid fa-pen-to-square me-2 text-info"></i> تعديل
+                                                                            </a>
+                                                                        </li>
+                                                                    @endcan
+                                                                    @can('user-delete')
+                                                                        @if(auth()->user()->can('user-impersonate') || auth()->user()->can('teacher-assignment-show') || auth()->user()->can('teacher-progress-view') || auth()->user()->can('user-edit'))
+                                                                            <li><hr class="dropdown-divider"></li>
+                                                                        @endif
+                                                                        <li>
+                                                                            <button type="button"
+                                                                                    class="dropdown-item text-danger"
+                                                                                    data-bs-toggle="modal"
+                                                                                    data-bs-target="#delete{{ $teacher->id }}">
+                                                                                <i class="fa-solid fa-trash-can me-2"></i> حذف
+                                                                            </button>
+                                                                        </li>
+                                                                    @endcan
+                                                                </ul>
+                                                            </div>
+                                                        @else
+                                                            <span class="text-muted">—</span>
+                                                        @endcanany
                                                     </td>
                                                 </tr>
                                                 @can('user-toggle-status')
@@ -371,6 +404,33 @@
                 </div>
             </div>
 
+            <div id="teachersImpersonateModals">
+                @include('admin.pages.users.partials.impersonate-modals', ['users' => $teachers])
+            </div>
+
         </div>
     </div>
+@stop
+
+@section('js')
+<script>
+function copyLink(userId) {
+    const linkInput = document.getElementById('impersonateLink' + userId);
+    if (!linkInput) return;
+    linkInput.select();
+    linkInput.setSelectionRange(0, 99999);
+    document.execCommand('copy');
+    const button = event.target.closest('button');
+    if (!button) return;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-check me-1"></i> تم النسخ';
+    button.classList.remove('btn-secondary');
+    button.classList.add('btn-success');
+    setTimeout(() => {
+        button.innerHTML = originalText;
+        button.classList.remove('btn-success');
+        button.classList.add('btn-secondary');
+    }, 2000);
+}
+</script>
 @stop
