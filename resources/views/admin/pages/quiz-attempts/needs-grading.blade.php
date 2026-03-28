@@ -76,9 +76,13 @@
                                     @foreach($attempts as $attempt)
                                         <tr>
                                             <td>
+                                                @can('quiz-show')
                                                 <a href="{{ route('admin.quizzes.show', $attempt->quiz_id) }}" class="fw-semibold">
                                                     {{ Str::limit($attempt->quiz->title, 40) }}
                                                 </a>
+                                                @else
+                                                <span class="fw-semibold">{{ Str::limit($attempt->quiz->title, 40) }}</span>
+                                                @endcan
                                             </td>
                                             <td>
                                                 <div class="d-flex align-items-center">
@@ -91,14 +95,18 @@
                                             <td>{{ $attempt->quiz->subject->name ?? '-' }}</td>
                                             <td>{{ $attempt->finished_at?->format('Y/m/d H:i') ?? '-' }}</td>
                                             <td>
+                                                @can('quiz-attempt-grade')
                                                 <a href="{{ route('admin.quiz-attempts.grade', $attempt->id) }}" 
                                                    class="btn btn-sm btn-warning">
                                                     <i class="bi bi-pencil-square me-1"></i> تصحيح
                                                 </a>
+                                                @endcan
+                                                @can('quiz-attempt-show')
                                                 <a href="{{ route('admin.quiz-attempts.show', $attempt->id) }}" 
                                                    class="btn btn-sm btn-info-transparent">
                                                     <i class="bi bi-eye"></i>
                                                 </a>
+                                                @endcan
                                             </td>
                                         </tr>
                                     @endforeach

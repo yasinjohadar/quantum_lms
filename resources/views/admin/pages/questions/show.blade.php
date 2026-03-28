@@ -25,9 +25,11 @@
                     </nav>
                 </div>
                 <div class="d-flex gap-2">
+                    @can('question-edit')
                     <a href="{{ route('admin.questions.edit', $question->id) }}" class="btn btn-primary btn-sm">
                         <i class="bi bi-pencil me-1"></i> تعديل
                     </a>
+                    @endcan
                 </div>
             </div>
             <!-- Page Header Close -->
@@ -218,10 +220,12 @@
                                                 </span>
                                             </td>
                                             <td>
+                                                @can('quiz-show')
                                                 <a href="{{ route('admin.quizzes.show', $quiz->id) }}" 
                                                    class="btn btn-sm btn-primary-transparent">
                                                     عرض
                                                 </a>
+                                                @endcan
                                             </td>
                                         </tr>
                                     @endforeach
@@ -305,6 +309,7 @@
             {{-- الإجراءات --}}
             <div class="card custom-card">
                 <div class="card-body">
+                    @can('question-toggle-status')
                     <form action="{{ route('admin.questions.toggle-status', $question->id) }}" method="POST">
                         @csrf
                         <button type="submit" class="btn btn-{{ $question->is_active ? 'warning' : 'success' }} w-100 mb-2">
@@ -312,7 +317,9 @@
                             {{ $question->is_active ? 'إيقاف السؤال' : 'تفعيل السؤال' }}
                         </button>
                     </form>
+                    @endcan
                     
+                    @can('question-delete')
                     @if($question->quizzes->isEmpty())
                         <button type="button" class="btn btn-danger w-100" 
                                 data-bs-toggle="modal" data-bs-target="#deleteModal">
@@ -326,6 +333,7 @@
                             لا يمكن الحذف لأن السؤال مستخدم في اختبارات
                         </small>
                     @endif
+                    @endcan
                 </div>
             </div>
         </div>
@@ -334,6 +342,7 @@
 
 {{-- مودال الحذف --}}
 @if($question->quizzes->isEmpty())
+    @can('question-delete')
     <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 rounded-4">
@@ -370,6 +379,7 @@
             </div>
         </div>
     </div>
+    @endcan
 @endif
 
         </div>

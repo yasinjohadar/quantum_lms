@@ -57,6 +57,15 @@
         </div>
     @endif
 
+    @php
+        $canQuizReorder = auth()->user()->can('quiz-reorder-questions');
+        $canQuizUpdatePoints = auth()->user()->can('quiz-update-question-points');
+        $canQuizAddQuestion = auth()->user()->can('quiz-add-question');
+        $canQuizRemoveQuestion = auth()->user()->can('quiz-remove-question');
+        $canQuestionEdit = auth()->user()->can('question-edit');
+        $canAiQuestionAdvanced = auth()->user()->can('ai-question-generation-create-advanced');
+    @endphp
+
     <div class="row">
         {{-- أسئلة الاختبار الحالية --}}
         <div class="col-lg-6 mb-3">
@@ -80,7 +89,9 @@
                                 <div class="list-group-item question-item" data-id="{{ $question->id }}">
                                     <div class="d-flex justify-content-between align-items-start">
                                         <div class="d-flex align-items-start flex-grow-1">
+                                            @if($canQuizReorder)
                                             <i class="bi bi-grip-vertical text-muted me-2 mt-1" style="cursor: grab;"></i>
+                                            @endif
                                             <span class="badge bg-secondary me-2">{{ $index + 1 }}</span>
                                             <div class="flex-grow-1">
                                                 <span class="badge bg-{{ $question->type_color }}-transparent text-{{ $question->type_color }} mb-1" style="font-size: 0.65rem;">
@@ -90,6 +101,7 @@
                                                 <p class="mb-1 small">{{ Str::limit($question->title, 80) }}</p>
                                                 <div class="d-flex align-items-center gap-2">
                                                     <div class="d-flex align-items-center gap-1">
+                                                        @if($canQuizUpdatePoints)
                                                         <input type="number" 
                                                                class="form-control form-control-sm question-points-input" 
                                                                value="{{ $question->pivot->points }}" 
@@ -103,16 +115,22 @@
                                                         <span class="points-update-status ms-1" style="display: none;">
                                                             <i class="bi bi-check-circle-fill text-success"></i>
                                                         </span>
+                                                        @else
+                                                        <span class="badge bg-primary-transparent text-primary">{{ $question->pivot->points }} درجة</span>
+                                                        @endif
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                         <div class="d-flex align-items-center gap-1">
+                                            @if($canQuestionEdit)
                                             <a href="{{ route('admin.questions.edit', [$question->id, 'quiz_id' => $quiz->id]) }}" 
                                                class="btn btn-sm btn-icon btn-info-transparent" 
                                                title="تعديل السؤال">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
+                                            @endif
+                                            @if($canQuizRemoveQuestion)
                                             <button type="button" 
                                                     class="btn btn-sm btn-icon btn-danger-transparent remove-question-btn" 
                                                     title="إزالة من الاختبار"
@@ -120,6 +138,7 @@
                                                     data-quiz-id="{{ $quiz->id }}">
                                                 <i class="bi bi-x-lg"></i>
                                             </button>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
@@ -205,9 +224,11 @@
                         <div class="text-center py-4">
                             <i class="bi bi-search display-6 text-muted"></i>
                             <p class="text-muted mt-2">لا توجد أسئلة متاحة</p>
+                            @can('question-create')
                             <a href="{{ route('admin.questions.create', ['quiz_id' => $quiz->id]) }}" class="btn btn-sm btn-primary">
                                 <i class="bi bi-plus-lg me-1"></i> إنشاء سؤال جديد
                             </a>
+                            @endcan
                         </div>
                     @else
                         <div class="list-group list-group-flush available-questions-list" style="max-height: 500px; overflow-y: auto;">
@@ -227,6 +248,7 @@
                                             <p class="mb-1 small">{{ Str::limit($question->title, 60) }}</p>
                                             <small class="text-muted">{{ $question->default_points }} درجة</small>
                                         </div>
+                                        @if($canQuizAddQuestion)
                                         <button type="button" 
                                                 class="btn btn-sm btn-success-transparent add-question-btn" 
                                                 title="إضافة للاختبار"
@@ -235,6 +257,7 @@
                                                 data-points="{{ $question->default_points }}">
                                             <i class="bi bi-plus-lg"></i>
                                         </button>
+                                        @endif
                                     </div>
                                 </div>
                             @endforeach
@@ -250,6 +273,7 @@
     </div>
 
     {{-- Modal تأكيد حذف السؤال --}}
+    @if($canQuizRemoveQuestion)
     <div class="modal fade" id="confirmRemoveQuestionModal" tabindex="-1" aria-labelledby="confirmRemoveQuestionModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -275,6 +299,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     {{-- أزرار التحكم --}}
     <div class="row">
@@ -289,15 +314,25 @@
                         <span class="fw-bold" id="total-points-display">{{ $quiz->total_points }}</span>
                     </div>
                     <div class="btn-list">
+                        @if($canAiQuestionAdvanced)
                         <a href="{{ route('admin.ai.question-generations.create-advanced', ['quiz_id' => $quiz->id, 'subject_id' => $quiz->subject_id]) }}" class="btn btn-outline-info">
                             <i class="fas fa-magic me-1"></i> توليد أسئلة بالذكاء الاصطناعي
                         </a>
+                        @endif
+                        @can('question-create')
                         <a href="{{ route('admin.questions.create', ['quiz_id' => $quiz->id]) }}" class="btn btn-outline-primary">
                             <i class="bi bi-plus-lg me-1"></i> إنشاء سؤال جديد
                         </a>
+                        @endcan
+                        @can('quiz-show')
                         <a href="{{ route('admin.quizzes.show', $quiz->id) }}" class="btn btn-primary">
                             <i class="bi bi-check-lg me-1"></i> انتهيت
                         </a>
+                        @elsecan('quiz-list')
+                        <a href="{{ route('admin.quizzes.index') }}" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i> انتهيت
+                        </a>
+                        @endcan
                     </div>
                 </div>
             </div>
@@ -313,6 +348,16 @@
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const qPerms = {
+        canReorder: @json($canQuizReorder),
+        canUpdatePoints: @json($canQuizUpdatePoints),
+        canRemove: @json($canQuizRemoveQuestion),
+        canQuestionEdit: @json($canQuestionEdit),
+        canAdd: @json($canQuizAddQuestion),
+        quizId: @json((string) $quiz->id),
+    };
+    const questionEditBase = @json(rtrim(url('/admin/questions'), '/'));
+
     @if(session('added_question_id'))
     (function() {
         var el = document.querySelector('.question-item[data-id="{{ session('added_question_id') }}"]');
@@ -326,7 +371,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const quizQuestions = document.getElementById('quizQuestions');
     
-    if (quizQuestions) {
+    if (quizQuestions && qPerms.canReorder) {
         new Sortable(quizQuestions, {
             animation: 150,
             handle: '.bi-grip-vertical',
@@ -477,6 +522,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const pointsInputs = document.querySelectorAll('.question-points-input');
     const updateTimeout = {};
 
+    if (qPerms.canUpdatePoints) {
     pointsInputs.forEach(input => {
         // حفظ القيمة الأصلية
         let originalValue = input.value;
@@ -606,6 +652,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+    }
 
     // دالة تحديث إجمالي الدرجات
     function updateTotalPoints(totalPoints) {
@@ -632,7 +679,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Quiz question management initialized');
     
     document.addEventListener('click', function(e) {
-        if (e.target.closest('.add-question-btn')) {
+        if (qPerms.canAdd && e.target.closest('.add-question-btn')) {
             e.preventDefault();
             const btn = e.target.closest('.add-question-btn');
             const questionId = btn.dataset.questionId;
@@ -698,7 +745,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // حذف سؤال من الاختبار
-        if (e.target.closest('.remove-question-btn')) {
+        if (qPerms.canRemove && e.target.closest('.remove-question-btn')) {
             e.preventDefault();
             const btn = e.target.closest('.remove-question-btn');
             const questionId = btn.dataset.questionId;
@@ -798,11 +845,47 @@ document.addEventListener('DOMContentLoaded', function() {
         questionItem.setAttribute('data-id', question.id);
         
         const questionCount = quizQuestionsList.querySelectorAll('.question-item').length + 1;
+        const gripHtml = qPerms.canReorder
+            ? '<i class="bi bi-grip-vertical text-muted me-2 mt-1" style="cursor: grab;"></i>'
+            : '';
+        const pointsBlock = qPerms.canUpdatePoints
+            ? `<div class="d-flex align-items-center gap-1">
+                                <input type="number" 
+                                       class="form-control form-control-sm question-points-input" 
+                                       value="${question.points}" 
+                                       data-question-id="${question.id}"
+                                       data-quiz-id="${qPerms.quizId}"
+                                       style="width: 100px;" 
+                                       step="0.5" 
+                                       min="0"
+                                       max="1000">
+                                <span class="text-muted small">درجة</span>
+                                <span class="points-update-status ms-1" style="display: none;">
+                                    <i class="bi bi-check-circle-fill text-success"></i>
+                                </span>
+                            </div>`
+            : `<span class="badge bg-primary-transparent text-primary">${question.points} درجة</span>`;
+        const editBtn = qPerms.canQuestionEdit
+            ? `<a href="${questionEditBase}/${question.id}/edit?quiz_id=${qPerms.quizId}" 
+                               class="btn btn-sm btn-icon btn-info-transparent" 
+                               title="تعديل السؤال">
+                                <i class="bi bi-pencil"></i>
+                            </a>`
+            : '';
+        const removeBtn = qPerms.canRemove
+            ? `<button type="button" 
+                        class="btn btn-sm btn-icon btn-danger-transparent remove-question-btn" 
+                        title="إزالة من الاختبار"
+                        data-question-id="${question.id}"
+                        data-quiz-id="${qPerms.quizId}">
+                    <i class="bi bi-x-lg"></i>
+                </button>`
+            : '';
         
         questionItem.innerHTML = `
             <div class="d-flex justify-content-between align-items-start">
                 <div class="d-flex align-items-start flex-grow-1">
-                    <i class="bi bi-grip-vertical text-muted me-2 mt-1" style="cursor: grab;"></i>
+                    ${gripHtml}
                     <span class="badge bg-secondary me-2">${questionCount}</span>
                     <div class="flex-grow-1">
                         <span class="badge bg-${question.type_color}-transparent text-${question.type_color} mb-1" style="font-size: 0.65rem;">
@@ -812,30 +895,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         <p class="mb-1 small">${question.title.length > 80 ? question.title.substring(0, 80) + '...' : question.title}</p>
                         <div class="d-flex align-items-center gap-2">
                             <div class="d-flex align-items-center gap-1">
-                                <input type="number" 
-                                       class="form-control form-control-sm question-points-input" 
-                                       value="${question.points}" 
-                                       data-question-id="${question.id}"
-                                       data-quiz-id="{{ $quiz->id }}"
-                                       style="width: 100px;" 
-                                       step="0.5" 
-                                       min="0"
-                                       max="1000">
-                                <span class="text-muted small">درجة</span>
-                                <span class="points-update-status ms-1" style="display: none;">
-                                    <i class="bi bi-check-circle-fill text-success"></i>
-                                </span>
+                                ${pointsBlock}
                             </div>
                         </div>
                     </div>
                 </div>
-                <button type="button" 
-                        class="btn btn-sm btn-icon btn-danger-transparent remove-question-btn" 
-                        title="إزالة من الاختبار"
-                        data-question-id="${question.id}"
-                        data-quiz-id="{{ $quiz->id }}">
-                    <i class="bi bi-x-lg"></i>
-                </button>
+                <div class="d-flex align-items-center gap-1">
+                    ${editBtn}
+                    ${removeBtn}
+                </div>
             </div>
         `;
 
@@ -850,7 +918,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // إعادة ربط event listener على input النقاط
         const newInput = questionItem.querySelector('.question-points-input');
-        if (newInput) {
+        if (newInput && qPerms.canUpdatePoints) {
             setupPointsInput(newInput);
         }
     }
@@ -882,14 +950,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         <small class="text-muted">${question.default_points} درجة</small>
                     </div>
                 </div>
-                <button type="button" 
+                ${qPerms.canAdd ? `<button type="button" 
                         class="btn btn-sm btn-success-transparent add-question-btn" 
                         title="إضافة للاختبار"
                         data-question-id="${question.id}"
-                        data-quiz-id="{{ $quiz->id }}"
+                        data-quiz-id="${qPerms.quizId}"
                         data-points="${question.default_points}">
                     <i class="bi bi-plus-lg"></i>
-                </button>
+                </button>` : ''}
             </div>
         `;
 
@@ -1052,7 +1120,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // دالة لإعادة تهيئة SortableJS
     function initSortable() {
         const quizQuestions = document.getElementById('quizQuestions');
-        if (quizQuestions) {
+        if (quizQuestions && qPerms.canReorder) {
             window.quizSortable = new Sortable(quizQuestions, {
                 animation: 150,
                 handle: '.bi-grip-vertical',

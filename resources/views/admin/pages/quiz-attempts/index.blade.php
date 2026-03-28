@@ -26,9 +26,11 @@
                     </nav>
                 </div>
                 <div class="d-flex gap-2">
+                    @can('quiz-attempt-statistics')
                     <a href="{{ route('admin.quiz-attempts.statistics', $quiz->id) }}" class="btn btn-info btn-sm">
                         <i class="bi bi-graph-up me-1"></i> الإحصائيات
                     </a>
+                    @endcan
                 </div>
             </div>
             <!-- Page Header Close -->
@@ -139,15 +141,19 @@
                                     <td>{{ $attempt->started_at->format('Y/m/d H:i') }}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
+                                            @can('quiz-attempt-show')
                                             <a href="{{ route('admin.quiz-attempts.show', $attempt->id) }}" 
                                                class="btn btn-icon btn-info-transparent" title="عرض">
                                                 <i class="bi bi-eye"></i>
                                             </a>
+                                            @endcan
                                             @if($attempt->status === 'under_review')
+                                                @can('quiz-attempt-grade')
                                                 <a href="{{ route('admin.quiz-attempts.grade', $attempt->id) }}" 
                                                    class="btn btn-icon btn-warning-transparent" title="تصحيح">
                                                     <i class="bi bi-pencil-square"></i>
                                                 </a>
+                                                @endcan
                                             @endif
                                         </div>
                                     </td>

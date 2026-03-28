@@ -25,12 +25,16 @@
                     </nav>
                 </div>
                 <div class="d-flex gap-2">
+                    @can('quiz-questions')
                     <a href="{{ route('admin.quizzes.questions', $quiz->id) }}" class="btn btn-success btn-sm">
                         <i class="bi bi-list-check me-1"></i> إدارة الأسئلة
                     </a>
+                    @endcan
+                    @can('quiz-edit')
                     <a href="{{ route('admin.quizzes.edit', $quiz->id) }}" class="btn btn-primary btn-sm">
                         <i class="bi bi-pencil me-1"></i> تعديل
                     </a>
+                    @endcan
                 </div>
             </div>
             <!-- Page Header Close -->
@@ -211,6 +215,7 @@
                     
                     {{-- أزرار المراجعة للمعلم --}}
                     @if($isTeacher && in_array($quiz->review_status, [\App\Models\Quiz::REVIEW_STATUS_DRAFT, \App\Models\Quiz::REVIEW_STATUS_REJECTED]))
+                        @can('quiz-submit-for-review')
                         <div class="mt-3">
                             <form action="{{ route('admin.quizzes.submit-for-review', $quiz->id) }}" method="POST" class="d-inline">
                                 @csrf
@@ -220,26 +225,34 @@
                                 </button>
                             </form>
                         </div>
+                        @endcan
                     @endif
                     
                     {{-- أزرار المراجعة للمشرف/الأدمن --}}
                     @if(!$isTeacher && $quiz->review_status === \App\Models\Quiz::REVIEW_STATUS_PENDING)
+                        @canany(['quiz-approve-review', 'quiz-reject-review'])
                         <div class="mt-3 d-flex gap-2">
+                            @can('quiz-approve-review')
                             <button type="button" class="btn btn-success" 
                                     data-bs-toggle="modal" data-bs-target="#approveModal">
                                 <i class="bi bi-check-circle me-1"></i> الموافقة على النشر
                             </button>
+                            @endcan
+                            @can('quiz-reject-review')
                             <button type="button" class="btn btn-danger" 
                                     data-bs-toggle="modal" data-bs-target="#rejectModal">
                                 <i class="bi bi-x-circle me-1"></i> رفض النشر
                             </button>
+                            @endcan
                         </div>
+                        @endcanany
                     @endif
                 </div>
             </div>
             
             {{-- Modal الموافقة --}}
             @if(!$isTeacher && $quiz->review_status === \App\Models\Quiz::REVIEW_STATUS_PENDING)
+                @can('quiz-approve-review')
                 <div class="modal fade" id="approveModal" tabindex="-1">
                     <div class="modal-dialog">
                         <div class="modal-content">
@@ -264,7 +277,9 @@
                         </div>
                     </div>
                 </div>
+                @endcan
                 
+                @can('quiz-reject-review')
                 {{-- Modal الرفض --}}
                 <div class="modal fade" id="rejectModal" tabindex="-1">
                     <div class="modal-dialog">
@@ -291,24 +306,29 @@
                         </div>
                     </div>
                 </div>
+                @endcan
             @endif
 
             {{-- الأسئلة --}}
             <div class="card custom-card mb-3">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h6 class="mb-0"><i class="bi bi-list-check me-2"></i> أسئلة الاختبار</h6>
+                    @can('quiz-questions')
                     <a href="{{ route('admin.quizzes.questions', $quiz->id) }}" class="btn btn-sm btn-primary">
                         <i class="bi bi-gear me-1"></i> إدارة الأسئلة
                     </a>
+                    @endcan
                 </div>
                 <div class="card-body p-0">
                     @if($quiz->questions->isEmpty())
                         <div class="text-center py-5">
                             <i class="bi bi-question-circle display-4 text-muted"></i>
                             <p class="text-muted mt-3">لم يتم إضافة أسئلة بعد</p>
+                            @can('quiz-questions')
                             <a href="{{ route('admin.quizzes.questions', $quiz->id) }}" class="btn btn-primary">
                                 <i class="bi bi-plus-lg me-1"></i> إضافة أسئلة
                             </a>
+                            @endcan
                         </div>
                     @else
                         <div class="list-group list-group-flush">
@@ -332,11 +352,13 @@
                                                   id="question-points-{{ $quiz->id }}-{{ $question->id }}">
                                                 {{ $question->pivot->points }} درجة
                                             </span>
+                                            @can('question-edit')
                                             <a href="{{ route('admin.questions.edit', $question->id) }}?quiz_id={{ $quiz->id }}" 
                                                class="btn btn-sm btn-outline-primary" 
                                                title="تعديل السؤال">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
+                                            @endcan
                                         </div>
                                     </div>
                                 </div>
@@ -350,9 +372,11 @@
             <div class="card custom-card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h6 class="mb-0"><i class="bi bi-people me-2"></i> آخر المحاولات</h6>
+                    @can('quiz-results')
                     <a href="{{ route('admin.quizzes.results', $quiz->id) }}" class="btn btn-sm btn-outline-primary">
                         عرض الكل
                     </a>
+                    @endcan
                 </div>
                 <div class="card-body p-0">
                     @if($quiz->attempts->isEmpty())
@@ -388,10 +412,12 @@
                                             </td>
                                             <td>{{ $attempt->started_at->format('Y/m/d H:i') }}</td>
                                             <td>
+                                                @can('quiz-attempt-show')
                                                 <a href="{{ route('admin.quiz-attempts.show', $attempt->id) }}" 
                                                    class="btn btn-sm btn-info-transparent">
                                                     عرض
                                                 </a>
+                                                @endcan
                                             </td>
                                         </tr>
                                     @endforeach
@@ -493,23 +519,31 @@
             {{-- إجراءات --}}
             <div class="card custom-card">
                 <div class="card-body">
+                    @can('quiz-preview')
                     <a href="{{ route('admin.quizzes.preview', $quiz->id) }}" class="btn btn-outline-primary w-100 mb-2">
                         <i class="bi bi-eye me-1"></i> معاينة الاختبار
                     </a>
+                    @endcan
+                    @can('quiz-results')
                     <a href="{{ route('admin.quizzes.results', $quiz->id) }}" class="btn btn-outline-info w-100 mb-2">
                         <i class="bi bi-bar-chart me-1"></i> النتائج والتقارير
                     </a>
+                    @endcan
+                    @can('quiz-duplicate')
                     <form action="{{ route('admin.quizzes.duplicate', $quiz->id) }}" method="POST">
                         @csrf
                         <button type="submit" class="btn btn-outline-warning w-100 mb-2">
                             <i class="bi bi-copy me-1"></i> نسخ الاختبار
                         </button>
                     </form>
+                    @endcan
                     @if($quiz->attempts()->count() == 0)
+                        @can('quiz-delete')
                         <button type="button" class="btn btn-outline-danger w-100" 
                                 data-bs-toggle="modal" data-bs-target="#deleteModal">
                             <i class="bi bi-trash me-1"></i> حذف الاختبار
                         </button>
+                        @endcan
                     @endif
                 </div>
             </div>
@@ -519,6 +553,7 @@
 
 {{-- مودال الحذف --}}
 @if($quiz->attempts()->count() == 0)
+    @can('quiz-delete')
     <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 rounded-4">
@@ -556,6 +591,7 @@
             </div>
         </div>
     </div>
+    @endcan
 @endif
 
         </div>

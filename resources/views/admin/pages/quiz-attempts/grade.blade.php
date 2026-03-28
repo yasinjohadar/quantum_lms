@@ -55,6 +55,7 @@
     @endphp
 
     @if($essayAnswers->count() > 0)
+        @can('quiz-attempt-grade-multiple-with-ai')
         <div class="alert alert-primary d-flex justify-content-between align-items-center">
             <div>
                 <i class="bi bi-robot me-2"></i>
@@ -68,10 +69,12 @@
                 </button>
             </form>
         </div>
+        @endcan
     @endif
 
     <form action="{{ route('admin.quiz-attempts.save-grade', $attempt->id) }}" method="POST">
         @csrf
+        @php $canSaveGrade = auth()->user()->can('quiz-attempt-save-grade'); @endphp
         
         @foreach($attempt->answers as $index => $answer)
             <div class="card custom-card mb-3">
@@ -171,6 +174,7 @@
 
                     {{-- AI Grading Button (for essay questions) --}}
                     @if($answer->question->type === 'essay' && !empty($answer->answer_text) && !$answer->ai_graded)
+                        @can('quiz-attempt-grade-with-ai')
                         <div class="mb-3">
                             <form action="{{ route('admin.quiz-attempts.ai-grade', [$attempt->id, $answer->id]) }}" method="POST" class="d-inline" onsubmit="return confirm('هل تريد تصحيح هذا السؤال باستخدام AI؟');">
                                 @csrf
@@ -179,6 +183,7 @@
                                 </button>
                             </form>
                         </div>
+                        @endcan
                     @endif
 
                     <input type="hidden" name="grades[{{ $index }}][answer_id]" value="{{ $answer->id }}">
@@ -189,7 +194,8 @@
                             <div class="input-group">
                                 <input type="number" name="grades[{{ $index }}][points]" 
                                        class="form-control" min="0" max="{{ $answer->max_points }}" 
-                                       step="0.5" value="{{ $answer->points_earned ?? ($answer->ai_graded && isset($answer->ai_grading_data['points']) ? $answer->ai_grading_data['points'] : '') }}" required>
+                                       step="0.5" value="{{ $answer->points_earned ?? ($answer->ai_graded && isset($answer->ai_grading_data['points']) ? $answer->ai_grading_data['points'] : '') }}" required
+                                       @unless($canSaveGrade) readonly @endunless>
                                 <span class="input-group-text">/ {{ $answer->max_points }}</span>
                             </div>
                             @if($answer->ai_graded)
@@ -203,7 +209,8 @@
                             <label class="form-label">ملاحظة للطالب (اختياري)</label>
                             <textarea name="grades[{{ $index }}][feedback]" 
                                       class="form-control" rows="2"
-                                      placeholder="ملاحظة أو تعليق على الإجابة...">{{ $answer->feedback ?? ($answer->ai_graded && isset($answer->ai_grading_data['feedback']) ? $answer->ai_grading_data['feedback'] : '') }}</textarea>
+                                      placeholder="ملاحظة أو تعليق على الإجابة..."
+                                      @unless($canSaveGrade) readonly @endunless>{{ $answer->feedback ?? ($answer->ai_graded && isset($answer->ai_grading_data['feedback']) ? $answer->ai_grading_data['feedback'] : '') }}</textarea>
                         </div>
                     </div>
 
@@ -224,9 +231,11 @@
                 <a href="{{ route('admin.quiz-attempts.show', $attempt->id) }}" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-right me-1"></i> رجوع
                 </a>
+                @can('quiz-attempt-save-grade')
                 <button type="submit" class="btn btn-success btn-lg">
                     <i class="bi bi-check-lg me-1"></i> حفظ التصحيح
                 </button>
+                @endcan
             </div>
         </div>
     </form>

@@ -193,9 +193,13 @@
                                 </div>
 
                                 <h6 class="fw-semibold mb-2">
+                                    @can('question-show')
                                     <a href="{{ route('admin.questions.show', $question->id) }}" class="text-decoration-none">
                                         {{ Str::limit($question->title, 60) }}
                                     </a>
+                                    @else
+                                    <span class="text-body">{{ Str::limit($question->title, 60) }}</span>
+                                    @endcan
                                 </h6>
 
                                 @if($question->content)
@@ -230,6 +234,7 @@
                     </div>
 
                     {{-- مودال الحذف --}}
+                    @can('question-delete')
                     <div class="modal fade" id="deleteQuestion{{ $question->id }}" tabindex="-1" aria-hidden="true">
                         <div class="modal-dialog modal-dialog-centered">
                             <div class="modal-content border-0 rounded-4">
@@ -264,15 +269,18 @@
                             </div>
                         </div>
                     </div>
+                    @endcan
                 @empty
                     <div class="col-12">
                         <div class="card custom-card">
                             <div class="card-body text-center py-5">
                                 <i class="bi bi-inbox display-4 text-muted"></i>
                                 <p class="text-muted mt-3">لا توجد أسئلة حالياً</p>
+                                @can('question-create')
                                 <a href="{{ route('admin.questions.create') }}" class="btn btn-primary">
                                     <i class="bi bi-plus-lg me-1"></i> إضافة أول سؤال
                                 </a>
+                                @endcan
                             </div>
                         </div>
                     </div>

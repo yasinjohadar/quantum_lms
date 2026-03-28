@@ -253,18 +253,22 @@
                                 <i class="bi bi-paperclip me-2"></i>
                                 مرفقات الدرس ({{ $lesson->attachments->count() }})
                             </h6>
+                            @can('lesson-attachment-create')
                             <button type="button" class="btn btn-sm btn-primary"
                                     data-bs-toggle="modal"
                                     data-bs-target="#addAttachmentModal">
                                 <i class="bi bi-plus-lg me-1"></i> إضافة مرفق
                             </button>
+                            @endcan
                         </div>
                         <div class="card-body p-0">
                             @if($lesson->attachments->count() === 0)
                                 <div class="text-center text-muted py-4">
                                     <i class="bi bi-folder2-open display-6 d-block mb-2"></i>
                                     <p class="mb-1">لا توجد مرفقات لهذا الدرس حالياً</p>
+                                    @can('lesson-attachment-create')
                                     <small>اضغط على "إضافة مرفق" لإضافة ملفات أو روابط</small>
+                                    @endcan
                                 </div>
                             @else
                                 <ul class="list-group list-group-flush">
@@ -301,6 +305,7 @@
                                                         <i class="bi bi-{{ $attachment->type === 'link' ? 'box-arrow-up-right' : 'download' }}"></i>
                                                     </a>
                                                 @endif
+                                                @can('lesson-attachment-edit')
                                                 <button type="button"
                                                         class="btn btn-sm btn-outline-primary"
                                                         data-bs-toggle="modal"
@@ -308,6 +313,8 @@
                                                         title="تعديل">
                                                     <i class="bi bi-pencil"></i>
                                                 </button>
+                                                @endcan
+                                                @can('lesson-attachment-delete')
                                                 <button type="button"
                                                         class="btn btn-sm btn-outline-danger"
                                                         data-bs-toggle="modal"
@@ -315,6 +322,7 @@
                                                         title="حذف">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
+                                                @endcan
                                             </div>
                                         </li>
                                     @endforeach
@@ -460,6 +468,7 @@
     @endif
 
     {{-- مودال إضافة مرفق --}}
+    @can('lesson-attachment-create')
     <div class="modal fade" id="addAttachmentModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 rounded-4">
@@ -522,9 +531,11 @@
             </div>
         </div>
     </div>
+    @endcan
 
     {{-- مودالات تعديل وحذف المرفقات --}}
     @foreach($lesson->attachments as $attachment)
+        @can('lesson-attachment-edit')
         {{-- مودال تعديل المرفق --}}
         <div class="modal fade" id="editAttachment{{ $attachment->id }}" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
@@ -588,7 +599,9 @@
                 </div>
             </div>
         </div>
+        @endcan
 
+        @can('lesson-attachment-delete')
         {{-- مودال حذف المرفق --}}
         <div class="modal fade" id="deleteAttachment{{ $attachment->id }}" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
@@ -629,6 +642,7 @@
                 </div>
             </div>
         </div>
+        @endcan
     @endforeach
 @stop
 

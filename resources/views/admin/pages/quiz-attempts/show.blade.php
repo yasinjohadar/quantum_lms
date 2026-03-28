@@ -27,9 +27,11 @@
                 </div>
                 <div class="d-flex gap-2">
                     @if($attempt->status === 'under_review')
+                        @can('quiz-attempt-grade')
                         <a href="{{ route('admin.quiz-attempts.grade', $attempt->id) }}" class="btn btn-warning btn-sm">
                             <i class="bi bi-pencil-square me-1"></i> تصحيح
                         </a>
+                        @endcan
                     @endif
                 </div>
             </div>

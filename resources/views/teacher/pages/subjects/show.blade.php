@@ -406,14 +406,19 @@
                                                                                                 </div>
                                                                                             </div>
                                                                                             <div class="d-flex align-items-center gap-1">
+                                                                                                @can('question-show')
                                                                                                 <a href="{{ route('admin.questions.show', $question->id) }}" 
                                                                                                    class="btn btn-sm btn-icon btn-primary-transparent" title="عرض">
                                                                                                     <i class="bi bi-eye"></i>
                                                                                                 </a>
+                                                                                                @endcan
+                                                                                                @can('question-edit')
                                                                                                 <a href="{{ route('admin.questions.edit', $question->id) }}" 
                                                                                                    class="btn btn-sm btn-icon btn-warning-transparent" title="تعديل">
                                                                                                     <i class="bi bi-pencil"></i>
                                                                                                 </a>
+                                                                                                @endcan
+                                                                                                @can('unit-detach-question')
                                                                                                 <form action="{{ route('admin.units.questions.detach', [$unit->id, $question->id]) }}" 
                                                                                                       method="POST" class="d-inline"
                                                                                                       onsubmit="return confirm('هل أنت متأكد من فك ربط هذا السؤال؟')">
@@ -423,6 +428,7 @@
                                                                                                         <i class="bi bi-x-lg"></i>
                                                                                                     </button>
                                                                                                 </form>
+                                                                                                @endcan
                                                                                             </div>
                                                                                         </div>
                                                                                         @endforeach
@@ -466,14 +472,18 @@
                                                                                                 </div>
                                                                                             </div>
                                                                                             <div class="d-flex align-items-center gap-1">
+                                                                                                @can('quiz-show')
                                                                                                 <a href="{{ route('admin.quizzes.show', $quiz->id) }}" 
                                                                                                    class="btn btn-sm btn-icon btn-info-transparent" title="عرض">
                                                                                                     <i class="bi bi-eye"></i>
                                                                                                 </a>
+                                                                                                @endcan
+                                                                                                @can('quiz-edit')
                                                                                                 <a href="{{ route('admin.quizzes.edit', $quiz->id) }}" 
                                                                                                    class="btn btn-sm btn-icon btn-warning-transparent" title="تعديل">
                                                                                                     <i class="bi bi-pencil"></i>
                                                                                                 </a>
+                                                                                                @endcan
                                                                                             </div>
                                                                                         </div>
                                                                                         @endforeach
@@ -553,6 +563,7 @@
                                                                                                                class="btn btn-sm btn-icon btn-success-transparent" title="مشاهدة">
                                                                                                                 <i class="bi bi-play-fill"></i>
                                                                                                             </a>
+                                                                                                            @can('lesson-attachment-create')
                                                                                                             <button type="button"
                                                                                                                     class="btn btn-sm btn-icon btn-info-transparent"
                                                                                                                     data-bs-toggle="modal"
@@ -560,6 +571,7 @@
                                                                                                                     title="إضافة مرفقات">
                                                                                                                 <i class="bi bi-paperclip"></i>
                                                                                                             </button>
+                                                                                                            @endcan
                                                                                                             <button type="button"
                                                                                                                     class="btn btn-sm btn-icon btn-primary-transparent"
                                                                                                                     data-bs-toggle="modal"
@@ -1277,6 +1289,7 @@
                 </div>
 
                 {{-- مودال إضافة مرفقات للدرس --}}
+                @can('lesson-attachment-create')
                 <div class="modal fade" id="addLessonAttachment{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content border-0 rounded-4">
@@ -1342,6 +1355,7 @@
                         </div>
                     </div>
                 </div>
+                @endcan
             @endforeach
         @endforeach
     @endforeach
@@ -1490,14 +1504,19 @@
                                             <p class="mb-0 fw-semibold">{{ Str::limit($question->title, 100) }}</p>
                                         </div>
                                         <div class="d-flex gap-1">
+                                            @can('question-show')
                                             <a href="{{ route('admin.questions.show', $question->id) }}" 
                                                class="btn btn-sm btn-icon btn-primary-transparent" title="عرض">
                                                 <i class="bi bi-eye"></i>
                                             </a>
+                                            @endcan
+                                            @can('question-edit')
                                             <a href="{{ route('admin.questions.edit', $question->id) }}" 
                                                class="btn btn-sm btn-icon btn-warning-transparent" title="تعديل">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
+                                            @endcan
+                                            @can('unit-detach-question')
                                             <form action="{{ route('admin.units.questions.detach', [$unit->id, $question->id]) }}" 
                                                   method="POST" class="d-inline"
                                                   onsubmit="return confirm('هل أنت متأكد من فك ربط هذا السؤال من الوحدة؟')">
@@ -1507,6 +1526,7 @@
                                                     <i class="bi bi-link-45deg"></i>
                                                 </button>
                                             </form>
+                                            @endcan
                                         </div>
                                     </div>
                                 </div>
@@ -1514,9 +1534,11 @@
                             </div>
                         </div>
                         <div class="modal-footer border-0">
+                            @can('question-create')
                             <a href="{{ route('admin.questions.create', ['unit_id' => $unit->id]) }}" class="btn btn-success">
                                 <i class="bi bi-plus-lg me-1"></i> إضافة سؤال جديد
                             </a>
+                            @endcan
                             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إغلاق</button>
                         </div>
                     </div>
