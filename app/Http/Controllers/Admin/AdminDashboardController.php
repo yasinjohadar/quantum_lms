@@ -27,6 +27,13 @@ class AdminDashboardController extends Controller
         $data['greetingUserName'] = $user?->name ?? 'مستخدم';
         $data['greetingPrimaryRoleLabel'] = $user?->primary_role_label ?? 'مستخدم';
 
+        $data['supervisorClassesCount'] = 0;
+        $data['supervisorSubjectsCount'] = 0;
+        if ($user && $user->usesSupervisorAssignmentScope()) {
+            $data['supervisorClassesCount'] = $user->assignedClassesAsSupervisor()->count();
+            $data['supervisorSubjectsCount'] = $user->getAccessibleSubjectsAsSupervisor()->count();
+        }
+
         return view('admin.dashboard', $data);
     }
 

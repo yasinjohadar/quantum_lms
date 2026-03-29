@@ -123,6 +123,55 @@
                 @endif
                 <!-- row closed -->
 
+                @if(auth()->check() && auth()->user()->usesSupervisorAssignmentScope())
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header pb-2">
+                                <h4 class="card-title mb-0">
+                                    <i class="fe fe-briefcase me-2"></i> إشرافي
+                                </h4>
+                                <p class="fs-12 text-muted mb-0">صفوفك وموادك المخصصة — تظهر دائماً حتى لو كانت القوائم فارغة</p>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
+                                        <a href="{{ route('admin.my-classes') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
+                                            <div class="card-body text-center p-3">
+                                                <div class="avatar avatar-md bg-primary-transparent mx-auto mb-2">
+                                                    <i class="fas fa-school fs-20 text-primary"></i>
+                                                </div>
+                                                <h6 class="mb-0 fw-semibold">صفوفي المخصصة</h6>
+                                                <small class="text-muted d-block mt-1">عرض الصفوف المرتبطة بك كمشرف</small>
+                                                <span class="badge bg-light text-dark mt-2">{{ (int) ($supervisorClassesCount ?? 0) }} صف</span>
+                                                @if(($supervisorClassesCount ?? 0) === 0)
+                                                    <small class="text-muted d-block mt-2">لا توجد صفوف مخصصة بعد — يمكنك فتح الصفحة للتأكد</small>
+                                                @endif
+                                            </div>
+                                        </a>
+                                    </div>
+                                    <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
+                                        <a href="{{ route('admin.my-subjects') }}" class="card border shadow-sm h-100 text-decoration-none quick-link-card">
+                                            <div class="card-body text-center p-3">
+                                                <div class="avatar avatar-md bg-success-transparent mx-auto mb-2">
+                                                    <i class="fas fa-book-open fs-20 text-success"></i>
+                                                </div>
+                                                <h6 class="mb-0 fw-semibold">موادي المخصصة</h6>
+                                                <small class="text-muted d-block mt-1">عرض المواد المتاحة لك (مباشرة أو عبر الصفوف)</small>
+                                                <span class="badge bg-light text-dark mt-2">{{ (int) ($supervisorSubjectsCount ?? 0) }} مادة</span>
+                                                @if(($supervisorSubjectsCount ?? 0) === 0)
+                                                    <small class="text-muted d-block mt-2">لا توجد مواد متاحة بعد — يمكنك فتح الصفحة للتأكد</small>
+                                                @endif
+                                            </div>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
                 <!-- اختصارات سريعة -->
                 <div class="row mb-4">
                     <div class="col-12">

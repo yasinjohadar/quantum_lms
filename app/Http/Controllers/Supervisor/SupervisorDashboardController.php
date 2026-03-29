@@ -14,9 +14,10 @@ class SupervisorDashboardController extends Controller
     {
         $this->middleware(['auth', 'check.user.active']);
         $this->middleware(function ($request, $next) {
-            if (!Auth::user()->hasRole('supervisor')) {
+            if (! Auth::user()->hasSupervisorStaffIdentity()) {
                 abort(403, 'غير مصرح لك بالوصول');
             }
+
             return $next($request);
         });
     }
