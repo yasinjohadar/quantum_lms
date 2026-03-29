@@ -158,7 +158,7 @@ class RoleController extends Controller
         $perms = $validated['permissions'] ?? null;
         $role->syncPermissions(is_array($perms) ? array_values($perms) : []);
 
-        return back()->with('success', 'تم إضافة الدور بنجاح.');
+        return redirect()->route('roles.index')->with('success', 'تم إضافة الدور بنجاح.');
     }
 
     /**
