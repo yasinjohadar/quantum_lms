@@ -98,6 +98,16 @@
             });
         });
 
+        var deselectAllBtn = document.getElementById('role-permissions-deselect-all');
+        if (deselectAllBtn) {
+            deselectAllBtn.addEventListener('click', function () {
+                form.querySelectorAll('input[type="checkbox"][name^="permissions"]').forEach(function (cb) {
+                    cb.checked = false;
+                });
+                refreshRolePermissionSummary();
+            });
+        }
+
         refreshRolePermissionSummary();
 
         var searchInput = document.getElementById('permissionSearch');

@@ -49,6 +49,9 @@
     <div class="card-header py-2 d-flex flex-wrap align-items-center gap-2">
         <span class="fw-semibold">ملخص الصلاحيات المحددة</span>
         <span class="badge bg-primary" id="role-permissions-summary-count">0</span>
+        <button type="button" class="btn btn-sm btn-outline-danger ms-auto" id="role-permissions-deselect-all">
+            إلغاء تحديد الكل
+        </button>
     </div>
     <div class="card-body py-3">
         <p class="text-muted small mb-2 mb-0" id="role-permissions-summary-empty">لم يتم تحديد أي صلاحية بعد.</p>
