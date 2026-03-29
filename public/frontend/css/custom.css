@@ -987,6 +987,83 @@ a {
     padding-bottom: 40px !important;
 }
 
+/* Homepage classes: grid + glow + gradient (مثل المرجع الداكن) */
+.classes-section.homepage-classes {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.classes-section.homepage-classes > .container {
+    position: relative;
+    z-index: 1;
+}
+
+html[data-bs-theme="dark"] .classes-section.homepage-classes {
+    background: transparent;
+}
+
+html[data-bs-theme="dark"] .classes-section.homepage-classes::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 100% 55% at 50% 100%, rgba(5, 85, 162, 0.42) 0%, transparent 58%),
+        radial-gradient(ellipse 50% 42% at 92% 18%, rgba(34, 211, 238, 0.12) 0%, transparent 52%),
+        radial-gradient(ellipse 42% 38% at 6% 48%, rgba(129, 140, 248, 0.1) 0%, transparent 55%),
+        linear-gradient(168deg, #0a101c 0%, #070c16 42%, #03060d 100%);
+}
+
+html[data-bs-theme="dark"] .classes-section.homepage-classes::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.9;
+    background-image:
+        linear-gradient(rgba(148, 163, 184, 0.075) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.075) 1px, transparent 1px);
+    background-size: 52px 52px;
+    background-position: center top;
+    -webkit-mask-image: radial-gradient(ellipse 88% 72% at 50% 42%, #000 0%, transparent 74%);
+    mask-image: radial-gradient(ellipse 88% 72% at 50% 42%, #000 0%, transparent 74%);
+}
+
+html[data-bs-theme="light"] .classes-section.homepage-classes {
+    background: var(--bg-light);
+}
+
+html[data-bs-theme="light"] .classes-section.homepage-classes::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 90% 50% at 50% 100%, rgba(5, 85, 162, 0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 45% 35% at 88% 12%, rgba(242, 145, 37, 0.08) 0%, transparent 50%),
+        linear-gradient(180deg, var(--bg-light) 0%, rgba(246, 248, 251, 0.96) 100%);
+}
+
+html[data-bs-theme="light"] .classes-section.homepage-classes::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.65;
+    background-image:
+        linear-gradient(rgba(11, 27, 43, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(11, 27, 43, 0.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+    background-position: center top;
+    -webkit-mask-image: radial-gradient(ellipse 85% 70% at 50% 45%, #000 0%, transparent 75%);
+    mask-image: radial-gradient(ellipse 85% 70% at 50% 45%, #000 0%, transparent 75%);
+}
+
 .section-title {
     font-size: 2.5rem;
     font-weight: 800;
@@ -2069,7 +2146,7 @@ html[data-bs-theme="dark"] .class-header {
     background: #0b1b2b;
     color: rgba(255, 255, 255, 0.92);
     padding: 50px 0 18px;
-    margin-top: 60px;
+    margin-top: 0;
 }
 
 .frontend-footer__brand {
