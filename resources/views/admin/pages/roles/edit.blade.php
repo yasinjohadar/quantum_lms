@@ -60,7 +60,7 @@
 
 
 
-                            <form id="role-edit-form" method="POST" action="{{ route('roles.update', 'test') }}">
+                            <form id="role-edit-form" method="POST" action="{{ route('roles.update', 'test') }}" data-role-permissions-form>
                                 @csrf
                                 @method('PUT')
                                 <div class="row g-3 align-items-start">
@@ -107,10 +107,12 @@
                                                class="form-control" 
                                                placeholder="بحث في الصلاحيات (بالاسم أو الوصف)...">
                                     </div>
+
+                                    @include('admin.pages.roles.partials.permission-selection-summary')
                                     
                                     @foreach($categorizedPermissions as $categoryName => $categoryPermissions)
                                         @if($categoryPermissions->isNotEmpty())
-                                            <div class="card mb-3">
+                                            <div class="card mb-3 permission-category-card">
                                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                                     <h6 class="mb-0 fw-bold">{{ $categoryName }}</h6>
                                                     <div>
@@ -132,6 +134,7 @@
                                                                            name="permissions[{{ $permission->name }}]"
                                                                            value="{{ $permission->name }}"
                                                                            id="perm_{{ $permission->id }}"
+                                                                           data-permission-description="{{ e($permission->description ?? '') }}"
                                                                            {{ $role->hasPermissionTo($permission->name) ? 'checked' : '' }}>
                                                                     <label class="form-check-label" for="perm_{{ $permission->id }}">
                                                                         <span class="fw-semibold">{{ $permission->name }}</span>
@@ -168,65 +171,7 @@
 @stop
 
 @section('js')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // تحديد جميع الصلاحيات في فئة
-    document.querySelectorAll('.select-all-category').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const categoryCard = this.closest('.card');
-            categoryCard.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-                checkbox.checked = true;
-            });
-        });
-    });
-
-    // إلغاء تحديد جميع الصلاحيات في فئة
-    document.querySelectorAll('.deselect-all-category').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const categoryCard = this.closest('.card');
-            categoryCard.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-                checkbox.checked = false;
-            });
-        });
-    });
-
-    // البحث في الصلاحيات
-    const searchInput = document.getElementById('permissionSearch');
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase().trim();
-            const categoryCards = document.querySelectorAll('.card.mb-3');
-            
-            categoryCards.forEach(card => {
-                const cardText = card.textContent.toLowerCase();
-                const hasMatch = cardText.includes(searchTerm);
-                
-                if (searchTerm === '') {
-                    // إذا كان البحث فارغاً، إظهار جميع البطاقات
-                    card.style.display = '';
-                } else if (hasMatch) {
-                    // إظهار البطاقة إذا كانت تحتوي على النص
-                    card.style.display = '';
-                    
-                    // إخفاء الصلاحيات التي لا تطابق البحث داخل البطاقة
-                    const permissionItems = card.querySelectorAll('.col-md-6.col-lg-4.mb-3');
-                    permissionItems.forEach(item => {
-                        const itemText = item.textContent.toLowerCase();
-                        if (itemText.includes(searchTerm)) {
-                            item.style.display = '';
-                        } else {
-                            item.style.display = 'none';
-                        }
-                    });
-                } else {
-                    // إخفاء البطاقة بالكامل إذا لم تطابق البحث
-                    card.style.display = 'none';
-                }
-            });
-        });
-    }
-});
-</script>
+    @include('admin.pages.roles.partials.permission-selection-summary-scripts')
 @stop
 
 @push('header-actions')

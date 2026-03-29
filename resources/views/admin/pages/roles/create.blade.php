@@ -55,7 +55,7 @@
                         </div>
                         <div class="card-body">
 
-                            <form method="POST" action="{{ route('roles.store', 'test') }}">
+                            <form id="role-create-form" method="POST" action="{{ route('roles.store', 'test') }}" data-role-permissions-form>
                                 @csrf
 
                                 <div class="row mb-3 g-3 align-items-start">
@@ -89,10 +89,19 @@
 
                                 <div class="mb-4">
                                     <label class="form-label fw-bold d-block mb-3">الصلاحيات:</label>
+
+                                    <div class="mb-3">
+                                        <input type="text"
+                                               id="permissionSearch"
+                                               class="form-control"
+                                               placeholder="بحث في الصلاحيات (بالاسم أو الوصف)...">
+                                    </div>
+
+                                    @include('admin.pages.roles.partials.permission-selection-summary')
                                     
                                     @foreach($categorizedPermissions as $categoryName => $categoryPermissions)
                                         @if($categoryPermissions->isNotEmpty())
-                                            <div class="card mb-3">
+                                            <div class="card mb-3 permission-category-card">
                                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                                     <h6 class="mb-0 fw-bold">{{ $categoryName }}</h6>
                                                     <div>
@@ -113,7 +122,8 @@
                                                                     <input class="form-check-input" type="checkbox"
                                                                            name="permissions[{{ $permission->name }}]"
                                                                            value="{{ $permission->name }}"
-                                                                           id="perm_{{ $permission->id }}">
+                                                                           id="perm_{{ $permission->id }}"
+                                                                           data-permission-description="{{ e($permission->description ?? '') }}">
                                                                     <label class="form-check-label" for="perm_{{ $permission->id }}">
                                                                         <span class="fw-semibold">{{ $permission->name }}</span>
                                                                         @if($permission->description)
@@ -131,11 +141,6 @@
                                     @endforeach
                                 </div>
 
-                                <div class="d-flex justify-content-end">
-                                    <a href="{{ route('roles.index') }}" class="btn btn-secondary me-2">إلغاء</a>
-                                    <button type="submit" class="btn btn-primary">حفظ الدور</button>
-                                </div>
-
                             </form>
 
                         </div>
@@ -150,27 +155,18 @@
 @stop
 
 @section('js')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // تحديد جميع الصلاحيات في فئة
-    document.querySelectorAll('.select-all-category').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const categoryCard = this.closest('.card');
-            categoryCard.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-                checkbox.checked = true;
-            });
-        });
-    });
-
-    // إلغاء تحديد جميع الصلاحيات في فئة
-    document.querySelectorAll('.deselect-all-category').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const categoryCard = this.closest('.card');
-            categoryCard.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-                checkbox.checked = false;
-            });
-        });
-    });
-});
-</script>
+    @include('admin.pages.roles.partials.permission-selection-summary-scripts')
 @stop
+
+@push('header-actions')
+<div class="header-element">
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-sm btn-danger" onclick="window.history.back()">
+            <i class="fe fe-x me-1"></i> إغلاق
+        </button>
+        <button type="submit" form="role-create-form" class="btn btn-sm btn-primary">
+            <i class="fe fe-save me-1"></i> حفظ الدور
+        </button>
+    </div>
+</div>
+@endpush
