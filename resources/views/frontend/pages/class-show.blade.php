@@ -44,6 +44,7 @@
             </div>
         </div>
         @endif
+        @endauth
 
         <!-- Subjects Section -->
         <div class="subjects-section mb-5">
@@ -64,26 +65,6 @@
                                 @else
                                     <div class="class-card-placeholder">
                                         <i class="fa-solid fa-book"></i>
-                                    </div>
-                                @endif
-                                
-                                <!-- Students Oval -->
-                                @if($subject['enrolled_students_count'] > 0)
-                                    <div class="students-oval">
-                                        <div class="students-avatars">
-                                            @foreach($subject['enrolled_students'] as $student)
-                                                <div class="student-avatar">
-                                                    @if($student['avatar'])
-                                                        <img src="{{ asset('storage/' . $student['avatar']) }}" alt="{{ $student['name'] }}">
-                                                    @else
-                                                        <div class="avatar-placeholder">
-                                                            {{ strtoupper(mb_substr($student['name'], 0, 1)) }}
-                                                        </div>
-                                                    @endif
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                        <span class="students-count">+ {{ $subject['enrolled_students_count'] }} طالب</span>
                                     </div>
                                 @endif
                             </div>
@@ -111,10 +92,17 @@
                                     @endif
                                 </div>
                                 
+                                @guest
+                                <a href="#guest-purchase-cta" class="class-card-btn enroll-btn">
+                                    سجل الآن
+                                    <i class="fa-solid fa-angles-left ms-2"></i>
+                                </a>
+                                @else
                                 <a href="#purchase-section" class="class-card-btn enroll-btn">
                                     سجل الآن
                                     <i class="fa-solid fa-angles-left ms-2"></i>
                                 </a>
+                                @endguest
                             </div>
                         </div>
                     </div>
@@ -282,12 +270,13 @@
             </div>
         @endif
         @endauth
-        @else
-        <div class="alert alert-info text-center mb-5">
+
+        @guest
+        <div id="guest-purchase-cta" class="alert alert-info text-center mb-5">
             <i class="fa-solid fa-info-circle me-2"></i>
             يرجى <a href="{{ route('login') }}" class="alert-link">تسجيل الدخول</a> لشراء الصف أو المواد
         </div>
-        @endauth
+        @endguest
 
     </div>
 </section>
@@ -307,13 +296,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const purchaseForm = document.getElementById('purchaseForm');
     const enrollButtons = document.querySelectorAll('.enroll-btn');
     
-    // Smooth scroll to purchase section when clicking "سجل الآن" on a subject
+    // Smooth scroll to purchase or guest CTA when clicking "سجل الآن" on a subject
     enrollButtons.forEach(btn => {
         btn.addEventListener('click', function (e) {
-            const target = document.getElementById('purchase-section');
-            if (target) {
+            const purchaseEl = document.getElementById('purchase-section');
+            const guestEl = document.getElementById('guest-purchase-cta');
+            const hash = (btn.getAttribute('href') || '').replace('#', '');
+            if (hash === 'guest-purchase-cta' && guestEl) {
                 e.preventDefault();
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                guestEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                return;
+            }
+            if (purchaseEl) {
+                e.preventDefault();
+                purchaseEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                return;
+            }
+            if (guestEl) {
+                e.preventDefault();
+                guestEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         });
     });
