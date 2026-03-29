@@ -118,15 +118,139 @@ class RoleController extends Controller
     }
 
     /**
+     * عناوين التبويبات العليا لتجميع فئات الصلاحيات في الواجهة.
+     *
+     * @return array<string, string>
+     */
+    private function permissionTabLabels(): array
+    {
+        return [
+            'academic' => 'المحتوى الأكاديمي والتسجيل',
+            'library_reports' => 'المكتبة والتقارير والتحليلات',
+            'users_security' => 'المستخدمون والأدوار والأمان',
+            'communication' => 'التواصل والتقويم',
+            'system' => 'الإعدادات والبنية التحتية',
+            'gamification_ai' => 'التحفيز والذكاء الاصطناعي',
+            'dashboard_notifications' => 'لوحة التحكم والإشعارات',
+            'other' => 'أخرى',
+        ];
+    }
+
+    /**
+     * ربط اسم فئة الصلاحية (كما في categorizePermissions) بمفتاح التبويب.
+     *
+     * @return array<string, string>
+     */
+    private function permissionCategoryTabMap(): array
+    {
+        return [
+            'إدارة الصفوف' => 'academic',
+            'إدارة المراحل' => 'academic',
+            'إدارة المواد الدراسية' => 'academic',
+            'إدارة أقسام المواد' => 'academic',
+            'إدارة الدروس' => 'academic',
+            'إدارة مرفقات الدروس' => 'academic',
+            'إدارة الوحدات' => 'academic',
+            'إدارة الأسئلة' => 'academic',
+            'إدارة الاختبارات' => 'academic',
+            'إدارة محاولات الاختبارات' => 'academic',
+            'إدارة التسجيلات' => 'academic',
+            'إدارة المدفوعات' => 'academic',
+            'إدارة وسائل الدفع المخصصة' => 'academic',
+            'إدارة تقدم الطلاب' => 'academic',
+            'إدارة المهام الأسبوعية' => 'academic',
+            'إدارة المهام اليومية' => 'academic',
+            'إدارة التذكيرات' => 'academic',
+            'إدارة تخصيصات المعلمين' => 'academic',
+            'إدارة تخصيصات المشرفين' => 'academic',
+            'إدارة تقدم المعلمين' => 'academic',
+            'إدارة السنوات الدراسية' => 'academic',
+            'إدارة الأسابيع الدراسية' => 'academic',
+            'إدارة المكتبة' => 'library_reports',
+            'إدارة فئات المكتبة' => 'library_reports',
+            'التقارير والإحصائيات' => 'library_reports',
+            'لوحة التحليلات' => 'library_reports',
+            'لوحة المكتبة' => 'library_reports',
+            'تقارير المكتبة' => 'library_reports',
+            'إدارة المستخدمين' => 'users_security',
+            'إدارة المستخدمين المؤرشفين' => 'users_security',
+            'إدارة الأدوار' => 'users_security',
+            'إدارة سجلات تسجيل الدخول' => 'users_security',
+            'إدارة الجلسات' => 'users_security',
+            'إدارة التقويم' => 'communication',
+            'إدارة WhatsApp' => 'communication',
+            'إدارة البريد الإلكتروني' => 'communication',
+            'إدارة SMS' => 'communication',
+            'الإعدادات' => 'system',
+            'إدارة العملات' => 'system',
+            'إدارة أسعار الصرف' => 'system',
+            'إدارة النسخ الاحتياطي' => 'system',
+            'إدارة التخزين' => 'system',
+            'إدارة التحفيز' => 'gamification_ai',
+            'إدارة الذكاء الاصطناعي' => 'gamification_ai',
+            'إدارة المستويات' => 'gamification_ai',
+            'إدارة الإنجازات' => 'gamification_ai',
+            'إدارة الشارات' => 'gamification_ai',
+            'إدارة التحديات' => 'gamification_ai',
+            'إدارة لوحة المتصدرين' => 'gamification_ai',
+            'إدارة المكافآت' => 'gamification_ai',
+            'لوحة التحكم' => 'dashboard_notifications',
+            'إدارة الإشعارات' => 'dashboard_notifications',
+            'أخرى' => 'other',
+        ];
+    }
+
+    /**
+     * @param  array<string, \Illuminate\Support\Collection>  $categorized
+     * @return list<array{key: string, pane_id: string, label: string, categories: array<string, \Illuminate\Support\Collection>}>
+     */
+    private function tabbedCategorizedPermissions(array $categorized): array
+    {
+        $labels = $this->permissionTabLabels();
+        $map = $this->permissionCategoryTabMap();
+        $bucket = [];
+        foreach (array_keys($labels) as $key) {
+            $bucket[$key] = ['categories' => []];
+        }
+
+        foreach ($categorized as $categoryName => $permissions) {
+            if ($permissions->isEmpty()) {
+                continue;
+            }
+            $tabKey = $map[$categoryName] ?? 'other';
+            if (! isset($bucket[$tabKey])) {
+                $tabKey = 'other';
+            }
+            $bucket[$tabKey]['categories'][$categoryName] = $permissions;
+        }
+
+        $tabs = [];
+        foreach ($labels as $key => $label) {
+            if (empty($bucket[$key]['categories'])) {
+                continue;
+            }
+            $tabs[] = [
+                'key' => $key,
+                'pane_id' => 'role-perm-tab-'.$key,
+                'label' => $label,
+                'categories' => $bucket[$key]['categories'],
+            ];
+        }
+
+        return $tabs;
+    }
+
+    /**
      * Show the form for creating a new resource.
      */
     public function create()
     {
         $permissions = Permission::orderBy('name')->get();
         $categorizedPermissions = $this->categorizePermissions($permissions);
+        $permissionTabs = $this->tabbedCategorizedPermissions($categorizedPermissions);
         $roles = Role::all();
 
-        return view('admin.pages.roles.create', compact('roles', 'permissions', 'categorizedPermissions'));
+        return view('admin.pages.roles.create', compact('roles', 'permissions', 'permissionTabs'));
     }
 
     /**
@@ -174,8 +298,9 @@ class RoleController extends Controller
         $role = Role::findOrFail($id);
         $permissions = Permission::orderBy('name')->get();
         $categorizedPermissions = $this->categorizePermissions($permissions);
+        $permissionTabs = $this->tabbedCategorizedPermissions($categorizedPermissions);
 
-        return view('admin.pages.roles.edit', compact('role', 'permissions', 'categorizedPermissions'));
+        return view('admin.pages.roles.edit', compact('role', 'permissions', 'permissionTabs'));
     }
 
     /**

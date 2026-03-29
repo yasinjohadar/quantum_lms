@@ -107,48 +107,8 @@
                                     </div>
 
                                     @include('admin.pages.roles.partials.permission-selection-summary')
-                                    
-                                    @foreach($categorizedPermissions as $categoryName => $categoryPermissions)
-                                        @if($categoryPermissions->isNotEmpty())
-                                            <div class="card mb-3 permission-category-card">
-                                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                                    <h6 class="mb-0 fw-bold">{{ $categoryName }}</h6>
-                                                    <div>
-                                                        <button type="button" class="btn btn-sm btn-link p-0 select-all-category" data-category="{{ $loop->index }}">
-                                                            تحديد الكل
-                                                        </button>
-                                                        <span class="mx-2">|</span>
-                                                        <button type="button" class="btn btn-sm btn-link p-0 deselect-all-category" data-category="{{ $loop->index }}">
-                                                            إلغاء تحديد الكل
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <div class="card-body">
-                                                    <div class="row">
-                                                        @foreach($categoryPermissions as $permission)
-                                                            <div class="col-md-6 col-lg-4 mb-3">
-                                                                <div class="form-check">
-                                                                    <input class="form-check-input" type="checkbox"
-                                                                           name="permissions[{{ $permission->name }}]"
-                                                                           value="{{ $permission->name }}"
-                                                                           id="perm_{{ $permission->id }}"
-                                                                           data-permission-description="{{ e($permission->description ?? '') }}"
-                                                                           @checked(isset(old('permissions', [])[$permission->name]))>
-                                                                    <label class="form-check-label" for="perm_{{ $permission->id }}">
-                                                                        <span class="fw-semibold">{{ $permission->name }}</span>
-                                                                        @if($permission->description)
-                                                                            <br>
-                                                                            <small class="text-muted">{{ $permission->description }}</small>
-                                                                        @endif
-                                                                    </label>
-                                                                </div>
-                                                            </div>
-                                                        @endforeach
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        @endif
-                                    @endforeach
+
+                                    @include('admin.pages.roles.partials.permission-categories-tabs', ['permissionTabs' => $permissionTabs])
                                 </div>
 
                             </form>
