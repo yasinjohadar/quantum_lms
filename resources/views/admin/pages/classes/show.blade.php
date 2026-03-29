@@ -73,13 +73,15 @@
                             @if ($class->subjects && $class->subjects->count())
                                 <div class="row g-3">
                                     @foreach ($class->subjects as $subject)
-                                        <div class="col-md-6 col-lg-4">
+                                        <div class="col-6 col-md-4 col-lg-3">
                                             <div class="card h-100 border">
                                                 <div class="card-body text-center">
-                                                    <img src="{{ $subject->image ? asset('storage/'.$subject->image) : asset('assets/images/media/media-22.jpg') }}"
-                                                         alt="{{ $subject->name }}"
-                                                         class="rounded mx-auto d-block mb-3"
-                                                         style="width: 100%; max-width: 200px; height: 120px; object-fit: cover;">
+                                                    <div class="ratio ratio-4x3 mb-3 rounded overflow-hidden bg-light mx-auto" style="max-width: 100%;">
+                                                        <img src="{{ $subject->image ? asset('storage/'.$subject->image) : asset('assets/images/media/media-22.jpg') }}"
+                                                             alt="{{ $subject->name }}"
+                                                             class="rounded"
+                                                             style="object-fit: contain; width: 100%; height: 100%;">
+                                                    </div>
                                                     <h6 class="fw-semibold mb-1">{{ $subject->name }}</h6>
                                                     <p class="mb-1 text-muted small">
                                                         ترتيب: {{ $subject->order ?? 0 }}
