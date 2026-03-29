@@ -595,6 +595,18 @@ class User extends Authenticatable
      */
     public function getPrimaryRoleLabelAttribute(): string
     {
+        if ($this->isPlatformAdmin()) {
+            return 'أدمن';
+        }
+
+        if ($this->hasSupervisorStaffIdentity()) {
+            return 'مشرف';
+        }
+
+        if ($this->hasTeacherStaffIdentity()) {
+            return 'معلم';
+        }
+
         $roleName = $this->getPrimaryRoleName();
 
         return match ($roleName) {

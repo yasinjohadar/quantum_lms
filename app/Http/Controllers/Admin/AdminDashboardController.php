@@ -34,6 +34,13 @@ class AdminDashboardController extends Controller
             $data['supervisorSubjectsCount'] = $user->getAccessibleSubjectsAsSupervisor()->count();
         }
 
+        $data['teacherClassesCount'] = 0;
+        $data['teacherSubjectsCount'] = 0;
+        if ($user && $user->usesTeacherAssignmentScope()) {
+            $data['teacherClassesCount'] = $user->getTeacherAllowedClassIds()->count();
+            $data['teacherSubjectsCount'] = $user->getTeacherAllowedSubjectIds()->count();
+        }
+
         return view('admin.dashboard', $data);
     }
 

@@ -36,8 +36,8 @@
                         </li>
                         @endcan
 
-                        @if(auth()->user()->hasRole('teacher'))
-                        <li class="slide has-sub {{ request()->is('teacher/classes*') || request()->is('teacher/subjects*') ? 'open' : '' }}">
+                        @if(auth()->user()->usesTeacherAssignmentScope())
+                        <li class="slide has-sub {{ request()->is('admin/classes*') || request()->is('admin/subjects*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
