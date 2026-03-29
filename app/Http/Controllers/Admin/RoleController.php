@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Permission;
 
 class RoleController extends Controller
@@ -133,21 +134,31 @@ class RoleController extends Controller
      */
     public function store(Request $request)
     {
-        $attributes = [
-            'name' => $request->name,
-            'dashboard_type' => $request->dashboard_type ?? 'student',
-        ];
+        $guard = config('auth.defaults.guard', 'web');
+        $rolesTable = config('permission.table_names.roles', 'roles');
+        $permissionsTable = config('permission.table_names.permissions', 'permissions');
+        $hasStaffProfile = Schema::hasColumn((new Role)->getTable(), 'staff_profile');
 
-        if (Schema::hasColumn((new Role)->getTable(), 'staff_profile')) {
-            $request->validate(['staff_profile' => 'required|in:none,supervisor,teacher']);
-            $attributes['staff_profile'] = $request->input('staff_profile', 'none');
+        $validated = $request->validate(
+            $this->roleFormRules(null, $rolesTable, $permissionsTable, $guard, $hasStaffProfile),
+            $this->roleValidationMessages(),
+            $this->roleValidationAttributes()
+        );
+
+        $attributes = [
+            'name' => $validated['name'],
+            'dashboard_type' => $validated['dashboard_type'],
+        ];
+        if ($hasStaffProfile) {
+            $attributes['staff_profile'] = $validated['staff_profile'];
         }
 
         $role = Role::create($attributes);
 
-        $role->syncPermissions($request->permissions);
+        $perms = $validated['permissions'] ?? null;
+        $role->syncPermissions(is_array($perms) ? array_values($perms) : []);
 
-        return back()->with('success', 'تم اضافة الروول بنجاح');
+        return back()->with('success', 'تم إضافة الدور بنجاح.');
     }
 
     /**
@@ -174,20 +185,31 @@ class RoleController extends Controller
     {
         $role = Role::findOrFail($request->id);
 
-        $attributes = [
-            'name' => $request->name,
-            'dashboard_type' => $request->dashboard_type ?? 'student',
-        ];
+        $guard = config('auth.defaults.guard', 'web');
+        $rolesTable = config('permission.table_names.roles', 'roles');
+        $permissionsTable = config('permission.table_names.permissions', 'permissions');
+        $hasStaffProfile = Schema::hasColumn($role->getTable(), 'staff_profile');
 
-        if (Schema::hasColumn($role->getTable(), 'staff_profile')) {
-            $request->validate(['staff_profile' => 'required|in:none,supervisor,teacher']);
-            $attributes['staff_profile'] = $request->input('staff_profile', 'none');
+        $validated = $request->validate(
+            $this->roleFormRules($role, $rolesTable, $permissionsTable, $guard, $hasStaffProfile),
+            $this->roleValidationMessages(),
+            $this->roleValidationAttributes()
+        );
+
+        $attributes = [
+            'name' => $validated['name'],
+            'dashboard_type' => $validated['dashboard_type'],
+        ];
+        if ($hasStaffProfile) {
+            $attributes['staff_profile'] = $validated['staff_profile'];
         }
 
         $role->update($attributes);
-        $role->syncPermissions($request->permissions);
 
-        return redirect()->route('roles.index')->with('success', 'تم تعديل الروول بنجاح');
+        $perms = $validated['permissions'] ?? null;
+        $role->syncPermissions(is_array($perms) ? array_values($perms) : []);
+
+        return redirect()->route('roles.index')->with('success', 'تم تعديل الدور بنجاح.');
     }
 
     /**
@@ -217,5 +239,61 @@ class RoleController extends Controller
         }
 
         return response()->json($permissions->get());
+    }
+
+    /**
+     * قواعد التحقق المشتركة لنماذج إنشاء/تعديل الدور.
+     */
+    private function roleFormRules(?Role $role, string $rolesTable, string $permissionsTable, string $guard, bool $hasStaffProfile): array
+    {
+        $nameUnique = Rule::unique($rolesTable, 'name')->where('guard_name', $guard);
+        if ($role !== null) {
+            $nameUnique->ignore($role->getKey());
+        }
+
+        $rules = [
+            'name' => ['required', 'string', 'max:255', $nameUnique],
+            'dashboard_type' => ['required', Rule::in(['admin', 'student'])],
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['string', Rule::exists($permissionsTable, 'name')],
+        ];
+
+        if ($hasStaffProfile) {
+            $rules['staff_profile'] = ['required', Rule::in(['none', 'supervisor', 'teacher'])];
+        }
+
+        return $rules;
+    }
+
+    /**
+     * رسائل التحقق بالعربية.
+     */
+    private function roleValidationMessages(): array
+    {
+        return [
+            'name.required' => 'يرجى إدخال اسم الدور.',
+            'name.string' => 'اسم الدور يجب أن يكون نصاً.',
+            'name.max' => 'اسم الدور لا يجوز أن يتجاوز 255 حرفاً.',
+            'name.unique' => 'هذا الاسم مستخدم مسبقاً لدور آخر بنفس نوع الحماية.',
+            'dashboard_type.required' => 'يرجى اختيار نوع الواجهة.',
+            'dashboard_type.in' => 'نوع الواجهة المختار غير صالح.',
+            'staff_profile.required' => 'يرجى اختيار تصنيف المشرف / المعلم.',
+            'staff_profile.in' => 'تصنيف المشرف / المعلم غير صالح.',
+            'permissions.array' => 'تنسيق الصلاحيات المرسل غير صالح.',
+            'permissions.*.exists' => 'إحدى الصلاحيات المحددة غير موجودة في النظام.',
+        ];
+    }
+
+    /**
+     * أسماء الحقول في رسائل التحقق.
+     */
+    private function roleValidationAttributes(): array
+    {
+        return [
+            'name' => 'اسم الدور',
+            'dashboard_type' => 'نوع الواجهة',
+            'staff_profile' => 'تصنيف المشرف / المعلم',
+            'permissions' => 'الصلاحيات',
+        ];
     }
 }
