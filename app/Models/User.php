@@ -570,10 +570,7 @@ class User extends Authenticatable
 
         return $query->whereHas('roles', function ($q) use ($rolesTable) {
             if (Schema::hasColumn($rolesTable, 'staff_profile')) {
-                $q->where(function ($inner) {
-                    $inner->where('staff_profile', 'supervisor')
-                        ->orWhere('name', 'supervisor');
-                });
+                $q->where('staff_profile', 'supervisor');
             } else {
                 $q->where('name', 'supervisor');
             }
@@ -708,16 +705,12 @@ class User extends Authenticatable
             return false;
         }
 
-        if ($this->hasRole('supervisor')) {
-            return true;
-        }
-
         $rolesTable = config('permission.table_names.roles', 'roles');
-        if (! Schema::hasColumn($rolesTable, 'staff_profile')) {
-            return false;
+        if (Schema::hasColumn($rolesTable, 'staff_profile')) {
+            return $this->roles()->where('staff_profile', 'supervisor')->exists();
         }
 
-        return $this->roles()->where('staff_profile', 'supervisor')->exists();
+        return $this->hasRole('supervisor');
     }
 
     public function usesSupervisorAssignmentScope(): bool

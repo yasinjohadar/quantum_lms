@@ -8,6 +8,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class TeacherProgressService
 {
@@ -159,7 +160,22 @@ class TeacherProgressService
      */
     public static function getAllTeachersProgress(?int $weekId = null): array
     {
-        $teachers = User::role('teacher')->with('assignedSubjects')->orderBy('name')->get();
+        $query = User::query()
+            ->with('assignedSubjects')
+            ->orderBy('name');
+
+        $rolesTable = config('permission.table_names.roles', 'roles');
+        if (Schema::hasColumn($rolesTable, 'staff_profile')) {
+            // نعتمد على staff_profile في جدول الأدوار حتى يعمل مع تعدد أسماء أدوار المعلمين
+            $query->whereHas('roles', function ($q) {
+                $q->where('staff_profile', 'teacher');
+            });
+        } else {
+            // fallback للتوافق مع قواعد بيانات قديمة لا تحتوي staff_profile
+            $query->role('teacher');
+        }
+
+        $teachers = $query->get();
         $out = [];
         foreach ($teachers as $teacher) {
             $out[] = [
