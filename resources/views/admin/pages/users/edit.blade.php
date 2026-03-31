@@ -62,7 +62,7 @@
                         @php
                             $returnContext = old('return_context', request('role'));
                         @endphp
-                        @if (in_array($returnContext, ['supervisor', 'teacher'], true))
+                        @if (in_array($returnContext, ['supervisor', 'teacher', 'admin'], true))
                             <input type="hidden" name="return_context" value="{{ $returnContext }}">
                         @endif
 

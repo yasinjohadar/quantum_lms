@@ -73,7 +73,7 @@ class UserController extends Controller
     /**
      * Display a listing of the resource.
      */
-public function index(Request $request)
+    public function index(Request $request)
     {
         $roles = Role::all();
 
@@ -123,6 +123,47 @@ public function index(Request $request)
         }
 
         return view("admin.pages.users.index", compact("users", "roles", "classes"));
+    }
+
+    /**
+     * قائمة المدراء (users with role=admin فقط)
+     */
+    public function adminsIndex(Request $request)
+    {
+        // المدراء: كل مستخدم لديه role=admin
+        $adminsQuery = User::query()
+            ->whereHas('roles', function ($q) {
+                $q->where('name', 'admin');
+            });
+
+        // بحث بالاسم / الإيميل / الهاتف
+        if ($request->filled('query')) {
+            $search = $request->input('query');
+            $adminsQuery->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        // افتراضياً: عرض الحسابات المفعلة فقط
+        $isActiveFilter = $request->has('is_active') ? $request->input('is_active') : '1';
+        if ($isActiveFilter !== '' && $isActiveFilter !== null) {
+            $adminsQuery->where('is_active', $isActiveFilter);
+        }
+
+        $admins = $adminsQuery->orderBy('name')->paginate(10);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'html' => view('admin.pages.admins.partials.table-rows', ['admins' => $admins])->render(),
+                'pagination' => view('admin.pages.admins.partials.pagination', ['admins' => $admins])->render(),
+                'impersonate_modals' => view('admin.pages.users.partials.impersonate-modals', ['users' => $admins])->render(),
+            ]);
+        }
+
+        return view('admin.pages.admins.index', compact('admins'));
     }
 
 
@@ -205,6 +246,11 @@ public function index(Request $request)
             // تعيين الأدوار
             if ($request->has('roles')) {
                 $user->syncRoles($request->roles);
+            }
+
+            if ($request->input('return_context') === 'admin' || $user->hasRole('admin')) {
+                return redirect()->route('admin.admins.index')
+                    ->with("success", "✅ تم إضافة المستخدم ({$user->name}) كمدير بنجاح");
             }
 
             if ($request->input('return_context') === 'supervisor' || $user->hasSupervisorStaffIdentity()) {
@@ -316,6 +362,11 @@ public function index(Request $request)
             }
 
             $user->syncRoles($roles);
+
+            if ($request->input('return_context') === 'admin' || $user->hasRole('admin')) {
+                return redirect()->route('admin.admins.index')
+                    ->with('success', "✅ تم تحديث بيانات المدير ({$user->name}) بنجاح");
+            }
 
             if ($request->input('return_context') === 'supervisor' || $user->hasSupervisorStaffIdentity()) {
                 return redirect()->route('admin.supervisors.assignments.index')

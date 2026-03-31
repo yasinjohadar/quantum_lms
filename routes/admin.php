@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AnalyticsDashboardController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ClassController;
 use App\Http\Controllers\Admin\DistinguishedStudentController;
 use App\Http\Controllers\Admin\EnrollmentController;
@@ -488,6 +489,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('users.archive');
         Route::post('users/bulk-archive', [\App\Http\Controllers\Admin\ArchivedUserController::class, 'bulkArchive'])
             ->name('users.bulk-archive');
+
+        // قائمة المدراء (users with role=admin)
+        Route::get('admins', [UserController::class, 'adminsIndex'])
+            ->name('admins.index');
 
         // السنوات الدراسية والأسابيع
         Route::resource('academic-years', \App\Http\Controllers\Admin\AcademicYearController::class);
