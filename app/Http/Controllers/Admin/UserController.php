@@ -206,6 +206,15 @@ public function index(Request $request)
                 $user->syncRoles($request->roles);
             }
 
+            if ($request->input('return_context') === 'supervisor' || $user->hasSupervisorStaffIdentity()) {
+                return redirect()->route('admin.supervisors.assignments.index')
+                    ->with("success", "✅ تم إضافة المستخدم ({$user->name}) بنجاح");
+            }
+            if ($request->input('return_context') === 'teacher' || $user->hasTeacherStaffIdentity()) {
+                return redirect()->route('admin.teachers.assignments.index')
+                    ->with("success", "✅ تم إضافة المستخدم ({$user->name}) بنجاح");
+            }
+
             return redirect()->route("users.index")
                 ->with("success", "✅ تم إضافة المستخدم ({$user->name}) بنجاح");
 
@@ -306,6 +315,15 @@ public function index(Request $request)
             }
 
             $user->syncRoles($roles);
+
+            if ($request->input('return_context') === 'supervisor' || $user->hasSupervisorStaffIdentity()) {
+                return redirect()->route('admin.supervisors.assignments.index')
+                    ->with('success', "✅ تم تحديث بيانات المستخدم ({$user->name}) بنجاح");
+            }
+            if ($request->input('return_context') === 'teacher' || $user->hasTeacherStaffIdentity()) {
+                return redirect()->route('admin.teachers.assignments.index')
+                    ->with('success', "✅ تم تحديث بيانات المستخدم ({$user->name}) بنجاح");
+            }
 
             return redirect()->route('users.index')
                 ->with('success', "✅ تم تحديث بيانات المستخدم ({$user->name}) بنجاح");

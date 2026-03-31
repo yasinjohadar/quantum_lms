@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\LoginLog;
+use App\Models\Role;
 use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\User;
 use App\Models\UserSession;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class SupervisorAssignmentController extends Controller
 {
@@ -27,6 +29,7 @@ class SupervisorAssignmentController extends Controller
         $request->validate([
             'class_id' => 'nullable|exists:classes,id',
             'subject_id' => 'nullable|exists:subjects,id',
+            'role' => 'nullable|string|exists:roles,name',
         ]);
 
         $supervisorsQuery = User::supervisors()->with(['roles', 'assignedClassesAsSupervisor', 'assignedSubjectsAsSupervisor']);
@@ -57,6 +60,17 @@ class SupervisorAssignmentController extends Controller
             });
         }
 
+        if ($request->filled('role')) {
+            $roleName = $request->input('role');
+            $rolesTable = config('permission.table_names.roles', 'roles');
+            $supervisorsQuery->whereHas('roles', function ($q) use ($roleName, $rolesTable) {
+                $q->where('name', $roleName);
+                if (Schema::hasColumn($rolesTable, 'staff_profile')) {
+                    $q->where('staff_profile', 'supervisor');
+                }
+            });
+        }
+
         $supervisors = $supervisorsQuery->orderBy('name')->paginate(20);
 
         $ids = $supervisors->pluck('id');
@@ -82,6 +96,14 @@ class SupervisorAssignmentController extends Controller
 
         $filterClasses = SchoolClass::with('stage')->ordered()->get();
         $filterSubjects = collect();
+        $rolesTable = config('permission.table_names.roles', 'roles');
+        $filterRolesQuery = Role::query()->orderBy('name');
+        if (Schema::hasColumn($rolesTable, 'staff_profile')) {
+            $filterRolesQuery->where('staff_profile', 'supervisor');
+        } else {
+            $filterRolesQuery->where('name', 'supervisor');
+        }
+        $filterRoles = $filterRolesQuery->get(['name']);
         if ($request->filled('class_id')) {
             $filterSubjects = Subject::active()->ordered()->where('class_id', $request->input('class_id'))->get();
         }
@@ -111,6 +133,7 @@ class SupervisorAssignmentController extends Controller
             'onlineUserIds',
             'filterClasses',
             'filterSubjects',
+            'filterRoles',
         ));
     }
 

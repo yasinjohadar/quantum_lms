@@ -551,10 +551,7 @@ class User extends Authenticatable
 
         return $query->whereHas('roles', function ($q) use ($rolesTable) {
             if (Schema::hasColumn($rolesTable, 'staff_profile')) {
-                $q->where(function ($inner) {
-                    $inner->where('staff_profile', 'teacher')
-                        ->orWhere('name', 'teacher');
-                });
+                $q->where('staff_profile', 'teacher');
             } else {
                 $q->where('name', 'teacher');
             }

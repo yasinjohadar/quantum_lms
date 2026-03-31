@@ -120,7 +120,7 @@
                         @can('user-edit')
                             <li>
                                 <a class="dropdown-item"
-                                   href="{{ route('users.edit', $supervisor->id) }}">
+                                   href="{{ route('users.edit', ['user' => $supervisor->id, 'role' => 'supervisor']) }}">
                                     <i class="fa-solid fa-pen-to-square me-2 text-info"></i> تعديل
                                 </a>
                             </li>

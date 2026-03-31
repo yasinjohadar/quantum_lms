@@ -59,6 +59,12 @@
                     <form method="POST" action="{{ route('users.update', $user->id) }}">
                         @csrf
                         @method('PUT')
+                        @php
+                            $returnContext = old('return_context', request('role'));
+                        @endphp
+                        @if (in_array($returnContext, ['supervisor', 'teacher'], true))
+                            <input type="hidden" name="return_context" value="{{ $returnContext }}">
+                        @endif
 
                         <div class="row g-3">
                             <!-- المعلومات الأساسية -->

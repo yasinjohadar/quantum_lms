@@ -9,13 +9,28 @@
         background-color: var(--bs-body-bg, #fff);
         box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.08);
     }
+    #role-permissions-summary-panel .card-header,
+    #role-permissions-summary-panel .card-body {
+        background-color: var(--bs-card-bg, var(--bs-body-bg, #fff));
+    }
     [data-theme-mode="dark"] #role-permissions-summary-panel,
     [data-bs-theme="dark"] #role-permissions-summary-panel {
         box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.35);
     }
+    [data-theme-mode="dark"] #role-permissions-summary-panel .card-header,
+    [data-theme-mode="dark"] #role-permissions-summary-panel .card-body,
+    [data-bs-theme="dark"] #role-permissions-summary-panel .card-header,
+    [data-bs-theme="dark"] #role-permissions-summary-panel .card-body {
+        background-color: #111a2e;
+    }
     .role-permissions-summary-list-wrap {
         max-height: min(55vh, 520px);
         overflow-y: auto;
+        background-color: var(--bs-card-bg, var(--bs-body-bg, #05060a));
+    }
+    [data-theme-mode="dark"] #role-permissions-summary-panel .role-permissions-summary-list-wrap,
+    [data-bs-theme="dark"] #role-permissions-summary-panel .role-permissions-summary-list-wrap {
+        background-color: #111a2e;
     }
     #role-permissions-summary-list {
         display: grid;
@@ -31,6 +46,11 @@
         border-radius: 0.375rem;
         padding: 0.5rem 0.65rem;
         background: var(--bs-tertiary-bg, rgba(0, 0, 0, 0.02));
+    }
+    [data-theme-mode="dark"] #role-permissions-summary-list > li,
+    [data-bs-theme="dark"] #role-permissions-summary-list > li {
+        background: #0f172a;
+        border-color: rgba(255, 255, 255, 0.12);
     }
     #role-permissions-summary-list .role-permissions-summary-index {
         flex-shrink: 0;

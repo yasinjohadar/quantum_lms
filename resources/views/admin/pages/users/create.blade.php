@@ -95,6 +95,12 @@
                 <div class="card-body">
                     <form method="POST" action="{{ route('users.store') }}" enctype="multipart/form-data">
                         @csrf
+                        @php
+                            $returnContext = old('return_context', request('role'));
+                        @endphp
+                        @if (in_array($returnContext, ['supervisor', 'teacher'], true))
+                            <input type="hidden" name="return_context" value="{{ $returnContext }}">
+                        @endif
 
                         <div class="row g-3">
                             <!-- المعلومات الأساسية -->

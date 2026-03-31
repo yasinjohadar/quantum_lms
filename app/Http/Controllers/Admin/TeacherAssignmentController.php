@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\LoginLog;
+use App\Models\Role;
 use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\User;
@@ -13,6 +14,7 @@ use App\Services\TeacherProgressService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 
 class TeacherAssignmentController extends Controller
 {
@@ -28,7 +30,11 @@ class TeacherAssignmentController extends Controller
      */
     public function index(Request $request)
     {
-        $teachersQuery = User::teachers()->with(['assignedClasses', 'assignedSubjects']);
+        $request->validate([
+            'role' => 'nullable|string|exists:roles,name',
+        ]);
+
+        $teachersQuery = User::teachers()->with(['roles', 'assignedClasses', 'assignedSubjects']);
 
         // فلترة حسب البحث
         if ($request->filled('search')) {
@@ -48,6 +54,17 @@ class TeacherAssignmentController extends Controller
         } elseif ($assignment === 'unassigned') {
             $teachersQuery->whereDoesntHave('assignedClasses')
                 ->whereDoesntHave('assignedSubjects');
+        }
+
+        if ($request->filled('role')) {
+            $roleName = $request->input('role');
+            $rolesTable = config('permission.table_names.roles', 'roles');
+            $teachersQuery->whereHas('roles', function ($q) use ($roleName, $rolesTable) {
+                $q->where('name', $roleName);
+                if (Schema::hasColumn($rolesTable, 'staff_profile')) {
+                    $q->where('staff_profile', 'teacher');
+                }
+            });
         }
 
         $pagesProgressFilter = $request->input('pages_progress', 'all');
@@ -182,6 +199,28 @@ class TeacherAssignmentController extends Controller
 
         $activeWeeks = AcademicWeekService::getActiveYearWeeks();
         $currentWeek = AcademicWeekService::getCurrentAcademicWeek();
+        $rolesTable = config('permission.table_names.roles', 'roles');
+        $filterRolesQuery = Role::query()->orderBy('name');
+        if (Schema::hasColumn($rolesTable, 'staff_profile')) {
+            $filterRolesQuery->where('staff_profile', 'teacher');
+        } else {
+            $filterRolesQuery->where('name', 'teacher');
+        }
+        $filterRoles = $filterRolesQuery->get(['name']);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            $html = view('admin.pages.teachers.partials.table-rows', compact('teachers', 'teachersProgress', 'lastLogins', 'onlineUserIds'))->render();
+            $pagination = view('admin.pages.teachers.partials.pagination', compact('teachers'))->render();
+            $impersonateModals = view('admin.pages.users.partials.impersonate-modals', ['users' => $teachers])->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'pagination' => $pagination,
+                'impersonate_modals' => $impersonateModals,
+                'count' => $teachers->total(),
+            ]);
+        }
 
         return view('admin.pages.teachers.index', compact(
             'teachers',
@@ -192,7 +231,8 @@ class TeacherAssignmentController extends Controller
             'lastLogins',
             'onlineUserIds',
             'activeWeeks',
-            'currentWeek'
+            'currentWeek',
+            'filterRoles'
         ));
     }
 

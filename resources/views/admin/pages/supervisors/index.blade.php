@@ -109,6 +109,17 @@
                                         @endif
                                     </select>
                                 </div>
+                                <div class="col-md-3 col-lg-3">
+                                    <label class="form-label small mb-1">الدور</label>
+                                    <select name="role" id="supervisorRoleFilter" class="form-select form-select-sm">
+                                        <option value="">كل أدوار المشرفين</option>
+                                        @foreach($filterRoles ?? [] as $role)
+                                            <option value="{{ $role->name }}" {{ (string) request('role') === (string) $role->name ? 'selected' : '' }}>
+                                                {{ $role->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
                                 <div class="col-md-3 col-lg-3 d-flex flex-wrap gap-2">
                                     <button type="button" id="supervisorSearchBtn" class="btn btn-primary btn-sm">
                                         <i class="bi bi-search me-1"></i> بحث
@@ -191,6 +202,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('supervisorSearch');
     const classFilter = document.getElementById('supervisorClassFilter');
     const subjectFilter = document.getElementById('supervisorSubjectFilter');
+    const roleFilter = document.getElementById('supervisorRoleFilter');
     const searchBtn = document.getElementById('supervisorSearchBtn');
     const clearBtn = document.getElementById('supervisorClearFiltersBtn');
     const loadingEl = document.getElementById('supervisorsLoading');
@@ -214,6 +226,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (subjectFilter && subjectFilter.value) {
             params.append('subject_id', subjectFilter.value);
+        }
+        if (roleFilter && roleFilter.value) {
+            params.append('role', roleFilter.value);
         }
         params.append('page', page || 1);
         return params;
@@ -435,10 +450,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    if (roleFilter) {
+        roleFilter.addEventListener('change', function() {
+            fetchSupervisors(1);
+        });
+    }
+
     if (clearBtn) {
         clearBtn.addEventListener('click', function() {
             if (searchInput) searchInput.value = '';
             if (classFilter) classFilter.value = '';
+            if (roleFilter) roleFilter.value = '';
             loadSubjectsByClass('', false).then(() => fetchSupervisors(1));
         });
     }
