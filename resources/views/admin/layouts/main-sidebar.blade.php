@@ -132,7 +132,7 @@
                         @endif
 
                         @canany(['user-list', 'enrollment-list', 'role-list', 'teacher-assignment-list', 'supervisor-assignment-list', 'teacher-progress-view', 'academic-year-list', 'academic-week-list'])
-                        <li class="slide has-sub {{ request()->is('users*') || request()->is('admin/admins*') || request()->is('admin/archived-users*') || request()->is('admin/teachers/assignments*') || request()->is('admin/supervisors/assignments*') || request()->is('roles*') || (request()->is('admin/enrollments*') && !request()->is('admin/enrollments/pending*') && !request()->is('admin/enrollments/class-pending*')) ? 'open' : '' }}">
+                        <li class="slide has-sub {{ request()->is('users*') || request()->is('admin/users-management*') || request()->is('admin/admins*') || request()->is('admin/archived-users*') || request()->is('admin/teachers/assignments*') || request()->is('admin/supervisors/assignments*') || request()->is('roles*') || (request()->is('admin/enrollments*') && !request()->is('admin/enrollments/pending*') && !request()->is('admin/enrollments/class-pending*')) ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -145,6 +145,13 @@
                                 <li class="slide side-menu__label1">
                                     <a href="javascript:void(0);">المستخدمون</a>
                                 </li>
+                                @can('user-list')
+                                <li class="slide {{ request()->is('admin/users-management*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.users.manage') }}" class="side-menu__item {{ request()->is('admin/users-management*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">كافة المستخدمين</span>
+                                    </a>
+                                </li>
+                                @endcan
                                 @can('user-list')
                                 <li class="slide {{ request()->is('users*') && !request()->is('admin/archived-users*') && !request()->is('admin/teachers/assignments*') && !request()->is('admin/supervisors/assignments*') ? 'active' : '' }}">
                                     <a href="{{ route('users.index') }}" class="side-menu__item {{ request()->is('users*') && !request()->is('admin/archived-users*') && !request()->is('admin/teachers/assignments*') && !request()->is('admin/supervisors/assignments*') ? 'active' : '' }}">

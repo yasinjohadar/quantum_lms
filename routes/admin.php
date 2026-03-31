@@ -494,6 +494,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::get('admins', [UserController::class, 'adminsIndex'])
             ->name('admins.index');
 
+        // صفحة إدارة جميع المستخدمين (غير المؤرشفين)
+        Route::get('users-management', [UserController::class, 'manageIndex'])
+            ->name('users.manage');
+
         // السنوات الدراسية والأسابيع
         Route::resource('academic-years', \App\Http\Controllers\Admin\AcademicYearController::class);
         Route::post('academic-years/{academic_year}/activate', [\App\Http\Controllers\Admin\AcademicYearController::class, 'activate'])

@@ -60,9 +60,9 @@
                         @csrf
                         @method('PUT')
                         @php
-                            $returnContext = old('return_context', request('role'));
+                            $returnContext = old('return_context', request('return_context', request('role')));
                         @endphp
-                        @if (in_array($returnContext, ['supervisor', 'teacher', 'admin'], true))
+                        @if (in_array($returnContext, ['supervisor', 'teacher', 'admin', 'manage'], true))
                             <input type="hidden" name="return_context" value="{{ $returnContext }}">
                         @endif
 

@@ -166,6 +166,76 @@ class UserController extends Controller
         return view('admin.pages.admins.index', compact('admins'));
     }
 
+    /**
+     * صفحة إدارة جميع المستخدمين (غير المؤرشفين)
+     */
+    public function manageIndex(Request $request)
+    {
+        $roles = Role::all();
+
+        $usersQuery = User::query()
+            ->with('roles');
+
+        // استبعاد المؤرشفين دائماً
+        $usersQuery->notArchived();
+
+        // بحث عام بالاسم / البريد / الهاتف
+        if ($request->filled('query')) {
+            $search = $request->input('query');
+            $usersQuery->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        // فلتر نوع المستخدم
+        $userType = $request->input('user_type');
+        if ($userType === 'student') {
+            $usersQuery->students();
+        } elseif ($userType === 'teacher') {
+            $usersQuery->teachers();
+        } elseif ($userType === 'supervisor') {
+            $usersQuery->supervisors();
+        } elseif ($userType === 'admin') {
+            $usersQuery->whereHas('roles', function ($q) {
+                $q->where('name', 'admin');
+            });
+        } elseif ($userType === 'other') {
+            // مستخدمون لا يملكون أي من الأدوار الأساسية المعروفة
+            $usersQuery->whereDoesntHave('roles', function ($q) {
+                $q->whereIn('name', ['student', 'teacher', 'supervisor', 'admin']);
+            });
+        }
+
+        // فلتر حسب الدور
+        if ($request->filled('role')) {
+            $roleName = $request->input('role');
+            $usersQuery->whereHas('roles', function ($q) use ($roleName) {
+                $q->where('name', $roleName);
+            });
+        }
+
+        // فلتر حالة الحساب (افتراضياً مفعل فقط)
+        $isActiveFilter = $request->has('is_active') ? $request->input('is_active') : '1';
+        if ($isActiveFilter !== '' && $isActiveFilter !== null) {
+            $usersQuery->where('is_active', $isActiveFilter);
+        }
+
+        $users = $usersQuery->orderBy('name')->paginate(10);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'html' => view('admin.pages.users.partials.manage-tbody', compact('users'))->render(),
+                'pagination' => view('admin.pages.users.partials.manage-pagination', compact('users'))->render(),
+                'impersonate_modals' => view('admin.pages.users.partials.impersonate-modals', ['users' => $users])->render(),
+            ]);
+        }
+
+        return view('admin.pages.users.manage', compact('users', 'roles'));
+    }
+
 
 
 
@@ -246,6 +316,11 @@ class UserController extends Controller
             // تعيين الأدوار
             if ($request->has('roles')) {
                 $user->syncRoles($request->roles);
+            }
+
+            if ($request->input('return_context') === 'manage') {
+                return redirect()->route('admin.users.manage')
+                    ->with("success", "✅ تم إضافة المستخدم ({$user->name}) بنجاح");
             }
 
             if ($request->input('return_context') === 'admin' || $user->hasRole('admin')) {
@@ -362,6 +437,11 @@ class UserController extends Controller
             }
 
             $user->syncRoles($roles);
+
+            if ($request->input('return_context') === 'manage') {
+                return redirect()->route('admin.users.manage')
+                    ->with('success', "✅ تم تحديث بيانات المستخدم ({$user->name}) بنجاح");
+            }
 
             if ($request->input('return_context') === 'admin' || $user->hasRole('admin')) {
                 return redirect()->route('admin.admins.index')
