@@ -42,10 +42,10 @@
                     data-bs-target="#toggleStatus{{ $user->id }}">
                 @if ($user->is_active)
                     <i class="fa-solid fa-check-circle me-1"></i>
-                    <span>الحساب مفعل</span>
+                    <span>مفعل</span>
                 @else
                     <i class="fa-solid fa-ban me-1"></i>
-                    <span>الحساب معطل</span>
+                    <span>معطل</span>
                 @endif
             </button>
         </td>

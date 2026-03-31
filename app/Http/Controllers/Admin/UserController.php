@@ -95,9 +95,10 @@ public function index(Request $request)
             });
         }
 
-        // فلترة حسب الحالة النشطة
-        if ($request->filled('is_active')) {
-            $usersQuery->where('is_active', $request->input('is_active'));
+        // افتراضياً: عرض الحسابات المفعلة فقط
+        $isActiveFilter = $request->has('is_active') ? $request->input('is_active') : '1';
+        if ($isActiveFilter !== '' && $isActiveFilter !== null) {
+            $usersQuery->where('is_active', $isActiveFilter);
         }
 
         // فلترة حسب الصف

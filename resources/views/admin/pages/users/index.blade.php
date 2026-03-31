@@ -83,9 +83,9 @@
 
                                         {{-- فلتر الحالة النشطة --}}
                                         <select name="is_active" class="form-select">
-                                            <option value="">كل الحالات النشطة</option>
-                                            <option value="1" {{ request('is_active') == '1' ? 'selected' : '' }}>نشط</option>
-                                            <option value="0" {{ request('is_active') == '0' ? 'selected' : '' }}>غير نشط</option>
+                                            <option value="">كل الحالات</option>
+                                            <option value="1" {{ request('is_active', '1') == '1' ? 'selected' : '' }}>مفعل</option>
+                                            <option value="0" {{ request('is_active', '1') == '0' ? 'selected' : '' }}>معطل</option>
                                         </select>
 
                                         {{-- فلتر الصف --}}
@@ -1077,7 +1077,8 @@
             const classId = classFilter ? classFilter.value : '';
 
             if (query) params.set('query', query);
-            if (isActive !== '') params.set('is_active', isActive);
+            // أرسل is_active دائماً (حتى لو فارغ) لتمييز "كل الحالات" عن القيمة الافتراضية
+            params.set('is_active', isActive);
             if (classId) params.set('class_id', classId);
             params.set('page', page || 1);
 
@@ -1118,6 +1119,12 @@
 
         if (classFilter) {
             classFilter.addEventListener('change', function() {
+                fetchUsers(1);
+            });
+        }
+
+        if (isActiveSelect) {
+            isActiveSelect.addEventListener('change', function() {
                 fetchUsers(1);
             });
         }
