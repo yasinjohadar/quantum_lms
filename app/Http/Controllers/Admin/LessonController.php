@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreLessonRequest;
 use App\Http\Requests\Admin\UpdateLessonRequest;
 use App\Models\Lesson;
+use App\Models\LessonAttachment;
 use App\Models\LessonCompletion;
 use App\Models\Unit;
 use App\Services\VimeoService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Helpers\StorageHelper;
@@ -34,6 +36,43 @@ class LessonController extends Controller
         Log::info('محاولة إنشاء درس جديد للوحدة: ' . $unit->id, $request->all());
 
         try {
+            $hasAttachmentInput = $request->filled('attachment_title')
+                || $request->filled('attachment_type')
+                || $request->filled('attachment_url')
+                || $request->filled('attachment_description')
+                || $request->hasFile('attachment_file');
+
+            if ($hasAttachmentInput) {
+                $request->validate([
+                    'attachment_title' => ['required', 'string', 'max:255'],
+                    'attachment_type' => ['required', 'in:file,link,document,image,audio'],
+                    'attachment_description' => ['nullable', 'string'],
+                    'attachment_file' => ['nullable', 'file', 'max:51200'],
+                    'attachment_url' => ['nullable', 'url', 'max:500'],
+                ], [
+                    'attachment_title.required' => 'عنوان المرفق مطلوب عند إضافة مرفق.',
+                    'attachment_title.max' => 'عنوان المرفق يجب ألا يتجاوز 255 حرفاً.',
+                    'attachment_type.required' => 'نوع المرفق مطلوب عند إضافة مرفق.',
+                    'attachment_type.in' => 'نوع المرفق غير صالح.',
+                    'attachment_file.file' => 'ملف المرفق غير صالح.',
+                    'attachment_file.max' => 'حجم ملف المرفق يجب ألا يتجاوز 50 ميجابايت.',
+                    'attachment_url.url' => 'رابط المرفق يجب أن يكون رابطاً صالحاً.',
+                    'attachment_url.max' => 'رابط المرفق يجب ألا يتجاوز 500 حرف.',
+                ]);
+
+                if ($request->input('attachment_type') === 'link' && !$request->filled('attachment_url')) {
+                    throw ValidationException::withMessages([
+                        'attachment_url' => 'رابط المرفق مطلوب عندما يكون نوع المرفق رابطاً.',
+                    ]);
+                }
+
+                if ($request->input('attachment_type') !== 'link' && !$request->hasFile('attachment_file')) {
+                    throw ValidationException::withMessages([
+                        'attachment_file' => 'ملف المرفق مطلوب عندما يكون نوع المرفق ملفاً.',
+                    ]);
+                }
+            }
+
             // التحقق من التخصيص
             $user = auth()->user();
             if ($user->usesTeacherAssignmentScope()) {
@@ -105,16 +144,58 @@ class LessonController extends Controller
 
             $lesson = Lesson::create($data);
 
+            if ($hasAttachmentInput) {
+                $attachmentData = [
+                    'lesson_id' => $lesson->id,
+                    'title' => $request->input('attachment_title'),
+                    'type' => $request->input('attachment_type'),
+                    'description' => $request->input('attachment_description'),
+                    'is_downloadable' => $request->has('attachment_is_downloadable'),
+                    'is_active' => true,
+                    'order' => 1,
+                ];
+
+                if ($request->input('attachment_type') === 'link') {
+                    $attachmentData['url'] = $request->input('attachment_url');
+                } elseif ($request->hasFile('attachment_file')) {
+                    $attachmentFile = $request->file('attachment_file');
+                    $attachmentFileName = time() . '_attachment_' . $attachmentFile->getClientOriginalName();
+                    $attachmentData['file_path'] = $attachmentFile->storeAs('lessons/attachments', $attachmentFileName, 'public');
+                    $attachmentData['file_name'] = $attachmentFile->getClientOriginalName();
+                    $attachmentData['file_type'] = $attachmentFile->getClientOriginalExtension();
+                    $attachmentData['file_size'] = $attachmentFile->getSize();
+                }
+
+                LessonAttachment::create($attachmentData);
+            }
+
             Log::info('تم إنشاء الدرس بنجاح، ID: ' . $lesson->id);
 
             // الحصول على subject_id للتوجيه
             $subjectId = $unit->section->subject_id;
+
+            if ($this->wantsJsonResponse($request)) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم إنشاء الدرس "' . $lesson->title . '" بنجاح.',
+                    'lesson_id' => $lesson->id,
+                    'unit_id' => $lesson->unit_id,
+                    'subject_id' => $subjectId,
+                ]);
+            }
 
             return redirect()
                 ->route('admin.subjects.show', $subjectId)
                 ->with('success', 'تم إنشاء الدرس "' . $lesson->title . '" بنجاح.');
         } catch (\Exception $e) {
             Log::error('خطأ في إنشاء درس: ' . $e->getMessage());
+
+            if ($this->wantsJsonResponse($request)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ أثناء إنشاء الدرس.',
+                ], 500);
+            }
 
             return redirect()
                 ->back()
@@ -272,11 +353,28 @@ class LessonController extends Controller
 
             $subjectId = $lesson->unit->section->subject_id;
 
+            if ($this->wantsJsonResponse($request)) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم تحديث الدرس بنجاح.',
+                    'lesson_id' => $lesson->id,
+                    'unit_id' => $lesson->unit_id,
+                    'subject_id' => $subjectId,
+                ]);
+            }
+
             return redirect()
                 ->route('admin.subjects.show', $subjectId)
                 ->with('success', 'تم تحديث الدرس بنجاح.');
         } catch (\Exception $e) {
             Log::error('خطأ في تحديث درس: ' . $e->getMessage());
+
+            if ($this->wantsJsonResponse($request)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ أثناء تحديث الدرس.',
+                ], 500);
+            }
 
             return redirect()
                 ->back()
@@ -287,7 +385,7 @@ class LessonController extends Controller
     /**
      * حذف درس.
      */
-    public function destroy(Lesson $lesson)
+    public function destroy(Request $request, Lesson $lesson)
     {
         // التحقق من التخصيص
         $user = auth()->user();
@@ -295,6 +393,13 @@ class LessonController extends Controller
             $subject = $lesson->unit->section->subject;
             if (!$user->isAssignedToSubject($subject->id) && 
                 !$user->isAssignedToClass($subject->class_id)) {
+                if ($this->wantsJsonResponse($request)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'غير مصرح لك بالوصول إلى هذا الدرس.',
+                    ], 403);
+                }
+
                 abort(403, 'غير مصرح لك بالوصول إلى هذا الدرس');
             }
         }
@@ -320,11 +425,28 @@ class LessonController extends Controller
 
             $lesson->delete();
 
+            if ($this->wantsJsonResponse($request)) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم حذف الدرس "' . $lessonTitle . '" بنجاح.',
+                    'lesson_id' => $lesson->id,
+                    'unit_id' => $lesson->unit_id,
+                    'subject_id' => $subjectId,
+                ]);
+            }
+
             return redirect()
                 ->route('admin.subjects.show', $subjectId)
                 ->with('success', 'تم حذف الدرس "' . $lessonTitle . '" بنجاح.');
         } catch (\Exception $e) {
             Log::error('خطأ في حذف درس: ' . $e->getMessage());
+
+            if ($this->wantsJsonResponse($request)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ أثناء حذف الدرس.',
+                ], 500);
+            }
 
             return redirect()
                 ->route('admin.subjects.show', $subjectId)
@@ -412,6 +534,11 @@ class LessonController extends Controller
         return redirect()
             ->route('admin.subjects.show', $subjectId)
             ->with('success', 'تم رفض تفعيل الدرس وتم إرسال الملاحظات للمعلم.');
+    }
+
+    private function wantsJsonResponse(Request $request): bool
+    {
+        return $request->expectsJson() || $request->ajax();
     }
 }
 

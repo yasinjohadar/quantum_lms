@@ -75,6 +75,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
                 </div>
             @endif
+            <div id="ajaxLessonAlerts" class="mt-3"></div>
 
             <div class="page-header d-flex justify-content-between align-items-center my-4">
                 <h5 class="page-title mb-0">تفاصيل المادة: {{ $subject->name }}</h5>
@@ -492,7 +493,7 @@
                                                                                 @endif
 
                                                                                 {{-- محتويات الوحدة (الدروس) --}}
-                                                                                <div class="unit-content">
+                                                                                <div class="unit-content" data-unit-content-id="{{ $unit->id }}">
                                                                                     @if($unit->allLessons()->count() === 0 && $unit->questions->count() === 0)
                                                                                         <div class="text-center py-4 text-muted bg-light rounded">
                                                                                             <i class="bi bi-collection-play display-6 d-block mb-2"></i>
@@ -504,7 +505,7 @@
                                                                                     @else
                                                                                         <div class="list-group list-group-flush">
                                                                                             @foreach($unit->allLessons() as $lesson)
-                                                                                                <div class="list-group-item d-flex flex-column px-0 py-2">
+                                                                                                <div class="list-group-item d-flex flex-column px-0 py-2" data-lesson-id="{{ $lesson->id }}">
                                                                                                     <div class="d-flex align-items-center justify-content-between">
                                                                                                     <div class="d-flex align-items-center">
                                                                                                         <div class="me-3 position-relative">
@@ -973,7 +974,7 @@
                             </h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
                         </div>
-                        <form action="{{ route('admin.units.lessons.store', $unit->id) }}" method="POST" enctype="multipart/form-data">
+                        <form action="{{ route('admin.units.lessons.store', $unit->id) }}" method="POST" enctype="multipart/form-data" class="js-lesson-ajax-form" data-lesson-action="store" data-unit-id="{{ $unit->id }}">
                             @csrf
                             <div class="modal-body">
                                 <div class="row">
@@ -1079,6 +1080,57 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <hr class="my-3">
+                                <h6 class="mb-3">
+                                    <i class="bi bi-paperclip text-info me-1"></i>
+                                    مرفق الدرس (اختياري)
+                                </h6>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">عنوان المرفق</label>
+                                            <input type="text" name="attachment_title" class="form-control" placeholder="مثال: ملف شرح الدرس">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">نوع المرفق</label>
+                                            <select name="attachment_type" class="form-select" id="lessonAttachmentType{{ $unit->id }}">
+                                                <option value="">بدون مرفق</option>
+                                                <option value="file">ملف</option>
+                                                <option value="document">مستند</option>
+                                                <option value="image">صورة</option>
+                                                <option value="audio">ملف صوتي</option>
+                                                <option value="link">رابط خارجي</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3 d-none" id="lessonAttachmentFileField{{ $unit->id }}">
+                                    <label class="form-label">ملف المرفق</label>
+                                    <input type="file" name="attachment_file" class="form-control" id="lessonAttachmentFileInput{{ $unit->id }}">
+                                    <small class="text-muted">الحد الأقصى: 50 ميجابايت</small>
+                                </div>
+
+                                <div class="mb-3 d-none" id="lessonAttachmentUrlField{{ $unit->id }}">
+                                    <label class="form-label">رابط المرفق</label>
+                                    <input type="url" name="attachment_url" class="form-control" id="lessonAttachmentUrlInput{{ $unit->id }}" placeholder="https://example.com/resource">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">وصف المرفق (اختياري)</label>
+                                    <textarea name="attachment_description" class="form-control" rows="2" placeholder="وصف مختصر للمرفق..."></textarea>
+                                </div>
+
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="attachment_is_downloadable" id="attachmentIsDownloadable{{ $unit->id }}" checked>
+                                    <label class="form-check-label" for="attachmentIsDownloadable{{ $unit->id }}">
+                                        السماح بتحميل المرفق
+                                    </label>
+                                </div>
                             </div>
                             <div class="modal-footer border-0">
                                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
@@ -1104,7 +1156,7 @@
                                 </h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
                             </div>
-                            <form action="{{ route('admin.lessons.update', $lesson->id) }}" method="POST" enctype="multipart/form-data">
+                            <form action="{{ route('admin.lessons.update', $lesson->id) }}" method="POST" enctype="multipart/form-data" class="js-lesson-ajax-form" data-lesson-action="update" data-unit-id="{{ $lesson->unit_id }}" data-lesson-id="{{ $lesson->id }}">
                                 @csrf
                                 @method('PUT')
                                 <div class="modal-body">
@@ -1266,7 +1318,7 @@
                                     <i class="bi bi-trash fs-2"></i>
                                 </div>
                             </div>
-                            <form action="{{ route('admin.lessons.destroy', $lesson->id) }}" method="POST">
+                            <form action="{{ route('admin.lessons.destroy', $lesson->id) }}" method="POST" class="js-lesson-ajax-form" data-lesson-action="destroy" data-unit-id="{{ $lesson->unit_id }}" data-lesson-id="{{ $lesson->id }}">
                                 @csrf
                                 @method('DELETE')
                                 <div class="modal-body text-center pt-0 pb-3 px-4">
@@ -1641,6 +1693,44 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // التبديل بين حقل ملف/رابط مرفق الدرس في مودال الإنشاء
+    document.querySelectorAll('[id^="lessonAttachmentType"]').forEach(function(select) {
+        const toggleAttachmentFields = function() {
+            const unitId = select.id.replace('lessonAttachmentType', '');
+            const fileField = document.getElementById('lessonAttachmentFileField' + unitId);
+            const urlField = document.getElementById('lessonAttachmentUrlField' + unitId);
+            const fileInput = document.getElementById('lessonAttachmentFileInput' + unitId);
+            const urlInput = document.getElementById('lessonAttachmentUrlInput' + unitId);
+            const selectedType = select.value;
+
+            if (selectedType === 'link') {
+                fileField.classList.add('d-none');
+                urlField.classList.remove('d-none');
+                if (fileInput) {
+                    fileInput.value = '';
+                }
+            } else if (selectedType) {
+                fileField.classList.remove('d-none');
+                urlField.classList.add('d-none');
+                if (urlInput) {
+                    urlInput.value = '';
+                }
+            } else {
+                fileField.classList.add('d-none');
+                urlField.classList.add('d-none');
+                if (fileInput) {
+                    fileInput.value = '';
+                }
+                if (urlInput) {
+                    urlInput.value = '';
+                }
+            }
+        };
+
+        select.addEventListener('change', toggleAttachmentFields);
+        toggleAttachmentFields();
+    });
+
     // التبديل بين حقل الملف وحقل الرابط في مودال المرفقات
     document.querySelectorAll('.attachment-type-select').forEach(function(select) {
         select.addEventListener('change', function() {
@@ -1689,6 +1779,126 @@ document.addEventListener('DOMContentLoaded', function() {
         fromField.addEventListener('blur', validatePages);
         toField.addEventListener('input', validatePages);
         toField.addEventListener('blur', validatePages);
+    });
+
+    var csrfToken = document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '';
+
+    function showAjaxLessonAlert(type, message, errors) {
+        var alertsHost = document.getElementById('ajaxLessonAlerts');
+        if (!alertsHost) return;
+        var icon = type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill';
+        var html = '<div class="alert alert-' + (type === 'success' ? 'success' : 'danger') + ' alert-dismissible fade show" role="alert">' +
+            '<i class="bi ' + icon + ' me-2"></i>' + message;
+        if (errors && Object.keys(errors).length) {
+            html += '<ul class="mb-0 mt-2">';
+            Object.keys(errors).forEach(function(field) {
+                var fieldErrors = Array.isArray(errors[field]) ? errors[field] : [errors[field]];
+                fieldErrors.forEach(function(err) {
+                    html += '<li>' + err + '</li>';
+                });
+            });
+            html += '</ul>';
+        }
+        html += '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>';
+        alertsHost.innerHTML = html;
+    }
+
+    function closeFormModal(form) {
+        var modal = form.closest('.modal');
+        if (!modal || typeof bootstrap === 'undefined') return;
+        var instance = bootstrap.Modal.getInstance(modal) || new bootstrap.Modal(modal);
+        instance.hide();
+    }
+
+    async function refreshUnitContentAndModals(unitId, deletedLessonId) {
+        if (!unitId) return;
+        var response = await fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        if (!response.ok) return;
+        var html = await response.text();
+        var parser = new DOMParser();
+        var newDoc = parser.parseFromString(html, 'text/html');
+
+        var currentUnitContent = document.querySelector('[data-unit-content-id="' + unitId + '"]');
+        var nextUnitContent = newDoc.querySelector('[data-unit-content-id="' + unitId + '"]');
+        if (currentUnitContent && nextUnitContent) {
+            currentUnitContent.replaceWith(nextUnitContent);
+        }
+
+        var createModalId = 'createLessonModal' + unitId;
+        var currentCreateModal = document.getElementById(createModalId);
+        var nextCreateModal = newDoc.getElementById(createModalId);
+        if (currentCreateModal && nextCreateModal) {
+            currentCreateModal.replaceWith(nextCreateModal);
+        }
+
+        var lessonRows = document.querySelectorAll('[data-unit-content-id="' + unitId + '"] [data-lesson-id]');
+        lessonRows.forEach(function(row) {
+            var lessonId = row.getAttribute('data-lesson-id');
+            ['editLesson', 'deleteLesson', 'addLessonAttachment', 'playVideoModal', 'approveLesson', 'rejectLesson'].forEach(function(prefix) {
+                var id = prefix + lessonId;
+                var existing = document.getElementById(id);
+                var incoming = newDoc.getElementById(id);
+                if (existing && incoming) {
+                    existing.replaceWith(incoming);
+                } else if (!existing && incoming) {
+                    document.body.appendChild(incoming);
+                }
+            });
+        });
+
+        if (deletedLessonId) {
+            ['editLesson', 'deleteLesson', 'addLessonAttachment', 'playVideoModal', 'approveLesson', 'rejectLesson'].forEach(function(prefix) {
+                var stale = document.getElementById(prefix + deletedLessonId);
+                if (stale) stale.remove();
+            });
+        }
+    }
+
+    document.addEventListener('submit', async function(e) {
+        var form = e.target.closest('.js-lesson-ajax-form');
+        if (!form) return;
+        e.preventDefault();
+
+        var submitBtn = form.querySelector('button[type="submit"]');
+        var originalBtnHtml = submitBtn ? submitBtn.innerHTML : null;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>جارٍ الحفظ...';
+        }
+
+        try {
+            var formData = new FormData(form);
+            var result = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: formData
+            });
+
+            var payload = await result.json().catch(function() { return {}; });
+            if (!result.ok) {
+                if (result.status === 422) {
+                    showAjaxLessonAlert('error', 'يرجى تصحيح البيانات ثم المحاولة مرة أخرى.', payload.errors || {});
+                } else {
+                    showAjaxLessonAlert('error', payload.message || 'حدث خطأ غير متوقع أثناء تنفيذ العملية.');
+                }
+                return;
+            }
+
+            closeFormModal(form);
+            showAjaxLessonAlert('success', payload.message || 'تم تنفيذ العملية بنجاح.');
+            await refreshUnitContentAndModals(payload.unit_id || form.dataset.unitId, form.dataset.lessonAction === 'destroy' ? (payload.lesson_id || form.dataset.lessonId) : null);
+        } catch (error) {
+            showAjaxLessonAlert('error', 'تعذر تنفيذ العملية حالياً. تحقق من الاتصال ثم أعد المحاولة.');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnHtml;
+            }
+        }
     });
 
     // ==================================================

@@ -102,7 +102,7 @@
 </div>
 @endif
 
-<div class="unit-content">
+<div class="unit-content" data-unit-content-id="{{ $unit->id }}">
     @if($unit->allLessons()->count() === 0)
         <div class="text-center py-4 text-muted bg-light rounded">
             <i class="bi bi-collection-play display-6 d-block mb-2"></i>
@@ -114,7 +114,7 @@
     @else
         <div class="list-group list-group-flush" data-sortable="lessons" data-unit-id="{{ $unit->id }}" data-reorder-url="{{ route('admin.units.lessons.reorder', $unit) }}">
             @foreach($unit->allLessons() as $lesson)
-            <div class="list-group-item d-flex flex-column px-0 py-2" data-id="{{ $lesson->id }}">
+            <div class="list-group-item d-flex flex-column px-0 py-2" data-id="{{ $lesson->id }}" data-lesson-id="{{ $lesson->id }}">
                 <div class="d-flex align-items-center justify-content-between gap-2 w-100">
                     <span class="sortable-handle d-flex align-items-center px-2 cursor-grab text-muted me-1" title="اسحب لإعادة الترتيب"><i class="bi bi-grip-vertical"></i></span>
                     <div class="d-flex align-items-center min-w-0 flex-grow-1">
