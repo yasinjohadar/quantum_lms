@@ -88,8 +88,33 @@ class ReviewQueueController extends Controller
         $quizzes = $quizzesQuery->pendingReview()->orderBy('submitted_for_review_at', 'desc')->paginate(10, ['*'], 'quizzes_page');
 
         // البيانات للفلترة
-        $classes = SchoolClass::with('stage')->active()->ordered()->get();
-        $subjects = Subject::with('schoolClass.stage')->active()->ordered()->get();
+        if ($isSupervisor) {
+            $classIds = $user->assignedClassesAsSupervisor()->pluck('classes.id');
+            $subjectIds = $user->assignedSubjectsAsSupervisor()->pluck('subjects.id');
+
+            $classes = SchoolClass::with('stage')
+                ->active()
+                ->ordered()
+                ->when($classIds->isNotEmpty(), function ($q) use ($classIds) {
+                    $q->whereIn('id', $classIds);
+                }, function ($q) {
+                    $q->whereRaw('1 = 0');
+                })
+                ->get();
+
+            $subjects = Subject::with('schoolClass.stage')
+                ->active()
+                ->ordered()
+                ->when($subjectIds->isNotEmpty(), function ($q) use ($subjectIds) {
+                    $q->whereIn('id', $subjectIds);
+                }, function ($q) {
+                    $q->whereRaw('1 = 0');
+                })
+                ->get();
+        } else {
+            $classes = SchoolClass::with('stage')->active()->ordered()->get();
+            $subjects = Subject::with('schoolClass.stage')->active()->ordered()->get();
+        }
 
         return view('admin.pages.review-queue.index', compact(
             'lessons',
@@ -145,8 +170,33 @@ class ReviewQueueController extends Controller
         $lessons = $query->orderBy('submitted_for_review_at', 'desc')->paginate(20);
 
         // البيانات للفلترة
-        $classes = SchoolClass::with('stage')->active()->ordered()->get();
-        $subjects = Subject::with('schoolClass.stage')->active()->ordered()->get();
+        if ($isSupervisor) {
+            $classIds = $user->assignedClassesAsSupervisor()->pluck('classes.id');
+            $subjectIds = $user->assignedSubjectsAsSupervisor()->pluck('subjects.id');
+
+            $classes = SchoolClass::with('stage')
+                ->active()
+                ->ordered()
+                ->when($classIds->isNotEmpty(), function ($q) use ($classIds) {
+                    $q->whereIn('id', $classIds);
+                }, function ($q) {
+                    $q->whereRaw('1 = 0');
+                })
+                ->get();
+
+            $subjects = Subject::with('schoolClass.stage')
+                ->active()
+                ->ordered()
+                ->when($subjectIds->isNotEmpty(), function ($q) use ($subjectIds) {
+                    $q->whereIn('id', $subjectIds);
+                }, function ($q) {
+                    $q->whereRaw('1 = 0');
+                })
+                ->get();
+        } else {
+            $classes = SchoolClass::with('stage')->active()->ordered()->get();
+            $subjects = Subject::with('schoolClass.stage')->active()->ordered()->get();
+        }
 
         return view('admin.pages.review-queue.lessons', compact('lessons', 'classes', 'subjects'));
     }
@@ -194,8 +244,33 @@ class ReviewQueueController extends Controller
         $quizzes = $query->orderBy('submitted_for_review_at', 'desc')->paginate(20);
 
         // البيانات للفلترة
-        $classes = SchoolClass::with('stage')->active()->ordered()->get();
-        $subjects = Subject::with('schoolClass.stage')->active()->ordered()->get();
+        if ($isSupervisor) {
+            $classIds = $user->assignedClassesAsSupervisor()->pluck('classes.id');
+            $subjectIds = $user->assignedSubjectsAsSupervisor()->pluck('subjects.id');
+
+            $classes = SchoolClass::with('stage')
+                ->active()
+                ->ordered()
+                ->when($classIds->isNotEmpty(), function ($q) use ($classIds) {
+                    $q->whereIn('id', $classIds);
+                }, function ($q) {
+                    $q->whereRaw('1 = 0');
+                })
+                ->get();
+
+            $subjects = Subject::with('schoolClass.stage')
+                ->active()
+                ->ordered()
+                ->when($subjectIds->isNotEmpty(), function ($q) use ($subjectIds) {
+                    $q->whereIn('id', $subjectIds);
+                }, function ($q) {
+                    $q->whereRaw('1 = 0');
+                })
+                ->get();
+        } else {
+            $classes = SchoolClass::with('stage')->active()->ordered()->get();
+            $subjects = Subject::with('schoolClass.stage')->active()->ordered()->get();
+        }
 
         return view('admin.pages.review-queue.quizzes', compact('quizzes', 'classes', 'subjects'));
     }

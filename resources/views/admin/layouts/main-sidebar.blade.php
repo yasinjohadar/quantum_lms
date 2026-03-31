@@ -123,7 +123,7 @@
                                             }
                                         @endphp
                                         @if($pendingCount > 0)
-                                            <span class="badge bg-warning-transparent text-warning ms-auto">{{ $pendingCount }}</span>
+                                            <span class="badge bg-danger text-white rounded-pill ms-auto">{{ $pendingCount }}</span>
                                         @endif
                                     </a>
                                 </li>

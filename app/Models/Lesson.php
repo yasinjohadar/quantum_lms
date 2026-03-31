@@ -313,7 +313,7 @@ class Lesson extends Model
     {
         $supervisor = \App\Models\User::find($supervisorId);
         
-        if (!$supervisor || !$supervisor->hasRole('supervisor')) {
+        if (!$supervisor || !$supervisor->hasSupervisorStaffIdentity()) {
             return $query->whereRaw('1 = 0'); // Always false
         }
 
