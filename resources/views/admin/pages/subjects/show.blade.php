@@ -2245,20 +2245,33 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             var payload = await result.json().catch(function() { return {}; });
-            if (!result.ok) {
+            if (!result.ok || payload.success === false) {
                 if (result.status === 422) {
                     showAjaxLessonAlert('error', 'يرجى تصحيح البيانات ثم المحاولة مرة أخرى.', payload.errors || {});
                 } else {
-                    showAjaxLessonAlert('error', payload.message || 'حدث خطأ غير متوقع أثناء تنفيذ العملية.');
+                    showAjaxLessonAlert('error', payload.message || 'فشل حفظ الدرس على الخادم. يرجى المحاولة مرة أخرى.');
                 }
                 return;
             }
 
             closeFormModal(form);
-            showAjaxLessonAlert('success', payload.message || 'تم تنفيذ العملية بنجاح.');
-            await refreshUnitContentAndModals(payload.unit_id || form.dataset.unitId, form.dataset.lessonAction === 'destroy' ? (payload.lesson_id || form.dataset.lessonId) : null);
+            showAjaxLessonAlert('success', payload.message || 'تم حفظ الدرس بنجاح.');
+
+            try {
+                await refreshUnitContentAndModals(
+                    payload.unit_id || form.dataset.unitId,
+                    form.dataset.lessonAction === 'destroy' ? (payload.lesson_id || form.dataset.lessonId) : null
+                );
+            } catch (refreshError) {
+                console.error('Partial UI refresh failed after successful lesson save:', refreshError);
+                showAjaxLessonAlert(
+                    'success',
+                    'تم حفظ الدرس بنجاح، ولكن تعذر تحديث العرض تلقائيًا. <a href="' + window.location.href + '" class="alert-link">اضغط هنا لتحديث الصفحة</a>.'
+                );
+            }
         } catch (error) {
-            showAjaxLessonAlert('error', 'تعذر تنفيذ العملية حالياً. تحقق من الاتصال ثم أعد المحاولة.');
+            console.error('Lesson save request failed:', error);
+            showAjaxLessonAlert('error', 'تعذر إرسال طلب الحفظ حالياً. تحقق من الاتصال ثم أعد المحاولة.');
         } finally {
             if (submitBtn) {
                 submitBtn.disabled = false;
