@@ -1361,8 +1361,8 @@
                                     </div>
 
                                     <div class="mb-3">
-                                        <label class="form-label">عنوان المرفق <span class="text-danger">*</span></label>
-                                        <input type="text" name="title" class="form-control" placeholder="مثال: ملف PDF للشرح" required>
+                                        <label class="form-label">عنوان المرفق (اختياري)</label>
+                                        <input type="text" name="title" class="form-control" placeholder="اختياري: سيُستخدم اسم الملف تلقائيًا">
                                     </div>
 
                                     <div class="mb-3">

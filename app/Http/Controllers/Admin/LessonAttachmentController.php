@@ -13,6 +13,29 @@ use App\Helpers\StorageHelper;
 
 class LessonAttachmentController extends Controller
 {
+    private function resolveAttachmentTitle(?string $inputTitle, ?\Illuminate\Http\UploadedFile $file, bool $isLink, ?string $existingFileName = null): string
+    {
+        $title = trim((string) $inputTitle);
+        if ($title !== '') {
+            return $title;
+        }
+
+        $fileName = $file?->getClientOriginalName() ?: $existingFileName;
+        if ($fileName) {
+            $base = pathinfo($fileName, PATHINFO_FILENAME);
+            $base = trim((string) $base);
+            if ($base !== '') {
+                return $base;
+            }
+        }
+
+        if ($isLink) {
+            return 'رابط مرفق';
+        }
+
+        return 'مرفق';
+    }
+
     private function resolveReturnUrl(?string $returnTo, int $lessonId): string
     {
         $fallback = route('admin.lessons.show', $lessonId);
@@ -48,13 +71,12 @@ class LessonAttachmentController extends Controller
     public function store(Request $request, Lesson $lesson)
     {
         $request->validate([
-            'title' => 'required|string|max:255',
+            'title' => 'nullable|string|max:255',
             'type' => 'required|in:file,link,document,image,audio',
             'description' => 'nullable|string',
             'file' => 'nullable|file|max:51200', // 50MB max
             'url' => 'nullable|url|max:500',
         ], [
-            'title.required' => 'عنوان المرفق مطلوب',
             'type.required' => 'نوع المرفق مطلوب',
             'type.in' => 'نوع المرفق غير صالح',
             'file.file' => 'ملف المرفق غير صالح',
@@ -77,9 +99,16 @@ class LessonAttachmentController extends Controller
         }
 
         try {
+            $uploadedFile = $request->file('file');
+            $resolvedTitle = $this->resolveAttachmentTitle(
+                $request->input('title'),
+                $uploadedFile,
+                $request->input('type') === 'link'
+            );
+
             $data = [
                 'lesson_id' => $lesson->id,
-                'title' => $request->title,
+                'title' => $resolvedTitle,
                 'type' => $request->type,
                 'description' => $request->description,
                 'is_downloadable' => $request->has('is_downloadable'),
@@ -87,8 +116,8 @@ class LessonAttachmentController extends Controller
             ];
 
             // رفع الملف
-            if ($request->hasFile('file')) {
-                $file = $request->file('file');
+            if ($uploadedFile) {
+                $file = $uploadedFile;
                 $fileName = time() . '_' . $file->getClientOriginalName();
                 $data['file_path'] = $file->storeAs('lessons/attachments', $fileName, 'public');
                 $data['file_name'] = $file->getClientOriginalName();
@@ -127,27 +156,35 @@ class LessonAttachmentController extends Controller
     public function update(Request $request, LessonAttachment $attachment)
     {
         $request->validate([
-            'title' => 'required|string|max:255',
+            'title' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'file' => 'nullable|file|max:51200',
             'url' => 'nullable|url|max:500',
         ]);
 
         try {
+            $uploadedFile = $request->file('file');
+            $resolvedTitle = $this->resolveAttachmentTitle(
+                $request->input('title'),
+                $uploadedFile,
+                $attachment->type === 'link',
+                $attachment->file_name
+            );
+
             $data = [
-                'title' => $request->title,
+                'title' => $resolvedTitle,
                 'description' => $request->description,
                 'is_downloadable' => $request->has('is_downloadable'),
             ];
 
             // تحديث الملف إذا تم رفع ملف جديد
-            if ($request->hasFile('file')) {
+            if ($uploadedFile) {
                 // حذف الملف القديم
                 if ($attachment->file_path) {
                     StorageHelper::delete('attachments', $attachment->file_path);
                 }
 
-                $file = $request->file('file');
+                $file = $uploadedFile;
                 $fileName = time() . '_' . $file->getClientOriginalName();
                 $data['file_path'] = $file->storeAs('lessons/attachments', $fileName, 'public');
                 $data['file_name'] = $file->getClientOriginalName();

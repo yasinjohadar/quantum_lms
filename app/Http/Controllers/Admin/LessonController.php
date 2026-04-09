@@ -18,6 +18,28 @@ use App\Helpers\StorageHelper;
 
 class LessonController extends Controller
 {
+    private function resolveAttachmentTitle(?string $inputTitle, ?\Illuminate\Http\UploadedFile $file, ?string $attachmentType): string
+    {
+        $title = trim((string) $inputTitle);
+        if ($title !== '') {
+            return $title;
+        }
+
+        if ($file) {
+            $base = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $base = trim((string) $base);
+            if ($base !== '') {
+                return $base;
+            }
+        }
+
+        if ($attachmentType === 'link') {
+            return 'رابط مرفق';
+        }
+
+        return 'مرفق';
+    }
+
     public function __construct()
     {
         $this->middleware(['permission:lesson-create'])->only('store');
@@ -44,13 +66,12 @@ class LessonController extends Controller
 
             if ($hasAttachmentInput) {
                 $request->validate([
-                    'attachment_title' => ['required', 'string', 'max:255'],
+                    'attachment_title' => ['nullable', 'string', 'max:255'],
                     'attachment_type' => ['required', 'in:file,link,document,image,audio'],
                     'attachment_description' => ['nullable', 'string'],
                     'attachment_file' => ['nullable', 'file', 'max:51200'],
                     'attachment_url' => ['nullable', 'url', 'max:500'],
                 ], [
-                    'attachment_title.required' => 'عنوان المرفق مطلوب عند إضافة مرفق.',
                     'attachment_title.max' => 'عنوان المرفق يجب ألا يتجاوز 255 حرفاً.',
                     'attachment_type.required' => 'نوع المرفق مطلوب عند إضافة مرفق.',
                     'attachment_type.in' => 'نوع المرفق غير صالح.',
@@ -145,20 +166,27 @@ class LessonController extends Controller
             $lesson = Lesson::create($data);
 
             if ($hasAttachmentInput) {
+                $attachmentFile = $request->file('attachment_file');
+                $attachmentType = $request->input('attachment_type');
+                $resolvedTitle = $this->resolveAttachmentTitle(
+                    $request->input('attachment_title'),
+                    $attachmentFile,
+                    $attachmentType
+                );
+
                 $attachmentData = [
                     'lesson_id' => $lesson->id,
-                    'title' => $request->input('attachment_title'),
-                    'type' => $request->input('attachment_type'),
+                    'title' => $resolvedTitle,
+                    'type' => $attachmentType,
                     'description' => $request->input('attachment_description'),
                     'is_downloadable' => $request->has('attachment_is_downloadable'),
                     'is_active' => true,
                     'order' => 1,
                 ];
 
-                if ($request->input('attachment_type') === 'link') {
+                if ($attachmentType === 'link') {
                     $attachmentData['url'] = $request->input('attachment_url');
-                } elseif ($request->hasFile('attachment_file')) {
-                    $attachmentFile = $request->file('attachment_file');
+                } elseif ($attachmentFile) {
                     $attachmentFileName = time() . '_attachment_' . $attachmentFile->getClientOriginalName();
                     $attachmentData['file_path'] = $attachmentFile->storeAs('lessons/attachments', $attachmentFileName, 'public');
                     $attachmentData['file_name'] = $attachmentFile->getClientOriginalName();
