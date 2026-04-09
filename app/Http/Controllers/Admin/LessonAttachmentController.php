@@ -8,6 +8,7 @@ use App\Models\LessonAttachment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use App\Helpers\StorageHelper;
 
 class LessonAttachmentController extends Controller
@@ -33,9 +34,25 @@ class LessonAttachmentController extends Controller
         ], [
             'title.required' => 'عنوان المرفق مطلوب',
             'type.required' => 'نوع المرفق مطلوب',
+            'type.in' => 'نوع المرفق غير صالح',
+            'file.file' => 'ملف المرفق غير صالح',
             'file.max' => 'حجم الملف يجب ألا يتجاوز 50 ميجابايت',
+            'url.required' => 'رابط المرفق مطلوب عندما يكون نوع المرفق رابطًا',
             'url.url' => 'الرابط يجب أن يكون صالحاً',
+            'url.max' => 'الرابط يجب ألا يتجاوز 500 حرف',
         ]);
+
+        if ($request->input('type') === 'link' && !$request->filled('url')) {
+            throw ValidationException::withMessages([
+                'url' => 'رابط المرفق مطلوب عندما يكون نوع المرفق رابطًا.',
+            ]);
+        }
+
+        if ($request->input('type') !== 'link' && !$request->hasFile('file')) {
+            throw ValidationException::withMessages([
+                'file' => 'ملف المرفق مطلوب عندما يكون نوع المرفق ملفًا.',
+            ]);
+        }
 
         try {
             $data = [

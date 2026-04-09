@@ -187,6 +187,21 @@ class LessonController extends Controller
             return redirect()
                 ->route('admin.subjects.show', $subjectId)
                 ->with('success', 'تم إنشاء الدرس "' . $lesson->title . '" بنجاح.');
+        } catch (ValidationException $e) {
+            Log::warning('Validation error while creating lesson: ' . $e->getMessage(), [
+                'unit_id' => $unit->id,
+                'errors' => $e->errors(),
+            ]);
+
+            if ($this->wantsJsonResponse($request)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'تعذر إنشاء الدرس بسبب أخطاء في البيانات المدخلة.',
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+
+            throw $e;
         } catch (\Exception $e) {
             Log::error('خطأ في إنشاء درس: ' . $e->getMessage());
 

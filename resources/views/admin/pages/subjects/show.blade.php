@@ -2147,6 +2147,17 @@ document.addEventListener('DOMContentLoaded', function() {
     function showAjaxLessonAlert(type, message, errors) {
         var alertsHost = document.getElementById('ajaxLessonAlerts');
         if (!alertsHost) return;
+        var fieldNameMap = {
+            attachment_title: 'عنوان المرفق',
+            attachment_type: 'نوع المرفق',
+            attachment_file: 'ملف المرفق',
+            attachment_url: 'رابط المرفق',
+            attachment_description: 'وصف المرفق',
+            file: 'ملف المرفق',
+            url: 'رابط المرفق',
+            type: 'نوع المرفق',
+            title: 'العنوان',
+        };
         var icon = type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill';
         var html = '<div class="alert alert-' + (type === 'success' ? 'success' : 'danger') + ' alert-dismissible fade show" role="alert">' +
             '<i class="bi ' + icon + ' me-2"></i>' + message;
@@ -2154,8 +2165,9 @@ document.addEventListener('DOMContentLoaded', function() {
             html += '<ul class="mb-0 mt-2">';
             Object.keys(errors).forEach(function(field) {
                 var fieldErrors = Array.isArray(errors[field]) ? errors[field] : [errors[field]];
+                var readableField = fieldNameMap[field] || field;
                 fieldErrors.forEach(function(err) {
-                    html += '<li>' + err + '</li>';
+                    html += '<li><strong>' + readableField + ':</strong> ' + err + '</li>';
                 });
             });
             html += '</ul>';
