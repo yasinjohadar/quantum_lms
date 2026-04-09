@@ -2067,6 +2067,83 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     initializeSortable(document);
 
+    var accordionStateStorageKey = 'admin.subjects.show.open-collapses.{{ $subject->id }}';
+
+    function isTrackedCollapseElement(el) {
+        if (!el || !el.id) return false;
+        return el.id.indexOf('sectionCollapse') === 0 || el.id.indexOf('unitCollapse') === 0;
+    }
+
+    function getStoredOpenCollapseIds() {
+        try {
+            var raw = sessionStorage.getItem(accordionStateStorageKey);
+            if (!raw) return [];
+            var parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed.filter(function(id) { return typeof id === 'string' && id.length > 0; }) : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function setStoredOpenCollapseIds(ids) {
+        try {
+            var uniqueIds = Array.from(new Set((ids || []).filter(function(id) { return typeof id === 'string' && id.length > 0; })));
+            sessionStorage.setItem(accordionStateStorageKey, JSON.stringify(uniqueIds));
+        } catch (e) {}
+    }
+
+    function pruneAccordionStateToExistingDom() {
+        var ids = getStoredOpenCollapseIds();
+        var kept = ids.filter(function(id) {
+            var el = document.getElementById(id);
+            return !!el && isTrackedCollapseElement(el);
+        });
+        setStoredOpenCollapseIds(kept);
+        return kept;
+    }
+
+    function syncAccordionStateFromDom() {
+        var openEls = document.querySelectorAll('.accordion-collapse.show[id^="sectionCollapse"], .accordion-collapse.show[id^="unitCollapse"]');
+        var ids = [];
+        openEls.forEach(function(el) {
+            if (el.id) ids.push(el.id);
+        });
+        setStoredOpenCollapseIds(ids);
+    }
+
+    function restoreAccordionState(root) {
+        if (typeof bootstrap === 'undefined' || !bootstrap.Collapse) return;
+        var scope = root || document;
+        var ids = pruneAccordionStateToExistingDom();
+        ids.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (!el || (scope !== document && !scope.contains(el))) return;
+            if (!el || !isTrackedCollapseElement(el) || el.classList.contains('show')) return;
+            try {
+                var instance = bootstrap.Collapse.getInstance(el) || new bootstrap.Collapse(el, { toggle: false });
+                instance.show();
+            } catch (e) {}
+        });
+    }
+
+    document.addEventListener('shown.bs.collapse', function(e) {
+        var collapseEl = e.target;
+        if (!isTrackedCollapseElement(collapseEl)) return;
+        var ids = getStoredOpenCollapseIds().filter(function(id) { return id !== collapseEl.id; });
+        ids.push(collapseEl.id);
+        setStoredOpenCollapseIds(ids);
+    });
+
+    document.addEventListener('hidden.bs.collapse', function(e) {
+        var collapseEl = e.target;
+        if (!isTrackedCollapseElement(collapseEl)) return;
+        var ids = getStoredOpenCollapseIds().filter(function(id) { return id !== collapseEl.id; });
+        setStoredOpenCollapseIds(ids);
+    });
+
+    restoreAccordionState(document);
+    syncAccordionStateFromDom();
+
     function showAjaxLessonAlert(type, message, errors) {
         var alertsHost = document.getElementById('ajaxLessonAlerts');
         if (!alertsHost) return;
@@ -2096,6 +2173,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function refreshUnitContentAndModals(unitId, deletedLessonId) {
         if (!unitId) return;
+        syncAccordionStateFromDom();
         var response = await fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
         if (!response.ok) return;
         var html = await response.text();
@@ -2137,6 +2215,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (stale) stale.remove();
             });
         }
+
+        restoreAccordionState(document);
+        pruneAccordionStateToExistingDom();
     }
 
     document.addEventListener('submit', async function(e) {
