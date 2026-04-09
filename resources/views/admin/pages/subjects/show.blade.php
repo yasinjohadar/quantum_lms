@@ -125,15 +125,23 @@
                                 <i class="bi bi-collection me-2"></i>
                                 محتويات المادة
                             </h6>
-                            @can('subject-section-create')
+                            <div class="d-flex align-items-center gap-2">
                                 <button type="button"
-                                        class="btn btn-sm btn-primary d-inline-flex align-items-center"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#createSectionModal">
-                                    <i class="bi bi-plus-lg me-1"></i>
-                                    إضافة قسم جديد
+                                        id="closeAllAccordionsBtn"
+                                        class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center">
+                                    <i class="bi bi-chevron-up me-1"></i>
+                                    إغلاق الكل
                                 </button>
-                            @endcan
+                                @can('subject-section-create')
+                                    <button type="button"
+                                            class="btn btn-sm btn-primary d-inline-flex align-items-center"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#createSectionModal">
+                                        <i class="bi bi-plus-lg me-1"></i>
+                                        إضافة قسم جديد
+                                    </button>
+                                @endcan
+                            </div>
                         </div>
                         <div class="card-body">
                             @if($rootSections->isEmpty())
@@ -2140,6 +2148,23 @@ document.addEventListener('DOMContentLoaded', function() {
         var ids = getStoredOpenCollapseIds().filter(function(id) { return id !== collapseEl.id; });
         setStoredOpenCollapseIds(ids);
     });
+
+    var closeAllAccordionsBtn = document.getElementById('closeAllAccordionsBtn');
+    if (closeAllAccordionsBtn) {
+        closeAllAccordionsBtn.addEventListener('click', function() {
+            if (typeof bootstrap === 'undefined' || !bootstrap.Collapse) return;
+            var openEls = document.querySelectorAll('.accordion-collapse.show[id^="sectionCollapse"], .accordion-collapse.show[id^="unitCollapse"]');
+            openEls.forEach(function(el) {
+                try {
+                    var instance = bootstrap.Collapse.getInstance(el) || new bootstrap.Collapse(el, { toggle: false });
+                    instance.hide();
+                } catch (e) {}
+            });
+            setTimeout(function() {
+                syncAccordionStateFromDom();
+            }, 0);
+        });
+    }
 
     restoreAccordionState(document);
     syncAccordionStateFromDom();
