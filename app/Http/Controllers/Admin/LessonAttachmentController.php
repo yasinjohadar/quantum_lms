@@ -13,6 +13,28 @@ use App\Helpers\StorageHelper;
 
 class LessonAttachmentController extends Controller
 {
+    private function resolveReturnUrl(?string $returnTo, int $lessonId): string
+    {
+        $fallback = route('admin.lessons.show', $lessonId);
+        if (!$returnTo) {
+            return $fallback;
+        }
+
+        if (str_starts_with($returnTo, '/')) {
+            return $returnTo;
+        }
+
+        if (filter_var($returnTo, FILTER_VALIDATE_URL)) {
+            $host = parse_url($returnTo, PHP_URL_HOST);
+            $appHost = parse_url(config('app.url'), PHP_URL_HOST);
+            if ($host && $appHost && $host === $appHost) {
+                return $returnTo;
+            }
+        }
+
+        return $fallback;
+    }
+
     public function __construct()
     {
         $this->middleware(['permission:lesson-attachment-create'])->only('store');
@@ -85,10 +107,10 @@ class LessonAttachmentController extends Controller
 
             LessonAttachment::create($data);
 
-            $subjectId = $lesson->unit->section->subject_id;
+            $returnUrl = $this->resolveReturnUrl($request->input('return_to'), $lesson->id);
 
             return redirect()
-                ->route('admin.subjects.show', $subjectId)
+                ->to($returnUrl)
                 ->with('success', 'تم إضافة المرفق بنجاح.');
         } catch (\Exception $e) {
             Log::error('خطأ في إضافة مرفق: ' . $e->getMessage());
@@ -140,10 +162,10 @@ class LessonAttachmentController extends Controller
 
             $attachment->update($data);
 
-            $subjectId = $attachment->lesson->unit->section->subject_id;
+            $returnUrl = $this->resolveReturnUrl($request->input('return_to'), $attachment->lesson_id);
 
             return redirect()
-                ->route('admin.lessons.show', $attachment->lesson_id)
+                ->to($returnUrl)
                 ->with('success', 'تم تحديث المرفق بنجاح.');
         } catch (\Exception $e) {
             Log::error('خطأ في تحديث مرفق: ' . $e->getMessage());
@@ -159,7 +181,7 @@ class LessonAttachmentController extends Controller
      */
     public function destroy(LessonAttachment $attachment)
     {
-        $subjectId = $attachment->lesson->unit->section->subject_id;
+        $returnUrl = $this->resolveReturnUrl(request()->input('return_to'), $attachment->lesson_id);
 
         try {
             // حذف الملف
@@ -170,13 +192,13 @@ class LessonAttachmentController extends Controller
             $attachment->delete();
 
             return redirect()
-                ->route('admin.subjects.show', $subjectId)
+                ->to($returnUrl)
                 ->with('success', 'تم حذف المرفق بنجاح.');
         } catch (\Exception $e) {
             Log::error('خطأ في حذف مرفق: ' . $e->getMessage());
 
             return redirect()
-                ->route('admin.subjects.show', $subjectId)
+                ->to($returnUrl)
                 ->with('error', 'حدث خطأ أثناء حذف المرفق: ' . $e->getMessage());
         }
     }

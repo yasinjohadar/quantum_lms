@@ -481,6 +481,7 @@
                 </div>
                 <form action="{{ route('admin.lessons.attachments.store', $lesson->id) }}" method="POST" enctype="multipart/form-data">
                     @csrf
+                    <input type="hidden" name="return_to" value="{{ url()->current() }}">
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label">عنوان المرفق <span class="text-danger">*</span></label>
@@ -550,6 +551,7 @@
                     <form action="{{ route('admin.attachments.update', $attachment->id) }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
+                        <input type="hidden" name="return_to" value="{{ url()->current() }}">
                         <div class="modal-body">
                             <div class="mb-3">
                                 <label class="form-label">عنوان المرفق <span class="text-danger">*</span></label>
@@ -623,6 +625,7 @@
                     <form action="{{ route('admin.attachments.destroy', $attachment->id) }}" method="POST">
                         @csrf
                         @method('DELETE')
+                        <input type="hidden" name="return_to" value="{{ url()->current() }}">
                         <div class="modal-body text-center pt-0 pb-3 px-4">
                             <p class="mb-1 text-muted">هل أنت متأكد من حذف المرفق:</p>
                             <p class="fw-bold mb-1" style="font-size:1.05rem;">{{ $attachment->title }}</p>
