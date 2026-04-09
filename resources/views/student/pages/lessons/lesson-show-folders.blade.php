@@ -292,7 +292,6 @@
 <script src="https://player.vimeo.com/api/player.js"></script>
 <script>
 (function() {
-    const lessonId = {{ $lesson->id }};
     const progressUrl = '{{ route("student.lessons.progress", $lesson) }}';
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const THROTTLE_MS = 15000;
@@ -365,8 +364,9 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success) location.reload();
-            else {
+            if (data.success) {
+                location.reload();
+            } else {
                 alert('حدث خطأ: ' + (data.message || 'فشل في حفظ الحالة'));
                 markCompletedBtn.disabled = false;
                 markCompletedBtn.innerHTML = originalText;

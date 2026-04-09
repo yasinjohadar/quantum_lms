@@ -238,6 +238,11 @@ class SubjectController extends Controller
                 }
             }
 
+            if ($request->filled('return_to_class_id')) {
+                return redirect()->route('admin.classes.show', $request->input('return_to_class_id'))
+                    ->with('success', 'تم إضافة المادة بنجاح');
+            }
+
             return redirect()->route('admin.subjects.index')
                 ->with('success', 'تم إضافة المادة بنجاح');
         } catch (\Exception $e) {

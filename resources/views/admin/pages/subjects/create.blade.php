@@ -46,6 +46,9 @@
                 <div class="card-body">
                     <form method="POST" action="{{ route('admin.subjects.store') }}" enctype="multipart/form-data">
                         @csrf
+                        @if($selectedClassId || request('class_id'))
+                            <input type="hidden" name="return_to_class_id" value="{{ $selectedClassId ?? request('class_id') }}">
+                        @endif
 
                         <div class="row g-3">
                             <div class="col-12">
