@@ -1924,43 +1924,43 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // التبديل بين حقل ملف/رابط مرفق الدرس في مودال الإنشاء
-    document.querySelectorAll('[id^="lessonAttachmentType"]').forEach(function(select) {
-        const toggleAttachmentFields = function() {
-            const unitId = select.id.replace('lessonAttachmentType', '');
-            const fileField = document.getElementById('lessonAttachmentFileField' + unitId);
-            const urlField = document.getElementById('lessonAttachmentUrlField' + unitId);
-            const fileInput = document.getElementById('lessonAttachmentFileInput' + unitId);
-            const urlInput = document.getElementById('lessonAttachmentUrlInput' + unitId);
-            const selectedType = select.value;
+    function bindLessonAttachmentTypeToggle(scope) {
+        var root = scope || document;
+        root.querySelectorAll('[id^="lessonAttachmentType"]').forEach(function(select) {
+            if (select.dataset.attachmentToggleBound === '1') return;
+            select.dataset.attachmentToggleBound = '1';
 
-            if (selectedType === 'link') {
-                fileField.classList.add('d-none');
-                urlField.classList.remove('d-none');
-                if (fileInput) {
-                    fileInput.value = '';
-                }
-            } else if (selectedType) {
-                fileField.classList.remove('d-none');
-                urlField.classList.add('d-none');
-                if (urlInput) {
-                    urlInput.value = '';
-                }
-            } else {
-                fileField.classList.add('d-none');
-                urlField.classList.add('d-none');
-                if (fileInput) {
-                    fileInput.value = '';
-                }
-                if (urlInput) {
-                    urlInput.value = '';
-                }
-            }
-        };
+            var toggleAttachmentFields = function() {
+                var unitId = select.id.replace('lessonAttachmentType', '');
+                var fileField = document.getElementById('lessonAttachmentFileField' + unitId);
+                var urlField = document.getElementById('lessonAttachmentUrlField' + unitId);
+                var fileInput = document.getElementById('lessonAttachmentFileInput' + unitId);
+                var urlInput = document.getElementById('lessonAttachmentUrlInput' + unitId);
+                var selectedType = select.value;
 
-        select.addEventListener('change', toggleAttachmentFields);
-        toggleAttachmentFields();
-    });
+                if (!fileField || !urlField) return;
+
+                if (selectedType === 'link') {
+                    fileField.classList.add('d-none');
+                    urlField.classList.remove('d-none');
+                    if (fileInput) fileInput.value = '';
+                } else if (selectedType) {
+                    fileField.classList.remove('d-none');
+                    urlField.classList.add('d-none');
+                    if (urlInput) urlInput.value = '';
+                } else {
+                    fileField.classList.add('d-none');
+                    urlField.classList.add('d-none');
+                    if (fileInput) fileInput.value = '';
+                    if (urlInput) urlInput.value = '';
+                }
+            };
+
+            select.addEventListener('change', toggleAttachmentFields);
+            toggleAttachmentFields();
+        });
+    }
+    bindLessonAttachmentTypeToggle(document);
 
     // التبديل بين حقل الملف وحقل الرابط في مودال المرفقات
     document.querySelectorAll('.attachment-type-select').forEach(function(select) {
@@ -2204,6 +2204,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var nextCreateModal = newDoc.getElementById(createModalId);
         if (currentCreateModal && nextCreateModal) {
             currentCreateModal.replaceWith(nextCreateModal);
+            bindLessonAttachmentTypeToggle(nextCreateModal);
         }
 
         var lessonRows = document.querySelectorAll('[data-unit-content-id="' + unitId + '"] [data-lesson-id]');
@@ -2230,6 +2231,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         restoreAccordionState(document);
         pruneAccordionStateToExistingDom();
+        bindLessonAttachmentTypeToggle(document);
     }
 
     document.addEventListener('submit', async function(e) {
