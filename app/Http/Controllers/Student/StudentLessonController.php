@@ -89,7 +89,8 @@ class StudentLessonController extends Controller
             if (!$classes->has($classId)) {
                 continue;
             }
-            $classes[$classId]['subjects'] = Subject::active()
+            $row = $classes->get($classId);
+            $row['subjects'] = Subject::active()
                 ->byClass($classId)
                 ->ordered()
                 ->with([
@@ -97,6 +98,7 @@ class StudentLessonController extends Controller
                     'enrollments' => fn ($q) => $q->where('user_id', $user->id),
                 ])
                 ->get();
+            $classes->put($classId, $row);
         }
 
         // ترتيب الصفوف حسب order
