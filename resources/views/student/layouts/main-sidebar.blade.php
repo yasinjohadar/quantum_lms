@@ -50,6 +50,17 @@
                             </a>
                         </li>
 
+                        <!-- كافة الصفوف والمواد -->
+                        <li class="slide {{ request()->is('student/enrollments*') ? 'active' : '' }}">
+                            <a href="{{ route('student.enrollments.index') }}" class="side-menu__item {{ request()->is('student/enrollments*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                </svg>
+                                <span class="side-menu__label">كافة الصفوف والمواد</span>
+                            </a>
+                        </li>
+
                         <!-- تقدمي الدراسي -->
                         <li class="slide {{ request()->is('student/progress*') ? 'active' : '' }}">
                             <a href="{{ route('student.progress.index') }}" class="side-menu__item {{ request()->is('student/progress*') ? 'active' : '' }}">
@@ -241,18 +252,6 @@
                                 <span class="side-menu__label">الإشعارات</span>
                             </a>
                         </li>
-                        
-                        {{-- طلب الانضمام - مخفي حالياً
-                        <li class="slide {{ request()->is('student/enrollments*') ? 'active' : '' }}">
-                            <a href="{{ route('student.enrollments.index') }}" class="side-menu__item {{ request()->is('student/enrollments*') ? 'active' : '' }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
-                                    <path d="M0 0h24v24H0z" fill="none"/>
-                                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                                </svg>
-                                <span class="side-menu__label">طلب الانضمام</span>
-                            </a>
-                        </li>
-                        --}}
 
                         {{-- المحفظة الإلكترونية - مخفية حالياً
                         <li class="slide {{ request()->is('student/wallet*') ? 'active' : '' }}">
