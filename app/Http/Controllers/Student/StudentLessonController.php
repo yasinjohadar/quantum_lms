@@ -85,6 +85,20 @@ class StudentLessonController extends Controller
             }
         }
 
+        foreach ($approvedClassIds as $classId) {
+            if (!$classes->has($classId)) {
+                continue;
+            }
+            $classes[$classId]['subjects'] = Subject::active()
+                ->byClass($classId)
+                ->ordered()
+                ->with([
+                    'schoolClass.stage',
+                    'enrollments' => fn ($q) => $q->where('user_id', $user->id),
+                ])
+                ->get();
+        }
+
         // ترتيب الصفوف حسب order
         $classes = $classes->sortBy(function($item) {
             return $item['class']->order ?? 999;
@@ -115,12 +129,11 @@ class StudentLessonController extends Controller
     {
         $user = Auth::user();
 
-        $subject = Subject::with(['schoolClass.stage'])
-            ->whereHas('students', function ($query) use ($user) {
-                $query->where('users.id', $user->id)
-                    ->where('enrollments.status', 'active');
-            })
-            ->findOrFail($subjectId);
+        $subject = Subject::with(['schoolClass.stage'])->findOrFail($subjectId);
+
+        if (!$user->canAccessSubjectAsStudent($subject)) {
+            abort(403, 'ليس لديك صلاحية للوصول إلى هذه المادة.');
+        }
 
         $sections = $subject->sections()
             ->whereNull('parent_id')
@@ -137,12 +150,11 @@ class StudentLessonController extends Controller
     public function showSubjectFolders($subjectId)
     {
         $user = Auth::user();
-        $subject = Subject::with(['schoolClass.stage'])
-            ->whereHas('students', function ($query) use ($user) {
-                $query->where('users.id', $user->id)
-                    ->where('enrollments.status', 'active');
-            })
-            ->findOrFail($subjectId);
+        $subject = Subject::with(['schoolClass.stage'])->findOrFail($subjectId);
+
+        if (!$user->canAccessSubjectAsStudent($subject)) {
+            abort(403, 'ليس لديك صلاحية للوصول إلى هذه المادة.');
+        }
 
         return redirect()->route('student.subjects.show', $subject);
     }
@@ -153,12 +165,11 @@ class StudentLessonController extends Controller
     public function showSubjectFolderSection($subjectId, $sectionId)
     {
         $user = Auth::user();
-        $subject = Subject::with(['schoolClass.stage'])
-            ->whereHas('students', function ($query) use ($user) {
-                $query->where('users.id', $user->id)
-                    ->where('enrollments.status', 'active');
-            })
-            ->findOrFail($subjectId);
+        $subject = Subject::with(['schoolClass.stage'])->findOrFail($subjectId);
+
+        if (!$user->canAccessSubjectAsStudent($subject)) {
+            abort(403, 'ليس لديك صلاحية للوصول إلى هذه المادة.');
+        }
 
         $section = SubjectSection::where('subject_id', $subject->id)
             ->where('id', $sectionId)
@@ -194,12 +205,11 @@ class StudentLessonController extends Controller
     public function showSubjectFolderUnit($subjectId, $sectionId, $unitId)
     {
         $user = Auth::user();
-        $subject = Subject::with(['schoolClass.stage'])
-            ->whereHas('students', function ($query) use ($user) {
-                $query->where('users.id', $user->id)
-                    ->where('enrollments.status', 'active');
-            })
-            ->findOrFail($subjectId);
+        $subject = Subject::with(['schoolClass.stage'])->findOrFail($subjectId);
+
+        if (!$user->canAccessSubjectAsStudent($subject)) {
+            abort(403, 'ليس لديك صلاحية للوصول إلى هذه المادة.');
+        }
 
         $section = SubjectSection::where('subject_id', $subject->id)
             ->where('id', $sectionId)
@@ -283,12 +293,9 @@ class StudentLessonController extends Controller
         ])->findOrFail($lessonId);
 
         $subject = $lesson->unit->section->subject;
-        $isEnrolled = $subject->students()
-            ->where('users.id', $user->id)
-            ->where('enrollments.status', 'active')
-            ->exists();
+        $canAccess = $user->canAccessSubjectAsStudent($subject);
 
-        if (!$isEnrolled && !$lesson->is_free) {
+        if (!$canAccess && !$lesson->is_free) {
             abort(403, 'ليس لديك صلاحية للوصول إلى هذا الدرس. يجب أن تكون مسجلاً في المادة.');
         }
 
@@ -409,12 +416,9 @@ class StudentLessonController extends Controller
 
         $user = Auth::user();
         $subject = $lesson->unit->section->subject;
-        $isEnrolled = $subject->students()
-            ->where('users.id', $user->id)
-            ->where('enrollments.status', 'active')
-            ->exists();
+        $canAccess = $user->canAccessSubjectAsStudent($subject);
 
-        if (!$isEnrolled && !$lesson->is_free) {
+        if (!$canAccess && !$lesson->is_free) {
             return response()->json([
                 'success' => false,
                 'message' => 'ليس لديك صلاحية للوصول إلى هذا الدرس',
@@ -486,20 +490,17 @@ class StudentLessonController extends Controller
         $user = Auth::user();
         $lesson = Lesson::findOrFail($lessonId);
         
-        // التحقق من أن الطالب مسجل في مادة الدرس
+        // التحقق من أن الطالب مسجل في مادة الدرس أو منضم للصف المعتمد
         $subject = $lesson->unit->section->subject;
-        $isEnrolled = $subject->students()
-            ->where('users.id', $user->id)
-            ->where('enrollments.status', 'active')
-            ->exists();
-        
-        if (!$isEnrolled && !$lesson->is_free) {
+        $canAccess = $user->canAccessSubjectAsStudent($subject);
+
+        if (!$canAccess && !$lesson->is_free) {
             return response()->json([
                 'success' => false,
                 'message' => 'ليس لديك صلاحية للوصول إلى هذا الدرس'
             ], 403);
         }
-        
+
         try {
             DB::beginTransaction();
             

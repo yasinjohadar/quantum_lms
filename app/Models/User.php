@@ -103,6 +103,29 @@ class User extends Authenticatable
     }
 
     /**
+     * هل يمكن للطالب الوصول لمحتوى المادة (تسجيل مادة نشط أو انضمام صف معتمد للمواد النشطة ضمن ذلك الصف).
+     */
+    public function canAccessSubjectAsStudent(Subject $subject): bool
+    {
+        if ($this->subjects()
+            ->where('subjects.id', $subject->id)
+            ->wherePivot('status', 'active')
+            ->exists()) {
+            return true;
+        }
+
+        if (!$subject->is_active) {
+            return false;
+        }
+
+        return ClassEnrollment::query()
+            ->where('user_id', $this->id)
+            ->where('class_id', $subject->class_id)
+            ->approved()
+            ->exists();
+    }
+
+    /**
      * العلاقة مع سجلات الدخول
      */
     public function loginLogs()

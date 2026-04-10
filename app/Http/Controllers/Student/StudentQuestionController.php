@@ -40,13 +40,8 @@ class StudentQuestionController extends Controller
         if ($lessonId) {
             $lesson = Lesson::with('unit')->findOrFail($lessonId);
             $subject = $lesson->unit->section->subject;
-            
-            $isEnrolled = $subject->students()
-                ->where('users.id', $user->id)
-                ->where('enrollments.status', 'active')
-                ->exists();
 
-            if (!$isEnrolled) {
+            if (!$user->canAccessSubjectAsStudent($subject)) {
                 abort(403, 'يجب أن تكون مسجلاً في المادة للإجابة على هذا السؤال');
             }
 
@@ -130,14 +125,8 @@ class StudentQuestionController extends Controller
         $user = Auth::user();
         $lesson = Lesson::with('unit.section.subject')->findOrFail($lessonId);
         $subject = $lesson->unit->section->subject;
-        
-        // التحقق من أن الطالب مسجل في المادة
-        $isEnrolled = $subject->students()
-            ->where('users.id', $user->id)
-            ->where('enrollments.status', 'active')
-            ->exists();
 
-        if (!$isEnrolled && !$lesson->is_free) {
+        if (!$user->canAccessSubjectAsStudent($subject) && !$lesson->is_free) {
             abort(403, 'يجب أن تكون مسجلاً في المادة للإجابة على الأسئلة');
         }
 
@@ -454,14 +443,9 @@ class StudentQuestionController extends Controller
         $user = Auth::user();
         $lesson = Lesson::with('unit.section.subject')->findOrFail($lessonId);
 
-        // التحقق من أن الطالب مسجل في مادة الدرس
         $subject = $lesson->unit->section->subject;
-        $isEnrolled = $subject->students()
-            ->where('users.id', $user->id)
-            ->where('enrollments.status', 'active')
-            ->exists();
 
-        if (!$isEnrolled && !$lesson->is_free) {
+        if (!$user->canAccessSubjectAsStudent($subject) && !$lesson->is_free) {
             abort(403, 'ليس لديك صلاحية للوصول إلى هذا التقرير.');
         }
 
