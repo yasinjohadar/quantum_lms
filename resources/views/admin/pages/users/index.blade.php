@@ -6,8 +6,46 @@
 
 
 
-@section('css')
-@stop
+@push('styles')
+    <style>
+        /* مودال إضافة طالب: حد أقصى لارتفاع النافذة وتمرير المحتوى مع بقاء الأزرار أسفل الظاهرة */
+        #quickAddStudentModal .modal-dialog.quick-add-student-dialog {
+            max-height: calc(100vh - 2rem);
+            margin: 1rem auto;
+        }
+        #quickAddStudentModal .modal-content {
+            max-height: calc(100vh - 2rem);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        /* الهيدر/الجسم/التذييل داخل <form>؛ يجب أن يكون النموذج عمود flex ليعمل التمرير على الجسم */
+        #quickAddStudentModal .modal-content > form {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 auto;
+            min-height: 0;
+            max-height: 100%;
+            overflow: hidden;
+        }
+        #quickAddStudentModal.modal {
+            overflow-y: auto;
+        }
+        #quickAddStudentModal .modal-header,
+        #quickAddStudentModal .modal-footer {
+            flex-shrink: 0;
+        }
+        #quickAddStudentModal .modal-body {
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch;
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+        #quickAddStudentModal .quick-add-subjects-select {
+            max-height: 11rem;
+        }
+    </style>
+@endpush
 
 @section('content')
     <!-- Start::app-content -->
@@ -16,9 +54,9 @@
 
             <!-- Page Header -->
             <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
+                <div class="my-auto d-flex flex-wrap align-items-center gap-3">
                     <h5 class="page-title fs-21 mb-1">كافة الطلاب</h5>
-
+                    @include('admin.partials.per-page-toolbar', ['paginator' => $users])
                 </div>
             </div>
             <!-- End Page Header -->
@@ -67,6 +105,12 @@
                     <div class="card">
                         <div class="card-header align-items-center d-flex gap-3">
                             <div class="d-flex gap-2">
+                                @can('user-create')
+                                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal"
+                                        data-bs-target="#quickAddStudentModal">
+                                        <i class="bi bi-person-plus me-1"></i> إضافة طالب
+                                    </button>
+                                @endcan
                                 <a href="{{ route('users.create') }}" class="btn btn-primary btn-sm">إنشاء مستخدم جديد</a>
                                 <a href="{{ route('admin.archived-users.index') }}" class="btn btn-outline-secondary btn-sm">
                                     <i class="fas fa-archive me-1"></i> الأرشيف
@@ -149,7 +193,7 @@
                                             </tr>
                                         </thead>
                                         <tbody id="usersTableBody">
-                                            @include('admin.pages.users.partials.users-tbody', ['users' => $users])
+                                            @include('admin.pages.users.partials.users-tbody', ['users' => $users, 'classesForAssign' => $classesForAssign])
                                         </tbody>
                                     </table>
 
@@ -324,10 +368,251 @@
     </div>
 </div>
 
+@can('user-create')
+    <div class="modal fade" id="quickAddStudentModal" tabindex="-1" aria-labelledby="quickAddStudentModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg quick-add-student-dialog">
+            <div class="modal-content">
+                <form method="post" action="{{ route('users.store-quick-student') }}" id="formQuickAddStudent" autocomplete="off">
+                    @csrf
+                    <input type="hidden" name="_quick_student" value="1">
+                    @if (request()->filled('query'))
+                        <input type="hidden" name="list_query" value="{{ request('query') }}">
+                    @endif
+                    @if (request()->has('is_active'))
+                        <input type="hidden" name="list_is_active" value="{{ request('is_active') }}">
+                    @endif
+                    @if (request()->filled('class_id'))
+                        <input type="hidden" name="list_class_id" value="{{ request('class_id') }}">
+                    @endif
+                    @if (request()->filled('per_page'))
+                        <input type="hidden" name="list_per_page" value="{{ request('per_page') }}">
+                    @endif
+                    @if (request()->filled('page'))
+                        <input type="hidden" name="list_page" value="{{ request('page') }}">
+                    @endif
+
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="quickAddStudentModalLabel">إضافة طالب</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small mb-3">يُنشأ حساب بدور <strong>طالب</strong> مباشرة. يمكنك ربطه بصف (مع مواد الصف) أو بمواد محددة.</p>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">الاسم <span class="text-danger">*</span></label>
+                                <input type="text" name="name" class="form-control" required maxlength="255"
+                                    value="{{ old('name') }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">البريد الإلكتروني <span class="text-danger">*</span></label>
+                                <input type="email" name="email" class="form-control" required maxlength="255"
+                                    value="{{ old('email') }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">الهاتف (اختياري)</label>
+                                <input type="text" name="phone" class="form-control" maxlength="20"
+                                    placeholder="+9665xxxxxxxx" value="{{ old('phone') }}">
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <div class="form-check">
+                                    <input type="hidden" name="is_active" value="0">
+                                    <input class="form-check-input" type="checkbox" name="is_active" id="quickAddStudentActive"
+                                        value="1" @checked((string) old('is_active', '1') === '1')>
+                                    <label class="form-check-label" for="quickAddStudentActive">حساب مفعّل</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">كلمة المرور <span class="text-danger">*</span></label>
+                                <input type="password" name="password" class="form-control" required minlength="8"
+                                    autocomplete="new-password">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">تأكيد كلمة المرور <span class="text-danger">*</span></label>
+                                <input type="password" name="password_confirmation" class="form-control" required
+                                    minlength="8" autocomplete="new-password">
+                            </div>
+                        </div>
+
+                        @can('enrollment-create')
+                            <hr class="my-4">
+                            <div class="mb-2 fw-semibold">ربط بعد الإنشاء</div>
+                            <div class="d-flex flex-wrap gap-3 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input quick-add-attach-mode" type="radio" name="attach_mode"
+                                        id="quickAttachNone" value="none"
+                                        {{ old('attach_mode', 'none') === 'none' ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="quickAttachNone">بدون ربط</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input quick-add-attach-mode" type="radio" name="attach_mode"
+                                        id="quickAttachClass" value="class"
+                                        {{ old('attach_mode') === 'class' ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="quickAttachClass">ربط بصف</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input quick-add-attach-mode" type="radio" name="attach_mode"
+                                        id="quickAttachSubjects" value="subjects"
+                                        {{ old('attach_mode') === 'subjects' ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="quickAttachSubjects">ربط بمواد</label>
+                                </div>
+                            </div>
+
+                            <div id="quickAddAttachClassBlock" class="mb-3" style="display: none;">
+                                @if (isset($classesForAssign) && $classesForAssign->isNotEmpty())
+                                    <label class="form-label">الصف الدراسي <span class="text-danger">*</span></label>
+                                    <select name="assign_class_id" id="quickAddAssignClassId" class="form-select">
+                                        <option value="">— اختر الصف —</option>
+                                        @foreach ($classesForAssign as $sc)
+                                            <option value="{{ $sc->id }}"
+                                                {{ (string) old('assign_class_id') === (string) $sc->id ? 'selected' : '' }}>
+                                                {{ $sc->name }}@if ($sc->stage) — {{ $sc->stage->name }} @endif
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                @else
+                                    <div class="alert alert-warning small mb-0">لا توجد صفوف متاحة للربط.</div>
+                                @endif
+                            </div>
+
+                            <div id="quickAddAttachSubjectsBlock" class="mb-3" style="display: none;">
+                                <div id="quickAddStudentSubjectsLoadError" class="alert alert-danger d-none small mb-3"
+                                    role="alert"></div>
+                                @if (isset($classesForAssign) && $classesForAssign->isNotEmpty())
+                                    <div class="mb-2">
+                                        <label class="form-label">تصفية حسب الصف</label>
+                                        <select class="form-select" id="quickAddStudentSubjectsClassFilter">
+                                            <option value="">جميع المواد</option>
+                                            @foreach ($classesForAssign as $sc)
+                                                <option value="{{ $sc->id }}">{{ $sc->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                @endif
+                                <label class="form-label">المواد <span class="text-danger">*</span></label>
+                                <select name="subject_ids[]" id="quickAddStudentSubjectsSelect"
+                                    class="form-select quick-add-subjects-select" multiple size="5"></select>
+                                <small class="text-muted d-block mt-1">استخدم Ctrl أو Shift لاختيار أكثر من مادة.</small>
+                            </div>
+                        @else
+                            <input type="hidden" name="attach_mode" value="none">
+                        @endcan
+
+                        <div class="mt-3">
+                            <label class="form-label">ملاحظات الربط (اختياري)</label>
+                            <textarea name="notes" class="form-control" rows="2" maxlength="1000"
+                                placeholder="ملاحظات داخلية للانضمام…">{{ old('notes') }}</textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light border" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-success">حفظ وإنشاء الطالب</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+@endcan
+
+@can('enrollment-create')
+    @if (isset($classesForAssign) && $classesForAssign->isNotEmpty())
+        <div class="modal fade" id="quickAssignClassModal" tabindex="-1" aria-labelledby="quickAssignClassModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <form method="post" action="{{ route('admin.enrollments.assign-class-to-user') }}">
+                        @csrf
+                        <input type="hidden" name="user_id" id="quickAssignClassUserId" value="">
+                        <input type="hidden" name="redirect_to" id="quickAssignClassRedirectTo" value="">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="quickAssignClassModalLabel">ربط الطالب بصف دراسي</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-muted small mb-3">سيتم اعتماد انضمام الصف وإنشاء انضمامات للمواد النشطة في هذا الصف.</p>
+                            <div class="mb-3">
+                                <label class="form-label">اختر الصف</label>
+                                <select name="class_id" class="form-select" required>
+                                    <option value="" disabled selected>— اختر الصف —</option>
+                                    @foreach ($classesForAssign as $sc)
+                                        <option value="{{ $sc->id }}">{{ $sc->name }}@if($sc->stage) — {{ $sc->stage->name }} @endif</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label">ملاحظات (اختياري)</label>
+                                <textarea name="notes" class="form-control" rows="2" maxlength="1000" placeholder="ملاحظات داخلية…"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-light border" data-bs-dismiss="modal">إلغاء</button>
+                            <button type="submit" class="btn btn-primary">حفظ الربط</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <div class="modal fade" id="quickAssignSubjectsModal" tabindex="-1" aria-labelledby="quickAssignSubjectsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <form method="post" action="{{ route('admin.enrollments.store') }}" id="formQuickAssignSubjects">
+                    @csrf
+                    <input type="hidden" name="user_ids[]" id="quickAssignSubjectsUserId" value="">
+                    <input type="hidden" name="status" value="active">
+                    <input type="hidden" name="redirect_to" id="quickAssignSubjectsRedirectTo" value="">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="quickAssignSubjectsModalLabel">ربط الطالب بمواد</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="quickAssignSubjectsLoadError" class="alert alert-danger d-none small mb-3" role="alert"></div>
+                        <div class="row g-3">
+                            @if (isset($classesForAssign) && $classesForAssign->isNotEmpty())
+                                <div class="col-md-6">
+                                    <label class="form-label">تصفية حسب الصف (اختياري)</label>
+                                    <select class="form-select" id="quickAssignSubjectsClassFilter">
+                                        <option value="">جميع المواد</option>
+                                        @foreach ($classesForAssign as $sc)
+                                            <option value="{{ $sc->id }}">{{ $sc->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endif
+                            <div class="col-md-12">
+                                <label class="form-label">اختر المواد <span class="text-danger">*</span></label>
+                                <select name="subject_ids[]" id="quickAssignSubjectsSelect" class="form-select" multiple size="10"></select>
+                                <small class="text-muted">استخدم Ctrl أو Shift لاختيار أكثر من مادة.</small>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">ملاحظات (اختياري)</label>
+                                <textarea name="notes" class="form-control" rows="2" maxlength="1000" placeholder="ملاحظات…"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light border" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-primary">إضافة الانضمامات</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+@endcan
+
 @stop
 
 @section('js')
 <script>
+    @if ($errors->any() && old('_quick_student'))
+        document.addEventListener('DOMContentLoaded', function () {
+            var _qModal = document.getElementById('quickAddStudentModal');
+            if (_qModal && typeof bootstrap !== 'undefined') {
+                bootstrap.Modal.getOrCreateInstance(_qModal).show();
+            }
+        });
+    @endif
     // إظهار الرسائل تلقائياً
     document.addEventListener('DOMContentLoaded', function() {
         // Bulk archive functionality
@@ -357,6 +642,224 @@
         const detachAllSubjectClassIdEl = document.getElementById('detachAllSubjectClassId');
         const detachAllSubjectIdEl = document.getElementById('detachAllSubjectId');
         const getSubjectsUrl = '{{ route("admin.enrollments.get-subjects-by-class") }}';
+
+        const quickAssignClassModalEl = document.getElementById('quickAssignClassModal');
+        const quickAssignSubjectsModalEl = document.getElementById('quickAssignSubjectsModal');
+        const quickAssignSubjectsClassFilter = document.getElementById('quickAssignSubjectsClassFilter');
+        const quickAssignSubjectsSelect = document.getElementById('quickAssignSubjectsSelect');
+        const quickAssignSubjectsLoadError = document.getElementById('quickAssignSubjectsLoadError');
+
+        function currentUsersListRedirectTo() {
+            return window.location.pathname + (window.location.search || '');
+        }
+
+        function hideQuickSubjectsLoadError() {
+            if (quickAssignSubjectsLoadError) {
+                quickAssignSubjectsLoadError.classList.add('d-none');
+                quickAssignSubjectsLoadError.textContent = '';
+            }
+        }
+
+        function showQuickSubjectsLoadError(msg) {
+            if (quickAssignSubjectsLoadError) {
+                quickAssignSubjectsLoadError.textContent = msg;
+                quickAssignSubjectsLoadError.classList.remove('d-none');
+            }
+        }
+
+        function loadQuickSubjects(classId) {
+            if (!quickAssignSubjectsSelect) return;
+            hideQuickSubjectsLoadError();
+            quickAssignSubjectsSelect.classList.add('opacity-50');
+            const url = classId
+                ? getSubjectsUrl + '?class_id=' + encodeURIComponent(classId)
+                : getSubjectsUrl;
+            fetch(url, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('HTTP_' + r.status);
+                    return r.json();
+                })
+                .then(function (json) {
+                    quickAssignSubjectsSelect.innerHTML = '';
+                    if (!json || json.success === false) {
+                        showQuickSubjectsLoadError('تعذر تحميل قائمة المواد.');
+                        return;
+                    }
+                    const rows = json.data ? json.data : [];
+                    rows.forEach(function (sub) {
+                        const opt = document.createElement('option');
+                        opt.value = sub.id;
+                        const rel = sub.school_class || sub.schoolClass;
+                        const className = rel && rel.name ? rel.name : '';
+                        opt.textContent = sub.name + (className ? ' — ' + className : '');
+                        quickAssignSubjectsSelect.appendChild(opt);
+                    });
+                })
+                .catch(function () {
+                    quickAssignSubjectsSelect.innerHTML = '';
+                    showQuickSubjectsLoadError('تعذر تحميل المواد. تحقق من الصلاحيات أو الاتصال.');
+                })
+                .finally(function () {
+                    quickAssignSubjectsSelect.classList.remove('opacity-50');
+                });
+        }
+
+        if (quickAssignClassModalEl) {
+            quickAssignClassModalEl.addEventListener('show.bs.modal', function (event) {
+                const raw = event.relatedTarget;
+                const btn = raw && raw.closest ? raw.closest('.quick-assign-class-trigger') : null;
+                if (!btn) return;
+                const uid = btn.getAttribute('data-user-id');
+                const uEl = document.getElementById('quickAssignClassUserId');
+                const rEl = document.getElementById('quickAssignClassRedirectTo');
+                if (uEl) uEl.value = uid || '';
+                if (rEl) rEl.value = currentUsersListRedirectTo();
+            });
+        }
+
+        if (quickAssignSubjectsModalEl) {
+            quickAssignSubjectsModalEl.addEventListener('show.bs.modal', function (event) {
+                const raw = event.relatedTarget;
+                const btn = raw && raw.closest ? raw.closest('.quick-assign-subjects-trigger') : null;
+                if (!btn) return;
+                const uid = btn.getAttribute('data-user-id');
+                const uEl = document.getElementById('quickAssignSubjectsUserId');
+                const rEl = document.getElementById('quickAssignSubjectsRedirectTo');
+                if (uEl) uEl.value = uid || '';
+                if (rEl) rEl.value = currentUsersListRedirectTo();
+                if (quickAssignSubjectsClassFilter) quickAssignSubjectsClassFilter.value = '';
+                loadQuickSubjects('');
+            });
+        }
+
+        if (quickAssignSubjectsClassFilter && quickAssignSubjectsSelect) {
+            quickAssignSubjectsClassFilter.addEventListener('change', function () {
+                loadQuickSubjects(this.value || '');
+            });
+        }
+
+        // ——— إضافة طالب سريع (مودال) ———
+        const quickAddStudentModalEl = document.getElementById('quickAddStudentModal');
+        const formQuickAddStudent = document.getElementById('formQuickAddStudent');
+        const quickAddAttachClassBlock = document.getElementById('quickAddAttachClassBlock');
+        const quickAddAttachSubjectsBlock = document.getElementById('quickAddAttachSubjectsBlock');
+        const quickAddAssignClassId = document.getElementById('quickAddAssignClassId');
+        const quickAddStudentSubjectsSelect = document.getElementById('quickAddStudentSubjectsSelect');
+        const quickAddStudentSubjectsClassFilter = document.getElementById('quickAddStudentSubjectsClassFilter');
+        const quickAddStudentSubjectsLoadError = document.getElementById('quickAddStudentSubjectsLoadError');
+
+        function hideQuickAddSubjectsLoadError() {
+            if (quickAddStudentSubjectsLoadError) {
+                quickAddStudentSubjectsLoadError.classList.add('d-none');
+                quickAddStudentSubjectsLoadError.textContent = '';
+            }
+        }
+
+        function showQuickAddSubjectsLoadError(msg) {
+            if (quickAddStudentSubjectsLoadError) {
+                quickAddStudentSubjectsLoadError.textContent = msg;
+                quickAddStudentSubjectsLoadError.classList.remove('d-none');
+            }
+        }
+
+        function loadQuickAddStudentSubjects(classId) {
+            if (!quickAddStudentSubjectsSelect) return;
+            hideQuickAddSubjectsLoadError();
+            quickAddStudentSubjectsSelect.classList.add('opacity-50');
+            const url = classId
+                ? getSubjectsUrl + '?class_id=' + encodeURIComponent(classId)
+                : getSubjectsUrl;
+            fetch(url, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('HTTP_' + r.status);
+                    return r.json();
+                })
+                .then(function (json) {
+                    quickAddStudentSubjectsSelect.innerHTML = '';
+                    if (!json || json.success === false) {
+                        showQuickAddSubjectsLoadError('تعذر تحميل قائمة المواد.');
+                        return;
+                    }
+                    const rows = json.data ? json.data : [];
+                    rows.forEach(function (sub) {
+                        const opt = document.createElement('option');
+                        opt.value = sub.id;
+                        const rel = sub.school_class || sub.schoolClass;
+                        const className = rel && rel.name ? rel.name : '';
+                        opt.textContent = sub.name + (className ? ' — ' + className : '');
+                        quickAddStudentSubjectsSelect.appendChild(opt);
+                    });
+                })
+                .catch(function () {
+                    quickAddStudentSubjectsSelect.innerHTML = '';
+                    showQuickAddSubjectsLoadError('تعذر تحميل المواد. تحقق من الصلاحيات أو الاتصال.');
+                })
+                .finally(function () {
+                    quickAddStudentSubjectsSelect.classList.remove('opacity-50');
+                });
+        }
+
+        function getQuickAddAttachMode() {
+            const r = document.querySelector('.quick-add-attach-mode:checked');
+            return r ? r.value : 'none';
+        }
+
+        function syncQuickAddAttachUi() {
+            const mode = getQuickAddAttachMode();
+            if (quickAddAttachClassBlock) {
+                quickAddAttachClassBlock.style.display = mode === 'class' ? '' : 'none';
+            }
+            if (quickAddAttachSubjectsBlock) {
+                quickAddAttachSubjectsBlock.style.display = mode === 'subjects' ? '' : 'none';
+            }
+            if (quickAddAssignClassId) {
+                quickAddAssignClassId.required = mode === 'class';
+            }
+            if (mode === 'subjects' && quickAddStudentSubjectsSelect && quickAddStudentSubjectsSelect.options.length === 0) {
+                const cid = quickAddStudentSubjectsClassFilter ? quickAddStudentSubjectsClassFilter.value : '';
+                loadQuickAddStudentSubjects(cid || '');
+            }
+        }
+
+        document.querySelectorAll('.quick-add-attach-mode').forEach(function (el) {
+            el.addEventListener('change', syncQuickAddAttachUi);
+        });
+
+        if (quickAddStudentModalEl) {
+            quickAddStudentModalEl.addEventListener('show.bs.modal', function () {
+                syncQuickAddAttachUi();
+            });
+        }
+
+        if (quickAddStudentSubjectsClassFilter && quickAddStudentSubjectsSelect) {
+            quickAddStudentSubjectsClassFilter.addEventListener('change', function () {
+                loadQuickAddStudentSubjects(this.value || '');
+            });
+        }
+
+        if (formQuickAddStudent) {
+            formQuickAddStudent.addEventListener('submit', function (e) {
+                const mode = getQuickAddAttachMode();
+                if (mode === 'class') {
+                    if (!quickAddAssignClassId || !quickAddAssignClassId.value) {
+                        e.preventDefault();
+                        alert('يرجى اختيار الصف الدراسي.');
+                        return false;
+                    }
+                }
+                if (mode === 'subjects') {
+                    if (!quickAddStudentSubjectsSelect || quickAddStudentSubjectsSelect.selectedOptions.length === 0) {
+                        e.preventDefault();
+                        alert('يرجى اختيار مادة واحدة على الأقل.');
+                        return false;
+                    }
+                }
+            });
+        }
 
         // Select all functionality
         if (selectAllUsers) {
@@ -1069,6 +1572,47 @@
         const queryInput = document.querySelector('input[name="query"]');
         const isActiveSelect = document.querySelector('select[name="is_active"]');
         const fetchUrl = '{{ route("users.index") }}';
+        const perPageToolbarContainer = document.getElementById('perPageToolbarContainer');
+
+        function getPerPageSelect() {
+            return document.getElementById('perPageSelect');
+        }
+        function getPerPageCustomWrap() {
+            return document.getElementById('perPageCustomWrap');
+        }
+        function getCurrentPerPage() {
+            const sel = getPerPageSelect();
+            if (!sel) {
+                return 25;
+            }
+            if (sel.value === 'custom') {
+                const input = document.getElementById('perPageCustom');
+                const n = input ? parseInt(input.value, 10) : NaN;
+                if (!Number.isFinite(n)) {
+                    return 25;
+                }
+                return Math.min(100, Math.max(1, n));
+            }
+            const n = parseInt(sel.value, 10);
+            if (!Number.isFinite(n)) {
+                return 25;
+            }
+            return Math.min(100, Math.max(1, n));
+        }
+        function syncCustomPerPageUi() {
+            const sel = getPerPageSelect();
+            const wrap = getPerPageCustomWrap();
+            if (!sel || !wrap) {
+                return;
+            }
+            if (sel.value === 'custom') {
+                wrap.classList.remove('d-none');
+                wrap.classList.add('d-flex');
+            } else {
+                wrap.classList.add('d-none');
+                wrap.classList.remove('d-flex');
+            }
+        }
 
         function buildFetchParams(page) {
             const params = new URLSearchParams();
@@ -1081,6 +1625,7 @@
             params.set('is_active', isActive);
             if (classId) params.set('class_id', classId);
             params.set('page', page || 1);
+            params.set('per_page', String(getCurrentPerPage()));
 
             return params.toString();
         }
@@ -1108,6 +1653,7 @@
                 if (impersonateModalsWrapper && data.impersonate_modals !== undefined) {
                     impersonateModalsWrapper.innerHTML = data.impersonate_modals;
                 }
+                syncCustomPerPageUi();
 
                 // Reset bulk selection UI after table change
                 if (selectAllUsers) selectAllUsers.checked = false;
@@ -1142,6 +1688,37 @@
                 fetchUsers(page);
             });
         }
+
+        if (perPageToolbarContainer) {
+            perPageToolbarContainer.addEventListener('change', function(e) {
+                if (!e.target || e.target.id !== 'perPageSelect') {
+                    return;
+                }
+                syncCustomPerPageUi();
+                if (e.target.value !== 'custom') {
+                    fetchUsers(1);
+                }
+            });
+            perPageToolbarContainer.addEventListener('click', function(e) {
+                const btn = e.target && e.target.closest ? e.target.closest('#applyCustomPerPage') : null;
+                if (!btn) {
+                    return;
+                }
+                e.preventDefault();
+                const sel = getPerPageSelect();
+                const input = document.getElementById('perPageCustom');
+                if (sel && sel.value === 'custom' && input) {
+                    const raw = parseInt(input.value, 10);
+                    if (!Number.isFinite(raw) || raw < 1 || raw > 100) {
+                        alert('أدخل عدداً بين 1 و 100');
+                        return;
+                    }
+                }
+                fetchUsers(1);
+            });
+        }
+
+        syncCustomPerPageUi();
     });
 </script>
 

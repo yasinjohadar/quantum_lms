@@ -71,7 +71,10 @@
                 <div class="col-xl-12">
                     <div class="card shadow-sm border-0">
                         <div class="card-header d-flex flex-column justify-content-between gap-3">
-                            <h5 class="mb-0 fw-bold">قائمة المعلمين</h5>
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                <h5 class="mb-0 fw-bold">قائمة المعلمين</h5>
+                                @include('admin.partials.per-page-toolbar', ['paginator' => $teachers])
+                            </div>
 
                             @if(isset($activeWeeks) && $activeWeeks->isNotEmpty())
                                 <div class="w-100 mb-2 small text-muted">
@@ -240,6 +243,48 @@ document.addEventListener('DOMContentLoaded', function () {
     const tableBody = document.getElementById('teachersTableBody');
     const paginationContainer = document.getElementById('teachersPaginationContainer');
     const impersonateModalsContainer = document.getElementById('teachersImpersonateModals');
+    const perPageToolbarContainer = document.getElementById('perPageToolbarContainer');
+
+    function getPerPageSelect() {
+        return document.getElementById('perPageSelect');
+    }
+    function getPerPageCustomWrap() {
+        return document.getElementById('perPageCustomWrap');
+    }
+    function getCurrentPerPage() {
+        const sel = getPerPageSelect();
+        if (!sel) {
+            return 25;
+        }
+        if (sel.value === 'custom') {
+            const input = document.getElementById('perPageCustom');
+            const n = input ? parseInt(input.value, 10) : NaN;
+            if (!Number.isFinite(n)) {
+                return 25;
+            }
+            return Math.min(100, Math.max(1, n));
+        }
+        const n = parseInt(sel.value, 10);
+        if (!Number.isFinite(n)) {
+            return 25;
+        }
+        return Math.min(100, Math.max(1, n));
+    }
+    function syncCustomPerPageUi() {
+        const sel = getPerPageSelect();
+        const wrap = getPerPageCustomWrap();
+        if (!sel || !wrap) {
+            return;
+        }
+        if (sel.value === 'custom') {
+            wrap.classList.remove('d-none');
+            wrap.classList.add('d-flex');
+        } else {
+            wrap.classList.add('d-none');
+            wrap.classList.remove('d-flex');
+        }
+    }
+
     if (!form || !roleFilter || !tableBody || !paginationContainer) return;
 
     function buildParams(extraPage) {
@@ -247,6 +292,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (extraPage) {
             params.set('page', String(extraPage));
         }
+        params.set('per_page', String(getCurrentPerPage()));
         return params;
     }
 
@@ -283,6 +329,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 impersonateModalsContainer.innerHTML = data.impersonate_modals;
             }
             bindPaginationLinks();
+            syncCustomPerPageUi();
             const newUrl = `${window.location.pathname}?${params.toString()}`;
             window.history.replaceState({}, '', newUrl);
         })
@@ -294,6 +341,37 @@ document.addEventListener('DOMContentLoaded', function () {
     roleFilter.addEventListener('change', function () {
         fetchTeachers(1);
     });
+
+    if (perPageToolbarContainer) {
+        perPageToolbarContainer.addEventListener('change', function (e) {
+            if (!e.target || e.target.id !== 'perPageSelect') {
+                return;
+            }
+            syncCustomPerPageUi();
+            if (e.target.value !== 'custom') {
+                fetchTeachers(1);
+            }
+        });
+        perPageToolbarContainer.addEventListener('click', function (e) {
+            const btn = e.target && e.target.closest ? e.target.closest('#applyCustomPerPage') : null;
+            if (!btn) {
+                return;
+            }
+            e.preventDefault();
+            const sel = getPerPageSelect();
+            const input = document.getElementById('perPageCustom');
+            if (sel && sel.value === 'custom' && input) {
+                const raw = parseInt(input.value, 10);
+                if (!Number.isFinite(raw) || raw < 1 || raw > 100) {
+                    alert('أدخل عدداً بين 1 و 100');
+                    return;
+                }
+            }
+            fetchTeachers(1);
+        });
+    }
+
+    syncCustomPerPageUi();
     bindPaginationLinks();
 });
 </script>

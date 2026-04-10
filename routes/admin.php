@@ -421,6 +421,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('enrollments.search-students');
         Route::get('enrollments/get-subjects-by-class', [EnrollmentController::class, 'getSubjectsByClass'])
             ->name('enrollments.get-subjects-by-class');
+        Route::post('enrollments/assign-class-to-user', [EnrollmentController::class, 'assignClassToUser'])
+            ->name('enrollments.assign-class-to-user');
         Route::get('enrollments/pending', [EnrollmentController::class, 'pendingRequests'])
             ->name('enrollments.pending');
         Route::post('enrollments/{enrollment}/approve', [EnrollmentController::class, 'approve'])

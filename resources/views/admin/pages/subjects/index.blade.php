@@ -99,8 +99,9 @@
 
                     <!-- Subjects List Card -->
                     <div class="card shadow-sm border-0">
-                        <div class="card-header">
+                        <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
                             <h5 class="mb-0 fw-bold">قائمة المواد الدراسية</h5>
+                            @include('admin.partials.per-page-toolbar', ['paginator' => $subjects])
                         </div>
 
                         <div class="card-body">
@@ -156,14 +157,54 @@ document.addEventListener('DOMContentLoaded', function() {
     const clearFiltersBtn = document.getElementById('clearFiltersBtn');
     const subjectsTableBody = document.getElementById('subjectsTableBody');
     const paginationContainer = document.getElementById('paginationContainer');
+    const perPageToolbarContainer = document.getElementById('perPageToolbarContainer');
     const loadingIndicator = document.getElementById('loadingIndicator');
     const subjectsTableContainer = document.getElementById('subjectsTableContainer');
     
     const csrfToken = '{{ csrf_token() }}';
     const filterUrl = '{{ route("admin.subjects.index") }}';
     const reorderUrl = '{{ route("admin.subjects.reorder") }}';
-    const perPage = {{ $subjects->perPage() }};
-    
+
+    function getPerPageSelect() {
+        return document.getElementById('perPageSelect');
+    }
+    function getPerPageCustomWrap() {
+        return document.getElementById('perPageCustomWrap');
+    }
+    function getCurrentPerPage() {
+        const sel = getPerPageSelect();
+        if (!sel) {
+            return 25;
+        }
+        if (sel.value === 'custom') {
+            const input = document.getElementById('perPageCustom');
+            const n = input ? parseInt(input.value, 10) : NaN;
+            if (!Number.isFinite(n)) {
+                return 25;
+            }
+            return Math.min(100, Math.max(1, n));
+        }
+        const n = parseInt(sel.value, 10);
+        if (!Number.isFinite(n)) {
+            return 25;
+        }
+        return Math.min(100, Math.max(1, n));
+    }
+    function syncCustomPerPageUi() {
+        const sel = getPerPageSelect();
+        const wrap = getPerPageCustomWrap();
+        if (!sel || !wrap) {
+            return;
+        }
+        if (sel.value === 'custom') {
+            wrap.classList.remove('d-none');
+            wrap.classList.add('d-flex');
+        } else {
+            wrap.classList.add('d-none');
+            wrap.classList.remove('d-flex');
+        }
+    }
+
     let searchTimeout;
     let currentPage = 1;
     let sortableInstance = null;
@@ -188,7 +229,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 var payload = {
                     order: order,
                     page: currentPage,
-                    per_page: perPage,
+                    per_page: getCurrentPerPage(),
                     _token: csrfToken
                 };
                 if (filterForm.querySelector('[name="query"]').value) payload.query = filterForm.querySelector('[name="query"]').value;
@@ -240,7 +281,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 params.append(key, value);
             }
         }
-        
+        params.set('per_page', String(getCurrentPerPage()));
+
         fetch(`${filterUrl}?${params.toString()}`, {
             method: 'GET',
             headers: {
@@ -296,6 +338,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 const page = url.searchParams.get('page') || 1;
                 fetchSubjects(page);
             });
+        });
+        syncCustomPerPageUi();
+    }
+
+    if (perPageToolbarContainer) {
+        perPageToolbarContainer.addEventListener('change', function(e) {
+            if (!e.target || e.target.id !== 'perPageSelect') {
+                return;
+            }
+            syncCustomPerPageUi();
+            if (e.target.value !== 'custom') {
+                fetchSubjects(1);
+            }
+        });
+        perPageToolbarContainer.addEventListener('click', function(e) {
+            const btn = e.target && e.target.closest ? e.target.closest('#applyCustomPerPage') : null;
+            if (!btn) {
+                return;
+            }
+            e.preventDefault();
+            const sel = getPerPageSelect();
+            const input = document.getElementById('perPageCustom');
+            if (sel && sel.value === 'custom' && input) {
+                const raw = parseInt(input.value, 10);
+                if (!Number.isFinite(raw) || raw < 1 || raw > 100) {
+                    alert('أدخل عدداً بين 1 و 100');
+                    return;
+                }
+            }
+            fetchSubjects(1);
         });
     }
 
@@ -356,6 +428,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // تهيئة pagination listeners عند تحميل الصفحة
+    syncCustomPerPageUi();
     attachPaginationListeners();
     // تهيئة السحب والإفلات لترتيب المواد
     initSortable();

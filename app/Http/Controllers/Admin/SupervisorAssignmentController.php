@@ -71,7 +71,8 @@ class SupervisorAssignmentController extends Controller
             });
         }
 
-        $supervisors = $supervisorsQuery->orderBy('name')->paginate(20);
+        $perPage = min(100, max(1, (int) $request->input('per_page', 25)));
+        $supervisors = $supervisorsQuery->orderBy('name')->paginate($perPage);
 
         $ids = $supervisors->pluck('id');
         $lastLogins = $ids->isNotEmpty()

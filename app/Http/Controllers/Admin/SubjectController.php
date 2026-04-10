@@ -61,7 +61,8 @@ class SubjectController extends Controller
             $subjectsQuery->where('is_active', $request->boolean('is_active'));
         }
 
-        $subjects = $subjectsQuery->ordered()->paginate(10);
+        $perPage = min(100, max(1, (int) $request->input('per_page', 25)));
+        $subjects = $subjectsQuery->ordered()->paginate($perPage);
         $classes = SchoolClass::with('stage')->ordered()->get();
 
         // إذا كان طلب Ajax، إرجاع JSON
@@ -98,7 +99,7 @@ class SubjectController extends Controller
 
         $order = array_map('intval', $request->input('order'));
         $page = (int) $request->input('page', 1);
-        $perPage = (int) $request->input('per_page', 10);
+        $perPage = (int) $request->input('per_page', 25);
 
         $subjectsQuery = Subject::query();
         $user = auth()->user();

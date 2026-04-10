@@ -3,23 +3,28 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\AdminStudentEnrollmentService;
 use App\Models\Enrollment;
 use App\Models\ClassEnrollment;
 use App\Models\User;
 use App\Models\Subject;
 use App\Models\SchoolClass;
 use App\Models\Stage;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class EnrollmentController extends Controller
 {
-    public function __construct()
-    {
+    public function __construct(
+        private AdminStudentEnrollmentService $adminStudentEnrollmentService
+    ) {
         $this->middleware('auth');
         $this->middleware(['permission:enrollment-list'])->only('index');
-        $this->middleware(['permission:enrollment-create'])->only(['create', 'store']);
+        $this->middleware(['permission:enrollment-create'])->only(['create', 'store', 'assignClassToUser']);
         $this->middleware(['permission:enrollment-delete'])->only('destroy', 'destroyMultiple', 'enrollmentsByClass', 'destroyByClass', 'destroyBySubject', 'countByClass', 'countBySubject');
         $this->middleware(['permission:enrollment-pending-requests'])->only('pendingRequests');
         $this->middleware(['permission:enrollment-approve'])->only('approve');
@@ -27,7 +32,7 @@ class EnrollmentController extends Controller
         $this->middleware(['permission:enrollment-approve-multiple'])->only('approveMultiple');
         $this->middleware(['permission:enrollment-reject-multiple'])->only('rejectMultiple');
         $this->middleware(['permission:enrollment-search-students'])->only('searchStudents');
-        $this->middleware(['permission:enrollment-get-subjects-by-class'])->only('getSubjectsByClass');
+        $this->middleware(['permission:enrollment-get-subjects-by-class|enrollment-create'])->only('getSubjectsByClass');
         $this->middleware(['permission:enrollment-class-pending-requests'])->only('classPendingRequests');
         $this->middleware(['permission:enrollment-approve-class'])->only('approveClassEnrollment');
         $this->middleware(['permission:enrollment-reject-class'])->only('rejectClassEnrollment');
@@ -350,6 +355,7 @@ class EnrollmentController extends Controller
             'subject_ids.*' => 'required|exists:subjects,id',
             'status' => 'nullable|in:active,suspended,completed',
             'notes' => 'nullable|string|max:1000',
+            'redirect_to' => 'nullable|string|max:2048',
         ]);
 
         try {
@@ -361,50 +367,41 @@ class EnrollmentController extends Controller
             $userIds = $request->input('user_ids');
             $subjectIds = $request->input('subject_ids');
 
-            $enrollments = [];
-            $skipped = 0;
+            $counts = $this->adminStudentEnrollmentService->bulkAttachSubjects(
+                $userIds,
+                $subjectIds,
+                $status,
+                $notes,
+                $enrolledBy
+            );
 
-            foreach ($userIds as $userId) {
-                foreach ($subjectIds as $subjectId) {
-                    // التحقق من عدم وجود انضمام مكرر
-                    $existing = Enrollment::where('user_id', $userId)
-                        ->where('subject_id', $subjectId)
-                        ->first();
-
-                    if ($existing) {
-                        $skipped++;
-                        continue;
-                    }
-
-                    $enrollments[] = [
-                        'user_id' => $userId,
-                        'subject_id' => $subjectId,
-                        'enrolled_by' => $enrolledBy,
-                        'enrolled_at' => now(),
-                        'status' => $status,
-                        'notes' => $notes,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                }
-            }
-
-            if (empty($enrollments)) {
+            if ($counts['insert_count'] === 0 && $counts['reactivated'] === 0) {
                 DB::rollBack();
                 return redirect()->back()
                     ->withInput()
                     ->with('error', 'جميع الانضمامات موجودة مسبقاً');
             }
 
-            Enrollment::insert($enrollments);
-
             DB::commit();
 
-            $successCount = count($enrollments);
-            $message = "تم إضافة {$successCount} انضمام بنجاح";
-            
+            $messageParts = [];
+            $insertCount = $counts['insert_count'];
+            $reactivated = $counts['reactivated'];
+            $skipped = $counts['skipped'];
+            if ($insertCount > 0) {
+                $messageParts[] = "تم إضافة {$insertCount} انضماماً جديداً";
+            }
+            if ($reactivated > 0) {
+                $messageParts[] = "تمت إعادة تفعيل {$reactivated} انضماماً كان محذوفاً مسبقاً";
+            }
             if ($skipped > 0) {
-                $message .= "، وتم تخطي {$skipped} انضمام مكرر";
+                $messageParts[] = "تم تخطي {$skipped} انضمام مكرر (موجود فعلاً)";
+            }
+            $message = implode('، ', $messageParts);
+
+            $safeRedirect = $this->safeInternalRedirectPath($request->input('redirect_to'));
+            if ($safeRedirect !== null) {
+                return redirect($safeRedirect)->with('success', $message);
             }
 
             return redirect()
@@ -429,10 +426,9 @@ class EnrollmentController extends Controller
         try {
             $enrollment->delete();
 
-            // إذا كان هناك redirect_to محدد، استخدمه
-            if ($request->filled('redirect_to')) {
-                return redirect($request->input('redirect_to'))
-                    ->with('success', 'تم إلغاء الانضمام بنجاح');
+            $safeRedirect = $this->safeInternalRedirectPath($request->input('redirect_to'));
+            if ($safeRedirect !== null) {
+                return redirect($safeRedirect)->with('success', 'تم إلغاء الانضمام بنجاح');
             }
 
             return redirect()
@@ -921,6 +917,80 @@ class EnrollmentController extends Controller
     }
 
     /**
+     * ربط طالب بصف (موافقة إدارية مباشرة + مزامنة مواد الصف النشطة).
+     */
+    public function assignClassToUser(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|integer|exists:users,id',
+            'class_id' => 'required|integer|exists:classes,id',
+            'notes' => 'nullable|string|max:1000',
+            'redirect_to' => 'nullable|string|max:2048',
+        ], [
+            'user_id.required' => 'معرّف المستخدم مطلوب.',
+            'user_id.integer' => 'معرّف المستخدم غير صالح.',
+            'user_id.exists' => 'المستخدم المحدد غير موجود.',
+            'class_id.required' => 'يجب اختيار صف دراسي.',
+            'class_id.integer' => 'معرّف الصف غير صالح.',
+            'class_id.exists' => 'الصف المحدد غير موجود.',
+            'notes.max' => 'الملاحظات طويلة جداً.',
+            'redirect_to.max' => 'مسار إعادة التوجيه غير صالح.',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->redirectAfterClassAssign($request)
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        $user = User::findOrFail($request->integer('user_id'));
+        if (!$user->hasRole('student')) {
+            return $this->redirectAfterClassAssign($request)
+                ->with('error', 'يمكن ربط الطلاب فقط بالصفوف الدراسية. المستخدم المحدد ليس ضمن دور الطالب.');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $classId = $request->integer('class_id');
+            $result = $this->adminStudentEnrollmentService->assignApprovedClassWithProvisioning(
+                $user->id,
+                $classId,
+                $request->input('notes'),
+                auth()->id()
+            );
+
+            DB::commit();
+
+            $message = "تم ربط الطالب بالصف بنجاح. تم إنشاء {$result['created']} انضمام للمواد";
+            if ($result['skipped'] > 0) {
+                $message .= " (تم تخطي {$result['skipped']} مادة مسجل فيها مسبقاً)";
+            }
+
+            return $this->redirectAfterClassAssign($request)->with('success', $message);
+        } catch (QueryException $e) {
+            DB::rollBack();
+            Log::error('Error assigning class to user (database)', [
+                'message' => $e->getMessage(),
+                'sql' => $e->getSql(),
+                'bindings' => $e->getBindings(),
+            ]);
+
+            return $this->redirectAfterClassAssign($request)
+                ->with('error', $this->friendlyClassAssignDbError($e));
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error assigning class to user', [
+                'message' => $e->getMessage(),
+                'exception' => $e,
+            ]);
+
+            return $this->redirectAfterClassAssign($request)
+                ->with('error', 'تعذر إتمام ربط الصف: '.$e->getMessage());
+        }
+    }
+
+    /**
      * قبول طلب انضمام للصف
      */
     public function approveClassEnrollment(ClassEnrollment $classEnrollment, Request $request)
@@ -941,49 +1011,22 @@ class EnrollmentController extends Controller
                 'notes' => $request->input('notes', $classEnrollment->notes),
             ]);
 
-            // جلب الصف مع المواد
-            $class = SchoolClass::with(['subjects' => function($query) {
+            $class = SchoolClass::with(['subjects' => function ($query) {
                 $query->where('is_active', true);
             }])->findOrFail($classEnrollment->class_id);
 
-            // إنشاء enrollments لكل مادة في الصف
-            $createdCount = 0;
-            $skippedCount = 0;
-
-            foreach ($class->subjects as $subject) {
-                // التحقق من عدم وجود enrollment نشط للطالب في نفس المادة
-                $existingEnrollment = Enrollment::withTrashed()
-                    ->where('user_id', $classEnrollment->user_id)
-                    ->where('subject_id', $subject->id)
-                    ->first();
-
-                if ($existingEnrollment) {
-                    if ($existingEnrollment->status === 'active') {
-                        $skippedCount++;
-                        continue;
-                    } elseif (in_array($existingEnrollment->status, ['pending', 'suspended', 'completed'])) {
-                        // حذف enrollment القديم
-                        $existingEnrollment->forceDelete();
-                    }
-                }
-
-                // إنشاء enrollment جديد
-                Enrollment::create([
-                    'user_id' => $classEnrollment->user_id,
-                    'subject_id' => $subject->id,
-                    'enrolled_by' => auth()->id(),
-                    'enrolled_at' => now(),
-                    'status' => 'active',
-                    'notes' => 'تم قبول طلب الانضمام للصف: ' . $class->name,
-                ]);
-                $createdCount++;
-            }
+            $result = $this->adminStudentEnrollmentService->provisionSubjectEnrollmentsForApprovedClass(
+                $classEnrollment->user_id,
+                $class,
+                'تم قبول طلب الانضمام للصف: '.$class->name,
+                auth()->id()
+            );
 
             DB::commit();
 
-            $message = "تم قبول طلب الانضمام للصف بنجاح. تم إنشاء {$createdCount} انضمام للمواد";
-            if ($skippedCount > 0) {
-                $message .= " (تم تخطي {$skippedCount} مادة مسجل فيها مسبقاً)";
+            $message = "تم قبول طلب الانضمام للصف بنجاح. تم إنشاء {$result['created']} انضمام للمواد";
+            if ($result['skipped'] > 0) {
+                $message .= " (تم تخطي {$result['skipped']} مادة مسجل فيها مسبقاً)";
             }
 
             return redirect()->back()
@@ -1060,37 +1103,17 @@ class EnrollmentController extends Controller
                     'enrolled_at' => now(),
                 ]);
 
-                // جلب الصف مع المواد
-                $class = SchoolClass::with(['subjects' => function($query) {
+                $class = SchoolClass::with(['subjects' => function ($query) {
                     $query->where('is_active', true);
                 }])->findOrFail($classEnrollment->class_id);
 
-                // إنشاء enrollments لكل مادة
-                foreach ($class->subjects as $subject) {
-                    // التحقق من عدم وجود enrollment نشط
-                    $existingEnrollment = Enrollment::withTrashed()
-                        ->where('user_id', $classEnrollment->user_id)
-                        ->where('subject_id', $subject->id)
-                        ->first();
-
-                    if ($existingEnrollment && $existingEnrollment->status === 'active') {
-                        continue;
-                    }
-
-                    if ($existingEnrollment) {
-                        $existingEnrollment->forceDelete();
-                    }
-
-                    Enrollment::create([
-                        'user_id' => $classEnrollment->user_id,
-                        'subject_id' => $subject->id,
-                        'enrolled_by' => auth()->id(),
-                        'enrolled_at' => now(),
-                        'status' => 'active',
-                        'notes' => 'تم قبول طلب الانضمام للصف: ' . $class->name,
-                    ]);
-                    $totalCreatedEnrollments++;
-                }
+                $provisioned = $this->adminStudentEnrollmentService->provisionSubjectEnrollmentsForApprovedClass(
+                    $classEnrollment->user_id,
+                    $class,
+                    'تم قبول طلب الانضمام للصف: '.$class->name,
+                    auth()->id()
+                );
+                $totalCreatedEnrollments += $provisioned['created'];
 
                 $approvedCount++;
             }
@@ -1155,5 +1178,45 @@ class EnrollmentController extends Controller
             return redirect()->back()
                 ->with('error', 'حدث خطأ أثناء رفض الطلبات');
         }
+    }
+
+    protected function safeInternalRedirectPath(?string $path): ?string
+    {
+        if ($path === null || $path === '') {
+            return null;
+        }
+
+        $path = trim($path);
+        if (! str_starts_with($path, '/') || str_starts_with($path, '//')) {
+            return null;
+        }
+
+        return $path;
+    }
+
+    protected function redirectAfterClassAssign(Request $request): RedirectResponse
+    {
+        $path = $this->safeInternalRedirectPath($request->input('redirect_to'));
+        if ($path !== null) {
+            return redirect($path);
+        }
+
+        return redirect()->back();
+    }
+
+    protected function friendlyClassAssignDbError(QueryException $e): string
+    {
+        $msg = $e->getMessage();
+        if (str_contains($msg, '1062') && str_contains($msg, 'class_enrollments')) {
+            return 'تعذر حفظ ربط الصف: يوجد تعارض مع سجل سابق لنفس الطالب والصف (مثلاً سجل محذوف منطقياً لم يُعالَج). أعد تحميل الصفحة وحاول مرة أخرى، أو راجع جدول انضمامات الصفوف.';
+        }
+        if (str_contains($msg, '1062') && str_contains($msg, 'enrollments')) {
+            return 'تعذر مزامنة مواد الصف: تعارض مع انضمام مادة موجود مسبقاً في قاعدة البيانات. راجع جدول انضمامات المواد لهذا الطالب.';
+        }
+        if (str_contains($msg, 'Integrity constraint violation')) {
+            return 'تعذر إتمام العملية بسبب قيد في قاعدة البيانات. راجع البيانات أو سجلات النظام للتفاصيل.';
+        }
+
+        return 'تعذر إتمام ربط الصف أو مزامنة المواد. حاول لاحقاً أو راجع سجلات النظام.';
     }
 }

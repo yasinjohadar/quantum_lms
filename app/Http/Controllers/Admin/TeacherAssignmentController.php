@@ -34,6 +34,8 @@ class TeacherAssignmentController extends Controller
             'role' => 'nullable|string|exists:roles,name',
         ]);
 
+        $perPage = min(100, max(1, (int) $request->input('per_page', 25)));
+
         $teachersQuery = User::teachers()->with(['roles', 'assignedClasses', 'assignedSubjects']);
 
         // فلترة حسب البحث
@@ -157,7 +159,6 @@ class TeacherAssignmentController extends Controller
             }
 
             $page = (int) $request->input('page', 1);
-            $perPage = 20;
             $total = $filtered->count();
             $slice = $filtered->slice(($page - 1) * $perPage, $perPage)->values();
             $teachers = new LengthAwarePaginator(
@@ -170,7 +171,7 @@ class TeacherAssignmentController extends Controller
             $teachersProgress = TeacherProgressService::getTeachersProgressSummary(new Collection($slice->all()), $weekId);
         } else {
             $nameDir = $sort === 'name_desc' ? 'desc' : 'asc';
-            $teachers = $teachersQuery->orderBy('name', $nameDir)->paginate(20);
+            $teachers = $teachersQuery->orderBy('name', $nameDir)->paginate($perPage);
             $teachers->withQueryString();
             $teachersProgress = TeacherProgressService::getTeachersProgressSummary($teachers->getCollection(), $weekId);
         }

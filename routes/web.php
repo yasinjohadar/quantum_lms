@@ -67,6 +67,7 @@ Route::get('users/{user}/impersonate', [UserController::class, 'impersonate'])
 
 // Admin routes - محمية بصلاحية admin فقط
 Route::middleware(['auth', 'check.user.active', 'admin'])->group(function () {
+    Route::post('users/quick-student', [UserController::class, 'storeQuickStudent'])->name('users.store-quick-student');
     Route::resource('users', UserController::class);
     Route::get('users/{user}/login-logs', [UserController::class, 'loginLogs'])->name('users.login-logs');
     Route::resource('roles', RoleController::class);

@@ -20,6 +20,9 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use App\Helpers\PhoneHelper;
 use App\Helpers\StorageHelper;
+use App\Services\AdminStudentEnrollmentService;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
 {
@@ -42,7 +45,8 @@ class UserController extends Controller
     // }
 
     public function __construct(
-        private OTPService $otpService
+        private OTPService $otpService,
+        private AdminStudentEnrollmentService $adminStudentEnrollmentService
     ) {
         // تأكد أن المستخدم مصادق أولًا ثم تحقق من الصلاحيات
         // استثناء impersonate من auth middleware للسماح بـ signed URL (GET requests)
@@ -50,7 +54,7 @@ class UserController extends Controller
         $this->middleware('auth')->except(['impersonate']);
 
         $this->middleware('permission:user-list')->only('index');
-        $this->middleware('permission:user-create')->only(['create', 'store']);
+        $this->middleware('permission:user-create')->only(['create', 'store', 'storeQuickStudent']);
         $this->middleware('permission:user-edit')->only(['edit', 'update']);
         $this->middleware('permission:user-edit')->only([
             'detachFromClass',
@@ -78,6 +82,7 @@ class UserController extends Controller
         $roles = Role::all();
 
         $classes = SchoolClass::active()->ordered()->get(['id', 'name']);
+        $classesForAssign = SchoolClass::with('stage')->active()->ordered()->get();
 
         // بدء استعلام المستخدمين — الطلاب فقط (غير المؤرشفين)
         $usersQuery = User::query()->students();
@@ -109,20 +114,20 @@ class UserController extends Controller
             });
         }
 
-        // تنفيذ الاستعلام
-        $users = $usersQuery->paginate(10);
+        $perPage = min(100, max(1, (int) $request->input('per_page', 25)));
+        $users = $usersQuery->paginate($perPage);
 
         // AJAX response for class filter + pagination
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'html' => view('admin.pages.users.partials.users-tbody', compact('users'))->render(),
+                'html' => view('admin.pages.users.partials.users-tbody', compact('users', 'classesForAssign'))->render(),
                 'pagination' => view('admin.pages.users.partials.pagination-links', compact('users'))->render(),
                 'impersonate_modals' => view('admin.pages.users.partials.impersonate-modals', compact('users'))->render(),
             ]);
         }
 
-        return view("admin.pages.users.index", compact("users", "roles", "classes"));
+        return view('admin.pages.users.index', compact('users', 'roles', 'classes', 'classesForAssign'));
     }
 
     /**
@@ -222,7 +227,8 @@ class UserController extends Controller
             $usersQuery->where('is_active', $isActiveFilter);
         }
 
-        $users = $usersQuery->orderBy('name')->paginate(10);
+        $perPage = min(100, max(1, (int) $request->input('per_page', 25)));
+        $users = $usersQuery->orderBy('name')->paginate($perPage);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
@@ -353,12 +359,175 @@ class UserController extends Controller
     }
 
     /**
+     * إنشاء طالب بدور student مع اختيار ربط صف أو مواد في نفس الطلب.
+     */
+    public function storeQuickStudent(Request $request)
+    {
+        if ($request->filled('phone')) {
+            $normalized = PhoneHelper::normalize($request->phone, config('app.phone_default_country_code', '966'));
+            if ($normalized !== null) {
+                $request->merge(['phone' => $normalized]);
+            }
+        }
+
+        $attachMode = $request->input('attach_mode', 'none');
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email',
+            'phone' => 'nullable|string|max:20|regex:/^\+[1-9]\d{1,14}$/|unique:users,phone',
+            'password' => 'required|string|min:8|confirmed',
+            'is_active' => 'nullable|in:0,1',
+            'attach_mode' => 'required|in:none,class,subjects',
+            'assign_class_id' => 'exclude_unless:attach_mode,class|required|integer|exists:classes,id',
+            'subject_ids' => 'exclude_unless:attach_mode,subjects|required|array|min:1',
+            'subject_ids.*' => 'integer|exists:subjects,id',
+            'notes' => 'nullable|string|max:1000',
+        ], [
+            'name.required' => 'الاسم مطلوب',
+            'email.required' => 'البريد الإلكتروني مطلوب',
+            'email.email' => 'البريد الإلكتروني غير صحيح',
+            'email.unique' => 'البريد الإلكتروني مستخدم بالفعل',
+            'phone.regex' => 'رقم الهاتف يجب أن يبدأ بـ + متبوعاً برمز الدولة',
+            'phone.unique' => 'رقم الهاتف مستخدم بالفعل',
+            'password.required' => 'كلمة المرور مطلوبة',
+            'password.min' => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
+            'password.confirmed' => 'تأكيد كلمة المرور غير متطابق',
+            'attach_mode.required' => 'نوع الربط مطلوب',
+            'assign_class_id.required' => 'يجب اختيار صف دراسي.',
+            'subject_ids.required' => 'يجب اختيار مادة واحدة على الأقل.',
+            'subject_ids.min' => 'يجب اختيار مادة واحدة على الأقل.',
+        ]);
+
+        if ($attachMode !== 'none' && ! auth()->user()->can('enrollment-create')) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'ليس لديك صلاحية ربط الطلاب بالصفوف أو المواد. اختر «بدون ربط» أو اطلب صلاحية إنشاء الانضمامات.');
+        }
+
+        $indexParams = [];
+        if ($request->filled('list_query')) {
+            $indexParams['query'] = $request->input('list_query');
+        }
+        if ($request->filled('list_is_active')) {
+            $indexParams['is_active'] = $request->input('list_is_active');
+        }
+        if ($request->filled('list_class_id')) {
+            $indexParams['class_id'] = $request->input('list_class_id');
+        }
+        if ($request->filled('list_per_page')) {
+            $indexParams['per_page'] = $request->input('list_per_page');
+        }
+        if ($request->filled('list_page')) {
+            $indexParams['page'] = $request->input('list_page');
+        }
+
+        try {
+            return DB::transaction(function () use ($request, $attachMode, $indexParams) {
+                $user = User::create([
+                    'name' => $request->name,
+                    'email' => $request->email,
+                    'phone' => $request->phone,
+                    'password' => Hash::make($request->password),
+                    'is_active' => (bool) $request->input('is_active'),
+                    'photo' => null,
+                    'created_by' => auth()->id(),
+                ]);
+
+                $user->syncRoles(['student']);
+
+                $linkMessage = '';
+                if ($attachMode === 'class') {
+                    $result = $this->adminStudentEnrollmentService->assignApprovedClassWithProvisioning(
+                        $user->id,
+                        (int) $request->input('assign_class_id'),
+                        $request->input('notes'),
+                        auth()->id()
+                    );
+                    $linkMessage = " تم ربطه بالصف ومزامنة {$result['created']} مادة.";
+                    if ($result['skipped'] > 0) {
+                        $linkMessage .= " (تم تخطي {$result['skipped']} مادة مسجل فيها مسبقاً)";
+                    }
+                } elseif ($attachMode === 'subjects') {
+                    $counts = $this->adminStudentEnrollmentService->bulkAttachSubjects(
+                        [$user->id],
+                        array_values(array_unique($request->input('subject_ids', []))),
+                        'active',
+                        $request->input('notes'),
+                        auth()->id()
+                    );
+                    if ($counts['insert_count'] === 0 && $counts['reactivated'] === 0) {
+                        throw new \RuntimeException('لم يُضف أي انضمام للمواد.');
+                    }
+                    $parts = [];
+                    if ($counts['insert_count'] > 0) {
+                        $parts[] = "تمت إضافة {$counts['insert_count']} انضماماً للمواد";
+                    }
+                    if ($counts['reactivated'] > 0) {
+                        $parts[] = "تمت إعادة تفعيل {$counts['reactivated']} انضماماً";
+                    }
+                    if ($counts['skipped'] > 0) {
+                        $parts[] = "تم تخطي {$counts['skipped']} مكرراً";
+                    }
+                    $linkMessage = ' '.implode('، ', $parts).'.';
+                }
+
+                return redirect()->route('users.index', $indexParams)
+                    ->with('success', 'تم إنشاء الطالب «'.$user->name.'» بنجاح.'.$linkMessage);
+            });
+        } catch (QueryException $e) {
+            Log::error('storeQuickStudent database error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', $this->friendlyQuickStudentDbError($e));
+        } catch (\RuntimeException $e) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('storeQuickStudent: '.$e->getMessage(), ['exception' => $e]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'تعذر إتمام العملية: '.$e->getMessage());
+        }
+    }
+
+    private function friendlyQuickStudentDbError(QueryException $e): string
+    {
+        $msg = $e->getMessage();
+        if (str_contains($msg, '1062') && str_contains($msg, 'class_enrollments')) {
+            return 'تعذر حفظ ربط الصف: يوجد تعارض مع سجل سابق. أعد تحميل الصفحة وحاول مرة أخرى.';
+        }
+        if (str_contains($msg, '1062') && str_contains($msg, 'enrollments')) {
+            return 'تعذر حفظ انضمام المواد: تعارض مع سجل موجود مسبقاً.';
+        }
+        if (str_contains($msg, 'Integrity constraint violation')) {
+            return 'تعذر إتمام العملية بسبب قيد في قاعدة البيانات.';
+        }
+
+        return 'تعذر إتمام إنشاء الطالب أو الربط. حاول لاحقاً أو راجع سجلات النظام.';
+    }
+
+    /**
      * Display the specified resource.
      */
     public function show(string $id)
     {
-        $user = User::findOrFail($id);
-        return view("admin.pages.users.profile" , compact("user"));
+        $user = User::with([
+            'classEnrollments.schoolClass.stage',
+            'enrollments.subject.schoolClass.stage',
+        ])->findOrFail($id);
+
+        $classesForAssign = collect();
+        if ($user->hasRole('student')) {
+            $classesForAssign = SchoolClass::with('stage')->active()->ordered()->get();
+        }
+
+        return view('admin.pages.users.profile', compact('user', 'classesForAssign'));
     }
 
     /**

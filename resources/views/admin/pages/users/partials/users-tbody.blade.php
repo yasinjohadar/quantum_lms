@@ -84,6 +84,27 @@
                     </button>
                 @endcan
 
+                @can('enrollment-create')
+                    @if (isset($classesForAssign) && $classesForAssign->isNotEmpty())
+                        <button type="button"
+                                class="btn btn-primary btn-sm quick-assign-class-trigger"
+                                data-bs-toggle="modal"
+                                data-bs-target="#quickAssignClassModal"
+                                data-user-id="{{ $user->id }}"
+                                title="ربط بصف دراسي">
+                            <i class="fas fa-link"></i>
+                        </button>
+                    @endif
+                    <button type="button"
+                            class="btn btn-success btn-sm quick-assign-subjects-trigger"
+                            data-bs-toggle="modal"
+                            data-bs-target="#quickAssignSubjectsModal"
+                            data-user-id="{{ $user->id }}"
+                            title="ربط بمواد">
+                        <i class="fas fa-book"></i>
+                    </button>
+                @endcan
+
                 <a class="btn btn-info btn-sm" href="{{ route('users.edit', $user->id) }}" title="تعديل المستخدم">
                     <i class="fa-solid fa-pen-to-square"></i>
                 </a>

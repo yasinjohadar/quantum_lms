@@ -57,6 +57,7 @@
                             <form id="usersManageFiltersForm" method="GET"
                                   action="{{ route('admin.users.manage') }}"
                                   class="d-flex flex-wrap align-items-end gap-2 w-100">
+                                <input type="hidden" name="per_page" id="managePerPageHidden" value="{{ $users->perPage() }}">
                                 <div class="d-flex flex-column">
                                     <label class="form-label small mb-1">بحث</label>
                                     <input type="text"
@@ -108,6 +109,7 @@
                                         مسح الفلاتر
                                     </a>
                                 @endif
+                                @include('admin.partials.per-page-toolbar', ['paginator' => $users])
                             </form>
                         </div>
 
@@ -202,9 +204,57 @@ document.addEventListener('DOMContentLoaded', function () {
     const tableBody = document.getElementById('usersManageTableBody');
     const paginationContainer = document.getElementById('usersManagePaginationContainer');
     const impersonateModalsWrapper = document.getElementById('usersManageImpersonateModalsWrapper');
+    const perPageToolbarContainer = document.getElementById('perPageToolbarContainer');
+    const managePerPageHidden = document.getElementById('managePerPageHidden');
     if (!form || !userTypeSelect || !roleSelect || !isActiveSelect || !tableBody || !paginationContainer) return;
 
+    function getPerPageSelect() {
+        return document.getElementById('perPageSelect');
+    }
+    function getPerPageCustomWrap() {
+        return document.getElementById('perPageCustomWrap');
+    }
+    function getCurrentPerPage() {
+        const sel = getPerPageSelect();
+        if (!sel) {
+            return managePerPageHidden ? parseInt(managePerPageHidden.value, 10) || 25 : 25;
+        }
+        if (sel.value === 'custom') {
+            const input = document.getElementById('perPageCustom');
+            const n = input ? parseInt(input.value, 10) : NaN;
+            if (!Number.isFinite(n)) {
+                return 25;
+            }
+            return Math.min(100, Math.max(1, n));
+        }
+        const n = parseInt(sel.value, 10);
+        if (!Number.isFinite(n)) {
+            return 25;
+        }
+        return Math.min(100, Math.max(1, n));
+    }
+    function syncCustomPerPageUi() {
+        const sel = getPerPageSelect();
+        const wrap = getPerPageCustomWrap();
+        if (!sel || !wrap) {
+            return;
+        }
+        if (sel.value === 'custom') {
+            wrap.classList.remove('d-none');
+            wrap.classList.add('d-flex');
+        } else {
+            wrap.classList.add('d-none');
+            wrap.classList.remove('d-flex');
+        }
+    }
+    function syncManagePerPageHidden() {
+        if (managePerPageHidden) {
+            managePerPageHidden.value = String(getCurrentPerPage());
+        }
+    }
+
     function buildParams(extraPage) {
+        syncManagePerPageHidden();
         const params = new URLSearchParams(new FormData(form));
         if (!params.has('is_active')) {
             params.set('is_active', '');
@@ -212,6 +262,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (extraPage) {
             params.set('page', String(extraPage));
         }
+        params.set('per_page', String(getCurrentPerPage()));
         return params;
     }
 
@@ -248,6 +299,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     impersonateModalsWrapper.innerHTML = data.impersonate_modals;
                 }
                 bindPaginationLinks();
+                syncCustomPerPageUi();
+                syncManagePerPageHidden();
                 const newUrl = `${window.location.pathname}?${params.toString()}`;
                 window.history.replaceState({}, '', newUrl);
             })
@@ -267,6 +320,40 @@ document.addEventListener('DOMContentLoaded', function () {
     isActiveSelect.addEventListener('change', function () {
         fetchUsers(1);
     });
+
+    if (perPageToolbarContainer) {
+        perPageToolbarContainer.addEventListener('change', function (e) {
+            if (!e.target || e.target.id !== 'perPageSelect') {
+                return;
+            }
+            syncCustomPerPageUi();
+            syncManagePerPageHidden();
+            if (e.target.value !== 'custom') {
+                fetchUsers(1);
+            }
+        });
+        perPageToolbarContainer.addEventListener('click', function (e) {
+            const btn = e.target && e.target.closest ? e.target.closest('#applyCustomPerPage') : null;
+            if (!btn) {
+                return;
+            }
+            e.preventDefault();
+            const sel = getPerPageSelect();
+            const input = document.getElementById('perPageCustom');
+            if (sel && sel.value === 'custom' && input) {
+                const raw = parseInt(input.value, 10);
+                if (!Number.isFinite(raw) || raw < 1 || raw > 100) {
+                    alert('أدخل عدداً بين 1 و 100');
+                    return;
+                }
+            }
+            syncManagePerPageHidden();
+            fetchUsers(1);
+        });
+    }
+
+    syncCustomPerPageUi();
+    syncManagePerPageHidden();
 
     // Archive modal handlers (works with AJAX-updated rows)
     if (tableBody) {
