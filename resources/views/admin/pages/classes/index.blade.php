@@ -56,17 +56,19 @@
                     <!-- Filters Card -->
                     <div class="card shadow-sm border-0 mb-3">
                         <div class="card-body">
-                            <form id="classesFilterForm" class="row g-3 align-items-end">
-                                <div class="col-md-3">
+                            <form id="classesFilterForm" class="d-flex flex-wrap align-items-end gap-2 w-100">
+                                <input type="hidden" name="per_page" id="classesPerPageHidden" value="{{ $classes->perPage() }}">
+                                <div class="d-flex flex-column">
                                     <label class="form-label mb-1">البحث</label>
                                     <input type="text" name="query" id="searchQuery" class="form-control form-control-sm"
+                                           style="min-width: 200px;"
                                            placeholder="بحث باسم الصف أو الوصف"
                                            value="{{ request('query') }}">
                                 </div>
 
-                                <div class="col-md-3">
+                                <div class="d-flex flex-column">
                                     <label class="form-label mb-1">المرحلة</label>
-                                    <select name="stage_id" id="stageFilter" class="form-select form-select-sm">
+                                    <select name="stage_id" id="stageFilter" class="form-select form-select-sm" style="min-width: 160px;">
                                         <option value="">كل المراحل</option>
                                         @foreach($stages as $stage)
                                             <option value="{{ $stage->id }}" {{ request('stage_id') == $stage->id ? 'selected' : '' }}>
@@ -76,23 +78,22 @@
                                     </select>
                                 </div>
 
-                                <div class="col-md-2">
+                                <div class="d-flex flex-column">
                                     <label class="form-label mb-1">الحالة</label>
-                                    <select name="is_active" id="statusFilter" class="form-select form-select-sm">
+                                    <select name="is_active" id="statusFilter" class="form-select form-select-sm" style="min-width: 140px;">
                                         <option value="">كل الحالات</option>
                                         <option value="1" {{ request('is_active') === '1' ? 'selected' : '' }}>نشط</option>
                                         <option value="0" {{ request('is_active') === '0' ? 'selected' : '' }}>غير نشط</option>
                                     </select>
                                 </div>
 
-                                <div class="col-md-4">
-                                    <button type="button" id="searchBtn" class="btn btn-primary btn-sm me-2">
-                                        <i class="fas fa-search me-1"></i> بحث
-                                    </button>
-                                    <button type="button" id="clearFiltersBtn" class="btn btn-outline-danger btn-sm">
-                                        <i class="fas fa-times me-1"></i> مسح الفلاتر
-                                    </button>
-                                </div>
+                                <button type="button" id="searchBtn" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-search me-1"></i> بحث
+                                </button>
+                                <button type="button" id="clearFiltersBtn" class="btn btn-outline-danger btn-sm">
+                                    <i class="fas fa-times me-1"></i> مسح الفلاتر
+                                </button>
+                                @include('admin.partials.per-page-toolbar', ['paginator' => $classes])
                             </form>
                         </div>
                     </div>
@@ -157,12 +158,58 @@ document.addEventListener('DOMContentLoaded', function() {
     const paginationContainer = document.getElementById('paginationContainer');
     const loadingIndicator = document.getElementById('loadingIndicator');
     const classesTableContainer = document.getElementById('classesTableContainer');
-    
+    const perPageToolbarContainer = document.getElementById('perPageToolbarContainer');
+    const classesPerPageHidden = document.getElementById('classesPerPageHidden');
+
     const csrfToken = '{{ csrf_token() }}';
     const filterUrl = '{{ route("admin.classes.index") }}';
     const reorderUrl = '{{ route("admin.classes.reorder") }}';
-    const perPage = {{ $classes->perPage() }};
-    
+
+    function getPerPageSelect() {
+        return document.getElementById('perPageSelect');
+    }
+    function getPerPageCustomWrap() {
+        return document.getElementById('perPageCustomWrap');
+    }
+    function getCurrentPerPage() {
+        const sel = getPerPageSelect();
+        if (!sel) {
+            return classesPerPageHidden ? (parseInt(classesPerPageHidden.value, 10) || 25) : 25;
+        }
+        if (sel.value === 'custom') {
+            const input = document.getElementById('perPageCustom');
+            const n = input ? parseInt(input.value, 10) : NaN;
+            if (!Number.isFinite(n)) {
+                return 25;
+            }
+            return Math.min(100, Math.max(1, n));
+        }
+        const n = parseInt(sel.value, 10);
+        if (!Number.isFinite(n)) {
+            return 25;
+        }
+        return Math.min(100, Math.max(1, n));
+    }
+    function syncCustomPerPageUi() {
+        const sel = getPerPageSelect();
+        const wrap = getPerPageCustomWrap();
+        if (!sel || !wrap) {
+            return;
+        }
+        if (sel.value === 'custom') {
+            wrap.classList.remove('d-none');
+            wrap.classList.add('d-flex');
+        } else {
+            wrap.classList.add('d-none');
+            wrap.classList.remove('d-flex');
+        }
+    }
+    function syncClassesPerPageHidden() {
+        if (classesPerPageHidden) {
+            classesPerPageHidden.value = String(getCurrentPerPage());
+        }
+    }
+
     let searchTimeout;
     let currentPage = 1;
     let sortableInstance = null;
@@ -187,7 +234,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 var payload = {
                     order: order,
                     page: currentPage,
-                    per_page: perPage,
+                    per_page: getCurrentPerPage(),
                     _token: csrfToken
                 };
                 if (filterForm.querySelector('[name="query"]').value) payload.query = filterForm.querySelector('[name="query"]').value;
@@ -229,17 +276,18 @@ document.addEventListener('DOMContentLoaded', function() {
         classesTableContainer.style.opacity = '0.5';
         
         // جمع بيانات الفلاتر
+        syncClassesPerPageHidden();
         const formData = new FormData(filterForm);
         formData.append('page', page);
-        
-        // إضافة headers للـ Ajax request
+
         const params = new URLSearchParams();
         for (const [key, value] of formData.entries()) {
             if (value) {
                 params.append(key, value);
             }
         }
-        
+        params.set('per_page', String(getCurrentPerPage()));
+
         fetch(`${filterUrl}?${params.toString()}`, {
             method: 'GET',
             headers: {
@@ -261,11 +309,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 // تحديث pagination
                 paginationContainer.innerHTML = data.pagination || '';
                 
-                // إعادة ربط event listeners للـ pagination
                 attachPaginationListeners();
-                
-                // إعادة تهيئة Sortable بعد تحديث الصفوف
+
                 initSortable();
+                syncCustomPerPageUi();
+                syncClassesPerPageHidden();
                 
                 // تحديث URL بدون إعادة تحميل الصفحة
                 const newUrl = `${filterUrl}?${params.toString()}`;
@@ -295,6 +343,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 const page = url.searchParams.get('page') || 1;
                 fetchClasses(page);
             });
+        });
+        syncCustomPerPageUi();
+    }
+
+    if (perPageToolbarContainer) {
+        perPageToolbarContainer.addEventListener('change', function(e) {
+            if (!e.target || e.target.id !== 'perPageSelect') {
+                return;
+            }
+            syncCustomPerPageUi();
+            syncClassesPerPageHidden();
+            if (e.target.value !== 'custom') {
+                fetchClasses(1);
+            }
+        });
+        perPageToolbarContainer.addEventListener('click', function(e) {
+            const btn = e.target && e.target.closest ? e.target.closest('#applyCustomPerPage') : null;
+            if (!btn) {
+                return;
+            }
+            e.preventDefault();
+            const sel = getPerPageSelect();
+            const input = document.getElementById('perPageCustom');
+            if (sel && sel.value === 'custom' && input) {
+                const raw = parseInt(input.value, 10);
+                if (!Number.isFinite(raw) || raw < 1 || raw > 100) {
+                    alert('أدخل عدداً بين 1 و 100');
+                    return;
+                }
+            }
+            syncClassesPerPageHidden();
+            fetchClasses(1);
         });
     }
 
@@ -354,7 +434,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // تهيئة pagination listeners عند تحميل الصفحة
+    syncCustomPerPageUi();
+    syncClassesPerPageHidden();
     attachPaginationListeners();
     // تهيئة السحب والإفلات لترتيب الصفوف
     initSortable();

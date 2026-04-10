@@ -989,7 +989,7 @@
                                             <label class="form-label">نوع الفيديو <span class="text-danger">*</span></label>
                                             <select name="video_type" class="form-select" id="videoType{{ $unit->id }}" required>
                                                 <option value="youtube">يوتيوب</option>
-                                                <option value="vimeo">فيميو</option>
+                                                <option value="vimeo" selected>فيميو</option>
                                                 <option value="external">رابط خارجي</option>
                                                 <option value="upload">رفع ملف</option>
                                             </select>
@@ -999,8 +999,8 @@
 
                                 <div class="mb-3" id="videoUrlField{{ $unit->id }}">
                                     <label class="form-label">رابط الفيديو</label>
-                                    <input type="url" name="video_url" class="form-control" placeholder="https://www.youtube.com/watch?v=...">
-                                    <small class="text-muted">الصق رابط الفيديو من YouTube أو Vimeo أو أي مصدر خارجي</small>
+                                    <input type="url" name="video_url" class="form-control" placeholder="https://vimeo.com/...">
+                                    <small class="text-muted">الصق رابط الفيديو من Vimeo أو YouTube أو أي مصدر خارجي</small>
                                 </div>
 
                                 <div class="mb-3 d-none" id="videoFileField{{ $unit->id }}">

@@ -62,7 +62,8 @@ class ClassController extends Controller
             $classesQuery->where('is_active', $request->boolean('is_active'));
         }
 
-        $classes = $classesQuery->ordered()->paginate(10);
+        $perPage = min(100, max(1, (int) $request->input('per_page', 25)));
+        $classes = $classesQuery->ordered()->paginate($perPage);
         $stages = Stage::ordered()->get();
 
         // إذا كان طلب Ajax، إرجاع JSON
@@ -99,7 +100,7 @@ class ClassController extends Controller
 
         $order = array_map('intval', $request->input('order'));
         $page = (int) $request->input('page', 1);
-        $perPage = (int) $request->input('per_page', 10);
+        $perPage = (int) $request->input('per_page', 25);
 
         $classesQuery = SchoolClass::query();
         $user = auth()->user();
