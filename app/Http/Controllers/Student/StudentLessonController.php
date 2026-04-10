@@ -12,6 +12,7 @@ use App\Models\Question;
 use App\Models\QuestionAttempt;
 use App\Models\QuizAttempt;
 use App\Models\SchoolClass;
+use App\Models\ClassEnrollment;
 use App\Models\LessonCompletion;
 use App\Models\Purchase;
 use App\Services\GamificationService;
@@ -63,7 +64,27 @@ class StudentLessonController extends Controller
                 $classes[$classId]['subjects']->push($subject);
             }
         }
-        
+
+        $approvedClassIds = ClassEnrollment::query()
+            ->where('user_id', $user->id)
+            ->approved()
+            ->pluck('class_id')
+            ->unique()
+            ->filter();
+
+        foreach ($approvedClassIds as $classId) {
+            if ($classes->has($classId)) {
+                continue;
+            }
+            $schoolClass = SchoolClass::with('stage')->find($classId);
+            if ($schoolClass) {
+                $classes->put($classId, [
+                    'class' => $schoolClass,
+                    'subjects' => collect(),
+                ]);
+            }
+        }
+
         // ترتيب الصفوف حسب order
         $classes = $classes->sortBy(function($item) {
             return $item['class']->order ?? 999;
