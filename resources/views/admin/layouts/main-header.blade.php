@@ -108,34 +108,88 @@
                     </div>
                     <!-- End::header-element -->
 
+                    @include('partials.echo-realtime-status')
+
                     <!-- Start::header-element -->
                     <div class="header-element notifications-dropdown main-header-notification">
-                        <!-- Start::header-link|dropdown-toggle -->
-                        <a href="javascript:void(0);" class="header-link dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" id="messageDropdown" aria-expanded="false">
+                        <a href="javascript:void(0);" class="header-link dropdown-toggle position-relative" data-bs-toggle="dropdown" data-bs-auto-close="outside" id="adminNotificationDropdown" aria-expanded="false">
                             <svg xmlns="http://www.w3.org/2000/svg" class="header-link-icon"  height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
-                            <span class="pulse-success"></span>
+                            <span class="pulse-success" style="display:none"></span>
+                            <span class="badge bg-danger rounded-pill position-absolute" id="notification-badge-count" style="display: none; font-size: 0.6rem; padding: 0.15rem 0.35rem; min-width: 1rem; height: 1rem; line-height: 0.7rem; top: -2px; right: -5px; border: 2px solid var(--default-body-bg-color, #1a1d29);">0</span>
                         </a>
-                        <!-- End::header-link|dropdown-toggle -->
-                        <!-- Start::main-header-dropdown -->
-                        <div class="main-header-dropdown dropdown-menu dropdown-menu-end main-header-message" data-popper-placement="none">
+                        <div class="main-header-dropdown dropdown-menu dropdown-menu-end main-header-message" data-popper-placement="none" style="width: 320px; max-width: 90vw;">
                             <div class="menu-header-content bg-primary text-fixed-white">
                                 <div class="d-flex align-items-center justify-content-between">
                                     <h6 class="mb-0 fs-15 fw-semibold text-fixed-white">الإشعارات</h6>
-                                    <span class="badge rounded-pill bg-warning pt-1 text-fixed-black">تحديد الكل كمقروء</span>
+                                    <form action="{{ route('notifications.inbox.read-all') }}" method="POST" class="d-inline" id="admin-header-mark-all-read-form">
+                                        @csrf
+                                        <button type="submit" class="badge rounded-pill bg-warning pt-1 text-fixed-black border-0" style="cursor: pointer;">تحديد الكل كمقروء</button>
+                                    </form>
                                 </div>
-                                <p class="dropdown-title-text subtext mb-0 text-fixed-white op-6 pb-0 fs-12 ">لديك 0 إشعارات جديدة</p>
+                                <p class="dropdown-title-text subtext mb-0 text-fixed-white op-6 pb-0 fs-12 ">لديك <span id="notification-count-text">0</span> إشعارات جديدة</p>
                             </div>
                             <div><hr class="dropdown-divider"></div>
-                            <ul class="list-unstyled mb-0" id="header-notification-scroll">
-                                <li class="dropdown-item text-center py-3">
+                            <ul class="list-unstyled mb-0" id="header-notification-scroll" style="max-height: 350px; overflow-y: auto; overflow-x: hidden;">
+                                <li class="dropdown-item text-center py-3" id="no-notifications-message">
                                     <p class="text-muted mb-0">لا توجد إشعارات جديدة</p>
                                 </li>
                             </ul>
                             <div class="text-center dropdown-footer">
-                                <a href="javascript:void(0);" class="text-primary fs-13">عرض الكل</a>
+                                <a href="{{ route('admin.notifications.inbox') }}" class="text-primary fs-13">عرض الكل</a>
                             </div>
                         </div>
-                        <!-- End::main-header-dropdown -->
+                        <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const el = document.getElementById('adminNotificationDropdown');
+                            if (el) {
+                                el.addEventListener('shown.bs.dropdown', loadAdminHeaderNotifications);
+                                loadAdminHeaderNotifications();
+                            }
+                        });
+                        function loadAdminHeaderNotifications() {
+                            fetch("{{ route('notifications.inbox.recent') }}?limit=10")
+                                .then(r => r.json())
+                                .then(data => {
+                                    const badge = document.getElementById('notification-badge-count');
+                                    const cnt = data.count || 0;
+                                    if (badge) {
+                                        if (cnt > 0) { badge.textContent = cnt > 99 ? '99+' : cnt; badge.style.display = 'block'; }
+                                        else { badge.style.display = 'none'; }
+                                    }
+                                    const txt = document.getElementById('notification-count-text');
+                                    if (txt) txt.textContent = cnt;
+                                    const pulse = document.querySelector('.main-header-notification .pulse-success');
+                                    if (pulse) pulse.style.display = cnt > 0 ? 'block' : 'none';
+                                    if (data.notifications && data.notifications.length > 0) {
+                                        const list = document.getElementById('header-notification-scroll');
+                                        const noMsg = document.getElementById('no-notifications-message');
+                                        if (noMsg) noMsg.style.display = 'none';
+                                        list.innerHTML = '';
+                                        data.notifications.forEach(notif => {
+                                            const item = document.createElement('li');
+                                            item.className = 'dropdown-item';
+                                            item.style.cssText = 'padding: 0.75rem 1rem; border-bottom: 1px solid rgba(0,0,0,0.1); cursor: pointer;';
+                                            const href = notif.action_url || '#';
+                                            item.onclick = () => { if (href && href !== '#') window.location.href = href; };
+                                            item.innerHTML = `
+                                                <div class="d-flex align-items-start">
+                                                    <div class="flex-grow-1">
+                                                        <h6 class="mb-1 fw-semibold">${escapeHtml(notif.title)}</h6>
+                                                        <p class="mb-1 text-muted small">${escapeHtml(notif.message)}</p>
+                                                        ${notif.actor_name ? `<small class="text-muted">من: ${escapeHtml(notif.actor_name)}${notif.actor_role ? ' (' + escapeHtml(notif.actor_role) + ')' : ''}</small>` : ''}
+                                                    </div>
+                                                </div>`;
+                                            list.appendChild(item);
+                                        });
+                                    }
+                                }).catch(() => {});
+                        }
+                        function escapeHtml(t) {
+                            const d = document.createElement('div');
+                            d.textContent = t || '';
+                            return d.innerHTML;
+                        }
+                        </script>
                     </div>
                     <!-- End::header-element -->
 

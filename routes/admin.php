@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\LessonAttachmentController;
 use App\Http\Controllers\Admin\LessonController;
 use App\Http\Controllers\Admin\LoginLogController;
 use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\NotificationsInboxController;
 use App\Http\Controllers\Admin\NotificationPreferenceController as AdminNotificationPreferenceController;
 use App\Http\Controllers\Admin\QuestionController;
 use App\Http\Controllers\Admin\QuizAttemptController;
@@ -588,8 +589,14 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             Route::post('/{leaderboard}/refresh', [\App\Http\Controllers\Admin\LeaderboardController::class, 'refresh'])->name('refresh');
         });
 
-        // الإشعارات المخصصة
+        // الإشعارات المخصصة + صندوق إشعارات الطاقم
         Route::prefix('notifications')->as('notifications.')->group(function () {
+            Route::get('inbox', [NotificationsInboxController::class, 'index'])->name('inbox');
+            Route::post('inbox/read-all', [NotificationsInboxController::class, 'markAllAsRead'])->name('inbox.read-all');
+            Route::get('inbox/unread-count', [NotificationsInboxController::class, 'unreadCount'])->name('inbox.unread-count');
+            Route::post('inbox/{notification}/read', [NotificationsInboxController::class, 'markAsRead'])->name('inbox.read');
+            Route::post('inbox/{notification}/unread', [NotificationsInboxController::class, 'markAsUnread'])->name('inbox.unread');
+            Route::delete('inbox/{notification}', [NotificationsInboxController::class, 'destroy'])->name('inbox.destroy');
             Route::get('/create', [NotificationController::class, 'create'])->name('create');
             Route::post('/', [NotificationController::class, 'store'])->name('store');
             Route::get('/target-users', [NotificationController::class, 'getTargetUsers'])->name('target-users');

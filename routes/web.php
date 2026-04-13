@@ -5,6 +5,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\frontend\HomeController;
+use App\Http\Controllers\NotificationInboxController;
 
 // Route للصفحة الرئيسية - يوجه إلى صفحة Frontend (متاح للجميع بدون middleware auth)
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -49,6 +50,10 @@ Route::get('/dashboard', function () {
 })->middleware(['auth'])->name('dashboard');
 
 Route::middleware(['auth', 'check.user.active'])->group(function () {
+    Route::get('/notifications/inbox/recent', [NotificationInboxController::class, 'recent'])->name('notifications.inbox.recent');
+    Route::get('/notifications/inbox/unread-count', [NotificationInboxController::class, 'unreadCount'])->name('notifications.inbox.unread-count');
+    Route::post('/notifications/inbox/read-all', [NotificationInboxController::class, 'markAllRead'])->name('notifications.inbox.read-all');
+
     // Profile routes - متاحة لجميع المستخدمين
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

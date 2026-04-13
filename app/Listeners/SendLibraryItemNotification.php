@@ -3,13 +3,16 @@
 namespace App\Listeners;
 
 use App\Events\LibraryItemCreated;
-use App\Events\CustomNotificationSent;
 use App\Models\Subject;
-use Illuminate\Support\Facades\Event;
+use App\Services\GamificationNotificationService;
 use Illuminate\Support\Facades\Log;
 
 class SendLibraryItemNotification
 {
+    public function __construct(
+        private GamificationNotificationService $notificationService
+    ) {}
+
     /**
      * Handle the event.
      */
@@ -17,7 +20,6 @@ class SendLibraryItemNotification
     {
         $item = $event->item;
 
-        // إرسال إشعار فقط إذا كان العنصر مرتبط بمادة
         if (!$item->subject_id) {
             return;
         }
@@ -28,7 +30,6 @@ class SendLibraryItemNotification
                 return;
             }
 
-            // الحصول على جميع الطلاب المسجلين في المادة
             $students = $subject->students()->get();
 
             if ($students->isEmpty()) {
@@ -38,21 +39,26 @@ class SendLibraryItemNotification
             $title = 'عنصر جديد في المكتبة';
             $message = "تم إضافة عنصر جديد في مكتبة مادة {$subject->name}: {$item->title}";
 
-            // إرسال إشعار لكل طالب
             foreach ($students as $student) {
-                Event::dispatch(new CustomNotificationSent(
+                $this->notificationService->sendNotification(
                     $student,
+                    'library_item',
                     $title,
                     $message,
                     [
-                        'type' => 'library_item_created',
                         'item_id' => $item->id,
                         'item_title' => $item->title,
                         'subject_id' => $subject->id,
                         'subject_name' => $subject->name,
                         'url' => route('student.library.show', $item->id),
-                    ]
-                ));
+                        'icon' => 'fe fe-book',
+                        'color' => 'info',
+                    ],
+                    false,
+                    null,
+                    route('student.library.show', $item->id),
+                    true,
+                );
             }
 
             Log::info('Library item notifications sent', [

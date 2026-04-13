@@ -123,7 +123,11 @@ class BackupNotificationService
             [
                 'backup_id' => $backup->id,
                 'url' => route('admin.backups.show', $backup->id),
-            ]
+            ],
+            false,
+            null,
+            route('admin.backups.show', $backup->id),
+            true
         );
     }
 }

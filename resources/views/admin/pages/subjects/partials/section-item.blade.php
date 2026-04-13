@@ -7,6 +7,7 @@
     $levelIcon = $levelIcons[min($level, 5)] ?? 'bi-folder-fill';
     $levelColorClasses = ['text-primary', 'text-info', 'text-danger', 'text-success', 'text-warning', 'text-secondary'];
     $levelColorClass = $levelColorClasses[min($level, 5)] ?? 'text-primary';
+    $sectionAllowsUnitCreate = $childSections->isEmpty() && ! $isLinkedSection;
 @endphp
 <div class="accordion-item mb-3 rounded overflow-hidden section-level-{{ $level }}{{ $isLinkedSection ? ' section-item-linked' : '' }}" data-id="{{ $section->id }}">
     <h2 class="accordion-header d-flex" id="sectionHeading{{ $section->id }}">
@@ -100,12 +101,14 @@
                     @if(!$isLinkedSection)
                     <div class="d-flex align-items-center gap-2">
                         @can('unit-create')
+                        @if($sectionAllowsUnitCreate)
                         <button type="button"
                                 class="btn btn-sm btn-outline-primary"
                                 data-bs-toggle="modal"
                                 data-bs-target="#createUnitModal{{ $section->id }}">
-                            <i class="bi bi-plus-lg me-1"></i> إضافة وحدة
+                            <i class="bi bi-plus-lg me-1"></i> إضافة قسم لرفع الدروس
                         </button>
+                        @endif
                         @endcan
                         @can('subject-section-create')
                         <button type="button"
@@ -113,22 +116,25 @@
                                 data-bs-toggle="modal"
                                 data-bs-target="#createSectionModal"
                                 data-parent-id="{{ $section->id }}"
-                                title="إضافة قسم فرعي">
-                            <i class="bi bi-folder-plus me-1"></i> إضافة قسم فرعي
+                                title="اضافة قسم تنظيمي">
+                            <i class="bi bi-folder-plus me-1"></i> اضافة قسم تنظيمي
                         </button>
                         @endcan
                     </div>
                     @endif
                 </div>
+                @if(! $isLinkedSection && $childSections->isNotEmpty())
+                    <p class="text-muted small mb-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        لا يُضاف هنا إلا في القسم الورقي (بدون أقسام فرعية). أضف الوحدات داخل أحد الأقسام الفرعية عندما يصبح القسم نهائياً.
+                    </p>
+                @endif
 
                 @php
                     $rootUnits = $section->units->whereNull('parent_id')->sortBy('order');
                 @endphp
                 @if($section->units->count() === 0)
-                    <div class="text-center py-4 text-muted">
-                        <i class="bi bi-inbox display-6 d-block mb-2"></i>
-                        <span class="small">لا توجد وحدات في هذا القسم بعد</span>
-                    </div>
+                    <p class="text-muted mb-0 mt-1" style="font-size: 0.75rem;">لا توجد وحدات في هذا القسم بعد</p>
                 @else
                     {{-- Accordion للوحدات (جذر فقط، الأبناء داخل unit-item) --}}
                     <div class="accordion accordion-secondary" id="unitsAccordion{{ $section->id }}" data-sortable="units" data-section-id="{{ $section->id }}" data-parent-id="" data-reorder-url="{{ route('admin.sections.units.reorder', $section) }}">
@@ -140,6 +146,7 @@
                                 'subject' => $subject,
                                 'unitIndex' => $unitIndex,
                                 'parentUnitsAccordionId' => 'unitsAccordion' . $section->id,
+                                'sectionAllowsUnitCreate' => $sectionAllowsUnitCreate,
                             ])
                         @endforeach
                     </div>
@@ -149,22 +156,10 @@
             {{-- الأقسام الفرعية --}}
             @if($childSections->isNotEmpty())
                 <div class="section-children mt-4 pt-3 border-top">
-                    <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                    <div class="mb-2 pb-2 border-bottom">
                         <span class="text-muted small">
                             <i class="bi bi-folder2 me-1"></i> الأقسام الفرعية ({{ $childSections->count() }})
                         </span>
-                        @if(!$isLinkedSection)
-                        @can('subject-section-create')
-                        <button type="button"
-                                class="btn btn-sm btn-outline-secondary add-child-section-btn"
-                                data-bs-toggle="modal"
-                                data-bs-target="#createSectionModal"
-                                data-parent-id="{{ $section->id }}"
-                                title="إضافة قسم فرعي">
-                            <i class="bi bi-folder-plus me-1"></i> إضافة قسم فرعي
-                        </button>
-                        @endcan
-                        @endif
                     </div>
                     <div class="accordion accordion-primary" id="childSectionsAccordion{{ $section->id }}" data-sortable="sections" data-subject-id="{{ $subject->id }}" data-parent-id="{{ $section->id }}" data-reorder-url="{{ route('admin.subjects.sections.reorder', $subject) }}">
                         @foreach($childSections->values() as $childIndex => $childSection)
@@ -181,22 +176,10 @@
                 </div>
             @else
                 <div class="section-children mt-4 pt-3 border-top">
-                    <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                    <div class="mb-2 pb-2 border-bottom">
                         <span class="text-muted small">
                             <i class="bi bi-folder2 me-1"></i> الأقسام الفرعية
                         </span>
-                        @if(!$isLinkedSection)
-                        @can('subject-section-create')
-                        <button type="button"
-                                class="btn btn-sm btn-outline-secondary add-child-section-btn"
-                                data-bs-toggle="modal"
-                                data-bs-target="#createSectionModal"
-                                data-parent-id="{{ $section->id }}"
-                                title="إضافة قسم فرعي">
-                            <i class="bi bi-folder-plus me-1"></i> إضافة قسم فرعي
-                        </button>
-                        @endcan
-                        @endif
                     </div>
                     <div class="text-center py-3 text-muted small">لا أقسام فرعية</div>
                 </div>

@@ -13,6 +13,8 @@ use App\Models\Unit;
 use App\Models\Lesson;
 use App\Models\SchoolClass;
 use App\Services\ReminderService;
+use App\Services\StaffNotificationService;
+use App\Services\StudentContentNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -22,7 +24,8 @@ use App\Helpers\StorageHelper;
 class QuizController extends Controller
 {
     public function __construct(
-        private ReminderService $reminderService
+        private ReminderService $reminderService,
+        private StaffNotificationService $staffNotificationService
     ) {
         $this->middleware(['permission:quiz-list'])->only('index');
         $this->middleware(['permission:quiz-create'])->only(['create', 'store']);
@@ -279,6 +282,12 @@ class QuizController extends Controller
 
             DB::commit();
 
+            app(StudentContentNotificationService::class)->notifyIfQuizBecameVisible(
+                null,
+                $quiz->fresh(),
+                auth()->user()
+            );
+
             return redirect()
                 ->route('admin.quizzes.questions', $quiz->id)
                 ->with('success', 'تم إنشاء الاختبار بنجاح، يمكنك الآن إضافة الأسئلة');
@@ -356,6 +365,7 @@ class QuizController extends Controller
             DB::beginTransaction();
 
             $quiz = Quiz::findOrFail($id);
+            $quizBeforeUpdate = clone $quiz;
             $data = $request->validated();
             
             // معالجة الـ checkboxes
@@ -425,6 +435,12 @@ class QuizController extends Controller
             $quiz->update($data);
 
             DB::commit();
+
+            app(StudentContentNotificationService::class)->notifyIfQuizBecameVisible(
+                $quizBeforeUpdate,
+                $quiz->fresh(),
+                auth()->user()
+            );
 
             return redirect()
                 ->route('admin.quizzes.show', $quiz->id)
@@ -941,14 +957,15 @@ class QuizController extends Controller
     {
         try {
             $quiz = Quiz::findOrFail($id);
+            $quizBeforeToggle = clone $quiz;
             $user = auth()->user();
             $isTeacher = $user->shouldSubmitContentForReview();
-            
+
             // إذا كان المستخدم معلم، لا يمكنه النشر مباشرة
             if ($isTeacher) {
                 return redirect()->back()->with('error', 'يجب إرسال الاختبار للمراجعة أولاً. لا يمكنك النشر مباشرة.');
             }
-            
+
             // التحقق من وجود أسئلة قبل النشر
             if (!$quiz->is_published && $quiz->questions()->count() === 0) {
                 return redirect()->back()->with('error', 'لا يمكن نشر اختبار بدون أسئلة');
@@ -959,6 +976,12 @@ class QuizController extends Controller
                 $quiz->review_status = Quiz::REVIEW_STATUS_APPROVED;
             }
             $quiz->save();
+
+            app(StudentContentNotificationService::class)->notifyIfQuizBecameVisible(
+                $quizBeforeToggle,
+                $quiz->fresh(),
+                $user
+            );
 
             $status = $quiz->is_published ? 'نشر' : 'إلغاء نشر';
 
@@ -1048,6 +1071,8 @@ class QuizController extends Controller
                 'is_published' => false,
             ]);
 
+            $this->staffNotificationService->notifyQuizSubmittedForReview($quiz->fresh(), $user);
+
             return redirect()->back()->with('success', 'تم إرسال الاختبار للمراجعة بنجاح. سيتم مراجعته من قبل المشرف/الأدمن.');
 
         } catch (\Exception $e) {
@@ -1067,6 +1092,7 @@ class QuizController extends Controller
 
         try {
             $quiz = Quiz::findOrFail($id);
+            $quizBeforeApprove = clone $quiz;
             
             // التحقق من الصلاحية (admin/supervisor فقط)
             $user = auth()->user();
@@ -1086,6 +1112,14 @@ class QuizController extends Controller
                 'reviewed_by' => auth()->id(),
                 'reviewed_at' => now(),
             ]);
+
+            $this->staffNotificationService->notifyQuizReviewOutcome($quiz->fresh(), $user, true);
+
+            app(StudentContentNotificationService::class)->notifyIfQuizBecameVisible(
+                $quizBeforeApprove,
+                $quiz->fresh(),
+                $user
+            );
 
             return redirect()
                 ->back()
@@ -1122,6 +1156,8 @@ class QuizController extends Controller
                 'reviewed_by' => auth()->id(),
                 'reviewed_at' => now(),
             ]);
+
+            $this->staffNotificationService->notifyQuizReviewOutcome($quiz->fresh(), $user, false);
 
             return redirect()
                 ->back()

@@ -71,6 +71,14 @@ class SubjectSection extends Model
     }
 
     /**
+     * هل للقسم أقسام فرعية؟ (إن وُجدت، لا تُضاف الوحدات هنا بل في الأقسام الورقية فقط.)
+     */
+    public function hasChildSections(): bool
+    {
+        return $this->children()->exists();
+    }
+
+    /**
      * جمع معرفات كل الأحفاد فقط (أبناء + أحفادهم، بدون القسم الحالي) لمنع الحلقات عند تغيير الأب.
      */
     public function getDescendantIds(): \Illuminate\Support\Collection

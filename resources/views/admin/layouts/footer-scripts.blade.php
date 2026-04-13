@@ -54,3 +54,9 @@
 
 <!-- Page Specific JS -->
 @yield('js')
+
+@auth
+<script>
+    window.currentUserId = {{ auth()->id() }};
+</script>
+@endauth

@@ -12,6 +12,10 @@ class GamificationNotification extends Model
 
     protected $fillable = [
         'user_id',
+        'actor_id',
+        'actor_name',
+        'actor_role',
+        'action_url',
         'type',
         'title',
         'message',
@@ -39,6 +43,19 @@ class GamificationNotification extends Model
         'challenge_reminder' => 'تذكير بتحدي',
         'custom_notification' => 'إشعار مخصص',
         'event_reminder' => 'تذكير بحدث',
+        'library_item' => 'المكتبة الرقمية',
+        'lesson_review_submitted' => 'درس قيد المراجعة',
+        'lesson_review_approved' => 'قبول مراجعة درس',
+        'lesson_review_rejected' => 'رفض مراجعة درس',
+        'quiz_review_submitted' => 'اختبار قيد المراجعة',
+        'quiz_review_approved' => 'قبول مراجعة اختبار',
+        'quiz_review_rejected' => 'رفض مراجعة اختبار',
+        'lesson_review_submit_ack' => 'تأكيد إرسال درس للمراجعة',
+        'quiz_review_submit_ack' => 'تأكيد إرسال اختبار للمراجعة',
+        'student_lesson_available' => 'درس متاح للطلاب',
+        'student_quiz_available' => 'اختبار متاح للطلاب',
+        'staff_review' => 'مراجعة المحتوى',
+        'class_enrollment_decision' => 'طلب انضمام صف',
     ];
 
     /**
@@ -47,6 +64,36 @@ class GamificationNotification extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function actor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'actor_id');
+    }
+
+    /**
+     * حمولة للبث عبر Echo وواجهة JSON.
+     */
+    public function toBroadcastPayload(): array
+    {
+        $data = $this->data ?? [];
+
+        return [
+            'id' => $this->id,
+            'type' => $this->type,
+            'title' => $this->title,
+            'message' => $this->message,
+            'data' => $data,
+            'actor_id' => $this->actor_id,
+            'actor_name' => $this->actor_name,
+            'actor_role' => $this->actor_role,
+            'action_url' => $this->action_url,
+            'icon' => $data['icon'] ?? 'fe fe-bell',
+            'color' => $data['color'] ?? 'primary',
+            'timestamp' => $this->created_at?->toIso8601String(),
+            'created_at' => $this->created_at?->toIso8601String(),
+            'is_read' => false,
+        ];
     }
 
     /**

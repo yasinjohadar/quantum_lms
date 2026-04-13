@@ -22,7 +22,6 @@ use App\Events\LibraryItemCreated;
 use App\Events\EventReminderSent;
 use App\Listeners\SendRealTimeNotification;
 use App\Listeners\SendLibraryItemNotification;
-use App\Listeners\SendEventReminderNotification;
 use App\Models\SchoolClass;
 use App\Models\SystemSetting;
 use Illuminate\Pagination\Paginator;
@@ -148,7 +147,6 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(RewardClaimed::class, SendRealTimeNotification::class);
         Event::listen(CustomNotificationSent::class, SendRealTimeNotification::class);
         Event::listen(LibraryItemCreated::class, SendLibraryItemNotification::class);
-        Event::listen(EventReminderSent::class, SendEventReminderNotification::class);
         Event::listen(EventReminderSent::class, SendRealTimeNotification::class);
 
         // WhatsApp Event Listeners

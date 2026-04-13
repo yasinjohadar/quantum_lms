@@ -337,7 +337,7 @@
                                     <option value="{{ $opt['id'] }}">{{ $opt['title'] }}</option>
                                 @endforeach
                             </select>
-                            <small class="text-muted">اتركه فارغاً لإنشاء قسم رئيسي، أو اختر قسماً لإنشاء قسم فرعي تحته.</small>
+                            <small class="text-muted">اتركه فارغاً لإنشاء قسم رئيسي، أو اختر قسماً لإنشاء قسم تنظيمي تحته.</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">نوع القسم</label>
@@ -502,15 +502,16 @@
         </div>
         @endcan
 
-        {{-- مودال إنشاء وحدة جديدة --}}
+        {{-- مودال إنشاء وحدة جديدة (فقط للقسم الورقي وغير المرتبط بمادة أخرى) --}}
         @can('unit-create')
+        @if($subject->sections->where('parent_id', $section->id)->isEmpty() && (int) $section->subject_id === (int) $subject->id)
         <div class="modal fade" id="createUnitModal{{ $section->id }}" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 rounded-4">
                     <div class="modal-header border-0">
                         <h5 class="modal-title fw-bold">
                             <i class="bi bi-layers text-primary me-2"></i>
-                            إضافة وحدة جديدة
+                            إضافة قسم جديد لرفع الدروس
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
                     </div>
@@ -578,6 +579,7 @@
                 </div>
             </div>
         </div>
+        @endif
         @endcan
 
         {{-- مودالات تعديل وحذف الوحدات --}}
@@ -1384,7 +1386,7 @@ window.adminSectionsLinkSubjectsBase = "{{ url('admin/sections') }}";
 @endisset
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // تعيين القسم الأب عند فتح مودال إنشاء قسم من "إضافة قسم فرعي"
+    // تعيين القسم الأب عند فتح مودال إنشاء قسم من "اضافة قسم تنظيمي"
     var createSectionModalEl = document.getElementById('createSectionModal');
     if (createSectionModalEl) {
         createSectionModalEl.addEventListener('show.bs.modal', function(e) {
@@ -1399,7 +1401,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // تعيين الوحدة الأب عند فتح مودال إنشاء وحدة من "إضافة وحدة فرعية"
+    // تعيين الوحدة الأب عند فتح مودال إنشاء قسم لرفع الدروس من الزر الفرعي
     document.querySelectorAll('[id^="createUnitModal"]').forEach(function(modalEl) {
         modalEl.addEventListener('show.bs.modal', function(e) {
             var modal = e.target;

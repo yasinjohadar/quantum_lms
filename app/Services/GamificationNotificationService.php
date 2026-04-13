@@ -2,21 +2,67 @@
 
 namespace App\Services;
 
-use App\Models\User;
+use App\Events\UserNotificationPushed;
 use App\Models\GamificationNotification;
-use Illuminate\Support\Facades\Mail;
-use App\Services\NotificationPreferenceService;
+use App\Models\User;
+use Illuminate\Support\Facades\Log;
 
 class GamificationNotificationService
 {
-    protected NotificationPreferenceService $preferenceService;
+    public function __construct(
+        protected NotificationPreferenceService $preferenceService
+    ) {}
 
-    public function __construct(NotificationPreferenceService $preferenceService)
-    {
-        $this->preferenceService = $preferenceService;
-    }
     /**
-     * إرسال إشعار
+     * ربط نوع الإشعار بفئة تفضيلات المستخدم.
+     */
+    public function resolvePreferenceType(string $type): string
+    {
+        $staff = [
+            'lesson_review_submitted', 'lesson_review_approved', 'lesson_review_rejected',
+            'lesson_review_submit_ack',
+            'quiz_review_submitted', 'quiz_review_approved', 'quiz_review_rejected',
+            'quiz_review_submit_ack',
+            'staff_review',
+        ];
+        if (in_array($type, $staff, true)) {
+            return 'staff_review';
+        }
+
+        if ($type === 'library_item') {
+            return 'library';
+        }
+
+        if ($type === 'class_enrollment_decision') {
+            return 'custom';
+        }
+
+        if ($type === 'custom_notification') {
+            return 'custom';
+        }
+
+        if ($type === 'event_reminder') {
+            return 'calendar';
+        }
+
+        if (in_array($type, ['student_lesson_available', 'student_quiz_available'], true)) {
+            return 'system';
+        }
+
+        $gamification = [
+            'badge_earned', 'achievement_unlocked', 'level_up', 'challenge_completed', 'reward_claimed',
+            'leaderboard_update', 'challenge_reminder', 'points_awarded', 'task_completed',
+            'lesson_attended', 'lesson_completed', 'quiz_started', 'quiz_completed', 'question_answered',
+        ];
+        if (in_array($type, $gamification, true)) {
+            return 'gamification';
+        }
+
+        return 'system';
+    }
+
+    /**
+     * إرسال إشعار وتخزينه ثم بثّه عبر Reverb (عند التفعيل).
      */
     public function sendNotification(
         User $user,
@@ -24,11 +70,14 @@ class GamificationNotificationService
         string $title,
         string $message,
         array $data = [],
-        bool $sendEmail = false
+        bool $sendEmail = false,
+        ?User $actor = null,
+        ?string $actionUrl = null,
+        bool $broadcastPush = false,
     ): GamificationNotification {
-        // احترام تفضيلات الإشعارات (قناة قاعدة البيانات)
-        if (!$this->preferenceService->isAllowed($user, $type, 'database')) {
-            // إذا كان نوع الإشعار مكتوماً، لا ننشئ سجلاً
+        $prefType = $this->resolvePreferenceType($type);
+
+        if (!$this->preferenceService->isAllowed($user, $prefType, 'database')) {
             return new GamificationNotification([
                 'user_id' => $user->id,
                 'type' => $type,
@@ -39,8 +88,20 @@ class GamificationNotificationService
             ]);
         }
 
+        /** بيانات الفاعل تُحفظ وتُعرض للإدمن فقط (قائمة الإشعارات، التوست، البث). */
+        $includeActor = $actor && $this->recipientShouldSeeActor($user);
+        $actorRole = null;
+        if ($includeActor) {
+            $actor->loadMissing('roles');
+            $actorRole = $actor->roles->first()?->name;
+        }
+
         $notification = GamificationNotification::create([
             'user_id' => $user->id,
+            'actor_id' => $includeActor ? $actor->id : null,
+            'actor_name' => $includeActor ? $actor->name : null,
+            'actor_role' => $includeActor ? $actorRole : null,
+            'action_url' => $actionUrl,
             'type' => $type,
             'title' => $title,
             'message' => $message,
@@ -48,14 +109,11 @@ class GamificationNotificationService
             'is_read' => false,
         ]);
 
-        // إرسال بريد إلكتروني إذا كان مفعلاً
-        if ($sendEmail && $user->email && $this->preferenceService->isAllowed($user, $type, 'email')) {
-            // TODO: إنشاء Mailable class للإشعارات
-            // Mail::to($user->email)->send(new GamificationNotificationMail($notification));
+        if ($sendEmail && $user->email && $this->preferenceService->isAllowed($user, $prefType, 'email')) {
+            // TODO: Mailable للإشعارات
         }
 
-        // إرسال SMS إذا كان مفعلاً
-        if ($user->phone && $this->preferenceService->isAllowed($user, $type, 'sms')) {
+        if ($user->phone && $this->preferenceService->isAllowed($user, $prefType, 'sms')) {
             try {
                 $smsService = app(\App\Services\SMS\SMSService::class);
                 $smsService->send($user->phone, $message, ['type' => 'notification']);
@@ -64,7 +122,38 @@ class GamificationNotificationService
             }
         }
 
+        if ($broadcastPush && $notification->id) {
+            $this->pushBroadcast($user, $notification);
+        }
+
         return $notification;
+    }
+
+    /**
+     * الإدمن فقط يرى اسم الفاعل ودوره في الإشعارات والتنبيهات.
+     */
+    protected function recipientShouldSeeActor(User $recipient): bool
+    {
+        return $recipient->hasRole('admin');
+    }
+
+    /**
+     * بث فوري لإشعار مخزّن (للاستخدام بعد إدراج مجمع أو عند الحاجة).
+     */
+    public function pushBroadcast(User $user, GamificationNotification $notification): void
+    {
+        if (!$notification->id) {
+            return;
+        }
+
+        try {
+            event(new UserNotificationPushed($user, $notification->toBroadcastPayload()));
+        } catch (\Throwable $e) {
+            Log::warning('فشل بث الإشعار (تأكد من تشغيل Reverb: php artisan reverb:start): '.$e->getMessage(), [
+                'user_id' => $user->id,
+                'notification_id' => $notification->id,
+            ]);
+        }
     }
 
     /**
@@ -117,11 +206,12 @@ class GamificationNotificationService
         string $type,
         string $title,
         string $message,
-        array $data = []
+        array $data = [],
+        ?User $actor = null,
+        ?string $actionUrl = null,
+        ?string $messageForNonAdmin = null,
     ): int {
-        $notifications = [];
-        $now = now();
-        $jsonData = json_encode($data); // تحويل البيانات إلى JSON
+        $count = 0;
 
         foreach ($userIds as $userId) {
             $user = User::find($userId);
@@ -129,39 +219,14 @@ class GamificationNotificationService
                 continue;
             }
 
-            // تجاهل المستخدمين الذين أوقفوا هذا النوع من الإشعارات
-            if (!$this->preferenceService->isAllowed($user, $type, 'database')) {
-                continue;
-            }
+            $body = $user->hasRole('admin') ? $message : ($messageForNonAdmin ?? $message);
 
-            $notifications[] = [
-                'user_id' => $user->id,
-                'type' => $type,
-                'title' => $title,
-                'message' => $message,
-                'data' => $jsonData, // استخدام JSON string
-                'is_read' => false,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ];
-        }
-
-        // إدراج مجمع
-        if (!empty($notifications)) {
-            GamificationNotification::insert($notifications);
-        }
-
-        // إرسال Events للإشعارات الفورية
-        foreach ($userIds as $userId) {
-            $user = User::find($userId);
-            if ($user) {
-                \Illuminate\Support\Facades\Event::dispatch(
-                    new \App\Events\CustomNotificationSent($user, $title, $message, $data)
-                );
+            $notification = $this->sendNotification($user, $type, $title, $body, $data, false, $actor, $actionUrl, true);
+            if ($notification->id) {
+                $count++;
             }
         }
 
-        return count($notifications);
+        return $count;
     }
 }
-

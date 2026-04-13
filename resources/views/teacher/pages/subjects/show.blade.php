@@ -253,19 +253,18 @@
                                                                 <i class="bi bi-layers me-1"></i>
                                                                 الوحدات ({{ $section->units->count() }})
                                                             </span>
+                                                            @if($subject->sections->where('parent_id', $section->id)->isEmpty())
                                                             <button type="button"
                                                                     class="btn btn-sm btn-outline-primary"
                                                                     data-bs-toggle="modal"
                                                                     data-bs-target="#createUnitModal{{ $section->id }}">
-                                                                <i class="bi bi-plus-lg me-1"></i> إضافة وحدة
+                                                                <i class="bi bi-plus-lg me-1"></i> إضافة قسم لرفع الدروس
                                                             </button>
+                                                            @endif
                                                         </div>
 
                                                         @if($section->units->count() === 0)
-                                                            <div class="text-center py-4 text-muted">
-                                                                <i class="bi bi-inbox display-6 d-block mb-2"></i>
-                                                                <span class="small">لا توجد وحدات في هذا القسم بعد</span>
-                                                            </div>
+                                                            <p class="text-muted mb-0 mt-1" style="font-size: 0.75rem;">لا توجد وحدات في هذا القسم بعد</p>
                                                         @else
                                                             {{-- Accordion للوحدات --}}
                                                             <div class="accordion accordion-secondary" id="unitsAccordion{{ $section->id }}">
@@ -815,14 +814,15 @@
             </div>
         </div>
 
-        {{-- مودال إنشاء وحدة جديدة --}}
+        {{-- مودال إنشاء وحدة جديدة (قسم ورقي فقط) --}}
+        @if($subject->sections->where('parent_id', $section->id)->isEmpty())
         <div class="modal fade" id="createUnitModal{{ $section->id }}" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 rounded-4">
                     <div class="modal-header border-0">
                         <h5 class="modal-title fw-bold">
                             <i class="bi bi-layers text-primary me-2"></i>
-                            إضافة وحدة جديدة
+                            إضافة قسم جديد لرفع الدروس
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
                     </div>
@@ -866,6 +866,7 @@
                 </div>
             </div>
         </div>
+        @endif
 
         {{-- مودالات تعديل وحذف الوحدات --}}
         @foreach($section->units as $unit)

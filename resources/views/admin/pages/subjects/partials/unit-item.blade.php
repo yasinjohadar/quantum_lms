@@ -68,18 +68,20 @@
         <div class="accordion-body pt-0">
             @include('admin.pages.subjects.partials.unit-content', ['unit' => $unit, 'subject' => $subject])
 
-            {{-- زر إضافة وحدة فرعية --}}
+            {{-- زر إضافة قسم لرفع الدروس (فرعي تحت وحدة) --}}
             <div class="d-flex align-items-center gap-2 mt-3 pt-2 border-top">
                 @can('unit-create')
+                @if($sectionAllowsUnitCreate ?? true)
                 <button type="button"
                         class="btn btn-sm btn-outline-secondary add-child-unit-btn"
                         data-bs-toggle="modal"
                         data-bs-target="#createUnitModal{{ $section->id }}"
                         data-parent-id="{{ $unit->id }}"
                         data-section-id="{{ $section->id }}"
-                        title="إضافة وحدة فرعية">
-                    <i class="bi bi-layers"></i> إضافة وحدة فرعية
+                        title="إضافة قسم لرفع الدروس">
+                    <i class="bi bi-layers"></i> إضافة قسم لرفع الدروس
                 </button>
+                @endif
                 @endcan
             </div>
 
@@ -91,15 +93,17 @@
                             <i class="bi bi-layers me-1"></i> الوحدات الفرعية ({{ $childUnits->count() }})
                         </span>
                         @can('unit-create')
+                        @if($sectionAllowsUnitCreate ?? true)
                         <button type="button"
                                 class="btn btn-sm btn-outline-secondary add-child-unit-btn"
                                 data-bs-toggle="modal"
                                 data-bs-target="#createUnitModal{{ $section->id }}"
                                 data-parent-id="{{ $unit->id }}"
                                 data-section-id="{{ $section->id }}"
-                                title="إضافة وحدة فرعية">
-                            <i class="bi bi-layers"></i> إضافة وحدة فرعية
+                                title="إضافة قسم لرفع الدروس">
+                            <i class="bi bi-layers"></i> إضافة قسم لرفع الدروس
                         </button>
+                        @endif
                         @endcan
                     </div>
                     <div class="accordion accordion-secondary" id="childUnitsAccordion{{ $unit->id }}" data-sortable="units" data-section-id="{{ $section->id }}" data-parent-id="{{ $unit->id }}" data-reorder-url="{{ route('admin.sections.units.reorder', $section) }}">
@@ -111,6 +115,7 @@
                                 'subject' => $subject,
                                 'unitIndex' => $childIndex,
                                 'parentUnitsAccordionId' => 'childUnitsAccordion' . $unit->id,
+                                'sectionAllowsUnitCreate' => $sectionAllowsUnitCreate ?? true,
                             ])
                         @endforeach
                     </div>
@@ -120,15 +125,17 @@
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <span class="text-muted small"><i class="bi bi-layers me-1"></i> الوحدات الفرعية</span>
                         @can('unit-create')
+                        @if($sectionAllowsUnitCreate ?? true)
                         <button type="button"
                                 class="btn btn-sm btn-outline-secondary add-child-unit-btn"
                                 data-bs-toggle="modal"
                                 data-bs-target="#createUnitModal{{ $section->id }}"
                                 data-parent-id="{{ $unit->id }}"
                                 data-section-id="{{ $section->id }}"
-                                title="إضافة وحدة فرعية">
-                            <i class="bi bi-layers"></i> إضافة وحدة فرعية
+                                title="إضافة قسم لرفع الدروس">
+                            <i class="bi bi-layers"></i> إضافة قسم لرفع الدروس
                         </button>
+                        @endif
                         @endcan
                     </div>
                     <div class="text-center py-2 text-muted small">لا وحدات فرعية</div>

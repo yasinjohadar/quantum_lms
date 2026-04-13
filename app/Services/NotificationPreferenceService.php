@@ -129,6 +129,13 @@ class NotificationPreferenceService
                 'via_sms' => false,
                 'muted' => false,
             ],
+            'staff_review' => [
+                'label' => 'مراجعة المحتوى (دروس/اختبارات) وتنبيهات الطاقم',
+                'via_database' => true,
+                'via_email' => false,
+                'via_sms' => false,
+                'muted' => false,
+            ],
         ];
     }
 }

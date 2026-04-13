@@ -15,6 +15,8 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Helpers\StorageHelper;
+use App\Services\StaffNotificationService;
+use App\Services\StudentContentNotificationService;
 
 class LessonController extends Controller
 {
@@ -199,6 +201,12 @@ class LessonController extends Controller
 
             Log::info('تم إنشاء الدرس بنجاح، ID: ' . $lesson->id);
 
+            if ($lesson->review_status === Lesson::REVIEW_STATUS_PENDING && $user->shouldSubmitContentForReview()) {
+                app(StaffNotificationService::class)->notifyLessonSubmittedForReview($lesson->fresh(), $user);
+            }
+
+            app(StudentContentNotificationService::class)->notifyIfLessonBecameVisible(null, $lesson->fresh(), $user);
+
             // الحصول على subject_id للتوجيه
             $subjectId = $unit->section->subject_id;
 
@@ -291,6 +299,8 @@ class LessonController extends Controller
                     abort(403, 'غير مصرح لك بالوصول إلى هذا الدرس');
                 }
             }
+
+            $lessonBeforeUpdate = clone $lesson;
             
             $data = $request->validated();
             $data['is_free'] = $request->has('is_free');
@@ -300,6 +310,7 @@ class LessonController extends Controller
             $linkedUnitIds = $data['linked_unit_ids'] ?? [];
             unset($data['linked_unit_ids']);
 
+            $oldReviewStatus = $lesson->review_status;
             $isTeacher = $user->shouldSubmitContentForReview();
 
             if ($isTeacher) {
@@ -365,6 +376,15 @@ class LessonController extends Controller
             }
 
             $lesson->update($data);
+            $lesson->refresh();
+
+            if (
+                $lesson->review_status === Lesson::REVIEW_STATUS_PENDING
+                && $oldReviewStatus !== Lesson::REVIEW_STATUS_PENDING
+                && $user->shouldSubmitContentForReview()
+            ) {
+                app(StaffNotificationService::class)->notifyLessonSubmittedForReview($lesson->fresh(), $user);
+            }
 
             // مزامنة الوحدات الإضافية (ربط الدرس بوحدات أخرى): استبعاد الوحدة الأصلية
             $linkedUnitIds = array_values(array_unique(array_filter($linkedUnitIds)));
@@ -395,6 +415,12 @@ class LessonController extends Controller
             $lesson->linkedUnits()->sync($linkedUnitIds);
 
             $subjectId = $lesson->unit->section->subject_id;
+
+            app(StudentContentNotificationService::class)->notifyIfLessonBecameVisible(
+                $lessonBeforeUpdate,
+                $lesson->fresh(),
+                $user
+            );
 
             if ($this->wantsJsonResponse($request)) {
                 return response()->json([
@@ -540,6 +566,8 @@ class LessonController extends Controller
             'review_notes' => 'nullable|string|max:1000',
         ]);
 
+        $lessonBeforeApprove = clone $lesson;
+
         $lesson->update([
             'review_status' => Lesson::REVIEW_STATUS_APPROVED,
             'is_active' => true,
@@ -547,6 +575,14 @@ class LessonController extends Controller
             'reviewed_by' => auth()->id(),
             'reviewed_at' => now(),
         ]);
+
+        app(StaffNotificationService::class)->notifyLessonReviewOutcome($lesson->fresh(), auth()->user(), true);
+
+        app(StudentContentNotificationService::class)->notifyIfLessonBecameVisible(
+            $lessonBeforeApprove,
+            $lesson->fresh(),
+            auth()->user()
+        );
 
         $subjectId = $lesson->unit->section->subject_id;
 
@@ -571,6 +607,8 @@ class LessonController extends Controller
             'reviewed_by' => auth()->id(),
             'reviewed_at' => now(),
         ]);
+
+        app(StaffNotificationService::class)->notifyLessonReviewOutcome($lesson->fresh(), auth()->user(), false);
 
         $subjectId = $lesson->unit->section->subject_id;
 

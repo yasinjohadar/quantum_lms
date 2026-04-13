@@ -9,6 +9,9 @@
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @auth
+    @vite(['resources/js/echo-notifications.js'])
+    @endauth
     <title> @yield('page-title')</title>
     <meta name="Description" content="منصة كوانتم">
     <meta name="Author" content="claudSoft">

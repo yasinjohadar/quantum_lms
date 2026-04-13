@@ -129,7 +129,7 @@
                                         @endforeach
                                     </div>
                                 @else
-                                    <p class="text-muted">لا توجد وحدات في هذا القسم</p>
+                                    <p class="text-muted mb-0" style="font-size: 0.75rem;">لا توجد وحدات في هذا القسم</p>
                                 @endif
                             </div>
                             @if(!$loop->last)

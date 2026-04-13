@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\AdminStudentEnrollmentService;
+use App\Services\StaffNotificationService;
 use App\Models\Enrollment;
 use App\Models\ClassEnrollment;
 use App\Models\User;
@@ -20,7 +21,8 @@ use Illuminate\Support\Facades\Validator;
 class EnrollmentController extends Controller
 {
     public function __construct(
-        private AdminStudentEnrollmentService $adminStudentEnrollmentService
+        private AdminStudentEnrollmentService $adminStudentEnrollmentService,
+        private StaffNotificationService $staffNotificationService
     ) {
         $this->middleware('auth');
         $this->middleware(['permission:enrollment-list'])->only('index');
@@ -1024,6 +1026,12 @@ class EnrollmentController extends Controller
 
             DB::commit();
 
+            $this->staffNotificationService->notifyClassEnrollmentDecision(
+                $classEnrollment->fresh(),
+                auth()->user(),
+                true
+            );
+
             $message = "تم قبول طلب الانضمام للصف بنجاح. تم إنشاء {$result['created']} انضمام للمواد";
             if ($result['skipped'] > 0) {
                 $message .= " (تم تخطي {$result['skipped']} مادة مسجل فيها مسبقاً)";
@@ -1057,6 +1065,12 @@ class EnrollmentController extends Controller
                 'enrolled_by' => auth()->id(),
                 'notes' => $request->input('notes', $classEnrollment->notes),
             ]);
+
+            $this->staffNotificationService->notifyClassEnrollmentDecision(
+                $classEnrollment->fresh(),
+                auth()->user(),
+                false
+            );
 
             return redirect()->back()
                 ->with('success', 'تم رفض طلب الانضمام للصف بنجاح');

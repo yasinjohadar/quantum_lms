@@ -116,6 +116,8 @@
                     </div>
                     <!-- End::header-element -->
 
+                    @include('partials.echo-realtime-status')
+
                     <!-- Start::header-element -->
                     <div class="header-element notifications-dropdown main-header-notification">
                         <!-- Start::header-link|dropdown-toggle -->
