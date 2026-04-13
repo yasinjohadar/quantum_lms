@@ -10,7 +10,10 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     @auth
-    @vite(['resources/js/echo-notifications.js'])
+    {{-- يتطلب npm run build على السيرفر أو رفع public/build؛ وإلا يُتخطى (بدون إشعارات Echo فقط) --}}
+    @if (file_exists(public_path('hot')) || file_exists(public_path('build/manifest.json')))
+        @vite(['resources/js/echo-notifications.js'])
+    @endif
     @endauth
     @if(isset($userSessionId))
         <meta name="session-id" content="{{ $userSessionId }}">
