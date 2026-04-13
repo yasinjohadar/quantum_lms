@@ -2,7 +2,7 @@
     $childUnits = $allUnits->where('parent_id', $unit->id)->sortBy('order');
     $isChildUnit = $unit->parent_id !== null;
 @endphp
-<div class="accordion-item border rounded mb-2 shadow-sm {{ $isChildUnit ? 'unit-item-child border-start border-info border-3 bg-info-transparent' : '' }}" data-id="{{ $unit->id }}">
+<div class="accordion-item border rounded mb-2 shadow-sm unit-item {{ $isChildUnit ? 'unit-item-child' : 'unit-item-root' }}" data-id="{{ $unit->id }}">
     <h2 class="accordion-header d-flex" id="unitHeading{{ $unit->id }}">
         <span class="sortable-handle d-flex align-items-center px-2 cursor-grab text-muted" title="اسحب لإعادة الترتيب"><i class="bi bi-grip-vertical"></i></span>
         <button class="accordion-button collapsed flex-grow-1 py-3" type="button"
@@ -71,7 +71,6 @@
             {{-- زر إضافة قسم لرفع الدروس (فرعي تحت وحدة) --}}
             <div class="d-flex align-items-center gap-2 mt-3 pt-2 border-top">
                 @can('unit-create')
-                @if($sectionAllowsUnitCreate ?? true)
                 <button type="button"
                         class="btn btn-sm btn-outline-secondary add-child-unit-btn"
                         data-bs-toggle="modal"
@@ -81,7 +80,6 @@
                         title="إضافة قسم لرفع الدروس">
                     <i class="bi bi-layers"></i> إضافة قسم لرفع الدروس
                 </button>
-                @endif
                 @endcan
             </div>
 
@@ -93,7 +91,6 @@
                             <i class="bi bi-layers me-1"></i> الوحدات الفرعية ({{ $childUnits->count() }})
                         </span>
                         @can('unit-create')
-                        @if($sectionAllowsUnitCreate ?? true)
                         <button type="button"
                                 class="btn btn-sm btn-outline-secondary add-child-unit-btn"
                                 data-bs-toggle="modal"
@@ -103,7 +100,6 @@
                                 title="إضافة قسم لرفع الدروس">
                             <i class="bi bi-layers"></i> إضافة قسم لرفع الدروس
                         </button>
-                        @endif
                         @endcan
                     </div>
                     <div class="accordion accordion-secondary" id="childUnitsAccordion{{ $unit->id }}" data-sortable="units" data-section-id="{{ $section->id }}" data-parent-id="{{ $unit->id }}" data-reorder-url="{{ route('admin.sections.units.reorder', $section) }}">
@@ -115,7 +111,6 @@
                                 'subject' => $subject,
                                 'unitIndex' => $childIndex,
                                 'parentUnitsAccordionId' => 'childUnitsAccordion' . $unit->id,
-                                'sectionAllowsUnitCreate' => $sectionAllowsUnitCreate ?? true,
                             ])
                         @endforeach
                     </div>
@@ -125,7 +120,6 @@
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <span class="text-muted small"><i class="bi bi-layers me-1"></i> الوحدات الفرعية</span>
                         @can('unit-create')
-                        @if($sectionAllowsUnitCreate ?? true)
                         <button type="button"
                                 class="btn btn-sm btn-outline-secondary add-child-unit-btn"
                                 data-bs-toggle="modal"
@@ -135,7 +129,6 @@
                                 title="إضافة قسم لرفع الدروس">
                             <i class="bi bi-layers"></i> إضافة قسم لرفع الدروس
                         </button>
-                        @endif
                         @endcan
                     </div>
                     <div class="text-center py-2 text-muted small">لا وحدات فرعية</div>

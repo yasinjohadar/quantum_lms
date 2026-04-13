@@ -42,12 +42,6 @@ class UnitController extends Controller
                 }
             }
 
-            if ($section->hasChildSections()) {
-                return redirect()
-                    ->route('admin.subjects.show', $section->subject_id)
-                    ->with('error', 'لا يمكن إضافة وحدات في قسم يملك أقساماً فرعية. أضف الوحدات في القسم الورقي (الأخير في التسلسل) فقط.');
-            }
-
             $data = $request->validated();
             $data['section_id'] = $section->id;
             $data['is_active'] = $request->has('is_active');

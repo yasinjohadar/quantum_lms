@@ -5,9 +5,15 @@
     $level = (int) ($sectionLevel ?? 0);
     $levelIcons = ['bi-folder-fill', 'bi-folder2', 'bi-folder-symlink-fill', 'bi-journal-bookmark', 'bi-collection-fill', 'bi-journal-text'];
     $levelIcon = $levelIcons[min($level, 5)] ?? 'bi-folder-fill';
-    $levelColorClasses = ['text-primary', 'text-info', 'text-danger', 'text-success', 'text-warning', 'text-secondary'];
-    $levelColorClass = $levelColorClasses[min($level, 5)] ?? 'text-primary';
-    $sectionAllowsUnitCreate = $childSections->isEmpty() && ! $isLinkedSection;
+    $levelIconRgb = [
+        '37, 99, 235',
+        '8, 145, 178',
+        '219, 39, 119',
+        '22, 163, 74',
+        '217, 119, 6',
+        '124, 58, 237',
+    ];
+    $levelIconStyle = 'color: rgb(' . ($levelIconRgb[min($level, 5)] ?? $levelIconRgb[0]) . ')';
 @endphp
 <div class="accordion-item mb-3 rounded overflow-hidden section-level-{{ $level }}{{ $isLinkedSection ? ' section-item-linked' : '' }}" data-id="{{ $section->id }}">
     <h2 class="accordion-header d-flex" id="sectionHeading{{ $section->id }}">
@@ -24,7 +30,7 @@
                 data-bs-parent="#{{ $parentAccordionId }}">
             <div class="d-flex align-items-center justify-content-between w-100 me-3">
                 <div class="d-flex align-items-center">
-                    <i class="bi {{ $levelIcon }} {{ $levelColorClass }} me-2"></i>
+                    <i class="bi {{ $levelIcon }} me-2" style="{{ $levelIconStyle }}"></i>
                     @if($isLinkedSection)
                         <span class="badge bg-info-transparent text-info me-2" style="font-size:0.7rem;">مرتبط بمادة أخرى</span>
                     @endif
@@ -101,14 +107,12 @@
                     @if(!$isLinkedSection)
                     <div class="d-flex align-items-center gap-2">
                         @can('unit-create')
-                        @if($sectionAllowsUnitCreate)
                         <button type="button"
                                 class="btn btn-sm btn-outline-primary"
                                 data-bs-toggle="modal"
                                 data-bs-target="#createUnitModal{{ $section->id }}">
                             <i class="bi bi-plus-lg me-1"></i> إضافة قسم لرفع الدروس
                         </button>
-                        @endif
                         @endcan
                         @can('subject-section-create')
                         <button type="button"
@@ -123,12 +127,6 @@
                     </div>
                     @endif
                 </div>
-                @if(! $isLinkedSection && $childSections->isNotEmpty())
-                    <p class="text-muted small mb-2">
-                        <i class="bi bi-info-circle me-1"></i>
-                        لا يُضاف هنا إلا في القسم الورقي (بدون أقسام فرعية). أضف الوحدات داخل أحد الأقسام الفرعية عندما يصبح القسم نهائياً.
-                    </p>
-                @endif
 
                 @php
                     $rootUnits = $section->units->whereNull('parent_id')->sortBy('order');
@@ -146,7 +144,6 @@
                                 'subject' => $subject,
                                 'unitIndex' => $unitIndex,
                                 'parentUnitsAccordionId' => 'unitsAccordion' . $section->id,
-                                'sectionAllowsUnitCreate' => $sectionAllowsUnitCreate,
                             ])
                         @endforeach
                     </div>

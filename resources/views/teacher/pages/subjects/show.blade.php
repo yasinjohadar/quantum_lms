@@ -4,7 +4,7 @@
     تفاصيل المادة الدراسية
 @stop
 
-@section('css')
+@push('styles')
 <style>
     .btn-purple {
         background-color: #6259ca;
@@ -37,8 +37,65 @@
     .questions-list-container .form-check-input:checked + .flex-grow-1 {
         background-color: rgba(98, 89, 202, 0.05);
     }
+
+    /* تمييز الوحدات (نفس منطق لوحة الإدارة) */
+    :root {
+        --unit-accent-rgb: 98, 89, 202;
+    }
+    .unit-item {
+        overflow: hidden;
+    }
+    .unit-item-root {
+        border-start: 3px solid #6259ca !important;
+        background-color: transparent;
+    }
+    .unit-item-root > .accordion-header .accordion-button,
+    .unit-item-root > .accordion-header .accordion-button.collapsed,
+    .unit-item-root > .accordion-header .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--unit-accent-rgb), 0.12);
+        box-shadow: none;
+    }
+    .unit-item-root > .accordion-header .accordion-button:hover { background-color: rgba(var(--unit-accent-rgb), 0.18); }
+    .unit-item-root > .accordion-header .accordion-button:focus { background-color: rgba(var(--unit-accent-rgb), 0.16); box-shadow: 0 0 0 0.2rem rgba(var(--unit-accent-rgb), 0.22); }
+
+    .unit-item-child {
+        border-start: 3px solid var(--bs-info) !important;
+        background-color: transparent;
+    }
+    .unit-item-child > .accordion-header .accordion-button,
+    .unit-item-child > .accordion-header .accordion-button.collapsed,
+    .unit-item-child > .accordion-header .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--bs-info-rgb), 0.11);
+        box-shadow: none;
+    }
+    .unit-item-child > .accordion-header .accordion-button:hover { background-color: rgba(var(--bs-info-rgb), 0.17); }
+    .unit-item-child > .accordion-header .accordion-button:focus { background-color: rgba(var(--bs-info-rgb), 0.15); box-shadow: 0 0 0 0.2rem rgba(var(--bs-info-rgb), 0.2); }
+
+    .accordion.accordion-secondary .accordion-item.unit-item > .accordion-collapse .accordion-body {
+        background-color: var(--custom-white, #fff) !important;
+    }
+
+    .accordion.accordion-secondary .accordion-item.unit-item-root > .accordion-header .accordion-button,
+    .accordion.accordion-secondary .accordion-item.unit-item-root > .accordion-header .accordion-button.collapsed,
+    .accordion.accordion-secondary .accordion-item.unit-item-root > .accordion-header .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--unit-accent-rgb), 0.12) !important;
+        color: inherit;
+        box-shadow: none;
+    }
+    .accordion.accordion-secondary .accordion-item.unit-item-root > .accordion-header .accordion-button:hover { background-color: rgba(var(--unit-accent-rgb), 0.18) !important; }
+    .accordion.accordion-secondary .accordion-item.unit-item-root > .accordion-header .accordion-button:focus { background-color: rgba(var(--unit-accent-rgb), 0.16) !important; box-shadow: 0 0 0 0.2rem rgba(var(--unit-accent-rgb), 0.22) !important; }
+
+    .accordion.accordion-secondary .accordion-item.unit-item-child > .accordion-header .accordion-button,
+    .accordion.accordion-secondary .accordion-item.unit-item-child > .accordion-header .accordion-button.collapsed,
+    .accordion.accordion-secondary .accordion-item.unit-item-child > .accordion-header .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--bs-info-rgb), 0.11) !important;
+        color: inherit;
+        box-shadow: none;
+    }
+    .accordion.accordion-secondary .accordion-item.unit-item-child > .accordion-header .accordion-button:hover { background-color: rgba(var(--bs-info-rgb), 0.17) !important; }
+    .accordion.accordion-secondary .accordion-item.unit-item-child > .accordion-header .accordion-button:focus { background-color: rgba(var(--bs-info-rgb), 0.15) !important; box-shadow: 0 0 0 0.2rem rgba(var(--bs-info-rgb), 0.2) !important; }
 </style>
-@stop
+@endpush
 
 @section('content')
     <div class="main-content app-content">
@@ -253,14 +310,12 @@
                                                                 <i class="bi bi-layers me-1"></i>
                                                                 الوحدات ({{ $section->units->count() }})
                                                             </span>
-                                                            @if($subject->sections->where('parent_id', $section->id)->isEmpty())
                                                             <button type="button"
                                                                     class="btn btn-sm btn-outline-primary"
                                                                     data-bs-toggle="modal"
                                                                     data-bs-target="#createUnitModal{{ $section->id }}">
                                                                 <i class="bi bi-plus-lg me-1"></i> إضافة قسم لرفع الدروس
                                                             </button>
-                                                            @endif
                                                         </div>
 
                                                         @if($section->units->count() === 0)
@@ -269,7 +324,7 @@
                                                             {{-- Accordion للوحدات --}}
                                                             <div class="accordion accordion-secondary" id="unitsAccordion{{ $section->id }}">
                                                                 @foreach($section->units as $unitIndex => $unit)
-                                                                    <div class="accordion-item border rounded mb-2 shadow-sm">
+                                                                    <div class="accordion-item border rounded mb-2 shadow-sm unit-item {{ $unit->parent_id ? 'unit-item-child' : 'unit-item-root' }}">
                                                                         <h2 class="accordion-header" id="unitHeading{{ $unit->id }}">
                                                                             <button class="accordion-button collapsed py-3" type="button"
                                                                                     data-bs-toggle="collapse"
@@ -814,8 +869,7 @@
             </div>
         </div>
 
-        {{-- مودال إنشاء وحدة جديدة (قسم ورقي فقط) --}}
-        @if($subject->sections->where('parent_id', $section->id)->isEmpty())
+        {{-- مودال إنشاء وحدة جديدة --}}
         <div class="modal fade" id="createUnitModal{{ $section->id }}" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 rounded-4">
@@ -866,7 +920,6 @@
                 </div>
             </div>
         </div>
-        @endif
 
         {{-- مودالات تعديل وحذف الوحدات --}}
         @foreach($section->units as $unit)

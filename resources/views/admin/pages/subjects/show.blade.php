@@ -4,7 +4,7 @@
     تفاصيل المادة الدراسية
 @stop
 
-@section('css')
+@push('styles')
 <style>
     .btn-purple {
         background-color: #6259ca;
@@ -37,15 +37,202 @@
     .questions-list-container .form-check-input:checked + .flex-grow-1 {
         background-color: rgba(98, 89, 202, 0.05);
     }
-    /* تمييز مستويات الأقسام (0 = جذر، 1–5 = أبناء) */
-    .section-level-0 { border-start: 3px solid var(--bs-primary); background-color: rgba(var(--bs-primary-rgb), 0.06); }
-    .section-level-1 { border-start: 3px solid var(--bs-info); background-color: rgba(var(--bs-info-rgb), 0.08); }
-    .section-level-2 { border-start: 3px solid var(--bs-danger); background-color: rgba(var(--bs-danger-rgb), 0.06); }
-    .section-level-3 { border-start: 3px solid var(--bs-success); background-color: rgba(var(--bs-success-rgb), 0.06); }
-    .section-level-4 { border-start: 3px solid var(--bs-warning); background-color: rgba(var(--bs-warning-rgb), 0.08); }
-    .section-level-5 { border-start: 3px solid var(--bs-secondary); background-color: rgba(var(--bs-secondary-rgb), 0.08); }
+    /*
+     * تمييز المستوى: حد جانبي + لون شريط العنوان فقط (لا خلفية للبطاقة أو جسم الأكورديون)
+     * 0 أزرق، 1 تركواز، 2 وردي/مرجاني، 3 أخضر، 4 كهرماني، 5 بنفسجي
+     */
+    :root {
+        --section-level-0-rgb: 37, 99, 235;
+        --section-level-1-rgb: 8, 145, 178;
+        --section-level-2-rgb: 219, 39, 119;
+        --section-level-3-rgb: 22, 163, 74;
+        --section-level-4-rgb: 217, 119, 6;
+        --section-level-5-rgb: 124, 58, 237;
+        --unit-accent-rgb: 98, 89, 202;
+    }
+    .section-level-0 { border-start: 3px solid rgb(var(--section-level-0-rgb)); background-color: transparent; }
+    .section-level-1 { border-start: 3px solid rgb(var(--section-level-1-rgb)); background-color: transparent; }
+    .section-level-2 { border-start: 3px solid rgb(var(--section-level-2-rgb)); background-color: transparent; }
+    .section-level-3 { border-start: 3px solid rgb(var(--section-level-3-rgb)); background-color: transparent; }
+    .section-level-4 { border-start: 3px solid rgb(var(--section-level-4-rgb)); background-color: transparent; }
+    .section-level-5 { border-start: 3px solid rgb(var(--section-level-5-rgb)); background-color: transparent; }
+
+    .section-level-0 .accordion-button,
+    .section-level-0 .accordion-button.collapsed,
+    .section-level-0 .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--section-level-0-rgb), 0.14);
+        box-shadow: none;
+    }
+    .section-level-0 .accordion-button:hover { background-color: rgba(var(--section-level-0-rgb), 0.2); }
+    .section-level-0 .accordion-button:focus { background-color: rgba(var(--section-level-0-rgb), 0.18); box-shadow: 0 0 0 0.2rem rgba(var(--section-level-0-rgb), 0.22); }
+
+    .section-level-1 .accordion-button,
+    .section-level-1 .accordion-button.collapsed,
+    .section-level-1 .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--section-level-1-rgb), 0.14);
+        box-shadow: none;
+    }
+    .section-level-1 .accordion-button:hover { background-color: rgba(var(--section-level-1-rgb), 0.2); }
+    .section-level-1 .accordion-button:focus { background-color: rgba(var(--section-level-1-rgb), 0.18); box-shadow: 0 0 0 0.2rem rgba(var(--section-level-1-rgb), 0.22); }
+
+    .section-level-2 .accordion-button,
+    .section-level-2 .accordion-button.collapsed,
+    .section-level-2 .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--section-level-2-rgb), 0.12);
+        box-shadow: none;
+    }
+    .section-level-2 .accordion-button:hover { background-color: rgba(var(--section-level-2-rgb), 0.18); }
+    .section-level-2 .accordion-button:focus { background-color: rgba(var(--section-level-2-rgb), 0.16); box-shadow: 0 0 0 0.2rem rgba(var(--section-level-2-rgb), 0.2); }
+
+    .section-level-3 .accordion-button,
+    .section-level-3 .accordion-button.collapsed,
+    .section-level-3 .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--section-level-3-rgb), 0.12);
+        box-shadow: none;
+    }
+    .section-level-3 .accordion-button:hover { background-color: rgba(var(--section-level-3-rgb), 0.18); }
+    .section-level-3 .accordion-button:focus { background-color: rgba(var(--section-level-3-rgb), 0.16); box-shadow: 0 0 0 0.2rem rgba(var(--section-level-3-rgb), 0.2); }
+
+    .section-level-4 .accordion-button,
+    .section-level-4 .accordion-button.collapsed,
+    .section-level-4 .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--section-level-4-rgb), 0.14);
+        box-shadow: none;
+    }
+    .section-level-4 .accordion-button:hover { background-color: rgba(var(--section-level-4-rgb), 0.2); }
+    .section-level-4 .accordion-button:focus { background-color: rgba(var(--section-level-4-rgb), 0.18); box-shadow: 0 0 0 0.2rem rgba(var(--section-level-4-rgb), 0.22); }
+
+    .section-level-5 .accordion-button,
+    .section-level-5 .accordion-button.collapsed,
+    .section-level-5 .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--section-level-5-rgb), 0.14);
+        box-shadow: none;
+    }
+    .section-level-5 .accordion-button:hover { background-color: rgba(var(--section-level-5-rgb), 0.2); }
+    .section-level-5 .accordion-button:focus { background-color: rgba(var(--section-level-5-rgb), 0.18); box-shadow: 0 0 0 0.2rem rgba(var(--section-level-5-rgb), 0.22); }
+
+    /* الوحدات — لون بنفسجي المشروع، مختلف عن ألوان الأقسام */
+    .unit-item {
+        overflow: hidden;
+    }
+    .unit-item-root {
+        border-start: 3px solid #6259ca !important;
+        background-color: transparent;
+    }
+    .unit-item-root > .accordion-header .accordion-button,
+    .unit-item-root > .accordion-header .accordion-button.collapsed,
+    .unit-item-root > .accordion-header .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--unit-accent-rgb), 0.12);
+        box-shadow: none;
+    }
+    .unit-item-root > .accordion-header .accordion-button:hover { background-color: rgba(var(--unit-accent-rgb), 0.18); }
+    .unit-item-root > .accordion-header .accordion-button:focus { background-color: rgba(var(--unit-accent-rgb), 0.16); box-shadow: 0 0 0 0.2rem rgba(var(--unit-accent-rgb), 0.22); }
+
+    .unit-item-child {
+        border-start: 3px solid var(--bs-info) !important;
+        background-color: transparent;
+    }
+    .unit-item-child > .accordion-header .accordion-button,
+    .unit-item-child > .accordion-header .accordion-button.collapsed,
+    .unit-item-child > .accordion-header .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--bs-info-rgb), 0.11);
+        box-shadow: none;
+    }
+    .unit-item-child > .accordion-header .accordion-button:hover { background-color: rgba(var(--bs-info-rgb), 0.17); }
+    .unit-item-child > .accordion-header .accordion-button:focus { background-color: rgba(var(--bs-info-rgb), 0.15); box-shadow: 0 0 0 0.2rem rgba(var(--bs-info-rgb), 0.2); }
+
+    /* جسم الأكورديون بدون لون — فقط زر العنوان */
+    .accordion.accordion-primary .accordion-item[class*="section-level-"] > .accordion-collapse .accordion-body {
+        background-color: var(--custom-white, #fff) !important;
+    }
+    .accordion.accordion-secondary .accordion-item.unit-item > .accordion-collapse .accordion-body {
+        background-color: var(--custom-white, #fff) !important;
+    }
+
+    /*
+     * تجاوز styles.min.css: .accordion.accordion-primary .accordion-button (أعلى خصوصية من .section-level-N فقط)
+     */
+    .accordion.accordion-primary .accordion-item.section-level-0 .accordion-button,
+    .accordion.accordion-primary .accordion-item.section-level-0 .accordion-button.collapsed,
+    .accordion.accordion-primary .accordion-item.section-level-0 .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--section-level-0-rgb), 0.14) !important;
+        color: inherit;
+        box-shadow: none;
+    }
+    .accordion.accordion-primary .accordion-item.section-level-0 .accordion-button:hover { background-color: rgba(var(--section-level-0-rgb), 0.2) !important; }
+    .accordion.accordion-primary .accordion-item.section-level-0 .accordion-button:focus { background-color: rgba(var(--section-level-0-rgb), 0.18) !important; box-shadow: 0 0 0 0.2rem rgba(var(--section-level-0-rgb), 0.22) !important; }
+
+    .accordion.accordion-primary .accordion-item.section-level-1 .accordion-button,
+    .accordion.accordion-primary .accordion-item.section-level-1 .accordion-button.collapsed,
+    .accordion.accordion-primary .accordion-item.section-level-1 .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--section-level-1-rgb), 0.14) !important;
+        color: inherit;
+        box-shadow: none;
+    }
+    .accordion.accordion-primary .accordion-item.section-level-1 .accordion-button:hover { background-color: rgba(var(--section-level-1-rgb), 0.2) !important; }
+    .accordion.accordion-primary .accordion-item.section-level-1 .accordion-button:focus { background-color: rgba(var(--section-level-1-rgb), 0.18) !important; box-shadow: 0 0 0 0.2rem rgba(var(--section-level-1-rgb), 0.22) !important; }
+
+    .accordion.accordion-primary .accordion-item.section-level-2 .accordion-button,
+    .accordion.accordion-primary .accordion-item.section-level-2 .accordion-button.collapsed,
+    .accordion.accordion-primary .accordion-item.section-level-2 .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--section-level-2-rgb), 0.12) !important;
+        color: inherit;
+        box-shadow: none;
+    }
+    .accordion.accordion-primary .accordion-item.section-level-2 .accordion-button:hover { background-color: rgba(var(--section-level-2-rgb), 0.18) !important; }
+    .accordion.accordion-primary .accordion-item.section-level-2 .accordion-button:focus { background-color: rgba(var(--section-level-2-rgb), 0.16) !important; box-shadow: 0 0 0 0.2rem rgba(var(--section-level-2-rgb), 0.2) !important; }
+
+    .accordion.accordion-primary .accordion-item.section-level-3 .accordion-button,
+    .accordion.accordion-primary .accordion-item.section-level-3 .accordion-button.collapsed,
+    .accordion.accordion-primary .accordion-item.section-level-3 .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--section-level-3-rgb), 0.12) !important;
+        color: inherit;
+        box-shadow: none;
+    }
+    .accordion.accordion-primary .accordion-item.section-level-3 .accordion-button:hover { background-color: rgba(var(--section-level-3-rgb), 0.18) !important; }
+    .accordion.accordion-primary .accordion-item.section-level-3 .accordion-button:focus { background-color: rgba(var(--section-level-3-rgb), 0.16) !important; box-shadow: 0 0 0 0.2rem rgba(var(--section-level-3-rgb), 0.2) !important; }
+
+    .accordion.accordion-primary .accordion-item.section-level-4 .accordion-button,
+    .accordion.accordion-primary .accordion-item.section-level-4 .accordion-button.collapsed,
+    .accordion.accordion-primary .accordion-item.section-level-4 .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--section-level-4-rgb), 0.14) !important;
+        color: inherit;
+        box-shadow: none;
+    }
+    .accordion.accordion-primary .accordion-item.section-level-4 .accordion-button:hover { background-color: rgba(var(--section-level-4-rgb), 0.2) !important; }
+    .accordion.accordion-primary .accordion-item.section-level-4 .accordion-button:focus { background-color: rgba(var(--section-level-4-rgb), 0.18) !important; box-shadow: 0 0 0 0.2rem rgba(var(--section-level-4-rgb), 0.22) !important; }
+
+    .accordion.accordion-primary .accordion-item.section-level-5 .accordion-button,
+    .accordion.accordion-primary .accordion-item.section-level-5 .accordion-button.collapsed,
+    .accordion.accordion-primary .accordion-item.section-level-5 .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--section-level-5-rgb), 0.14) !important;
+        color: inherit;
+        box-shadow: none;
+    }
+    .accordion.accordion-primary .accordion-item.section-level-5 .accordion-button:hover { background-color: rgba(var(--section-level-5-rgb), 0.2) !important; }
+    .accordion.accordion-primary .accordion-item.section-level-5 .accordion-button:focus { background-color: rgba(var(--section-level-5-rgb), 0.18) !important; box-shadow: 0 0 0 0.2rem rgba(var(--section-level-5-rgb), 0.22) !important; }
+
+    .accordion.accordion-secondary .accordion-item.unit-item-root > .accordion-header .accordion-button,
+    .accordion.accordion-secondary .accordion-item.unit-item-root > .accordion-header .accordion-button.collapsed,
+    .accordion.accordion-secondary .accordion-item.unit-item-root > .accordion-header .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--unit-accent-rgb), 0.12) !important;
+        color: inherit;
+        box-shadow: none;
+    }
+    .accordion.accordion-secondary .accordion-item.unit-item-root > .accordion-header .accordion-button:hover { background-color: rgba(var(--unit-accent-rgb), 0.18) !important; }
+    .accordion.accordion-secondary .accordion-item.unit-item-root > .accordion-header .accordion-button:focus { background-color: rgba(var(--unit-accent-rgb), 0.16) !important; box-shadow: 0 0 0 0.2rem rgba(var(--unit-accent-rgb), 0.22) !important; }
+
+    .accordion.accordion-secondary .accordion-item.unit-item-child > .accordion-header .accordion-button,
+    .accordion.accordion-secondary .accordion-item.unit-item-child > .accordion-header .accordion-button.collapsed,
+    .accordion.accordion-secondary .accordion-item.unit-item-child > .accordion-header .accordion-button:not(.collapsed) {
+        background-color: rgba(var(--bs-info-rgb), 0.11) !important;
+        color: inherit;
+        box-shadow: none;
+    }
+    .accordion.accordion-secondary .accordion-item.unit-item-child > .accordion-header .accordion-button:hover { background-color: rgba(var(--bs-info-rgb), 0.17) !important; }
+    .accordion.accordion-secondary .accordion-item.unit-item-child > .accordion-header .accordion-button:focus { background-color: rgba(var(--bs-info-rgb), 0.15) !important; box-shadow: 0 0 0 0.2rem rgba(var(--bs-info-rgb), 0.2) !important; }
 </style>
-@stop
+@endpush
 
 @section('content')
     <div class="main-content app-content">
@@ -502,9 +689,9 @@
         </div>
         @endcan
 
-        {{-- مودال إنشاء وحدة جديدة (فقط للقسم الورقي وغير المرتبط بمادة أخرى) --}}
+        {{-- مودال إنشاء وحدة جديدة (لأقسام المادة الحالية فقط؛ الأقسام المرتبطة بمادة أخرى لا تُعرض مودالاً منها) --}}
         @can('unit-create')
-        @if($subject->sections->where('parent_id', $section->id)->isEmpty() && (int) $section->subject_id === (int) $subject->id)
+        @if((int) $section->subject_id === (int) $subject->id)
         <div class="modal fade" id="createUnitModal{{ $section->id }}" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 rounded-4">
