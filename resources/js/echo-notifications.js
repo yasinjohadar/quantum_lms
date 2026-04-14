@@ -20,7 +20,15 @@ const runtimeCfg =
         ? window.__echoReverbConfig
         : null;
 
-const key = runtimeCfg?.app_key || import.meta.env.VITE_REVERB_APP_KEY;
+const echoNotificationsEnabled =
+    runtimeCfg == null ||
+    runtimeCfg.enabled === undefined ||
+    runtimeCfg.enabled === true ||
+    runtimeCfg.enabled === 'true' ||
+    runtimeCfg.enabled === 1;
+
+const keyFromEnv = runtimeCfg?.app_key || import.meta.env.VITE_REVERB_APP_KEY;
+const key = echoNotificationsEnabled ? keyFromEnv : null;
 const wsHost =
     normalizeReverbHost(runtimeCfg?.host ?? import.meta.env.VITE_REVERB_HOST) ||
     window.location.hostname;
@@ -422,7 +430,10 @@ function updateRealtimeStatusUI(state, extra = {}) {
     const mode = extra.mode || 'web';
 
     if (mode === 'polling') {
-        el.textContent = 'وضع احتياطي (تحديث دوري)';
+        el.textContent =
+            extra.reason === 'disabled'
+                ? 'الفوري معطّل من الإعدادات'
+                : 'وضع احتياطي (تحديث دوري)';
         el.className = 'badge rounded-pill bg-warning-transparent text-warning border';
         if (actions) {
             actions.classList.add('d-none');
@@ -604,7 +615,12 @@ whenDomReady(() => {
     }
 });
 
-if (!key) {
+if (!echoNotificationsEnabled) {
+    console.warn('ECHO_NOTIFICATIONS_ENABLED=false — تم إيقاف WebSocket (لا إعادة محاولة اتصال).');
+    prefetchUnreadCount();
+    setInterval(prefetchUnreadCount, 120000);
+    whenDomReady(() => updateRealtimeStatusUI('polling', { mode: 'polling', reason: 'disabled' }));
+} else if (!key) {
     console.warn('VITE_REVERB_APP_KEY غير مضبوط — الإشعارات الفورية معطّلة (استخدم polling الافتراضي).');
     prefetchUnreadCount();
     setInterval(prefetchUnreadCount, 120000);
