@@ -1,5 +1,12 @@
 <?php
 
+/** اسم المضيف فقط لـ Reverb/Pusher (بدون https:// — لا تضع المخطط في REVERB_HOST) */
+$reverbBroadcastHost = (string) env('REVERB_BROADCAST_HOST', env('REVERB_HOST', 'localhost'));
+$reverbBroadcastHost = rtrim((string) preg_replace('#^https?://#i', '', $reverbBroadcastHost), '/');
+if ($reverbBroadcastHost === '') {
+    $reverbBroadcastHost = 'localhost';
+}
+
 return [
 
     /*
@@ -42,8 +49,8 @@ return [
             | المتصفح يستخدم VITE_REVERB_* فقط.
             */
             'options' => [
-                'host' => env('REVERB_BROADCAST_HOST', env('REVERB_HOST')),
-                'port' => env('REVERB_BROADCAST_PORT', env('REVERB_PORT', 443)),
+                'host' => $reverbBroadcastHost,
+                'port' => (int) env('REVERB_BROADCAST_PORT', env('REVERB_PORT', 443)),
                 'scheme' => env('REVERB_BROADCAST_SCHEME', env('REVERB_SCHEME', 'https')),
                 'useTLS' => env('REVERB_BROADCAST_SCHEME', env('REVERB_SCHEME', 'https')) === 'https',
             ],

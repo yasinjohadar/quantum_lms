@@ -4,7 +4,16 @@ import Pusher from 'pusher-js';
 window.Pusher = Pusher;
 
 const key = import.meta.env.VITE_REVERB_APP_KEY;
-const wsHost = import.meta.env.VITE_REVERB_HOST ?? window.location.hostname;
+function normalizeReverbHost(h) {
+    if (h == null || h === '') {
+        return null;
+    }
+    return String(h)
+        .replace(/^https?:\/\//i, '')
+        .replace(/\/$/, '');
+}
+const wsHost =
+    normalizeReverbHost(import.meta.env.VITE_REVERB_HOST) || window.location.hostname;
 const port = import.meta.env.VITE_REVERB_PORT ? parseInt(import.meta.env.VITE_REVERB_PORT, 10) : 8080;
 const scheme = import.meta.env.VITE_REVERB_SCHEME ?? 'http';
 const forceTLS = scheme === 'https';
