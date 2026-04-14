@@ -35,11 +35,17 @@ return [
             'key' => env('REVERB_APP_KEY'),
             'secret' => env('REVERB_APP_SECRET'),
             'app_id' => env('REVERB_APP_ID'),
+            /*
+            | اتصال Laravel (PHP/cURL) بخادم Reverb على نفس الجهاز.
+            | على الإنتاج عيّن REVERB_BROADCAST_* إلى 127.0.0.1:8080 وhttp حتى لا يحاول PHP
+            | الخروج للدومين/منفذ خاطئ (مثل :8000) فيسبب timeout (cURL error 28).
+            | المتصفح يستخدم VITE_REVERB_* فقط.
+            */
             'options' => [
-                'host' => env('REVERB_HOST'),
-                'port' => env('REVERB_PORT', 443),
-                'scheme' => env('REVERB_SCHEME', 'https'),
-                'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
+                'host' => env('REVERB_BROADCAST_HOST', env('REVERB_HOST')),
+                'port' => env('REVERB_BROADCAST_PORT', env('REVERB_PORT', 443)),
+                'scheme' => env('REVERB_BROADCAST_SCHEME', env('REVERB_SCHEME', 'https')),
+                'useTLS' => env('REVERB_BROADCAST_SCHEME', env('REVERB_SCHEME', 'https')) === 'https',
             ],
             'client_options' => [
                 // Guzzle client options: https://docs.guzzlephp.org/en/stable/request-options.html
