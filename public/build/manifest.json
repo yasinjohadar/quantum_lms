@@ -1,0 +1,19 @@
+{
+  "resources/css/app.css": {
+    "file": "assets/app-pMrAk7K8.css",
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-Bf4POITK.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true
+  },
+  "resources/js/echo-notifications.js": {
+    "file": "assets/echo-notifications-B7eUVukK.js",
+    "name": "echo-notifications",
+    "src": "resources/js/echo-notifications.js",
+    "isEntry": true
+  }
+}
