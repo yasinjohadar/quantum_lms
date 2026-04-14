@@ -142,7 +142,6 @@ class StudentLessonController extends Controller
             ->where('is_active', true)
             ->orderBy('order')
             ->get();
-
         return view('student.pages.lessons.subject-folders', compact('subject', 'sections'));
     }
 
@@ -190,6 +189,19 @@ class StudentLessonController extends Controller
 
         $children = $section->children;
         $units = $section->units;
+        $directLessons = Lesson::where('section_id', $section->id)
+            ->whereNull('unit_id')
+            ->where('is_active', true)
+            ->where('review_status', Lesson::REVIEW_STATUS_APPROVED)
+            ->orderBy('order')
+            ->get();
+        $directQuizzes = Quiz::where('section_id', $section->id)
+            ->whereNull('unit_id')
+            ->where('is_active', true)
+            ->where('is_published', true)
+            ->where('review_status', Quiz::REVIEW_STATUS_APPROVED)
+            ->orderBy('order')
+            ->get();
 
         $sectionQuizzes = collect();
         $firstLessonWithVideo = null;
@@ -197,7 +209,7 @@ class StudentLessonController extends Controller
         // الاختبارات تظهر داخل صفحة الوحدة فقط، لا نجمع sectionQuizzes في صفحة القسم
         // الفيديو يظهر فقط داخل صفحة الوحدة، لا نحسب firstLessonWithVideo في صفحة القسم
 
-        return view('student.pages.lessons.subject-folders-section', compact('subject', 'section', 'children', 'units', 'sectionQuizzes', 'firstLessonWithVideo'));
+        return view('student.pages.lessons.subject-folders-section', compact('subject', 'section', 'children', 'units', 'sectionQuizzes', 'firstLessonWithVideo', 'directLessons', 'directQuizzes'));
     }
 
     /**
@@ -294,7 +306,7 @@ class StudentLessonController extends Controller
             }
         ])->findOrFail($lessonId);
 
-        $subject = $lesson->unit->section->subject;
+        $subject = $lesson->unit?->section?->subject ?? $lesson->section?->subject;
         $canAccess = $user->canAccessSubjectAsStudent($subject);
 
         if (!$canAccess && !$lesson->is_free) {
@@ -315,11 +327,20 @@ class StudentLessonController extends Controller
             ->orderBy('order')
             ->get();
 
-        $unitLessons = $lesson->unit->lessons()
-            ->where('is_active', true)
-            ->where('review_status', Lesson::REVIEW_STATUS_APPROVED)
-            ->orderBy('order')
-            ->get();
+        if ($lesson->unit_id) {
+            $unitLessons = $lesson->unit->lessons()
+                ->where('is_active', true)
+                ->where('review_status', Lesson::REVIEW_STATUS_APPROVED)
+                ->orderBy('order')
+                ->get();
+        } else {
+            $unitLessons = Lesson::where('section_id', $lesson->section_id)
+                ->whereNull('unit_id')
+                ->where('is_active', true)
+                ->where('review_status', Lesson::REVIEW_STATUS_APPROVED)
+                ->orderBy('order')
+                ->get();
+        }
 
         $currentIndex = $unitLessons->search(fn($item) => $item->id === $lesson->id);
         $previousLesson = $currentIndex > 0 ? $unitLessons[$currentIndex - 1] : null;
@@ -333,23 +354,31 @@ class StudentLessonController extends Controller
             ->orderBy('order')
             ->get();
 
-        $unitQuizzes = Quiz::where('unit_id', $lesson->unit_id)
+        $unitQuizzes = Quiz::query()
             ->where('subject_id', $subject->id)
             ->whereNull('lesson_id')
             ->where('is_active', true)
             ->where('is_published', true)
             ->where('review_status', \App\Models\Quiz::REVIEW_STATUS_APPROVED)
             ->with(['questions' => fn($q) => $q->orderBy('quiz_questions.order')])
-            ->orderBy('order')
-            ->get();
+            ->orderBy('order');
+
+        if ($lesson->unit_id) {
+            $unitQuizzes->where('unit_id', $lesson->unit_id);
+        } else {
+            $unitQuizzes->whereNull('unit_id')->where('section_id', $lesson->section_id);
+        }
+        $unitQuizzes = $unitQuizzes->get();
 
         $allQuizzes = $lessonQuizzes->merge($unitQuizzes);
         $quizQuestionIds = $allQuizzes->flatMap(fn($q) => $q->questions->pluck('id'))->unique()->values()->all();
 
-        $questionsQuery = Question::whereHas('units', fn($q) => $q->where('units.id', $lesson->unit_id))
-            ->where('is_active', true)
-            ->with('units')
-            ->orderBy('created_at', 'desc');
+        $questionsQuery = Question::query()->where('is_active', true)->with('units')->orderBy('created_at', 'desc');
+        if ($lesson->unit_id) {
+            $questionsQuery->whereHas('units', fn($q) => $q->where('units.id', $lesson->unit_id));
+        } else {
+            $questionsQuery->whereRaw('1 = 0');
+        }
         if (!empty($quizQuestionIds)) {
             $questionsQuery->whereNotIn('id', $quizQuestionIds);
         }
@@ -417,7 +446,7 @@ class StudentLessonController extends Controller
         ]);
 
         $user = Auth::user();
-        $subject = $lesson->unit->section->subject;
+        $subject = $lesson->unit?->section?->subject ?? $lesson->section?->subject;
         $canAccess = $user->canAccessSubjectAsStudent($subject);
 
         if (!$canAccess && !$lesson->is_free) {
@@ -493,7 +522,7 @@ class StudentLessonController extends Controller
         $lesson = Lesson::findOrFail($lessonId);
         
         // التحقق من أن الطالب مسجل في مادة الدرس أو منضم للصف المعتمد
-        $subject = $lesson->unit->section->subject;
+        $subject = $lesson->unit?->section?->subject ?? $lesson->section?->subject;
         $canAccess = $user->canAccessSubjectAsStudent($subject);
 
         if (!$canAccess && !$lesson->is_free) {

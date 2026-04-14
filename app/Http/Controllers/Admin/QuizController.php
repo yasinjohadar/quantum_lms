@@ -9,6 +9,7 @@ use App\Models\Quiz;
 use App\Models\QuizQuestion;
 use App\Models\Question;
 use App\Models\Subject;
+use App\Models\SubjectSection;
 use App\Models\Unit;
 use App\Models\Lesson;
 use App\Models\SchoolClass;
@@ -28,7 +29,7 @@ class QuizController extends Controller
         private StaffNotificationService $staffNotificationService
     ) {
         $this->middleware(['permission:quiz-list'])->only('index');
-        $this->middleware(['permission:quiz-create'])->only(['create', 'store']);
+        $this->middleware(['permission:quiz-create'])->only(['create', 'store', 'storeForSection']);
         $this->middleware(['permission:quiz-edit'])->only(['edit', 'update']);
         $this->middleware(['permission:quiz-delete'])->only('destroy');
         $this->middleware(['permission:quiz-show'])->only('show');
@@ -272,6 +273,31 @@ class QuizController extends Controller
             // إن لم يتم تمرير scope نعتبره اختبار وحدة
             $data['scope'] = $request->input('scope', $data['lesson_id'] ? 'lesson' : 'unit');
 
+            if (!empty($data['unit_id']) && empty($data['section_id'])) {
+                $data['section_id'] = Unit::where('id', $data['unit_id'])->value('section_id');
+            }
+
+            if (!empty($data['lesson_id']) && empty($data['section_id'])) {
+                $lessonSectionId = Lesson::where('id', $data['lesson_id'])->value('section_id');
+                if (!$lessonSectionId) {
+                    $lessonSectionId = Lesson::query()
+                        ->where('id', $data['lesson_id'])
+                        ->join('units', 'units.id', '=', 'lessons.unit_id')
+                        ->value('units.section_id');
+                }
+                $data['section_id'] = $lessonSectionId;
+            }
+
+            if (!empty($data['unit_id']) && !empty($data['section_id'])) {
+                $unitSectionId = Unit::where('id', $data['unit_id'])->value('section_id');
+                if ((int) $unitSectionId !== (int) $data['section_id']) {
+                    return redirect()
+                        ->back()
+                        ->withInput()
+                        ->with('error', 'القسم المحدد لا يطابق الوحدة المحددة.');
+                }
+            }
+
             // رفع الصورة
             if ($request->hasFile('image')) {
                 $data['image'] = $request->file('image')->store('quizzes', 'public');
@@ -301,6 +327,20 @@ class QuizController extends Controller
                 ->withInput()
                 ->with('error', 'حدث خطأ أثناء إنشاء الاختبار: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * حفظ اختبار جديد مرتبط مباشرةً بقسم (بدون وحدة).
+     */
+    public function storeForSection(StoreQuizRequest $request, SubjectSection $section)
+    {
+        $request->merge([
+            'subject_id' => $section->subject_id,
+            'section_id' => $section->id,
+            'unit_id' => null,
+        ]);
+
+        return $this->store($request);
     }
 
     /**
@@ -413,6 +453,31 @@ class QuizController extends Controller
             // (يمكن توسيع ذلك لاحقاً إذا أردنا تغيير النوع من شاشة التعديل)
             $data['lesson_id'] = $quiz->lesson_id;
             $data['scope'] = $quiz->scope ?? ($quiz->lesson_id ? 'lesson' : 'unit');
+
+            if (!empty($data['unit_id']) && empty($data['section_id'])) {
+                $data['section_id'] = Unit::where('id', $data['unit_id'])->value('section_id');
+            }
+
+            if (!empty($data['lesson_id']) && empty($data['section_id'])) {
+                $lessonSectionId = Lesson::where('id', $data['lesson_id'])->value('section_id');
+                if (!$lessonSectionId) {
+                    $lessonSectionId = Lesson::query()
+                        ->where('id', $data['lesson_id'])
+                        ->join('units', 'units.id', '=', 'lessons.unit_id')
+                        ->value('units.section_id');
+                }
+                $data['section_id'] = $lessonSectionId;
+            }
+
+            if (!empty($data['unit_id']) && !empty($data['section_id'])) {
+                $unitSectionId = Unit::where('id', $data['unit_id'])->value('section_id');
+                if ((int) $unitSectionId !== (int) $data['section_id']) {
+                    return redirect()
+                        ->back()
+                        ->withInput()
+                        ->with('error', 'القسم المحدد لا يطابق الوحدة المحددة.');
+                }
+            }
 
             // رفع صورة جديدة
             if ($request->hasFile('image')) {

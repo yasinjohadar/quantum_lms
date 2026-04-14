@@ -6,6 +6,17 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreLessonRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $unitFromRoute = $this->route('unit');
+        $sectionFromRoute = $this->route('section');
+
+        $this->merge([
+            'unit_id' => $this->input('unit_id') ?? (is_object($unitFromRoute) ? $unitFromRoute->id : $unitFromRoute),
+            'section_id' => $this->input('section_id') ?? (is_object($sectionFromRoute) ? $sectionFromRoute->id : $sectionFromRoute),
+        ]);
+    }
+
     public function authorize(): bool
     {
         return true;
@@ -14,6 +25,8 @@ class StoreLessonRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'unit_id' => ['nullable', 'integer', 'exists:units,id', 'required_without:section_id'],
+            'section_id' => ['nullable', 'integer', 'exists:subject_sections,id', 'required_without:unit_id'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'video_type' => ['required', 'in:upload,youtube,vimeo,external'],
@@ -31,6 +44,8 @@ class StoreLessonRequest extends FormRequest
     {
         return [
             'title.required' => 'عنوان الدرس مطلوب',
+            'unit_id.required_without' => 'يجب اختيار وحدة أو قسم على الأقل.',
+            'section_id.required_without' => 'يجب اختيار قسم أو وحدة على الأقل.',
             'title.max' => 'عنوان الدرس يجب ألا يتجاوز 255 حرفاً',
             'video_type.required' => 'نوع الفيديو مطلوب',
             'video_type.in' => 'نوع الفيديو غير صالح',

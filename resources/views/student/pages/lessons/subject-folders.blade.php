@@ -24,9 +24,8 @@
                                                 <p class="text-muted small mb-0">{{ \Illuminate\Support\Str::limit($section->description, 50) }}</p>
                                             @endif
                                         </div>
-                                    </div>
-                                </a>
-                            </div>
+                                    </a>
+                                </div>
                         @endforeach
                     </div>
                 </div>

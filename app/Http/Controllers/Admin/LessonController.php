@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\UpdateLessonRequest;
 use App\Models\Lesson;
 use App\Models\LessonAttachment;
 use App\Models\LessonCompletion;
+use App\Models\SubjectSection;
 use App\Models\Unit;
 use App\Services\VimeoService;
 use Illuminate\Http\Request;
@@ -57,7 +58,21 @@ class LessonController extends Controller
      */
     public function store(StoreLessonRequest $request, Unit $unit)
     {
-        Log::info('محاولة إنشاء درس جديد للوحدة: ' . $unit->id, $request->all());
+        return $this->storeWithContext($request, $unit, null);
+    }
+
+    /**
+     * تخزين درس جديد مرتبط مباشرة بقسم (بدون وحدة).
+     */
+    public function storeForSection(StoreLessonRequest $request, SubjectSection $section)
+    {
+        return $this->storeWithContext($request, null, $section);
+    }
+
+    private function storeWithContext(StoreLessonRequest $request, ?Unit $unit, ?SubjectSection $section)
+    {
+        $contextId = $unit?->id ?? $section?->id;
+        Log::info('محاولة إنشاء درس جديد (context): ' . $contextId, $request->all());
 
         try {
             $hasAttachmentInput = $request->filled('attachment_title')
@@ -73,14 +88,6 @@ class LessonController extends Controller
                     'attachment_description' => ['nullable', 'string'],
                     'attachment_file' => ['nullable', 'file', 'max:51200'],
                     'attachment_url' => ['nullable', 'url', 'max:500'],
-                ], [
-                    'attachment_title.max' => 'عنوان المرفق يجب ألا يتجاوز 255 حرفاً.',
-                    'attachment_type.required' => 'نوع المرفق مطلوب عند إضافة مرفق.',
-                    'attachment_type.in' => 'نوع المرفق غير صالح.',
-                    'attachment_file.file' => 'ملف المرفق غير صالح.',
-                    'attachment_file.max' => 'حجم ملف المرفق يجب ألا يتجاوز 50 ميجابايت.',
-                    'attachment_url.url' => 'رابط المرفق يجب أن يكون رابطاً صالحاً.',
-                    'attachment_url.max' => 'رابط المرفق يجب ألا يتجاوز 500 حرف.',
                 ]);
 
                 if ($request->input('attachment_type') === 'link' && !$request->filled('attachment_url')) {
@@ -96,45 +103,53 @@ class LessonController extends Controller
                 }
             }
 
-            // التحقق من التخصيص
+            $subject = $unit?->section?->subject ?? $section?->subject;
+            if (!$subject) {
+                throw ValidationException::withMessages([
+                    'section_id' => 'لا يمكن تحديد المادة المرتبطة بهذا الدرس.',
+                ]);
+            }
+
             $user = auth()->user();
             if ($user->usesTeacherAssignmentScope()) {
-                $subject = $unit->section->subject;
-                if (!$user->isAssignedToSubject($subject->id) && 
+                if (!$user->isAssignedToSubject($subject->id) &&
                     !$user->isAssignedToClass($subject->class_id)) {
                     abort(403, 'غير مصرح لك بالوصول إلى هذه المادة');
                 }
             }
-            
+
             $data = $request->validated();
-            $data['unit_id'] = $unit->id;
+            $data['unit_id'] = $unit?->id;
+            $data['section_id'] = $section?->id ?? $unit?->section_id;
             $data['is_free'] = $request->has('is_free');
             $data['is_preview'] = $request->has('is_preview');
 
-            // منطق المراجعة: إذا كان المستخدم معلم وليس مشرف أو مدير
-            $isTeacher = $user->shouldSubmitContentForReview();
+            if ($data['unit_id'] && $data['section_id']) {
+                $unitSectionId = Unit::where('id', $data['unit_id'])->value('section_id');
+                if ((int) $unitSectionId !== (int) $data['section_id']) {
+                    throw ValidationException::withMessages([
+                        'section_id' => 'القسم المحدد لا يطابق الوحدة المحددة.',
+                    ]);
+                }
+            }
 
+            $isTeacher = $user->shouldSubmitContentForReview();
             if ($isTeacher) {
-                // إذا حاول تفعيل الدرس، ضعه في حالة قيد المراجعة
                 if ($request->has('is_active')) {
                     $data['review_status'] = Lesson::REVIEW_STATUS_PENDING;
                     $data['submitted_for_review_at'] = now();
-                    $data['is_active'] = false; // لا يتم تفعيله مباشرة
+                    $data['is_active'] = false;
                 } else {
                     $data['review_status'] = Lesson::REVIEW_STATUS_DRAFT;
                     $data['is_active'] = false;
                 }
             } else {
-                // المشرف والمدير يمكنهم التفعيل مباشرة
                 $data['is_active'] = $request->has('is_active');
-                if ($data['is_active']) {
-                    $data['review_status'] = Lesson::REVIEW_STATUS_APPROVED;
-                } else {
-                    $data['review_status'] = Lesson::REVIEW_STATUS_DRAFT;
-                }
+                $data['review_status'] = $data['is_active']
+                    ? Lesson::REVIEW_STATUS_APPROVED
+                    : Lesson::REVIEW_STATUS_DRAFT;
             }
 
-            // معالجة نوع الفيديو واستخراج المعرف
             if ($data['video_type'] === 'youtube' && !empty($data['video_url'])) {
                 $data['video_id'] = Lesson::extractYoutubeId($data['video_url']);
             } elseif ($data['video_type'] === 'vimeo' && !empty($data['video_url'])) {
@@ -145,23 +160,26 @@ class LessonController extends Controller
                 }
             }
 
-            // رفع ملف الفيديو
             if ($request->hasFile('video_file')) {
                 $videoFile = $request->file('video_file');
                 $videoName = time() . '_' . $videoFile->getClientOriginalName();
                 $data['video_url'] = $videoFile->storeAs('lessons/videos', $videoName, 'public');
             }
 
-            // رفع الصورة المصغرة
             if ($request->hasFile('thumbnail')) {
                 $thumbnail = $request->file('thumbnail');
                 $thumbName = time() . '_thumb_' . $thumbnail->getClientOriginalName();
                 $data['thumbnail'] = $thumbnail->storeAs('lessons/thumbnails', $thumbName, 'public');
             }
 
-            // تحديد الترتيب تلقائياً
             if (!isset($data['order']) || $data['order'] === null) {
-                $maxOrder = $unit->lessons()->max('order') ?? 0;
+                $query = Lesson::query();
+                if (!empty($data['unit_id'])) {
+                    $query->where('unit_id', $data['unit_id']);
+                } else {
+                    $query->whereNull('unit_id')->where('section_id', $data['section_id']);
+                }
+                $maxOrder = $query->max('order') ?? 0;
                 $data['order'] = $maxOrder + 1;
             }
 
@@ -199,16 +217,11 @@ class LessonController extends Controller
                 LessonAttachment::create($attachmentData);
             }
 
-            Log::info('تم إنشاء الدرس بنجاح، ID: ' . $lesson->id);
-
             if ($lesson->review_status === Lesson::REVIEW_STATUS_PENDING && $user->shouldSubmitContentForReview()) {
                 app(StaffNotificationService::class)->notifyLessonSubmittedForReview($lesson->fresh(), $user);
             }
 
             app(StudentContentNotificationService::class)->notifyIfLessonBecameVisible(null, $lesson->fresh(), $user);
-
-            // الحصول على subject_id للتوجيه
-            $subjectId = $unit->section->subject_id;
 
             if ($this->wantsJsonResponse($request)) {
                 return response()->json([
@@ -216,19 +229,15 @@ class LessonController extends Controller
                     'message' => 'تم إنشاء الدرس "' . $lesson->title . '" بنجاح.',
                     'lesson_id' => $lesson->id,
                     'unit_id' => $lesson->unit_id,
-                    'subject_id' => $subjectId,
+                    'section_id' => $lesson->section_id,
+                    'subject_id' => $subject->id,
                 ]);
             }
 
             return redirect()
-                ->route('admin.subjects.show', $subjectId)
+                ->route('admin.subjects.show', $subject->id)
                 ->with('success', 'تم إنشاء الدرس "' . $lesson->title . '" بنجاح.');
         } catch (ValidationException $e) {
-            Log::warning('Validation error while creating lesson: ' . $e->getMessage(), [
-                'unit_id' => $unit->id,
-                'errors' => $e->errors(),
-            ]);
-
             if ($this->wantsJsonResponse($request)) {
                 return response()->json([
                     'success' => false,
@@ -236,21 +245,16 @@ class LessonController extends Controller
                     'errors' => $e->errors(),
                 ], 422);
             }
-
             throw $e;
         } catch (\Exception $e) {
             Log::error('خطأ في إنشاء درس: ' . $e->getMessage());
-
             if ($this->wantsJsonResponse($request)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'حدث خطأ أثناء إنشاء الدرس.',
                 ], 500);
             }
-
-            return redirect()
-                ->back()
-                ->with('error', 'حدث خطأ أثناء إنشاء الدرس: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'حدث خطأ أثناء إنشاء الدرس: ' . $e->getMessage());
         }
     }
 
@@ -259,19 +263,17 @@ class LessonController extends Controller
      */
     public function show(Lesson $lesson)
     {
-        $lesson->load(['unit.section.subject', 'attachments']);
+        $lesson->load(['unit.section.subject', 'section.subject', 'attachments']);
         
         // التحقق من التخصيص
         $user = auth()->user();
+        $subject = $this->resolveSubjectFromLesson($lesson);
         if ($user->usesTeacherAssignmentScope()) {
-            $subject = $lesson->unit->section->subject;
             if (!$user->isAssignedToSubject($subject->id) && 
                 !$user->isAssignedToClass($subject->class_id)) {
                 abort(403, 'غير مصرح لك بالوصول إلى هذا الدرس');
             }
         }
-
-        $subject = $lesson->unit->section->subject;
         $enrolledUserIds = $subject->students()->wherePivot('status', 'active')->pluck('users.id')->toArray();
         $lessonCompletions = empty($enrolledUserIds)
             ? collect()
@@ -292,8 +294,8 @@ class LessonController extends Controller
         try {
             // التحقق من التخصيص
             $user = auth()->user();
+            $subject = $this->resolveSubjectFromLesson($lesson);
             if ($user->usesTeacherAssignmentScope()) {
-                $subject = $lesson->unit->section->subject;
                 if (!$user->isAssignedToSubject($subject->id) && 
                     !$user->isAssignedToClass($subject->class_id)) {
                     abort(403, 'غير مصرح لك بالوصول إلى هذا الدرس');
@@ -414,7 +416,7 @@ class LessonController extends Controller
 
             $lesson->linkedUnits()->sync($linkedUnitIds);
 
-            $subjectId = $lesson->unit->section->subject_id;
+            $subjectId = $subject->id;
 
             app(StudentContentNotificationService::class)->notifyIfLessonBecameVisible(
                 $lessonBeforeUpdate,
@@ -428,6 +430,7 @@ class LessonController extends Controller
                     'message' => 'تم تحديث الدرس بنجاح.',
                     'lesson_id' => $lesson->id,
                     'unit_id' => $lesson->unit_id,
+                    'section_id' => $lesson->section_id,
                     'subject_id' => $subjectId,
                 ]);
             }
@@ -458,8 +461,8 @@ class LessonController extends Controller
     {
         // التحقق من التخصيص
         $user = auth()->user();
+        $subject = $this->resolveSubjectFromLesson($lesson);
         if ($user->usesTeacherAssignmentScope()) {
-            $subject = $lesson->unit->section->subject;
             if (!$user->isAssignedToSubject($subject->id) && 
                 !$user->isAssignedToClass($subject->class_id)) {
                 if ($this->wantsJsonResponse($request)) {
@@ -473,7 +476,7 @@ class LessonController extends Controller
             }
         }
         
-        $subjectId = $lesson->unit->section->subject_id;
+        $subjectId = $subject->id;
         $lessonTitle = $lesson->title;
 
         try {
@@ -500,6 +503,7 @@ class LessonController extends Controller
                     'message' => 'تم حذف الدرس "' . $lessonTitle . '" بنجاح.',
                     'lesson_id' => $lesson->id,
                     'unit_id' => $lesson->unit_id,
+                    'section_id' => $lesson->section_id,
                     'subject_id' => $subjectId,
                 ]);
             }
@@ -584,7 +588,7 @@ class LessonController extends Controller
             auth()->user()
         );
 
-        $subjectId = $lesson->unit->section->subject_id;
+        $subjectId = $this->resolveSubjectFromLesson($lesson)->id;
 
         return redirect()
             ->route('admin.subjects.show', $subjectId)
@@ -610,11 +614,28 @@ class LessonController extends Controller
 
         app(StaffNotificationService::class)->notifyLessonReviewOutcome($lesson->fresh(), auth()->user(), false);
 
-        $subjectId = $lesson->unit->section->subject_id;
+        $subjectId = $this->resolveSubjectFromLesson($lesson)->id;
 
         return redirect()
             ->route('admin.subjects.show', $subjectId)
             ->with('success', 'تم رفض تفعيل الدرس وتم إرسال الملاحظات للمعلم.');
+    }
+
+    private function resolveSubjectFromLesson(Lesson $lesson)
+    {
+        if ($lesson->relationLoaded('unit') && $lesson->unit && $lesson->unit->relationLoaded('section') && $lesson->unit->section) {
+            return $lesson->unit->section->subject;
+        }
+
+        if ($lesson->unit && $lesson->unit->section) {
+            return $lesson->unit->section->subject;
+        }
+
+        if ($lesson->relationLoaded('section') && $lesson->section) {
+            return $lesson->section->subject;
+        }
+
+        return optional($lesson->section)->subject;
     }
 
     private function wantsJsonResponse(Request $request): bool

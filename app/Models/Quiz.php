@@ -53,6 +53,7 @@ class Quiz extends Model
     protected $fillable = [
         'subject_id',
         'unit_id',
+        'section_id',
         'lesson_id',
         'scope',
         'title',
@@ -95,6 +96,7 @@ class Quiz extends Model
     ];
 
     protected $casts = [
+        'section_id' => 'integer',
         'duration_minutes' => 'integer',
         'show_timer' => 'boolean',
         'auto_submit' => 'boolean',
@@ -138,6 +140,11 @@ class Quiz extends Model
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
+    }
+
+    public function section(): BelongsTo
+    {
+        return $this->belongsTo(SubjectSection::class, 'section_id');
     }
 
     public function lesson(): BelongsTo

@@ -17,6 +17,7 @@ class Lesson extends Model
 
     protected $fillable = [
         'unit_id',
+        'section_id',
         'title',
         'description',
         'video_type',
@@ -39,6 +40,7 @@ class Lesson extends Model
 
     protected $casts = [
         'unit_id' => 'integer',
+        'section_id' => 'integer',
         'duration' => 'integer',
         'book_page_from' => 'integer',
         'book_page_to' => 'integer',
@@ -83,6 +85,14 @@ class Lesson extends Model
     public function unit()
     {
         return $this->belongsTo(Unit::class);
+    }
+
+    /**
+     * العلاقة مع القسم عند الربط المباشر بدون وحدة.
+     */
+    public function section()
+    {
+        return $this->belongsTo(SubjectSection::class, 'section_id');
     }
 
     /**
@@ -321,21 +331,25 @@ class Lesson extends Model
         $classIds = $supervisor->assignedClassesAsSupervisor()->pluck('classes.id');
         $subjectIds = $supervisor->assignedSubjectsAsSupervisor()->pluck('subjects.id');
 
-        return $query->whereHas('unit.section.subject', function($subjectQuery) use ($classIds, $subjectIds) {
-            if ($classIds->isNotEmpty()) {
-                $subjectQuery->whereIn('class_id', $classIds);
-            }
-            if ($subjectIds->isNotEmpty()) {
+        return $query->where(function ($q) use ($classIds, $subjectIds) {
+            $applySubjectFilter = function ($subjectQuery) use ($classIds, $subjectIds) {
                 if ($classIds->isNotEmpty()) {
-                    $subjectQuery->orWhereIn('id', $subjectIds);
-                } else {
-                    $subjectQuery->whereIn('id', $subjectIds);
+                    $subjectQuery->whereIn('class_id', $classIds);
                 }
-            }
-            // إذا لم يكن هناك أي تخصيصات، إرجاع query فارغ
-            if ($classIds->isEmpty() && $subjectIds->isEmpty()) {
-                $subjectQuery->whereRaw('1 = 0'); // Always false condition
-            }
+                if ($subjectIds->isNotEmpty()) {
+                    if ($classIds->isNotEmpty()) {
+                        $subjectQuery->orWhereIn('id', $subjectIds);
+                    } else {
+                        $subjectQuery->whereIn('id', $subjectIds);
+                    }
+                }
+                if ($classIds->isEmpty() && $subjectIds->isEmpty()) {
+                    $subjectQuery->whereRaw('1 = 0');
+                }
+            };
+
+            $q->whereHas('unit.section.subject', $applySubjectFilter)
+                ->orWhereHas('section.subject', $applySubjectFilter);
         });
     }
 }

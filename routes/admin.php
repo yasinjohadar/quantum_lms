@@ -87,6 +87,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         // الدروس (داخل كل وحدة)
         Route::post('units/{unit}/lessons', [LessonController::class, 'store'])
             ->name('units.lessons.store');
+        Route::post('sections/{section}/lessons', [LessonController::class, 'storeForSection'])
+            ->name('sections.lessons.store');
         Route::post('units/{unit}/lessons/reorder', [LessonController::class, 'reorder'])
             ->name('units.lessons.reorder');
         Route::get('lessons/{lesson}', [LessonController::class, 'show'])
@@ -294,6 +296,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         // يجب أن يكون هذا الـ route قبل Route::resource لتجنب التعارض مع quizzes/{quiz}
         Route::get('quizzes/get-subjects-by-class', [QuizController::class, 'getSubjectsByClass'])
             ->name('quizzes.get-subjects-by-class');
+        Route::post('sections/{section}/quizzes', [QuizController::class, 'storeForSection'])
+            ->name('sections.quizzes.store');
         Route::resource('quizzes', QuizController::class);
         Route::get('quizzes/{quiz}/questions', [QuizController::class, 'questions'])
             ->name('quizzes.questions');

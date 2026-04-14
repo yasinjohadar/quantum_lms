@@ -1,4 +1,10 @@
 @php
+    $directLessons = \App\Models\Lesson::query()
+        ->where('section_id', $section->id)
+        ->whereNull('unit_id')
+        ->orderBy('order')
+        ->with(['attachments', 'quizzes'])
+        ->get();
     $childSections = $allSections->where('parent_id', $section->id)->sortBy('order');
     $isChildSection = $section->parent_id !== null;
     $isLinkedSection = $section->subject_id != $subject->id;
@@ -15,7 +21,7 @@
     ];
     $levelIconStyle = 'color: rgb(' . ($levelIconRgb[min($level, 5)] ?? $levelIconRgb[0]) . ')';
 @endphp
-<div class="accordion-item mb-3 rounded overflow-hidden section-level-{{ $level }}{{ $isLinkedSection ? ' section-item-linked' : '' }}" data-id="{{ $section->id }}">
+<div class="accordion-item mb-3 rounded overflow-hidden section-level-{{ $level }}{{ $isLinkedSection ? ' section-item-linked' : '' }}" data-id="{{ $section->id }}" data-section-id="{{ $section->id }}">
     <h2 class="accordion-header d-flex" id="sectionHeading{{ $section->id }}">
         @if(!$isLinkedSection)
         <span class="sortable-handle d-flex align-items-center px-2 cursor-grab text-muted" title="اسحب لإعادة الترتيب"><i class="bi bi-grip-vertical"></i></span>
@@ -97,6 +103,107 @@
                 </p>
             @endif
 
+            {{-- الدروس المباشرة داخل القسم (بدون وحدة) --}}
+            <div class="section-direct-lessons mb-3">
+                <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                    <span class="text-muted small">
+                        <i class="bi bi-play-circle me-1"></i>
+                        الدروس المباشرة داخل القسم ({{ $directLessons->count() }})
+                    </span>
+                </div>
+                @if($directLessons->isEmpty())
+                    <p class="text-muted mb-0 mt-1" style="font-size: 0.75rem;">لا توجد دروس مباشرة في هذا القسم بعد</p>
+                @else
+                    <div class="list-group list-group-flush">
+                        @foreach($directLessons as $lesson)
+                            <div class="list-group-item d-flex flex-column px-0 py-2" data-lesson-id="{{ $lesson->id }}">
+                                <div class="d-flex align-items-center justify-content-between gap-2 w-100">
+                                    <div class="d-flex align-items-center min-w-0 flex-grow-1">
+                                        <div class="me-3 position-relative flex-shrink-0">
+                                            @if($lesson->thumbnail)
+                                                <img src="{{ asset('storage/'.$lesson->thumbnail) }}" alt="{{ $lesson->title }}" class="rounded" style="width:60px;height:40px;object-fit:cover;">
+                                            @else
+                                                <div class="bg-danger-transparent text-danger rounded d-flex align-items-center justify-content-center" style="width:60px;height:40px;">
+                                                    <i class="bi bi-play-circle fs-4"></i>
+                                                </div>
+                                            @endif
+                                            @if($lesson->is_free)
+                                                <span class="badge bg-success position-absolute top-0 start-0" style="font-size:0.6rem;">مجاني</span>
+                                            @endif
+                                        </div>
+                                        <div class="min-w-0">
+                                            <h6 class="mb-0 fw-semibold small">
+                                                <span class="sortable-index">{{ $loop->iteration }}</span> - {{ $lesson->title }}
+                                                @if(!$lesson->is_active)
+                                                    <span class="badge bg-secondary-transparent text-secondary ms-1">مخفي</span>
+                                                @endif
+                                                @if($lesson->review_status === 'pending_review')
+                                                    <span class="badge bg-warning text-dark ms-1"><i class="bi bi-clock-history me-1"></i> قيد المراجعة</span>
+                                                @elseif($lesson->review_status === 'rejected')
+                                                    <span class="badge bg-danger ms-1"><i class="bi bi-x-circle me-1"></i> مرفوض</span>
+                                                @endif
+                                            </h6>
+                                            <div class="d-flex align-items-center gap-2 mt-1">
+                                                <span class="badge bg-{{ $lesson->video_type === 'youtube' ? 'danger' : ($lesson->video_type === 'vimeo' ? 'info' : 'primary') }}-transparent text-{{ $lesson->video_type === 'youtube' ? 'danger' : ($lesson->video_type === 'vimeo' ? 'info' : 'primary') }}" style="font-size:0.65rem;">
+                                                    <i class="bi bi-{{ $lesson->video_type === 'youtube' ? 'youtube' : ($lesson->video_type === 'vimeo' ? 'vimeo' : 'film') }} me-1"></i>
+                                                    {{ \App\Models\Lesson::VIDEO_TYPES[$lesson->video_type] ?? $lesson->video_type }}
+                                                </span>
+                                                @if($lesson->duration)
+                                                    <span class="text-muted" style="font-size:0.7rem;"><i class="bi bi-clock me-1"></i>{{ $lesson->formatted_duration }}</span>
+                                                @endif
+                                                @if($lesson->attachments->count() > 0)
+                                                    <span class="text-muted" style="font-size:0.7rem;"><i class="bi bi-paperclip me-1"></i>{{ $lesson->attachments->count() }}</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                                        @can('lesson-show')
+                                            <a href="{{ route('admin.lessons.show', $lesson->id) }}" class="btn btn-sm btn-icon btn-success-transparent" title="مشاهدة"><i class="bi bi-play-fill"></i></a>
+                                        @endcan
+                                        @can('lesson-show')
+                                            @if($lesson->embed_url || $lesson->video_url)
+                                            <button type="button" class="btn btn-sm btn-icon btn-warning-transparent" data-bs-toggle="modal" data-bs-target="#playVideoModal{{ $lesson->id }}" title="تشغيل الفيديو - معاينة سريعة"><i class="bi bi-play-circle"></i></button>
+                                            @endif
+                                        @endcan
+                                        @can('lesson-attachment-create')
+                                            <button type="button" class="btn btn-sm btn-icon btn-info-transparent" data-bs-toggle="modal" data-bs-target="#addLessonAttachment{{ $lesson->id }}" title="إضافة مرفقات"><i class="bi bi-paperclip"></i></button>
+                                        @endcan
+                                        @can('lesson-edit')
+                                            <button type="button" class="btn btn-sm btn-icon btn-primary-transparent" data-bs-toggle="modal" data-bs-target="#editLesson{{ $lesson->id }}" title="تعديل"><i class="bi bi-pencil"></i></button>
+                                        @endcan
+                                        @can('lesson-delete')
+                                            <button type="button" class="btn btn-sm btn-icon btn-danger-transparent" data-bs-toggle="modal" data-bs-target="#deleteLesson{{ $lesson->id }}" title="حذف"><i class="bi bi-trash"></i></button>
+                                        @endcan
+                                        @if($lesson->review_status === 'pending_review')
+                                            @canany(['lesson-approve-review', 'lesson-reject-review'])
+                                            <div class="btn-group btn-group-sm ms-2">
+                                                @can('lesson-approve-review')
+                                                    <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#approveLesson{{ $lesson->id }}" title="موافقة"><i class="bi bi-check-circle"></i></button>
+                                                @endcan
+                                                @can('lesson-reject-review')
+                                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectLesson{{ $lesson->id }}" title="رفض"><i class="bi bi-x-circle"></i></button>
+                                                @endcan
+                                            </div>
+                                            @endcanany
+                                        @endif
+                                        @can('quiz-create')
+                                            <a href="{{ route('admin.quizzes.create', ['subject_id' => $subject->id, 'section_id' => $section->id, 'lesson_id' => $lesson->id, 'scope' => 'lesson']) }}" class="btn btn-sm btn-outline-info" title="اختبار لهذا الدرس"><i class="bi bi-clipboard-check me-1"></i> اختبار الدرس</a>
+                                        @endcan
+                                        @if($lesson->quizzes && $lesson->quizzes->count() > 0)
+                                            @php $firstQuiz = $lesson->quizzes->first(); @endphp
+                                            @can('quiz-show')
+                                                <a href="{{ route('admin.quizzes.show', $firstQuiz->id) }}" class="btn btn-sm btn-icon btn-info-transparent" title="{{ $firstQuiz->title }}"><i class="bi bi-question-circle"></i></a>
+                                            @endcan
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+
             {{-- الوحدات داخل القسم --}}
             <div class="section-units">
                 <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
@@ -106,6 +213,21 @@
                     </span>
                     @if(!$isLinkedSection)
                     <div class="d-flex align-items-center gap-2">
+                        @can('lesson-create')
+                        <button type="button"
+                                class="btn btn-sm btn-outline-success"
+                                data-bs-toggle="modal"
+                                data-bs-target="#createSectionLessonModal{{ $section->id }}">
+                            <i class="bi bi-play-circle me-1"></i> إضافة درس مباشر
+                        </button>
+                        @endcan
+                        @can('quiz-create')
+                        <a href="{{ route('admin.quizzes.create', ['subject_id' => $subject->id, 'section_id' => $section->id, 'scope' => 'section']) }}"
+                                class="btn btn-sm btn-outline-info"
+                                title="إضافة اختبار مباشر للقسم">
+                            <i class="bi bi-clipboard-check me-1"></i> إضافة اختبار مباشر
+                        </a>
+                        @endcan
                         @can('unit-create')
                         <button type="button"
                                 class="btn btn-sm btn-outline-primary"

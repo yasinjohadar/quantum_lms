@@ -14,6 +14,8 @@ class UpdateLessonRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'unit_id' => ['nullable', 'integer', 'exists:units,id'],
+            'section_id' => ['nullable', 'integer', 'exists:subject_sections,id'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'video_type' => ['required', 'in:upload,youtube,vimeo,external'],

@@ -16,7 +16,9 @@ class UpdateQuizRequest extends FormRequest
     {
         return [
             'subject_id' => ['required', 'exists:subjects,id'],
-            'unit_id' => ['nullable', 'exists:units,id'],
+            'unit_id' => ['nullable', 'integer', 'exists:units,id'],
+            'section_id' => ['nullable', 'integer', 'exists:subject_sections,id'],
+            'lesson_id' => ['nullable', 'integer', 'exists:lessons,id'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'instructions' => ['nullable', 'string'],

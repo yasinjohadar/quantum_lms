@@ -524,7 +524,7 @@
                                     <option value="{{ $opt['id'] }}">{{ $opt['title'] }}</option>
                                 @endforeach
                             </select>
-                            <small class="text-muted">اتركه فارغاً لإنشاء قسم رئيسي، أو اختر قسماً لإنشاء قسم تنظيمي تحته.</small>
+                            <small class="text-muted">اتركه فارغاً لإنشاء قسم رئيسي، أو اختر قسماً لإنشاء قسم فرعي تحته.</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">نوع القسم</label>
@@ -687,6 +687,189 @@
                 </div>
             </div>
         </div>
+        @endcan
+
+        {{-- مودال إنشاء درس مباشر داخل القسم (نفس مودال إنشاء الدرس الأساسي) --}}
+        @can('lesson-create')
+        @if((int) $section->subject_id === (int) $subject->id)
+        <div class="modal fade" id="createSectionLessonModal{{ $section->id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 rounded-4">
+                    <div class="modal-header border-0 bg-success-transparent">
+                        <h5 class="modal-title fw-bold">
+                            <i class="bi bi-play-circle text-success me-2"></i>
+                            إضافة درس جديد
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                    </div>
+                    <form action="{{ route('admin.sections.lessons.store', $section->id) }}" method="POST" enctype="multipart/form-data" class="js-lesson-ajax-form" data-lesson-action="store" data-section-id="{{ $section->id }}">
+                        @csrf
+                        <input type="hidden" name="section_id" value="{{ $section->id }}">
+                        <div class="modal-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="mb-3">
+                                        <label class="form-label">عنوان الدرس <span class="text-danger">*</span></label>
+                                        <input type="text" name="title" class="form-control" placeholder="مثال: مقدمة في الأعداد الطبيعية" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label">نوع الفيديو <span class="text-danger">*</span></label>
+                                        <select name="video_type" class="form-select lesson-video-type-select" data-media-context="section" data-media-id="{{ $section->id }}" id="sectionVideoType{{ $section->id }}" required>
+                                            <option value="youtube">يوتيوب</option>
+                                            <option value="vimeo" selected>فيميو</option>
+                                            <option value="external">رابط خارجي</option>
+                                            <option value="upload">رفع ملف</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3" id="sectionVideoUrlField{{ $section->id }}">
+                                <label class="form-label">رابط الفيديو</label>
+                                <input type="url" name="video_url" class="form-control" placeholder="https://vimeo.com/...">
+                                <small class="text-muted">الصق رابط الفيديو من Vimeo أو YouTube أو أي مصدر خارجي</small>
+                            </div>
+
+                            <div class="mb-3 d-none" id="sectionVideoFileField{{ $section->id }}">
+                                <label class="form-label">ملف الفيديو</label>
+                                <input type="file" name="video_file" class="form-control" accept="video/mp4,video/webm,video/ogg">
+                                <small class="text-muted">الحد الأقصى: 500 ميجابايت (MP4, WebM, OGG)</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">وصف الدرس</label>
+                                <textarea name="description" class="form-control" rows="3" placeholder="وصف مختصر لمحتوى الدرس..."></textarea>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label">الصورة المصغرة</label>
+                                        <input type="file" name="thumbnail" class="form-control" accept="image/*">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label">مدة الفيديو (ثانية)</label>
+                                        <input type="number" name="duration" class="form-control" min="0" placeholder="مثال: 600">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label">ترتيب العرض</label>
+                                        <input type="number" name="order" class="form-control" min="0" placeholder="تلقائي">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">من الصفحة</label>
+                                        <input type="number" name="book_page_from" id="bookPageFrom{{ $section->id }}" class="form-control" min="1" placeholder="مثال: 10">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">إلى الصفحة</label>
+                                        <input type="number" name="book_page_to" id="bookPageTo{{ $section->id }}" class="form-control" min="1" placeholder="مثال: 25">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-4">
+                                    @if(auth()->user()->canReviewContent())
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" name="is_active" id="lessonActive{{ $section->id }}" checked>
+                                            <label class="form-check-label" for="lessonActive{{ $section->id }}">الدرس نشط</label>
+                                        </div>
+                                    @else
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" name="is_active" id="lessonActive{{ $section->id }}">
+                                            <label class="form-check-label" for="lessonActive{{ $section->id }}">إرسال للمراجعة</label>
+                                        </div>
+                                        <small class="text-muted d-block mt-1">سيتم إرسال الدرس للمشرف للمراجعة والموافقة</small>
+                                    @endif
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="is_free" id="lessonFree{{ $section->id }}">
+                                        <label class="form-check-label" for="lessonFree{{ $section->id }}">درس مجاني</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="is_preview" id="lessonPreview{{ $section->id }}">
+                                        <label class="form-check-label" for="lessonPreview{{ $section->id }}">متاح للمعاينة</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="my-3">
+                            <h6 class="mb-3">
+                                <i class="bi bi-paperclip text-info me-1"></i>
+                                مرفق الدرس (اختياري)
+                            </h6>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">عنوان المرفق</label>
+                                        <input type="text" name="attachment_title" class="form-control" placeholder="مثال: ملف شرح الدرس">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">نوع المرفق</label>
+                                        <select name="attachment_type" class="form-select lesson-attachment-type-select" data-attachment-context="section" data-attachment-id="{{ $section->id }}" id="sectionLessonAttachmentType{{ $section->id }}">
+                                            <option value="">بدون مرفق</option>
+                                            <option value="file">ملف</option>
+                                            <option value="document">مستند</option>
+                                            <option value="image">صورة</option>
+                                            <option value="audio">ملف صوتي</option>
+                                            <option value="link">رابط خارجي</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3 d-none" id="sectionLessonAttachmentFileField{{ $section->id }}">
+                                <label class="form-label">ملف المرفق</label>
+                                <input type="file" name="attachment_file" class="form-control" id="sectionLessonAttachmentFileInput{{ $section->id }}">
+                                <small class="text-muted">الحد الأقصى: 50 ميجابايت</small>
+                            </div>
+
+                            <div class="mb-3 d-none" id="sectionLessonAttachmentUrlField{{ $section->id }}">
+                                <label class="form-label">رابط المرفق</label>
+                                <input type="url" name="attachment_url" class="form-control" id="sectionLessonAttachmentUrlInput{{ $section->id }}" placeholder="https://example.com/resource">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">وصف المرفق (اختياري)</label>
+                                <textarea name="attachment_description" class="form-control" rows="2" placeholder="وصف مختصر للمرفق..."></textarea>
+                            </div>
+
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="attachment_is_downloadable" id="attachmentIsDownloadable{{ $section->id }}" checked>
+                                <label class="form-check-label" for="attachmentIsDownloadable{{ $section->id }}">
+                                    السماح بتحميل المرفق
+                                </label>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-lg me-1"></i> حفظ الدرس
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        @endif
         @endcan
 
         {{-- مودال إنشاء وحدة جديدة (لأقسام المادة الحالية فقط؛ الأقسام المرتبطة بمادة أخرى لا تُعرض مودالاً منها) --}}
@@ -929,7 +1112,7 @@
                                     <div class="col-md-4">
                                         <div class="mb-3">
                                             <label class="form-label">نوع الفيديو <span class="text-danger">*</span></label>
-                                            <select name="video_type" class="form-select" id="videoType{{ $unit->id }}" required>
+                                            <select name="video_type" class="form-select lesson-video-type-select" data-media-context="unit" data-media-id="{{ $unit->id }}" id="videoType{{ $unit->id }}" required>
                                                 <option value="youtube">يوتيوب</option>
                                                 <option value="vimeo" selected>فيميو</option>
                                                 <option value="external">رابط خارجي</option>
@@ -1039,7 +1222,7 @@
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label class="form-label">نوع المرفق</label>
-                                            <select name="attachment_type" class="form-select" id="lessonAttachmentType{{ $unit->id }}">
+                                            <select name="attachment_type" class="form-select lesson-attachment-type-select" data-attachment-context="unit" data-attachment-id="{{ $unit->id }}" id="lessonAttachmentType{{ $unit->id }}">
                                                 <option value="">بدون مرفق</option>
                                                 <option value="file">ملف</option>
                                                 <option value="document">مستند</option>
@@ -1482,8 +1665,330 @@
         @endforeach
     @endforeach
 
+    {{-- مودالات الدروس المباشرة داخل القسم --}}
+    @foreach($subject->sections as $section)
+        @php
+            $sectionDirectLessons = \App\Models\Lesson::query()
+                ->where('section_id', $section->id)
+                ->whereNull('unit_id')
+                ->with(['attachments', 'quizzes', 'linkedUnits.section.subject'])
+                ->get();
+        @endphp
+        @foreach($sectionDirectLessons as $lesson)
+            @can('lesson-edit')
+            <div class="modal fade" id="editLesson{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content border-0 rounded-4">
+                        <div class="modal-header border-0 bg-primary-transparent">
+                            <h5 class="modal-title fw-bold">
+                                <i class="bi bi-pencil text-primary me-2"></i>
+                                تعديل الدرس
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                        </div>
+                        <form action="{{ route('admin.lessons.update', $lesson->id) }}" method="POST" enctype="multipart/form-data" class="js-lesson-ajax-form" data-lesson-action="update" data-section-id="{{ $lesson->section_id }}" data-lesson-id="{{ $lesson->id }}">
+                            @csrf
+                            @method('PUT')
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="mb-3">
+                                            <label class="form-label">عنوان الدرس <span class="text-danger">*</span></label>
+                                            <input type="text" name="title" class="form-control" value="{{ $lesson->title }}" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">نوع الفيديو</label>
+                                            <select name="video_type" class="form-select" required>
+                                                @foreach(\App\Models\Lesson::VIDEO_TYPES as $key => $label)
+                                                    <option value="{{ $key }}" {{ $lesson->video_type === $key ? 'selected' : '' }}>{{ $label }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">رابط الفيديو</label>
+                                    <input type="text" name="video_url" class="form-control" value="{{ $lesson->video_url }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">وصف الدرس</label>
+                                    <textarea name="description" class="form-control" rows="3">{{ $lesson->description }}</textarea>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">الصورة المصغرة</label>
+                                            <input type="file" name="thumbnail" class="form-control" accept="image/*">
+                                            @if($lesson->thumbnail)
+                                                <small class="text-muted">الصورة الحالية موجودة</small>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">مدة الفيديو (ثانية)</label>
+                                            <input type="number" name="duration" class="form-control" min="0" value="{{ $lesson->duration }}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">ترتيب العرض</label>
+                                            <input type="number" name="order" class="form-control" min="0" value="{{ $lesson->order }}">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">من الصفحة</label>
+                                            <input type="number" name="book_page_from" class="form-control" min="1" value="{{ $lesson->book_page_from }}" placeholder="مثال: 10">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">إلى الصفحة</label>
+                                            <input type="number" name="book_page_to" class="form-control" min="1" value="{{ $lesson->book_page_to }}" placeholder="مثال: 25">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" name="is_active" id="lessonActiveSection{{ $lesson->id }}" {{ $lesson->is_active ? 'checked' : '' }}>
+                                            <label class="form-check-label" for="lessonActiveSection{{ $lesson->id }}">الدرس نشط</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" name="is_free" {{ $lesson->is_free ? 'checked' : '' }}>
+                                            <label class="form-check-label">درس مجاني</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" name="is_preview" {{ $lesson->is_preview ? 'checked' : '' }}>
+                                            <label class="form-check-label">متاح للمعاينة</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer border-0">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-lg me-1"></i> حفظ التعديلات
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            @endcan
+
+            @can('lesson-delete')
+            <div class="modal fade" id="deleteLesson{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 rounded-4">
+                        <div class="border-0 text-center pt-4 px-4">
+                            <div class="d-inline-flex align-items-center justify-content-center mb-3">
+                                <span class="me-2 fs-4 text-warning"><i class="bi bi-exclamation-triangle-fill"></i></span>
+                                <h5 class="modal-title mb-0 fw-bold">حذف الدرس</h5>
+                            </div>
+                            <button type="button" class="btn-close position-absolute top-0 start-0 m-3" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                        </div>
+                        <div class="text-center mt-2">
+                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3 bg-danger text-white shadow-sm" style="width:80px;height:80px;">
+                                <i class="bi bi-trash fs-2"></i>
+                            </div>
+                        </div>
+                        <form action="{{ route('admin.lessons.destroy', $lesson->id) }}" method="POST" class="js-lesson-ajax-form" data-lesson-action="destroy" data-section-id="{{ $lesson->section_id }}" data-lesson-id="{{ $lesson->id }}">
+                            @csrf
+                            @method('DELETE')
+                            <div class="modal-body text-center pt-0 pb-3 px-4">
+                                <p class="mb-1 text-muted">هل أنت متأكد من حذف الدرس:</p>
+                                <p class="fw-bold mb-1" style="font-size:1.05rem;">{{ $lesson->title }}</p>
+                                <p class="text-danger small mb-0"><i class="bi bi-info-circle me-1"></i> سيتم حذف جميع المرفقات المرتبطة بهذا الدرس!</p>
+                            </div>
+                            <div class="modal-footer border-0 justify-content-center pb-4">
+                                <button type="button" class="btn btn-outline-secondary px-4 me-2" data-bs-dismiss="modal">إلغاء</button>
+                                <button type="submit" class="btn btn-danger px-4"><i class="bi bi-trash me-1"></i> حذف الدرس</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            @endcan
+
+            @can('lesson-attachment-create')
+            <div class="modal fade" id="addLessonAttachment{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 rounded-4">
+                        <div class="modal-header border-0 bg-info-transparent">
+                            <h5 class="modal-title fw-bold"><i class="bi bi-paperclip text-info me-2"></i> إضافة مرفق للدرس</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                        </div>
+                        <form action="{{ route('admin.lessons.attachments.store', $lesson->id) }}" method="POST" enctype="multipart/form-data">
+                            @csrf
+                            <div class="modal-body">
+                                <div class="alert alert-light border mb-3"><i class="bi bi-info-circle me-1"></i> <strong>الدرس:</strong> {{ $lesson->title }}</div>
+                                <div class="mb-3">
+                                    <label class="form-label">عنوان المرفق (اختياري)</label>
+                                    <input type="text" name="title" class="form-control" placeholder="اختياري: سيُستخدم اسم الملف تلقائيًا">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">نوع المرفق <span class="text-danger">*</span></label>
+                                    <select name="type" class="form-select attachment-type-select" data-lesson="{{ $lesson->id }}" required>
+                                        <option value="file">ملف (PDF, Word, ZIP...)</option>
+                                        <option value="document">مستند</option>
+                                        <option value="image">صورة</option>
+                                        <option value="audio">ملف صوتي</option>
+                                        <option value="link">رابط خارجي</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3 file-field-{{ $lesson->id }}">
+                                    <label class="form-label">الملف</label>
+                                    <input type="file" name="file" class="form-control">
+                                    <small class="text-muted">الحد الأقصى: 50 ميجابايت</small>
+                                </div>
+                                <div class="mb-3 url-field-{{ $lesson->id }}" style="display: none;">
+                                    <label class="form-label">الرابط <span class="text-danger">*</span></label>
+                                    <input type="url" name="url" class="form-control" placeholder="https://example.com/resource">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">وصف المرفق (اختياري)</label>
+                                    <textarea name="description" class="form-control" rows="2" placeholder="وصف مختصر للمرفق..."></textarea>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="is_downloadable" checked>
+                                    <label class="form-check-label">السماح بالتحميل</label>
+                                </div>
+                            </div>
+                            <div class="modal-footer border-0">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                <button type="submit" class="btn btn-info"><i class="bi bi-check-lg me-1"></i> حفظ المرفق</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            @endcan
+
+            @can('lesson-show')
+            <div class="modal fade" id="playVideoModal{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-xl">
+                    <div class="modal-content border-0 rounded-4">
+                        <div class="modal-header border-0 d-flex align-items-center">
+                            <h5 class="modal-title fw-bold"><i class="bi bi-play-circle text-warning me-2"></i> {{ $lesson->title }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                        </div>
+                        <div class="modal-body p-0">
+                            @if($lesson->embed_url)
+                                @php $actualType = $lesson->actual_video_type; @endphp
+                                <div class="ratio ratio-16x9 bg-dark">
+                                    @if($actualType === 'youtube')
+                                        <iframe src="{{ $lesson->embed_url }}?rel=0&modestbranding=1" title="{{ $lesson->title }}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy"></iframe>
+                                    @elseif($actualType === 'vimeo')
+                                        <iframe src="{{ $lesson->embed_url }}?title=0&byline=0&portrait=0" title="{{ $lesson->title }}" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+                                    @elseif($actualType === 'upload')
+                                        <video controls class="w-100 h-100" poster="{{ $lesson->thumbnail ? asset('storage/'.$lesson->thumbnail) : '' }}" controlsList="nodownload">
+                                            <source src="{{ $lesson->embed_url }}" type="video/mp4">
+                                            <source src="{{ $lesson->embed_url }}" type="video/webm">
+                                            <source src="{{ $lesson->embed_url }}" type="video/ogg">
+                                            المتصفح لا يدعم تشغيل الفيديو.
+                                        </video>
+                                    @else
+                                        <video controls class="w-100 h-100" poster="{{ $lesson->thumbnail ? asset('storage/'.$lesson->thumbnail) : '' }}">
+                                            <source src="{{ $lesson->embed_url }}" type="video/mp4">
+                                            المتصفح لا يدعم تشغيل الفيديو.
+                                        </video>
+                                    @endif
+                                </div>
+                            @elseif($lesson->video_url)
+                                <div class="alert alert-warning m-3 mb-0"><i class="bi bi-exclamation-triangle me-2"></i> تعذر تشغيل الفيديو. تأكد من صحة الرابط.</div>
+                            @else
+                                <div class="text-center py-5 text-muted bg-light m-3 rounded"><i class="bi bi-film display-4 d-block mb-2"></i> لا يوجد فيديو لهذا الدرس.</div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endcan
+        @endforeach
+    @endforeach
+
     {{-- Modals للموافقة والرفض على الدروس --}}
     @foreach($subject->sections as $section)
+        @php
+            $sectionDirectLessonsForReview = \App\Models\Lesson::query()
+                ->where('section_id', $section->id)
+                ->whereNull('unit_id')
+                ->where('review_status', 'pending_review')
+                ->get();
+        @endphp
+        @foreach($sectionDirectLessonsForReview as $lesson)
+            @can('lesson-approve-review')
+            <div class="modal fade" id="approveLesson{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 rounded-4">
+                        <div class="modal-header border-0 bg-success-transparent">
+                            <h5 class="modal-title fw-bold">
+                                <i class="bi bi-check-circle text-success me-2"></i>
+                                الموافقة على تفعيل الدرس
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                        </div>
+                        <form action="{{ route('admin.lessons.approve-review', $lesson->id) }}" method="POST">
+                            @csrf
+                            <div class="modal-body">
+                                <p class="mb-3">هل تريد الموافقة على تفعيل الدرس: <strong>{{ $lesson->title }}</strong>؟</p>
+                                <div class="mb-3">
+                                    <label class="form-label">ملاحظات (اختياري)</label>
+                                    <textarea name="review_notes" class="form-control" rows="3" placeholder="يمكنك إضافة ملاحظات للمعلم..."></textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer border-0">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i> موافقة</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            @endcan
+
+            @can('lesson-reject-review')
+            <div class="modal fade" id="rejectLesson{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 rounded-4">
+                        <div class="modal-header border-0 bg-danger-transparent">
+                            <h5 class="modal-title fw-bold">
+                                <i class="bi bi-x-circle text-danger me-2"></i>
+                                رفض تفعيل الدرس
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                        </div>
+                        <form action="{{ route('admin.lessons.reject-review', $lesson->id) }}" method="POST">
+                            @csrf
+                            <div class="modal-body">
+                                <p class="mb-3">هل تريد رفض تفعيل الدرس: <strong>{{ $lesson->title }}</strong>؟</p>
+                                <div class="mb-3">
+                                    <label class="form-label">ملاحظات (مطلوب) <span class="text-danger">*</span></label>
+                                    <textarea name="review_notes" class="form-control" rows="3" required placeholder="يرجى كتابة الملاحظات التي ستُرسل للمعلم..."></textarea>
+                                    <small class="text-muted">سيتم إرسال هذه الملاحظات للمعلم</small>
+                                </div>
+                            </div>
+                            <div class="modal-footer border-0">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                <button type="submit" class="btn btn-danger"><i class="bi bi-x-lg me-1"></i> رفض</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            @endcan
+        @endforeach
+
         @foreach($section->units as $unit)
             @foreach($unit->allLessons() as $lesson)
                 @if(
@@ -2104,35 +2609,50 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // التبديل بين حقل الرابط وحقل الملف حسب نوع الفيديو
-    document.querySelectorAll('[id^="videoType"]').forEach(function(select) {
-        select.addEventListener('change', function() {
-            const unitId = this.id.replace('videoType', '');
-            const urlField = document.getElementById('videoUrlField' + unitId);
-            const fileField = document.getElementById('videoFileField' + unitId);
-            
-            if (this.value === 'upload') {
-                urlField.classList.add('d-none');
-                fileField.classList.remove('d-none');
-            } else {
-                urlField.classList.remove('d-none');
-                fileField.classList.add('d-none');
-            }
+    function bindLessonVideoTypeToggle(scope) {
+        var root = scope || document;
+        root.querySelectorAll('.lesson-video-type-select').forEach(function(select) {
+            if (select.dataset.videoToggleBound === '1') return;
+            select.dataset.videoToggleBound = '1';
+
+            var toggleVideoFields = function() {
+                var mediaContext = select.dataset.mediaContext || 'unit';
+                var mediaId = select.dataset.mediaId || '';
+                var prefix = mediaContext === 'section' ? 'sectionVideo' : 'video';
+                var urlField = document.getElementById(prefix + 'UrlField' + mediaId);
+                var fileField = document.getElementById(prefix + 'FileField' + mediaId);
+
+                if (!urlField || !fileField) return;
+
+                if (select.value === 'upload') {
+                    urlField.classList.add('d-none');
+                    fileField.classList.remove('d-none');
+                } else {
+                    urlField.classList.remove('d-none');
+                    fileField.classList.add('d-none');
+                }
+            };
+
+            select.addEventListener('change', toggleVideoFields);
+            toggleVideoFields();
         });
-    });
+    }
+    bindLessonVideoTypeToggle(document);
 
     function bindLessonAttachmentTypeToggle(scope) {
         var root = scope || document;
-        root.querySelectorAll('[id^="lessonAttachmentType"]').forEach(function(select) {
+        root.querySelectorAll('.lesson-attachment-type-select').forEach(function(select) {
             if (select.dataset.attachmentToggleBound === '1') return;
             select.dataset.attachmentToggleBound = '1';
 
             var toggleAttachmentFields = function() {
-                var unitId = select.id.replace('lessonAttachmentType', '');
-                var fileField = document.getElementById('lessonAttachmentFileField' + unitId);
-                var urlField = document.getElementById('lessonAttachmentUrlField' + unitId);
-                var fileInput = document.getElementById('lessonAttachmentFileInput' + unitId);
-                var urlInput = document.getElementById('lessonAttachmentUrlInput' + unitId);
+                var attachmentContext = select.dataset.attachmentContext || 'unit';
+                var attachmentId = select.dataset.attachmentId || '';
+                var prefix = attachmentContext === 'section' ? 'sectionLessonAttachment' : 'lessonAttachment';
+                var fileField = document.getElementById(prefix + 'FileField' + attachmentId);
+                var urlField = document.getElementById(prefix + 'UrlField' + attachmentId);
+                var fileInput = document.getElementById(prefix + 'FileInput' + attachmentId);
+                var urlInput = document.getElementById(prefix + 'UrlInput' + attachmentId);
                 var selectedType = select.value;
 
                 if (!fileField || !urlField) return;
@@ -2445,6 +2965,46 @@ document.addEventListener('DOMContentLoaded', function() {
 
         restoreAccordionState(document);
         pruneAccordionStateToExistingDom();
+        bindLessonVideoTypeToggle(document);
+        bindLessonAttachmentTypeToggle(document);
+    }
+
+    async function refreshSectionContentAndModals(sectionId, deletedLessonId) {
+        if (!sectionId) return;
+        syncAccordionStateFromDom();
+        var response = await fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        if (!response.ok) return;
+        var html = await response.text();
+        var parser = new DOMParser();
+        var newDoc = parser.parseFromString(html, 'text/html');
+
+        var sectionSelector = '.accordion-item[data-section-id="' + sectionId + '"]';
+        var currentSectionItem = document.querySelector(sectionSelector);
+        var nextSectionItem = newDoc.querySelector(sectionSelector);
+        if (currentSectionItem && nextSectionItem) {
+            currentSectionItem.replaceWith(nextSectionItem);
+            initializeSortable(nextSectionItem);
+        }
+
+        var sectionModalId = 'createSectionLessonModal' + sectionId;
+        var currentSectionModal = document.getElementById(sectionModalId);
+        var nextSectionModal = newDoc.getElementById(sectionModalId);
+        if (currentSectionModal && nextSectionModal) {
+            currentSectionModal.replaceWith(nextSectionModal);
+            bindLessonVideoTypeToggle(nextSectionModal);
+            bindLessonAttachmentTypeToggle(nextSectionModal);
+        }
+
+        if (deletedLessonId) {
+            ['editLesson', 'deleteLesson', 'addLessonAttachment', 'playVideoModal', 'approveLesson', 'rejectLesson'].forEach(function(prefix) {
+                var stale = document.getElementById(prefix + deletedLessonId);
+                if (stale) stale.remove();
+            });
+        }
+
+        restoreAccordionState(document);
+        pruneAccordionStateToExistingDom();
+        bindLessonVideoTypeToggle(document);
         bindLessonAttachmentTypeToggle(document);
     }
 
@@ -2486,10 +3046,15 @@ document.addEventListener('DOMContentLoaded', function() {
             showAjaxLessonAlert('success', payload.message || 'تم حفظ الدرس بنجاح.');
 
             try {
-                await refreshUnitContentAndModals(
-                    payload.unit_id || form.dataset.unitId,
-                    form.dataset.lessonAction === 'destroy' ? (payload.lesson_id || form.dataset.lessonId) : null
-                );
+                var updatedUnitId = payload.unit_id || form.dataset.unitId;
+                var updatedSectionId = payload.section_id || form.dataset.sectionId;
+                var deletedLessonId = form.dataset.lessonAction === 'destroy' ? (payload.lesson_id || form.dataset.lessonId) : null;
+
+                if (updatedUnitId) {
+                    await refreshUnitContentAndModals(updatedUnitId, deletedLessonId);
+                } else if (updatedSectionId) {
+                    await refreshSectionContentAndModals(updatedSectionId, deletedLessonId);
+                }
             } catch (refreshError) {
                 console.error('Partial UI refresh failed after successful lesson save:', refreshError);
                 showAjaxLessonAlert(

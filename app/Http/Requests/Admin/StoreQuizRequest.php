@@ -16,7 +16,9 @@ class StoreQuizRequest extends FormRequest
     {
         return [
             'subject_id' => ['required', 'exists:subjects,id'],
-            'unit_id' => ['nullable', 'exists:units,id'],
+            'unit_id' => ['nullable', 'integer', 'exists:units,id', 'required_without_all:section_id,lesson_id'],
+            'section_id' => ['nullable', 'integer', 'exists:subject_sections,id', 'required_without_all:unit_id,lesson_id'],
+            'lesson_id' => ['nullable', 'integer', 'exists:lessons,id'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'instructions' => ['nullable', 'string'],
@@ -72,6 +74,8 @@ class StoreQuizRequest extends FormRequest
         return [
             'subject_id.required' => 'المادة مطلوبة',
             'subject_id.exists' => 'المادة غير موجودة',
+            'unit_id.required_without_all' => 'يجب تحديد وحدة أو قسم أو درس للاختبار.',
+            'section_id.required_without_all' => 'يجب تحديد قسم أو وحدة أو درس للاختبار.',
             'title.required' => 'عنوان الاختبار مطلوب',
             'title.max' => 'عنوان الاختبار يجب ألا يتجاوز 255 حرف',
             'duration_minutes.min' => 'مدة الاختبار يجب أن تكون دقيقة واحدة على الأقل',

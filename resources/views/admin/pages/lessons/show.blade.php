@@ -5,6 +5,10 @@
 @stop
 
 @section('content')
+    @php
+        $lessonSubject = $lesson->unit?->section?->subject ?? $lesson->section?->subject;
+        $lessonSection = $lesson->unit?->section ?? $lesson->section;
+    @endphp
     <div class="main-content app-content">
         <div class="container-fluid">
 
@@ -36,18 +40,22 @@
                         <li class="breadcrumb-item">
                             <a href="{{ route('admin.subjects.index') }}">المواد الدراسية</a>
                         </li>
+                        @if($lessonSubject)
                         <li class="breadcrumb-item">
-                            <a href="{{ route('admin.subjects.show', $lesson->unit->section->subject_id) }}">
-                                {{ $lesson->unit->section->subject->name }}
+                            <a href="{{ route('admin.subjects.show', $lessonSubject->id) }}">
+                                {{ $lessonSubject->name }}
                             </a>
                         </li>
+                        @endif
                         <li class="breadcrumb-item active" aria-current="page">معاينة الدرس</li>
                     </ol>
                 </div>
                 <div class="d-flex gap-2">
-                    <a href="{{ route('admin.subjects.show', $lesson->unit->section->subject_id) }}" class="btn btn-secondary btn-sm">
+                    @if($lessonSubject)
+                    <a href="{{ route('admin.subjects.show', $lessonSubject->id) }}" class="btn btn-secondary btn-sm">
                         <i class="fas fa-arrow-right me-1"></i> رجوع للمادة
                     </a>
+                    @endif
                 </div>
             </div>
 
@@ -130,19 +138,19 @@
                             <p class="mb-2">
                                 <span class="fw-semibold">المادة:</span>
                                 <span class="text-muted">
-                                    {{ $lesson->unit->section->subject->name }}
+                                    {{ $lessonSubject?->name ?? '—' }}
                                 </span>
                             </p>
                             <p class="mb-2">
                                 <span class="fw-semibold">الوحدة:</span>
                                 <span class="text-muted">
-                                    {{ $lesson->unit->title }}
+                                    {{ $lesson->unit->title ?? '— (درس مباشر داخل القسم)' }}
                                 </span>
                             </p>
                             <p class="mb-2">
                                 <span class="fw-semibold">القسم:</span>
                                 <span class="text-muted">
-                                    {{ $lesson->unit->section->title }}
+                                    {{ $lessonSection?->title ?? '—' }}
                                 </span>
                             </p>
                             <p class="mb-2">

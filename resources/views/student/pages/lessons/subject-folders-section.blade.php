@@ -50,6 +50,20 @@
                 </div>
             @endif
 
+            @if(($directQuizzes ?? collect())->count() > 0)
+                <div class="mt-4">
+                    <h5 class="mb-3 fw-semibold"><i class="bi bi-clipboard-check me-2 text-info"></i> اختبارات القسم المباشرة</h5>
+                    <div class="list-group">
+                        @foreach($directQuizzes as $quiz)
+                            <a href="{{ route('student.quizzes.start', $quiz) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                <span>{{ $quiz->title }}</span>
+                                <span class="badge bg-info">بدء</span>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
             @if($children->count() === 0 && $units->count() === 0)
                 <div class="card">
                     <div class="card-body text-center py-5">
@@ -96,6 +110,34 @@
                                     </div>
                                 </a>
                             </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            @if(($directLessons ?? collect())->count() > 0)
+                <div class="mt-4">
+                    <h5 class="mb-3 fw-semibold"><i class="bi bi-play-circle me-2 text-success"></i> دروس القسم المباشرة</h5>
+                    <div class="list-group">
+                        @foreach($directLessons as $lessonItem)
+                            <a href="{{ route('student.lessons.show.folders', $lessonItem->id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                <span>{{ $lessonItem->title }}</span>
+                                <span class="badge bg-success">عرض</span>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            @if(($directQuizzes ?? collect())->count() > 0)
+                <div class="mt-4">
+                    <h5 class="mb-3 fw-semibold"><i class="bi bi-clipboard-check me-2 text-info"></i> اختبارات القسم المباشرة</h5>
+                    <div class="list-group">
+                        @foreach($directQuizzes as $quiz)
+                            <a href="{{ route('student.quizzes.start', $quiz) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                <span>{{ $quiz->title }}</span>
+                                <span class="badge bg-info">بدء</span>
+                            </a>
                         @endforeach
                     </div>
                 </div>
