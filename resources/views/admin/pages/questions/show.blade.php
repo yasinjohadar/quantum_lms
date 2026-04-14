@@ -15,7 +15,7 @@
             <!-- Page Header -->
             <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
                 <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">{{ Str::limit($question->title, 50) }}</h5>
+                    <h5 class="page-title fs-21 mb-1">{{ Str::limit(strip_tags($question->title), 50) }}</h5>
                     <nav>
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
@@ -59,7 +59,7 @@
                         </div>
                     @endif
                     
-                    <h5 class="mb-3">{{ $question->title }}</h5>
+                    <div class="question-stem mb-3 fs-5">{!! $question->title !!}</div>
                     
                     @if($question->content)
                         <div class="text-muted mb-3">{!! $question->content !!}</div>

@@ -98,7 +98,7 @@
                                                     <i class="bi {{ $question->type_icon }}"></i>
                                                     {{ $question->type_name }}
                                                 </span>
-                                                <p class="mb-1 small">{{ Str::limit($question->title, 80) }}</p>
+                                                <p class="mb-1 small">{{ Str::limit(strip_tags($question->title), 80) }}</p>
                                                 <div class="d-flex align-items-center gap-2">
                                                     <div class="d-flex align-items-center gap-1">
                                                         @if($canQuizUpdatePoints)
@@ -245,7 +245,7 @@
                                                     {{ $question->difficulty_name }}
                                                 </span>
                                             </div>
-                                            <p class="mb-1 small">{{ Str::limit($question->title, 60) }}</p>
+                                            <p class="mb-1 small">{{ Str::limit(strip_tags($question->title), 60) }}</p>
                                             <small class="text-muted">{{ $question->default_points }} درجة</small>
                                         </div>
                                         @if($canQuizAddQuestion)

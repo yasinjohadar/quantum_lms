@@ -88,7 +88,7 @@
                     <span class="text-muted">الحد الأقصى: {{ $answer->max_points }} درجة</span>
                 </div>
                 <div class="card-body">
-                    <h5 class="mb-3">{{ $answer->question->title }}</h5>
+                    <div class="question-stem mb-3 fs-5">{!! $answer->question->title !!}</div>
                     
                     @if($answer->question->content)
                         <div class="text-muted mb-3">{!! $answer->question->content !!}</div>

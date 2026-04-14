@@ -195,10 +195,10 @@
                                 <h6 class="fw-semibold mb-2">
                                     @can('question-show')
                                     <a href="{{ route('admin.questions.show', $question->id) }}" class="text-decoration-none">
-                                        {{ Str::limit($question->title, 60) }}
+                                        {{ Str::limit(strip_tags($question->title), 60) }}
                                     </a>
                                     @else
-                                    <span class="text-body">{{ Str::limit($question->title, 60) }}</span>
+                                    <span class="text-body">{{ Str::limit(strip_tags($question->title), 60) }}</span>
                                     @endcan
                                 </h6>
 
@@ -257,7 +257,7 @@
                                     @method('DELETE')
                                     <div class="modal-body text-center pt-0 pb-3 px-4">
                                         <p class="mb-1 text-muted">هل أنت متأكد من حذف السؤال:</p>
-                                        <p class="fw-bold mb-1">{{ Str::limit($question->title, 50) }}</p>
+                                        <p class="fw-bold mb-1">{{ Str::limit(strip_tags($question->title), 50) }}</p>
                                     </div>
                                     <div class="modal-footer border-0 justify-content-center pb-4">
                                         <button type="button" class="btn btn-outline-secondary px-4 me-2" data-bs-dismiss="modal">إلغاء</button>

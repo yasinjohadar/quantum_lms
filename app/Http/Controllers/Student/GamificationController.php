@@ -10,6 +10,7 @@ use App\Services\LevelService;
 use App\Services\ChallengeService;
 use App\Services\RewardService;
 use App\Services\LeaderboardService;
+use App\Models\Reward;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -146,10 +147,9 @@ class GamificationController extends Controller
     /**
      * استبدال مكافأة
      */
-    public function claimReward(Request $request, $rewardId)
+    public function claimReward(Request $request, Reward $reward)
     {
         $user = Auth::user();
-        $reward = \App\Models\Reward::findOrFail($rewardId);
 
         try {
             $this->rewardService->claimReward($user, $reward);

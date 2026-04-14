@@ -47,3 +47,5 @@
     .Search-element { display: none !important; }
 }
 </style>
+
+@stack('styles')

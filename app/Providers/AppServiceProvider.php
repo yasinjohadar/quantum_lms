@@ -126,8 +126,8 @@ class AppServiceProvider extends ServiceProvider
             \Log::warning('Failed to initialize WhatsApp settings: ' . $e->getMessage());
         }
 
-        // Register storage helper globally
-        if (!function_exists('storage_disk')) {
+        // Register helper (namespaced; function_exists must match the declared name)
+        if (!function_exists(__NAMESPACE__ . '\\storage_disk')) {
             function storage_disk(string $diskName) {
                 return app(\App\Services\Storage\AppStorageManager::class)->getDisk($diskName);
             }

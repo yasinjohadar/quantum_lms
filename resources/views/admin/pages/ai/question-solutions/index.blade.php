@@ -34,7 +34,7 @@
                                     @forelse($solutions as $solution)
                                         <tr>
                                             <td>{{ $solution->id }}</td>
-                                            <td>{{ Str::limit($solution->question->title ?? $solution->question->content ?? 'سؤال #' . $solution->question_id, 50) }}</td>
+                                            <td>{{ Str::limit(strip_tags($solution->question->title ?? $solution->question->content ?? 'سؤال #' . $solution->question_id), 50) }}</td>
                                             <td>{{ $solution->model->name ?? '-' }}</td>
                                             <td>
                                                 @if($solution->confidence_score)

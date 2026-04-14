@@ -22,13 +22,13 @@
             </div>
 
             <!-- السؤال -->
-            <div class="card">
+            <div class="card" id="student-question-card">
                 <div class="card-header bg-primary text-white">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
+                        <div class="mb-0 flex-grow-1 question-stem text-white">
                             <i class="bi bi-question-circle me-2"></i>
-                            {{ $question->title }}
-                        </h5>
+                            {!! $question->title !!}
+                        </div>
                         <div>
                             <span class="badge bg-light text-dark">
                                 <i class="bi bi-star me-1"></i>
@@ -40,7 +40,7 @@
                 <div class="card-body">
                     <!-- محتوى السؤال -->
                     @if($question->content)
-                        <div class="mb-4">
+                        <div class="mb-4 question-content-html">
                             {!! $question->content !!}
                         </div>
                     @endif
@@ -95,6 +95,15 @@
     </div>
 </div>
 </div>
+
+<div id="studentQuestionImageLightbox" class="student-q-img-lightbox" hidden>
+    <div class="student-q-img-lightbox__backdrop" role="presentation"></div>
+    <button type="button" class="student-q-img-lightbox__close" aria-label="إغلاق">&times;</button>
+    <div class="student-q-img-lightbox__inner">
+        <img id="studentQuestionImageLightboxImg" src="" alt="">
+    </div>
+</div>
+
 <!-- End::app-content -->
 @endsection
 
@@ -155,6 +164,79 @@
         cursor: move;
         user-select: none;
         -webkit-user-drag: element;
+    }
+
+    #student-question-card .question-stem img,
+    #student-question-card .question-content-html img,
+    #student-question-card .option-item img {
+        max-width: 100% !important;
+        width: 100% !important;
+        height: auto !important;
+        cursor: pointer;
+        display: block;
+        border-radius: 0.25rem;
+        box-sizing: border-box;
+    }
+    @media (min-width: 768px) {
+        #student-question-card .question-stem img,
+        #student-question-card .question-content-html img,
+        #student-question-card .option-item img {
+            max-width: 600px !important;
+            width: auto !important;
+        }
+    }
+
+    .student-q-img-lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 999999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+    .student-q-img-lightbox[hidden] {
+        display: none !important;
+    }
+    .student-q-img-lightbox__backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.88);
+        cursor: pointer;
+    }
+    .student-q-img-lightbox__close {
+        position: fixed;
+        z-index: 1000000;
+        top: 1rem;
+        inset-inline-start: 1rem;
+        width: 2.75rem;
+        height: 2.75rem;
+        border: none;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.95);
+        color: #333;
+        font-size: 1.75rem;
+        line-height: 1;
+        cursor: pointer;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+    }
+    .student-q-img-lightbox__inner {
+        position: relative;
+        z-index: 1;
+        max-width: min(96vw, 1200px);
+        max-height: 90vh;
+        pointer-events: none;
+    }
+    .student-q-img-lightbox__inner img {
+        max-width: 100%;
+        max-height: 90vh;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        display: block;
+        margin: 0 auto;
+        border-radius: 0.35rem;
+        pointer-events: auto;
     }
 </style>
 @endpush
@@ -223,6 +305,53 @@
             });
         }, 500);
     });
+
+    (function setupQuestionImageLightbox() {
+        var bound = false;
+        function bind() {
+            if (bound) return;
+            var box = document.getElementById('studentQuestionImageLightbox');
+            var bigImg = document.getElementById('studentQuestionImageLightboxImg');
+            var root = document.getElementById('question-content') || document.getElementById('student-question-card');
+            if (!box || !bigImg || !root) return;
+            bound = true;
+            if (box.parentNode !== document.body) {
+                document.body.appendChild(box);
+            }
+            var backdrop = box.querySelector('.student-q-img-lightbox__backdrop');
+            var closeBtn = box.querySelector('.student-q-img-lightbox__close');
+            function openLb(src, alt) {
+                bigImg.src = src;
+                bigImg.alt = alt || '';
+                box.removeAttribute('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+            function closeLb() {
+                box.setAttribute('hidden', '');
+                bigImg.removeAttribute('src');
+                bigImg.alt = '';
+                document.body.style.overflow = '';
+            }
+            document.addEventListener('click', function(e) {
+                if (!e.target || !e.target.closest) return;
+                var img = e.target.closest('img');
+                if (!img || !root.contains(img)) return;
+                openLb(img.currentSrc || img.src, img.alt);
+            }, true);
+            if (backdrop) backdrop.addEventListener('click', closeLb);
+            if (closeBtn) closeBtn.addEventListener('click', closeLb);
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && !box.hasAttribute('hidden')) {
+                    closeLb();
+                }
+            });
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', bind);
+        } else {
+            bind();
+        }
+    })();
 </script>
 @endpush
 

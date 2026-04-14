@@ -147,7 +147,7 @@
                                         <span class="badge {{ $isCorrect ? 'bg-success' : 'bg-danger' }} me-2">
                                             {{ $index + 1 }}
                                         </span>
-                                        <span class="fw-semibold">{{ $question->title ?? 'سؤال ' . ($index + 1) }}</span>
+                                        <span class="fw-semibold question-stem">{!! $question->title ?? 'سؤال ' . ($index + 1) !!}</span>
                                     </div>
                                     <div>
                                         @if($isCorrect)

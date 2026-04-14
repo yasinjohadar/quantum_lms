@@ -121,7 +121,7 @@
                         </div>
                     @endif
                     
-                    <h5 class="mb-3">{{ $question->title }}</h5>
+                    <div class="question-stem mb-3 fs-5">{!! $question->title !!}</div>
                     
                     @if($question->content)
                         <div class="text-muted mb-3">{!! $question->content !!}</div>

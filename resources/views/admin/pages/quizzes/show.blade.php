@@ -342,7 +342,7 @@
                                                     <i class="bi {{ $question->type_icon }} me-1"></i>
                                                     {{ $question->type_name }}
                                                 </span>
-                                                <p class="mb-0">{{ Str::limit($question->title, 100) }}</p>
+                                                <p class="mb-0">{{ Str::limit(strip_tags($question->title), 100) }}</p>
                                             </div>
                                         </div>
                                         <div class="d-flex align-items-center gap-2">

@@ -116,6 +116,16 @@
     </div>
 </div>
 </div>
+
+<!-- معاينة الصورة (بدون Bootstrap Modal — يعمل دائماً) -->
+<div id="studentQuestionImageLightbox" class="student-q-img-lightbox" hidden>
+    <div class="student-q-img-lightbox__backdrop" role="presentation"></div>
+    <button type="button" class="student-q-img-lightbox__close" aria-label="إغلاق">&times;</button>
+    <div class="student-q-img-lightbox__inner">
+        <img id="studentQuestionImageLightboxImg" src="" alt="">
+    </div>
+</div>
+
 <!-- End::app-content -->
 @endsection
 
@@ -207,6 +217,79 @@
     }
     #question-content {
         min-height: 200px;
+    }
+    /* جوال: عرض كامل | شاشات ≥768px: 600px كحد أقصى */
+    #question-content .question-stem img,
+    #question-content .question-content-html img,
+    #question-content .option-item img {
+        max-width: 100% !important;
+        width: 100% !important;
+        height: auto !important;
+        cursor: pointer;
+        display: block;
+        border-radius: 0.25rem;
+        box-sizing: border-box;
+    }
+    @media (min-width: 768px) {
+        #question-content .question-stem img,
+        #question-content .question-content-html img,
+        #question-content .option-item img {
+            max-width: 600px !important;
+            width: auto !important;
+        }
+    }
+
+    .student-q-img-lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 999999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+    .student-q-img-lightbox[hidden] {
+        display: none !important;
+    }
+    .student-q-img-lightbox__backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.88);
+        cursor: pointer;
+    }
+    .student-q-img-lightbox__close {
+        position: fixed;
+        z-index: 1000000;
+        top: 1rem;
+        inset-inline-start: 1rem;
+        width: 2.75rem;
+        height: 2.75rem;
+        border: none;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.95);
+        color: #333;
+        font-size: 1.75rem;
+        line-height: 1;
+        cursor: pointer;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+    }
+    .student-q-img-lightbox__inner {
+        position: relative;
+        z-index: 1;
+        max-width: min(96vw, 1200px);
+        max-height: 90vh;
+        pointer-events: none;
+    }
+    .student-q-img-lightbox__inner img {
+        max-width: 100%;
+        max-height: 90vh;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        display: block;
+        margin: 0 auto;
+        border-radius: 0.35rem;
+        pointer-events: auto;
     }
     .form-check.p-4 {
         transition: all 0.2s ease;
@@ -433,14 +516,14 @@
         const contentDiv = document.getElementById('question-content');
         let html = '';
         
-        // عنوان السؤال
+        // عنوان السؤال (يُخزَّن كـ HTML من TinyMCE — لا نستخدم escapeHtml)
         if (question.title) {
-            html += `<h5 class="mb-3">${escapeHtml(question.title)}</h5>`;
+            html += `<div class="question-stem mb-3">${question.title}</div>`;
         }
         
         // محتوى السؤال (لا نعرضه لـ drag_drop و fill_blanks لأنها تحتاج معالجة خاصة)
         if (question.content && question.type !== 'drag_drop' && question.type !== 'fill_blank' && question.type !== 'fill_blanks') {
-            html += `<div class="mb-4 p-3 bg-light rounded">${escapeHtml(question.content)}</div>`;
+            html += `<div class="mb-4 p-3 bg-light rounded question-content-html">${question.content}</div>`;
         } else if (question.content && question.type === 'drag_drop') {
             // Extract text content without drop-zones div for drag_drop
             const tempDiv = document.createElement('div');
@@ -452,7 +535,7 @@
                     html += `<div class="mb-4 p-3 bg-light rounded">${escapeHtml(textContent)}</div>`;
                 }
             } else {
-                html += `<div class="mb-4 p-3 bg-light rounded">${escapeHtml(question.content)}</div>`;
+                html += `<div class="mb-4 p-3 bg-light rounded question-content-html">${question.content}</div>`;
             }
         }
         // Note: fill_blank/fill_blanks content is handled inside renderFillBlank
@@ -512,6 +595,14 @@
         div.textContent = text;
         return div.innerHTML;
     }
+
+    /** نص عادي من HTML (لعناصر مثل &lt;option&gt; لا تدعم وسوماً) */
+    function plainTextFromHtml(html) {
+        if (!html) return '';
+        const div = document.createElement('div');
+        div.innerHTML = html;
+        return div.textContent || div.innerText || '';
+    }
     
     function renderSingleChoice(question, answer) {
         // Handle both array and string formats for selected_options
@@ -535,7 +626,7 @@
                     <input class="form-check-input" type="radio" name="answer_${question.id}" 
                            id="opt_${opt.id}" value="${opt.id}" ${isChecked}>
                     <label class="form-check-label w-100 cursor-pointer" for="opt_${opt.id}">
-                        ${escapeHtml(opt.content)}
+                        ${opt.content || ''}
                     </label>
                 </div>
             `;
@@ -568,7 +659,7 @@
                     <input class="form-check-input" type="checkbox" name="answer_${question.id}[]" 
                            id="opt_${opt.id}" value="${opt.id}" ${isChecked}>
                     <label class="form-check-label w-100 cursor-pointer" for="opt_${opt.id}">
-                        ${escapeHtml(opt.content)}
+                        ${opt.content || ''}
                     </label>
                 </div>
             `;
@@ -636,14 +727,14 @@
                     <input class="form-check-input" type="radio" name="answer_${question.id}" 
                            id="option_${trueOption.id}" value="${trueOption.id}" ${trueChecked}>
                     <label class="form-check-label w-100 cursor-pointer fs-5" for="option_${trueOption.id}">
-                        <i class="bi bi-check-circle text-success me-2"></i> ${escapeHtml(trueOption.content || 'صحيح')}
+                        <i class="bi bi-check-circle text-success me-2"></i> ${trueOption.content || 'صحيح'}
                     </label>
                 </div>
                 <div class="form-check p-4 border rounded flex-fill text-center ${falseChecked ? 'border-danger bg-danger-transparent' : ''}">
                     <input class="form-check-input" type="radio" name="answer_${question.id}" 
                            id="option_${falseOption.id}" value="${falseOption.id}" ${falseChecked}>
                     <label class="form-check-label w-100 cursor-pointer fs-5" for="option_${falseOption.id}">
-                        <i class="bi bi-x-circle text-danger me-2"></i> ${escapeHtml(falseOption.content || 'خطأ')}
+                        <i class="bi bi-x-circle text-danger me-2"></i> ${falseOption.content || 'خطأ'}
                     </label>
                 </div>
             `;
@@ -700,7 +791,7 @@
                     <input class="form-check-input" type="checkbox" name="answer_${question.id}[]" 
                            id="opt_${opt.id}" value="${opt.id}" ${isChecked}>
                     <label class="form-check-label w-100 cursor-pointer" for="opt_${opt.id}">
-                        ${escapeHtml(opt.content)}
+                        ${opt.content || ''}
                     </label>
                 </div>
             `;
@@ -728,12 +819,12 @@
                 <div class="col-12 mb-3">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-fill p-3 border rounded bg-light">
-                            ${escapeHtml(leftOpt.content)}
+                            ${leftOpt.content || ''}
                         </div>
                         <i class="bi bi-arrow-left-right text-primary"></i>
                         <select class="form-select flex-fill" name="matching_${question.id}[${leftOpt.id}]">
                             <option value="">-- اختر --</option>
-                            ${rightOptions.map(r => `<option value="${r.id}" ${selectedValue == r.id ? 'selected' : ''}>${escapeHtml(r.content)}</option>`).join('')}
+                            ${rightOptions.map(r => `<option value="${r.id}" ${selectedValue == r.id ? 'selected' : ''}>${escapeHtml(plainTextFromHtml(r.content))}</option>`).join('')}
                         </select>
                     </div>
                 </div>
@@ -774,7 +865,7 @@
                     draggable="true">
                     <span class="badge bg-primary rounded-pill order-number">${idx + 1}</span>
                     <i class="bi bi-grip-vertical text-muted cursor-move"></i>
-                    <span class="flex-grow-1">${escapeHtml(opt.content)}</span>
+                    <span class="flex-grow-1">${opt.content || ''}</span>
                 </li>
             `;
         });
@@ -880,7 +971,7 @@
                      data-zone-id="${zoneId || ''}"
                      id="drag-item-${question.id}-${opt.id}">
                     <i class="bi bi-grip-vertical me-2"></i>
-                    ${escapeHtml(opt.content)}
+                    ${opt.content || ''}
                 </div>
             `;
         });
@@ -909,7 +1000,7 @@
                                 if (!opt) return '';
                                 return `
                                     <div class="dropped-item badge bg-success p-2 mb-2 me-1" data-item-id="${itemId}">
-                                        ${escapeHtml(opt.content)}
+                                        ${opt.content || ''}
                                         <button type="button" class="btn-close btn-close-white ms-2" onclick="removeFromZone(${question.id}, ${itemId})"></button>
                                     </div>
                                 `;
@@ -958,7 +1049,7 @@
                 droppedItem.className = 'dropped-item badge bg-success p-2 mb-2 me-1';
                 droppedItem.dataset.itemId = itemId;
                 droppedItem.innerHTML = `
-                    ${escapeHtml(opt.content)}
+                    ${opt.content || ''}
                     <button type="button" class="btn-close btn-close-white ms-2" onclick="removeFromZone(${questionId}, ${itemId})"></button>
                 `;
                 droppedItemsEl.appendChild(droppedItem);
@@ -1384,12 +1475,64 @@
         @endif
     }
 
-    document.getElementById('submit-quiz-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const form = this;
-        const savePromises = questions.map(question => saveCurrentAnswer(question));
-        Promise.all(savePromises).then(() => { form.submit(); });
-    });
+    (function () {
+        const submitForm = document.getElementById('submit-quiz-form');
+        if (submitForm) {
+            submitForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const form = this;
+                const savePromises = questions.map(question => saveCurrentAnswer(question));
+                Promise.all(savePromises).then(() => { form.submit(); });
+            });
+        }
+    })();
+
+    (function setupQuestionImageLightbox() {
+        var bound = false;
+        function bind() {
+            if (bound) return;
+            var box = document.getElementById('studentQuestionImageLightbox');
+            var bigImg = document.getElementById('studentQuestionImageLightboxImg');
+            var root = document.getElementById('question-content') || document.getElementById('student-question-card');
+            if (!box || !bigImg || !root) return;
+            bound = true;
+            if (box.parentNode !== document.body) {
+                document.body.appendChild(box);
+            }
+            var backdrop = box.querySelector('.student-q-img-lightbox__backdrop');
+            var closeBtn = box.querySelector('.student-q-img-lightbox__close');
+            function openLb(src, alt) {
+                bigImg.src = src;
+                bigImg.alt = alt || '';
+                box.removeAttribute('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+            function closeLb() {
+                box.setAttribute('hidden', '');
+                bigImg.removeAttribute('src');
+                bigImg.alt = '';
+                document.body.style.overflow = '';
+            }
+            document.addEventListener('click', function(e) {
+                if (!e.target || !e.target.closest) return;
+                var img = e.target.closest('img');
+                if (!img || !root.contains(img)) return;
+                openLb(img.currentSrc || img.src, img.alt);
+            }, true);
+            if (backdrop) backdrop.addEventListener('click', closeLb);
+            if (closeBtn) closeBtn.addEventListener('click', closeLb);
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && !box.hasAttribute('hidden')) {
+                    closeLb();
+                }
+            });
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', bind);
+        } else {
+            bind();
+        }
+    })();
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initQuiz);

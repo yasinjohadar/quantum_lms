@@ -26,7 +26,10 @@
                     </div>
                     <div class="card-body">
                         <p><strong>نوع السؤال:</strong> {{ \App\Models\Question::TYPES[$solution->question->type] ?? $solution->question->type }}</p>
-                        <p><strong>السؤال:</strong> {{ $solution->question->title ?? $solution->question->content }}</p>
+                        <div class="mb-3">
+                            <strong class="d-block mb-1">السؤال:</strong>
+                            <div class="question-stem">{!! $solution->question->title ?? $solution->question->content ?? '' !!}</div>
+                        </div>
                                         @if($solution->question->options && $solution->question->options->count() > 0)
                                             <p><strong>الخيارات:</strong></p>
                                             <ul>

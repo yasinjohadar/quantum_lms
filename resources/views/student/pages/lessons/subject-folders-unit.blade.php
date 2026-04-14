@@ -151,7 +151,7 @@
                             <h2 class="accordion-header" id="question-heading-{{ $question->id }}">
                                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#question-{{ $question->id }}" aria-expanded="false">
                                     <i class="bi bi-question-circle me-2 text-info"></i>
-                                    {{ $question->title ?? \Illuminate\Support\Str::limit($question->content, 50) }}
+                                    {{ \Illuminate\Support\Str::limit(strip_tags($question->title ?? $question->content ?? ''), 50) }}
                                 </button>
                             </h2>
                             <div id="question-{{ $question->id }}" class="accordion-collapse collapse" data-bs-parent="#unitQuestionsAccordion">

@@ -42,6 +42,7 @@
 
     <div class="page">
 
+        @include('partials.server-realtime-hints')
 
         @include('admin.layouts.main-header')
 

@@ -36,6 +36,7 @@
 
     <div class="page">
 
+        @include('partials.server-realtime-hints')
 
         @include('student.layouts.main-header')
 

@@ -7,7 +7,6 @@ use App\Models\PointTransaction;
 use App\Models\Badge;
 use App\Models\Achievement;
 use App\Models\Level;
-use App\Models\User;
 use App\Models\SystemSetting;
 use App\Services\GamificationService;
 use Illuminate\Http\Request;
@@ -28,7 +27,9 @@ class GamificationController extends Controller
             'total_badges' => Badge::active()->count(),
             'total_achievements' => Achievement::active()->count(),
             'total_levels' => Level::count(),
-            'total_users_with_points' => PointTransaction::distinct('user_id')->count(),
+            'total_users_with_points' => (int) PointTransaction::query()
+                ->selectRaw('COUNT(DISTINCT user_id) as cnt')
+                ->value('cnt'),
         ];
 
         return view('admin.pages.gamification.index', compact('stats'));

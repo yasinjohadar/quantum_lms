@@ -179,10 +179,10 @@
                                 <div class="flex-grow-1">
                                     <div class="d-flex justify-content-between align-items-start mb-2">
                                         <div>
-                                            <h6 class="mb-1">
+                                            <div class="mb-1 question-stem">
                                                 <span class="badge bg-secondary me-2">#{{ $index + 1 }}</span>
-                                                {{ $question->title }}
-                                            </h6>
+                                                {!! $question->title !!}
+                                            </div>
                                             @if($question->content)
                                                 <p class="text-muted small mb-0">{{ Str::limit(strip_tags($question->content), 150) }}</p>
                                             @endif

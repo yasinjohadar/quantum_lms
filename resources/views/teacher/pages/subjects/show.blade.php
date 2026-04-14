@@ -446,7 +446,7 @@
                                                                                                     <i class="bi {{ $question->type_icon }} text-white small"></i>
                                                                                                 </div>
                                                                                                 <div class="flex-grow-1">
-                                                                                                    <p class="mb-0 small fw-medium">{{ Str::limit($question->title, 60) }}</p>
+                                                                                                    <p class="mb-0 small fw-medium">{{ Str::limit(strip_tags($question->title), 60) }}</p>
                                                                                                     <div class="d-flex align-items-center gap-2 mt-1">
                                                                                                         <span class="badge bg-{{ $question->type_color }}-transparent text-{{ $question->type_color }}" style="font-size:0.6rem;">
                                                                                                             {{ $question->type_name }}
@@ -1607,7 +1607,7 @@
                                                     {{ $question->default_points }} نقطة
                                                 </span>
                                             </div>
-                                            <p class="mb-0 fw-semibold">{{ Str::limit($question->title, 100) }}</p>
+                                            <p class="mb-0 fw-semibold">{{ Str::limit(strip_tags($question->title), 100) }}</p>
                                         </div>
                                         <div class="d-flex gap-1">
                                             @can('question-show')

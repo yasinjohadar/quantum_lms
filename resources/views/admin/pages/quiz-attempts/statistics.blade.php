@@ -165,7 +165,7 @@
                         <tbody>
                             @foreach($hardestQuestions as $question)
                                 <tr>
-                                    <td>{{ Str::limit($question->title, 50) }}</td>
+                                    <td>{{ Str::limit(strip_tags($question->title), 50) }}</td>
                                     <td>
                                         <span class="badge bg-{{ $question->type_color }}-transparent text-{{ $question->type_color }}">
                                             {{ $question->type_name }}

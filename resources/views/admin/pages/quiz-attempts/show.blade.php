@@ -145,7 +145,7 @@
                                 </div>
                             </div>
                             
-                            <h6 class="mb-3">{{ $answer->question->title }}</h6>
+                            <div class="question-stem mb-3">{!! $answer->question->title !!}</div>
                             
                             {{-- عرض الإجابة حسب نوع السؤال --}}
                             @if(in_array($answer->question->type, ['single_choice', 'multiple_choice', 'true_false']))
