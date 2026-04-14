@@ -3,7 +3,6 @@ import Pusher from 'pusher-js';
 
 window.Pusher = Pusher;
 
-const key = import.meta.env.VITE_REVERB_APP_KEY;
 function normalizeReverbHost(h) {
     if (h == null || h === '') {
         return null;
@@ -12,10 +11,28 @@ function normalizeReverbHost(h) {
         .replace(/^https?:\/\//i, '')
         .replace(/\/$/, '');
 }
+
+/** يُحقَن من Laravel (config/echo-client.php) — يتجاوز قيم Vite المخزّنة في build */
+const runtimeCfg =
+    typeof window !== 'undefined' &&
+    window.__echoReverbConfig &&
+    typeof window.__echoReverbConfig === 'object'
+        ? window.__echoReverbConfig
+        : null;
+
+const key = runtimeCfg?.app_key || import.meta.env.VITE_REVERB_APP_KEY;
 const wsHost =
-    normalizeReverbHost(import.meta.env.VITE_REVERB_HOST) || window.location.hostname;
-const port = import.meta.env.VITE_REVERB_PORT ? parseInt(import.meta.env.VITE_REVERB_PORT, 10) : 8080;
-const scheme = import.meta.env.VITE_REVERB_SCHEME ?? 'http';
+    normalizeReverbHost(runtimeCfg?.host ?? import.meta.env.VITE_REVERB_HOST) ||
+    window.location.hostname;
+const port = (() => {
+    const p = runtimeCfg?.port ?? import.meta.env.VITE_REVERB_PORT;
+    if (p !== undefined && p !== null && p !== '') {
+        const n = parseInt(String(p), 10);
+        return Number.isFinite(n) ? n : 8080;
+    }
+    return 8080;
+})();
+const scheme = runtimeCfg?.scheme ?? import.meta.env.VITE_REVERB_SCHEME ?? 'http';
 const forceTLS = scheme === 'https';
 
 function escapeHtml(text) {

@@ -12,6 +12,9 @@
     @auth
     {{-- يتطلب npm run build على السيرفر أو رفع public/build؛ وإلا يُتخطى (بدون إشعارات Echo فقط) --}}
     @if (file_exists(public_path('hot')) || file_exists(public_path('build/manifest.json')))
+        <script>
+            window.__echoReverbConfig = @json(config('echo-client'));
+        </script>
         @vite(['resources/js/echo-notifications.js'])
     @endif
     @endauth
