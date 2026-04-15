@@ -70,7 +70,7 @@ header .navbar-nav .nav-link {
                             <i class="fa-solid fa-tachometer-alt"></i>
                         </a>
                     @else
-                        <a href="/login" role="button">
+                        <a href="{{ route('student.login') }}" role="button">
                             <span>تسجيل الدخول</span>
                             <i class="fa-solid fa-user"></i>
                         </a>
@@ -116,7 +116,7 @@ header .navbar-nav .nav-link {
                         <i class="fa-solid fa-tachometer-alt"></i>
                     </a>
                 @else
-                    <a href="{{ route('login') }}" class="navbar-toggler menu-icon" style="border:none!important;outline:none!important;box-shadow:none!important;background:transparent!important;">
+                    <a href="{{ route('student.login') }}" class="navbar-toggler menu-icon" style="border:none!important;outline:none!important;box-shadow:none!important;background:transparent!important;">
                         <i class="fa-solid fa-user"></i>
                     </a>
                 @endauth
