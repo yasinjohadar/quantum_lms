@@ -38,9 +38,30 @@ class AuthenticatedSessionController extends Controller
     }
 
     /**
+     * Display the student login view.
+     */
+    public function createStudent(): View
+    {
+        return view('auth.student-login');
+    }
+
+    /**
      * Handle an incoming authentication request.
      */
     public function store(LoginRequest $request): RedirectResponse
+    {
+        return $this->attemptLogin($request, false);
+    }
+
+    /**
+     * Handle an incoming student authentication request.
+     */
+    public function storeStudent(LoginRequest $request): RedirectResponse
+    {
+        return $this->attemptLogin($request, true);
+    }
+
+    private function attemptLogin(LoginRequest $request, bool $studentOnly): RedirectResponse
     {
         try {
             $request->authenticate();
@@ -53,6 +74,20 @@ class AuthenticatedSessionController extends Controller
 
         // التحقق من أن المستخدم نشط
         $user = Auth::user();
+
+        if ($studentOnly && !$user->hasRole('student')) {
+            LoginLogService::logLogin($user, $request, false, 'Non-student user tried student login');
+            $this->auditLogService->logLoginAttempt($user, false, ['reason' => 'non_student_on_student_login'], $request);
+
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()->withErrors([
+                $request->errorField() => 'هذه الصفحة مخصصة لحسابات الطلاب فقط.',
+            ]);
+        }
+
         if (!$user->is_active) {
             // تسجيل محاولة دخول فاشلة
             LoginLogService::logLogin($user, $request, false, 'Account is inactive');
@@ -63,7 +98,7 @@ class AuthenticatedSessionController extends Controller
             $request->session()->regenerateToken();
             
             return back()->withErrors([
-                'email' => 'تم إلغاء تفعيل حسابك. يرجى التواصل مع الإدارة.',
+                $request->errorField() => 'تم إلغاء تفعيل حسابك. يرجى التواصل مع الإدارة.',
             ]);
         }
 

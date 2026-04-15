@@ -194,6 +194,17 @@ class StudentLessonController extends Controller
             ->where('is_active', true)
             ->where('review_status', Lesson::REVIEW_STATUS_APPROVED)
             ->orderBy('order')
+            ->with([
+                'quizzes' => function ($q) {
+                    $q->where('is_active', true)
+                        ->where('is_published', true)
+                        ->where('review_status', Quiz::REVIEW_STATUS_APPROVED)
+                        ->orderBy('order');
+                },
+                'attachments' => function ($q) {
+                    $q->where('is_active', true)->orderBy('order');
+                },
+            ])
             ->get();
         $directQuizzes = Quiz::where('section_id', $section->id)
             ->whereNull('unit_id')
@@ -207,7 +218,6 @@ class StudentLessonController extends Controller
         $firstLessonWithVideo = null;
 
         // الاختبارات تظهر داخل صفحة الوحدة فقط، لا نجمع sectionQuizzes في صفحة القسم
-        // الفيديو يظهر فقط داخل صفحة الوحدة، لا نحسب firstLessonWithVideo في صفحة القسم
 
         return view('student.pages.lessons.subject-folders-section', compact('subject', 'section', 'children', 'units', 'sectionQuizzes', 'firstLessonWithVideo', 'directLessons', 'directQuizzes'));
     }

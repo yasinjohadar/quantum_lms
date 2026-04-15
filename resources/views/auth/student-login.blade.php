@@ -1,85 +1,68 @@
 @extends('auth.layouts.glass')
 
-@section('title', 'إنشاء حساب - Quantum LMS')
-@section('brand-subtitle', 'بوابة التسجيل')
+@section('title', 'دخول الطالب - Quantum LMS')
+@section('brand-subtitle', 'بوابة الطلاب')
 
 @section('content')
     <div class="auth-heading">
-        <div class="auth-badge">إنشاء حساب جديد</div>
-        <h1>انضم إلى Quantum LMS</h1>
-        <p>سجل بياناتك للوصول إلى لوحة الإدارة بتجربة حديثة وآمنة.</p>
+        <div class="auth-badge">دخول الطلاب</div>
+        <h1>مرحبًا بك</h1>
+        <p>سجّل الدخول برقم الهاتف وكلمة المرور لمتابعة الدراسة.</p>
     </div>
 
-    @if ($errors->any())
-        <div class="auth-alert auth-alert-danger">
-            يرجى مراجعة الحقول وتصحيح الأخطاء قبل المتابعة.
-        </div>
+    @if (session('status'))
+        <div class="auth-alert auth-alert-success">{{ session('status') }}</div>
     @endif
 
-    <form method="POST" action="{{ route('register') }}">
+    @if ($errors->any())
+        <div class="auth-alert auth-alert-danger">تعذر تسجيل الدخول، يرجى التحقق من البيانات ثم المحاولة مرة أخرى.</div>
+    @endif
+
+    <form method="POST" action="{{ route('student.login.store') }}">
         @csrf
 
-        <div class="auth-field">
-            <label class="auth-label" for="name">الاسم الكامل</label>
-            <div class="auth-control">
-                <input id="name" class="auth-input @error('name') invalid @enderror" type="text" name="name" value="{{ old('name') }}" required autofocus autocomplete="name" placeholder="اكتب اسمك الكامل">
-                <span class="auth-icon">👤</span>
-            </div>
-            @error('name') <div class="auth-error">{{ $message }}</div> @enderror
-        </div>
-
-        <div class="auth-field">
-            <label class="auth-label" for="email">البريد الإلكتروني</label>
-            <div class="auth-control">
-                <input id="email" class="auth-input @error('email') invalid @enderror" type="email" name="email" value="{{ old('email') }}" required autocomplete="username" placeholder="name@example.com">
-                <span class="auth-icon">✉</span>
-            </div>
-            @error('email') <div class="auth-error">{{ $message }}</div> @enderror
-        </div>
-
         @include('auth.partials.phone-country-field', [
-            'label' => 'رقم الهاتف' . ((isset($phoneVerificationEnabled) && $phoneVerificationEnabled) ? ' *' : ''),
+            'label' => 'رقم الهاتف',
             'countryCodeName' => 'country_code',
             'manualCodeName' => 'manual_country_code',
             'phoneName' => 'phone',
-            'countryCodeId' => 'register_country_code',
-            'manualCodeId' => 'register_manual_country_code',
-            'phoneId' => 'register_phone',
-            'required' => isset($phoneVerificationEnabled) && $phoneVerificationEnabled,
+            'countryCodeId' => 'student_country_code',
+            'manualCodeId' => 'student_manual_country_code',
+            'phoneId' => 'student_phone',
+            'required' => true,
         ])
-
-        <div class="auth-meta" style="margin-top:6px;">
-            يتم حفظ الرقم بصيغة دولية كاملة مع رمز الدولة.
-            @if(isset($phoneVerificationEnabled) && $phoneVerificationEnabled)
-                - مطلوب للتحقق من الحساب
-            @endif
-        </div>
 
         <div class="auth-field">
             <label class="auth-label" for="password">كلمة المرور</label>
             <div class="auth-control">
-                <input id="password" class="auth-input @error('password') invalid @enderror" type="password" name="password" required autocomplete="new-password" placeholder="أدخل كلمة مرور قوية">
+                <input id="password" class="auth-input @error('password') invalid @enderror" type="password" name="password" required autocomplete="current-password" placeholder="أدخل كلمة المرور">
                 <span class="auth-icon">🔒</span>
                 <button type="button" class="password-toggle" data-target="password" aria-label="إظهار أو إخفاء كلمة المرور">👁</button>
             </div>
             @error('password') <div class="auth-error">{{ $message }}</div> @enderror
         </div>
 
-        <div class="auth-field">
-            <label class="auth-label" for="password_confirmation">تأكيد كلمة المرور</label>
-            <div class="auth-control">
-                <input id="password_confirmation" class="auth-input @error('password_confirmation') invalid @enderror" type="password" name="password_confirmation" required autocomplete="new-password" placeholder="أعد كتابة كلمة المرور">
-                <span class="auth-icon">🔒</span>
-                <button type="button" class="password-toggle" data-target="password_confirmation" aria-label="إظهار أو إخفاء كلمة المرور">👁</button>
-            </div>
-            @error('password_confirmation') <div class="auth-error">{{ $message }}</div> @enderror
+        <div class="auth-row">
+            <label class="auth-checkbox" for="remember_me">
+                <input id="remember_me" type="checkbox" name="remember">
+                <span>تذكرني</span>
+            </label>
+            @if (Route::has('password.request'))
+                <a class="auth-link" href="{{ route('password.request') }}">نسيت كلمة المرور؟</a>
+            @endif
         </div>
 
-        <button type="submit" class="auth-btn">إنشاء حساب</button>
+        <button type="submit" class="auth-btn">دخول الطالب</button>
 
         <div class="auth-meta">
-            لديك حساب بالفعل؟
-            <a href="{{ route('login') }}" class="auth-link">تسجيل الدخول</a>
+            التحقق عبر واتساب يتم مرة واحدة فقط بعد التسجيل الأول.
+            <br>
+            <a class="auth-link" href="{{ route('login') }}">دخول الإدارة والمشرفين</a>
+            <br>
+            @if (Route::has('register'))
+                لا تملك حسابًا؟
+                <a class="auth-link" href="{{ route('register') }}">إنشاء حساب جديد</a>
+            @endif
         </div>
     </form>
 @endsection

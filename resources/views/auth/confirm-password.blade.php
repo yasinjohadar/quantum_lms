@@ -1,27 +1,45 @@
-<x-guest-layout>
-    <div class="mb-4 text-sm text-gray-600">
-        {{ __('This is a secure area of the application. Please confirm your password before continuing.') }}
+@extends('auth.layouts.glass')
+
+@section('title', 'تأكيد كلمة المرور - Quantum LMS')
+@section('brand-subtitle', 'منطقة آمنة')
+
+@section('content')
+    <div class="auth-heading">
+        <div class="auth-badge">تأكيد الهوية</div>
+        <h1>تأكيد كلمة المرور</h1>
+        <p>هذه منطقة حساسة. أدخل كلمة مرورك للمتابعة.</p>
     </div>
+
+    @if ($errors->any())
+        <div class="auth-alert auth-alert-danger">{{ $errors->first() }}</div>
+    @endif
 
     <form method="POST" action="{{ route('password.confirm') }}">
         @csrf
-
-        <!-- Password -->
-        <div>
-            <x-input-label for="password" :value="__('Password')" />
-
-            <x-text-input id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="current-password" />
-
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
+        <div class="auth-field">
+            <label class="auth-label" for="password">كلمة المرور</label>
+            <div class="auth-control">
+                <input id="password" class="auth-input @error('password') invalid @enderror" type="password" name="password" required autocomplete="current-password" placeholder="أدخل كلمة المرور الحالية">
+                <span class="auth-icon">🔒</span>
+                <button type="button" class="password-toggle" data-target="password" aria-label="إظهار أو إخفاء كلمة المرور">👁</button>
+            </div>
+            @error('password') <div class="auth-error">{{ $message }}</div> @enderror
         </div>
 
-        <div class="flex justify-end mt-4">
-            <x-primary-button>
-                {{ __('Confirm') }}
-            </x-primary-button>
-        </div>
+        <button class="auth-btn" type="submit">تأكيد</button>
     </form>
-</x-guest-layout>
+@endsection
+
+@push('scripts')
+<script>
+    document.querySelectorAll('.password-toggle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const target = document.getElementById(btn.getAttribute('data-target'));
+            if (!target) return;
+            const isPassword = target.type === 'password';
+            target.type = isPassword ? 'text' : 'password';
+            btn.textContent = isPassword ? '🙈' : '👁';
+        });
+    });
+</script>
+@endpush

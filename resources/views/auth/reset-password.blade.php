@@ -1,39 +1,66 @@
-<x-guest-layout>
+@extends('auth.layouts.glass')
+
+@section('title', 'إعادة تعيين كلمة المرور - Quantum LMS')
+@section('brand-subtitle', 'أمان الحساب')
+
+@section('content')
+    <div class="auth-heading">
+        <div class="auth-badge">إعادة تعيين آمنة</div>
+        <h1>تعيين كلمة مرور جديدة</h1>
+        <p>أدخل بياناتك التالية لإكمال استعادة الحساب.</p>
+    </div>
+
+    @if ($errors->any())
+        <div class="auth-alert auth-alert-danger">{{ $errors->first() }}</div>
+    @endif
+
     <form method="POST" action="{{ route('password.store') }}">
         @csrf
-
-        <!-- Password Reset Token -->
         <input type="hidden" name="token" value="{{ $request->route('token') }}">
 
-        <!-- Email Address -->
-        <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email', $request->email)" required autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
+        <div class="auth-field">
+            <label class="auth-label" for="email">البريد الإلكتروني</label>
+            <div class="auth-control">
+                <input id="email" class="auth-input @error('email') invalid @enderror" type="email" name="email" value="{{ old('email', $request->email) }}" required autofocus autocomplete="username" placeholder="name@example.com">
+                <span class="auth-icon">✉</span>
+            </div>
+            @error('email') <div class="auth-error">{{ $message }}</div> @enderror
         </div>
 
-        <!-- Password -->
-        <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
-            <x-text-input id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="new-password" />
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
+        <div class="auth-field">
+            <label class="auth-label" for="password">كلمة المرور الجديدة</label>
+            <div class="auth-control">
+                <input id="password" class="auth-input @error('password') invalid @enderror" type="password" name="password" required autocomplete="new-password" placeholder="كلمة مرور جديدة">
+                <span class="auth-icon">🔒</span>
+                <button type="button" class="password-toggle" data-target="password" aria-label="إظهار أو إخفاء كلمة المرور">👁</button>
+            </div>
+            @error('password') <div class="auth-error">{{ $message }}</div> @enderror
         </div>
 
-        <!-- Confirm Password -->
-        <div class="mt-4">
-            <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
-
-            <x-text-input id="password_confirmation" class="block mt-1 w-full"
-                                type="password"
-                                name="password_confirmation" required autocomplete="new-password" />
-
-            <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
+        <div class="auth-field">
+            <label class="auth-label" for="password_confirmation">تأكيد كلمة المرور</label>
+            <div class="auth-control">
+                <input id="password_confirmation" class="auth-input @error('password_confirmation') invalid @enderror" type="password" name="password_confirmation" required autocomplete="new-password" placeholder="أعد كتابة كلمة المرور">
+                <span class="auth-icon">🔒</span>
+                <button type="button" class="password-toggle" data-target="password_confirmation" aria-label="إظهار أو إخفاء كلمة المرور">👁</button>
+            </div>
+            @error('password_confirmation') <div class="auth-error">{{ $message }}</div> @enderror
         </div>
 
-        <div class="flex items-center justify-end mt-4">
-            <x-primary-button>
-                {{ __('Reset Password') }}
-            </x-primary-button>
-        </div>
+        <button class="auth-btn" type="submit">حفظ كلمة المرور</button>
     </form>
-</x-guest-layout>
+@endsection
+
+@push('scripts')
+<script>
+    document.querySelectorAll('.password-toggle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const target = document.getElementById(btn.getAttribute('data-target'));
+            if (!target) return;
+            const isPassword = target.type === 'password';
+            target.type = isPassword ? 'text' : 'password';
+            btn.textContent = isPassword ? '🙈' : '👁';
+        });
+    });
+</script>
+@endpush

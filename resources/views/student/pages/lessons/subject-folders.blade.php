@@ -16,7 +16,7 @@
                         @foreach($sections as $section)
                             <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-sm-6">
                                 <a href="{{ route('student.subjects.folders.section', [$subject, $section]) }}" class="text-decoration-none text-reset">
-                                    <div class="card custom-card h-100 border folder-card">
+                                    <div class="card custom-card border folder-card">
                                         <div class="card-body text-center py-4">
                                             <i class="bi bi-folder2-open text-warning" style="font-size: 3rem;"></i>
                                             <h6 class="card-title mt-2 mb-1 fw-semibold">{{ $section->title }}</h6>
@@ -24,8 +24,9 @@
                                                 <p class="text-muted small mb-0">{{ \Illuminate\Support\Str::limit($section->description, 50) }}</p>
                                             @endif
                                         </div>
-                                    </a>
-                                </div>
+                                    </div>
+                                </a>
+                            </div>
                         @endforeach
                     </div>
                 </div>

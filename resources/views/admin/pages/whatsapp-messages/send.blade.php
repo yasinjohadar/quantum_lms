@@ -96,10 +96,11 @@
                                 <div class="mb-3" id="individual-placeholders-info" style="display: none;">
                                     <small class="text-muted">
                                         <strong>متغيرات متاحة عند اختيار طالب:</strong><br>
-                                        <code>{student_name}</code> - اسم الطالب<br>
-                                        <code>{student_email}</code> - بريد الطالب<br>
-                                        <code>{class_name}</code> - اسم الصف<br>
-                                        <code>{subject_name}</code> - اسم المادة
+                                        <code>@{{student_name}}</code> - اسم الطالب<br>
+                                        <code>@{{student_email}}</code> - بريد الطالب<br>
+                                        <code>@{{student_phone}}</code> - هاتف الطالب<br>
+                                        <code>@{{class_name}}</code> - اسم الصف<br>
+                                        <code>@{{subject_name}}</code> - اسم المادة
                                     </small>
                                 </div>
                             </div>
@@ -157,18 +158,37 @@
 
                             <div class="mb-3" id="message-field">
                                 <label for="message" class="form-label">الرسالة <span class="text-danger">*</span></label>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-8">
+                                        <select class="form-select" id="whatsapp_template_id" name="whatsapp_template_id">
+                                            <option value="">اختر قالب WhatsApp جاهز (اختياري)</option>
+                                            @foreach($templates as $template)
+                                                <option value="{{ $template->id }}" {{ old('whatsapp_template_id') == $template->id ? 'selected' : '' }}>
+                                                    {{ $template->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 d-grid">
+                                        <button type="button" class="btn btn-outline-primary" id="insert-template-btn">إدراج القالب في الرسالة</button>
+                                    </div>
+                                </div>
                                 <textarea class="form-control @error('message') is-invalid @enderror" id="message" name="message" rows="5">{{ old('message') }}</textarea>
                                 <div id="placeholders-info" style="display: none;" class="mt-2">
                                     <small class="text-muted">
                                         <strong>متغيرات متاحة للإرسال الجماعي:</strong><br>
-                                        <code>{student_name}</code> - اسم الطالب<br>
-                                        <code>{student_email}</code> - بريد الطالب<br>
-                                        <code>{class_name}</code> - اسم الصف<br>
-                                        <code>{subject_name}</code> - اسم المادة
+                                        <code>@{{student_name}}</code> - اسم الطالب<br>
+                                        <code>@{{student_email}}</code> - بريد الطالب<br>
+                                        <code>@{{student_phone}}</code> - هاتف الطالب<br>
+                                        <code>@{{class_name}}</code> - اسم الصف<br>
+                                        <code>@{{subject_name}}</code> - اسم المادة
                                     </small>
                                 </div>
                                 @error('message')
                                     <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                @error('whatsapp_template_id')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
                             </div>
 
@@ -237,6 +257,9 @@ $(document).ready(function() {
     const messageInput = document.getElementById('message');
     const templateNameInput = document.getElementById('template_name');
     const languageInput = document.getElementById('language');
+    const whatsappTemplateSelect = document.getElementById('whatsapp_template_id');
+    const insertTemplateBtn = document.getElementById('insert-template-btn');
+    const templateContentMap = @json($templates->pluck('content', 'id'));
 
     // Initialize Select2 for student search using jQuery
     jQuery(studentSearch).select2({
@@ -418,6 +441,25 @@ $(document).ready(function() {
     subjectSelect.addEventListener('change', updateStudentsCount);
     typeSelect.addEventListener('change', toggleMessageType);
 
+    if (insertTemplateBtn && whatsappTemplateSelect && messageInput) {
+        insertTemplateBtn.addEventListener('click', function() {
+            const selectedOption = whatsappTemplateSelect.options[whatsappTemplateSelect.selectedIndex];
+            if (!selectedOption || !selectedOption.value) {
+                alert('يرجى اختيار قالب أولاً');
+                return;
+            }
+
+            const content = templateContentMap[selectedOption.value] || '';
+            if (!content.trim()) {
+                alert('هذا القالب فارغ');
+                return;
+            }
+
+            messageInput.value = content;
+            messageInput.focus();
+        });
+    }
+
     // Initial state
     toggleSendType();
     toggleMessageType();
@@ -438,9 +480,10 @@ $(document).ready(function() {
 
         const messageFieldEl = document.getElementById('message');
         const typeSelectEl = document.getElementById('type');
-        if (typeSelectEl && typeSelectEl.value === 'text' && messageFieldEl && !messageFieldEl.value.trim()) {
+        const selectedTemplateId = whatsappTemplateSelect ? whatsappTemplateSelect.value : '';
+        if (typeSelectEl && typeSelectEl.value === 'text' && messageFieldEl && !messageFieldEl.value.trim() && !selectedTemplateId) {
             e.preventDefault();
-            alert('يرجى إدخال نص الرسالة');
+            alert('يرجى إدخال نص الرسالة أو اختيار قالب جاهز');
             return false;
         }
     });

@@ -203,9 +203,21 @@ class Lesson extends Model
             return "https://www.youtube.com/embed/{$youtubeId}";
         }
 
-        // لو الرابط هو Vimeo
+        // لو الرابط هو Vimeo (مع الحفاظ على ?h= للفيديوهات الخاصة/غير المدرجة)
         if ($vimeoId) {
-            return "https://player.vimeo.com/video/{$vimeoId}";
+            $embed = "https://player.vimeo.com/video/{$vimeoId}";
+            $query = [];
+            if (!empty($this->video_url)) {
+                $parsed = parse_url($this->video_url);
+                if (!empty($parsed['query'])) {
+                    parse_str($parsed['query'], $query);
+                }
+            }
+            if (!empty($query['h'])) {
+                $embed .= '?'.http_build_query(['h' => $query['h']]);
+            }
+
+            return $embed;
         }
 
         // للملفات المرفوعة
@@ -246,9 +258,18 @@ class Lesson extends Model
      */
     public static function extractVimeoId($url)
     {
-        $pattern = '/vimeo\.com\/(?:video\/)?(\d+)/';
-        preg_match($pattern, $url, $matches);
-        return $matches[1] ?? null;
+        if (!$url || !is_string($url)) {
+            return null;
+        }
+
+        // Supports most Vimeo URL formats, e.g.:
+        // vimeo.com/123, vimeo.com/channels/name/123, player.vimeo.com/video/123
+        $pattern = '/(?:player\.)?vimeo\.com\/(?:.*\/)?(\d+)(?:$|[?&#])/i';
+        if (preg_match($pattern, trim($url), $matches)) {
+            return $matches[1] ?? null;
+        }
+
+        return null;
     }
 
     /**

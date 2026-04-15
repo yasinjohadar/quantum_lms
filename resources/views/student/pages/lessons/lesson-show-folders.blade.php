@@ -308,8 +308,13 @@
     }
     function initVimeoProgress() {
         var iframe = document.getElementById('vimeo-player-iframe');
-        if (!iframe || typeof Vimeo === 'undefined') return;
-        vimeoPlayer = new Vimeo.Player(iframe);
+        if (!iframe || typeof Vimeo === 'undefined' || !Vimeo || !Vimeo.Player) return;
+        var src = iframe.getAttribute('src') || '';
+        if (src.indexOf('player.vimeo.com') === -1) return;
+        try {
+            vimeoPlayer = new Vimeo.Player(iframe);
+        } catch (e) { vimeoPlayer = null; return; }
+        try {
         vimeoPlayer.getDuration().then(function(duration) {
             vimeoPlayer.on('timeupdate', function(data) {
                 var sec = Math.floor(data.seconds);
@@ -323,19 +328,22 @@
             });
             vimeoPlayer.on('ended', function() { sendProgress(Math.floor(duration), Math.floor(duration), 100); });
         }).catch(function() {});
+        } catch (e) {}
         window.addEventListener('pagehide', function() {
             if (vimeoPlayer) {
-                vimeoPlayer.getCurrentTime().then(function(sec) {
-                    vimeoPlayer.getDuration().then(function(dur) {
-                        var pct = dur > 0 ? Math.min(100, (sec / dur) * 100) : 0;
-                        fetch(progressUrl, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                            body: JSON.stringify({ time_spent_seconds: Math.floor(sec), last_position_seconds: Math.floor(sec), progress_percentage: pct }),
-                            keepalive: true
+                try {
+                    vimeoPlayer.getCurrentTime().then(function(sec) {
+                        vimeoPlayer.getDuration().then(function(dur) {
+                            var pct = dur > 0 ? Math.min(100, (sec / dur) * 100) : 0;
+                            fetch(progressUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                                body: JSON.stringify({ time_spent_seconds: Math.floor(sec), last_position_seconds: Math.floor(sec), progress_percentage: pct }),
+                                keepalive: true
+                            }).catch(function() {});
                         }).catch(function() {});
-                    });
-                }).catch(function() {});
+                    }).catch(function() {});
+                } catch (e) {}
             }
         });
     }

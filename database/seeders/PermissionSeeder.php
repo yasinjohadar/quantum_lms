@@ -251,6 +251,10 @@ class PermissionSeeder extends Seeder
             ['name' => 'whats-app-message-list', 'description' => 'عرض قائمة رسائل WhatsApp'],
             ['name' => 'whats-app-message-send', 'description' => 'إرسال رسالة WhatsApp'],
             ['name' => 'whats-app-message-get-students-count', 'description' => 'الحصول على عدد الطلاب'],
+            ['name' => 'whats-app-template-list', 'description' => 'عرض قائمة قوالب WhatsApp'],
+            ['name' => 'whats-app-template-create', 'description' => 'إنشاء قالب WhatsApp'],
+            ['name' => 'whats-app-template-edit', 'description' => 'تعديل قالب WhatsApp'],
+            ['name' => 'whats-app-template-delete', 'description' => 'حذف قالب WhatsApp'],
 
             // صلاحيات إدارة البريد الإلكتروني
             ['name' => 'email-settings-list', 'description' => 'عرض إعدادات البريد الإلكتروني'],

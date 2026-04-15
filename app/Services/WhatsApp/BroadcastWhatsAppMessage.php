@@ -59,16 +59,23 @@ class BroadcastWhatsAppMessage
         ?Subject $subject = null,
         ?SchoolClass $class = null
     ): string {
-        $replacements = [
-            '{student_name}' => $student->name,
-            '{student_email}' => $student->email ?? '',
-            '{subject_name}' => '', // Default empty
-            '{class_name}' => '', // Default empty
-        ];
+        $variables = $this->buildTemplateVariables($student, $subject, $class);
 
-        // Get subject from student's enrollment if not provided
+        // Supports both modern {{variable}} and legacy {variable} placeholders.
+        foreach ($variables as $key => $value) {
+            $template = str_replace('{{' . $key . '}}', (string) ($value ?? ''), $template);
+            $template = str_replace('{' . $key . '}', (string) ($value ?? ''), $template);
+        }
+
+        return $template;
+    }
+
+    public function buildTemplateVariables(
+        User $student,
+        ?Subject $subject = null,
+        ?SchoolClass $class = null
+    ): array {
         if (!$subject && $class) {
-            // If class is provided but subject is not, get first subject from student's enrollments in this class
             $enrollment = $student->enrollments()
                 ->with('subject')
                 ->whereHas('subject', function ($q) use ($class) {
@@ -76,35 +83,28 @@ class BroadcastWhatsAppMessage
                 })
                 ->active()
                 ->first();
-            
+
             if ($enrollment && $enrollment->subject) {
                 $subject = $enrollment->subject;
             }
         } elseif (!$subject) {
-            // Try to get the first active enrollment's subject
             $enrollment = $student->enrollments()->with('subject')->active()->first();
             if ($enrollment && $enrollment->subject) {
                 $subject = $enrollment->subject;
             }
         }
 
-        if ($subject) {
-            $replacements['{subject_name}'] = $subject->name;
-            // Also get class from subject if not provided
-            if (!$class && $subject->schoolClass) {
-                $class = $subject->schoolClass;
-            }
+        if ($subject && !$class && $subject->schoolClass) {
+            $class = $subject->schoolClass;
         }
 
-        if ($class) {
-            $replacements['{class_name}'] = $class->name;
-        }
-
-        return str_replace(
-            array_keys($replacements),
-            array_values($replacements),
-            $template
-        );
+        return [
+            'student_name' => $student->name ?? '',
+            'student_email' => $student->email ?? '',
+            'student_phone' => $student->phone ?? '',
+            'subject_name' => $subject?->name ?? '',
+            'class_name' => $class?->name ?? '',
+        ];
     }
 }
 

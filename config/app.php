@@ -93,7 +93,7 @@ return [
     | becomes +966501234567). Set in .env as APP_PHONE_DEFAULT_COUNTRY_CODE=966
     |
     */
-    'phone_default_country_code' => env('APP_PHONE_DEFAULT_COUNTRY_CODE', '966'),
+    'phone_default_country_code' => env('APP_PHONE_DEFAULT_COUNTRY_CODE', '963'),
 
     /*
     |--------------------------------------------------------------------------

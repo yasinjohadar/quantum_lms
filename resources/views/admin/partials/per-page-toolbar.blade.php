@@ -1,7 +1,8 @@
 @if (isset($paginator) && $paginator instanceof \Illuminate\Pagination\LengthAwarePaginator)
     @php
         $currentPerPage = $paginator->perPage();
-        $presetPerPages = [25, 30, 40, 50, 75, 100];
+        $presetPerPages = isset($presetPerPages) && is_array($presetPerPages) ? $presetPerPages : [25, 30, 40, 50, 75, 100];
+        $customPerPageMax = isset($customPerPageMax) && is_numeric($customPerPageMax) ? (int) $customPerPageMax : 100;
         $isPreset = in_array($currentPerPage, $presetPerPages, true);
     @endphp
     <div id="perPageToolbarContainer" class="d-flex flex-wrap align-items-center gap-2">
@@ -20,7 +21,7 @@
                    class="form-control form-control-sm"
                    style="width: 5.5rem;"
                    min="1"
-                   max="100"
+                   max="{{ $customPerPageMax }}"
                    value="{{ $currentPerPage }}">
             <button type="button" id="applyCustomPerPage" class="btn btn-sm btn-outline-primary">تطبيق</button>
         </div>

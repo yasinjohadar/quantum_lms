@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Helpers\PhoneHelper;
 use App\Services\LoginLogService;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
@@ -27,8 +28,28 @@ class LoginRequest extends FormRequest
      */
     public function rules(): array
     {
+        if ($this->isStudentLoginRequest()) {
+            return [
+                'country_code' => ['required', 'string'],
+                'manual_country_code' => ['nullable', 'string', 'regex:/^\d{1,4}$/', 'required_if:country_code,other'],
+                'phone' => ['required', 'string'],
+                'password' => ['required', 'string'],
+            ];
+        }
+
+        if ($this->isAdminPhoneMode()) {
+            return [
+                'admin_auth_mode' => ['required', 'in:email,phone'],
+                'country_code' => ['required', 'string'],
+                'manual_country_code' => ['nullable', 'string', 'regex:/^\d{1,4}$/', 'required_if:country_code,other'],
+                'phone' => ['required', 'string'],
+                'password' => ['required', 'string'],
+            ];
+        }
+
         return [
-            'email' => ['required', 'string', 'email'],
+            'admin_auth_mode' => ['nullable', 'in:email,phone'],
+            'login' => ['required', 'string'],
             'password' => ['required', 'string'],
         ];
     }
@@ -42,11 +63,19 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $authenticated = false;
+        foreach ($this->resolveLoginCredentials() as $credentials) {
+            if (Auth::attempt($credentials, $this->boolean('remember'))) {
+                $authenticated = true;
+                break;
+            }
+        }
+
+        if (! $authenticated) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                $this->errorField() => trans('auth.failed'),
             ]);
         }
 
@@ -72,7 +101,7 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
+            $this->errorField() => trans('auth.throttle', [
                 'seconds' => $seconds,
                 'minutes' => ceil($seconds / 60),
             ]),
@@ -84,6 +113,108 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        $key = ($this->isStudentLoginRequest() || $this->isAdminPhoneMode())
+            ? $this->normalizedPhoneFromCountryInputs()
+            : trim((string) $this->input('login'));
+
+        return Str::transliterate(Str::lower($this->loginMode().':'.$key).'|'.$this->ip());
+    }
+
+    public function errorField(): string
+    {
+        return ($this->isStudentLoginRequest() || $this->isAdminPhoneMode()) ? 'phone' : 'login';
+    }
+
+    /**
+     * Build credential candidates for email or phone login.
+     *
+     * @return array<int, array<string, string>>
+     */
+    private function resolveLoginCredentials(): array
+    {
+        if ($this->isStudentLoginRequest() || $this->isAdminPhoneMode()) {
+            $password = (string) $this->input('password');
+            $phone = $this->normalizedPhoneFromCountryInputs();
+
+            if ($phone === '') {
+                return [];
+            }
+
+            return [[
+                'phone' => $phone,
+                'password' => $password,
+            ]];
+        }
+
+        $identifier = trim((string) $this->input('login'));
+        $password = (string) $this->input('password');
+
+        if (str_contains($identifier, '@')) {
+            return [[
+                'email' => Str::lower($identifier),
+                'password' => $password,
+            ]];
+        }
+
+        $candidates = [];
+        $defaultCountryCode = (string) config('app.phone_default_country_code', '966');
+        $normalizedPhone = PhoneHelper::normalize($identifier, $defaultCountryCode);
+
+        if ($normalizedPhone !== null) {
+            $candidates[] = $normalizedPhone;
+        }
+
+        $strippedPhone = preg_replace('/\s+/', '', $identifier);
+        if ($strippedPhone !== '' && ! in_array($strippedPhone, $candidates, true)) {
+            $candidates[] = $strippedPhone;
+        }
+
+        return array_map(static fn (string $phone) => [
+            'phone' => $phone,
+            'password' => $password,
+        ], $candidates);
+    }
+
+    private function normalizedStudentPhone(): string
+    {
+        $countryCode = (string) $this->input('country_code', config('app.phone_default_country_code', '963'));
+        if ($countryCode === 'other') {
+            $countryCode = (string) $this->input('manual_country_code', '');
+        }
+
+        $rawPhone = PhoneHelper::composeFromDialCode($countryCode, (string) $this->input('phone'));
+        if ($rawPhone === null) {
+            return '';
+        }
+
+        return PhoneHelper::normalize($rawPhone, (string) config('app.phone_default_country_code', '963')) ?? '';
+    }
+
+    private function isStudentLoginRequest(): bool
+    {
+        return $this->routeIs('student.login.store');
+    }
+
+    private function isAdminPhoneMode(): bool
+    {
+        return !$this->isStudentLoginRequest() && $this->input('admin_auth_mode', 'email') === 'phone';
+    }
+
+    private function normalizedPhoneFromCountryInputs(): string
+    {
+        return $this->normalizedStudentPhone();
+    }
+
+    private function loginMode(): string
+    {
+        if ($this->isStudentLoginRequest()) {
+            return 'student_phone';
+        }
+
+        if ($this->isAdminPhoneMode()) {
+            return 'admin_phone';
+        }
+
+        return 'admin_identifier';
     }
 }

@@ -5,6 +5,25 @@ namespace App\Helpers;
 class PhoneHelper
 {
     /**
+     * Build raw phone number from dial code + local phone.
+     */
+    public static function composeFromDialCode(?string $dialCode, ?string $phone): ?string
+    {
+        $dialCodeDigits = preg_replace('/\D+/', '', (string) $dialCode);
+        $phoneDigits = preg_replace('/\D+/', '', (string) $phone);
+
+        if ($phoneDigits === '') {
+            return null;
+        }
+
+        if ($dialCodeDigits !== '' && !str_starts_with($phoneDigits, $dialCodeDigits)) {
+            $phoneDigits = $dialCodeDigits . ltrim($phoneDigits, '0');
+        }
+
+        return $phoneDigits;
+    }
+
+    /**
      * تطبيع رقم الهاتف إلى صيغة +XXXXXXXX (مثال: +966501234567).
      * - إزالة المسافات والشرطات
      * - إذا بدأ بـ 0 (مثل 0501234567) يُستبدل برمز الدولة الافتراضي

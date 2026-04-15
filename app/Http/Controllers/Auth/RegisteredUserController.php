@@ -41,9 +41,16 @@ class RegisteredUserController extends Controller
     {
         $phoneVerificationEnabled = SystemSetting::get('phone_verification_enabled', false);
 
-        // تطبيع رقم الهاتف تلقائياً: إضافة + ورمز الدولة إن لزم (مثل 0501234567 → +966501234567)
+        $countryCode = (string) $request->input('country_code', config('app.phone_default_country_code', '963'));
+        $manualCountryCode = preg_replace('/\D+/', '', (string) $request->input('manual_country_code', ''));
+        if ($countryCode === 'other') {
+            $countryCode = $manualCountryCode;
+        }
+
+        // تطبيع رقم الهاتف تلقائياً مع رمز الدولة المختار
         if ($request->filled('phone')) {
-            $normalized = PhoneHelper::normalize($request->phone, config('app.phone_default_country_code', '966'));
+            $rawPhone = PhoneHelper::composeFromDialCode($countryCode, (string) $request->input('phone')) ?? (string) $request->input('phone');
+            $normalized = PhoneHelper::normalize($rawPhone, config('app.phone_default_country_code', '963'));
             if ($normalized !== null) {
                 $request->merge(['phone' => $normalized]);
             } else {
@@ -63,6 +70,8 @@ class RegisteredUserController extends Controller
                 Rule::unique('users', 'email')->whereNull('deleted_at'),
             ],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'country_code' => ['nullable', 'string'],
+            'manual_country_code' => ['nullable', 'string', 'regex:/^\d{1,4}$/'],
         ];
 
         if ($phoneVerificationEnabled) {
@@ -72,6 +81,8 @@ class RegisteredUserController extends Controller
                 'regex:/^\+[1-9]\d{1,14}$/',
                 Rule::unique('users', 'phone')->whereNull('deleted_at'),
             ];
+            $validationRules['country_code'] = ['required', 'string'];
+            $validationRules['manual_country_code'] = ['nullable', 'string', 'regex:/^\d{1,4}$/', 'required_if:country_code,other'];
         }
 
         $validated = $request->validate($validationRules, [

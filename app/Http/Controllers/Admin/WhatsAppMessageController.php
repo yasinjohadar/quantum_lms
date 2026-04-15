@@ -9,12 +9,14 @@ use App\Models\WhatsAppBroadcast;
 use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\Enrollment;
+use App\Models\WhatsAppTemplate;
 use App\Services\WhatsApp\SendWhatsAppMessage;
 use App\Services\WhatsApp\BroadcastWhatsAppMessage;
 use App\Jobs\BroadcastWhatsAppMessageJob;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class WhatsAppMessageController extends Controller
 {
@@ -29,46 +31,50 @@ class WhatsAppMessageController extends Controller
     public function index(Request $request)
     {
         $query = WhatsAppMessage::with('contact');
+        $this->applyListFilters($query, $request);
 
-        // Filter by direction
-        if ($request->filled('direction')) {
-            $query->where('direction', $request->direction);
+        $request->validate([
+            'per_page' => ['nullable', Rule::in(['50', '100', 'custom'])],
+            'per_page_custom' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $perPage = 50;
+        if ($request->input('per_page') === 'custom') {
+            $perPage = (int) ($request->input('per_page_custom', 50));
+        } elseif ($request->filled('per_page')) {
+            $perPage = (int) $request->input('per_page');
+        }
+        $perPage = min(100, max(1, $perPage));
+
+        $messages = $query->orderByDesc('created_at')
+            ->paginate($perPage)
+            ->appends($request->except('page'));
+
+        $classes = SchoolClass::active()->ordered()->get();
+        $subjects = Subject::active()->ordered()
+            ->when($request->filled('class_id'), function ($subjectQuery) use ($request) {
+                $subjectQuery->where('class_id', $request->integer('class_id'));
+            })
+            ->get();
+
+        if ($request->expectsJson() || $request->ajax()) {
+            $queryParams = $request->except('page');
+
+            return response()->json([
+                'success' => true,
+                'table_html' => view('admin.pages.whatsapp-messages.partials.table', compact('messages'))->render(),
+                'pagination_html' => view('admin.pages.whatsapp-messages.partials.pagination', compact('messages'))->render(),
+                'per_page_toolbar_html' => view('admin.partials.per-page-toolbar', [
+                    'paginator' => $messages,
+                    'presetPerPages' => [50, 100],
+                    'customPerPageMax' => 100,
+                ])->render(),
+                'delete_multiple_url' => route('admin.whatsapp-messages.destroy-multiple', $queryParams),
+                'delete_by_filter_url' => route('admin.whatsapp-messages.destroy-by-filter', $queryParams),
+            ]);
         }
 
-        // Filter by status
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        // Filter by type
-        if ($request->filled('type')) {
-            $query->where('type', $request->type);
-        }
-
-        // Filter by date
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-
-        // Search
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('body', 'like', "%{$search}%")
-                  ->orWhereHas('contact', function ($contactQuery) use ($search) {
-                      $contactQuery->where('wa_id', 'like', "%{$search}%")
-                                   ->orWhere('name', 'like', "%{$search}%");
-                  });
-            });
-        }
-
-        $messages = $query->orderBy('created_at', 'desc')->paginate(20);
-
-        return view('admin.pages.whatsapp-messages.index', compact('messages'));
+        return view('admin.pages.whatsapp-messages.index', compact('messages', 'classes', 'subjects'));
     }
 
     /**
@@ -87,8 +93,9 @@ class WhatsAppMessageController extends Controller
     {
         $classes = SchoolClass::active()->ordered()->get();
         $subjects = Subject::active()->with('schoolClass')->orderBy('name')->get();
-        
-        return view('admin.pages.whatsapp-messages.send', compact('classes', 'subjects'));
+        $templates = WhatsAppTemplate::active()->orderBy('name')->get();
+
+        return view('admin.pages.whatsapp-messages.send', compact('classes', 'subjects', 'templates'));
     }
 
     /**
@@ -155,7 +162,8 @@ class WhatsAppMessageController extends Controller
             'student_id' => 'nullable|exists:users,id',
             'to' => 'required_without:student_id|string|regex:/^\+[1-9]\d{1,14}$/',
             'type' => 'required|in:text,template',
-            'message' => 'required_if:type,text|nullable|string|max:4096',
+            'message' => 'nullable|string|max:4096|required_without:whatsapp_template_id',
+            'whatsapp_template_id' => 'nullable|exists:whatsapp_templates,id',
             'template_name' => 'required_if:type,template|nullable|string|max:255',
             'language' => 'required_if:type,template|nullable|string|max:10',
         ], [
@@ -163,7 +171,8 @@ class WhatsAppMessageController extends Controller
             'to.required_without' => 'رقم الهاتف مطلوب إذا لم يتم اختيار طالب',
             'to.regex' => 'رقم الهاتف يجب أن يبدأ بـ + متبوعاً برمز الدولة',
             'type.required' => 'نوع الرسالة مطلوب',
-            'message.required_if' => 'نص الرسالة مطلوب',
+            'message.required_without' => 'نص الرسالة أو القالب مطلوب',
+            'whatsapp_template_id.exists' => 'قالب WhatsApp المحدد غير موجود',
             'template_name.required_if' => 'اسم القالب مطلوب',
             'language.required_if' => 'اللغة مطلوبة',
         ]);
@@ -172,6 +181,13 @@ class WhatsAppMessageController extends Controller
             $phone = $validated['to'] ?? null;
             $student = null;
             $messageText = $validated['message'] ?? '';
+
+            if (!empty($validated['whatsapp_template_id'])) {
+                $selectedTemplate = WhatsAppTemplate::active()->find($validated['whatsapp_template_id']);
+                if ($selectedTemplate) {
+                    $messageText = $selectedTemplate->content;
+                }
+            }
 
             // If student_id is provided, get student and use their phone
             if (!empty($validated['student_id'])) {
@@ -236,6 +252,73 @@ class WhatsAppMessageController extends Controller
     }
 
     /**
+     * Bulk delete selected outbound messages.
+     */
+    public function destroyMultiple(Request $request)
+    {
+        $validated = $request->validate([
+            'message_ids' => ['required', 'array', 'min:1'],
+            'message_ids.*' => ['integer', 'exists:whatsapp_messages,id'],
+        ], [
+            'message_ids.required' => 'يرجى تحديد رسالة واحدة على الأقل.',
+            'message_ids.min' => 'يرجى تحديد رسالة واحدة على الأقل.',
+        ]);
+
+        $deleted = WhatsAppMessage::query()
+            ->whereIn('id', $validated['message_ids'])
+            ->where('direction', WhatsAppMessage::DIRECTION_OUTBOUND)
+            ->delete();
+
+        if ($deleted === 0) {
+            return redirect()->route('admin.whatsapp-messages.index', $request->query())
+                ->with('error', 'لا توجد رسائل صادرة مطابقة للحذف.');
+        }
+
+        return redirect()->route('admin.whatsapp-messages.index', $request->query())
+            ->with('success', "تم حذف {$deleted} رسالة محددة بنجاح.");
+    }
+
+    /**
+     * Bulk delete outbound messages by current filters.
+     */
+    public function destroyByFilter(Request $request)
+    {
+        $query = WhatsAppMessage::query()->where('direction', WhatsAppMessage::DIRECTION_OUTBOUND);
+        $this->applyListFilters($query, $request);
+        $query->where('direction', WhatsAppMessage::DIRECTION_OUTBOUND);
+
+        $deleted = $query->delete();
+
+        if ($deleted === 0) {
+            return redirect()->route('admin.whatsapp-messages.index', $request->query())
+                ->with('error', 'لا توجد رسائل صادرة مطابقة للفلاتر الحالية.');
+        }
+
+        return redirect()->route('admin.whatsapp-messages.index', $request->query())
+            ->with('success', "تم حذف {$deleted} رسالة حسب الفلاتر الحالية.");
+    }
+
+    /**
+     * AJAX endpoint to fetch subjects by class.
+     */
+    public function subjectsByClass(Request $request)
+    {
+        $request->validate([
+            'class_id' => ['required', 'exists:classes,id'],
+        ]);
+
+        $subjects = Subject::active()
+            ->ordered()
+            ->where('class_id', $request->integer('class_id'))
+            ->get(['id', 'name', 'class_id']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $subjects,
+        ]);
+    }
+
+    /**
      * Send broadcast message
      */
     public function broadcast(Request $request)
@@ -243,7 +326,8 @@ class WhatsAppMessageController extends Controller
         $validated = $request->validate([
             'send_type' => 'required|in:individual,broadcast',
             'type' => 'required|in:text,template',
-            'message' => 'required_if:type,text|nullable|string|max:4096',
+            'message' => 'nullable|string|max:4096|required_without:whatsapp_template_id',
+            'whatsapp_template_id' => 'nullable|exists:whatsapp_templates,id',
             'template_name' => 'required_if:type,template|nullable|string|max:255',
             'language' => 'required_if:type,template|nullable|string|max:10',
             // Broadcast fields
@@ -254,7 +338,8 @@ class WhatsAppMessageController extends Controller
         ], [
             'send_type.required' => 'نوع الإرسال مطلوب',
             'type.required' => 'نوع الرسالة مطلوب',
-            'message.required_if' => 'نص الرسالة مطلوب',
+            'message.required_without' => 'نص الرسالة أو القالب مطلوب',
+            'whatsapp_template_id.exists' => 'قالب WhatsApp المحدد غير موجود',
             'class_id.required_if' => 'الصف الدراسي مطلوب للإرسال الجماعي',
             'class_id.exists' => 'الصف الدراسي المحدد غير موجود',
             'subject_id.exists' => 'المادة الدراسية المحددة غير موجودة',
@@ -294,10 +379,16 @@ class WhatsAppMessageController extends Controller
                 'created_by' => Auth::id(),
             ]);
 
+            $selectedTemplate = null;
+            if (!empty($validated['whatsapp_template_id'])) {
+                $selectedTemplate = WhatsAppTemplate::active()->find($validated['whatsapp_template_id']);
+            }
+            $baseMessage = $selectedTemplate?->content ?? ($validated['message'] ?? '');
+
             // Dispatch jobs for each student
             foreach ($students as $student) {
                 $message = $this->broadcastService->replacePlaceholders(
-                    $validated['message'] ?? '',
+                    $baseMessage,
                     $student,
                     $subject,
                     $class
@@ -313,6 +404,56 @@ class WhatsAppMessageController extends Controller
             return redirect()->back()
                 ->with('error', 'فشل إرسال الرسالة الجماعية: ' . $e->getMessage())
                 ->withInput();
+        }
+    }
+
+    private function applyListFilters($query, Request $request): void
+    {
+        if ($request->filled('direction')) {
+            $query->where('direction', $request->input('direction'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->input('type'));
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->input('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->input('date_to'));
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($subQuery) use ($search) {
+                $subQuery->where('body', 'like', "%{$search}%")
+                    ->orWhereHas('contact', function ($contactQuery) use ($search) {
+                        $contactQuery->where('wa_id', 'like', "%{$search}%")
+                            ->orWhere('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if ($request->filled('class_id')) {
+            $classId = (string) $request->input('class_id');
+            $query->where(function ($subQuery) use ($classId) {
+                $subQuery->where('payload->metadata->class_id', $classId)
+                    ->orWhere('payload->class_id', $classId);
+            });
+        }
+
+        if ($request->filled('subject_id')) {
+            $subjectId = (string) $request->input('subject_id');
+            $query->where(function ($subQuery) use ($subjectId) {
+                $subQuery->where('payload->metadata->subject_id', $subjectId)
+                    ->orWhere('payload->subject_id', $subjectId);
+            });
         }
     }
 }

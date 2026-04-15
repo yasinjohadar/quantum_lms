@@ -1,434 +1,117 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <title>التحقق من رقم الهاتف - Quantum LMS</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #4f46e5;
-            --primary-dark: #4338ca;
-            --text-main: #1f2937;
-            --text-muted: #6b7280;
-            --border: #e5e7eb;
-            --bg: #ffffff;
-            --bg-body: #f3f4f6;
-            --danger: #ef4444;
-            --success: #10b981;
-        }
+@extends('auth.layouts.glass')
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+@section('title', 'التحقق من الهاتف - Quantum LMS')
+@section('brand-subtitle', 'توثيق الحساب')
 
-        html, body {
-            height: 100%;
-        }
-
-        body {
-            min-height: 100vh;
-            font-family: 'Cairo', system-ui, -apple-system, sans-serif;
-            background: var(--bg-body);
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-        }
-
-        .login-shell {
-            position: relative;
-            width: 100%;
-            max-width: 420px;
-        }
-
-        .login-card {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 40px 32px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-
-        @media (min-width: 480px) {
-            .login-card {
-                padding: 48px 40px;
-            }
-        }
-
-        .brand {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 32px;
-        }
-
-        .brand-mark {
-            width: 64px;
-            height: 64px;
-            background: var(--primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 12px;
-        }
-
-        .brand-mark-icon {
-            color: white;
-            font-weight: 700;
-            font-size: 28px;
-        }
-
-        .brand-title {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--text-main);
-        }
-
-        .heading {
-            margin-bottom: 24px;
-        }
-
-        .heading-main {
-            font-size: 20px;
-            font-weight: 600;
-            margin-bottom: 6px;
-            color: var(--text-main);
-        }
-
-        .heading-sub {
-            font-size: 14px;
-            color: var(--text-muted);
-            font-weight: 400;
-            line-height: 1.6;
-        }
-
-        .alert {
-            font-size: 13px;
-            padding: 12px 16px;
-            margin-bottom: 16px;
-            border: 1px solid transparent;
-            border-radius: 8px;
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-        }
-
-        .alert-success {
-            background: #ecfdf5;
-            border-color: #10b981;
-            color: #065f46;
-        }
-
-        .alert-danger {
-            background: #fef2f2;
-            border-color: var(--danger);
-            color: #991b1b;
-        }
-
-        .alert-icon {
-            margin-top: 2px;
-            font-size: 16px;
-            font-weight: 700;
-        }
-
-        .alert-body {
-            flex: 1;
-        }
-
-        form {
-            margin-top: 20px;
-        }
-
-        .field {
-            margin-bottom: 20px;
-        }
-
-        .field-label {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-            font-size: 13px;
-        }
-
-        .field-label span {
-            font-weight: 600;
-            color: var(--text-main);
-        }
-
-        .field-control input {
-            width: 100%;
-            padding: 12px 16px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            background: var(--bg);
-            color: var(--text-main);
-            font-size: 20px;
-            font-weight: 600;
-            text-align: center;
-            letter-spacing: 8px;
-            outline: none;
-            font-family: 'Cairo', sans-serif;
-            transition: all 0.2s;
-        }
-
-        .field-control input:focus {
-            border-color: var(--primary);
-            outline: 2px solid rgba(79, 70, 229, 0.1);
-            outline-offset: -2px;
-        }
-
-        .field-error {
-            margin-top: 6px;
-            font-size: 12px;
-            color: var(--danger);
-            font-weight: 500;
-        }
-
-        .actions {
-            margin-top: 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .btn-primary {
-            width: 100%;
-            border: none;
-            padding: 14px 24px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            color: white;
-            background: var(--primary);
-            border-radius: 8px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            font-family: 'Cairo', sans-serif;
-            transition: all 0.2s;
-        }
-
-        .btn-primary:hover {
-            background: var(--primary-dark);
-        }
-
-        .btn-link {
-            background: none;
-            border: none;
-            color: var(--primary);
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            font-family: 'Cairo', sans-serif;
-        }
-
-        .btn-link:hover {
-            text-decoration: underline;
-        }
-
-        .meta {
-            margin-top: 20px;
-            font-size: 12px;
-            color: var(--text-muted);
-            text-align: center;
-        }
-    </style>
-</head>
-<body>
-<div class="login-shell">
-    <div class="login-card">
-        <div class="brand">
-            <div class="brand-mark">
-                <div class="brand-mark-icon">Q</div>
-            </div>
-            <div class="brand-title">Quantum LMS</div>
-        </div>
-
-        <div class="heading">
-            <div class="heading-main">التحقق من رقم الهاتف</div>
-            <div class="heading-sub">
-                @if(isset($phone))
-                    أدخل رمز التحقق الذي تم إرساله إلى {{ substr($phone, 0, 4) }}****{{ substr($phone, -4) }}
-                @else
-                    أدخل رمز التحقق الذي تم إرساله إلى رقم هاتفك
-                @endif
-            </div>
-        </div>
-
-        @if (session('success'))
-            <div class="alert alert-success">
-                <div class="alert-icon">✓</div>
-                <div class="alert-body">{{ session('success') }}</div>
-            </div>
-        @endif
-
-        @if ($errors->any())
-            <div class="alert alert-danger">
-                <div class="alert-icon">!</div>
-                <div class="alert-body">
-                    @foreach ($errors->all() as $error)
-                        {{ $error }}
-                    @endforeach
-                </div>
-            </div>
-        @endif
-
-        <form method="POST" action="{{ route('phone.verify') }}" id="verify-form">
-            @csrf
-
-            <div class="field">
-                <div class="field-label">
-                    <span>رمز التحقق</span>
-                </div>
-                <div class="field-control">
-                    <input
-                        id="code"
-                        type="text"
-                        name="code"
-                        required
-                        autofocus
-                        maxlength="6"
-                        pattern="[0-9]{6}"
-                        placeholder="000000"
-                    >
-                </div>
-                @if ($errors->has('code'))
-                    <div class="field-error">
-                        {{ $errors->first('code') }}
-                    </div>
-                @endif
-            </div>
-
-            <div class="actions">
-                <button type="submit" class="btn-primary">
-                    <span>التحقق</span>
-                </button>
-                <div style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
-                    <button type="button" class="btn-link" id="resend-btn">
-                        إعادة إرسال الرمز
-                    </button>
-                    <div style="display: flex; gap: 12px; margin-top: 8px;">
-                        <button type="button" class="btn-link" id="resend-sms-btn" style="font-size: 12px;">
-                            إرسال عبر SMS
-                        </button>
-                        <button type="button" class="btn-link" id="resend-whatsapp-btn" style="font-size: 12px;">
-                            إرسال عبر WhatsApp
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </form>
-
-        <div class="meta">
-            Quantum LMS &copy; {{ date('Y') }}
-        </div>
+@section('content')
+    <div class="auth-heading">
+        <div class="auth-badge">تحقق بخطوتين</div>
+        <h1>التحقق من رقم الهاتف</h1>
+        <p>
+            @if(isset($phone))
+                أدخل الرمز المرسل إلى {{ substr($phone, 0, 4) }}****{{ substr($phone, -4) }}
+            @else
+                أدخل رمز التحقق المرسل إلى رقم هاتفك.
+            @endif
+        </p>
     </div>
-</div>
 
+    @if (session('success'))
+        <div class="auth-alert auth-alert-success">{{ session('success') }}</div>
+    @endif
+    @if ($errors->any())
+        <div class="auth-alert auth-alert-danger">{{ $errors->first() }}</div>
+    @endif
+
+    <form method="POST" action="{{ route('phone.verify') }}">
+        @csrf
+        <div class="auth-field">
+            <label class="auth-label" for="code">رمز التحقق</label>
+            <div class="auth-control">
+                <input id="code" class="auth-input @error('code') invalid @enderror" type="text" name="code" required autofocus maxlength="6" pattern="[0-9]{6}" placeholder="000000" style="text-align:center;letter-spacing:6px;padding-left:14px;">
+            </div>
+            @error('code') <div class="auth-error">{{ $message }}</div> @enderror
+        </div>
+
+        <button type="submit" class="auth-btn">تأكيد الرمز</button>
+
+        <div class="auth-meta" style="display:flex;flex-direction:column;gap:8px;">
+            <a class="auth-link" href="#" id="resend-btn">إعادة إرسال الرمز</a>
+            <div style="display:flex;gap:14px;justify-content:center;">
+                <a class="auth-link" href="#" id="resend-sms-btn">إرسال SMS</a>
+                <a class="auth-link" href="#" id="resend-whatsapp-btn">إرسال WhatsApp</a>
+            </div>
+        </div>
+    </form>
+@endsection
+
+@push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const codeInput = document.getElementById('code');
-    const resendBtn = document.getElementById('resend-btn');
+    document.addEventListener('DOMContentLoaded', function () {
+        const codeInput = document.getElementById('code');
+        const resendBtn = document.getElementById('resend-btn');
+        const resendSmsBtn = document.getElementById('resend-sms-btn');
+        const resendWhatsappBtn = document.getElementById('resend-whatsapp-btn');
 
-    // Only allow numbers
-    codeInput.addEventListener('input', function(e) {
-        this.value = this.value.replace(/[^0-9]/g, '');
-    });
+        codeInput.addEventListener('input', function () {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
 
-    let resendCooldown = 0;
-    let resendTimer = null;
-
-    function updateResendButton() {
-        const buttons = [resendBtn, document.getElementById('resend-sms-btn'), document.getElementById('resend-whatsapp-btn')];
-        buttons.forEach(btn => {
-            if (btn) {
-                if (resendCooldown > 0) {
-                    btn.disabled = true;
-                    btn.textContent = `إعادة إرسال (${resendCooldown}ث)`;
-                    resendCooldown--;
+        let cooldown = 0;
+        let timer = null;
+        function syncButtons() {
+            [resendBtn, resendSmsBtn, resendWhatsappBtn].forEach(function (btn) {
+                if (!btn) return;
+                if (cooldown > 0) {
+                    btn.style.pointerEvents = 'none';
+                    btn.style.opacity = '0.5';
                 } else {
-                    btn.disabled = false;
-                    if (btn === resendBtn) {
-                        btn.textContent = 'إعادة إرسال الرمز';
-                    } else if (btn.id === 'resend-sms-btn') {
-                        btn.textContent = 'إرسال عبر SMS';
-                    } else if (btn.id === 'resend-whatsapp-btn') {
-                        btn.textContent = 'إرسال عبر WhatsApp';
-                    }
+                    btn.style.pointerEvents = 'auto';
+                    btn.style.opacity = '1';
                 }
+            });
+            if (resendBtn) {
+                resendBtn.textContent = cooldown > 0 ? `إعادة إرسال (${cooldown}ث)` : 'إعادة إرسال الرمز';
             }
-        });
-    }
-
-    function sendOTP(provider = 'sms') {
-        const btn = resendBtn;
-        const originalText = btn.textContent;
-        btn.disabled = true;
-        btn.textContent = 'جاري الإرسال...';
-
-        fetch('{{ route("phone.send") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({ provider: provider })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('تم إرسال رمز التحقق بنجاح');
-                resendCooldown = 60; // 60 ثانية cooldown
-                if (resendTimer) clearInterval(resendTimer);
-                resendTimer = setInterval(updateResendButton, 1000);
-                updateResendButton();
-            } else {
-                alert('فشل إرسال رمز التحقق: ' + data.message);
+            if (cooldown > 0) cooldown--;
+            if (cooldown <= 0 && timer) {
+                clearInterval(timer);
+                timer = null;
             }
-        })
-        .catch(error => {
-            alert('حدث خطأ: ' + error.message);
-        })
-        .finally(() => {
-            btn.disabled = false;
-            btn.textContent = originalText;
-        });
-    }
+        }
 
-    // Resend OTP (default: SMS)
-    resendBtn.addEventListener('click', function() {
-        sendOTP('sms');
+        function sendOtp(provider) {
+            fetch('{{ route("phone.send") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ provider: provider })
+            })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                if (!data.success) {
+                    alert(data.message || 'تعذر إرسال الرمز');
+                    return;
+                }
+                cooldown = 60;
+                syncButtons();
+                if (!timer) {
+                    timer = setInterval(syncButtons, 1000);
+                }
+            })
+            .catch(function () {
+                alert('حدث خطأ أثناء إرسال الرمز');
+            });
+        }
+
+        if (resendBtn) resendBtn.addEventListener('click', function (e) { e.preventDefault(); sendOtp('sms'); });
+        if (resendSmsBtn) resendSmsBtn.addEventListener('click', function (e) { e.preventDefault(); sendOtp('sms'); });
+        if (resendWhatsappBtn) resendWhatsappBtn.addEventListener('click', function (e) { e.preventDefault(); sendOtp('whatsapp'); });
     });
-
-    // Resend via SMS
-    const resendSmsBtn = document.getElementById('resend-sms-btn');
-    if (resendSmsBtn) {
-        resendSmsBtn.addEventListener('click', function() {
-            sendOTP('sms');
-        });
-    }
-
-    // Resend via WhatsApp
-    const resendWhatsappBtn = document.getElementById('resend-whatsapp-btn');
-    if (resendWhatsappBtn) {
-        resendWhatsappBtn.addEventListener('click', function() {
-            sendOTP('whatsapp');
-        });
-    }
-});
 </script>
-</body>
-</html>
+@endpush
 
 
 

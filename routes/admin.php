@@ -630,6 +630,9 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             Route::post('/send', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'send'])->name('send');
             Route::post('/broadcast', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'broadcast'])->name('broadcast');
             Route::get('/broadcast/students-count', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'getStudentsCount'])->name('broadcast.students-count');
+            Route::get('/subjects-by-class', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'subjectsByClass'])->name('subjects-by-class');
+            Route::delete('/destroy-multiple', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'destroyMultiple'])->name('destroy-multiple');
+            Route::delete('/destroy-by-filter', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'destroyByFilter'])->name('destroy-by-filter');
             Route::get('/{message}', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'show'])->name('show');
         });
 
@@ -655,21 +658,15 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::resource('sms-templates', \App\Http\Controllers\Admin\SMSTemplateController::class);
         Route::post('sms-templates/{smsTemplate}/preview', [\App\Http\Controllers\Admin\SMSTemplateController::class, 'preview'])->name('sms-templates.preview');
 
+        // WhatsApp Templates Routes
+        Route::resource('whatsapp-templates', \App\Http\Controllers\Admin\WhatsAppTemplateController::class);
+        Route::post('whatsapp-templates/{whatsappTemplate}/preview', [\App\Http\Controllers\Admin\WhatsAppTemplateController::class, 'preview'])->name('whatsapp-templates.preview');
+
         // WhatsApp Settings Routes
         Route::prefix('whatsapp-settings')->name('whatsapp-settings.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'index'])->name('index');
             Route::post('/', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'update'])->name('update');
             Route::post('/test-connection', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'testConnection'])->name('test-connection');
-        });
-
-        // WhatsApp Messages Routes
-        Route::prefix('whatsapp-messages')->name('whatsapp-messages.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'index'])->name('index');
-            Route::get('/send', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'create'])->name('create');
-            Route::post('/send', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'send'])->name('send');
-            Route::post('/broadcast', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'broadcast'])->name('broadcast');
-            Route::get('/broadcast/students-count', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'getStudentsCount'])->name('broadcast.students-count');
-            Route::get('/{message}', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'show'])->name('show');
         });
 
         // المدفوعات

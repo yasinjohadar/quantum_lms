@@ -4,6 +4,24 @@
     {{ $unit->title }} - {{ $subject->name }}
 @stop
 
+@push('styles')
+<style>
+    .unit-video-player {
+        width: min(100%, calc((100vh - 220px) * 16 / 9));
+        aspect-ratio: 16 / 9;
+        max-height: calc(100vh - 220px);
+        margin-inline: auto;
+    }
+
+    .unit-video-player iframe,
+    .unit-video-player video {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="main-content app-content">
     <div class="container-fluid pt-3">
@@ -37,8 +55,8 @@
                         <i class="bi bi-collection-play display-5 d-block mb-2"></i>
                         <p class="mb-0">اختر درساً من القائمة لمشاهدة الفيديو</p>
                     </div>
-                    <div id="unitVideoPlayerContainer" class="ratio ratio-16x9 bg-dark rounded overflow-hidden position-relative" style="display: none;" data-progress-url-base="{{ url('student/lessons') }}">
-                        <iframe id="unitVideoIframe" title="" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy" class="position-absolute top-0 start-0 w-100 h-100" style="display: none;"></iframe>
+                    <div id="unitVideoPlayerContainer" class="unit-video-player bg-dark rounded overflow-hidden position-relative" style="display: none;" data-progress-url-base="{{ url('student/lessons') }}">
+                        <iframe id="unitVideoIframe" title="" src="" frameborder="0" referrerpolicy="strict-origin-when-cross-origin" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen loading="eager" class="position-absolute top-0 start-0 w-100 h-100" style="display: none;"></iframe>
                         <video id="unitVideoNative" controls class="position-absolute top-0 start-0 w-100 h-100" controlsList="nodownload" style="display: none;">
                             <source src="" type="video/mp4">
                             <source src="" type="video/webm">
@@ -110,6 +128,7 @@
                                     data-iframe-url="{{ $hasVideo && in_array($actualType, ['youtube', 'vimeo']) ? e($iframeUrl) : '' }}"
                                     data-poster="{{ e($posterUrl) }}">
                                     <span class="d-inline-flex align-items-center flex-shrink-0">
+                                        <span class="me-2 text-muted">{{ $loop->iteration }}.</span>
                                         <i class="bi bi-play-circle me-2 text-primary"></i>
                                         <span>{{ $lesson->title }}</span>
                                     </span>
@@ -182,128 +201,136 @@
 
 @if($visibleLessons->count() > 0)
 @push('scripts')
-<script src="https://player.vimeo.com/api/player.js"></script>
 <script>
 (function() {
     var placeholder = document.getElementById('unitVideoPlayerPlaceholder');
-    var container = document.getElementById('unitVideoPlayerContainer');
-    var iframeEl = document.getElementById('unitVideoIframe');
-    var videoEl = document.getElementById('unitVideoNative');
-    var csrfToken = document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : '';
-    var progressUrlBase = container ? (container.getAttribute('data-progress-url-base') || '') : '';
-    var THROTTLE_MS = 15000;
-    var lastSentAt = 0;
-    var currentLessonId = null;
-    var vimeoPlayer = null;
+    var container   = document.getElementById('unitVideoPlayerContainer');
+    var iframeEl    = document.getElementById('unitVideoIframe');
+    var videoEl     = document.getElementById('unitVideoNative');
+    var lessonsList = document.querySelector('.unit-lessons-list');
 
-    function sendProgress(lessonId, timeSpentSeconds, lastPositionSeconds, progressPercentage) {
-        if (!lessonId || !progressUrlBase) return;
-        if (Date.now() - lastSentAt < THROTTLE_MS && progressPercentage < 100) return;
-        lastSentAt = Date.now();
-        var url = progressUrlBase + '/' + lessonId + '/progress';
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: JSON.stringify({
-                time_spent_seconds: timeSpentSeconds,
-                last_position_seconds: lastPositionSeconds,
-                progress_percentage: progressPercentage
-            })
-        }).catch(function() {});
+    if (!container || !lessonsList) return;
+
+    // Reset both iframe and native player before any switch
+    function resetPlayer() {
+        if (iframeEl) { iframeEl.removeAttribute('src'); iframeEl.style.display = 'none'; }
+        if (videoEl)  { videoEl.pause(); videoEl.removeAttribute('src'); videoEl.querySelectorAll('source').forEach(function(s) { s.removeAttribute('src'); }); videoEl.load(); videoEl.style.display = 'none'; }
     }
 
-    function initVimeoProgressForUnit(lessonId) {
-        if (!iframeEl || !lessonId || typeof Vimeo === 'undefined') return;
-        if (vimeoPlayer) try { vimeoPlayer.destroy(); } catch (e) {}
-        vimeoPlayer = new Vimeo.Player(iframeEl);
-        vimeoPlayer.getDuration().then(function(duration) {
-            vimeoPlayer.on('timeupdate', function(data) {
-                var sec = Math.floor(data.seconds);
-                var pct = duration > 0 ? Math.min(100, (data.seconds / duration) * 100) : 0;
-                sendProgress(lessonId, sec, sec, pct);
-            });
-            vimeoPlayer.on('pause', function(data) {
-                var sec = Math.floor(data.seconds);
-                var pct = duration > 0 ? Math.min(100, (data.seconds / duration) * 100) : 0;
-                sendProgress(lessonId, sec, sec, pct);
-            });
-            vimeoPlayer.on('ended', function() {
-                sendProgress(lessonId, Math.floor(duration), Math.floor(duration), 100);
-            });
-        }).catch(function() {});
+    function detectType(videoType, embedUrl, iframeUrl) {
+        if (videoType === 'youtube' || videoType === 'vimeo' || videoType === 'upload') return videoType;
+        var url = (iframeUrl || embedUrl || '').toLowerCase();
+        if (url.indexOf('youtube.com') !== -1 || url.indexOf('youtu.be') !== -1) return 'youtube';
+        if (url.indexOf('vimeo.com') !== -1 || url.indexOf('player.vimeo.com') !== -1) return 'vimeo';
+        return 'upload';
     }
 
+    function extractVimeoId(url) {
+        if (!url) return null;
+        var m = String(url).match(/(?:player\.)?vimeo\.com\/(?:.*\/)?(\d+)(?:$|[?&#])/i);
+        return m && m[1] ? m[1] : null;
+    }
+
+    function buildIframeSrc(type, embedUrl, iframeUrl) {
+        var base = iframeUrl || embedUrl || '';
+        if (type === 'vimeo' && base.indexOf('player.vimeo.com/video/') === -1) {
+            var id = extractVimeoId(base);
+            if (id) {
+                base = 'https://player.vimeo.com/video/' + id;
+                var hMatch = String(embedUrl || '').match(/[?&]h=([^&]+)/i);
+                if (hMatch) {
+                    base += (base.indexOf('?') !== -1 ? '&' : '?') + 'h=' + encodeURIComponent(hMatch[1]);
+                }
+            }
+        }
+        if (!base) return '';
+
+        var sep = base.indexOf('?') !== -1 ? '&' : '?';
+        if (type === 'vimeo') {
+            // muted=1 helps autoplay succeed in Chrome/Safari; user can unmute in player
+            base += sep + 'autoplay=1&muted=1';
+        } else {
+            base += sep + 'autoplay=1';
+        }
+        return base;
+    }
+
+    function assignIframeSrc(src) {
+        if (!iframeEl || !src) return;
+        iframeEl.src = 'about:blank';
+        setTimeout(function() {
+            if (!iframeEl) return;
+            iframeEl.src = src;
+            iframeEl.style.display = '';
+        }, 0);
+    }
+
+    // Main lesson switching
     function switchToLesson(btn) {
-        if (!btn || !container) return;
-        var embedUrl = btn.getAttribute('data-embed-url');
+        var embedUrl  = btn.getAttribute('data-embed-url') || '';
         var videoType = btn.getAttribute('data-video-type') || '';
         var iframeUrl = btn.getAttribute('data-iframe-url') || '';
-        var poster = btn.getAttribute('data-poster') || '';
-        var lessonId = btn.getAttribute('data-lesson-id') || null;
+        var poster    = btn.getAttribute('data-poster') || '';
+        var resolvedType = detectType(videoType, embedUrl, iframeUrl);
 
-        if (vimeoPlayer) { try { vimeoPlayer.destroy(); } catch (e) {} vimeoPlayer = null; }
-        currentLessonId = null;
+        resetPlayer();
 
-        if (!embedUrl || !embedUrl.trim()) {
+        if (!embedUrl.trim()) {
             if (placeholder) placeholder.style.display = '';
             container.style.display = 'none';
-            if (iframeEl) { iframeEl.style.display = 'none'; iframeEl.src = ''; }
-            if (videoEl) { videoEl.style.display = 'none'; videoEl.pause(); videoEl.querySelector('source') && (videoEl.querySelector('source').src = ''); }
             return;
         }
 
         if (placeholder) placeholder.style.display = 'none';
         container.style.display = '';
 
-        if (videoType === 'youtube' || videoType === 'vimeo') {
-            if (iframeEl) {
-                var src = iframeUrl || embedUrl;
-                src += (src.indexOf('?') !== -1 ? '&' : '?') + 'autoplay=1';
+        if ((resolvedType === 'youtube' || resolvedType === 'vimeo') && iframeEl) {
+            var src = buildIframeSrc(resolvedType, embedUrl, iframeUrl);
+            if (!src) return;
+            if (resolvedType === 'vimeo') {
+                assignIframeSrc(src);
+            } else {
                 iframeEl.src = src;
                 iframeEl.style.display = '';
             }
-            if (videoEl) { videoEl.style.display = 'none'; videoEl.pause(); }
-            if (videoType === 'vimeo' && lessonId) {
-                currentLessonId = lessonId;
-                iframeEl.addEventListener('load', function onLoad() {
-                    iframeEl.removeEventListener('load', onLoad);
-                    setTimeout(function() { initVimeoProgressForUnit(lessonId); }, 500);
-                });
-            }
-        } else {
-            if (iframeEl) { iframeEl.style.display = 'none'; iframeEl.src = ''; }
-            if (videoEl) {
-                videoEl.querySelectorAll('source').forEach(function(s) { s.src = embedUrl; });
-                videoEl.poster = poster || '';
-                videoEl.style.display = '';
-                videoEl.load();
-                videoEl.play();
-            }
+        } else if (videoEl) {
+            videoEl.querySelectorAll('source').forEach(function(s) { s.src = embedUrl; });
+            videoEl.poster = poster;
+            videoEl.style.display = '';
+            videoEl.load();
+            videoEl.play().catch(function() {});
         }
 
-        document.querySelectorAll('.unit-lesson-video-btn').forEach(function(b) {
-            b.classList.remove('active');
-        });
+        lessonsList.querySelectorAll('.unit-lesson-video-btn').forEach(function(b) { b.classList.remove('active'); });
         btn.classList.add('active');
     }
 
-    document.querySelectorAll('.unit-lesson-video-btn').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            switchToLesson(this);
-        }, true);
-    });
-
-    document.addEventListener('DOMContentLoaded', function() {
-        var firstBtn = document.querySelector('.unit-lesson-video-btn');
-        if (firstBtn && firstBtn.getAttribute('data-embed-url')) {
-            switchToLesson(firstBtn);
+    // Click handling on list container
+    lessonsList.addEventListener('click', function(e) {
+        var btn = e.target.closest('.unit-lesson-video-btn');
+        if (!btn) return;
+        e.preventDefault();
+        try {
+            switchToLesson(btn);
+        } catch (err) {
+            if (window && window.console) console.error('Lesson switch failed:', err);
         }
     });
+
+    // Auto-play first lesson
+    function autoPlayFirst() {
+        var first = lessonsList.querySelector('.unit-lesson-video-btn.active') || lessonsList.querySelector('.unit-lesson-video-btn');
+        if (!first) return;
+        if ((first.getAttribute('data-embed-url') || '').trim()) {
+            try {
+                switchToLesson(first);
+            } catch (err) {
+                if (window && window.console) console.error('Initial lesson load failed:', err);
+            }
+        }
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', autoPlayFirst);
+    else autoPlayFirst();
 })();
 </script>
 @endpush
