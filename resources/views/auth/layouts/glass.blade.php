@@ -377,6 +377,12 @@
             transition: color .2s ease, background-color .2s ease;
         }
 
+        /* زر إظهار/إخفاء كلمة المرور على طرف الحقل (يسار في CSS؛ يُستخدم بدل أيقونة القفل في كل صفحات المصادقة) */
+        .auth-control--toggle-start .password-toggle {
+            right: auto;
+            left: 10px;
+        }
+
         .password-toggle:hover {
             color: #dbeafe;
             background: rgba(148, 163, 184, 0.14);

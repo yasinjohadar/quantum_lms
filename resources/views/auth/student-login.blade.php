@@ -34,9 +34,8 @@
 
         <div class="auth-field">
             <label class="auth-label" for="password">كلمة المرور</label>
-            <div class="auth-control">
+            <div class="auth-control auth-control--toggle-start">
                 <input id="password" class="auth-input @error('password') invalid @enderror" type="password" name="password" required autocomplete="current-password" placeholder="أدخل كلمة المرور">
-                <span class="auth-icon">🔒</span>
                 <button type="button" class="password-toggle" data-target="password" aria-label="إظهار أو إخفاء كلمة المرور">👁</button>
             </div>
             @error('password') <div class="auth-error">{{ $message }}</div> @enderror
@@ -56,8 +55,6 @@
 
         <div class="auth-meta">
             التحقق عبر واتساب يتم مرة واحدة فقط بعد التسجيل الأول.
-            <br>
-            <a class="auth-link" href="{{ route('login') }}">دخول الإدارة والمشرفين</a>
             <br>
             @if (Route::has('register'))
                 لا تملك حسابًا؟

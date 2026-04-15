@@ -29,9 +29,8 @@
 
         <div class="auth-field">
             <label class="auth-label" for="password">كلمة المرور الجديدة</label>
-            <div class="auth-control">
+            <div class="auth-control auth-control--toggle-start">
                 <input id="password" class="auth-input @error('password') invalid @enderror" type="password" name="password" required autocomplete="new-password" placeholder="كلمة مرور جديدة">
-                <span class="auth-icon">🔒</span>
                 <button type="button" class="password-toggle" data-target="password" aria-label="إظهار أو إخفاء كلمة المرور">👁</button>
             </div>
             @error('password') <div class="auth-error">{{ $message }}</div> @enderror
@@ -39,9 +38,8 @@
 
         <div class="auth-field">
             <label class="auth-label" for="password_confirmation">تأكيد كلمة المرور</label>
-            <div class="auth-control">
+            <div class="auth-control auth-control--toggle-start">
                 <input id="password_confirmation" class="auth-input @error('password_confirmation') invalid @enderror" type="password" name="password_confirmation" required autocomplete="new-password" placeholder="أعد كتابة كلمة المرور">
-                <span class="auth-icon">🔒</span>
                 <button type="button" class="password-toggle" data-target="password_confirmation" aria-label="إظهار أو إخفاء كلمة المرور">👁</button>
             </div>
             @error('password_confirmation') <div class="auth-error">{{ $message }}</div> @enderror
