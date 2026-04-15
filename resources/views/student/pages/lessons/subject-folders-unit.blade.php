@@ -19,6 +19,99 @@
         height: 100%;
         object-fit: contain;
     }
+
+    /* كروت الدروس — مظهر أوضح وجذاب */
+    .lesson-row-card {
+        border-radius: 0.75rem;
+        border: 1px solid rgba(13, 110, 253, 0.14);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 4px 20px rgba(13, 110, 253, 0.06);
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 255, 1) 100%);
+        transition: box-shadow 0.22s ease, border-color 0.22s ease, transform 0.18s ease;
+    }
+    .lesson-row-card:hover {
+        border-color: rgba(13, 110, 253, 0.28);
+        box-shadow: 0 6px 24px rgba(13, 110, 253, 0.12), 0 2px 10px rgba(0, 0, 0, 0.05);
+        transform: translateY(-1px);
+    }
+    .lesson-row-card__inner {
+        position: relative;
+        min-height: 3.5rem;
+    }
+    .lesson-row-card__inner::before {
+        content: '';
+        position: absolute;
+        inset-inline-start: 0;
+        top: 0.65rem;
+        bottom: 0.65rem;
+        width: 4px;
+        border-radius: 4px;
+        background: linear-gradient(180deg, #0d6efd 0%, #86b7fe 100%);
+        opacity: 0.95;
+    }
+    .lesson-row-card__btn {
+        transition: background 0.2s ease, color 0.2s ease;
+    }
+    .lesson-row-card__btn:hover {
+        background: rgba(13, 110, 253, 0.07) !important;
+    }
+    .unit-lesson-video-btn.active,
+    .section-lesson-video-btn.active {
+        background: linear-gradient(90deg, rgba(13, 110, 253, 0.12) 0%, rgba(13, 110, 253, 0.04) 100%) !important;
+        color: #0a58ca !important;
+    }
+    .unit-lesson-video-btn.active .lesson-row-card__title,
+    .section-lesson-video-btn.active .lesson-row-card__title {
+        color: #084298;
+    }
+    .lesson-row-card__num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 1.85rem;
+        height: 1.85rem;
+        padding: 0 0.35rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        line-height: 1;
+        color: #fff;
+        background: linear-gradient(145deg, #0d6efd 0%, #6ea8fe 100%);
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 8px rgba(13, 110, 253, 0.35);
+        margin-inline-end: 0.6rem;
+    }
+    .lesson-row-card__play {
+        font-size: 1.35rem;
+        opacity: 0.92;
+        filter: drop-shadow(0 1px 2px rgba(13, 110, 253, 0.25));
+    }
+    .lesson-row-card__title {
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        color: #1e293b;
+    }
+    .lesson-row-card__actions {
+        background: rgba(255, 255, 255, 0.65) !important;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+    }
+    [data-theme-mode="dark"] .lesson-row-card {
+        background: linear-gradient(145deg, rgba(28, 31, 40, 0.98) 0%, rgba(18, 20, 26, 1) 100%);
+        border-color: rgba(255, 255, 255, 0.1);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    }
+    [data-theme-mode="dark"] .lesson-row-card:hover {
+        border-color: rgba(110, 168, 254, 0.35);
+    }
+    [data-theme-mode="dark"] .lesson-row-card__title {
+        color: #f1f5f9;
+    }
+    [data-theme-mode="dark"] .lesson-row-card__actions {
+        background: rgba(22, 25, 32, 0.75) !important;
+    }
+    [data-theme-mode="dark"] .unit-lesson-video-btn.active .lesson-row-card__title,
+    [data-theme-mode="dark"] .section-lesson-video-btn.active .lesson-row-card__title {
+        color: #9ec5fe;
+    }
 </style>
 @endpush
 
@@ -118,19 +211,19 @@
                             $iframeUrl = $actualType === 'youtube' ? $embedUrl . (str_contains($embedUrl, '?') ? '&' : '?') . 'rel=0&modestbranding=1' : ($actualType === 'vimeo' ? $embedUrl . (str_contains($embedUrl, '?') ? '&' : '?') . 'title=0&byline=0&portrait=0' : '');
                             $posterUrl = $lesson->thumbnail ? asset('storage/' . $lesson->thumbnail) : '';
                         @endphp
-                        <div class="accordion-item border rounded mb-2 overflow-hidden shadow-sm" id="lesson-heading-{{ $lesson->id }}">
-                            <div class="d-flex align-items-stretch bg-light">
+                        <div class="lesson-row-card accordion-item border-0 mb-3 overflow-hidden" id="lesson-heading-{{ $lesson->id }}">
+                            <div class="lesson-row-card__inner d-flex align-items-stretch">
                                 <button type="button"
-                                    class="unit-lesson-video-btn flex-grow-1 d-flex align-items-center flex-wrap gap-2 py-3 px-3 border-0 bg-transparent text-start text-primary fw-medium"
+                                    class="lesson-row-card__btn unit-lesson-video-btn flex-grow-1 d-flex align-items-center flex-wrap gap-2 py-3 ps-4 pe-3 border-0 bg-transparent text-start text-primary"
                                     data-lesson-id="{{ $lesson->id }}"
                                     data-embed-url="{{ $hasVideo ? e($embedUrl) : '' }}"
                                     data-video-type="{{ e($actualType) }}"
                                     data-iframe-url="{{ $hasVideo && in_array($actualType, ['youtube', 'vimeo']) ? e($iframeUrl) : '' }}"
                                     data-poster="{{ e($posterUrl) }}">
                                     <span class="d-inline-flex align-items-center flex-shrink-0">
-                                        <span class="me-2 text-muted">{{ $loop->iteration }}.</span>
-                                        <i class="bi bi-play-circle me-2 text-primary"></i>
-                                        <span>{{ $lesson->title }}</span>
+                                        <span class="lesson-row-card__num">{{ $loop->iteration }}</span>
+                                        <i class="bi bi-play-circle-fill lesson-row-card__play me-2 text-primary"></i>
+                                        <span class="lesson-row-card__title">{{ $lesson->title }}</span>
                                     </span>
                                     @if($lesson->book_page_from !== null || $lesson->book_page_to !== null)
                                         <span class="text-muted small fw-normal">
@@ -145,7 +238,7 @@
                                         </span>
                                     @endif
                                 </button>
-                                <div class="d-flex align-items-center gap-1 px-2 flex-shrink-0 border-start border-secondary border-opacity-25 bg-light" onclick="event.stopPropagation()">
+                                <div class="lesson-row-card__actions d-flex align-items-center gap-1 px-2 flex-shrink-0 border-start border-secondary border-opacity-25" onclick="event.stopPropagation()">
                                     @if($lesson->quizzes && $lesson->quizzes->count() > 0)
                                         <a href="{{ route('student.quizzes.start', $lesson->quizzes->first()) }}" class="btn btn-sm btn-link p-1 text-info" title="بدء الاختبار" aria-label="بدء الاختبار">
                                             <i class="bi bi-clipboard-check fs-5"></i>
