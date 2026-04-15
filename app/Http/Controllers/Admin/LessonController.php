@@ -218,10 +218,14 @@ class LessonController extends Controller
             }
 
             if ($lesson->review_status === Lesson::REVIEW_STATUS_PENDING && $user->shouldSubmitContentForReview()) {
-                app(StaffNotificationService::class)->notifyLessonSubmittedForReview($lesson->fresh(), $user);
+                $this->dispatchNotificationSafely(function () use ($lesson, $user) {
+                    app(StaffNotificationService::class)->notifyLessonSubmittedForReview($lesson->fresh(), $user);
+                }, 'lesson_review_submitted', $lesson->id);
             }
 
-            app(StudentContentNotificationService::class)->notifyIfLessonBecameVisible(null, $lesson->fresh(), $user);
+            $this->dispatchNotificationSafely(function () use ($lesson, $user) {
+                app(StudentContentNotificationService::class)->notifyIfLessonBecameVisible(null, $lesson->fresh(), $user);
+            }, 'student_lesson_visible', $lesson->id);
 
             if ($this->wantsJsonResponse($request)) {
                 return response()->json([
@@ -385,7 +389,9 @@ class LessonController extends Controller
                 && $oldReviewStatus !== Lesson::REVIEW_STATUS_PENDING
                 && $user->shouldSubmitContentForReview()
             ) {
-                app(StaffNotificationService::class)->notifyLessonSubmittedForReview($lesson->fresh(), $user);
+                $this->dispatchNotificationSafely(function () use ($lesson, $user) {
+                    app(StaffNotificationService::class)->notifyLessonSubmittedForReview($lesson->fresh(), $user);
+                }, 'lesson_review_submitted', $lesson->id);
             }
 
             // مزامنة الوحدات الإضافية (ربط الدرس بوحدات أخرى): استبعاد الوحدة الأصلية
@@ -418,11 +424,13 @@ class LessonController extends Controller
 
             $subjectId = $subject->id;
 
-            app(StudentContentNotificationService::class)->notifyIfLessonBecameVisible(
-                $lessonBeforeUpdate,
-                $lesson->fresh(),
-                $user
-            );
+            $this->dispatchNotificationSafely(function () use ($lessonBeforeUpdate, $lesson, $user) {
+                app(StudentContentNotificationService::class)->notifyIfLessonBecameVisible(
+                    $lessonBeforeUpdate,
+                    $lesson->fresh(),
+                    $user
+                );
+            }, 'student_lesson_visible', $lesson->id);
 
             if ($this->wantsJsonResponse($request)) {
                 return response()->json([
@@ -580,7 +588,9 @@ class LessonController extends Controller
             'reviewed_at' => now(),
         ]);
 
-        app(StaffNotificationService::class)->notifyLessonReviewOutcome($lesson->fresh(), auth()->user(), true);
+        $this->dispatchNotificationSafely(function () use ($lesson) {
+            app(StaffNotificationService::class)->notifyLessonReviewOutcome($lesson->fresh(), auth()->user(), true);
+        }, 'lesson_review_approved', $lesson->id);
 
         app(StudentContentNotificationService::class)->notifyIfLessonBecameVisible(
             $lessonBeforeApprove,
@@ -612,7 +622,9 @@ class LessonController extends Controller
             'reviewed_at' => now(),
         ]);
 
-        app(StaffNotificationService::class)->notifyLessonReviewOutcome($lesson->fresh(), auth()->user(), false);
+        $this->dispatchNotificationSafely(function () use ($lesson) {
+            app(StaffNotificationService::class)->notifyLessonReviewOutcome($lesson->fresh(), auth()->user(), false);
+        }, 'lesson_review_rejected', $lesson->id);
 
         $subjectId = $this->resolveSubjectFromLesson($lesson)->id;
 
@@ -641,6 +653,18 @@ class LessonController extends Controller
     private function wantsJsonResponse(Request $request): bool
     {
         return $request->expectsJson() || $request->ajax();
+    }
+
+    private function dispatchNotificationSafely(callable $callback, string $context, int $lessonId): void
+    {
+        try {
+            $callback();
+        } catch (\Throwable $e) {
+            Log::error('Lesson notification dispatch failed: ' . $e->getMessage(), [
+                'context' => $context,
+                'lesson_id' => $lessonId,
+            ]);
+        }
     }
 }
 

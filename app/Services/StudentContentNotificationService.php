@@ -36,8 +36,8 @@ class StudentContentNotificationService
         }
 
         try {
-            $after->loadMissing('unit.section.subject');
-            $subject = $after->unit->section->subject ?? null;
+            $after->loadMissing('unit.section.subject', 'section.subject');
+            $subject = $after->unit?->section?->subject ?? $after->section?->subject;
             if (!$subject) {
                 return;
             }

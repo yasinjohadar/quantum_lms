@@ -9,6 +9,7 @@ use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\User;
 use Illuminate\Support\Facades\URL;
+use Spatie\Permission\Models\Role;
 
 class StaffNotificationService
 {
@@ -21,18 +22,29 @@ class StaffNotificationService
      */
     public function recipientIdsForSubjectScope(Subject $subject): array
     {
-        $adminIds = User::role('admin')->pluck('id')->all();
+        $adminRoleExists = Role::query()
+            ->where('name', 'admin')
+            ->where('guard_name', 'web')
+            ->exists();
+        $adminIds = $adminRoleExists ? User::role('admin')->pluck('id')->all() : [];
 
-        $supervisorIds = User::role('supervisor')
-            ->where(function ($q) use ($subject) {
-                $q->whereHas('assignedClassesAsSupervisor', function ($q2) use ($subject) {
-                    $q2->where('classes.id', $subject->class_id);
-                })->orWhereHas('assignedSubjectsAsSupervisor', function ($q2) use ($subject) {
-                    $q2->where('subjects.id', $subject->id);
-                });
-            })
-            ->pluck('id')
-            ->all();
+        $supervisorRoleExists = Role::query()
+            ->where('name', 'supervisor')
+            ->where('guard_name', 'web')
+            ->exists();
+        $supervisorIds = [];
+        if ($supervisorRoleExists) {
+            $supervisorIds = User::role('supervisor')
+                ->where(function ($q) use ($subject) {
+                    $q->whereHas('assignedClassesAsSupervisor', function ($q2) use ($subject) {
+                        $q2->where('classes.id', $subject->class_id);
+                    })->orWhereHas('assignedSubjectsAsSupervisor', function ($q2) use ($subject) {
+                        $q2->where('subjects.id', $subject->id);
+                    });
+                })
+                ->pluck('id')
+                ->all();
+        }
 
         return array_values(array_unique(array_merge($adminIds, $supervisorIds)));
     }
@@ -64,8 +76,8 @@ class StaffNotificationService
 
     public function notifyLessonSubmittedForReview(Lesson $lesson, User $submitter): void
     {
-        $lesson->loadMissing('unit.section.subject');
-        $subject = $lesson->unit->section->subject;
+        $lesson->loadMissing('unit.section.subject', 'section.subject');
+        $subject = $lesson->unit?->section?->subject ?? $lesson->section?->subject;
         if (!$subject) {
             return;
         }
@@ -115,8 +127,8 @@ class StaffNotificationService
 
     public function notifyLessonReviewOutcome(Lesson $lesson, User $reviewer, bool $approved): void
     {
-        $lesson->loadMissing('unit.section.subject');
-        $subject = $lesson->unit->section->subject;
+        $lesson->loadMissing('unit.section.subject', 'section.subject');
+        $subject = $lesson->unit?->section?->subject ?? $lesson->section?->subject;
         if (!$subject) {
             return;
         }
