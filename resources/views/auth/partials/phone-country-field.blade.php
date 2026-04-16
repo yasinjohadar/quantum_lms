@@ -12,6 +12,7 @@
     $phoneValue = old($phoneName, $phoneValue ?? '');
     $required = isset($required) ? (bool) $required : false;
     $label = $label ?? 'رقم الهاتف';
+    $liveRegionErrorId = $liveRegionErrorId ?? null;
 @endphp
 
 <div class="auth-field">
@@ -97,7 +98,7 @@
                 >
                 <span class="auth-icon">📱</span>
             </div>
-            @error($phoneName) <div class="auth-error">{{ $message }}</div> @enderror
+            @error($phoneName) <div class="auth-error js-phone-server-error">{{ $message }}</div> @enderror
         </div>
     </div>
 
@@ -116,4 +117,8 @@
         </div>
         @error($manualCodeName) <div class="auth-error">{{ $message }}</div> @enderror
     </div>
+
+    @if(!empty($liveRegionErrorId))
+        <div id="{{ $liveRegionErrorId }}" class="auth-error js-phone-region-live" style="display:none;" aria-live="polite"></div>
+    @endif
 </div>

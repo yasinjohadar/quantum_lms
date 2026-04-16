@@ -9,6 +9,7 @@ use App\Models\SystemSetting;
 use App\Services\SMS\OTPService;
 use App\Support\PhoneRegionValidator;
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -42,22 +43,7 @@ class RegisteredUserController extends Controller
     {
         $phoneVerificationEnabled = SystemSetting::get('phone_verification_enabled', false);
 
-        $countryCode = (string) $request->input('country_code', config('app.phone_default_country_code', '963'));
-        $manualCountryCode = preg_replace('/\D+/', '', (string) $request->input('manual_country_code', ''));
-        if ($countryCode === 'other') {
-            $countryCode = $manualCountryCode;
-        }
-
-        // تطبيع رقم الهاتف تلقائياً مع رمز الدولة المختار
-        if ($request->filled('phone')) {
-            $rawPhone = PhoneHelper::composeFromDialCode($countryCode, (string) $request->input('phone')) ?? (string) $request->input('phone');
-            $normalized = PhoneHelper::normalize($rawPhone, config('app.phone_default_country_code', '963'));
-            if ($normalized !== null) {
-                $request->merge(['phone' => $normalized]);
-            } else {
-                $request->merge(['phone' => preg_replace('/\s+/', '', trim($request->phone))]);
-            }
-        }
+        $this->normalizeRegistrationPhoneForRequest($request);
 
         // التحقق من التفرد تجاهل المستخدمين المحذوفين (soft-deleted) حتى لا يظهر "مستخدم بالفعل" لرقم/بريد سبق تسجيله ثم حذف
         $validationRules = [
@@ -186,5 +172,77 @@ class RegisteredUserController extends Controller
         Auth::login($user);
 
         return redirect(route('student.dashboard', absolute: false));
+    }
+
+    /**
+     * التحقق الفوري من تطابق الرقم مع رمز الدولة (نفس منطق التسجيل).
+     */
+    public function validatePhoneRegion(Request $request): JsonResponse
+    {
+        if (! SystemSetting::get('phone_verification_enabled', false)) {
+            return response()->json(['valid' => true]);
+        }
+
+        $request->validate([
+            'phone' => 'nullable|string',
+            'country_code' => 'nullable|string',
+            'manual_country_code' => 'nullable|string',
+        ]);
+
+        $normalized = $this->normalizeRegistrationPhoneValue($request);
+        if ($normalized === null || $normalized === '') {
+            return response()->json(['valid' => true, 'cleared' => true]);
+        }
+
+        if (! preg_match('/^\+[1-9]\d{1,14}$/', $normalized)) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'رقم الهاتف يجب أن يبدأ بـ + متبوعاً برمز الدولة',
+            ]);
+        }
+
+        $ok = PhoneRegionValidator::isValidForSelection(
+            $normalized,
+            $request->input('country_code'),
+            $request->input('manual_country_code')
+        );
+
+        if (! $ok) {
+            return response()->json([
+                'valid' => false,
+                'message' => PhoneRegionValidator::MESSAGE_AR,
+            ]);
+        }
+
+        return response()->json(['valid' => true]);
+    }
+
+    private function normalizeRegistrationPhoneForRequest(Request $request): void
+    {
+        $normalized = $this->normalizeRegistrationPhoneValue($request);
+        if ($normalized !== null) {
+            $request->merge(['phone' => $normalized]);
+        }
+    }
+
+    private function normalizeRegistrationPhoneValue(Request $request): ?string
+    {
+        if (! $request->filled('phone')) {
+            return null;
+        }
+
+        $countryCode = (string) $request->input('country_code', config('app.phone_default_country_code', '963'));
+        $manualCountryCode = preg_replace('/\D+/', '', (string) $request->input('manual_country_code', ''));
+        if ($countryCode === 'other') {
+            $countryCode = $manualCountryCode;
+        }
+
+        $rawPhone = PhoneHelper::composeFromDialCode($countryCode, (string) $request->input('phone')) ?? (string) $request->input('phone');
+        $normalized = PhoneHelper::normalize($rawPhone, config('app.phone_default_country_code', '963'));
+        if ($normalized !== null) {
+            return $normalized;
+        }
+
+        return preg_replace('/\s+/', '', trim((string) $request->input('phone')));
     }
 }

@@ -37,6 +37,7 @@
             'manualCodeId' => 'register_manual_country_code',
             'phoneId' => 'register_phone',
             'required' => isset($phoneVerificationEnabled) && $phoneVerificationEnabled,
+            'liveRegionErrorId' => (isset($phoneVerificationEnabled) && $phoneVerificationEnabled) ? 'register_phone_live_region' : null,
         ])
 
         <div class="auth-meta" style="margin-top:6px;">
@@ -163,5 +164,110 @@
         select.addEventListener('change', syncManualField);
         syncManualField();
     });
+
+    @if(isset($phoneVerificationEnabled) && $phoneVerificationEnabled)
+    (function () {
+        const phoneEl = document.getElementById('register_phone');
+        const countryEl = document.getElementById('register_country_code');
+        const manualEl = document.getElementById('register_manual_country_code');
+        const liveEl = document.getElementById('register_phone_live_region');
+        const url = @json(route('register.validate-phone-region'));
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        let debounceTimer = null;
+        let abortController = null;
+
+        function hideServerPhoneError() {
+            document.querySelectorAll('.js-phone-server-error').forEach(function (el) {
+                el.style.display = 'none';
+            });
+        }
+
+        function setLiveState(valid, message) {
+            if (!liveEl || !phoneEl) return;
+            if (valid) {
+                liveEl.style.display = 'none';
+                liveEl.textContent = '';
+                phoneEl.classList.remove('invalid');
+                return;
+            }
+            liveEl.textContent = message || '';
+            liveEl.style.display = message ? 'block' : 'none';
+            phoneEl.classList.toggle('invalid', !!message);
+        }
+
+        function runValidate() {
+            if (!phoneEl || !countryEl) return;
+            if (abortController) {
+                abortController.abort();
+            }
+            abortController = new AbortController();
+
+            const body = {
+                phone: phoneEl.value,
+                country_code: countryEl.value,
+                manual_country_code: manualEl ? manualEl.value : '',
+            };
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify(body),
+                signal: abortController.signal,
+            })
+                .then(function (r) {
+                    return r.json().then(function (data) {
+                        return { ok: r.ok, data: data };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.ok) {
+                        return;
+                    }
+                    var data = result.data;
+                    if (data.valid) {
+                        hideServerPhoneError();
+                        setLiveState(true);
+                        return;
+                    }
+                    hideServerPhoneError();
+                    setLiveState(false, data.message || 'تحقق من رقم الهاتف ورمز الدولة.');
+                })
+                .catch(function (err) {
+                    if (err.name === 'AbortError') return;
+                });
+        }
+
+        function scheduleValidate() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(runValidate, 380);
+        }
+
+        if (phoneEl) {
+            phoneEl.addEventListener('input', scheduleValidate);
+            phoneEl.addEventListener('blur', function () {
+                clearTimeout(debounceTimer);
+                runValidate();
+            });
+        }
+        if (countryEl) {
+            countryEl.addEventListener('change', function () {
+                clearTimeout(debounceTimer);
+                runValidate();
+            });
+        }
+        if (manualEl) {
+            manualEl.addEventListener('input', scheduleValidate);
+        }
+
+        if (phoneEl && phoneEl.value.trim()) {
+            runValidate();
+        }
+    })();
+    @endif
 </script>
 @endpush

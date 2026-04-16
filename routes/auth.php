@@ -17,6 +17,10 @@ Route::middleware('guest')->group(function () {
 
     Route::post('register', [RegisteredUserController::class, 'store']);
 
+    Route::post('register/validate-phone-region', [RegisteredUserController::class, 'validatePhoneRegion'])
+        ->middleware('throttle:30,1')
+        ->name('register.validate-phone-region');
+
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
 
