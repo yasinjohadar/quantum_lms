@@ -41,9 +41,8 @@ class ResetPasswordNotification extends Notification
      */
     public function toMail(object $notifiable)
     {
-        $url = url(route('password.reset', [
+        $url = url(route('password.reset.token', [
             'token' => $this->token,
-            'email' => $notifiable->getEmailForPasswordReset(),
         ], false));
 
         // Get academy name from email settings or config

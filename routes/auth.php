@@ -38,11 +38,22 @@ Route::middleware('guest')->group(function () {
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
         ->name('password.email');
 
-    Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
+    Route::post('forgot-password/validate-phone-region', [PasswordResetLinkController::class, 'validatePhoneRegion'])
+        ->middleware('throttle:30,1')
+        ->name('password.request.validate-phone-region');
+
+    Route::get('reset-password', [NewPasswordController::class, 'create'])
         ->name('password.reset');
+
+    Route::post('reset-password/send-otp', [NewPasswordController::class, 'sendOtp'])
+        ->middleware('throttle:10,1')
+        ->name('password.reset.send-otp');
 
     Route::post('reset-password', [NewPasswordController::class, 'store'])
         ->name('password.store');
+
+    Route::get('reset-password/{token}', [NewPasswordController::class, 'redirectLegacyToken'])
+        ->name('password.reset.token');
 
     // OTP Routes
     Route::post('otp/send', [\App\Http\Controllers\Auth\OTPController::class, 'send'])->name('otp.send');
