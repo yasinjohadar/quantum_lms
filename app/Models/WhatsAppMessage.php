@@ -19,6 +19,7 @@ class WhatsAppMessage extends Model
         'type',
         'body',
         'status',
+        'message_category',
         'payload',
         'error',
     ];
@@ -54,6 +55,12 @@ class WhatsAppMessage extends Model
     public const TYPE_VIDEO = 'video';
 
     /**
+     * Message categories
+     */
+    public const CATEGORY_VERIFICATION = 'verification';
+    public const CATEGORY_SYSTEM = 'system';
+
+    /**
      * Relationship with contact
      */
     public function contact(): BelongsTo
@@ -82,6 +89,15 @@ class WhatsAppMessage extends Model
     public function scopeByMetaMessageId($query, string $metaMessageId)
     {
         return $query->where('meta_message_id', $metaMessageId);
+    }
+
+    public function scopeCategory($query, ?string $category)
+    {
+        if (blank($category)) {
+            return $query;
+        }
+
+        return $query->where('message_category', $category);
     }
 
     /**

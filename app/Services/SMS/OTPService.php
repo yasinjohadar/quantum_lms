@@ -119,9 +119,14 @@ class OTPService
             }
 
             try {
-                // sendText() returns WhatsAppMessage object, not boolean
+                // OTP verification messages should be sent immediately (without queue)
                 // If it doesn't throw exception, consider it successful
-                $whatsappMessage = $this->whatsappService->sendText($otp->phone, $message);
+                $whatsappMessage = $this->whatsappService->sendTextNow(
+                    $otp->phone,
+                    $message,
+                    false,
+                    \App\Models\WhatsAppMessage::CATEGORY_VERIFICATION
+                );
                 
                 Log::info('OTP sent via WhatsApp successfully', [
                     'otp_id' => $otp->id,

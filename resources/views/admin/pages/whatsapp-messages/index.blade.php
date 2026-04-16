@@ -43,6 +43,7 @@
                 <form method="GET" action="{{ route('admin.whatsapp-messages.index') }}" class="row g-3" id="messagesFilterForm">
                     <input type="hidden" name="per_page" id="perPageHidden" value="{{ request('per_page', '50') }}">
                     <input type="hidden" name="per_page_custom" id="perPageCustomHidden" value="{{ request('per_page_custom', 50) }}">
+                    <input type="hidden" name="message_category" id="messageCategoryHidden" value="{{ $activeCategory ?? request('message_category', '') }}">
                     <div class="col-md-3">
                         <label class="form-label">بحث</label>
                         <input type="text" class="form-control" name="search" value="{{ request('search') }}" placeholder="البحث...">
@@ -117,6 +118,38 @@
                 <h5 class="card-title mb-0">قائمة الرسائل</h5>
             </div>
             <div class="card-body">
+                <div class="mb-3">
+                    <ul class="nav nav-pills gap-2" id="messageCategoryTabs">
+                        <li class="nav-item">
+                            <button
+                                type="button"
+                                class="nav-link {{ ($activeCategory ?? request('message_category', '')) === 'verification' ? '' : 'active' }}"
+                                data-category=""
+                            >
+                                كل الرسائل
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button
+                                type="button"
+                                class="nav-link {{ ($activeCategory ?? request('message_category', '')) === 'verification' ? 'active' : '' }}"
+                                data-category="verification"
+                            >
+                                رسائل التحقق
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button
+                                type="button"
+                                class="nav-link {{ ($activeCategory ?? request('message_category', '')) === 'system' ? 'active' : '' }}"
+                                data-category="system"
+                            >
+                                رسائل السيستم
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                     <form id="bulkDeleteSelectedForm" method="POST" action="{{ route('admin.whatsapp-messages.destroy-multiple', request()->query()) }}">
                         @csrf
@@ -204,6 +237,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const messagesFilterForm = document.getElementById('messagesFilterForm');
     const perPageHidden = document.getElementById('perPageHidden');
     const perPageCustomHidden = document.getElementById('perPageCustomHidden');
+    const messageCategoryHidden = document.getElementById('messageCategoryHidden');
+    const messageCategoryTabs = document.getElementById('messageCategoryTabs');
     const messagesTableBody = document.getElementById('messagesTableBody');
     const messagesPaginationContainer = document.getElementById('messagesPaginationContainer');
     const subjectsByClassUrl = '{{ route("admin.whatsapp-messages.subjects-by-class") }}';
@@ -217,6 +252,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const boxes = getCheckboxes();
             selectAll.checked = boxes.length > 0 && selected.length === boxes.length;
         }
+    }
+
+    function setActiveCategoryTab(category) {
+        if (!messageCategoryTabs) {
+            return;
+        }
+
+        const normalized = String(category ?? '');
+        messageCategoryTabs.querySelectorAll('[data-category]').forEach((tabButton) => {
+            const tabCategory = tabButton.getAttribute('data-category') || '';
+            tabButton.classList.toggle('active', tabCategory === normalized);
+        });
     }
 
     if (selectAll) {
@@ -368,10 +415,25 @@ document.addEventListener('DOMContentLoaded', function () {
             resetSelectionUi();
             attachRowCheckboxListeners();
             syncCustomPerPageUi();
+            setActiveCategoryTab(messageCategoryHidden ? messageCategoryHidden.value : '');
             window.history.replaceState({}, '', fetchUrl);
         } catch (error) {
             console.error(error);
         }
+    }
+
+    if (messageCategoryTabs && messageCategoryHidden) {
+        messageCategoryTabs.addEventListener('click', function (e) {
+            const tabButton = e.target && e.target.closest ? e.target.closest('[data-category]') : null;
+            if (!tabButton) {
+                return;
+            }
+
+            const category = tabButton.getAttribute('data-category') || '';
+            messageCategoryHidden.value = category;
+            setActiveCategoryTab(category);
+            fetchMessages(1);
+        });
     }
 
     if (classFilter && subjectFilter) {
@@ -492,6 +554,7 @@ document.addEventListener('DOMContentLoaded', function () {
     bindPerPageToolbarEvents();
     updateBulkBar();
     syncCustomPerPageUi();
+    setActiveCategoryTab(messageCategoryHidden ? messageCategoryHidden.value : '');
 });
 </script>
 

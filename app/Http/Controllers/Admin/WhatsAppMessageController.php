@@ -36,6 +36,10 @@ class WhatsAppMessageController extends Controller
         $request->validate([
             'per_page' => ['nullable', Rule::in(['50', '100', 'custom'])],
             'per_page_custom' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'message_category' => ['nullable', Rule::in([
+                WhatsAppMessage::CATEGORY_VERIFICATION,
+                WhatsAppMessage::CATEGORY_SYSTEM,
+            ])],
         ]);
 
         $perPage = 50;
@@ -74,7 +78,9 @@ class WhatsAppMessageController extends Controller
             ]);
         }
 
-        return view('admin.pages.whatsapp-messages.index', compact('messages', 'classes', 'subjects'));
+        $activeCategory = $request->input('message_category', '');
+
+        return view('admin.pages.whatsapp-messages.index', compact('messages', 'classes', 'subjects', 'activeCategory'));
     }
 
     /**
@@ -419,6 +425,10 @@ class WhatsAppMessageController extends Controller
 
         if ($request->filled('type')) {
             $query->where('type', $request->input('type'));
+        }
+
+        if ($request->filled('message_category')) {
+            $query->where('message_category', $request->input('message_category'));
         }
 
         if ($request->filled('date_from')) {
