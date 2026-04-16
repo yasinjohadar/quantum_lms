@@ -4,15 +4,42 @@ namespace App\Http\Requests\Auth;
 
 use App\Helpers\PhoneHelper;
 use App\Services\LoginLogService;
+use App\Support\PhoneRegionValidator;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Validator;
 
 class LoginRequest extends FormRequest
 {
+    /**
+     * التحقق من تطابق الرقم مع رمز الدولة المختار (دخول بالهاتف).
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if (! $this->isStudentLoginRequest() && ! $this->isAdminPhoneMode()) {
+                return;
+            }
+
+            $phone = $this->normalizedPhoneFromCountryInputs();
+            if ($phone === '' || ! preg_match('/^\+[1-9]\d{1,14}$/', $phone)) {
+                return;
+            }
+
+            if (! PhoneRegionValidator::isValidForSelection(
+                $phone,
+                $this->input('country_code'),
+                $this->input('manual_country_code')
+            )) {
+                $validator->errors()->add('phone', PhoneRegionValidator::MESSAGE_AR);
+            }
+        });
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      */

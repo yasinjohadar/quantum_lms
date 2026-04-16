@@ -67,7 +67,12 @@
     @if (session('success'))
         <div class="auth-alert auth-alert-success">{{ session('success') }}</div>
     @endif
-    @if (session()->has('pending_verification_user_id'))
+    @if (session()->has('pending_registration') && !session('success'))
+        <div class="auth-alert auth-alert-success">
+            أدخل كود التحقق المرسل إلى هاتفك لإكمال إنشاء حسابك وتفعيل الرقم.
+        </div>
+    @endif
+    @if (session()->has('pending_verification_user_id') && !session('success') && !session()->has('pending_registration'))
         <div class="auth-alert auth-alert-success">
             تم إنشاء حسابك بنجاح. بقيت خطوة واحدة فقط: أدخل كود التحقق لتفعيل الحساب وتسجيل الدخول.
         </div>

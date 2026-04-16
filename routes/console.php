@@ -11,3 +11,6 @@ Artisan::command('inspire', function () {
 // جدولة النسخ الاحتياطية
 Schedule::command('backup:run-scheduled')->everyMinute();
 Schedule::command('backup:cleanup-expired')->daily();
+
+// حذف حسابات التسجيل غير المُفعّلة بعد انتهاء صلاحية كل أكواد التحقق
+Schedule::command('users:prune-unverified-phone-registrations')->everyTenMinutes();

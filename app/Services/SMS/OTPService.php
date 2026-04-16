@@ -16,16 +16,24 @@ class OTPService
     protected SMSService $smsService;
     protected ?SendWhatsAppMessage $whatsappService;
 
+    /** @var string|null آخر رسالة تلميح للمستخدم عند فشل التسليم (مثل واتساب) */
+    protected ?string $lastDeliveryHint = null;
+
     public function __construct(SMSService $smsService, ?SendWhatsAppMessage $whatsappService = null)
     {
         $this->smsService = $smsService;
         $this->whatsappService = $whatsappService;
     }
 
+    public function getLastDeliveryHint(): ?string
+    {
+        return $this->lastDeliveryHint;
+    }
+
     /**
-     * Generate OTP code for user
+     * Generate OTP code for user (optional when no DB row yet, e.g. pending phone registration).
      */
-    public function generateOTP(User $user, string $phone, string $type = 'verification'): OTPCode
+    public function generateOTP(?User $user, string $phone, string $type = 'verification'): OTPCode
     {
         // Check rate limiting
         $this->checkRateLimit($phone, $type);
@@ -45,7 +53,7 @@ class OTPService
 
         // Create OTP record
         $otp = OTPCode::create([
-            'user_id' => $user->id ?? null,
+            'user_id' => $user?->id,
             'phone' => $phone,
             'code' => $code,
             'type' => $type,
@@ -93,6 +101,8 @@ class OTPService
      */
     public function sendOTP(OTPCode $otp, string $provider = 'sms'): bool
     {
+        $this->lastDeliveryHint = null;
+
         // Get custom message template from settings or use default (يمكن تخصيص النص من الإعدادات)
         $template = SystemSetting::get('otp_message_template', 'رمز التحقق الخاص بك هو: {code} - صالح لمدة {expires_in} دقائق');
         
@@ -114,6 +124,8 @@ class OTPService
                     $this->whatsappService = app(\App\Services\WhatsApp\SendWhatsAppMessage::class);
                 } catch (\Exception $e) {
                     Log::error('WhatsApp service is not available: ' . $e->getMessage());
+                    $this->lastDeliveryHint = 'تعذر تهيئة خدمة واتساب. جرّب إعادة الإرسال لاحقاً أو استخدم SMS إن وُجد.';
+
                     return false;
                 }
             }
@@ -136,12 +148,18 @@ class OTPService
                 
                 return true;
             } catch (\Exception $e) {
-                Log::error('Error sending OTP via WhatsApp: ' . $e->getMessage(), [
+                $msg = $e->getMessage();
+                if (Str::contains($msg, ['JID', 'does not exist on WhatsApp'], true)) {
+                    $this->lastDeliveryHint = 'تعذر إرسال الرسالة إلى هذا الرقم على واتساب. تأكد من تطابق رقم الهاتف مع رمز الدولة وأن الرقم مسجّل على واتساب، ثم أعد المحاولة.';
+                }
+
+                Log::error('Error sending OTP via WhatsApp: ' . $msg, [
                     'otp_id' => $otp->id,
                     'phone' => $otp->phone,
-                    'error' => $e->getMessage(),
+                    'error' => $msg,
                     'trace' => $e->getTraceAsString(),
                 ]);
+
                 return false;
             }
         }
@@ -159,12 +177,12 @@ class OTPService
         // Find user by phone if exists
         $user = User::where('phone', $phone)->first();
 
-        if (!$user && $type === 'verification') {
+        if (! $user && $type !== 'verification') {
             throw new \Exception('المستخدم غير موجود');
         }
 
-        // Generate new OTP
-        $otp = $this->generateOTP($user ?? new User(), $phone, $type);
+        // Generate new OTP (user_id null when verifying phone before account exists)
+        $otp = $this->generateOTP($user, $phone, $type);
 
         // Send OTP
         $this->sendOTP($otp);

@@ -41,7 +41,7 @@ class OTPController extends Controller
 
             // Generate and send OTP
             $otp = $this->otpService->generateOTP(
-                $user ?? new \App\Models\User(),
+                $user,
                 $validated['phone'],
                 $validated['type']
             );

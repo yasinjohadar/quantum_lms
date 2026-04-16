@@ -7,6 +7,7 @@ use App\Helpers\PhoneHelper;
 use App\Models\User;
 use App\Models\SystemSetting;
 use App\Services\SMS\OTPService;
+use App\Support\PhoneRegionValidator;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -79,6 +80,15 @@ class RegisteredUserController extends Controller
                 'required',
                 'string',
                 'regex:/^\+[1-9]\d{1,14}$/',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
+                    if (! PhoneRegionValidator::isValidForSelection(
+                        (string) $value,
+                        $request->input('country_code'),
+                        $request->input('manual_country_code')
+                    )) {
+                        $fail(PhoneRegionValidator::MESSAGE_AR);
+                    }
+                },
                 Rule::unique('users', 'phone')->whereNull('deleted_at'),
             ];
             $validationRules['country_code'] = ['required', 'string'];
@@ -91,103 +101,90 @@ class RegisteredUserController extends Controller
             'phone.unique' => 'رقم الهاتف مستخدم بالفعل',
         ]);
 
-        // إنشاء المستخدم
-        $userData = [
-            'name' => $validated['name'],
-            'email' => $validated['email'] ?? null,
-            'password' => Hash::make($validated['password']),
-        ];
-
-        // إذا كانت الميزة مفعلة: تعطيل الحساب حتى يتم التحقق
         if ($phoneVerificationEnabled) {
-            $userData['is_active'] = false;
-            $userData['phone'] = $validated['phone'];
-        } else {
-            $userData['is_active'] = true;
-            if (isset($validated['phone'])) {
-                $userData['phone'] = $validated['phone'];
-            }
-        }
+            session()->forget('pending_verification_user_id');
+            session([
+                'pending_registration' => [
+                    'name' => $validated['name'],
+                    'email' => $validated['email'] ?? null,
+                    'password_hash' => Hash::make($validated['password']),
+                    'phone' => $validated['phone'],
+                ],
+            ]);
 
-        $user = User::create($userData);
-
-        // تعيين صلاحية student تلقائياً
-        $user->assignRole('student');
-
-        event(new Registered($user));
-
-        // إذا كانت الميزة مفعلة: إرسال OTP و redirect إلى صفحة التحقق
-        if ($phoneVerificationEnabled) {
             try {
-                // حفظ user_id في session للتحقق لاحقاً
-                session(['pending_verification_user_id' => $user->id]);
-                
-                // إرسال OTP
-                Log::info('Generating OTP for user registration', [
-                    'user_id' => $user->id,
-                    'phone' => $user->phone,
+                Log::info('Generating OTP for pending registration (no user row yet)', [
+                    'phone' => $validated['phone'],
                 ]);
-                
-                $otp = $this->otpService->generateOTP($user, $user->phone, 'verification');
-                
+
+                $otp = $this->otpService->generateOTP(null, $validated['phone'], 'verification');
+
                 Log::info('OTP generated successfully', [
                     'otp_id' => $otp->id,
                     'phone' => $otp->phone,
                     'expires_at' => $otp->expires_at,
                 ]);
-                
-                // إرسال OTP عبر WhatsApp (افتراضي) أو SMS حسب إعدادات النظام
+
                 $provider = $request->input('otp_provider', SystemSetting::get('otp_provider', 'whatsapp'));
-                
+
                 Log::info('Attempting to send OTP', [
                     'provider' => $provider,
-                    'phone' => $user->phone,
-                ]);
-                
-                $sent = $this->otpService->sendOTP($otp, $provider);
-                
-                if (!$sent) {
-                    Log::warning('OTP send failed silently', [
-                        'user_id' => $user->id,
-                        'phone' => $user->phone,
-                        'provider' => $provider,
-                    ]);
-                    
-                    return redirect()->route('phone.verify')
-                        ->with('warning', 'تم إنشاء حسابك بنجاح، لكن تعذر إرسال رمز التحقق الآن. يرجى إعادة إرسال الكود من صفحة التحقق لإكمال تفعيل الحساب.');
-                }
-                
-                Log::info('OTP sent successfully', [
-                    'user_id' => $user->id,
-                    'phone' => $user->phone,
-                    'provider' => $provider,
+                    'phone' => $validated['phone'],
                 ]);
 
-                Log::info('Redirecting to phone verification page', [
-                    'user_id' => $user->id,
-                    'route' => 'phone.verify',
+                $sent = $this->otpService->sendOTP($otp, $provider);
+
+                if (! $sent) {
+                    Log::warning('OTP send failed silently', [
+                        'phone' => $validated['phone'],
+                        'provider' => $provider,
+                    ]);
+
+                    $hint = $this->otpService->getLastDeliveryHint();
+
+                    return redirect()->route('phone.verify')
+                        ->with('warning', $hint ?? 'تعذر إرسال رمز التحقق الآن. يرجى إعادة إرسال الكود من هذه الصفحة بعد التأكد من الرقم.');
+                }
+
+                Log::info('OTP sent successfully', [
+                    'phone' => $validated['phone'],
+                    'provider' => $provider,
                 ]);
 
                 return redirect()->route('phone.verify')
-                    ->with('success', 'تم إنشاء حسابك بنجاح. أرسلنا كود التحقق إلى رقم هاتفك، أدخل الكود لإكمال تفعيل الحساب.');
+                    ->with('success', 'أرسلنا كود التحقق إلى رقم هاتفك. أدخل الكود أدناه لإكمال إنشاء حسابك وتفعيل الرقم.');
             } catch (\Exception $e) {
                 Log::error('Error sending OTP during registration', [
-                    'user_id' => $user->id,
-                    'phone' => $user->phone ?? 'N/A',
+                    'phone' => $validated['phone'] ?? 'N/A',
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                
-                // في حالة فشل الإرسال، يمكن السماح بالتسجيل مع تحذير
+
                 return redirect()->route('phone.verify')
-                    ->with('warning', 'تم إنشاء حسابك بنجاح، لكن تعذر إرسال رمز التحقق: ' . $e->getMessage() . '. يرجى إعادة الإرسال من صفحة التحقق لإكمال التفعيل.');
+                    ->with('warning', 'تعذر إرسال رمز التحقق: '.$e->getMessage().'. يمكنك إعادة الإرسال من هذه الصفحة.');
             }
         }
 
-        // إذا كانت الميزة معطلة: تسجيل دخول تلقائي
+        // التسجيل بدون تحقق هاتف: إنشاء المستخدم مباشرة
+        $userData = [
+            'name' => $validated['name'],
+            'email' => $validated['email'] ?? null,
+            'password' => Hash::make($validated['password']),
+            'is_active' => true,
+        ];
+
+        if (isset($validated['phone'])) {
+            $userData['phone'] = $validated['phone'];
+        }
+
+        $user = User::create($userData);
+
+        $user->assignRole('student');
+
+        event(new Registered($user));
+
         Auth::login($user);
 
-        // توجيه الطالب إلى لوحة تحكم الطالب
         return redirect(route('student.dashboard', absolute: false));
     }
 }
