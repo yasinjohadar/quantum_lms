@@ -505,6 +505,15 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::get('users-management', [UserController::class, 'manageIndex'])
             ->name('users.manage');
 
+        // ===============================================
+        // المستخدمون المحذوفون سوفت (Soft Deleted Users)
+        // ===============================================
+        Route::get('users-trashed', [UserController::class, 'trashedIndex'])
+            ->name('users.trashed.index');
+
+        Route::delete('users-trashed/{user}/force-delete', [UserController::class, 'forceDestroy'])
+            ->name('users.trashed.force-delete');
+
         // السنوات الدراسية والأسابيع
         Route::resource('academic-years', \App\Http\Controllers\Admin\AcademicYearController::class);
         Route::post('academic-years/{academic_year}/activate', [\App\Http\Controllers\Admin\AcademicYearController::class, 'activate'])

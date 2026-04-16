@@ -23,6 +23,7 @@ use App\Helpers\StorageHelper;
 use App\Services\AdminStudentEnrollmentService;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class UserController extends Controller
 {
@@ -53,7 +54,7 @@ class UserController extends Controller
         // الـ POST requests محمية بـ auth middleware في route definition
         $this->middleware('auth')->except(['impersonate']);
 
-        $this->middleware('permission:user-list')->only('index');
+        $this->middleware('permission:user-list')->only(['index', 'trashedIndex']);
         $this->middleware('permission:user-create')->only(['create', 'store', 'storeQuickStudent']);
         $this->middleware('permission:user-edit')->only(['edit', 'update']);
         $this->middleware('permission:user-edit')->only([
@@ -62,7 +63,7 @@ class UserController extends Controller
             'detachAllFromClass',
             'detachAllFromSubject',
         ]);
-        $this->middleware('permission:user-delete')->only('destroy');
+        $this->middleware('permission:user-delete')->only(['destroy', 'forceDestroy']);
         $this->middleware('permission:user-show')->only('show');
         $this->middleware('permission:user-update-password')->only('updatePassword');
         $this->middleware('permission:user-toggle-status')->only('toggleStatus');
@@ -128,6 +129,104 @@ class UserController extends Controller
         }
 
         return view('admin.pages.users.index', compact('users', 'roles', 'classes', 'classesForAssign'));
+    }
+
+    /**
+     * Soft Deleted Users listing (deleted_at is not null)
+     */
+    public function trashedIndex(Request $request)
+    {
+        $roles = Role::all();
+
+        $usersQuery = User::onlyTrashed()->with(['roles']);
+
+        // بحث عام بالاسم / البريد / الهاتف
+        if ($request->filled('query')) {
+            $search = $request->input('query');
+            $usersQuery->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%$search%")
+                    ->orWhere('email', 'like', "%$search%")
+                    ->orWhere('phone', 'like', "%$search%");
+            });
+        }
+
+        // فلتر نوع المستخدم (student/teacher/supervisor/admin/other)
+        $userType = $request->input('user_type');
+        if ($userType) {
+            if (in_array($userType, ['student', 'teacher', 'supervisor', 'admin'], true)) {
+                $rolesTable = config('permission.table_names.roles', 'roles');
+                $usersQuery->whereHas('roles', function ($q) use ($userType, $rolesTable) {
+                    // البعض يعتمد على staff_profile والبعض يعتمد على name
+                    if (Schema::hasColumn($rolesTable, 'staff_profile')) {
+                        $q->where('staff_profile', $userType);
+                    } else {
+                        $q->where('name', $userType);
+                    }
+                });
+            } elseif ($userType === 'other') {
+                $usersQuery->whereDoesntHave('roles', function ($q) {
+                    $q->whereIn('name', ['student', 'teacher', 'supervisor', 'admin']);
+                });
+            }
+        }
+
+        // فلتر حسب الدور (role dropdown)
+        if ($request->filled('role')) {
+            $roleName = $request->input('role');
+            $usersQuery->whereHas('roles', function ($q) use ($roleName) {
+                $q->where('name', $roleName);
+            });
+        }
+
+        // فلتر حالة الحساب (اختياري)
+        if ($request->has('is_active') && $request->input('is_active') !== '') {
+            $usersQuery->where('is_active', $request->input('is_active'));
+        }
+
+        $perPage = min(100, max(1, (int) $request->input('per_page', 25)));
+        $users = $usersQuery->orderBy('name')->paginate($perPage);
+
+        return view('admin.pages.users.trashed.index', compact('users', 'roles'));
+    }
+
+    /**
+     * Force delete a soft deleted user.
+     */
+    public function forceDestroy(Request $request, $user)
+    {
+        try {
+            $userModel = User::withTrashed()->findOrFail($user);
+
+            if (! $userModel->trashed()) {
+                return redirect()->route('admin.users.trashed.index')
+                    ->with('error', "❌ هذا المستخدم ليس محذوفاً سوفت.");
+            }
+
+            // حذف الصورة إذا كانت موجودة
+            if ($userModel->photo) {
+                try {
+                    StorageHelper::delete('avatars', $userModel->photo);
+                } catch (\Exception $e) {
+                    // لا نوقف العملية إذا فشل حذف الصورة
+                }
+            }
+
+            $userName = $userModel->name;
+
+            $userModel->forceDelete();
+
+            return redirect()->route('admin.users.trashed.index')
+                ->with('success', "✅ تم حذف المستخدم نهائياً ({$userName})");
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return redirect()->route('admin.users.trashed.index')
+                ->with('error', '❌ المستخدم المطلوب غير موجود');
+        } catch (QueryException $e) {
+            return redirect()->route('admin.users.trashed.index')
+                ->with('error', '❌ فشل الحذف النهائي بسبب قيود قاعدة البيانات.');
+        } catch (\Exception $e) {
+            return redirect()->route('admin.users.trashed.index')
+                ->with('error', '❌ حدث خطأ أثناء الحذف النهائي: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -665,14 +764,15 @@ class UserController extends Controller
             // حذف المستخدم
             $user->delete();
 
-            return redirect()->route("users.index")
+            // الرجوع لنفس الصفحة التي تم منها الحذف (users-management أو users.index)
+            return redirect()->back()
                 ->with("success", "✅ تم حذف المستخدم ({$userName}) بنجاح");
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return redirect()->route('users.index')
+            return redirect()->back()
                 ->with('error', '❌ المستخدم المطلوب غير موجود');
         } catch (\Exception $e) {
-            return redirect()->route('users.index')
+            return redirect()->back()
                 ->with('error', '❌ حدث خطأ أثناء حذف المستخدم: ' . $e->getMessage());
         }
     }

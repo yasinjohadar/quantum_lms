@@ -104,6 +104,9 @@
                                 <button type="submit" class="btn btn-secondary btn-sm">
                                     <i class="fas fa-search me-1"></i> بحث
                                 </button>
+                                <a href="{{ route('admin.users.trashed.index') }}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-trash-restore me-1"></i> المحذوفين سوفت
+                                </a>
                                 @if(request()->hasAny(['query','user_type','role','is_active']) && (request('query') || request('user_type') || request('role') || request('is_active') !== null))
                                     <a href="{{ route('admin.users.manage') }}" class="btn btn-outline-secondary btn-sm">
                                         مسح الفلاتر
