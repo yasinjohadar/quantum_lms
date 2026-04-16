@@ -102,6 +102,10 @@
         </div>
     </div>
 
+    <p class="auth-meta" style="margin-top:8px;margin-bottom:0;line-height:1.45;">
+        الرقم فقط بدون رمز الدولة؛ يُختار الرمز من القائمة ويُدمَج تلقائياً.
+    </p>
+
     <div class="auth-field js-manual-country-wrap" id="{{ $manualCodeId }}_wrap" @if((string) $selectedCountryCode !== 'other') style="display:none;" @endif>
         <label class="auth-label auth-label-small" for="{{ $manualCodeId }}">رمز الدولة المخصص</label>
         <div class="auth-control">
