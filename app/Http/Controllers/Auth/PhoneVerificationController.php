@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\OTPCode;
 use App\Services\SMS\OTPService;
 use App\Models\User;
 use App\Models\SystemSetting;
@@ -57,9 +58,14 @@ class PhoneVerificationController extends Controller
                 ->with('error', 'رقم الهاتف غير موجود');
         }
 
+        $activeOtp = $this->getLatestActiveOtp($user->phone);
+
         return view('auth.verify-phone', [
             'user' => $user,
             'phone' => $user->phone,
+            'otpExpiresAt' => $activeOtp?->expires_at?->toIso8601String(),
+            'otpRemainingSeconds' => $activeOtp ? max(0, now()->diffInSeconds($activeOtp->expires_at, false)) : 0,
+            'hasActiveOtp' => (bool) $activeOtp,
         ]);
     }
 
@@ -173,6 +179,9 @@ class PhoneVerificationController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'تم إرسال رمز التحقق بنجاح',
+                'expires_at' => $otp->expires_at?->toIso8601String(),
+                'remaining_seconds' => max(0, now()->diffInSeconds($otp->expires_at, false)),
+                'resend_available_at' => $otp->expires_at?->toIso8601String(),
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -180,5 +189,14 @@ class PhoneVerificationController extends Controller
                 'message' => $e->getMessage(),
             ], 400);
         }
+    }
+
+    private function getLatestActiveOtp(string $phone): ?OTPCode
+    {
+        return OTPCode::where('phone', $phone)
+            ->where('type', 'verification')
+            ->valid()
+            ->orderByDesc('id')
+            ->first();
     }
 }

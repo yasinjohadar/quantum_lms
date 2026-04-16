@@ -154,7 +154,7 @@ class RegisteredUserController extends Controller
                     ]);
                     
                     return redirect()->route('phone.verify')
-                        ->with('warning', 'تم إنشاء حسابك، لكن فشل إرسال رمز التحقق. يرجى المحاولة مرة أخرى من صفحة التحقق.');
+                        ->with('warning', 'تم إنشاء حسابك بنجاح، لكن تعذر إرسال رمز التحقق الآن. يرجى إعادة إرسال الكود من صفحة التحقق لإكمال تفعيل الحساب.');
                 }
                 
                 Log::info('OTP sent successfully', [
@@ -169,7 +169,7 @@ class RegisteredUserController extends Controller
                 ]);
 
                 return redirect()->route('phone.verify')
-                    ->with('success', 'تم إرسال رمز التحقق إلى رقم هاتفك. يرجى إدخال الرمز للتحقق من حسابك.');
+                    ->with('success', 'تم إنشاء حسابك بنجاح. أرسلنا كود التحقق إلى رقم هاتفك، أدخل الكود لإكمال تفعيل الحساب.');
             } catch (\Exception $e) {
                 Log::error('Error sending OTP during registration', [
                     'user_id' => $user->id,
@@ -180,7 +180,7 @@ class RegisteredUserController extends Controller
                 
                 // في حالة فشل الإرسال، يمكن السماح بالتسجيل مع تحذير
                 return redirect()->route('phone.verify')
-                    ->with('warning', 'تم إنشاء حسابك، لكن فشل إرسال رمز التحقق: ' . $e->getMessage() . '. يرجى المحاولة مرة أخرى من صفحة التحقق.');
+                    ->with('warning', 'تم إنشاء حسابك بنجاح، لكن تعذر إرسال رمز التحقق: ' . $e->getMessage() . '. يرجى إعادة الإرسال من صفحة التحقق لإكمال التفعيل.');
             }
         }
 

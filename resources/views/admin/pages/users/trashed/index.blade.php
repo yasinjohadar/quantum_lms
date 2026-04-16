@@ -105,6 +105,7 @@
                                 <th style="min-width: 200px;">البريد</th>
                                 <th style="min-width: 160px;">الهاتف</th>
                                 <th style="width: 140px;">حالة الحساب</th>
+                                <th style="width: 150px;">حالة السجل</th>
                                 <th style="min-width: 180px;">تاريخ الحذف</th>
                                 <th style="min-width: 180px;">العمليات</th>
                             </tr>
@@ -138,6 +139,12 @@
                                     </td>
 
                                     <td>
+                                        <span class="badge bg-warning text-dark">
+                                            محذوف سوفت
+                                        </span>
+                                    </td>
+
+                                    <td>
                                         {{ $user->deleted_at?->format('Y-m-d H:i') ?? '-' }}
                                     </td>
 
@@ -159,7 +166,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="text-center text-danger fw-bold">
+                                    <td colspan="9" class="text-center text-danger fw-bold">
                                         لا توجد بيانات متاحة
                                     </td>
                                 </tr>
