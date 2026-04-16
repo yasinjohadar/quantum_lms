@@ -107,6 +107,21 @@
                             <i class="fa-solid fa-trash-can me-2"></i> حذف
                         </a>
                     </li>
+
+                    @can('user-delete')
+                        <li>
+                            <form action="{{ route('admin.users.force-delete', $user->id) }}"
+                                  method="POST"
+                                  class="d-inline"
+                                  onsubmit="return confirm('تحذير: هذا حذف نهائي ولا يمكن التراجع عنه. هل أنت متأكد؟');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="dropdown-item text-danger">
+                                    <i class="fa-solid fa-trash-can me-2"></i> حذف نهائي
+                                </button>
+                            </form>
+                        </li>
+                    @endcan
                 </ul>
             </div>
         </td>

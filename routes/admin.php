@@ -514,6 +514,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::delete('users-trashed/{user}/force-delete', [UserController::class, 'forceDestroy'])
             ->name('users.trashed.force-delete');
 
+        // حذف نهائي مباشر من قائمة إدارة المستخدمين
+        Route::delete('users/{user}/force-delete', [UserController::class, 'forceDestroyDirect'])
+            ->name('users.force-delete');
+
         // السنوات الدراسية والأسابيع
         Route::resource('academic-years', \App\Http\Controllers\Admin\AcademicYearController::class);
         Route::post('academic-years/{academic_year}/activate', [\App\Http\Controllers\Admin\AcademicYearController::class, 'activate'])

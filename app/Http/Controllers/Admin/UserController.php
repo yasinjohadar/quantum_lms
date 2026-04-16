@@ -63,7 +63,7 @@ class UserController extends Controller
             'detachAllFromClass',
             'detachAllFromSubject',
         ]);
-        $this->middleware('permission:user-delete')->only(['destroy', 'forceDestroy']);
+        $this->middleware('permission:user-delete')->only(['destroy', 'forceDestroy', 'forceDestroyDirect']);
         $this->middleware('permission:user-show')->only('show');
         $this->middleware('permission:user-update-password')->only('updatePassword');
         $this->middleware('permission:user-toggle-status')->only('toggleStatus');
@@ -225,6 +225,41 @@ class UserController extends Controller
                 ->with('error', '❌ فشل الحذف النهائي بسبب قيود قاعدة البيانات.');
         } catch (\Exception $e) {
             return redirect()->route('admin.users.trashed.index')
+                ->with('error', '❌ حدث خطأ أثناء الحذف النهائي: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Force delete a user مباشرة من القائمة (حتى لو لم يكن soft deleted).
+     */
+    public function forceDestroyDirect(Request $request, $user)
+    {
+        try {
+            $userModel = User::withTrashed()->findOrFail($user);
+
+            // حذف الصورة إذا كانت موجودة
+            if ($userModel->photo) {
+                try {
+                    StorageHelper::delete('avatars', $userModel->photo);
+                } catch (\Exception $e) {
+                    // لا نوقف العملية إذا فشل حذف الصورة
+                }
+            }
+
+            $userName = $userModel->name;
+
+            $userModel->forceDelete();
+
+            return redirect()->back()
+                ->with('success', "✅ تم حذف المستخدم نهائياً ({$userName})");
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return redirect()->back()
+                ->with('error', '❌ المستخدم المطلوب غير موجود');
+        } catch (QueryException $e) {
+            return redirect()->back()
+                ->with('error', '❌ فشل الحذف النهائي بسبب قيود قاعدة البيانات.');
+        } catch (\Exception $e) {
+            return redirect()->back()
                 ->with('error', '❌ حدث خطأ أثناء الحذف النهائي: ' . $e->getMessage());
         }
     }
