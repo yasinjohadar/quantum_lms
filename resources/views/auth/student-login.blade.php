@@ -1,12 +1,12 @@
 @extends('auth.layouts.glass')
 
-@section('title', 'دخول الطالب - Quantum LMS')
+@section('title', 'صفحة تسجيل الطالب - منصة كوانتم التعليمية')
 @section('brand-subtitle', 'بوابة الطلاب')
 
 @section('content')
     <div class="auth-heading">
-        <div class="auth-badge">دخول الطلاب</div>
-        <h1>مرحبًا بك</h1>
+        <div class="auth-badge">صفحة تسجيل الطالب</div>
+        <h1>صفحة تسجيل الطالب</h1>
         <p>سجّل الدخول برقم الهاتف وكلمة المرور لمتابعة الدراسة.</p>
     </div>
 

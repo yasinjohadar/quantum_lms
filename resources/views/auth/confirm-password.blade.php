@@ -1,6 +1,6 @@
 @extends('auth.layouts.glass')
 
-@section('title', 'تأكيد كلمة المرور - Quantum LMS')
+@section('title', 'تأكيد كلمة المرور - منصة كوانتم التعليمية')
 @section('brand-subtitle', 'منطقة آمنة')
 
 @section('content')

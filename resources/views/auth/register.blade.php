@@ -1,12 +1,12 @@
 @extends('auth.layouts.glass')
 
-@section('title', 'إنشاء حساب - Quantum LMS')
+@section('title', 'صفحة تسجيل طالب جديد - منصة كوانتم التعليمية')
 @section('brand-subtitle', 'بوابة التسجيل')
 
 @section('content')
     <div class="auth-heading">
-        <div class="auth-badge">إنشاء حساب جديد</div>
-        <h1>انضم إلى Quantum LMS</h1>
+        <div class="auth-badge">صفحة تسجيل طالب جديد</div>
+        <h1>صفحة تسجيل طالب جديد</h1>
         <p>سجل بياناتك للوصول إلى لوحة الإدارة بتجربة حديثة وآمنة.</p>
     </div>
 
@@ -77,7 +77,7 @@
 
         <div class="auth-meta">
             لديك حساب بالفعل؟
-            <a href="{{ route('login') }}" class="auth-link">تسجيل الدخول</a>
+            <a href="{{ route('student.login') }}" class="auth-link">تسجيل دخول الطلاب</a>
         </div>
     </form>
 @endsection

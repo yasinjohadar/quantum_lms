@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Quantum LMS')</title>
+    <title>@yield('title', 'منصة كوانتم التعليمية')</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -492,13 +492,12 @@
     <div class="auth-card">
         <div class="auth-brand">
             <div class="auth-logo">
-                <img src="{{ asset('frontend/images/logo.png') }}" alt="Quantum LMS Logo">
+                <img src="{{ asset('frontend/images/logo.png') }}" alt="منصة كوانتم التعليمية">
             </div>
-            <div class="auth-title">Quantum LMS</div>
+            <div class="auth-title">منصة كوانتم التعليمية</div>
             <div class="auth-subtitle">@yield('brand-subtitle', 'بوابة الحسابات')</div>
         </div>
         @yield('content')
-        <div class="auth-footer">Quantum LMS &copy; {{ date('Y') }} - جميع الحقوق محفوظة.</div>
     </div>
 </div>
 @stack('scripts')
