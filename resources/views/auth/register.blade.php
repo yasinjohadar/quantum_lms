@@ -28,15 +28,6 @@
             @error('name') <div class="auth-error">{{ $message }}</div> @enderror
         </div>
 
-        <div class="auth-field">
-            <label class="auth-label" for="email">البريد الإلكتروني</label>
-            <div class="auth-control">
-                <input id="email" class="auth-input @error('email') invalid @enderror" type="email" name="email" value="{{ old('email') }}" required autocomplete="username" placeholder="name@example.com">
-                <span class="auth-icon">✉</span>
-            </div>
-            @error('email') <div class="auth-error">{{ $message }}</div> @enderror
-        </div>
-
         @include('auth.partials.phone-country-field', [
             'label' => 'رقم الهاتف' . ((isset($phoneVerificationEnabled) && $phoneVerificationEnabled) ? ' *' : ''),
             'countryCodeName' => 'country_code',

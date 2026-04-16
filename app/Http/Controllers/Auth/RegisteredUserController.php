@@ -62,7 +62,7 @@ class RegisteredUserController extends Controller
         $validationRules = [
             'name' => ['required', 'string', 'max:255'],
             'email' => [
-                'required',
+                'nullable',
                 'string',
                 'lowercase',
                 'email',
@@ -94,7 +94,7 @@ class RegisteredUserController extends Controller
         // إنشاء المستخدم
         $userData = [
             'name' => $validated['name'],
-            'email' => $validated['email'],
+            'email' => $validated['email'] ?? null,
             'password' => Hash::make($validated['password']),
         ];
 
