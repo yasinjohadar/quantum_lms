@@ -8,6 +8,7 @@ use App\Models\Subject;
 use App\DataTransferObjects\SubjectAccessData;
 use App\DataTransferObjects\ClassAccessData;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class PricingCacheManager
 {
@@ -66,24 +67,38 @@ class PricingCacheManager
 
     public function invalidateClass(SchoolClass $class): void
     {
-        $tags = $this->getClassTags($class);
-        Cache::tags($tags)->flush();
+        $this->flushTaggedCacheSafe($this->getClassTags($class), 'invalidateClass', ['class_id' => $class->id]);
     }
 
     public function invalidateSubject(Subject $subject): void
     {
-        $tags = $this->getSubjectTags($subject);
-        Cache::tags($tags)->flush();
+        $this->flushTaggedCacheSafe($this->getSubjectTags($subject), 'invalidateSubject', ['subject_id' => $subject->id]);
     }
 
     public function invalidateUserAccess(User $user): void
     {
-        Cache::tags(['user_access_' . $user->id])->flush();
+        $this->flushTaggedCacheSafe(['user_access_' . $user->id], 'invalidateUserAccess', ['user_id' => $user->id]);
     }
 
     public function invalidateGlobalPricing(): void
     {
-        Cache::tags(['pricing', 'classes', 'subjects'])->flush();
+        $this->flushTaggedCacheSafe(['pricing', 'classes', 'subjects'], 'invalidateGlobalPricing');
+    }
+
+    /**
+     * تفريغ كاش مُوسوم؛ إذا كان المحرك لا يدعم الوسوم (مثل file/database) نتجاهل الخطأ حتى لا تفشل العمليات الأخرى (مثل فصل الطالب).
+     */
+    private function flushTaggedCacheSafe(array $tags, string $context, array $extra = []): void
+    {
+        try {
+            Cache::tags($tags)->flush();
+        } catch (\Throwable $e) {
+            Log::warning('PricingCacheManager: tagged cache flush skipped', array_merge([
+                'context' => $context,
+                'tags' => $tags,
+                'error' => $e->getMessage(),
+            ], $extra));
+        }
     }
 
     public function invalidateOnPurchase(User $user, $purchasable): void
