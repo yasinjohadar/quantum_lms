@@ -16,7 +16,7 @@ class SupervisorAssignmentController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['permission:supervisor-assignment-list'])->only(['index', 'getSubjectsByClass']);
+        $this->middleware(['permission:supervisor-assignment-list'])->only(['index', 'getSubjectsByClass', 'overview']);
         $this->middleware(['permission:supervisor-assignment-show'])->only('show');
         $this->middleware(['permission:supervisor-assignment-update'])->only('update');
     }
@@ -135,6 +135,53 @@ class SupervisorAssignmentController extends Controller
             'filterClasses',
             'filterSubjects',
             'filterRoles',
+        ));
+    }
+
+    /**
+     * عرض كل ما يخص المشرف (صفوف، مواد، نطاق الوصول) — قراءة فقط مع روابط للتعديل.
+     */
+    public function overview(User $supervisor)
+    {
+        if (! $supervisor->hasSupervisorStaffIdentity()) {
+            return redirect()
+                ->route('admin.supervisors.assignments.index')
+                ->with('error', 'المستخدم المحدد ليس مشرف');
+        }
+
+        $supervisor->load([
+            'roles',
+            'assignedClassesAsSupervisor.stage',
+            'assignedSubjectsAsSupervisor.schoolClass.stage',
+        ]);
+
+        $assignedClasses = $supervisor->assignedClassesAsSupervisor->sortBy('name')->values();
+        $directSubjects = $supervisor->assignedSubjectsAsSupervisor->sortBy('name')->values();
+
+        $accessibleSubjects = $supervisor->getAccessibleSubjectsAsSupervisor()
+            ->with(['schoolClass.stage'])
+            ->active()
+            ->ordered()
+            ->get();
+
+        $lastLogin = LoginLog::query()
+            ->where('user_id', $supervisor->id)
+            ->where('is_successful', true)
+            ->latest('login_at')
+            ->value('login_at');
+
+        $isOnline = UserSession::query()
+            ->where('user_id', $supervisor->id)
+            ->where('status', 'active')
+            ->exists();
+
+        return view('admin.pages.supervisors.overview', compact(
+            'supervisor',
+            'assignedClasses',
+            'directSubjects',
+            'accessibleSubjects',
+            'lastLogin',
+            'isOnline',
         ));
     }
 

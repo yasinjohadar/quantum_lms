@@ -2,10 +2,10 @@
     <tr>
         <td>{{ $loop->iteration + ($supervisors->currentPage() - 1) * $supervisors->perPage() }}</td>
         <td>
-            <div class="d-flex align-items-center">
+            <a href="{{ route('admin.supervisors.overview', $supervisor) }}" class="d-flex align-items-center text-decoration-none text-reset">
                 @if($supervisor->photo)
                     <img src="{{ media_public_url($supervisor->photo) }}"
-                         alt="{{ $supervisor->name }}"
+                         alt=""
                          class="rounded-circle me-2"
                          style="width: 40px; height: 40px; object-fit: cover;">
                 @else
@@ -15,7 +15,7 @@
                     </div>
                 @endif
                 <span class="fw-semibold">{{ $supervisor->name }}</span>
-            </div>
+            </a>
         </td>
         <td>{{ $supervisor->email }}</td>
         <td>
@@ -109,6 +109,11 @@
                                 </button>
                             </li>
                         @endcan
+                        <li>
+                            <a class="dropdown-item" href="{{ route('admin.supervisors.overview', $supervisor) }}">
+                                <i class="bi bi-person-lines-fill me-2 text-secondary"></i> نظرة عامة
+                            </a>
+                        </li>
                         @can('supervisor-assignment-show')
                             <li>
                                 <a class="dropdown-item"

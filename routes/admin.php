@@ -592,6 +592,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('supervisors.assignments.subjects-by-class');
         Route::get('supervisors/assignments', [\App\Http\Controllers\Admin\SupervisorAssignmentController::class, 'index'])
             ->name('supervisors.assignments.index');
+        Route::get('supervisors/{supervisor}/overview', [\App\Http\Controllers\Admin\SupervisorAssignmentController::class, 'overview'])
+            ->name('supervisors.overview');
         Route::get('supervisors/{supervisor}/assignments', [\App\Http\Controllers\Admin\SupervisorAssignmentController::class, 'show'])
             ->name('supervisors.assignments');
         Route::put('supervisors/{supervisor}/assignments', [\App\Http\Controllers\Admin\SupervisorAssignmentController::class, 'update'])

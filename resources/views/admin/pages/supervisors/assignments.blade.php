@@ -17,7 +17,10 @@
                 <div class="my-auto">
                     <h5 class="page-title fs-21 mb-1">تخصيص المشرف: {{ $supervisor->name }}</h5>
                 </div>
-                <div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ route('admin.supervisors.overview', $supervisor) }}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-person-lines-fill me-1"></i> نظرة عامة
+                    </a>
                     <a href="{{ route('admin.supervisors.assignments.index') }}" class="btn btn-secondary btn-sm">
                         <i class="bi bi-arrow-right me-1"></i> رجوع
                     </a>
