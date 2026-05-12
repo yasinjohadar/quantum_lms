@@ -39,7 +39,6 @@ class ProfileController extends Controller
         // تحميل البيانات مع العلاقات
         $user->load([
             'subjects.schoolClass.stage',
-            'groups',
             'enrollments.subject.schoolClass.stage',
             'loginLogs' => function($query) {
                 $query->latest('login_at')->limit(10);
@@ -69,7 +68,6 @@ class ProfileController extends Controller
         // إحصائيات عامة
         $generalStats = [
             'total_subjects' => $user->subjects()->count(),
-            'total_groups' => $user->groups()->count(),
             'total_enrollments' => $user->enrollments()->count(),
             'active_enrollments' => $user->enrollments()->where('status', 'active')->count(),
             'total_logins' => $user->loginLogs()->count(),
