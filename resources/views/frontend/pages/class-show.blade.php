@@ -102,12 +102,12 @@
                                 </div>
                                 
                                 @if($subject->canAccess)
-                                    <a href="{{ route('student.subject.show', $subject->slug) }}" class="class-card-btn enroll-btn">
+                                    <a href="{{ route('student.subjects.show', $subject->id) }}" class="class-card-btn enroll-btn">
                                         مشاهدة المادة
                                         <i class="fa-solid fa-play ms-2"></i>
                                     </a>
                                 @elseif($subject->isEffectivelyFree)
-                                    <a href="{{ route('student.subject.show', $subject->slug) }}" class="class-card-btn enroll-btn">
+                                    <a href="{{ route('student.subjects.show', $subject->id) }}" class="class-card-btn enroll-btn">
                                         مشاهدة مجانية
                                         <i class="fa-solid fa-play ms-2"></i>
                                     </a>
