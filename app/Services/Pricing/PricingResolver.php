@@ -2,6 +2,8 @@
 
 namespace App\Services\Pricing;
 
+use App\DataTransferObjects\ClassAccessData;
+use App\DataTransferObjects\SubjectAccessData;
 use App\Enums\PricingMode;
 use App\Models\SchoolClass;
 use App\Models\Subject;
@@ -61,6 +63,8 @@ class PricingResolver
 
         $canAccess = $user ? $this->accessResolver->hasSubjectAccess($user, $subject) : $isFree;
         $canPurchase = $user ? $this->accessResolver->canPurchaseSubject($user, $subject) : false;
+        $canPurchaseSeparately = ($subject->can_purchase_separately ?? true)
+            && $this->subjectPricingResolver->canPurchaseSeparately($subject);
         $accessType = $user ? $this->accessResolver->getSubjectAccessType($user, $subject) : ($isFree ? 'free' : 'requires_purchase');
         $badge = $this->accessResolver->getSubjectBadge($subject, $user);
 
@@ -79,6 +83,7 @@ class PricingResolver
             pricingMode: $pricingMode,
             canAccess: $canAccess,
             canPurchase: $canPurchase,
+            canPurchaseSeparately: $canPurchaseSeparately,
             effectivePrice: $price,
             displayPrice: $displayPrice,
             accessType: $accessType,

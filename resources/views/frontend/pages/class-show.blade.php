@@ -57,57 +57,57 @@
             
             <div class="row">
                 @forelse($subjects as $subject)
-                    <div class="col-lg-3 col-md-6 col-12 mb-4" id="subject-{{ $subject['id'] }}">
+                    <div class="col-lg-3 col-md-6 col-12 mb-4" id="subject-{{ $subject->id }}">
                         <div class="class-card">
                             <div class="class-card-image">
-                                @if($subject['image'])
-                                    <img src="{{ media_public_url($subject['image']) }}" alt="{{ $subject['name'] }}" class="img-fluid">
+                                @if($subject->image)
+                                    <img src="{{ media_public_url($subject->image) }}" alt="{{ $subject->name }}" class="img-fluid">
                                 @else
                                     <div class="class-card-placeholder">
                                         <i class="fa-solid fa-book"></i>
                                     </div>
                                 @endif
-                                @if(isset($subject['badge']))
-                                    <span class="subject-badge {{ $subject['badge']['class'] }}">
-                                        <i class="fa-solid {{ $subject['badge']['icon'] }}"></i>
-                                        {{ $subject['badge']['text'] }}
+                                @if(!empty($subject->badge))
+                                    <span class="subject-badge {{ $subject->badge['class'] }}">
+                                        <i class="fa-solid {{ $subject->badge['icon'] }}"></i>
+                                        {{ $subject->badge['text'] }}
                                     </span>
                                 @endif
                             </div>
                             <div class="class-card-body">
-                                <h3 class="class-card-title">{{ $subject['name'] }}</h3>
+                                <h3 class="class-card-title">{{ $subject->name }}</h3>
                                 
                                 <!-- Price Section -->
                                 <div class="class-card-price">
-                                    @if($subject['is_free'])
+                                    @if($subject->isEffectivelyFree)
                                         <div class="price-free-wrapper">
                                             <span class="price-free">مجاني</span>
                                         </div>
-                                    @elseif(!$subject['show_price'])
+                                    @elseif(!$subject->showPrice)
                                         <div class="price-hidden-wrapper">
                                             <span class="price-hidden">—</span>
                                         </div>
-                                    @elseif($subject['has_access'])
+                                    @elseif($subject->canAccess)
                                         <div class="price-access-wrapper">
                                             <span class="price-access"><i class="fa-solid fa-check-circle text-success"></i> لديك وصول</span>
                                         </div>
                                     @else
                                         <div class="price-content">
                                             <div class="price-current">
-                                                <span class="price-amount">{{ number_format($subject['price'], 2) }}</span>
-                                                <span class="price-currency">{{ $subject['currency']->symbol ?? $subject['currency']->code ?? '' }}</span>
+                                                <span class="price-amount">{{ number_format($subject->effectivePrice, 2) }}</span>
+                                                <span class="price-currency">{{ $subject->currency?->symbol ?? $subject->currency?->code ?? '' }}</span>
                                             </div>
                                         </div>
                                     @endif
                                 </div>
                                 
-                                @if($subject['has_access'])
-                                    <a href="{{ route('student.subject.show', $subject['slug']) }}" class="class-card-btn enroll-btn">
+                                @if($subject->canAccess)
+                                    <a href="{{ route('student.subject.show', $subject->slug) }}" class="class-card-btn enroll-btn">
                                         مشاهدة المادة
                                         <i class="fa-solid fa-play ms-2"></i>
                                     </a>
-                                @elseif($subject['is_free'])
-                                    <a href="{{ route('student.subject.show', $subject['slug']) }}" class="class-card-btn enroll-btn">
+                                @elseif($subject->isEffectivelyFree)
+                                    <a href="{{ route('student.subject.show', $subject->slug) }}" class="class-card-btn enroll-btn">
                                         مشاهدة مجانية
                                         <i class="fa-solid fa-play ms-2"></i>
                                     </a>
@@ -198,21 +198,21 @@
                                         <!-- Subjects Checkboxes -->
                                         <div class="subjects-checkboxes" style="display: none;">
                                             @foreach($subjects as $subject)
-                                                @if($subject['can_purchase_separately'] && !$subject['is_free'] && !$subject['has_access'])
+                                                @if($subject->canPurchaseSeparately && !$subject->isEffectivelyFree && !$subject->canAccess && $subject->canPurchase)
                                                 <label class="subject-checkbox-label">
-                                                    <input type="checkbox" name="subject_ids[]" value="{{ $subject['id'] }}" class="subject-checkbox" data-price="{{ $subject['price'] }}" data-currency="{{ $subject['currency']->symbol ?? $subject['currency']->code ?? '' }}">
+                                                    <input type="checkbox" name="subject_ids[]" value="{{ $subject->id }}" class="subject-checkbox" data-price="{{ $subject->effectivePrice }}" data-currency="{{ $subject->currency?->symbol ?? $subject->currency?->code ?? '' }}">
                                                     <span class="subject-checkbox-content">
-                                                        <span class="subject-checkbox-name">{{ $subject['name'] }}</span>
+                                                        <span class="subject-checkbox-name">{{ $subject->name }}</span>
                                                         <span class="subject-checkbox-price">
-                                                            @if(!$subject['show_price'])
+                                                            @if(!$subject->showPrice)
                                                                 <span class="text-muted">السعر مخفي</span>
                                                             @else
-                                                                {{ number_format($subject['price'], 2) }} {{ $subject['currency']->symbol ?? $subject['currency']->code ?? '' }}
-                                                            @endif
+                                                                {{ number_format($subject->effectivePrice, 2) }} {{ $subject->currency?->symbol ?? $subject->currency?->code ?? '' }}
                                                             @endif
                                                         </span>
                                                     </span>
                                                 </label>
+                                                @endif
                                             @endforeach
                                         </div>
                                     </div>
