@@ -84,7 +84,7 @@ class TeacherAssignmentController extends Controller
         $weekId = $request->input('week_id') ? (int) $request->input('week_id') : null;
 
         if ($needProgressData) {
-            // جلب كل المعلمين المطابقين (حد أقصى 500) ثم فلترة وترتيب حسب النسب
+            // حد أقصى 500 معلم للفلترة/الترتيب حسب التقدم (أداء)، وليس له علاقة بعدد الدروس أو الصفحات في إحصائيات التقدم.
             $allTeachers = $teachersQuery->orderBy('name')->limit(500)->get();
             $progress = TeacherProgressService::getTeachersProgressSummary($allTeachers, $weekId);
 

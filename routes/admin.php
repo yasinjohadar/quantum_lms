@@ -570,6 +570,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         // تخصيص المعلمين
         Route::get('teachers/progress', [\App\Http\Controllers\Admin\TeacherProgressController::class, 'index'])
             ->name('teachers.progress.index');
+        Route::get('teachers/{teacher}/progress/material-pages', [\App\Http\Controllers\Admin\TeacherProgressController::class, 'materialPages'])
+            ->name('teachers.progress.material-pages');
         Route::get('teachers/{teacher}/progress', [\App\Http\Controllers\Admin\TeacherProgressController::class, 'show'])
             ->name('teachers.progress.show');
         Route::get('teachers/{teacher}/progress-history', [\App\Http\Controllers\Admin\TeacherProgressController::class, 'history'])

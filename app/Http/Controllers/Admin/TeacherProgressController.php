@@ -32,6 +32,22 @@ class TeacherProgressController extends Controller
     }
 
     /**
+     * صفحة مخصصة: تقدم الصفحات الموكّلة لكل مادة (واضحة بصرياً).
+     */
+    public function materialPages(User $teacher)
+    {
+        if (! $teacher->matchesAdminTeacherListingCriteria()) {
+            return redirect()->back()->with('error', 'المستخدم المحدد ليس معلم');
+        }
+
+        $stats = TeacherProgressService::getTeacherDetailStats($teacher, null);
+
+        return view('admin.pages.teachers.progress-material-pages', array_merge($stats, [
+            'teacher' => $teacher,
+        ]));
+    }
+
+    /**
      * عرض تفاصيل تقدم معلم واحد
      */
     public function show(Request $request, User $teacher)

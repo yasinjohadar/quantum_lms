@@ -25,6 +25,9 @@
                     <a href="{{ route('admin.teachers.assignments', $teacher->id) }}" class="btn btn-primary btn-sm">
                         <i class="fas fa-user-tie me-1"></i> تخصيص
                     </a>
+                    <a href="{{ route('admin.teachers.progress.material-pages', $teacher) }}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-file-earmark-text me-1"></i> صفحات المواد
+                    </a>
                 </div>
             </div>
 
@@ -143,7 +146,7 @@
                 <div class="card shadow-sm border-0 mb-4">
                     <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
                         <h6 class="mb-0 fw-bold"><i class="bi bi-calendar-week me-2"></i>أهداف الدروس لكل أسابيع السنة (لهذا المعلم)</h6>
-                        <span class="small text-muted">يمكنك إدخال قيمة مختلفة لكل أسبوع ثم حفظها دفعة واحدة. الأسابيع المنتهية مقفلة.</span>
+                        <span class="small text-muted">يمكنك إدخال قيمة مختلفة لكل أسبوع ثم حفظها دفعة واحدة. الأسابيع المنتهية مقفلة. «المنفّذ» = عدد الدروس المعتمدة التي يقع تاريخ اعتمادها (<code class="small">reviewed_at</code>) ضمن تواريخ ذلك الأسبوع الدراسي في مواد هذا المعلم.</span>
                     </div>
                     <div class="card-body">
                         @if ($errors->any())
@@ -216,11 +219,20 @@
                                                         <div class="small text-success mt-1">override محفوظ</div>
                                                     @endif
                                                 </td>
-                                                <td class="text-nowrap">
-                                                    <span class="fw-semibold text-success">{{ $wl['completed'] }}</span>
-                                                    <span class="text-muted small">/</span>
-                                                    <span class="fw-semibold">{{ $wl['target'] }}</span>
-                                                    <div class="small text-muted">درس معتمد في الأسبوع</div>
+                                                <td>
+                                                    <div class="small lh-sm">
+                                                        <div>
+                                                            <span class="text-muted">المنفّذ:</span>
+                                                            <span class="fw-semibold text-success">{{ $wl['completed'] }}</span>
+                                                            <span class="text-muted small">درسًا</span>
+                                                        </div>
+                                                        <div class="mt-1">
+                                                            <span class="text-muted">الهدف:</span>
+                                                            <span class="fw-semibold">{{ $wl['target'] }}</span>
+                                                            <span class="text-muted small">درسًا</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="small text-muted mt-1">حسب <code class="small">reviewed_at</code> ضمن فترة الأسبوع.</div>
                                                 </td>
                                                 <td>
                                                     @if($pct !== null)
@@ -255,12 +267,17 @@
 
             {{-- جدول تقدم الصفحات حسب المادة --}}
             <div class="card shadow-sm border-0">
-                <div class="card-header">
-                    <h6 class="mb-0 fw-bold">
-                        <i class="bi bi-journal-bookmark me-2"></i>
-                        تقدم الصفحات والدروس حسب المادة
-                    </h6>
-                    <small class="text-muted">لكل مادة: الصفحات الموكّلة (المطلوبة) مقابل ما تم إنجازه من صفحات الدروس المعتمدة، وعدد الدروس المعتمدة في المادة.</small>
+                <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div>
+                        <h6 class="mb-0 fw-bold">
+                            <i class="bi bi-journal-bookmark me-2"></i>
+                            تقدم الصفحات والدروس حسب المادة
+                        </h6>
+                        <small class="text-muted">لكل مادة: الصفحات الموكّلة (المطلوبة) مقابل ما تم إنجازه من صفحات الدروس المعتمدة، وعدد الدروس المعتمدة في المادة.</small>
+                    </div>
+                    <a href="{{ route('admin.teachers.progress.material-pages', $teacher) }}" class="btn btn-sm btn-outline-primary flex-shrink-0">
+                        <i class="bi bi-arrows-fullscreen me-1"></i> صفحة الجدول الموسّعة
+                    </a>
                 </div>
                 <div class="card-body">
                     @if(!empty($pages_progress))
