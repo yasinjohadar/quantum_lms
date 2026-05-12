@@ -99,7 +99,8 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Subject::class, 'enrollments', 'user_id', 'subject_id')
             ->withPivot(['enrolled_by', 'enrolled_at', 'status', 'notes'])
-            ->withTimestamps();
+            ->withTimestamps()
+            ->whereNull('enrollments.deleted_at');
     }
 
     /**

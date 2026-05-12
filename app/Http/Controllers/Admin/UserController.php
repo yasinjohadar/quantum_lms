@@ -10,6 +10,7 @@ use App\Models\SchoolClass;
 use App\Models\ClassEnrollment;
 use App\Models\Enrollment;
 use App\Models\Subject;
+use App\Models\Purchase;
 use App\Services\SMS\OTPService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -898,6 +899,8 @@ class UserController extends Controller
                 })
                 ->delete();
 
+            $this->revokeClassPurchaseAccessForUsers([$userId], $classId);
+
             return response()->json([
                 'success' => true,
                 'message' => 'تم فصل الطالب عن الصف بنجاح.',
@@ -952,6 +955,8 @@ class UserController extends Controller
                 })
                 ->delete();
 
+            $this->revokeClassPurchaseAccessForUsers($userIds, $classId);
+
             return response()->json([
                 'success' => true,
                 'message' => 'تم فصل الطلاب عن الصف بنجاح.',
@@ -994,11 +999,26 @@ class UserController extends Controller
 
             $classId = (int) $validated['class_id'];
 
+            $cacheUserIds = ClassEnrollment::where('class_id', $classId)->pluck('user_id')
+                ->merge(Enrollment::whereHas('subject', fn ($q) => $q->where('class_id', $classId))->pluck('user_id'))
+                ->merge(Purchase::where('purchasable_type', SchoolClass::class)->where('purchasable_id', $classId)->pluck('user_id'))
+                ->unique()
+                ->filter()
+                ->values()
+                ->all();
+
             $deletedClassEnrollments = ClassEnrollment::where('class_id', $classId)->delete();
 
             $deletedEnrollments = Enrollment::whereHas('subject', function ($q) use ($classId) {
                 $q->where('class_id', $classId);
             })->delete();
+
+            Purchase::where('purchasable_type', SchoolClass::class)
+                ->where('purchasable_id', $classId)
+                ->whereIn('status', ['completed', 'pending'])
+                ->update(['status' => 'cancelled']);
+
+            $this->flushPricingAccessCacheForClassUsers($classId, $cacheUserIds);
 
             return response()->json([
                 'success' => true,
@@ -1334,6 +1354,40 @@ class UserController extends Controller
         Log::info('Admin ' . $impersonatorName . ' stopped impersonating user ' . $currentUserName);
 
         return redirect()->route('admin.dashboard')->with('success', 'تم العودة لحسابك الأصلي');
+    }
+
+    /**
+     * إلغاء شراء الصف (مكتمل أو معلق) بعد فصل الطالب عن الصف حتى لا يبقى وصول عبر Purchase في AccessResolver.
+     */
+    protected function revokeClassPurchaseAccessForUsers(array $userIds, int $classId): void
+    {
+        $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds))));
+        if ($userIds === []) {
+            return;
+        }
+
+        Purchase::whereIn('user_id', $userIds)
+            ->where('purchasable_type', SchoolClass::class)
+            ->where('purchasable_id', $classId)
+            ->whereIn('status', ['completed', 'pending'])
+            ->update(['status' => 'cancelled']);
+
+        $this->flushPricingAccessCacheForClassUsers($classId, $userIds);
+    }
+
+    protected function flushPricingAccessCacheForClassUsers(int $classId, array $userIds): void
+    {
+        $cache = app(\App\Services\Pricing\PricingCacheManager::class);
+        $class = SchoolClass::find($classId);
+        if ($class) {
+            $cache->invalidateClass($class);
+        }
+        foreach ($userIds as $uid) {
+            $user = User::find($uid);
+            if ($user) {
+                $cache->invalidateUserAccess($user);
+            }
+        }
     }
 
 }
