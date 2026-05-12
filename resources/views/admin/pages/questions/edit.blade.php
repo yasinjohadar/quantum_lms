@@ -472,7 +472,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 xhr.send(formData);
             });
         },
-        paste_data_images: true,
+        paste_data_images: false,
         convert_urls: false,
         relative_urls: false,
         remove_script_host: false,

@@ -424,8 +424,35 @@ class StudentProgressService
         $subjects = $user->subjects()
             ->with(['schoolClass.stage'])
             ->wherePivot('status', 'active')
-            ->orderBy('name')
-            ->get();
+            ->get()
+            ->sort(function (Subject $a, Subject $b) {
+                $stageOrderA = (int) ($a->schoolClass?->stage?->order ?? 999999);
+                $stageOrderB = (int) ($b->schoolClass?->stage?->order ?? 999999);
+                if ($stageOrderA !== $stageOrderB) {
+                    return $stageOrderA <=> $stageOrderB;
+                }
+
+                $stageIdA = (int) ($a->schoolClass?->stage?->id ?? 0);
+                $stageIdB = (int) ($b->schoolClass?->stage?->id ?? 0);
+                if ($stageIdA !== $stageIdB) {
+                    return $stageIdA <=> $stageIdB;
+                }
+
+                $classOrderA = (int) ($a->schoolClass?->order ?? 999999);
+                $classOrderB = (int) ($b->schoolClass?->order ?? 999999);
+                if ($classOrderA !== $classOrderB) {
+                    return $classOrderA <=> $classOrderB;
+                }
+
+                $classIdA = (int) ($a->schoolClass?->id ?? 0);
+                $classIdB = (int) ($b->schoolClass?->id ?? 0);
+                if ($classIdA !== $classIdB) {
+                    return $classIdA <=> $classIdB;
+                }
+
+                return strcmp((string) ($a->name ?? ''), (string) ($b->name ?? ''));
+            })
+            ->values();
         
         $progressList = [];
         foreach ($subjects as $subject) {

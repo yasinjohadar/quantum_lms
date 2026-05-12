@@ -24,7 +24,7 @@ class StoreQuestionRequest extends FormRequest
         
         $rules = [
             'type' => ['required', 'string', 'in:' . implode(',', array_keys(Question::TYPES))],
-            'title' => ['required', 'string', 'max:10000'], // زيادة الحد للسماح بـ HTML
+            'title' => ['required', 'string', 'max:500000'],
             'content' => ['nullable', 'string', 'max:50000'], // زيادة الحد للسماح بـ HTML
             'explanation' => ['nullable', 'string', 'max:10000'], // زيادة الحد للسماح بـ HTML
             'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:5120'],

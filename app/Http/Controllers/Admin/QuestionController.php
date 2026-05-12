@@ -31,7 +31,8 @@ class QuestionController extends Controller
         $this->middleware(['permission:question-show'])->only('show');
         $this->middleware(['permission:question-duplicate'])->only('duplicate');
         $this->middleware(['permission:question-toggle-status'])->only('toggleStatus');
-        $this->middleware(['permission:question-upload-image'])->only('uploadImage');
+        // رفع صور المحرّك: من لديه تعديل/إنشاء أسئلة يكفي (مع الاحتفاظ بصلاحية الرفع الصريحة)
+        $this->middleware(['permission:question-upload-image|question-edit|question-create'])->only('uploadImage');
         $this->middleware(['permission:question-export'])->only('export');
         $this->middleware(['permission:question-export-template'])->only('exportTemplate');
         $this->middleware(['permission:question-import'])->only('import');
@@ -574,25 +575,28 @@ class QuestionController extends Controller
             ]);
 
             if ($request->hasFile('file')) {
-                $image = $request->file('file');
-                $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
-                $path = $image->storeAs('questions/images', $imageName, 'public');
-                
-                $url = media_public_url($path);
-                
+                $uploadResult = MediaStorageService::uploadImage($request->file('file'), 'questions/images');
+                $url = $uploadResult['url'] ?? media_public_url($uploadResult['path'] ?? '');
+
+                if ($url === '') {
+                    return response()->json([
+                        'error' => 'تعذّر إنشاء رابط للصورة بعد الرفع',
+                    ], 500);
+                }
+
                 return response()->json([
-                    'location' => $url
+                    'location' => $url,
                 ]);
             }
 
             return response()->json([
-                'error' => 'لم يتم رفع الملف'
+                'error' => 'لم يتم رفع الملف',
             ], 400);
-
         } catch (\Exception $e) {
             Log::error('Error uploading image for TinyMCE: ' . $e->getMessage());
+
             return response()->json([
-                'error' => 'حدث خطأ أثناء رفع الصورة: ' . $e->getMessage()
+                'error' => 'حدث خطأ أثناء رفع الصورة: ' . $e->getMessage(),
             ], 500);
         }
     }
