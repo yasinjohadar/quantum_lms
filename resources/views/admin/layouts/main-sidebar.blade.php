@@ -169,10 +169,6 @@
                                 @can('supervisor-assignment-list')
                                 <li class="slide {{ request()->is('admin/supervisors/assignments*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.supervisors.assignments.index') }}" class="side-menu__item {{ request()->is('admin/supervisors/assignments*') ? 'active' : '' }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                                            <path d="M0 0h24v24H0z" fill="none"/>
-                                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                                        </svg>
                                         <span class="side-menu__label">تخصيص المشرفين</span>
                                     </a>
                                 </li>
@@ -180,10 +176,6 @@
                                 @can('teacher-assignment-list')
                                 <li class="slide {{ request()->is('admin/teachers/assignments*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.teachers.assignments.index') }}" class="side-menu__item {{ request()->is('admin/teachers/assignments*') ? 'active' : '' }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                                            <path d="M0 0h24v24H0z" fill="none"/>
-                                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                                        </svg>
                                         <span class="side-menu__label">تخصيص المعلمين</span>
                                     </a>
                                 </li>
@@ -191,10 +183,6 @@
                                 @can('teacher-progress-view')
                                 <li class="slide {{ request()->is('admin/teachers/progress*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.teachers.progress.index') }}" class="side-menu__item {{ request()->is('admin/teachers/progress*') ? 'active' : '' }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                                            <path d="M0 0h24v24H0z" fill="none"/>
-                                            <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
-                                        </svg>
                                         <span class="side-menu__label">تقدم المعلمين</span>
                                     </a>
                                 </li>
@@ -202,7 +190,6 @@
                                 @canany(['academic-year-list', 'academic-week-list'])
                                 <li class="slide {{ request()->is('admin/academic-years*') || request()->is('admin/academic-weeks*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.academic-years.index') }}" class="side-menu__item {{ request()->is('admin/academic-years*') ? 'active' : '' }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;"><path d="M0 0h24v24H0z" fill="none"/><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/></svg>
                                         <span class="side-menu__label">السنوات الدراسية</span>
                                     </a>
                                 </li>
@@ -210,10 +197,6 @@
                                 @can('user-list')
                                 <li class="slide {{ request()->is('admin/archived-users*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.archived-users.index') }}" class="side-menu__item {{ request()->is('admin/archived-users*') ? 'active' : '' }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                                            <path d="M0 0h24v24H0z" fill="none"/>
-                                            <path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C2.48 6.42 2 7.89 2 9.5V20c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9.5c0-1.61-.48-3.08-1.46-4.27zM6 5h12l1.5 1.81V9H4.5V6.81L6 5zm-1 11v-2h2v2H5zm0-4v-2h2v2H5zm4 4v-2h2v2H9zm0-4v-2h2v2H9zm4 4v-2h2v2h-2zm0-4v-2h2v2h-2z"/>
-                                        </svg>
                                         <span class="side-menu__label">الأرشيف</span>
                                     </a>
                                 </li>
@@ -221,10 +204,6 @@
                                 @can('role-list')
                                 <li class="slide {{ request()->is('roles*') ? 'active' : '' }}">
                                     <a href="{{ route('roles.index') }}" class="side-menu__item {{ request()->is('roles*') ? 'active' : '' }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                                            <path d="M0 0h24v24H0z" fill="none"/>
-                                            <path d="M12 1L3 5v6c0 5 3.8 9.7 9 11 5.2-1.3 9-6 9-11V5l-9-4zm0 2.18L18.09 6 12 8.82 5.91 6 12 3.18zM5 9.24l7 3.11 7-3.11V11c0 4-2.6 7.7-7 8.94C7.6 18.7 5 15 5 11V9.24z"/>
-                                        </svg>
                                         <span class="side-menu__label">الصلاحيات</span>
                                     </a>
                                 </li>
