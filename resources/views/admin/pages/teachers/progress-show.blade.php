@@ -174,11 +174,19 @@
                                         @foreach($activeWeeks as $w)
                                             @php
                                                 $isPastWeek = $w->end_date->copy()->endOfDay()->lt(now()->startOfDay());
+                                                $isCurrentWeek = $w->start_date->copy()->startOfDay()->lte(now()->startOfDay())
+                                                    && $w->end_date->copy()->endOfDay()->gte(now()->startOfDay());
                                                 $wl = $yearWeeksLessons['per_week'][$w->id] ?? ['target' => 0, 'completed' => 0, 'percentage' => null];
                                                 $pct = $wl['percentage'];
                                                 $barW = $pct !== null ? min(100, $pct) : 0;
+                                                $pastUnmetTarget = $isPastWeek
+                                                    && (int) $wl['target'] > 0
+                                                    && (int) $wl['completed'] < (int) $wl['target'];
                                             @endphp
-                                            <tr>
+                                            <tr @class([
+                                                'bg-success bg-opacity-10' => $isCurrentWeek,
+                                                'bg-danger bg-opacity-10' => ! $isCurrentWeek && $pastUnmetTarget,
+                                            ])>
                                                 <td class="fw-semibold">
                                                     {{ $w->week_number }}
                                                     @if($w->title)
@@ -232,8 +240,12 @@
                                 </table>
                             </div>
 
+                            <p class="small text-muted mb-2">ملاحظة: إذا تركت القيمة فارغة سيعتبرها النظام 0.</p>
                             <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
-                                <span class="small text-muted">ملاحظة: إذا تركت القيمة فارغة سيعتبرها النظام 0.</span>
+                                <div class="d-flex flex-wrap gap-3 small text-muted">
+                                    <span><span class="d-inline-block rounded px-2 py-0 me-1 bg-success bg-opacity-10 border border-success border-opacity-25">&nbsp;</span> الأسبوع الحالي</span>
+                                    <span><span class="d-inline-block rounded px-2 py-0 me-1 bg-danger bg-opacity-10 border border-danger border-opacity-25">&nbsp;</span> أسبوع منتهٍ ولم يُحقق الهدف (المنفّذ أقل من الهدف)</span>
+                                </div>
                                 <button type="submit" class="btn btn-primary btn-sm">حفظ أهداف الأسابيع</button>
                             </div>
                         </form>
