@@ -8,9 +8,9 @@ use App\Models\Role;
 use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\User;
-use App\Models\UserSession;
 use App\Services\AcademicWeekService;
 use App\Services\TeacherProgressService;
+use App\Models\UserSession;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -253,12 +253,25 @@ class TeacherAssignmentController extends Controller
         $allClasses = SchoolClass::with('stage')->ordered()->get();
         $allSubjects = Subject::with('schoolClass.stage')->ordered()->get();
 
+        $activeWeeks = AcademicWeekService::getActiveYearWeeks();
+        $teacherProgressStats = TeacherProgressService::getTeacherDetailStats($teacher, null);
+        $yearWeeksLessons = $activeWeeks->isNotEmpty()
+            ? TeacherProgressService::getTeacherActiveYearWeeksLessonsBreakdown($teacher, $activeWeeks)
+            : [
+                'per_week' => [],
+                'year_total_target' => 0,
+                'year_total_completed' => 0,
+                'year_percentage' => null,
+            ];
+
         return view('admin.pages.teachers.assignments', compact(
             'teacher',
             'assignedClasses',
             'assignedSubjects',
             'allClasses',
-            'allSubjects'
+            'allSubjects',
+            'teacherProgressStats',
+            'yearWeeksLessons',
         ));
     }
 

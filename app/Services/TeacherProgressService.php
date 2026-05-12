@@ -371,6 +371,46 @@ class TeacherProgressService
     }
 
     /**
+     * تفصيل أهداف الدروس الأسبوعية لكل أسابيع السنة النشطة + إجمالي الهدف والمنفذ.
+     *
+     * @param  \Illuminate\Support\Collection<int, AcademicWeek>  $activeWeeks
+     * @return array{
+     *   per_week: array<int, array{target: int, completed: int, percentage: float|null}>,
+     *   year_total_target: int,
+     *   year_total_completed: int,
+     *   year_percentage: float|null
+     * }
+     */
+    public static function getTeacherActiveYearWeeksLessonsBreakdown(User $teacher, Collection $activeWeeks): array
+    {
+        $perWeek = [];
+        $yearTotalTarget = 0;
+        $yearTotalCompleted = 0;
+
+        foreach ($activeWeeks as $w) {
+            $p = self::getTeacherWeeklyLessonsProgress($teacher, $w->id);
+            $perWeek[$w->id] = [
+                'target' => (int) $p['target'],
+                'completed' => (int) $p['completed'],
+                'percentage' => $p['percentage'],
+            ];
+            $yearTotalTarget += (int) $p['target'];
+            $yearTotalCompleted += (int) $p['completed'];
+        }
+
+        $yearPercentage = $yearTotalTarget > 0
+            ? min(100.0, round(($yearTotalCompleted / $yearTotalTarget) * 100, 1))
+            : null;
+
+        return [
+            'per_week' => $perWeek,
+            'year_total_target' => $yearTotalTarget,
+            'year_total_completed' => $yearTotalCompleted,
+            'year_percentage' => $yearPercentage,
+        ];
+    }
+
+    /**
      * تقدم الدروس الأسبوعية للمعلم لكل الأسابيع الماضية ضمن السنة الدراسية النشطة فقط.
      *
      * @return array<int, array{week: AcademicWeek, target: int, completed: int, percentage: float|null}>

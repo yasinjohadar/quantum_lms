@@ -54,11 +54,21 @@ class TeacherProgressController extends Controller
                 ->toArray()
             : [];
 
+        $yearWeeksLessons = $activeWeeks->isNotEmpty()
+            ? TeacherProgressService::getTeacherActiveYearWeeksLessonsBreakdown($teacher, $activeWeeks)
+            : [
+                'per_week' => [],
+                'year_total_target' => 0,
+                'year_total_completed' => 0,
+                'year_percentage' => null,
+            ];
+
         return view('admin.pages.teachers.progress-show', array_merge($stats, [
             'activeWeeks' => $activeWeeks,
             'currentWeek' => $currentWeek,
             'displayWeekId' => $displayWeekId,
             'weekTargets' => $weekTargets,
+            'yearWeeksLessons' => $yearWeeksLessons,
         ]));
     }
 

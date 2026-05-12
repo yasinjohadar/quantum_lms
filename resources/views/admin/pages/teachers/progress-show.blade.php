@@ -58,39 +58,80 @@
             @endif
 
             {{-- بطاقات الملخص --}}
-            <div class="row mb-4">
-                <div class="col-md-4">
-                    <div class="card bg-primary text-white">
+            <div class="row g-3 mb-4">
+                <div class="col-lg-3 col-md-6">
+                    <div class="card border-0 shadow-sm h-100">
                         <div class="card-body">
-                            <h6 class="text-white-50 mb-2">إجمالي الدروس المعتمدة</h6>
-                            <h3 class="mb-0">{{ $total_approved_lessons }}</h3>
+                            <h6 class="text-muted small mb-1">الدروس المعتمدة في المواد المخصصة</h6>
+                            <p class="small text-muted mb-2">إجمالي دروس منشورة ومعتمدة (ليست «هدفاً» بل الإنجاز الفعلي في المحتوى).</p>
+                            <h3 class="mb-0 text-primary">{{ $total_approved_lessons }}</h3>
+                            <span class="small text-muted">درس معتمد</span>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="card bg-info text-white">
+                <div class="col-lg-3 col-md-6">
+                    <div class="card border-0 shadow-sm h-100">
                         <div class="card-body">
-                            <h6 class="text-white-50 mb-2">نسبة تقدم الصفحات</h6>
+                            <h6 class="text-muted small mb-1">الصفحات الموكّلة — الإنجاز</h6>
                             @if($total_pages_required > 0)
-                                <h3 class="mb-1">{{ $total_pages_completed }} / {{ $total_pages_required }}</h3>
-                                <span class="badge bg-light text-dark">{{ number_format($total_pages_percentage, 1) }}%</span>
+                                <div class="d-flex align-items-baseline gap-2 flex-wrap mb-2">
+                                    <span class="fs-4 fw-bold text-success">{{ $total_pages_completed }}</span>
+                                    <span class="text-muted">من</span>
+                                    <span class="fs-4 fw-bold">{{ $total_pages_required }}</span>
+                                    <span class="small text-muted">صفحة</span>
+                                </div>
+                                <div class="progress" style="height: 10px;">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ min(100, $total_pages_percentage) }}%;" aria-valuenow="{{ min(100, $total_pages_percentage) }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <div class="mt-2"><span class="badge bg-info text-dark">{{ number_format($total_pages_percentage, 1) }}%</span></div>
                             @else
-                                <p class="mb-0 text-white-50">— لا يوجد هدف صفحات</p>
+                                <p class="mb-0 text-muted">لا يوجد هدف صفحات موكّل في المواد المخصصة.</p>
                             @endif
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="card bg-warning text-dark">
+                <div class="col-lg-3 col-md-6">
+                    <div class="card shadow-sm h-100 border border-warning">
                         <div class="card-body">
-                            <h6 class="mb-2">النسبة الأسبوعية للدروس</h6>
-                            @if($weekly_progress['target'] > 0)
-                                <h3 class="mb-1">{{ $weekly_progress['completed'] }} / {{ $weekly_progress['target'] }}</h3>
+                            <h6 class="text-muted small mb-1">هدف الدروس الأسبوعي (الأسبوع المعروض)</h6>
+                            @if(($weekly_progress['target'] ?? 0) > 0)
+                                <div class="d-flex align-items-baseline gap-2 flex-wrap mb-2">
+                                    <span class="fs-4 fw-bold text-success">{{ $weekly_progress['completed'] }}</span>
+                                    <span class="text-muted">من</span>
+                                    <span class="fs-4 fw-bold">{{ $weekly_progress['target'] }}</span>
+                                    <span class="small text-muted">درس معتمد هذا الأسبوع</span>
+                                </div>
+                                <div class="progress" style="height: 10px;">
+                                    <div class="progress-bar bg-warning" role="progressbar" style="width: {{ min(100, $weekly_progress['percentage'] ?? 0) }}%;"></div>
+                                </div>
                                 @if($weekly_progress['percentage'] !== null)
-                                    <span class="badge {{ $weekly_progress['percentage'] >= 100 ? 'bg-success' : ($weekly_progress['percentage'] >= 50 ? 'bg-info' : 'bg-secondary') }}">{{ number_format($weekly_progress['percentage'], 1) }}%</span>
+                                    <div class="mt-2"><span class="badge {{ $weekly_progress['percentage'] >= 100 ? 'bg-success' : ($weekly_progress['percentage'] >= 50 ? 'bg-info text-dark' : 'bg-secondary') }}">{{ number_format($weekly_progress['percentage'], 1) }}%</span></div>
                                 @endif
                             @else
-                                <p class="mb-0">— لا يوجد هدف أسبوعي</p>
+                                <p class="mb-0 text-muted">لا يوجد هدف دروس لهذا الأسبوع (اضبط الجدول أدناه أو الهدف العام للمعلم).</p>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="card border-0 shadow-sm h-100 bg-light">
+                        <div class="card-body">
+                            <h6 class="text-muted small mb-1">تراكمي السنة (كل الأسابيع النشطة)</h6>
+                            @if(isset($yearWeeksLessons) && ($yearWeeksLessons['year_total_target'] ?? 0) > 0)
+                                <div class="d-flex align-items-baseline gap-2 flex-wrap mb-2">
+                                    <span class="fs-4 fw-bold text-success">{{ $yearWeeksLessons['year_total_completed'] }}</span>
+                                    <span class="text-muted">من</span>
+                                    <span class="fs-4 fw-bold">{{ $yearWeeksLessons['year_total_target'] }}</span>
+                                    <span class="small text-muted">درس (مجموع أهداف الأسابيع)</span>
+                                </div>
+                                <div class="progress" style="height: 10px;">
+                                    <div class="progress-bar bg-dark" role="progressbar" style="width: {{ min(100, $yearWeeksLessons['year_percentage'] ?? 0) }}%;"></div>
+                                </div>
+                                @if($yearWeeksLessons['year_percentage'] !== null)
+                                    <div class="mt-2"><span class="badge bg-dark">{{ number_format($yearWeeksLessons['year_percentage'], 1) }}%</span></div>
+                                @endif
+                            @else
+                                <p class="mb-0 text-muted">لا توجد أهداف دروس مسجّلة للأسابيع بعد.</p>
                             @endif
                         </div>
                     </div>
@@ -123,13 +164,19 @@
                                         <tr>
                                             <th style="width: 90px;">الأسبوع</th>
                                             <th>الفترة</th>
-                                            <th style="width: 170px;">هدف الدروس</th>
+                                            <th style="width: 140px;">هدف الدروس</th>
+                                            <th style="width: 120px;">المنفّذ</th>
+                                            <th style="width: 90px;">النسبة</th>
+                                            <th style="min-width: 140px;">التقدم</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach($activeWeeks as $w)
                                             @php
                                                 $isPastWeek = $w->end_date->copy()->endOfDay()->lt(now()->startOfDay());
+                                                $wl = $yearWeeksLessons['per_week'][$w->id] ?? ['target' => 0, 'completed' => 0, 'percentage' => null];
+                                                $pct = $wl['percentage'];
+                                                $barW = $pct !== null ? min(100, $pct) : 0;
                                             @endphp
                                             <tr>
                                                 <td class="fw-semibold">
@@ -154,12 +201,30 @@
                                                         class="form-control form-control-sm {{ $isPastWeek ? 'bg-light' : '' }}"
                                                         name="required_lessons_targets[{{ $w->id }}]"
                                                         value="{{ old('required_lessons_targets.' . $w->id, $weekTargets[$w->id] ?? 0) }}"
-                                                        style="max-width: 140px;"
+                                                        style="max-width: 120px;"
                                                         @if($isPastWeek) disabled @endif
                                                     >
                                                     @if(isset($weekTargets[$w->id]))
                                                         <div class="small text-success mt-1">override محفوظ</div>
                                                     @endif
+                                                </td>
+                                                <td class="text-nowrap">
+                                                    <span class="fw-semibold text-success">{{ $wl['completed'] }}</span>
+                                                    <span class="text-muted small">/</span>
+                                                    <span class="fw-semibold">{{ $wl['target'] }}</span>
+                                                    <div class="small text-muted">درس معتمد في الأسبوع</div>
+                                                </td>
+                                                <td>
+                                                    @if($pct !== null)
+                                                        <span class="badge {{ $pct >= 100 ? 'bg-success' : ($pct >= 50 ? 'bg-info text-dark' : 'bg-warning text-dark') }}">{{ number_format($pct, 1) }}%</span>
+                                                    @else
+                                                        <span class="text-muted small">—</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    <div class="progress" style="height: 8px;">
+                                                        <div class="progress-bar {{ ($pct ?? 0) >= 100 ? 'bg-success' : 'bg-primary' }}" style="width: {{ $barW }}%;"></div>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         @endforeach
@@ -181,38 +246,51 @@
                 <div class="card-header">
                     <h6 class="mb-0 fw-bold">
                         <i class="bi bi-journal-bookmark me-2"></i>
-                        تقدم الصفحات حسب المادة
+                        تقدم الصفحات والدروس حسب المادة
                     </h6>
+                    <small class="text-muted">لكل مادة: الصفحات الموكّلة (المطلوبة) مقابل ما تم إنجازه من صفحات الدروس المعتمدة، وعدد الدروس المعتمدة في المادة.</small>
                 </div>
                 <div class="card-body">
                     @if(!empty($pages_progress))
                         <div class="table-responsive">
-                            <table class="table table-sm table-bordered mb-0">
+                            <table class="table table-sm table-bordered mb-0 align-middle">
                                 <thead class="table-light">
                                     <tr>
                                         <th>المادة</th>
-                                        <th>عدد الدروس المعتمدة</th>
-                                        <th>الصفحات المطلوبة</th>
-                                        <th>المنجز</th>
-                                        <th>المتبقي</th>
-                                        <th>النسبة %</th>
+                                        <th>الصف</th>
+                                        <th class="text-center">الدروس المعتمدة<br><span class="small fw-normal text-muted">(في المادة)</span></th>
+                                        <th class="text-center">الصفحات الموكّلة</th>
+                                        <th class="text-center">الصفحات المنجزة</th>
+                                        <th class="text-center">المتبقي</th>
+                                        <th class="text-center" style="min-width: 120px;">نسبة الصفحات</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($pages_progress as $row)
+                                        @php
+                                            $subj = $row['subject'];
+                                            $req = (int) ($row['required_pages'] ?? 0);
+                                            $done = (int) ($row['completed_pages'] ?? 0);
+                                            $pct = $row['percentage'];
+                                            $bar = $pct !== null ? min(100, $pct) : 0;
+                                        @endphp
                                         <tr>
-                                            <td>{{ $row['subject']->name }}</td>
-                                            <td>{{ $row['approved_lessons_count'] ?? 0 }}</td>
-                                            <td>{{ $row['required_pages'] }}</td>
-                                            <td>{{ $row['completed_pages'] }}</td>
-                                            <td>{{ $row['remaining_pages'] }}</td>
+                                            <td class="fw-semibold">{{ $subj->name }}</td>
+                                            <td class="small text-muted">{{ $subj->schoolClass?->name ?? '—' }}</td>
+                                            <td class="text-center">{{ $row['approved_lessons_count'] ?? 0 }}</td>
+                                            <td class="text-center">{{ $req }}</td>
+                                            <td class="text-center text-success fw-semibold">{{ $done }}</td>
+                                            <td class="text-center">{{ $row['remaining_pages'] }}</td>
                                             <td>
-                                                @if($row['percentage'] !== null)
-                                                    <span class="badge {{ $row['percentage'] >= 100 ? 'bg-success' : ($row['percentage'] >= 50 ? 'bg-info' : 'bg-warning text-dark') }}">
-                                                        {{ number_format($row['percentage'], 1) }}%
-                                                    </span>
+                                                @if($pct !== null)
+                                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                        <span class="badge {{ $pct >= 100 ? 'bg-success' : ($pct >= 50 ? 'bg-info text-dark' : 'bg-warning text-dark') }}">{{ number_format($pct, 1) }}%</span>
+                                                    </div>
+                                                    <div class="progress mt-1" style="height: 8px;">
+                                                        <div class="progress-bar {{ $pct >= 100 ? 'bg-success' : 'bg-primary' }}" style="width: {{ $bar }}%;"></div>
+                                                    </div>
                                                 @else
-                                                    <span class="text-muted">—</span>
+                                                    <span class="text-muted small">لا هدف صفحات</span>
                                                 @endif
                                             </td>
                                         </tr>
