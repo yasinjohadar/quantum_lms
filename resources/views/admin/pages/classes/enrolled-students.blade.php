@@ -110,35 +110,47 @@
                                 </thead>
                                 <tbody>
                                     @forelse($enrollments as $enrollment)
+                                        @php $student = $enrollment->user; @endphp
                                         <tr>
                                             <td>{{ $enrollment->id }}</td>
                                             <td>
-                                                <div class="d-flex align-items-center">
-                                                    @if($enrollment->user->photo)
-                                                        <img src="{{ media_public_url($enrollment->user->photo) }}" 
-                                                             alt="{{ $enrollment->user->name }}" 
-                                                             class="rounded-circle me-2" 
-                                                             style="width: 35px; height: 35px; object-fit: cover;">
-                                                    @else
-                                                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" 
-                                                             style="width: 35px; height: 35px; font-size: 14px;">
-                                                            {{ strtoupper(substr($enrollment->user->name, 0, 1)) }}
-                                                        </div>
-                                                    @endif
-                                                    <div>
-                                                        <div class="fw-semibold">{{ $enrollment->user->name }}</div>
-                                                        @if($enrollment->user->is_active)
-                                                            <span class="badge bg-success badge-sm">نشط</span>
+                                                @if($student)
+                                                    <div class="d-flex align-items-center">
+                                                        @if($student->photo)
+                                                            <img src="{{ media_public_url($student->photo) }}"
+                                                                 alt="{{ $student->name }}"
+                                                                 class="rounded-circle me-2"
+                                                                 style="width: 35px; height: 35px; object-fit: cover;">
                                                         @else
-                                                            <span class="badge bg-danger badge-sm">غير نشط</span>
+                                                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2"
+                                                                 style="width: 35px; height: 35px; font-size: 14px;">
+                                                                {{ mb_strtoupper(mb_substr($student->name, 0, 1)) }}
+                                                            </div>
                                                         @endif
+                                                        <div>
+                                                            <div class="fw-semibold">{{ $student->name }}</div>
+                                                            @if($student->is_active)
+                                                                <span class="badge bg-success badge-sm">نشط</span>
+                                                            @else
+                                                                <span class="badge bg-danger badge-sm">غير نشط</span>
+                                                            @endif
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                @else
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center"
+                                                             style="width: 35px; height: 35px; font-size: 12px;">؟</div>
+                                                        <div>
+                                                            <span class="fw-semibold text-muted">لا يوجد مستخدم مرتبط</span>
+                                                            <div class="small text-danger">سجل انضمام يفتقد مستخدمًا</div>
+                                                        </div>
+                                                    </div>
+                                                @endif
                                             </td>
-                                            <td>{{ $enrollment->user->email }}</td>
-                                            <td>{{ $enrollment->user->phone ?? '-' }}</td>
+                                            <td>{{ $student?->email ?? '—' }}</td>
+                                            <td>{{ $student?->phone ?? '—' }}</td>
                                             <td>
-                                                <span class="badge bg-info">{{ $enrollment->subject->name }}</span>
+                                                <span class="badge bg-info">{{ $enrollment->subject?->name ?? '—' }}</span>
                                             </td>
                                             <td>{{ $enrollment->enrolled_at ? $enrollment->enrolled_at->format('Y-m-d') : '-' }}</td>
                                             <td>
@@ -161,11 +173,15 @@
                                             </td>
                                             <td>
                                                 <div class="d-flex gap-1">
-                                                    <a href="{{ route('users.show', $enrollment->user->id) }}" 
-                                                       class="btn btn-info btn-sm" 
-                                                       title="عرض الملف الشخصي">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
+                                                    @if($student)
+                                                        <a href="{{ route('users.show', $student->id) }}"
+                                                           class="btn btn-info btn-sm"
+                                                           title="عرض الملف الشخصي">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                    @else
+                                                        <span class="text-muted small">—</span>
+                                                    @endif
                                                 </div>
                                             </td>
                                         </tr>
