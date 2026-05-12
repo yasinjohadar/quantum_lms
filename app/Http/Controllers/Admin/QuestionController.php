@@ -160,6 +160,16 @@ class QuestionController extends Controller
             $data['case_sensitive'] = $request->has('case_sensitive');
             $data['created_by'] = auth()->id();
 
+            if (isset($data['title'])) {
+                $data['title'] = Question::normalizeHtmlEmbeddedImageUrls($data['title']);
+            }
+            if (isset($data['content'])) {
+                $data['content'] = Question::normalizeHtmlEmbeddedImageUrls($data['content']);
+            }
+            if (isset($data['explanation'])) {
+                $data['explanation'] = Question::normalizeHtmlEmbeddedImageUrls($data['explanation']);
+            }
+
             // رفع الصورة
             if ($request->hasFile('image')) {
                 $uploadResult = MediaStorageService::uploadImage($request->file('image'), 'questions/images');
@@ -290,6 +300,16 @@ class QuestionController extends Controller
             $data = $request->validated();
             $data['is_active'] = $request->has('is_active');
             $data['case_sensitive'] = $request->has('case_sensitive');
+
+            if (isset($data['title'])) {
+                $data['title'] = Question::normalizeHtmlEmbeddedImageUrls($data['title']);
+            }
+            if (isset($data['content'])) {
+                $data['content'] = Question::normalizeHtmlEmbeddedImageUrls($data['content']);
+            }
+            if (isset($data['explanation'])) {
+                $data['explanation'] = Question::normalizeHtmlEmbeddedImageUrls($data['explanation']);
+            }
 
             // رفع صورة جديدة
             if ($request->hasFile('image')) {
@@ -616,6 +636,8 @@ class QuestionController extends Controller
         if ($url === '' || $url === '/') {
             return response()->json(['error' => 'تعذّر إنشاء رابط للصورة بعد الرفع'], 500);
         }
+
+        $url = Question::absoluteImageUrlForDisplay($url);
 
         return response()->json(['location' => $url]);
     }

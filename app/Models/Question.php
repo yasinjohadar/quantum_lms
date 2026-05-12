@@ -97,6 +97,90 @@ class Question extends Model
     ];
 
     /**
+     * رابط مطلق لعرض صورة مخزّنة في HTML (TinyMCE) بعد الحفظ.
+     */
+    public static function absoluteImageUrlForDisplay(string $src): string
+    {
+        $src = trim($src);
+        if ($src === '') {
+            return '';
+        }
+
+        if (str_starts_with(strtolower($src), 'blob:')) {
+            return '';
+        }
+
+        if (str_starts_with(strtolower($src), 'data:')) {
+            return $src;
+        }
+
+        if (preg_match('#^https?://#i', $src)) {
+            $appHost = parse_url((string) config('app.url', ''), PHP_URL_HOST);
+            $srcHost = parse_url($src, PHP_URL_HOST);
+            if ($appHost && $srcHost && strcasecmp((string) $srcHost, (string) $appHost) === 0) {
+                if (preg_match('#^https?://[^/]+/storage/(.+)$#i', $src, $m)) {
+                    return url('/storage/'.$m[1]);
+                }
+            }
+
+            return $src;
+        }
+
+        if (str_starts_with($src, '//')) {
+            return (request()->isSecure() ? 'https:' : 'http:').$src;
+        }
+
+        if (str_starts_with($src, '/storage/')) {
+            return url($src);
+        }
+
+        if (str_starts_with($src, '/')) {
+            return url($src);
+        }
+
+        $fromMedia = media_public_url(ltrim($src, '/'));
+        if ($fromMedia !== '') {
+            if (preg_match('#^https?://#i', $fromMedia)) {
+                return $fromMedia;
+            }
+            if (str_starts_with($fromMedia, '/')) {
+                return url($fromMedia);
+            }
+
+            return url('/'.ltrim($fromMedia, '/'));
+        }
+
+        return url('/storage/'.ltrim($src, '/'));
+    }
+
+    /**
+     * يعيد كتابة src لكل &lt;img&gt; داخل HTML إلى روابط مطلقة وتزيل blob: الفاشل.
+     */
+    public static function normalizeHtmlEmbeddedImageUrls(?string $html): ?string
+    {
+        if ($html === null || $html === '') {
+            return $html;
+        }
+
+        return (string) preg_replace_callback(
+            '#<img\b([^>]*?)\bsrc\s*=\s*("|\')([^"\']*)\2([^>]*)>#is',
+            function (array $m) {
+                $before = $m[1];
+                $q = $m[2];
+                $src = $m[3];
+                $after = $m[4];
+                $normalized = self::absoluteImageUrlForDisplay($src);
+                if ($normalized === '') {
+                    return '';
+                }
+
+                return '<img'.$before.' src='.$q.$normalized.$q.$after.'>';
+            },
+            $html
+        );
+    }
+
+    /**
      * العلاقات
      */
     public function options(): HasMany

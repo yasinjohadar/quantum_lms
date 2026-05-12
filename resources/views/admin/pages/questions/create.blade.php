@@ -404,8 +404,9 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         },
         paste_data_images: true,
-        convert_urls: false,
+        convert_urls: true,
         relative_urls: false,
+        document_base_url: '{{ url('/') }}/',
         remove_script_host: false,
     });
 
