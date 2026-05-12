@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use App\Helpers\StorageHelper;
 use App\Services\Storage\MediaStorageService;
 use Maatwebsite\Excel\Facades\Excel;
@@ -571,34 +572,52 @@ class QuestionController extends Controller
     {
         try {
             $request->validate([
-                'file' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max
+                'file' => ['required', 'file', 'max:5120', 'mimes:jpeg,jpg,png,gif,webp'],
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'الملف غير صالح',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        if (! $request->hasFile('file')) {
+            return response()->json(['error' => 'لم يتم رفع الملف'], 400);
+        }
+
+        $url = '';
+
+        try {
+            $uploadResult = MediaStorageService::uploadImage($request->file('file'), 'questions/images');
+            $url = $uploadResult['url'] ?? media_public_url($uploadResult['path'] ?? '');
+        } catch (\Throwable $e) {
+            Log::warning('TinyMCE question image: MediaStorageService failed, using public disk fallback', [
+                'message' => $e->getMessage(),
             ]);
 
-            if ($request->hasFile('file')) {
-                $uploadResult = MediaStorageService::uploadImage($request->file('file'), 'questions/images');
-                $url = $uploadResult['url'] ?? media_public_url($uploadResult['path'] ?? '');
-
-                if ($url === '') {
-                    return response()->json([
-                        'error' => 'تعذّر إنشاء رابط للصورة بعد الرفع',
-                    ], 500);
-                }
+            try {
+                $image = $request->file('file');
+                $ext = strtolower((string) ($image->getClientOriginalExtension() ?: $image->guessExtension() ?: 'png'));
+                $ext = preg_replace('/[^a-z0-9]/', '', $ext) ?: 'png';
+                $imageName = time().'_'.uniqid('', true).'.'.$ext;
+                $path = $image->storeAs('questions/images', $imageName, 'public');
+                $url = media_public_url($path);
+            } catch (\Throwable $inner) {
+                Log::error('TinyMCE question image: fallback upload failed', [
+                    'message' => $inner->getMessage(),
+                ]);
 
                 return response()->json([
-                    'location' => $url,
-                ]);
+                    'error' => 'تعذّر رفع الصورة: '.$inner->getMessage(),
+                ], 500);
             }
-
-            return response()->json([
-                'error' => 'لم يتم رفع الملف',
-            ], 400);
-        } catch (\Exception $e) {
-            Log::error('Error uploading image for TinyMCE: ' . $e->getMessage());
-
-            return response()->json([
-                'error' => 'حدث خطأ أثناء رفع الصورة: ' . $e->getMessage(),
-            ], 500);
         }
+
+        if ($url === '' || $url === '/') {
+            return response()->json(['error' => 'تعذّر إنشاء رابط للصورة بعد الرفع'], 500);
+        }
+
+        return response()->json(['location' => $url]);
     }
 
     /**

@@ -429,50 +429,48 @@ document.addEventListener('DOMContentLoaded', function() {
         images_upload_handler: function (blobInfo, progress) {
             return new Promise(function (resolve, reject) {
                 var xhr = new XMLHttpRequest();
-                xhr.withCredentials = false;
                 xhr.open('POST', '{{ route("admin.questions.upload-image") }}');
-                
-                var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                xhr.setRequestHeader('X-CSRF-TOKEN', token);
-                
+                xhr.setRequestHeader('X-CSRF-TOKEN', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+                xhr.setRequestHeader('Accept', 'application/json');
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                xhr.withCredentials = true;
                 xhr.upload.onprogress = function (e) {
                     if (e.lengthComputable) {
                         progress(e.loaded / e.total * 100);
                     }
                 };
-                
                 xhr.onload = function () {
-                    if (xhr.status === 403) {
-                        reject({ message: 'HTTP Error: ' + xhr.status, remove: true });
+                    var json;
+                    try {
+                        json = JSON.parse(xhr.responseText);
+                    } catch (err) {
+                        reject('استجابة غير صالحة من الخادم (رمز ' + xhr.status + ')');
                         return;
                     }
-                    
+                    if (xhr.status === 422 && json.errors) {
+                        var first = json.errors.file ? json.errors.file[0] : null;
+                        reject(first || json.message || 'رفض التحقق من الملف');
+                        return;
+                    }
                     if (xhr.status < 200 || xhr.status >= 300) {
-                        reject('HTTP Error: ' + xhr.status);
+                        reject(json.error || json.message || ('HTTP ' + xhr.status));
                         return;
                     }
-                    
-                    var json = JSON.parse(xhr.responseText);
-                    
-                    if (!json || typeof json.location != 'string') {
-                        reject('Invalid JSON: ' + xhr.responseText);
+                    if (!json.location || typeof json.location !== 'string') {
+                        reject(json.error || 'لم يُرجع الخادم رابط الصورة');
                         return;
                     }
-                    
                     resolve(json.location);
                 };
-                
                 xhr.onerror = function () {
-                    reject('Image upload failed due to a XHR Transport error. Code: ' + xhr.status);
+                    reject('خطأ في الشبكة أثناء الرفع');
                 };
-                
                 var formData = new FormData();
                 formData.append('file', blobInfo.blob(), blobInfo.filename());
-                
                 xhr.send(formData);
             });
         },
-        paste_data_images: false,
+        paste_data_images: true,
         convert_urls: false,
         relative_urls: false,
         remove_script_host: false,
