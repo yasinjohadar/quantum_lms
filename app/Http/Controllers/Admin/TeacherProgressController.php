@@ -36,7 +36,7 @@ class TeacherProgressController extends Controller
      */
     public function show(Request $request, User $teacher)
     {
-        if (! $teacher->hasRole('teacher')) {
+        if (! $teacher->matchesAdminTeacherListingCriteria()) {
             return redirect()->back()->with('error', 'المستخدم المحدد ليس معلم');
         }
 
@@ -67,7 +67,7 @@ class TeacherProgressController extends Controller
      */
     public function history(User $teacher)
     {
-        if (! $teacher->hasRole('teacher')) {
+        if (! $teacher->matchesAdminTeacherListingCriteria()) {
             return redirect()->back()->with('error', 'المستخدم المحدد ليس معلم');
         }
 
@@ -84,7 +84,7 @@ class TeacherProgressController extends Controller
      */
     public function storeWeekTarget(Request $request, User $teacher)
     {
-        if (! $teacher->hasRole('teacher')) {
+        if (! $teacher->matchesAdminTeacherListingCriteria()) {
             return redirect()->back()->with('error', 'المستخدم المحدد ليس معلم');
         }
 
@@ -114,7 +114,7 @@ class TeacherProgressController extends Controller
      */
     public function storeWeekTargetsBulk(Request $request, User $teacher)
     {
-        if (! $teacher->hasRole('teacher')) {
+        if (! $teacher->matchesAdminTeacherListingCriteria()) {
             return redirect()->back()->with('error', 'المستخدم المحدد ليس معلم');
         }
 

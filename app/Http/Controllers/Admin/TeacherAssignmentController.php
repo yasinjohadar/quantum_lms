@@ -242,7 +242,7 @@ class TeacherAssignmentController extends Controller
      */
     public function show(User $teacher)
     {
-        if (! $teacher->hasTeacherStaffIdentity()) {
+        if (! $teacher->matchesAdminTeacherListingCriteria()) {
             return redirect()->back()->with('error', 'المستخدم المحدد ليس معلم');
         }
 
@@ -267,7 +267,7 @@ class TeacherAssignmentController extends Controller
      */
     public function update(Request $request, User $teacher)
     {
-        if (! $teacher->hasTeacherStaffIdentity()) {
+        if (! $teacher->matchesAdminTeacherListingCriteria()) {
             return redirect()->back()->with('error', 'المستخدم المحدد ليس معلم');
         }
 

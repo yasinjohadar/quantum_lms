@@ -583,6 +583,23 @@ class User extends Authenticatable
     }
 
     /**
+     * هل يطابق المستخدم نفس معيار قائمة المعلمين في الإدارة (scopeTeachers)؟
+     * يُستخدم في تخصيص المعلم والتقدم؛ يختلف عن hasTeacherStaffIdentity() التي تستبعد أدمن المنصة حتى مع رول معلم.
+     */
+    public function matchesAdminTeacherListingCriteria(): bool
+    {
+        $rolesTable = config('permission.table_names.roles', 'roles');
+
+        return $this->roles()->where(function ($q) use ($rolesTable) {
+            if (Schema::hasColumn($rolesTable, 'staff_profile')) {
+                $q->where($rolesTable.'.staff_profile', 'teacher');
+            } else {
+                $q->where($rolesTable.'.name', 'teacher');
+            }
+        })->exists();
+    }
+
+    /**
      * Scope للمشرفين فقط (staff_profile أو الاسم الافتراضي supervisor)
      */
     public function scopeSupervisors($query)
