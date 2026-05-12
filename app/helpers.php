@@ -10,6 +10,12 @@ if (! function_exists('media_public_url')) {
             return '';
         }
 
+        $path = trim((string) $path);
+        // قديم: حُفظ الرابط كاملاً مع مضيف خاطئ (localhost أو دومين قديم) — نستخرج المسار بعد /storage/
+        if (preg_match('#^https?://[^/]+/storage/(.+)$#i', $path, $m)) {
+            $path = $m[1];
+        }
+
         $normalized = ltrim(str_replace('\\', '/', $path), '/');
 
         try {
@@ -21,7 +27,9 @@ if (! function_exists('media_public_url')) {
                     config('storage.fallback_disk', 'public')
                 )->url($normalized);
             } catch (\Throwable $inner) {
-                return \Illuminate\Support\Facades\URL::to('/storage/' . $normalized);
+                $p = ltrim(str_replace('\\', '/', $normalized), '/');
+
+                return '/storage/'.$p;
             }
         }
     }

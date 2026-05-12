@@ -360,6 +360,10 @@ class MediaStorageService
      */
     public static function url(string $path, ?string $disk = null): string
     {
+        $path = trim($path);
+        if (preg_match('#^https?://[^/]+/storage/(.+)$#i', $path, $m)) {
+            $path = $m[1];
+        }
         $path = ltrim(str_replace('\\', '/', $path), '/');
         if ($path === '') {
             return '';

@@ -42,7 +42,8 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => env('APP_URL').'/storage',
+            // لا نضبط 'url' هنا: Laravel يولّد روابط نسبية `/storage/{path}` فتعمل مع الدومين الحالي
+            // وتتجنّب كسر الصور عندما يكون APP_URL لا يزال localhost على السيرفر.
             'visibility' => 'public',
             'serve' => true,
             'throw' => false,
