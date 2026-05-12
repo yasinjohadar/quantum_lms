@@ -6,6 +6,7 @@ use App\Models\HeroSlide;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
+use App\Services\Storage\MediaStorageService;
 
 class HeroSlideController extends Controller
 {
@@ -80,13 +81,13 @@ class HeroSlideController extends Controller
             $data['order'] = (int) ($request->input('order', 0));
 
             if ($request->hasFile('background_image')) {
-                $data['background_image'] = $request->file('background_image')
-                    ->store('hero-slides', 'public');
+                $uploadResult = MediaStorageService::uploadImage($request->file('background_image'), 'hero-slides');
+                $data['background_image'] = $uploadResult['path'];
             }
 
             if ($request->hasFile('content_image')) {
-                $data['content_image'] = $request->file('content_image')
-                    ->store('hero-slides', 'public');
+                $uploadResult = MediaStorageService::uploadImage($request->file('content_image'), 'hero-slides');
+                $data['content_image'] = $uploadResult['path'];
             }
 
             HeroSlide::create($data);
@@ -146,21 +147,21 @@ class HeroSlideController extends Controller
             $data['order'] = (int) ($request->input('order', $heroSlide->order));
 
             if ($request->hasFile('background_image')) {
-                if ($heroSlide->background_image && Storage::disk('public')->exists($heroSlide->background_image)) {
-                    Storage::disk('public')->delete($heroSlide->background_image);
+                if ($heroSlide->background_image) {
+                    MediaStorageService::delete($heroSlide->background_image);
                 }
-                $data['background_image'] = $request->file('background_image')
-                    ->store('hero-slides', 'public');
+                $uploadResult = MediaStorageService::uploadImage($request->file('background_image'), 'hero-slides');
+                $data['background_image'] = $uploadResult['path'];
             } else {
                 unset($data['background_image']);
             }
 
             if ($request->hasFile('content_image')) {
-                if ($heroSlide->content_image && Storage::disk('public')->exists($heroSlide->content_image)) {
-                    Storage::disk('public')->delete($heroSlide->content_image);
+                if ($heroSlide->content_image) {
+                    MediaStorageService::delete($heroSlide->content_image);
                 }
-                $data['content_image'] = $request->file('content_image')
-                    ->store('hero-slides', 'public');
+                $uploadResult = MediaStorageService::uploadImage($request->file('content_image'), 'hero-slides');
+                $data['content_image'] = $uploadResult['path'];
             } else {
                 unset($data['content_image']);
             }
@@ -182,11 +183,11 @@ class HeroSlideController extends Controller
     public function destroy(HeroSlide $heroSlide)
     {
         try {
-            if ($heroSlide->background_image && Storage::disk('public')->exists($heroSlide->background_image)) {
-                Storage::disk('public')->delete($heroSlide->background_image);
+            if ($heroSlide->background_image) {
+                MediaStorageService::delete($heroSlide->background_image);
             }
-            if ($heroSlide->content_image && Storage::disk('public')->exists($heroSlide->content_image)) {
-                Storage::disk('public')->delete($heroSlide->content_image);
+            if ($heroSlide->content_image) {
+                MediaStorageService::delete($heroSlide->content_image);
             }
             $heroSlide->delete();
 

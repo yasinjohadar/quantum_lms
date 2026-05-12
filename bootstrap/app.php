@@ -25,5 +25,40 @@ return Application::configure(basePath: dirname(__DIR__))
         \App\Providers\PermissionServiceProvider::class,
     ])
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // منع أخطاء الـ Broadcasting من تعطيل التطبيق
+        $exceptions->dontReport([
+            \Illuminate\Broadcasting\BroadcastException::class,
+            \Pusher\ApiErrorException::class,
+            \Pusher\PusherException::class,
+            \GuzzleHttp\Exception\ConnectException::class,
+            \GuzzleHttp\Exception\RequestException::class,
+        ]);
+
+        $exceptions->render(function (\Throwable $e, $request) {
+            // أخطاء الـ Broadcasting: سجل الخطأ وأعد الاستمرار
+            if ($e instanceof \Illuminate\Broadcasting\BroadcastException
+                || $e instanceof \Pusher\ApiErrorException
+                || $e instanceof \Pusher\PusherException
+                || $e instanceof \GuzzleHttp\Exception\ConnectException
+                || $e instanceof \GuzzleHttp\Exception\RequestException
+            ) {
+                \Illuminate\Support\Facades\Log::warning('Broadcasting failed (non-fatal)', [
+                    'error' => $e->getMessage(),
+                    'url' => $request->url(),
+                    'ip' => $request->ip(),
+                ]);
+
+                // إذا كان طلب AJAX/JSON، أعد استجابة JSON نظيفة
+                if ($request->expectsJson() || $request->is('api/*')) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'تمت العملية بنجاح',
+                        'broadcast_unavailable' => true,
+                    ], 200);
+                }
+
+                // للطلبات العادية، لا تفعل شيئاً (اترك الـ flow يكمل)
+                return null;
+            }
+        });
     })->create();

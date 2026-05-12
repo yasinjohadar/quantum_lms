@@ -3,6 +3,7 @@
 namespace App\Services\Backup\StorageDrivers;
 
 use App\Contracts\BackupStorageInterface;
+use App\Services\Storage\StorageConfigNormalizer;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Config;
@@ -18,6 +19,11 @@ class S3StorageDriver implements BackupStorageInterface
         $this->diskName = 's3_custom_' . md5(json_encode($config));
         
         // إعداد disk ديناميكي
+        $endpoint = $config['endpoint'] ?? null;
+        if ($endpoint && !str_starts_with($endpoint, 'http://') && !str_starts_with($endpoint, 'https://')) {
+            $endpoint = 'https://' . ltrim($endpoint, '/');
+        }
+
         Config::set("filesystems.disks.{$this->diskName}", [
             'driver' => 's3',
             'key' => $config['access_key_id'] ?? '',
@@ -25,8 +31,8 @@ class S3StorageDriver implements BackupStorageInterface
             'region' => $config['region'] ?? 'us-east-1',
             'bucket' => $config['bucket'] ?? '',
             'url' => $config['url'] ?? null,
-            'endpoint' => $config['endpoint'] ?? null,
-            'use_path_style_endpoint' => $config['use_path_style'] ?? false,
+            'endpoint' => $endpoint,
+            'use_path_style_endpoint' => StorageConfigNormalizer::toBool($config['use_path_style'] ?? false),
             'throw' => false,
         ]);
     }

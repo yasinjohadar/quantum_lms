@@ -254,6 +254,8 @@
                 </div>
 
                 {{-- إعدادات العرض --}}
+                {{-- @TODO: Re-enable display settings section when ready --}}
+                {{--
                 <div class="card custom-card mb-3">
                     <div class="card-header">
                         <h6 class="mb-0"><i class="bi bi-display me-2"></i> إعدادات العرض</h6>
@@ -263,12 +265,12 @@
                             <div class="col-md-6">
                                 <div class="form-check form-switch mb-2">
                                     <input class="form-check-input" type="checkbox" name="shuffle_questions" 
-                                           id="shuffleQuestions" {{ old('shuffle_questions', true) ? 'checked' : '' }}>
+                                           id="shuffleQuestions" {{ old('shuffle_questions', false) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="shuffleQuestions">خلط ترتيب الأسئلة</label>
                                 </div>
                                 <div class="form-check form-switch mb-2">
                                     <input class="form-check-input" type="checkbox" name="shuffle_options" 
-                                           id="shuffleOptions" {{ old('shuffle_options', true) ? 'checked' : '' }}>
+                                           id="shuffleOptions" {{ old('shuffle_options', false) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="shuffleOptions">خلط ترتيب الخيارات</label>
                                 </div>
                                 <div class="form-check form-switch mb-2">
@@ -288,6 +290,13 @@
                         </div>
                     </div>
                 </div>
+                --}}
+
+                {{-- Hidden fields for display settings (section is temporarily hidden from UI) --}}
+                <input type="hidden" name="shuffle_questions" value="{{ old('shuffle_questions', false) ? '1' : '0' }}">
+                <input type="hidden" name="shuffle_options" value="{{ old('shuffle_options', false) ? '1' : '0' }}">
+                <input type="hidden" name="allow_back_navigation" value="{{ old('allow_back_navigation', true) ? '1' : '0' }}">
+                <input type="hidden" name="questions_per_page" value="{{ old('questions_per_page', 0) }}">
 
                 {{-- إعدادات النتائج --}}
                 <div class="card custom-card mb-3">

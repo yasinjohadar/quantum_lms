@@ -33,6 +33,7 @@ class SchoolClass extends Model
         'is_active',
         'price',
         'is_free',
+        'show_price',
         'default_currency_id',
         'allow_subjects_purchase',
     ];
@@ -48,6 +49,7 @@ class SchoolClass extends Model
         'stage_id' => 'integer',
         'price' => 'decimal:2',
         'is_free' => 'boolean',
+        'show_price' => 'boolean',
         'allow_subjects_purchase' => 'boolean',
     ];
 
@@ -216,6 +218,46 @@ class SchoolClass extends Model
     public function distinguishedStudents()
     {
         return $this->hasMany(DistinguishedStudent::class, 'class_id');
+    }
+
+    /**
+     * هل المستخدم لديه وصول لهذا الصف؟
+     */
+    public function hasAccess(?User $user = null): bool
+    {
+        if ($this->is_free) {
+            return true;
+        }
+
+        if (!$user) {
+            return false;
+        }
+
+        return app(\App\Services\Pricing\AccessResolver::class)->hasClassAccess($user, $this);
+    }
+
+    /**
+     * الحصول على بيانات الوصول كـ DTO
+     */
+    public function getAccessData(?User $user = null, $currencyId = null): \App\DataTransferObjects\ClassAccessData
+    {
+        return app(\App\Services\Pricing\PricingResolver::class)->resolveClassAccessData($this, $user, $currencyId);
+    }
+
+    /**
+     * الحصول على المواد مع بيانات التسعير والوصول
+     */
+    public function getSubjectsWithAccess(?User $user = null, $currencyId = null)
+    {
+        $resolver = app(\App\Services\Pricing\PricingResolver::class);
+
+        return $this->subjects()
+            ->active()
+            ->ordered()
+            ->get()
+            ->map(function ($subject) use ($user, $currencyId, $resolver) {
+                return $resolver->resolveSubjectAccessData($subject, $user, $currencyId);
+            });
     }
 }
 

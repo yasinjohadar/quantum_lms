@@ -103,11 +103,10 @@
             </div>
 
             <div id="resend-wrap" style="display:none;">
-                <a class="auth-link" href="#" id="resend-btn">إعادة إرسال الرمز</a>
-                <div style="display:flex;gap:14px;justify-content:center;">
-                <a class="auth-link" href="#" id="resend-sms-btn">إرسال SMS</a>
-                <a class="auth-link" href="#" id="resend-whatsapp-btn">إرسال WhatsApp</a>
-                </div>
+                <a class="auth-link" href="#" id="resend-whatsapp-btn" style="display:inline-flex;align-items:center;gap:6px;justify-content:center;width:100%;">
+                    <i class="bi bi-whatsapp"></i>
+                    إعادة إرسال الرمز عبر WhatsApp
+                </a>
             </div>
         </div>
     </form>
@@ -119,8 +118,6 @@
         const initialRemainingSeconds = Number(@json((int) ($otpRemainingSeconds ?? 0)));
         const hasActiveOtp = Boolean(@json((bool) ($hasActiveOtp ?? false)));
         const codeInput = document.getElementById('code');
-        const resendBtn = document.getElementById('resend-btn');
-        const resendSmsBtn = document.getElementById('resend-sms-btn');
         const resendWhatsappBtn = document.getElementById('resend-whatsapp-btn');
         const countdownWrap = document.getElementById('otp-countdown-wrap');
         const countdownEl = document.getElementById('otp-countdown');
@@ -201,8 +198,6 @@
             });
         }
 
-        if (resendBtn) resendBtn.addEventListener('click', function (e) { e.preventDefault(); sendOtp('sms'); });
-        if (resendSmsBtn) resendSmsBtn.addEventListener('click', function (e) { e.preventDefault(); sendOtp('sms'); });
         if (resendWhatsappBtn) resendWhatsappBtn.addEventListener('click', function (e) { e.preventDefault(); sendOtp('whatsapp'); });
 
         if (hasActiveOtp && initialRemainingSeconds > 0) {

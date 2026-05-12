@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AppStorageConfig;
+use App\Services\Storage\StorageConfigNormalizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -47,6 +48,9 @@ class AppStorageController extends Controller
 
         try {
             $configData = $request->input('config', []);
+            
+            // تطبيع القيم (تحويل strings إلى boolean حيث مطلوب)
+            $configData = StorageConfigNormalizer::normalize($configData, $validated['driver']);
 
             $createData = [
                 'name' => $validated['name'],
@@ -125,6 +129,9 @@ class AppStorageController extends Controller
                     }
                 }
             }
+            
+            // تطبيع القيم
+            $configData = StorageConfigNormalizer::normalize($configData, $validated['driver']);
 
             $updateData = [
                 'name' => $validated['name'],

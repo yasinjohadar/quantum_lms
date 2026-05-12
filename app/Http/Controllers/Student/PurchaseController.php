@@ -11,6 +11,7 @@ use App\Models\CustomPaymentMethod;
 use App\Services\PurchaseService;
 use App\Services\PaymentService;
 use App\Services\WalletService;
+use App\Services\Storage\MediaStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -75,39 +76,21 @@ class PurchaseController extends Controller
         $user = Auth::user();
         $subject = Subject::where('is_active', true)->findOrFail($subjectId);
 
-        // التحقق من وجود شراء مسبق
-        $existingPurchase = Purchase::where('user_id', $user->id)
-            ->where('purchasable_type', Subject::class)
-            ->where('purchasable_id', $subject->id)
-            ->where('status', 'completed')
-            ->first();
+        // التحقق من الوصول باستخدام SubjectPricingService
+        $pricingService = app(\App\Services\SubjectPricingService::class);
 
-        if ($existingPurchase) {
+        if ($pricingService->hasAccess($user, $subject)) {
             return redirect()->route('student.subjects.show', $subject->id)
-                ->with('info', 'لقد قمت بشراء هذه المادة مسبقاً');
+                ->with('info', 'لديك وصول لهذه المادة');
         }
 
-        // التحقق من شراء الصف كاملاً
-        $class = $subject->schoolClass;
-        if ($class) {
-            $classPurchase = Purchase::where('user_id', $user->id)
-                ->where('purchasable_type', SchoolClass::class)
-                ->where('purchasable_id', $class->id)
-                ->where('status', 'completed')
-                ->first();
-
-            if ($classPurchase) {
-                return redirect()->route('student.subjects.show', $subject->id)
-                    ->with('info', 'أنت مسجل في هذه المادة من خلال شراء الصف كاملاً');
+        // التحقق من عدم إمكانية الشراء المنفصل
+        if (!$pricingService->canPurchaseSeparately($subject)) {
+            $class = $subject->schoolClass;
+            if ($class && !$class->is_free) {
+                return redirect()->route('student.purchase.class.show', $class->id)
+                    ->with('info', 'هذه المادة متاحة فقط من خلال شراء الصف');
             }
-        }
-
-        // التحقق من الوصول (إذا كان مجانياً)
-        if ($subject->is_free || $subject->price == 0) {
-            // إنشاء شراء مجاني تلقائياً
-            $purchase = $this->purchaseService->createPurchase($user, $subject, 'subject');
-            return redirect()->route('student.subjects.show', $subject->id)
-                ->with('success', 'تم التسجيل في المادة بنجاح');
         }
 
         $wallet = $this->walletService->getOrCreateWallet($user);
@@ -363,7 +346,8 @@ class PurchaseController extends Controller
         ]);
 
         try {
-            $path = $request->file('receipt_file')->store('receipts', 'public');
+            $uploadResult = MediaStorageService::uploadDocument($request->file('receipt_file'), 'receipts');
+            $path = $uploadResult['path'];
             $payment->update(['receipt_file' => $path]);
 
             return response()->json([

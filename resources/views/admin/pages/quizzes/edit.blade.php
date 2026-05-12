@@ -201,15 +201,16 @@
                 </div>
 
                 {{-- قيم افتراضية مخفية (إعدادات العرض والنتائج) --}}
-                <input type="hidden" name="shuffle_questions" value="1">
-                <input type="hidden" name="shuffle_options" value="1">
-                <input type="hidden" name="allow_back_navigation" value="1">
-                <input type="hidden" name="questions_per_page" value="0">
-                <input type="hidden" name="show_result_immediately" value="1">
-                <input type="hidden" name="show_correct_answers" value="1">
-                <input type="hidden" name="show_explanation" value="1">
-                <input type="hidden" name="show_points_per_question" value="1">
-                <input type="hidden" name="review_options" value="immediately">
+                {{-- @TODO: Re-enable display settings section in edit form when ready --}}
+                <input type="hidden" name="shuffle_questions" value="{{ old('shuffle_questions', $quiz->shuffle_questions ?? false) ? '1' : '0' }}">
+                <input type="hidden" name="shuffle_options" value="{{ old('shuffle_options', $quiz->shuffle_options ?? false) ? '1' : '0' }}">
+                <input type="hidden" name="allow_back_navigation" value="{{ old('allow_back_navigation', $quiz->allow_back_navigation ?? true) ? '1' : '0' }}">
+                <input type="hidden" name="questions_per_page" value="{{ old('questions_per_page', $quiz->questions_per_page ?? 0) }}">
+                <input type="hidden" name="show_result_immediately" value="{{ old('show_result_immediately', $quiz->show_result_immediately ?? true) ? '1' : '0' }}">
+                <input type="hidden" name="show_correct_answers" value="{{ old('show_correct_answers', $quiz->show_correct_answers ?? true) ? '1' : '0' }}">
+                <input type="hidden" name="show_explanation" value="{{ old('show_explanation', $quiz->show_explanation ?? true) ? '1' : '0' }}">
+                <input type="hidden" name="show_points_per_question" value="{{ old('show_points_per_question', $quiz->show_points_per_question ?? true) ? '1' : '0' }}">
+                <input type="hidden" name="review_options" value="{{ old('review_options', $quiz->review_options ?? 'immediately') }}">
             </div>
 
             <div class="col-lg-4">

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use App\Helpers\StorageHelper;
+use App\Services\Storage\MediaStorageService;
 
 class LessonAttachmentController extends Controller
 {
@@ -119,7 +120,8 @@ class LessonAttachmentController extends Controller
             if ($uploadedFile) {
                 $file = $uploadedFile;
                 $fileName = time() . '_' . $file->getClientOriginalName();
-                $data['file_path'] = $file->storeAs('lessons/attachments', $fileName, 'public');
+                $uploadResult = MediaStorageService::uploadDocument($file, 'lessons/attachments', $fileName);
+                $data['file_path'] = $uploadResult['path'];
                 $data['file_name'] = $file->getClientOriginalName();
                 $data['file_type'] = $file->getClientOriginalExtension();
                 $data['file_size'] = $file->getSize();
@@ -181,12 +183,13 @@ class LessonAttachmentController extends Controller
             if ($uploadedFile) {
                 // حذف الملف القديم
                 if ($attachment->file_path) {
-                    StorageHelper::delete('attachments', $attachment->file_path);
+                    MediaStorageService::delete($attachment->file_path);
                 }
 
                 $file = $uploadedFile;
                 $fileName = time() . '_' . $file->getClientOriginalName();
-                $data['file_path'] = $file->storeAs('lessons/attachments', $fileName, 'public');
+                $uploadResult = MediaStorageService::uploadDocument($file, 'lessons/attachments', $fileName);
+                $data['file_path'] = $uploadResult['path'];
                 $data['file_name'] = $file->getClientOriginalName();
                 $data['file_type'] = $file->getClientOriginalExtension();
                 $data['file_size'] = $file->getSize();

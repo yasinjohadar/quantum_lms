@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\StoreStageRequest;
 use App\Http\Requests\Admin\UpdateStageRequest;
 use Illuminate\Support\Facades\Storage;
 use App\Helpers\StorageHelper;
+use App\Services\Storage\MediaStorageService;
 
 class StageController extends Controller
 {
@@ -66,7 +67,8 @@ class StageController extends Controller
                 try {
                     $image = $request->file('image');
                     $imageName = time() . '_' . $image->getClientOriginalName();
-                    $data['image'] = $image->storeAs('stages/images', $imageName, 'public');
+                    $uploadResult = MediaStorageService::uploadImage($image, 'stages/images', $imageName);
+                    $data['image'] = $uploadResult['path'];
 
                 } catch (\Exception $e) {
                     return redirect()->back()
@@ -80,7 +82,8 @@ class StageController extends Controller
                 try {
                     $ogImage = $request->file('og_image');
                     $ogImageName = time() . '_og_' . $ogImage->getClientOriginalName();
-                    $data['og_image'] = $ogImage->storeAs('stages/og_images', $ogImageName, 'public');
+                    $uploadResult = MediaStorageService::uploadImage($ogImage, 'stages/og_images', $ogImageName);
+                    $data['og_image'] = $uploadResult['path'];
 
                 } catch (\Exception $e) {
                     return redirect()->back()
@@ -155,13 +158,14 @@ class StageController extends Controller
             if ($request->hasFile('image')) {
                 try {
                     // حذف الصورة القديمة
-                    if ($stage->image && Storage::disk('public')->exists($stage->image)) {
-                        Storage::disk('public')->delete($stage->image);
+                    if ($stage->image) {
+                        MediaStorageService::delete($stage->image);
                     }
 
                     $image = $request->file('image');
                     $imageName = time() . '_' . $image->getClientOriginalName();
-                    $data['image'] = $image->storeAs('stages/images', $imageName, 'public');
+                    $uploadResult = MediaStorageService::uploadImage($image, 'stages/images', $imageName);
+                    $data['image'] = $uploadResult['path'];
 
                 } catch (\Exception $e) {
                     return redirect()->back()
@@ -177,13 +181,14 @@ class StageController extends Controller
             if ($request->hasFile('og_image')) {
                 try {
                     // حذف الصورة القديمة
-                    if ($stage->og_image && Storage::disk('public')->exists($stage->og_image)) {
-                        Storage::disk('public')->delete($stage->og_image);
+                    if ($stage->og_image) {
+                        MediaStorageService::delete($stage->og_image);
                     }
 
                     $ogImage = $request->file('og_image');
                     $ogImageName = time() . '_og_' . $ogImage->getClientOriginalName();
-                    $data['og_image'] = $ogImage->storeAs('stages/og_images', $ogImageName, 'public');
+                    $uploadResult = MediaStorageService::uploadImage($ogImage, 'stages/og_images', $ogImageName);
+                    $data['og_image'] = $uploadResult['path'];
 
                 } catch (\Exception $e) {
                     return redirect()->back()

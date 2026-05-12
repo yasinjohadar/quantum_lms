@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use App\Helpers\PhoneHelper;
 use App\Helpers\StorageHelper;
+use App\Services\Storage\MediaStorageService;
 use App\Services\AdminStudentEnrollmentService;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -434,7 +435,8 @@ class UserController extends Controller
                 try {
                     $photo = $request->file('photo');
                     $photoName = time() . '_' . $photo->getClientOriginalName();
-                    $photoPath = $photo->storeAs('users/photos', $photoName, 'public');
+                    $uploadResult = MediaStorageService::uploadImage($photo, 'users/photos', $photoName);
+                    $photoPath = $uploadResult['path'];
                 } catch (\Exception $e) {
                     return redirect()->back()
                         ->withInput()

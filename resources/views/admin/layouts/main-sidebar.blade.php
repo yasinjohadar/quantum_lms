@@ -459,6 +459,79 @@
                         </li>
                         @endcanany
 
+                        @canany(['settings-manage'])
+                        <li class="slide has-sub {{ request()->is('admin/media*') ? 'open' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                                </svg>
+                                <span class="side-menu__label">إدارة الوسائط</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">إدارة الوسائط</a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/media-monitoring*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.media-monitoring.index') }}" class="side-menu__item {{ request()->is('admin/media-monitoring*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M3 13h4v8H3zM10 3h4v18h-4zM17 8h4v13h-4z"/>
+                                        </svg>
+                                        <span class="side-menu__label">لوحة المراقبة</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/media') && !request()->is('admin/media/dead-letters*') && !request()->is('admin/media/conversions*') && !request()->is('admin/media/orphans*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.media.index') }}" class="side-menu__item {{ request()->is('admin/media') && !request()->is('admin/media/dead-letters*') && !request()->is('admin/media/conversions*') && !request()->is('admin/media/orphans*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                                        </svg>
+                                        <span class="side-menu__label">كافة الملفات</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/media/dead-letters*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.media.dead-letters') }}" class="side-menu__item {{ request()->is('admin/media/dead-letters*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                                        </svg>
+                                        <span class="side-menu__label">فشل المزامنة</span>
+                                        @php
+                                            try {
+                                                $deadLetterCount = \App\Models\StorageSyncDeadLetter::count();
+                                            } catch (\Exception $e) {
+                                                $deadLetterCount = 0;
+                                            }
+                                        @endphp
+                                        @if($deadLetterCount > 0)
+                                            <span class="badge bg-danger-transparent text-danger ms-auto">{{ $deadLetterCount }}</span>
+                                        @endif
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/media/conversions*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.media.conversions') }}" class="side-menu__item {{ request()->is('admin/media/conversions*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l4.59-4.58L18 11l-6 6z"/>
+                                        </svg>
+                                        <span class="side-menu__label">عمليات التحويل</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/media/orphans*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.media.orphans') }}" class="side-menu__item {{ request()->is('admin/media/orphans*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+                                        </svg>
+                                        <span class="side-menu__label">الملفات اليتيمة</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        @endcanany
+
                         @canany(['gamification-list', 'badge-list', 'achievement-list', 'level-list', 'challenge-list', 'reward-list', 'certificate-list', 'leaderboard-list', 'daily-task-list', 'weekly-task-list', 'gamification-update'])
                         <li class="slide has-sub {{ request()->is('admin/gamification*') || request()->is('admin/badges*') || request()->is('admin/achievements*') || request()->is('admin/levels*') || request()->is('admin/challenges*') || request()->is('admin/rewards*') || request()->is('admin/certificates*') || request()->is('admin/leaderboards*') || request()->is('admin/daily-tasks*') || request()->is('admin/weekly-tasks*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">

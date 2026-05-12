@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Helpers\StorageHelper;
+use App\Services\Storage\MediaStorageService;
 use Maatwebsite\Excel\Facades\Excel;
 
 class QuestionController extends Controller
@@ -159,7 +160,8 @@ class QuestionController extends Controller
 
             // رفع الصورة
             if ($request->hasFile('image')) {
-                $data['image'] = $request->file('image')->store('questions', 'public');
+                $uploadResult = MediaStorageService::uploadImage($request->file('image'), 'questions/images');
+                $data['image'] = $uploadResult['path'];
             }
 
             // معالجة الوسوم
@@ -291,12 +293,13 @@ class QuestionController extends Controller
             if ($request->hasFile('image')) {
                 // حذف الصورة القديمة
                 if ($question->image) {
-                    StorageHelper::delete('images', $question->image);
+                    MediaStorageService::delete($question->image);
                 }
-                $data['image'] = $request->file('image')->store('questions', 'public');
+                $uploadResult = MediaStorageService::uploadImage($request->file('image'), 'questions/images');
+                $data['image'] = $uploadResult['path'];
             } elseif ($request->boolean('remove_image')) {
                 if ($question->image) {
-                    StorageHelper::delete('images', $question->image);
+                    MediaStorageService::delete($question->image);
                 }
                 $data['image'] = null;
             }
@@ -486,7 +489,8 @@ class QuestionController extends Controller
 
             // رفع صورة الخيار
             if (isset($optionData['image']) && $optionData['image'] instanceof \Illuminate\Http\UploadedFile) {
-                $option->image = $optionData['image']->store('question_options', 'public');
+                $uploadResult = MediaStorageService::uploadImage($optionData['image'], 'question_options');
+                $option->image = $uploadResult['path'];
             }
 
             $option->save();
@@ -517,14 +521,15 @@ class QuestionController extends Controller
                     // رفع صورة جديدة
                     if (isset($optionData['image']) && $optionData['image'] instanceof \Illuminate\Http\UploadedFile) {
                         if ($option->image) {
-                            StorageHelper::delete('images', $option->image);
+                            MediaStorageService::delete($option->image);
                         }
                         $imageFile = $optionData['image'];
                         $imageName = time() . '_' . $imageFile->getClientOriginalName();
-                        $data['image'] = StorageHelper::store('images', 'question_options/' . $imageName, file_get_contents($imageFile->getRealPath()), 'image') ? 'question_options/' . $imageName : $imageFile->store('question_options', 'public');
+                        $uploadResult = MediaStorageService::uploadImage($imageFile, 'question_options', $imageName);
+                        $data['image'] = $uploadResult['path'];
                     } elseif (isset($optionData['remove_image']) && $optionData['remove_image']) {
                         if ($option->image) {
-                            StorageHelper::delete('images', $option->image);
+                            MediaStorageService::delete($option->image);
                         }
                         $data['image'] = null;
                     }
@@ -539,8 +544,8 @@ class QuestionController extends Controller
                 if (isset($optionData['image']) && $optionData['image'] instanceof \Illuminate\Http\UploadedFile) {
                     $imageFile = $optionData['image'];
                     $imageName = time() . '_' . $imageFile->getClientOriginalName();
-                    $imagePath = 'question_options/' . $imageName;
-                    $data['image'] = StorageHelper::store('images', $imagePath, file_get_contents($imageFile->getRealPath()), 'image') ? $imagePath : $imageFile->store('question_options', 'public');
+                    $uploadResult = MediaStorageService::uploadImage($imageFile, 'question_options', $imageName);
+                    $data['image'] = $uploadResult['path'];
                 }
 
                 $option = QuestionOption::create($data);
@@ -552,7 +557,7 @@ class QuestionController extends Controller
         $toDelete = $question->options()->whereNotIn('id', $existingIds)->get();
         foreach ($toDelete as $option) {
             if ($option->image) {
-                StorageHelper::delete('images', $option->image);
+                MediaStorageService::delete($option->image);
             }
             $option->delete();
         }

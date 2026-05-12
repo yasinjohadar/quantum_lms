@@ -8,6 +8,7 @@ use App\Models\DistinguishedStudent;
 use App\Models\SchoolClass;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Services\Storage\MediaStorageService;
 
 class DistinguishedStudentController extends Controller
 {
@@ -116,7 +117,8 @@ class DistinguishedStudentController extends Controller
             ];
 
             if ($request->hasFile('photo')) {
-                $data['photo'] = $request->file('photo')->store('distinguished-students', 'public');
+                $uploadResult = MediaStorageService::uploadImage($request->file('photo'), 'distinguished-students');
+                $data['photo'] = $uploadResult['path'];
             }
 
             DistinguishedStudent::create($data);
@@ -181,10 +183,11 @@ class DistinguishedStudentController extends Controller
             ];
 
             if ($request->hasFile('photo')) {
-                if ($distinguishedStudent->photo && Storage::disk('public')->exists($distinguishedStudent->photo)) {
-                    Storage::disk('public')->delete($distinguishedStudent->photo);
+                if ($distinguishedStudent->photo) {
+                    MediaStorageService::delete($distinguishedStudent->photo);
                 }
-                $data['photo'] = $request->file('photo')->store('distinguished-students', 'public');
+                $uploadResult = MediaStorageService::uploadImage($request->file('photo'), 'distinguished-students');
+                $data['photo'] = $uploadResult['path'];
             }
 
             $distinguishedStudent->update($data);

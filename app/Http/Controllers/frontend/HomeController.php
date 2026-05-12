@@ -71,6 +71,7 @@ class HomeController extends Controller
                         'old_price' => $oldPrice,
                         'currency' => $currency,
                         'is_free' => $class->is_free ?? ($price == 0),
+                        'show_price' => $class->show_price ?? true,
                         'features' => $class->features->pluck('label')->values(),
                         'created_at' => $class->created_at,
                         'updated_at' => $class->updated_at,
@@ -89,6 +90,7 @@ class HomeController extends Controller
                         'old_price' => ($class->price ?? 0) * 1.2,
                         'currency' => $defaultCurrency,
                         'is_free' => $class->is_free ?? true,
+                        'show_price' => $class->show_price ?? true,
                         'features' => $class->features->pluck('label')->values(),
                         'created_at' => $class->created_at,
                         'updated_at' => $class->updated_at,
@@ -154,54 +156,17 @@ class HomeController extends Controller
     public function showClass($slug): View
     {
         // جلب الصف بالـ slug
-        $class = SchoolClass::with(['stage', 'defaultCurrency', 'features'])
+        $class = SchoolClass::with(['stage', 'defaultCurrency', 'features', 'subjects.defaultCurrency'])
             ->where('slug', $slug)
             ->active()
             ->firstOrFail();
 
         // جلب العملة الافتراضية
         $defaultCurrency = Currency::getDefault();
+        $user = Auth::check() ? Auth::user() : null;
 
-        // جلب المواد النشطة للصف
-        $subjects = Subject::with(['defaultCurrency', 'schoolClass'])
-            ->where('class_id', $class->id)
-            ->active()
-            ->ordered()
-            ->get()
-            ->map(function ($subject) use ($defaultCurrency) {
-                try {
-                    // الحصول على السعر
-                    $price = $subject->getPrice($defaultCurrency->id ?? null);
-                    $currency = $subject->defaultCurrency ?? $defaultCurrency;
-
-                    // حساب السعر القديم
-                    $oldPrice = $price > 0 ? $price * 1.2 : 0;
-
-                    return [
-                        'id' => $subject->id,
-                        'name' => $subject->name,
-                        'slug' => $subject->slug,
-                        'image' => $subject->image,
-                        'description' => $subject->description,
-                        'price' => $price,
-                        'old_price' => $oldPrice,
-                        'currency' => $currency,
-                        'is_free' => $subject->is_free ?? ($price == 0),
-                    ];
-                } catch (\Exception $e) {
-                    return [
-                        'id' => $subject->id,
-                        'name' => $subject->name,
-                        'slug' => $subject->slug,
-                        'image' => $subject->image,
-                        'description' => $subject->description,
-                        'price' => $subject->price ?? 0,
-                        'old_price' => ($subject->price ?? 0) * 1.2,
-                        'currency' => $defaultCurrency,
-                        'is_free' => $subject->is_free ?? true,
-                    ];
-                }
-            });
+        // جلب المواد مع بيانات التسعير والوصول
+        $subjects = $class->getSubjectsWithAccess($user, $defaultCurrency->id);
 
         // التحقق من حالة المستخدم مع الصف (إذا كان مسجل دخول)
         $isEnrolled = false;

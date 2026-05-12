@@ -166,17 +166,12 @@
                                             <div class="price-free-wrapper">
                                                 <span class="price-free">مجاني</span>
                                             </div>
-                                        @else
+                                        @elseif(!empty($class['show_price']))
                                             <div class="price-content">
                                                 <div class="price-current">
                                                     <span class="price-amount">{{ number_format($class['price'] ?? 0, 2) }}</span>
                                                     <span class="price-currency">{{ isset($class['currency']) && $class['currency'] ? ($class['currency']->symbol ?? $class['currency']->code ?? '') : '' }}</span>
                                                 </div>
-                                                @if(($class['old_price'] ?? 0) > ($class['price'] ?? 0))
-                                                    <span class="price-old">
-                                                        {{ number_format($class['old_price'], 2) }} {{ isset($class['currency']) && $class['currency'] ? ($class['currency']->symbol ?? $class['currency']->code ?? '') : '' }}
-                                                    </span>
-                                                @endif
                                             </div>
                                         @endif
                                     </div>

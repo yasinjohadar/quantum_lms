@@ -6,6 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Config;
 use App\Models\StorageDiskMapping;
 use App\Services\Storage\AppStorageFactory;
+use App\Services\Storage\StorageConfigNormalizer;
 use Illuminate\Support\Facades\Log;
 
 class StorageServiceProvider extends ServiceProvider
@@ -67,6 +68,9 @@ class StorageServiceProvider extends ServiceProvider
     {
         $config = $storageConfig->getDecryptedConfig();
         
+        // تطبيع الإعدادات
+        $config = StorageConfigNormalizer::normalize($config, $storageConfig->driver);
+        
         $baseConfig = match($storageConfig->driver) {
             'local' => [
                 'driver' => 'local',
@@ -79,8 +83,10 @@ class StorageServiceProvider extends ServiceProvider
                 'secret' => $config['secret_access_key'] ?? '',
                 'region' => $config['region'] ?? 'us-east-1',
                 'bucket' => $config['bucket'] ?? '',
-                'endpoint' => $config['endpoint'] ?? null,
-                'use_path_style_endpoint' => $config['use_path_style'] ?? false,
+                'endpoint' => isset($config['endpoint']) && !str_starts_with($config['endpoint'], 'http://') && !str_starts_with($config['endpoint'], 'https://')
+                    ? 'https://' . ltrim($config['endpoint'], '/')
+                    : ($config['endpoint'] ?? null),
+                'use_path_style_endpoint' => StorageConfigNormalizer::toBool($config['use_path_style'] ?? false),
             ],
             'google_drive' => [
                 'driver' => 'google',
@@ -140,8 +146,8 @@ class StorageServiceProvider extends ServiceProvider
             'password' => $config['password'] ?? '',
             'port' => $config['port'] ?? 21,
             'root' => $config['root'] ?? '/',
-            'passive' => $config['passive'] ?? true,
-            'ssl' => $config['use_tls'] ?? false,
+            'passive' => StorageConfigNormalizer::toBool($config['passive'] ?? true),
+            'ssl' => StorageConfigNormalizer::toBool($config['use_tls'] ?? false),
         ];
     }
 

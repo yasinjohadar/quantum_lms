@@ -67,15 +67,29 @@
                                         <i class="fa-solid fa-book"></i>
                                     </div>
                                 @endif
+                                @if(isset($subject['badge']))
+                                    <span class="subject-badge {{ $subject['badge']['class'] }}">
+                                        <i class="fa-solid {{ $subject['badge']['icon'] }}"></i>
+                                        {{ $subject['badge']['text'] }}
+                                    </span>
+                                @endif
                             </div>
                             <div class="class-card-body">
                                 <h3 class="class-card-title">{{ $subject['name'] }}</h3>
                                 
                                 <!-- Price Section -->
                                 <div class="class-card-price">
-                                    @if($subject['is_free'] || $subject['price'] == 0)
+                                    @if($subject['is_free'])
                                         <div class="price-free-wrapper">
                                             <span class="price-free">مجاني</span>
+                                        </div>
+                                    @elseif(!$subject['show_price'])
+                                        <div class="price-hidden-wrapper">
+                                            <span class="price-hidden">—</span>
+                                        </div>
+                                    @elseif($subject['has_access'])
+                                        <div class="price-access-wrapper">
+                                            <span class="price-access"><i class="fa-solid fa-check-circle text-success"></i> لديك وصول</span>
                                         </div>
                                     @else
                                         <div class="price-content">
@@ -83,26 +97,33 @@
                                                 <span class="price-amount">{{ number_format($subject['price'], 2) }}</span>
                                                 <span class="price-currency">{{ $subject['currency']->symbol ?? $subject['currency']->code ?? '' }}</span>
                                             </div>
-                                            @if($subject['old_price'] > $subject['price'])
-                                                <span class="price-old">
-                                                    {{ number_format($subject['old_price'], 2) }} {{ $subject['currency']->symbol ?? $subject['currency']->code ?? '' }}
-                                                </span>
-                                            @endif
                                         </div>
                                     @endif
                                 </div>
                                 
-                                @guest
-                                <a href="#guest-purchase-cta" class="class-card-btn enroll-btn">
-                                    سجل الآن
-                                    <i class="fa-solid fa-angles-left ms-2"></i>
-                                </a>
+                                @if($subject['has_access'])
+                                    <a href="{{ route('student.subject.show', $subject['slug']) }}" class="class-card-btn enroll-btn">
+                                        مشاهدة المادة
+                                        <i class="fa-solid fa-play ms-2"></i>
+                                    </a>
+                                @elseif($subject['is_free'])
+                                    <a href="{{ route('student.subject.show', $subject['slug']) }}" class="class-card-btn enroll-btn">
+                                        مشاهدة مجانية
+                                        <i class="fa-solid fa-play ms-2"></i>
+                                    </a>
                                 @else
-                                <a href="#purchase-section" class="class-card-btn enroll-btn">
-                                    سجل الآن
-                                    <i class="fa-solid fa-angles-left ms-2"></i>
-                                </a>
-                                @endguest
+                                    @guest
+                                    <a href="#guest-purchase-cta" class="class-card-btn enroll-btn">
+                                        سجل الآن
+                                        <i class="fa-solid fa-angles-left ms-2"></i>
+                                    </a>
+                                    @else
+                                    <a href="#purchase-section" class="class-card-btn enroll-btn">
+                                        سجل الآن
+                                        <i class="fa-solid fa-angles-left ms-2"></i>
+                                    </a>
+                                    @endguest
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -143,9 +164,11 @@
                                             <span class="purchase-option-price">
                                                 @if($class->is_free || $class->getPrice($class->defaultCurrency->id ?? null) == 0)
                                                     <span class="text-success">مجاني</span>
-                                                @else
+                                                @elseif($class->show_price)
                                                     {{ number_format($class->getPrice($class->defaultCurrency->id ?? null), 2) }}
                                                     {{ $class->defaultCurrency->symbol ?? $class->defaultCurrency->code ?? '' }}
+                                                @else
+                                                    <span class="text-muted">تواصل لمعرفة السعر</span>
                                                 @endif
                                             </span>
                                         </div>
@@ -175,15 +198,17 @@
                                         <!-- Subjects Checkboxes -->
                                         <div class="subjects-checkboxes" style="display: none;">
                                             @foreach($subjects as $subject)
+                                                @if($subject['can_purchase_separately'] && !$subject['is_free'] && !$subject['has_access'])
                                                 <label class="subject-checkbox-label">
                                                     <input type="checkbox" name="subject_ids[]" value="{{ $subject['id'] }}" class="subject-checkbox" data-price="{{ $subject['price'] }}" data-currency="{{ $subject['currency']->symbol ?? $subject['currency']->code ?? '' }}">
                                                     <span class="subject-checkbox-content">
                                                         <span class="subject-checkbox-name">{{ $subject['name'] }}</span>
                                                         <span class="subject-checkbox-price">
-                                                            @if($subject['is_free'] || $subject['price'] == 0)
-                                                                <span class="text-success">مجاني</span>
+                                                            @if(!$subject['show_price'])
+                                                                <span class="text-muted">السعر مخفي</span>
                                                             @else
                                                                 {{ number_format($subject['price'], 2) }} {{ $subject['currency']->symbol ?? $subject['currency']->code ?? '' }}
+                                                            @endif
                                                             @endif
                                                         </span>
                                                     </span>
@@ -320,9 +345,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Get class price and currency
-    const classPrice = {{ $class->getPrice($class->defaultCurrency->id ?? null) ?? 0 }};
+    const classPrice = {{ $class->show_price ? ($class->getPrice($class->defaultCurrency->id ?? null) ?? 0) : 0 }};
     const classCurrency = '{{ $class->defaultCurrency->symbol ?? $class->defaultCurrency->code ?? "" }}';
     const classIsFree = {{ $class->is_free || $class->getPrice($class->defaultCurrency->id ?? null) == 0 ? 'true' : 'false' }};
+    const classShowPrice = {{ $class->show_price ? 'true' : 'false' }};
     
     // Toggle subjects checkboxes visibility (only when subjects option exists)
     purchaseTypeRadios.forEach(radio => {
@@ -364,7 +390,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         if (purchaseTotal) {
-            if (total > 0 || selectedType === 'class') {
+            if (selectedType === 'class' && !classShowPrice && !classIsFree) {
+                purchaseTotal.style.display = 'block';
+                if (totalPriceEl) totalPriceEl.textContent = '---';
+                if (totalCurrencyEl) totalCurrencyEl.textContent = '';
+            } else if (total > 0 || selectedType === 'class') {
                 purchaseTotal.style.display = 'block';
                 if (totalPriceEl) totalPriceEl.textContent = total.toFixed(2);
                 if (totalCurrencyEl) totalCurrencyEl.textContent = currency;

@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Helpers\StorageHelper;
+use App\Services\Storage\MediaStorageService;
 
 class QuizController extends Controller
 {
@@ -226,22 +227,6 @@ class QuizController extends Controller
             DB::beginTransaction();
 
             $data = $request->validated();
-            
-            // معالجة الـ checkboxes
-            $data['show_timer'] = $request->has('show_timer');
-            $data['auto_submit'] = $request->has('auto_submit');
-            $data['shuffle_questions'] = $request->has('shuffle_questions');
-            $data['shuffle_options'] = $request->has('shuffle_options');
-            $data['allow_back_navigation'] = $request->has('allow_back_navigation');
-            $data['show_result_immediately'] = $request->has('show_result_immediately');
-            $data['show_correct_answers'] = $request->has('show_correct_answers');
-            $data['show_explanation'] = $request->has('show_explanation');
-            $data['show_points_per_question'] = $request->has('show_points_per_question');
-            $data['is_active'] = $request->has('is_active');
-            $data['requires_password'] = $request->has('requires_password');
-            $data['require_webcam'] = $request->has('require_webcam');
-            $data['prevent_copy_paste'] = $request->has('prevent_copy_paste');
-            $data['fullscreen_required'] = $request->has('fullscreen_required');
             $data['created_by'] = auth()->id();
 
             // منطق المراجعة: إذا كان المستخدم معلم وليس مشرف أو مدير
@@ -300,7 +285,8 @@ class QuizController extends Controller
 
             // رفع الصورة
             if ($request->hasFile('image')) {
-                $data['image'] = $request->file('image')->store('quizzes', 'public');
+                $uploadResult = MediaStorageService::uploadImage($request->file('image'), 'quizzes');
+                $data['image'] = $uploadResult['path'];
             }
 
             // إنشاء الاختبار
@@ -407,22 +393,6 @@ class QuizController extends Controller
             $quiz = Quiz::findOrFail($id);
             $quizBeforeUpdate = clone $quiz;
             $data = $request->validated();
-            
-            // معالجة الـ checkboxes
-            $data['show_timer'] = $request->has('show_timer');
-            $data['auto_submit'] = $request->has('auto_submit');
-            $data['shuffle_questions'] = $request->has('shuffle_questions');
-            $data['shuffle_options'] = $request->has('shuffle_options');
-            $data['allow_back_navigation'] = $request->has('allow_back_navigation');
-            $data['show_result_immediately'] = $request->has('show_result_immediately');
-            $data['show_correct_answers'] = $request->has('show_correct_answers');
-            $data['show_explanation'] = $request->has('show_explanation');
-            $data['show_points_per_question'] = $request->has('show_points_per_question');
-            $data['is_active'] = $request->has('is_active');
-            $data['requires_password'] = $request->has('requires_password');
-            $data['require_webcam'] = $request->has('require_webcam');
-            $data['prevent_copy_paste'] = $request->has('prevent_copy_paste');
-            $data['fullscreen_required'] = $request->has('fullscreen_required');
 
             // منطق المراجعة: إذا كان المستخدم معلم وليس مشرف أو مدير
             $user = auth()->user();
@@ -482,12 +452,13 @@ class QuizController extends Controller
             // رفع صورة جديدة
             if ($request->hasFile('image')) {
                 if ($quiz->image) {
-                    StorageHelper::delete('images', $quiz->image);
+                    MediaStorageService::delete($quiz->image);
                 }
-                $data['image'] = $request->file('image')->store('quizzes', 'public');
+                $uploadResult = MediaStorageService::uploadImage($request->file('image'), 'quizzes');
+                $data['image'] = $uploadResult['path'];
             } elseif ($request->boolean('remove_image')) {
                 if ($quiz->image) {
-                    StorageHelper::delete('images', $quiz->image);
+                    MediaStorageService::delete($quiz->image);
                 }
                 $data['image'] = null;
             }

@@ -12,6 +12,7 @@ use App\Events\QuizCompleted;
 use App\Events\QuestionAnswered;
 use App\Events\PointsAwarded;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 
 class GamificationService
 {
@@ -33,11 +34,19 @@ class GamificationService
         if ($points > 0) {
             $transaction = $this->pointService->awardPoints($user, $eventType, $points, null, $metadata);
             
-            // إرسال Event للنقاط
-            Event::dispatch(new PointsAwarded($user, $points, $eventType, [
-                'total_points' => $this->pointService->getUserTotalPoints($user),
-                'transaction_id' => $transaction->id,
-            ]));
+            // إرسال Event للنقاط (غير حرج)
+            try {
+                Event::dispatch(new PointsAwarded($user, $points, $eventType, [
+                    'total_points' => $this->pointService->getUserTotalPoints($user),
+                    'transaction_id' => $transaction->id,
+                ]));
+            } catch (\Throwable $e) {
+                Log::warning('PointsAwarded event broadcast failed (non-fatal)', [
+                    'user_id' => $user->id,
+                    'event_type' => $eventType,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         // فحص المهام
@@ -63,11 +72,19 @@ class GamificationService
         
         $points = $this->pointService->calculatePoints('lesson_attended', ['lesson_id' => $completion->lesson_id]);
         
-        // إرسال Event
-        Event::dispatch(new LessonAttended($user, $lesson, [
-            'points' => $points,
-            'completion_id' => $completion->id,
-        ]));
+        // إرسال Event (غير حرج)
+        try {
+            Event::dispatch(new LessonAttended($user, $lesson, [
+                'points' => $points,
+                'completion_id' => $completion->id,
+            ]));
+        } catch (\Throwable $e) {
+            Log::warning('LessonAttended event broadcast failed (non-fatal)', [
+                'user_id' => $user->id,
+                'lesson_id' => $lesson->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
         
         $this->processEvent($user, 'lesson_attended', ['lesson_id' => $completion->lesson_id]);
     }
@@ -82,11 +99,19 @@ class GamificationService
         
         $points = $this->pointService->calculatePoints('lesson_completed', ['lesson_id' => $completion->lesson_id]);
         
-        // إرسال Event
-        Event::dispatch(new LessonCompleted($user, $lesson, [
-            'points' => $points,
-            'completion_id' => $completion->id,
-        ]));
+        // إرسال Event (غير حرج)
+        try {
+            Event::dispatch(new LessonCompleted($user, $lesson, [
+                'points' => $points,
+                'completion_id' => $completion->id,
+            ]));
+        } catch (\Throwable $e) {
+            Log::warning('LessonCompleted event broadcast failed (non-fatal)', [
+                'user_id' => $user->id,
+                'lesson_id' => $lesson->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
         
         $this->processEvent($user, 'lesson_completed', ['lesson_id' => $completion->lesson_id]);
     }
@@ -108,14 +133,23 @@ class GamificationService
             'percentage' => $attempt->percentage,
         ]);
         
-        // إرسال Event
-        Event::dispatch(new QuizCompleted($user, $quiz, [
-            'score' => $attempt->score,
-            'percentage' => $attempt->percentage,
-            'passed' => $attempt->passed,
-            'points' => $points,
-            'attempt_id' => $attempt->id,
-        ]));
+        // إرسال Event (غير حرج)
+        try {
+            Event::dispatch(new QuizCompleted($user, $quiz, [
+                'score' => $attempt->score,
+                'percentage' => $attempt->percentage,
+                'passed' => $attempt->passed,
+                'points' => $points,
+                'attempt_id' => $attempt->id,
+            ]));
+        } catch (\Throwable $e) {
+            Log::warning('QuizCompleted event broadcast failed (non-fatal)', [
+                'user_id' => $user->id,
+                'quiz_id' => $quiz->id,
+                'attempt_id' => $attempt->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
         
         $this->processEvent($user, 'quiz_completed', [
             'quiz_id' => $attempt->quiz_id,
@@ -142,13 +176,21 @@ class GamificationService
             'is_correct' => $attempt->is_correct,
         ]);
         
-        // إرسال Event
-        Event::dispatch(new QuestionAnswered($user, $question, [
-            'score' => $attempt->score,
-            'is_correct' => $attempt->is_correct,
-            'points' => $points,
-            'attempt_id' => $attempt->id,
-        ]));
+        // إرسال Event (غير حرج)
+        try {
+            Event::dispatch(new QuestionAnswered($user, $question, [
+                'score' => $attempt->score,
+                'is_correct' => $attempt->is_correct,
+                'points' => $points,
+                'attempt_id' => $attempt->id,
+            ]));
+        } catch (\Throwable $e) {
+            Log::warning('QuestionAnswered event broadcast failed (non-fatal)', [
+                'user_id' => $user->id,
+                'question_id' => $question->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
         
         $this->processEvent($user, 'question_answered', [
             'question_id' => $attempt->question_id,

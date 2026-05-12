@@ -257,6 +257,57 @@
                             </div>
 
                             <div class="col-12 mt-3">
+                                <h6 class="text-primary mb-3">خيارات التسعير المتقدمة</h6>
+                                <p class="text-muted small mb-2">هذه الخيارات تتحكم في كيفية تعامل المادة مع تسعير الصف</p>
+                            </div>
+
+                            <div class="col-md-4 d-flex align-items-center">
+                                <div class="form-check form-switch mt-3">
+                                    <input class="form-check-input" type="checkbox" name="is_free_override"
+                                           id="is_free_override" value="1"
+                                           {{ old('is_free_override', $subject->is_free_override ?? false) ? 'checked' : '' }}
+                                           onchange="toggleSubjectPricingOptions()">
+                                    <label class="form-check-label" for="is_free_override">
+                                        مجانية دائماً
+                                        <i class="fas fa-info-circle text-muted ms-1" 
+                                           data-bs-toggle="tooltip" 
+                                           data-bs-placement="top" 
+                                           title="عند تفعيل هذا الخيار ستكون المادة مجانية لجميع المستخدمين حتى لو كان الصف مدفوعاً."></i>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4 d-flex align-items-center">
+                                <div class="form-check form-switch mt-3">
+                                    <input class="form-check-input" type="checkbox" name="can_purchase_separately"
+                                           id="can_purchase_separately" value="1"
+                                           {{ old('can_purchase_separately', $subject->can_purchase_separately ?? true) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="can_purchase_separately">
+                                        شراء منفصل
+                                        <i class="fas fa-info-circle text-muted ms-1" 
+                                           data-bs-toggle="tooltip" 
+                                           data-bs-placement="top" 
+                                           title="السماح للمستخدمين بشراء هذه المادة بشكل منفصل بدون شراء الصف كامل."></i>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4 d-flex align-items-center">
+                                <div class="form-check form-switch mt-3">
+                                    <input class="form-check-input" type="checkbox" name="show_price"
+                                           id="show_price" value="1"
+                                           {{ old('show_price', $subject->show_price ?? true) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="show_price">
+                                        إظهار السعر
+                                        <i class="fas fa-info-circle text-muted ms-1" 
+                                           data-bs-toggle="tooltip" 
+                                           data-bs-placement="top" 
+                                           title="عند تعطيل هذا الخيار لن يظهر السعر للمستخدمين في الواجهة الأمامية."></i>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="col-12 mt-3">
                                 <h6 class="text-primary mb-3">إعدادات الـ SEO (اختيارية)</h6>
                             </div>
 
@@ -311,5 +362,34 @@
             </div>
         </div>
     </div>
+@stop
+
+@section('js')
+<script>
+function toggleSubjectPricingOptions() {
+    var isFreeOverride = document.getElementById('is_free_override').checked;
+    var canPurchaseSeparately = document.getElementById('can_purchase_separately');
+    var showPrice = document.getElementById('show_price');
+    
+    if (isFreeOverride) {
+        canPurchaseSeparately.checked = false;
+        canPurchaseSeparately.disabled = true;
+        showPrice.checked = true;
+        showPrice.disabled = true;
+    } else {
+        canPurchaseSeparately.disabled = false;
+        showPrice.disabled = false;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    toggleSubjectPricingOptions();
+    
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
 @stop
 

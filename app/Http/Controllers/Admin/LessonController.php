@@ -16,6 +16,7 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Helpers\StorageHelper;
+use App\Services\Storage\MediaStorageService;
 use App\Services\StaffNotificationService;
 use App\Services\StudentContentNotificationService;
 
@@ -163,13 +164,15 @@ class LessonController extends Controller
             if ($request->hasFile('video_file')) {
                 $videoFile = $request->file('video_file');
                 $videoName = time() . '_' . $videoFile->getClientOriginalName();
-                $data['video_url'] = $videoFile->storeAs('lessons/videos', $videoName, 'public');
+                $uploadResult = MediaStorageService::uploadVideo($videoFile, 'lessons/videos', $videoName, true);
+                $data['video_url'] = $uploadResult['path'];
             }
 
             if ($request->hasFile('thumbnail')) {
                 $thumbnail = $request->file('thumbnail');
                 $thumbName = time() . '_thumb_' . $thumbnail->getClientOriginalName();
-                $data['thumbnail'] = $thumbnail->storeAs('lessons/thumbnails', $thumbName, 'public');
+                $uploadResult = MediaStorageService::uploadImage($thumbnail, 'lessons/thumbnails', $thumbName);
+                $data['thumbnail'] = $uploadResult['path'];
             }
 
             if (!isset($data['order']) || $data['order'] === null) {
@@ -208,7 +211,8 @@ class LessonController extends Controller
                     $attachmentData['url'] = $request->input('attachment_url');
                 } elseif ($attachmentFile) {
                     $attachmentFileName = time() . '_attachment_' . $attachmentFile->getClientOriginalName();
-                    $attachmentData['file_path'] = $attachmentFile->storeAs('lessons/attachments', $attachmentFileName, 'public');
+                    $uploadResult = MediaStorageService::uploadDocument($attachmentFile, 'lessons/attachments', $attachmentFileName);
+                    $attachmentData['file_path'] = $uploadResult['path'];
                     $attachmentData['file_name'] = $attachmentFile->getClientOriginalName();
                     $attachmentData['file_type'] = $attachmentFile->getClientOriginalExtension();
                     $attachmentData['file_size'] = $attachmentFile->getSize();
@@ -361,24 +365,26 @@ class LessonController extends Controller
             if ($request->hasFile('video_file')) {
                 // حذف الفيديو القديم
                 if ($lesson->video_url && $lesson->video_type === 'upload') {
-                    StorageHelper::delete('videos', $lesson->video_url);
+                    MediaStorageService::delete($lesson->video_url);
                 }
 
                 $videoFile = $request->file('video_file');
                 $videoName = time() . '_' . $videoFile->getClientOriginalName();
-                $data['video_url'] = $videoFile->storeAs('lessons/videos', $videoName, 'public');
+                $uploadResult = MediaStorageService::uploadVideo($videoFile, 'lessons/videos', $videoName, true);
+                $data['video_url'] = $uploadResult['path'];
             }
 
             // رفع الصورة المصغرة الجديدة
             if ($request->hasFile('thumbnail')) {
                 // حذف الصورة القديمة
                 if ($lesson->thumbnail) {
-                    StorageHelper::delete('images', $lesson->thumbnail);
+                    MediaStorageService::delete($lesson->thumbnail);
                 }
 
                 $thumbnail = $request->file('thumbnail');
                 $thumbName = time() . '_thumb_' . $thumbnail->getClientOriginalName();
-                $data['thumbnail'] = $thumbnail->storeAs('lessons/thumbnails', $thumbName, 'public');
+                $uploadResult = MediaStorageService::uploadImage($thumbnail, 'lessons/thumbnails', $thumbName);
+                $data['thumbnail'] = $uploadResult['path'];
             }
 
             $lesson->update($data);

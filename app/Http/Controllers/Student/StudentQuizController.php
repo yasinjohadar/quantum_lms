@@ -96,11 +96,20 @@ class StudentQuizController extends Controller
             $attempt->question_order = $questionIds;
             $attempt->save();
 
-            // إرسال Event
-            Event::dispatch(new QuizStarted($user, $quiz, [
-                'attempt_id' => $attempt->id,
-                'time_limit' => $quiz->time_limit,
-            ]));
+            // إرسال Event (غير حرج - لا يمنع بدء الاختبار عند الفشل)
+            try {
+                Event::dispatch(new QuizStarted($user, $quiz, [
+                    'attempt_id' => $attempt->id,
+                    'time_limit' => $quiz->time_limit,
+                ]));
+            } catch (\Throwable $e) {
+                Log::warning('QuizStarted event broadcast failed (non-fatal)', [
+                    'quiz_id' => $quiz->id,
+                    'attempt_id' => $attempt->id,
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             // تسجيل حدث في Analytics
             $this->analyticsService->trackEvent('start_quiz', $user->id, [

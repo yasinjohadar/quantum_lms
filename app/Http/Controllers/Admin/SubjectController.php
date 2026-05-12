@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Helpers\StorageHelper;
+use App\Services\Storage\MediaStorageService;
 
 class SubjectController extends Controller
 {
@@ -194,7 +195,8 @@ class SubjectController extends Controller
                 try {
                     $image = $request->file('image');
                     $imageName = time() . '_' . $image->getClientOriginalName();
-                    $data['image'] = $image->storeAs('subjects/images', $imageName, 'public');
+                    $uploadResult = MediaStorageService::uploadImage($image, 'subjects/images', $imageName);
+                    $data['image'] = $uploadResult['path'];
                 } catch (\Exception $e) {
                     return back()
                         ->withInput()
@@ -207,7 +209,8 @@ class SubjectController extends Controller
                 try {
                     $ogImage = $request->file('og_image');
                     $ogImageName = time() . '_og_' . $ogImage->getClientOriginalName();
-                    $data['og_image'] = $ogImage->storeAs('subjects/og_images', $ogImageName, 'public');
+                    $uploadResult = MediaStorageService::uploadImage($ogImage, 'subjects/og_images', $ogImageName);
+                    $data['og_image'] = $uploadResult['path'];
                 } catch (\Exception $e) {
                     return back()
                         ->withInput()
@@ -220,9 +223,20 @@ class SubjectController extends Controller
             $data['order'] = $request->input('order', 0);
             $data['price'] = $request->input('price', 0);
             $data['is_free'] = $request->has('is_free') || $request->input('price', 0) == 0;
+            $data['pricing_mode'] = $request->input('pricing_mode', 'inherit');
+            $data['is_free_override'] = $request->has('is_free_override');
+            $data['can_purchase_separately'] = $request->has('can_purchase_separately');
+            $data['show_price'] = $request->has('show_price');
             $data['default_currency_id'] = $request->input('default_currency_id');
 
             $subject = Subject::create($data);
+
+            // Invalidate pricing cache
+            try {
+                app(\App\Services\Pricing\PricingCacheManager::class)->invalidateSubject($subject);
+            } catch (\Exception $e) {
+                Log::warning('Failed to invalidate pricing cache: ' . $e->getMessage());
+            }
 
             // معالجة الأسعار المتعددة
             if ($request->has('prices')) {
@@ -420,12 +434,13 @@ class SubjectController extends Controller
             if ($request->hasFile('image')) {
                 try {
                     if ($subject->image) {
-                        StorageHelper::delete('images', $subject->image);
+                        MediaStorageService::delete($subject->image);
                     }
 
                     $image = $request->file('image');
                     $imageName = time() . '_' . $image->getClientOriginalName();
-                    $data['image'] = $image->storeAs('subjects/images', $imageName, 'public');
+                    $uploadResult = MediaStorageService::uploadImage($image, 'subjects/images', $imageName);
+                    $data['image'] = $uploadResult['path'];
                 } catch (\Exception $e) {
                     return back()
                         ->withInput()
@@ -439,12 +454,13 @@ class SubjectController extends Controller
             if ($request->hasFile('og_image')) {
                 try {
                     if ($subject->og_image) {
-                        StorageHelper::delete('images', $subject->og_image);
+                        MediaStorageService::delete($subject->og_image);
                     }
 
                     $ogImage = $request->file('og_image');
                     $ogImageName = time() . '_og_' . $ogImage->getClientOriginalName();
-                    $data['og_image'] = $ogImage->storeAs('subjects/og_images', $ogImageName, 'public');
+                    $uploadResult = MediaStorageService::uploadImage($ogImage, 'subjects/og_images', $ogImageName);
+                    $data['og_image'] = $uploadResult['path'];
                 } catch (\Exception $e) {
                     return back()
                         ->withInput()
@@ -459,9 +475,22 @@ class SubjectController extends Controller
             $data['order'] = $request->input('order', $subject->order);
             $data['price'] = $request->input('price', 0);
             $data['is_free'] = $request->has('is_free') || $request->input('price', 0) == 0;
+            $data['pricing_mode'] = $request->input('pricing_mode', $subject->pricing_mode ?? 'inherit');
+            $data['is_free_override'] = $request->has('is_free_override');
+            $data['can_purchase_separately'] = $request->has('can_purchase_separately');
+            $data['show_price'] = $request->has('show_price');
             $data['default_currency_id'] = $request->input('default_currency_id');
 
             $subject->update($data);
+
+            // Invalidate pricing cache
+            try {
+                $cacheManager = app(\App\Services\Pricing\PricingCacheManager::class);
+                $cacheManager->invalidateSubject($subject);
+                $cacheManager->invalidateOnPriceChange($subject);
+            } catch (\Exception $e) {
+                Log::warning('Failed to invalidate pricing cache: ' . $e->getMessage());
+            }
 
             // معالجة الأسعار المتعددة
             if ($request->has('prices')) {

@@ -138,8 +138,23 @@
                                     <input class="form-check-input" type="checkbox" name="is_free"
                                            id="is_free_edit" value="1"
                                            {{ old('is_free', $class->is_free ?? true) ? 'checked' : '' }}
-                                           onchange="document.getElementById('price_input_edit').disabled = this.checked; if(this.checked) document.getElementById('price_input_edit').value = 0;">
+                                           onchange="togglePriceFieldsEdit()">
                                     <label class="form-check-label" for="is_free_edit">الصف مجاني</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 d-flex align-items-center">
+                                <div class="form-check form-switch mt-3" id="show_price_wrapper_edit">
+                                    <input class="form-check-input" type="checkbox" name="show_price"
+                                           id="show_price_edit" value="1"
+                                           {{ old('show_price', $class->show_price ?? true) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="show_price_edit">
+                                        إظهار السعر في الواجهة
+                                        <i class="fas fa-info-circle text-muted ms-1" 
+                                           data-bs-toggle="tooltip" 
+                                           data-bs-placement="top" 
+                                           title="عند تعطيل هذا الخيار لن يظهر سعر الكورس للمستخدمين في الواجهة الأمامية."></i>
+                                    </label>
                                 </div>
                             </div>
 
@@ -369,5 +384,34 @@
             </div>
         </div>
     </div>
+@stop
+
+@section('js')
+<script>
+function togglePriceFieldsEdit() {
+    var isFree = document.getElementById('is_free_edit').checked;
+    var priceInput = document.getElementById('price_input_edit');
+    var showPriceWrapper = document.getElementById('show_price_wrapper_edit');
+    var showPriceInput = document.getElementById('show_price_edit');
+    
+    priceInput.disabled = isFree;
+    if (isFree) {
+        priceInput.value = 0;
+        showPriceInput.checked = true;
+        showPriceInput.disabled = true;
+    } else {
+        showPriceInput.disabled = false;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    togglePriceFieldsEdit();
+    
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
 @stop
 

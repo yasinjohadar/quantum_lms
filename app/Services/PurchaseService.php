@@ -327,6 +327,13 @@ class PurchaseService
         Log::info('completePurchase finished successfully', [
             'purchase_id' => $purchase->id,
         ]);
+
+        // Invalidate cache after successful purchase
+        try {
+            app(\App\Services\Pricing\PricingCacheManager::class)->invalidateOnPurchase($user, $purchasable);
+        } catch (\Exception $e) {
+            Log::warning('Failed to invalidate pricing cache: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -334,12 +341,21 @@ class PurchaseService
      */
     public function checkAccess(User $user, $purchasable): bool
     {
-        // إذا كان مجانياً، السماح بالوصول
+        $accessResolver = app(\App\Services\Pricing\AccessResolver::class);
+
+        if ($purchasable instanceof Subject) {
+            return $accessResolver->hasSubjectAccess($user, $purchasable);
+        }
+
+        if ($purchasable instanceof SchoolClass) {
+            return $accessResolver->hasClassAccess($user, $purchasable);
+        }
+
+        // Fallback للمنطق القديم
         if (($purchasable->is_free ?? false) || ($purchasable->price ?? 0) == 0) {
             return true;
         }
 
-        // التحقق من وجود شراء مكتمل
         $purchase = Purchase::where('user_id', $user->id)
             ->where('purchasable_type', get_class($purchasable))
             ->where('purchasable_id', $purchasable->id)
@@ -347,29 +363,10 @@ class PurchaseService
             ->first();
 
         if ($purchase) {
-            // التحقق من انتهاء الصلاحية
             if ($purchase->expires_at && $purchase->expires_at->isPast()) {
                 return false;
             }
             return true;
-        }
-
-        // إذا كان الصف، التحقق من شراء الصف كاملاً
-        if ($purchasable instanceof Subject) {
-            $class = $purchasable->schoolClass;
-            if ($class) {
-                $classPurchase = Purchase::where('user_id', $user->id)
-                    ->where('purchasable_type', SchoolClass::class)
-                    ->where('purchasable_id', $class->id)
-                    ->where('status', 'completed')
-                    ->first();
-
-                if ($classPurchase) {
-                    if (!$classPurchase->expires_at || $classPurchase->expires_at->isFuture()) {
-                        return true;
-                    }
-                }
-            }
         }
 
         return false;

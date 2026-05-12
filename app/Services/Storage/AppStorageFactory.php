@@ -3,6 +3,7 @@
 namespace App\Services\Storage;
 
 use App\Models\AppStorageConfig;
+use App\Services\Storage\StorageConfigNormalizer;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
@@ -15,6 +16,10 @@ class AppStorageFactory
     public static function create(AppStorageConfig $config): \Illuminate\Contracts\Filesystem\Filesystem
     {
         $driverConfig = $config->getDecryptedConfig();
+        
+        // تطبيع الإعدادات (تحويل القيم النصية إلى types صحيحة)
+        $driverConfig = StorageConfigNormalizer::normalize($driverConfig, $config->driver);
+        
         $diskName = 'app_storage_' . $config->id . '_' . md5(json_encode($driverConfig));
         
         $diskConfig = match($config->driver) {
@@ -60,6 +65,11 @@ class AppStorageFactory
      */
     private static function getS3Config(array $config): array
     {
+        $endpoint = $config['endpoint'] ?? null;
+        if ($endpoint && !str_starts_with($endpoint, 'http://') && !str_starts_with($endpoint, 'https://')) {
+            $endpoint = 'https://' . ltrim($endpoint, '/');
+        }
+
         return [
             'driver' => 's3',
             'key' => $config['access_key_id'] ?? '',
@@ -67,8 +77,8 @@ class AppStorageFactory
             'region' => $config['region'] ?? 'us-east-1',
             'bucket' => $config['bucket'] ?? '',
             'url' => $config['url'] ?? null,
-            'endpoint' => $config['endpoint'] ?? null,
-            'use_path_style_endpoint' => $config['use_path_style'] ?? false,
+            'endpoint' => $endpoint,
+            'use_path_style_endpoint' => StorageConfigNormalizer::toBool($config['use_path_style'] ?? false),
             'throw' => false,
         ];
     }
@@ -138,8 +148,8 @@ class AppStorageFactory
             'password' => $config['password'] ?? '',
             'port' => $config['port'] ?? 21,
             'root' => $config['root'] ?? '/',
-            'passive' => $config['passive'] ?? true,
-            'ssl' => $config['use_tls'] ?? false,
+            'passive' => StorageConfigNormalizer::toBool($config['passive'] ?? true),
+            'ssl' => StorageConfigNormalizer::toBool($config['use_tls'] ?? false),
             'timeout' => 30,
         ];
     }

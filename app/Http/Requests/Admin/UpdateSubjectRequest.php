@@ -42,6 +42,16 @@ class UpdateSubjectRequest extends FormRequest
             'order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
             'display_in_class' => ['nullable', 'boolean'],
+            'price' => ['nullable', 'numeric', 'min:0'],
+            'is_free' => ['nullable', 'boolean'],
+            'is_free_override' => ['nullable', 'boolean'],
+            'can_purchase_separately' => ['nullable', 'boolean'],
+            'show_price' => ['nullable', 'boolean'],
+            'default_currency_id' => ['nullable', 'integer', 'exists:currencies,id'],
+            'prices' => ['nullable', 'array'],
+            'prices.*.price' => ['nullable', 'numeric', 'min:0'],
+            'prices.*.currency_id' => ['nullable', 'integer', 'exists:currencies,id'],
+            'prices.*.is_active' => ['nullable', 'boolean'],
         ];
     }
 

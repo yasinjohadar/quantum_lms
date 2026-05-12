@@ -10,6 +10,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use App\Services\Storage\MediaStorageService;
 
 class LibraryService
 {
@@ -78,10 +79,15 @@ class LibraryService
     {
         $directory = $directory ?? "library/items/{$item->id}";
         $fileName = time() . '_' . Str::random(10) . '.' . $file->getClientOriginalExtension();
-        $filePath = $file->storeAs($directory, $fileName, 'public');
+        
+        $uploadResult = MediaStorageService::uploadDocument($file, $directory, $fileName);
+        
+        if (!$uploadResult['success']) {
+            throw new \Exception('فشل رفع الملف: ' . ($uploadResult['error'] ?? 'خطأ غير معروف'));
+        }
 
         $data = [
-            'file_path' => $filePath,
+            'file_path' => $uploadResult['path'],
             'file_name' => $file->getClientOriginalName(),
             'file_type' => $file->getClientOriginalExtension(),
             'file_size' => $file->getSize(),
@@ -95,7 +101,7 @@ class LibraryService
             $this->generateThumbnail($item);
         }
 
-        Log::info('File uploaded for library item', ['item_id' => $item->id, 'file_path' => $filePath]);
+        Log::info('File uploaded for library item', ['item_id' => $item->id, 'file_path' => $uploadResult['path']]);
 
         return $data;
     }

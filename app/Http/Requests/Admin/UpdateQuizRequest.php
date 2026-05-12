@@ -27,8 +27,8 @@ class UpdateQuizRequest extends FormRequest
             
             // إعدادات الوقت
             'duration_minutes' => ['nullable', 'integer', 'min:1', 'max:600'],
-            'show_timer' => ['nullable'],
-            'auto_submit' => ['nullable'],
+            'show_timer' => ['nullable', 'boolean'],
+            'auto_submit' => ['nullable', 'boolean'],
             
             // إعدادات المحاولات
             'max_attempts' => ['nullable', 'integer', 'min:0', 'max:100'],
@@ -39,16 +39,16 @@ class UpdateQuizRequest extends FormRequest
             'grading_method' => ['required', 'string', 'in:' . implode(',', array_keys(Quiz::GRADING_METHODS))],
             
             // إعدادات العرض
-            'shuffle_questions' => ['nullable'],
-            'shuffle_options' => ['nullable'],
+            'shuffle_questions' => ['nullable', 'boolean'],
+            'shuffle_options' => ['nullable', 'boolean'],
             'questions_per_page' => ['nullable', 'integer', 'min:0'],
-            'allow_back_navigation' => ['nullable'],
+            'allow_back_navigation' => ['nullable', 'boolean'],
             
             // إعدادات النتائج
-            'show_result_immediately' => ['nullable'],
-            'show_correct_answers' => ['nullable'],
-            'show_explanation' => ['nullable'],
-            'show_points_per_question' => ['nullable'],
+            'show_result_immediately' => ['nullable', 'boolean'],
+            'show_correct_answers' => ['nullable', 'boolean'],
+            'show_explanation' => ['nullable', 'boolean'],
+            'show_points_per_question' => ['nullable', 'boolean'],
             'review_options' => ['required', 'string', 'in:' . implode(',', array_keys(Quiz::REVIEW_OPTIONS))],
             
             // الجدولة
@@ -56,18 +56,39 @@ class UpdateQuizRequest extends FormRequest
             'available_to' => ['nullable', 'date', 'after_or_equal:available_from'],
             
             // الحالة
-            'is_active' => ['nullable'],
-            'is_published' => ['nullable'],
-            'requires_password' => ['nullable'],
+            'is_active' => ['nullable', 'boolean'],
+            'is_published' => ['nullable', 'boolean'],
+            'requires_password' => ['nullable', 'boolean'],
             'password' => ['nullable', 'string', 'min:4', 'max:50'],
             
             // إعدادات إضافية
-            'require_webcam' => ['nullable'],
-            'prevent_copy_paste' => ['nullable'],
-            'fullscreen_required' => ['nullable'],
+            'require_webcam' => ['nullable', 'boolean'],
+            'prevent_copy_paste' => ['nullable', 'boolean'],
+            'fullscreen_required' => ['nullable', 'boolean'],
             
             'order' => ['nullable', 'integer', 'min:0'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'show_timer' => $this->boolean('show_timer'),
+            'auto_submit' => $this->boolean('auto_submit'),
+            'shuffle_questions' => $this->boolean('shuffle_questions'),
+            'shuffle_options' => $this->boolean('shuffle_options'),
+            'allow_back_navigation' => $this->boolean('allow_back_navigation'),
+            'show_result_immediately' => $this->boolean('show_result_immediately'),
+            'show_correct_answers' => $this->boolean('show_correct_answers'),
+            'show_explanation' => $this->boolean('show_explanation'),
+            'show_points_per_question' => $this->boolean('show_points_per_question'),
+            'is_active' => $this->boolean('is_active'),
+            'is_published' => $this->boolean('is_published'),
+            'requires_password' => $this->boolean('requires_password'),
+            'require_webcam' => $this->boolean('require_webcam'),
+            'prevent_copy_paste' => $this->boolean('prevent_copy_paste'),
+            'fullscreen_required' => $this->boolean('fullscreen_required'),
+        ]);
     }
 
     public function messages(): array

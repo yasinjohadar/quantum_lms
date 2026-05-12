@@ -7,6 +7,7 @@ use App\Models\AIConversation;
 use App\Models\Subject;
 use App\Models\Lesson;
 use App\Services\AI\AIChatbotService;
+use App\Services\Storage\MediaStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -363,10 +364,10 @@ class AIChatbotController extends Controller
             }
 
             // حفظ الملف
-            $path = $file->store('ai-chatbot-attachments', 'public');
+            $uploadResult = MediaStorageService::upload($file, 'ai-chatbot-attachments', $fileType);
+            $path = $uploadResult['path'];
             
             // استخراج المحتوى
-            $content = null;
             if ($fileType === 'image') {
                 // تحويل الصورة إلى base64
                 $imageContent = file_get_contents(storage_path('app/public/' . $path));

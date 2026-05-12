@@ -16,6 +16,86 @@
     .question-item.dragging {
         opacity: 0.5;
     }
+
+    /* Question Image Thumbnail */
+    .question-image-thumb {
+        display: inline-block;
+        max-width: 120px;
+        max-height: 80px;
+        border-radius: 8px;
+        object-fit: cover;
+        cursor: zoom-in;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border: 2px solid rgba(var(--primary-rgb), 0.2);
+        margin: 6px 0;
+    }
+    .question-image-thumb:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        border-color: rgba(var(--primary-rgb), 0.5);
+    }
+
+    /* Question Image Lightbox */
+    .q-image-lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 999999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        visibility: hidden;
+        opacity: 0;
+        transition: visibility 0s 0.3s, opacity 0.3s ease;
+    }
+    .q-image-lightbox.active {
+        visibility: visible;
+        opacity: 1;
+        transition: visibility 0s 0s, opacity 0.3s ease;
+    }
+    .q-image-lightbox__backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.88);
+        backdrop-filter: blur(4px);
+    }
+    .q-image-lightbox__inner {
+        position: relative;
+        z-index: 1;
+        max-width: min(96vw, 1200px);
+        max-height: 90vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    .q-image-lightbox__inner img {
+        max-width: 100%;
+        max-height: 90vh;
+        object-fit: contain;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+    .q-image-lightbox__close {
+        position: absolute;
+        top: -40px;
+        right: 0;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(255, 255, 255, 0.15);
+        color: #fff;
+        font-size: 1.5rem;
+        line-height: 1;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s ease;
+    }
+    .q-image-lightbox__close:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
 </style>
 @stop
 
@@ -99,6 +179,31 @@
                                                     {{ $question->type_name }}
                                                 </span>
                                                 <p class="mb-1 small">{{ Str::limit(strip_tags($question->title), 80) }}</p>
+                                                @php
+                                                    $inlineImages = [];
+                                                    if (!empty($question->title)) {
+                                                        preg_match_all('/<img[^>]+src="([^"]+)"/i', $question->title, $matches);
+                                                        $inlineImages = $matches[1] ?? [];
+                                                    }
+                                                    if (!empty($question->image)) {
+                                                        $inlineImages[] = asset('storage/' . $question->image);
+                                                    }
+                                                @endphp
+                                                @if(!empty($inlineImages))
+                                                <div class="d-flex flex-wrap gap-2 mt-1">
+                                                    @foreach(array_slice($inlineImages, 0, 3) as $imgSrc)
+                                                    <img src="{{ $imgSrc }}"
+                                                         alt="صورة السؤال"
+                                                         class="question-image-thumb"
+                                                         loading="lazy"
+                                                         data-full-image="{{ $imgSrc }}"
+                                                         onerror="this.style.display='none';">
+                                                    @endforeach
+                                                    @if(count($inlineImages) > 3)
+                                                    <span class="badge bg-secondary align-self-center">+{{ count($inlineImages) - 3 }}</span>
+                                                    @endif
+                                                </div>
+                                                @endif
                                                 <div class="d-flex align-items-center gap-2">
                                                     <div class="d-flex align-items-center gap-1">
                                                         @if($canQuizUpdatePoints)
@@ -246,6 +351,31 @@
                                                 </span>
                                             </div>
                                             <p class="mb-1 small">{{ Str::limit(strip_tags($question->title), 60) }}</p>
+                                            @php
+                                                $inlineImages = [];
+                                                if (!empty($question->title)) {
+                                                    preg_match_all('/<img[^>]+src="([^"]+)"/i', $question->title, $matches);
+                                                    $inlineImages = $matches[1] ?? [];
+                                                }
+                                                if (!empty($question->image)) {
+                                                    $inlineImages[] = asset('storage/' . $question->image);
+                                                }
+                                            @endphp
+                                            @if(!empty($inlineImages))
+                                            <div class="d-flex flex-wrap gap-2 mt-1">
+                                                @foreach(array_slice($inlineImages, 0, 3) as $imgSrc)
+                                                <img src="{{ $imgSrc }}"
+                                                     alt="صورة السؤال"
+                                                     class="question-image-thumb"
+                                                     loading="lazy"
+                                                     data-full-image="{{ $imgSrc }}"
+                                                     onerror="this.style.display='none';">
+                                                @endforeach
+                                                @if(count($inlineImages) > 3)
+                                                <span class="badge bg-secondary align-self-center">+{{ count($inlineImages) - 3 }}</span>
+                                                @endif
+                                            </div>
+                                            @endif
                                             <small class="text-muted">{{ $question->default_points }} درجة</small>
                                         </div>
                                         @if($canQuizAddQuestion)
@@ -1149,8 +1279,65 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // تهيئة SortableJS عند تحميل الصفحة (بالفعل مُهيأة في بداية الكود)
+
+    // --- Question Image Lightbox ---
+    const lightbox = document.getElementById('questionImageLightbox');
+    const lightboxImg = document.getElementById('questionImageLightboxImg');
+    const lightboxBackdrop = lightbox ? lightbox.querySelector('.q-image-lightbox__backdrop') : null;
+    const lightboxCloseBtn = lightbox ? lightbox.querySelector('.q-image-lightbox__close') : null;
+
+    function openLightbox(src, alt) {
+        if (!lightbox || !lightboxImg) return;
+        lightboxImg.src = src;
+        lightboxImg.alt = alt || '';
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+        if (!lightbox) return;
+        lightbox.classList.remove('active');
+        document.body.style.overflow = '';
+        setTimeout(() => { if (lightboxImg) lightboxImg.src = ''; }, 300);
+    }
+
+    // Bind click on all question image thumbnails
+    document.addEventListener('click', function(e) {
+        const thumb = e.target.closest('.question-image-thumb');
+        if (thumb && thumb.dataset.fullImage) {
+            e.preventDefault();
+            openLightbox(thumb.dataset.fullImage, thumb.alt);
+        }
+    });
+
+    // Close on backdrop click
+    if (lightboxBackdrop) {
+        lightboxBackdrop.addEventListener('click', closeLightbox);
+    }
+
+    // Close on close button click
+    if (lightboxCloseBtn) {
+        lightboxCloseBtn.addEventListener('click', closeLightbox);
+    }
+
+    // Close on ESC key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && lightbox && lightbox.classList.contains('active')) {
+            closeLightbox();
+        }
+    });
 });
 </script>
+
+<!-- Question Image Lightbox -->
+<div id="questionImageLightbox" class="q-image-lightbox" role="dialog" aria-modal="true" aria-label="عرض صورة السؤال">
+    <div class="q-image-lightbox__backdrop"></div>
+    <div class="q-image-lightbox__inner">
+        <button type="button" class="q-image-lightbox__close" aria-label="إغلاق">&times;</button>
+        <img id="questionImageLightboxImg" src="" alt="">
+    </div>
+</div>
+
 <style>
 .question-points-input.updating {
     border-color: #0d6efd;

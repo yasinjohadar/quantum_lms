@@ -35,6 +35,10 @@ class Subject extends Model
         'display_in_class',
         'price',
         'is_free',
+        'pricing_mode',
+        'is_free_override',
+        'can_purchase_separately',
+        'show_price',
         'default_currency_id',
     ];
 
@@ -50,6 +54,9 @@ class Subject extends Model
         'class_id' => 'integer',
         'price' => 'decimal:2',
         'is_free' => 'boolean',
+        'is_free_override' => 'boolean',
+        'can_purchase_separately' => 'boolean',
+        'show_price' => 'boolean',
     ];
 
     protected static function boot()
@@ -294,6 +301,78 @@ class Subject extends Model
         return $this->belongsToMany(User::class, 'teacher_subjects', 'subject_id', 'teacher_id')
                     ->withPivot(['assigned_by', 'assigned_at', 'notes'])
                     ->withTimestamps();
+    }
+
+    /**
+     * الحصول على السعر الفعلي مع مراعاة الـ pricing_mode
+     */
+    public function getEffectivePrice($currencyId = null): float
+    {
+        return app(\App\Services\Pricing\SubjectPricingResolver::class)->getEffectivePrice($this, $currencyId);
+    }
+
+    /**
+     * هل المادة مجانية فعلياً؟
+     */
+    public function isEffectivelyFree(): bool
+    {
+        return app(\App\Services\Pricing\SubjectPricingResolver::class)->isEffectivelyFree($this);
+    }
+
+    /**
+     * هل يمكن شراء المادة بشكل منفصل؟
+     */
+    public function canPurchaseSeparately(): bool
+    {
+        return app(\App\Services\Pricing\SubjectPricingResolver::class)->canPurchaseSeparately($this);
+    }
+
+    /**
+     * الحصول على وضع التسعير
+     */
+    public function getPricingMode(): \App\Enums\PricingMode
+    {
+        return app(\App\Services\Pricing\SubjectPricingResolver::class)->resolvePricingMode($this);
+    }
+
+    /**
+     * هل المستخدم لديه وصول لهذه المادة؟
+     */
+    public function hasAccess(?User $user = null): bool
+    {
+        if (!$user) {
+            return $this->isEffectivelyFree();
+        }
+
+        return app(\App\Services\Pricing\AccessResolver::class)->hasSubjectAccess($user, $this);
+    }
+
+    /**
+     * نوع الوصول للمادة (للعرض في الواجهة)
+     */
+    public function getAccessType(?User $user = null): string
+    {
+        if (!$user) {
+            return $this->isEffectivelyFree() ? 'free' : 'requires_purchase';
+        }
+
+        return app(\App\Services\Pricing\AccessResolver::class)->getSubjectAccessType($user, $this);
+    }
+
+    /**
+     * Badge الوصول للمادة
+     */
+    public function getAccessBadge(?User $user = null): array
+    {
+        return app(\App\Services\Pricing\AccessResolver::class)->getSubjectBadge($this, $user);
+    }
+
+    /**
+     * الحصول على بيانات الوصول كـ DTO
+     */
+    public function getAccessData(?User $user = null, $currencyId = null): \App\DataTransferObjects\SubjectAccessData
+    {
+        return app(\App\Services\Pricing\PricingResolver::class)->resolveSubjectAccessData($this, $user, $currencyId);
     }
 }
 

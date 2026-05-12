@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Helpers\StorageHelper;
+use App\Services\Storage\MediaStorageService;
 
 class ClassController extends Controller
 {
@@ -173,7 +174,8 @@ class ClassController extends Controller
                 try {
                     $image = $request->file('image');
                     $imageName = time() . '_' . $image->getClientOriginalName();
-                    $data['image'] = $image->storeAs('classes/images', $imageName, 'public');
+                    $uploadResult = MediaStorageService::uploadImage($image, 'classes/images', $imageName);
+                    $data['image'] = $uploadResult['path'];
                 } catch (\Exception $e) {
                     return back()
                         ->withInput()
@@ -186,7 +188,8 @@ class ClassController extends Controller
                 try {
                     $ogImage = $request->file('og_image');
                     $ogImageName = time() . '_og_' . $ogImage->getClientOriginalName();
-                    $data['og_image'] = $ogImage->storeAs('classes/og_images', $ogImageName, 'public');
+                    $uploadResult = MediaStorageService::uploadImage($ogImage, 'classes/og_images', $ogImageName);
+                    $data['og_image'] = $uploadResult['path'];
                 } catch (\Exception $e) {
                     return back()
                         ->withInput()
@@ -198,6 +201,7 @@ class ClassController extends Controller
             $data['order'] = $request->input('order', 0);
             $data['price'] = $request->input('price', 0);
             $data['is_free'] = $request->has('is_free') || $request->input('price', 0) == 0;
+            $data['show_price'] = $data['is_free'] ? true : $request->has('show_price');
             $data['allow_subjects_purchase'] = $request->has('allow_subjects_purchase');
             $data['default_currency_id'] = $request->input('default_currency_id');
 
@@ -305,12 +309,13 @@ class ClassController extends Controller
             if ($request->hasFile('image')) {
                 try {
                     if ($class->image) {
-                        StorageHelper::delete('images', $class->image);
+                        MediaStorageService::delete($class->image);
                     }
 
                     $image = $request->file('image');
                     $imageName = time() . '_' . $image->getClientOriginalName();
-                    $data['image'] = $image->storeAs('classes/images', $imageName, 'public');
+                    $uploadResult = MediaStorageService::uploadImage($image, 'classes/images', $imageName);
+                    $data['image'] = $uploadResult['path'];
                 } catch (\Exception $e) {
                     return back()
                         ->withInput()
@@ -324,12 +329,13 @@ class ClassController extends Controller
             if ($request->hasFile('og_image')) {
                 try {
                     if ($class->og_image) {
-                        StorageHelper::delete('images', $class->og_image);
+                        MediaStorageService::delete($class->og_image);
                     }
 
                     $ogImage = $request->file('og_image');
                     $ogImageName = time() . '_og_' . $ogImage->getClientOriginalName();
-                    $data['og_image'] = $ogImage->storeAs('classes/og_images', $ogImageName, 'public');
+                    $uploadResult = MediaStorageService::uploadImage($ogImage, 'classes/og_images', $ogImageName);
+                    $data['og_image'] = $uploadResult['path'];
                 } catch (\Exception $e) {
                     return back()
                         ->withInput()
@@ -343,6 +349,7 @@ class ClassController extends Controller
             $data['order'] = $request->input('order', $class->order);
             $data['price'] = $request->input('price', 0);
             $data['is_free'] = $request->has('is_free') || $request->input('price', 0) == 0;
+            $data['show_price'] = $data['is_free'] ? true : $request->has('show_price');
             $data['allow_subjects_purchase'] = $request->has('allow_subjects_purchase');
             $data['default_currency_id'] = $request->input('default_currency_id');
 

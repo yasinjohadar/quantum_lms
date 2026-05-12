@@ -43,6 +43,7 @@ class UpdateClassRequest extends FormRequest
             'order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
             'allow_subjects_purchase' => ['nullable', 'boolean'],
+            'show_price' => ['nullable', 'boolean'],
             'features' => ['nullable', 'array', 'max:10'],
             'features.*' => ['nullable', 'string', 'max:255'],
         ];
