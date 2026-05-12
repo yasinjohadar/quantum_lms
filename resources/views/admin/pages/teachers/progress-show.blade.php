@@ -158,8 +158,8 @@
 
                         <form action="{{ route('admin.teachers.week-targets.bulk.store', $teacher) }}" method="POST">
                             @csrf
-                            <div class="table-responsive">
-                                <table class="table table-sm table-bordered align-middle mb-3">
+                            <div class="table-responsive teacher-weeks-table-wrap">
+                                <table class="table teacher-weeks-targets-table table-sm align-middle mb-3">
                                     <thead class="table-light">
                                         <tr>
                                             <th style="width: 90px;">الأسبوع</th>
@@ -319,3 +319,47 @@
         </div>
     </div>
 @stop
+
+@push('styles')
+    <style>
+        .teacher-weeks-table-wrap {
+            padding: 0.25rem 0.15rem 0.5rem;
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 0.5rem;
+        }
+
+        .teacher-weeks-table-wrap table.teacher-weeks-targets-table {
+            border-collapse: separate;
+            border-spacing: 0 0.65rem;
+            width: 100%;
+        }
+
+        .teacher-weeks-table-wrap table.teacher-weeks-targets-table thead th {
+            border: none;
+            border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+            background-color: var(--bs-table-bg, #f8f9fa);
+            padding-bottom: 0.6rem;
+            vertical-align: middle;
+        }
+
+        .teacher-weeks-table-wrap table.teacher-weeks-targets-table tbody td {
+            border-block: 1px solid rgba(0, 0, 0, 0.1);
+            border-inline-start: none;
+            border-inline-end: 1px solid rgba(0, 0, 0, 0.07);
+            padding-top: 0.75rem !important;
+            padding-bottom: 0.75rem !important;
+            vertical-align: middle;
+        }
+
+        .teacher-weeks-table-wrap table.teacher-weeks-targets-table tbody tr td:first-child {
+            border-inline-start: 1px solid rgba(0, 0, 0, 0.1);
+            border-start-start-radius: 0.45rem;
+            border-end-start-radius: 0.45rem;
+        }
+
+        .teacher-weeks-table-wrap table.teacher-weeks-targets-table tbody tr td:last-child {
+            border-start-end-radius: 0.45rem;
+            border-end-end-radius: 0.45rem;
+        }
+    </style>
+@endpush
