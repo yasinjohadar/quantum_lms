@@ -131,8 +131,8 @@
                         </li>
                         @endif
 
-                        @canany(['user-list', 'enrollment-list', 'role-list', 'teacher-assignment-list', 'supervisor-assignment-list', 'teacher-progress-view', 'academic-year-list', 'academic-week-list'])
-                        <li class="slide has-sub {{ request()->is('users*') || request()->is('admin/users-management*') || request()->is('admin/admins*') || request()->is('admin/archived-users*') || request()->is('admin/teachers/assignments*') || request()->is('admin/supervisors/assignments*') || request()->is('roles*') || (request()->is('admin/enrollments*') && !request()->is('admin/enrollments/pending*') && !request()->is('admin/enrollments/class-pending*')) ? 'open' : '' }}">
+                        @canany(['user-list', 'role-list', 'teacher-assignment-list', 'supervisor-assignment-list', 'teacher-progress-view', 'academic-year-list', 'academic-week-list'])
+                        <li class="slide has-sub {{ request()->is('users*') || request()->is('admin/users-management*') || request()->is('admin/admins*') || request()->is('admin/archived-users*') || request()->is('admin/teachers/assignments*') || request()->is('admin/supervisors/assignments*') || request()->is('roles*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -218,6 +218,35 @@
                                     </a>
                                 </li>
                                 @endcan
+                                @can('role-list')
+                                <li class="slide {{ request()->is('roles*') ? 'active' : '' }}">
+                                    <a href="{{ route('roles.index') }}" class="side-menu__item {{ request()->is('roles*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M12 1L3 5v6c0 5 3.8 9.7 9 11 5.2-1.3 9-6 9-11V5l-9-4zm0 2.18L18.09 6 12 8.82 5.91 6 12 3.18zM5 9.24l7 3.11 7-3.11V11c0 4-2.6 7.7-7 8.94C7.6 18.7 5 15 5 11V9.24z"/>
+                                        </svg>
+                                        <span class="side-menu__label">الصلاحيات</span>
+                                    </a>
+                                </li>
+                                @endcan
+                            </ul>
+                        </li>
+                        @endcanany
+
+                        @canany(['enrollment-list', 'enrollment-pending-requests', 'enrollment-class-pending-requests'])
+                        <li class="slide has-sub {{ request()->is('admin/enrollments*') ? 'open' : '' }}">
+                            <a href="javascript:void(0);" class="side-menu__item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                                </svg>
+                                <span class="side-menu__label">الانضمامات</span>
+                                <i class="fe fe-chevron-right side-menu__angle"></i>
+                            </a>
+                            <ul class="slide-menu child1">
+                                <li class="slide side-menu__label1">
+                                    <a href="javascript:void(0);">الانضمامات</a>
+                                </li>
                                 @can('enrollment-list')
                                 <li class="slide {{ request()->is('admin/enrollments') && !request()->is('admin/enrollments/pending*') && !request()->is('admin/enrollments/class-pending*') && !request()->is('admin/enrollments/create*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.enrollments.index') }}" class="side-menu__item {{ request()->is('admin/enrollments') && !request()->is('admin/enrollments/pending*') && !request()->is('admin/enrollments/class-pending*') && !request()->is('admin/enrollments/create*') ? 'active' : '' }}">
@@ -229,14 +258,45 @@
                                     </a>
                                 </li>
                                 @endcan
-                                @can('role-list')
-                                <li class="slide {{ request()->is('roles*') ? 'active' : '' }}">
-                                    <a href="{{ route('roles.index') }}" class="side-menu__item {{ request()->is('roles*') ? 'active' : '' }}">
+                                @can('enrollment-class-pending-requests')
+                                <li class="slide {{ request()->is('admin/enrollments/class-pending*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.enrollments.class-pending') }}" class="side-menu__item {{ request()->is('admin/enrollments/class-pending*') ? 'active' : '' }}">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
                                             <path d="M0 0h24v24H0z" fill="none"/>
-                                            <path d="M12 1L3 5v6c0 5 3.8 9.7 9 11 5.2-1.3 9-6 9-11V5l-9-4zm0 2.18L18.09 6 12 8.82 5.91 6 12 3.18zM5 9.24l7 3.11 7-3.11V11c0 4-2.6 7.7-7 8.94C7.6 18.7 5 15 5 11V9.24z"/>
+                                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
                                         </svg>
-                                        <span class="side-menu__label">الصلاحيات</span>
+                                        <span class="side-menu__label">طلبات الصف المعلقة</span>
+                                        @php
+                                            try {
+                                                $classPendingCount = \App\Models\ClassEnrollment::pending()->count();
+                                            } catch (\Exception $e) {
+                                                $classPendingCount = 0;
+                                            }
+                                        @endphp
+                                        @if($classPendingCount > 0)
+                                            <span class="badge bg-warning-transparent text-warning ms-auto">{{ $classPendingCount }}</span>
+                                        @endif
+                                    </a>
+                                </li>
+                                @endcan
+                                @can('enrollment-pending-requests')
+                                <li class="slide {{ request()->is('admin/enrollments/pending*') && !request()->is('admin/enrollments/class-pending*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.enrollments.pending') }}" class="side-menu__item {{ request()->is('admin/enrollments/pending*') && !request()->is('admin/enrollments/class-pending*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                                        </svg>
+                                        <span class="side-menu__label">طلبات المواد المعلقة</span>
+                                        @php
+                                            try {
+                                                $subjectPendingCount = \App\Models\Enrollment::pending()->count();
+                                            } catch (\Exception $e) {
+                                                $subjectPendingCount = 0;
+                                            }
+                                        @endphp
+                                        @if($subjectPendingCount > 0)
+                                            <span class="badge bg-warning-transparent text-warning ms-auto">{{ $subjectPendingCount }}</span>
+                                        @endif
                                     </a>
                                 </li>
                                 @endcan
@@ -716,8 +776,8 @@
                         </li>
                         @endcanany
 
-                        @canany(['settings-manage', 'question-create', 'quiz-attempt-needs-grading', 'enrollment-list', 'enrollment-pending-requests', 'enrollment-class-pending-requests', 'user-login-logs', 'class-list'])
-                        <li class="slide has-sub {{ request()->is('admin/settings*') || request()->is('admin/currencies*') || request()->is('admin/exchange-rates*') || request()->is('admin/sms-*') || request()->is('admin/email-*') || request()->is('admin/app-storage*') || request()->is('admin/storage-disk-mappings*') || request()->is('admin/storage-migration*') || request()->is('admin/backup*') || request()->is('admin/ai*') || request()->is('admin/quiz-attempts/needs-grading*') || request()->is('admin/enrollments/pending*') || request()->is('admin/enrollments/class-pending*') || request()->is('admin/login-logs*') || request()->is('admin/user-sessions*') || request()->is('admin/stages*') ? 'open' : '' }}">
+                        @canany(['settings-manage', 'question-create', 'quiz-attempt-needs-grading', 'user-login-logs', 'class-list'])
+                        <li class="slide has-sub {{ request()->is('admin/settings*') || request()->is('admin/currencies*') || request()->is('admin/exchange-rates*') || request()->is('admin/sms-*') || request()->is('admin/email-*') || request()->is('admin/app-storage*') || request()->is('admin/storage-disk-mappings*') || request()->is('admin/storage-migration*') || request()->is('admin/backup*') || request()->is('admin/ai*') || request()->is('admin/quiz-attempts/needs-grading*') || request()->is('admin/login-logs*') || request()->is('admin/user-sessions*') || request()->is('admin/stages*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -824,52 +884,6 @@
                                     </ul>
                                 </li>
                                 @endcan
-
-                                {{-- الانضمامات --}}
-                                @canany(['enrollment-class-pending-requests', 'enrollment-pending-requests'])
-                                <li class="slide has-sub {{ request()->is('admin/enrollments/pending*') || request()->is('admin/enrollments/class-pending*') ? 'open' : '' }}">
-                                    <a href="javascript:void(0);" class="side-menu__item">
-                                        <span class="side-menu__label">الانضمامات</span>
-                                        <i class="fe fe-chevron-right side-menu__angle"></i>
-                                    </a>
-                                    <ul class="slide-menu child1 settings-sub">
-                                        @can('enrollment-class-pending-requests')
-                                        <li class="slide {{ request()->is('admin/enrollments/class-pending*') ? 'active' : '' }}">
-                                            <a href="{{ route('admin.enrollments.class-pending') }}" class="side-menu__item {{ request()->is('admin/enrollments/class-pending*') ? 'active' : '' }}">
-                                                <span class="side-menu__label">طلبات الصف المعلقة</span>
-                                                @php
-                                                    try {
-                                                        $classPendingCount = \App\Models\ClassEnrollment::pending()->count();
-                                                    } catch (\Exception $e) {
-                                                        $classPendingCount = 0;
-                                                    }
-                                                @endphp
-                                                @if($classPendingCount > 0)
-                                                    <span class="badge bg-warning-transparent text-warning ms-auto">{{ $classPendingCount }}</span>
-                                                @endif
-                                            </a>
-                                        </li>
-                                        @endcan
-                                        @can('enrollment-pending-requests')
-                                        <li class="slide {{ request()->is('admin/enrollments/pending*') && !request()->is('admin/enrollments/class-pending*') ? 'active' : '' }}">
-                                            <a href="{{ route('admin.enrollments.pending') }}" class="side-menu__item {{ request()->is('admin/enrollments/pending*') && !request()->is('admin/enrollments/class-pending*') ? 'active' : '' }}">
-                                                <span class="side-menu__label">طلبات المواد المعلقة</span>
-                                                @php
-                                                    try {
-                                                        $subjectPendingCount = \App\Models\Enrollment::pending()->count();
-                                                    } catch (\Exception $e) {
-                                                        $subjectPendingCount = 0;
-                                                    }
-                                                @endphp
-                                                @if($subjectPendingCount > 0)
-                                                    <span class="badge bg-warning-transparent text-warning ms-auto">{{ $subjectPendingCount }}</span>
-                                                @endif
-                                            </a>
-                                        </li>
-                                        @endcan
-                                    </ul>
-                                </li>
-                                @endcanany
 
                                 {{-- العملات --}}
                                 @can('settings-manage')
