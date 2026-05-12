@@ -29,7 +29,7 @@
             {{-- شريط علوي: صورة صغيرة + اسم الصف + أزرار (مثل صفحة تفاصيل المادة) --}}
             <div class="d-flex align-items-center justify-content-between gap-3 py-3 mb-3 border-bottom">
                 <div class="d-flex align-items-center gap-3">
-                    <img src="{{ $class->image ? asset('storage/'.$class->image) : asset('assets/images/media/media-22.jpg') }}"
+                    <img src="{{ $class->image ? media_public_url($class->image) : asset('assets/images/media/media-22.jpg') }}"
                          alt="{{ $class->name }}"
                          class="rounded flex-shrink-0"
                          style="width: 56px; height: 56px; object-fit: cover;">
@@ -77,7 +77,7 @@
                                             <div class="card h-100 border">
                                                 <div class="card-body text-center">
                                                     <div class="ratio ratio-4x3 mb-3 rounded overflow-hidden bg-light mx-auto" style="max-width: 100%;">
-                                                        <img src="{{ $subject->image ? asset('storage/'.$subject->image) : asset('assets/images/media/media-22.jpg') }}"
+                                                        <img src="{{ $subject->image ? media_public_url($subject->image) : asset('assets/images/media/media-22.jpg') }}"
                                                              alt="{{ $subject->name }}"
                                                              class="rounded"
                                                              style="object-fit: contain; width: 100%; height: 100%;">

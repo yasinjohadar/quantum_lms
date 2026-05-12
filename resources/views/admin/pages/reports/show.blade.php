@@ -71,7 +71,7 @@
                     <div class="row">
                         <div class="col-md-3 text-center mb-3">
                             @if($report['data']['student']->photo)
-                                <img src="{{ asset('storage/' . $report['data']['student']->photo) }}" 
+                                <img src="{{ media_public_url($report['data']['student']->photo) }}" 
                                      alt="{{ $report['data']['student']->name }}" 
                                      class="rounded-circle mb-2" 
                                      style="width: 100px; height: 100px; object-fit: cover;">

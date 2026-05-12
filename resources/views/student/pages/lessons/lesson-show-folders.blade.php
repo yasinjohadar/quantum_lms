@@ -41,14 +41,14 @@
                             @elseif($actualType === 'vimeo')
                                 <iframe id="vimeo-player-iframe" src="{{ $lesson->embed_url }}?title=0&byline=0&portrait=0" title="{{ $lesson->title }}" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen loading="lazy"></iframe>
                             @elseif($actualType === 'upload')
-                                <video controls class="w-100 h-100" poster="{{ $lesson->thumbnail ? asset('storage/'.$lesson->thumbnail) : '' }}" controlsList="nodownload">
+                                <video controls class="w-100 h-100" poster="{{ $lesson->thumbnail ? media_public_url($lesson->thumbnail) : '' }}" controlsList="nodownload">
                                     <source src="{{ $lesson->embed_url }}" type="video/mp4">
                                     <source src="{{ $lesson->embed_url }}" type="video/webm">
                                     <source src="{{ $lesson->embed_url }}" type="video/ogg">
                                     المتصفح لا يدعم تشغيل الفيديو.
                                 </video>
                             @else
-                                <video controls class="w-100 h-100" poster="{{ $lesson->thumbnail ? asset('storage/'.$lesson->thumbnail) : '' }}">
+                                <video controls class="w-100 h-100" poster="{{ $lesson->thumbnail ? media_public_url($lesson->thumbnail) : '' }}">
                                     <source src="{{ $lesson->embed_url }}" type="video/mp4">
                                     المتصفح لا يدعم تشغيل الفيديو.
                                 </video>
@@ -174,7 +174,7 @@
                                             <div class="card-body">
                                                 <div class="d-flex align-items-start">
                                                     @if($quiz->image)
-                                                        <img src="{{ asset('storage/' . $quiz->image) }}" alt="{{ $quiz->title }}" class="rounded me-3" style="width: 60px; height: 60px; object-fit: cover;">
+                                                        <img src="{{ media_public_url($quiz->image) }}" alt="{{ $quiz->title }}" class="rounded me-3" style="width: 60px; height: 60px; object-fit: cover;">
                                                     @else
                                                         <div class="bg-primary-transparent rounded d-flex align-items-center justify-content-center me-3" style="width: 60px; height: 60px;"><i class="bi bi-clipboard-check text-primary fs-4"></i></div>
                                                     @endif

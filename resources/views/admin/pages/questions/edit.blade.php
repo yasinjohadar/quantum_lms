@@ -120,7 +120,7 @@
                             <label class="form-label">صورة السؤال</label>
                             @if($question->image)
                                 <div class="mb-2">
-                                    <img src="{{ asset('storage/'.$question->image) }}" 
+                                    <img src="{{ media_public_url($question->image) }}" 
                                          class="rounded" style="max-width: 200px;">
                                     <div class="form-check mt-1">
                                         <input class="form-check-input" type="checkbox" name="remove_image" 

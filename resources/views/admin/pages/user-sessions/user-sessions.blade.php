@@ -33,7 +33,7 @@
                         <div class="card-body">
                             <div class="d-flex align-items-center gap-3">
                                 @if($user->avatar)
-                                    <img src="{{ asset('storage/' . $user->avatar) }}" alt="{{ $user->name }}" 
+                                    <img src="{{ media_public_url($user->avatar) }}" alt="{{ $user->name }}" 
                                          class="rounded-circle" style="width: 60px; height: 60px; object-fit: cover;">
                                 @else
                                     <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 

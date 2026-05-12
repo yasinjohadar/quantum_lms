@@ -110,7 +110,7 @@
                             <label class="form-label">صورة الاختبار</label>
                             @if($quiz->image)
                                 <div class="mb-2">
-                                    <img src="{{ asset('storage/'.$quiz->image) }}" class="rounded" style="max-width: 150px;">
+                                    <img src="{{ media_public_url($quiz->image) }}" class="rounded" style="max-width: 150px;">
                                     <div class="form-check mt-1">
                                         <input class="form-check-input" type="checkbox" name="remove_image" value="1" id="removeImage">
                                         <label class="form-check-label text-danger small" for="removeImage">حذف الصورة</label>

@@ -71,8 +71,9 @@ class StorageDiskMappingController extends Controller
     /**
      * تعديل Disk Mapping
      */
-    public function edit(StorageDiskMapping $mapping)
+    public function edit(StorageDiskMapping $storage_disk_mapping)
     {
+        $mapping = $storage_disk_mapping;
         $storages = AppStorageConfig::where('is_active', true)
                                     ->orderBy('priority', 'desc')
                                     ->get();
@@ -83,8 +84,9 @@ class StorageDiskMappingController extends Controller
     /**
      * تحديث Disk Mapping
      */
-    public function update(Request $request, StorageDiskMapping $mapping)
+    public function update(Request $request, StorageDiskMapping $storage_disk_mapping)
     {
+        $mapping = $storage_disk_mapping;
         $validated = $request->validate([
             'disk_name' => 'required|string|max:255|unique:storage_disk_mappings,disk_name,' . $mapping->id,
             'label' => 'required|string|max:255',
@@ -117,10 +119,10 @@ class StorageDiskMappingController extends Controller
     /**
      * حذف Disk Mapping
      */
-    public function destroy(StorageDiskMapping $mapping)
+    public function destroy(StorageDiskMapping $storage_disk_mapping)
     {
         try {
-            $mapping->delete();
+            $storage_disk_mapping->delete();
 
             return redirect()->route('admin.storage-disk-mappings.index')
                            ->with('success', 'تم حذف Disk Mapping بنجاح.');

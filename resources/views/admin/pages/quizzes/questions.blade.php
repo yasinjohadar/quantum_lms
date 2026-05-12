@@ -186,7 +186,7 @@
                                                         $inlineImages = $matches[1] ?? [];
                                                     }
                                                     if (!empty($question->image)) {
-                                                        $inlineImages[] = asset('storage/' . $question->image);
+                                                        $inlineImages[] = media_public_url($question->image);
                                                     }
                                                 @endphp
                                                 @if(!empty($inlineImages))
@@ -358,7 +358,7 @@
                                                     $inlineImages = $matches[1] ?? [];
                                                 }
                                                 if (!empty($question->image)) {
-                                                    $inlineImages[] = asset('storage/' . $question->image);
+                                                    $inlineImages[] = media_public_url($question->image);
                                                 }
                                             @endphp
                                             @if(!empty($inlineImages))

@@ -43,7 +43,7 @@
         <div class="swiper-wrapper">
             @foreach($heroSlides as $slide)
                 <div class="swiper-slide hero-slide">
-                    <div class="hero-slide-bg" @if($slide->background_image ?? null) style="background-image: url('{{ asset('storage/' . $slide->background_image) }}');" @endif></div>
+                    <div class="hero-slide-bg" @if($slide->background_image ?? null) style="background-image: url('{{ media_public_url($slide->background_image) }}');" @endif></div>
                     <div class="container hero-slide-content-wrapper h-100">
                         @php
                             $textPos = $slide->text_position ?? 'right';
@@ -142,7 +142,7 @@
                                 <a href="{{ !empty($class['slug']) ? route('frontend.class.show', $class['slug']) : '#' }}" class="class-card-link">
                                     <div class="class-card-image">
                                         @if(!empty($class['image']))
-                                            <img src="{{ asset('storage/' . $class['image']) }}" alt="{{ $class['name'] }}" class="img-fluid">
+                                            <img src="{{ media_public_url($class['image']) }}" alt="{{ $class['name'] }}" class="img-fluid">
                                         @else
                                             <div class="class-card-placeholder">
                                                 <i class="fa-solid fa-graduation-cap"></i>
@@ -224,7 +224,7 @@
                         <div class="card distinguished-card h-100 border-0 shadow-sm">
                             <div class="distinguished-card-image">
                                 @if($ds->photo)
-                                    <img src="{{ asset('storage/' . $ds->photo) }}" alt="{{ $ds->user->name ?? '' }}" class="img-fluid">
+                                    <img src="{{ media_public_url($ds->photo) }}" alt="{{ $ds->user->name ?? '' }}" class="img-fluid">
                                 @else
                                     <div class="distinguished-photo-placeholder">
                                         <i class="fa-solid fa-user"></i>

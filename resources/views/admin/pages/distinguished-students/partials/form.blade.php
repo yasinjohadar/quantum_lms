@@ -50,7 +50,7 @@
             <label class="form-label">صورة الطالب (اختياري)</label>
             @if (isset($item) && $item->photo)
                 <div class="mb-2">
-                    <img src="{{ asset('storage/' . $item->photo) }}" alt="صورة الطالب"
+                    <img src="{{ media_public_url($item->photo) }}" alt="صورة الطالب"
                          class="rounded" style="width: 80px; height: 80px; object-fit: cover;">
                     <p class="small text-muted mb-1">ترك الحقل فارغاً = الإبقاء على الصورة الحالية</p>
                 </div>

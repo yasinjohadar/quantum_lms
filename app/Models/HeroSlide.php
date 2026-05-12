@@ -54,7 +54,7 @@ class HeroSlide extends Model
         if (!$this->background_image) {
             return null;
         }
-        return asset('storage/' . $this->background_image);
+        return media_public_url($this->background_image);
     }
 
     /**
@@ -65,6 +65,6 @@ class HeroSlide extends Model
         if (!$this->content_image) {
             return null;
         }
-        return asset('storage/' . $this->content_image);
+        return media_public_url($this->content_image);
     }
 }

@@ -210,7 +210,7 @@
                                 <label class="form-label">صورة المادة (اختياري)</label>
                                 @if ($subject->image)
                                     <div class="mb-2">
-                                        <img src="{{ asset('storage/'.$subject->image) }}" alt="{{ $subject->name }}"
+                                        <img src="{{ media_public_url($subject->image) }}" alt="{{ $subject->name }}"
                                              class="rounded" style="width: 80px; height: 80px; object-fit: cover;">
                                     </div>
                                 @endif
@@ -226,7 +226,7 @@
                                 <label class="form-label">صورة Open Graph (اختياري)</label>
                                 @if ($subject->og_image)
                                     <div class="mb-2">
-                                        <img src="{{ asset('storage/'.$subject->og_image) }}" alt="{{ $subject->name }}"
+                                        <img src="{{ media_public_url($subject->og_image) }}" alt="{{ $subject->name }}"
                                              class="rounded" style="width: 80px; height: 80px; object-fit: cover;">
                                     </div>
                                 @endif

@@ -54,7 +54,7 @@
                 <div class="card-body">
                     @if($question->image)
                         <div class="mb-3 text-center">
-                            <img src="{{ asset('storage/'.$question->image) }}" 
+                            <img src="{{ media_public_url($question->image) }}" 
                                  class="img-fluid rounded" style="max-height: 300px;">
                         </div>
                     @endif
@@ -108,7 +108,7 @@
                                         @endif
                                         <div class="flex-grow-1">
                                             @if($option->image)
-                                                <img src="{{ asset('storage/'.$option->image) }}" 
+                                                <img src="{{ media_public_url($option->image) }}" 
                                                      class="me-2 rounded" style="height: 30px;">
                                             @endif
                                             {{ $option->content }}

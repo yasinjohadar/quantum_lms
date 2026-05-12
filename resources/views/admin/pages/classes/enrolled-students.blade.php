@@ -115,7 +115,7 @@
                                             <td>
                                                 <div class="d-flex align-items-center">
                                                     @if($enrollment->user->photo)
-                                                        <img src="{{ asset('storage/' . $enrollment->user->photo) }}" 
+                                                        <img src="{{ media_public_url($enrollment->user->photo) }}" 
                                                              alt="{{ $enrollment->user->name }}" 
                                                              class="rounded-circle me-2" 
                                                              style="width: 35px; height: 35px; object-fit: cover;">

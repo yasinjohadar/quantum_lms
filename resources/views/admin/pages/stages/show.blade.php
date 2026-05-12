@@ -41,7 +41,7 @@
                     <div class="card">
                         <div class="card-body text-center">
                             <div class="mb-3">
-                                <img src="{{ $stage->image ? asset('storage/' . $stage->image) : asset('assets/images/media/media-22.jpg') }}"
+                                <img src="{{ $stage->image ? media_public_url($stage->image) : asset('assets/images/media/media-22.jpg') }}"
                                      alt="{{ $stage->name }}"
                                      class="rounded"
                                      style="width: 180px; height: 180px; object-fit: cover;">
@@ -78,7 +78,7 @@
                                 @if ($stage->og_image)
                                     <div class="mt-2">
                                         <span class="fw-semibold d-block mb-1">صورة Open Graph:</span>
-                                        <img src="{{ asset('storage/' . $stage->og_image) }}" alt="{{ $stage->name }}"
+                                        <img src="{{ media_public_url($stage->og_image) }}" alt="{{ $stage->name }}"
                                              class="rounded" style="width: 160px; height: 160px; object-fit: cover;">
                                     </div>
                                 @endif
@@ -128,7 +128,7 @@
                                         <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-sm-12">
                                             <div class="card custom-card h-100">
                                                 <div class="card-img-top-wrapper">
-                                                    <img src="{{ $class->image ? asset('storage/' . $class->image) : asset('assets/images/media/media-22.jpg') }}"
+                                                    <img src="{{ $class->image ? media_public_url($class->image) : asset('assets/images/media/media-22.jpg') }}"
                                                          class="card-img-top" alt="{{ $class->name }}">
                                                 </div>
                                                 <div class="card-body d-flex flex-column">

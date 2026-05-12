@@ -113,7 +113,7 @@ class Stage extends Model
         }
 
         // استخدام asset مباشرة مع storage/
-        return asset('storage/' . $this->image);
+        return media_public_url($this->image);
     }
 }
 

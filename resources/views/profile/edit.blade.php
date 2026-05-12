@@ -136,7 +136,7 @@
                         <div class="card-body text-center">
                             <div class="mb-3">
                                 @if($user->photo)
-                                    <img src="{{ asset('storage/'.$user->photo) }}" 
+                                    <img src="{{ media_public_url($user->photo) }}" 
                                          alt="{{ $user->name }}" 
                                          class="photo-preview">
                                 @else

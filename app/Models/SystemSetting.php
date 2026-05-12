@@ -49,6 +49,7 @@ class SystemSetting extends Model
         'whatsapp' => 'WhatsApp',
         'phone_verification' => 'Phone Verification',
         'social' => 'روابط التواصل الاجتماعي',
+        'storage' => 'التخزين والملفات',
     ];
 
     /**

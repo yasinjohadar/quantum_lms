@@ -35,7 +35,7 @@
                 <div class="card custom-card mb-4">
                     <div class="card-body">
                         @if($class->image)
-                            <img src="{{ asset('storage/' . $class->image) }}" class="card-img-top mb-3" alt="{{ $class->name }}" style="max-height: 300px; object-fit: cover;">
+                            <img src="{{ media_public_url($class->image) }}" class="card-img-top mb-3" alt="{{ $class->name }}" style="max-height: 300px; object-fit: cover;">
                         @endif
                         <h5 class="mb-3">{{ $class->name }}</h5>
                         @if($class->description)

@@ -578,7 +578,7 @@ class QuestionController extends Controller
                 $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
                 $path = $image->storeAs('questions/images', $imageName, 'public');
                 
-                $url = asset('storage/' . $path);
+                $url = media_public_url($path);
                 
                 return response()->json([
                     'location' => $url

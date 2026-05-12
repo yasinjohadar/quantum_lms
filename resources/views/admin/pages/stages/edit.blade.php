@@ -94,7 +94,7 @@
                                 <label class="form-label">صورة المرحلة (اختياري)</label>
                                 @if ($stage->image)
                                     <div class="mb-2">
-                                        <img src="{{ asset('storage/' . $stage->image) }}" alt="{{ $stage->name }}"
+                                        <img src="{{ media_public_url($stage->image) }}" alt="{{ $stage->name }}"
                                              class="rounded" style="width: 80px; height: 80px; object-fit: cover;">
                                     </div>
                                 @endif
@@ -110,7 +110,7 @@
                                 <label class="form-label">صورة Open Graph (اختياري)</label>
                                 @if ($stage->og_image)
                                     <div class="mb-2">
-                                        <img src="{{ asset('storage/' . $stage->og_image) }}" alt="{{ $stage->name }}"
+                                        <img src="{{ media_public_url($stage->og_image) }}" alt="{{ $stage->name }}"
                                              class="rounded" style="width: 80px; height: 80px; object-fit: cover;">
                                     </div>
                                 @endif

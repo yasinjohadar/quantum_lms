@@ -4,20 +4,20 @@ namespace App\Services\Storage;
 
 use App\Jobs\StorageSyncJob;
 use App\Models\StorageSyncBatch;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * StorageMigrationService
- * 
+ *
  * خدمة ترحيل الملفات من التخزين المحلي إلى السحابة
  * تدعم الترحيل الدفعي (batch) مع تتبع التقدم
  */
 class StorageMigrationService
 {
     /**
-     * المسارات المعروفة
+     * المسارات المعروفة (يجب أن تبقى متوافقة مع CloudFirstStorageRouter::LOCAL_PATHS)
      */
     private const KNOWN_PATHS = [
         'users/photos' => 'avatars',
@@ -26,6 +26,8 @@ class StorageMigrationService
         'question_options' => 'images',
         'subjects/images' => 'images',
         'subjects/og_images' => 'images',
+        'stages/images' => 'images',
+        'stages/og_images' => 'images',
         'classes/images' => 'images',
         'classes/og_images' => 'images',
         'lessons/videos' => 'videos',
@@ -42,7 +44,7 @@ class StorageMigrationService
     public function analyzeLocalFiles(?string $specificDisk = null): array
     {
         $analysis = [];
-        $localDisk = Storage::disk('public');
+        $localDisk = $this->localPublicDisk();
         $totalSize = 0;
         $totalFiles = 0;
 
@@ -51,48 +53,48 @@ class StorageMigrationService
                 continue;
             }
 
-            // التحقق من وجود mapping سحابي
-            $hasCloudStorage = \App\Models\StorageDiskMapping::where('disk_name', $diskName)
-                ->where('is_active', true)
-                ->exists();
+            $hasCloudStorage = app(CloudFirstStorageRouter::class)
+                ->activeMappingForLogicalDisk($diskName) !== null;
 
             if (!$hasCloudStorage) {
                 continue;
             }
 
-            $files = [];
-            $pathSize = 0;
-            $pathCount = 0;
+            if (! isset($analysis[$diskName])) {
+                $analysis[$diskName] = [
+                    'prefixes' => [],
+                    'files' => [],
+                    'total_files' => 0,
+                    'total_size' => 0,
+                    'total_size_formatted' => '0 B',
+                ];
+            }
 
             try {
                 $allFiles = $localDisk->allFiles($prefix);
-                
                 foreach ($allFiles as $file) {
                     $size = $localDisk->size($file);
-                    $files[] = [
+                    $analysis[$diskName]['files'][] = [
                         'path' => $file,
                         'size' => $size,
                         'size_formatted' => $this->formatBytes($size),
                         'last_modified' => $localDisk->lastModified($file),
+                        'prefix' => $prefix,
                     ];
-                    $pathSize += $size;
-                    $pathCount++;
+                    $analysis[$diskName]['total_files']++;
+                    $analysis[$diskName]['total_size'] += $size;
+                    $totalSize += $size;
+                    $totalFiles++;
+                }
+                if (count($allFiles) > 0 && ! in_array($prefix, $analysis[$diskName]['prefixes'], true)) {
+                    $analysis[$diskName]['prefixes'][] = $prefix;
                 }
             } catch (\Exception $e) {
                 Log::warning("Failed to analyze path {$prefix}: {$e->getMessage()}");
             }
 
-            if ($pathCount > 0) {
-                $analysis[$diskName] = [
-                    'path_prefix' => $prefix,
-                    'files' => $files,
-                    'total_files' => $pathCount,
-                    'total_size' => $pathSize,
-                    'total_size_formatted' => $this->formatBytes($pathSize),
-                ];
-                $totalSize += $pathSize;
-                $totalFiles += $pathCount;
-            }
+            $analysis[$diskName]['total_size_formatted'] = $this->formatBytes($analysis[$diskName]['total_size']);
+            $analysis[$diskName]['path_prefix'] = implode(', ', $analysis[$diskName]['prefixes']);
         }
 
         return [
@@ -105,20 +107,30 @@ class StorageMigrationService
 
     /**
      * بدء ترحيل دفعة ملفات
+     *
+     * @param  bool  $deleteLocalAfterEachSync  عند true: بعد كل رفع ناجح للسحابة يُحذف الملف من اللوكال (عبر StorageSyncJob)
      */
-    public function startMigration(string $diskName, int $batchSize = 50, bool $async = true): StorageSyncBatch
+    public function startMigration(string $diskName, int $batchSize = 50, bool $async = true, bool $deleteLocalAfterEachSync = false): StorageSyncBatch
     {
-        $prefix = $this->getPathPrefixForDisk($diskName);
-        if (!$prefix) {
+        $prefixes = $this->getPathPrefixesForDisk($diskName);
+        if ($prefixes === []) {
             throw new \Exception("Unknown disk: {$diskName}");
         }
 
-        $localDisk = Storage::disk('public');
-        $files = $localDisk->allFiles($prefix);
+        $localDisk = $this->localPublicDisk();
+        $files = [];
+
+        foreach ($prefixes as $prefix) {
+            foreach ($localDisk->allFiles($prefix) as $file) {
+                $files[] = $file;
+            }
+        }
+
+        $files = array_values(array_unique($files));
         $totalFiles = count($files);
 
         if ($totalFiles === 0) {
-            throw new \Exception("No files found in {$prefix}");
+            throw new \Exception('No local files found for disk '.$diskName);
         }
 
         $batch = StorageSyncBatch::createBatch(
@@ -128,24 +140,26 @@ class StorageMigrationService
             Auth::id()
         );
 
-        // تقسيم الملفات إلى دفعات
         $chunks = array_chunk($files, $batchSize);
+        $queue = config('storage.sync_queue', 'storage-sync');
 
         foreach ($chunks as $chunk) {
             foreach ($chunk as $file) {
                 if ($async) {
-                    StorageSyncJob::dispatch($file, $diskName, $batch->id)
-                        ->onQueue('storage-sync')
+                    StorageSyncJob::dispatch($file, $diskName, $batch->id, $deleteLocalAfterEachSync)
+                        ->onQueue($queue)
                         ->backoff(10);
                 } else {
-                    // متزامن
                     $router = app(CloudFirstStorageRouter::class);
                     $result = $router->syncToCloud($file, $diskName);
-                    
+
                     if ($result['success']) {
                         StorageSyncBatch::incrementSuccess($batch->id);
+                        if ($deleteLocalAfterEachSync && $localDisk->exists($file)) {
+                            $localDisk->delete($file);
+                        }
                     } else {
-                        StorageSyncBatch::incrementFailure($batch->id, $result['error']);
+                        StorageSyncBatch::incrementFailure($batch->id, $result['error'] ?? 'unknown');
                     }
                 }
             }
@@ -156,22 +170,27 @@ class StorageMigrationService
 
     /**
      * ترحيل جميع المسارات
+     *
+     * @return array<string, array<string, mixed>>
      */
-    public function migrateAll(int $batchSize = 50, bool $async = true): array
+    public function migrateAll(int $batchSize = 50, bool $async = true, bool $deleteLocalAfterEachSync = false): array
     {
         $results = [];
 
         foreach (self::KNOWN_PATHS as $prefix => $diskName) {
-            $hasCloudStorage = \App\Models\StorageDiskMapping::where('disk_name', $diskName)
-                ->where('is_active', true)
-                ->exists();
+            $hasCloudStorage = app(CloudFirstStorageRouter::class)
+                ->activeMappingForLogicalDisk($diskName) !== null;
 
             if (!$hasCloudStorage) {
                 continue;
             }
 
+            if (isset($results[$diskName])) {
+                continue;
+            }
+
             try {
-                $batch = $this->startMigration($diskName, $batchSize, $async);
+                $batch = $this->startMigration($diskName, $batchSize, $async, $deleteLocalAfterEachSync);
                 $results[$diskName] = [
                     'success' => true,
                     'batch_id' => $batch->id,
@@ -194,7 +213,9 @@ class StorageMigrationService
     public function getBatchStatus(int $batchId): ?array
     {
         $batch = StorageSyncBatch::find($batchId);
-        if (!$batch) return null;
+        if (!$batch) {
+            return null;
+        }
 
         return [
             'id' => $batch->id,
@@ -236,37 +257,40 @@ class StorageMigrationService
     public function cancelBatch(int $batchId): bool
     {
         $batch = StorageSyncBatch::find($batchId);
-        if (!$batch) return false;
+        if (!$batch) {
+            return false;
+        }
 
         $batch->markCancelled();
+
         return true;
     }
 
     /**
-     * حذف الملفات المحلية بعد الترحيل الناجح
+     * حذف الملفات المحلية بعد الترحيل الناجح (يُحذف فقط إن وُجد نسخة على السحابة)
      */
     public function cleanupLocalAfterMigration(string $diskName): array
     {
-        $prefix = $this->getPathPrefixForDisk($diskName);
-        if (!$prefix) {
+        $prefixes = $this->getPathPrefixesForDisk($diskName);
+        if ($prefixes === []) {
             return ['success' => false, 'error' => 'Unknown disk'];
         }
 
-        $localDisk = Storage::disk('public');
+        $localDisk = $this->localPublicDisk();
         $router = app(CloudFirstStorageRouter::class);
         $deleted = 0;
         $errors = [];
 
-        $files = $localDisk->allFiles($prefix);
-
-        foreach ($files as $file) {
-            try {
-                if ($router->exists($file, $diskName)) {
-                    $localDisk->delete($file);
-                    $deleted++;
+        foreach ($prefixes as $prefix) {
+            foreach ($localDisk->allFiles($prefix) as $file) {
+                try {
+                    if ($router->existsOnMappedCloud($file, $diskName)) {
+                        $localDisk->delete($file);
+                        $deleted++;
+                    }
+                } catch (\Exception $e) {
+                    $errors[] = ['path' => $file, 'error' => $e->getMessage()];
                 }
-            } catch (\Exception $e) {
-                $errors[] = ['path' => $file, 'error' => $e->getMessage()];
             }
         }
 
@@ -282,21 +306,28 @@ class StorageMigrationService
      */
     public function verifyMigration(string $diskName): array
     {
-        $prefix = $this->getPathPrefixForDisk($diskName);
-        if (!$prefix) {
+        $prefixes = $this->getPathPrefixesForDisk($diskName);
+        if ($prefixes === []) {
             return ['success' => false, 'error' => 'Unknown disk'];
         }
 
-        $localDisk = Storage::disk('public');
+        $localDisk = $this->localPublicDisk();
         $router = app(CloudFirstStorageRouter::class);
-        
-        $localFiles = $localDisk->allFiles($prefix);
+
+        $localFiles = [];
+        foreach ($prefixes as $prefix) {
+            foreach ($localDisk->allFiles($prefix) as $file) {
+                $localFiles[] = $file;
+            }
+        }
+        $localFiles = array_values(array_unique($localFiles));
+
         $totalLocal = count($localFiles);
         $synced = 0;
         $missing = [];
 
         foreach ($localFiles as $file) {
-            if ($router->exists($file, $diskName)) {
+            if ($router->existsOnMappedCloud($file, $diskName)) {
                 $synced++;
             } else {
                 $missing[] = $file;
@@ -313,14 +344,27 @@ class StorageMigrationService
         ];
     }
 
-    private function getPathPrefixForDisk(string $diskName): ?string
+    /**
+     * @return list<string>
+     */
+    private function getPathPrefixesForDisk(string $diskName): array
     {
+        $prefixes = [];
         foreach (self::KNOWN_PATHS as $prefix => $name) {
             if ($name === $diskName) {
-                return $prefix;
+                $prefixes[] = $prefix;
             }
         }
-        return null;
+
+        return $prefixes;
+    }
+
+    /**
+     * قرص الملفات العامة المحلية (نفس storage.fallback_disk المستخدم في الراوتر والرفع)
+     */
+    private function localPublicDisk(): \Illuminate\Contracts\Filesystem\Filesystem
+    {
+        return Storage::disk(config('storage.fallback_disk', 'public'));
     }
 
     private function formatBytes(int $bytes): string
@@ -331,6 +375,7 @@ class StorageMigrationService
             $bytes /= 1024;
             $i++;
         }
-        return round($bytes, 2) . ' ' . $units[$i];
+
+        return round($bytes, 2).' '.$units[$i];
     }
 }

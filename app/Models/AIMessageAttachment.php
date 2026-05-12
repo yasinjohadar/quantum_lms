@@ -56,7 +56,7 @@ class AIMessageAttachment extends Model
      */
     public function getUrlAttribute(): string
     {
-        return asset('storage/' . $this->file_path);
+        return media_public_url($this->file_path);
     }
 
     /**

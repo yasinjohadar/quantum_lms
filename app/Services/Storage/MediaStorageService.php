@@ -2,6 +2,7 @@
 
 namespace App\Services\Storage;
 
+use App\Enums\StorageDriverMode;
 use App\Models\MediaFile;
 use App\Jobs\StorageSyncJob;
 use Illuminate\Http\UploadedFile;
@@ -63,8 +64,13 @@ class MediaStorageService
         $startTime = microtime(true);
         $visibility = $private ? 'private' : 'public';
         $category = $category ?? self::guessCategory($file);
+        $directory = trim(str_replace('\\', '/', $directory), '/');
         $fileName = $customName ?? self::generateFileName($file);
-        $path = rtrim($directory, '/') . '/' . $fileName;
+        $fileName = basename(str_replace('\\', '/', $fileName));
+        if ($fileName === '' || $fileName === '.' || $fileName === '..') {
+            $fileName = self::generateFileName($file);
+        }
+        $path = $directory === '' ? $fileName : $directory.'/'.$fileName;
         $checksum = null;
 
         // التحقق من الحجم
@@ -73,9 +79,9 @@ class MediaStorageService
         // التحقق من النوع
         self::validateMime($file, $category);
 
-        // Deduplication check
+        // Deduplication check — لا نعيد مساراً قديماً إن كان الملف غير موجود فعلياً (تجنّب 404 ومسار يُحفظ بلا ملف)
         $existingDuplicate = self::checkDuplicate($file);
-        if ($existingDuplicate) {
+        if ($existingDuplicate !== null && self::exists($existingDuplicate->path)) {
             Log::info('Storage: Duplicate file detected', [
                 'checksum' => $existingDuplicate->checksum,
                 'existing_path' => $existingDuplicate->path,
@@ -95,28 +101,78 @@ class MediaStorageService
                 'upload_time_ms' => round((microtime(true) - $startTime) * 1000),
             ];
         }
-
-        // Cloud-first upload
-        $cloudFirst = config('storage.cloud_first', true);
-        $result = null;
-
-        if ($cloudFirst) {
-            $result = self::attemptCloudUpload($file, $path, $visibility, $category);
+        if ($existingDuplicate !== null) {
+            Log::warning('Storage: Duplicate checksum found but file missing on storage; uploading as new file', [
+                'stale_path' => $existingDuplicate->path,
+                'intended_path' => $path,
+            ]);
         }
 
-        // Fallback to local if cloud failed or cloud-first disabled
-        if (!$result || !$result['success']) {
-            $result = self::attemptLocalUpload($file, $path, $visibility, $category);
-            
-            if ($result['success'] && $cloudFirst) {
-                // Queue for cloud sync
-                $diskName = self::resolveDiskName($directory, $category);
-                try {
-                    StorageSyncJob::dispatch($path, $diskName)->onQueue(config('storage.sync_queue', 'storage-sync'));
-                } catch (\Exception $e) {
-                    Log::warning('Storage: Failed to queue sync job', ['path' => $path, 'error' => $e->getMessage()]);
+        $mode = StorageDriverModeResolver::current();
+        $result = null;
+
+        switch ($mode) {
+            case StorageDriverMode::LOCAL_ONLY:
+                $result = self::attemptLocalUpload($file, $path, $visibility, $category);
+                break;
+
+            case StorageDriverMode::CLOUD_ONLY:
+                $result = self::attemptCloudUpload($file, $path, $visibility, $category);
+                if (!$result || empty($result['success'])) {
+                    throw self::uploadFailureException($result, 'فشل الرفع السحابي ووضع التخزين لا يسمح باللوكال.');
                 }
-            }
+                break;
+
+            case StorageDriverMode::CLOUD_FIRST:
+                $result = self::attemptCloudUpload($file, $path, $visibility, $category);
+                if (!$result || empty($result['success'])) {
+                    $result = self::attemptLocalUpload($file, $path, $visibility, $category);
+                    if (!empty($result['success'])) {
+                        self::dispatchStorageSyncJob($path, $category);
+                    }
+                }
+                break;
+
+            case StorageDriverMode::LOCAL_FIRST:
+                $result = self::attemptLocalUpload($file, $path, $visibility, $category);
+                if (!empty($result['success'])) {
+                    self::dispatchStorageSyncJob($path, $category);
+                }
+                break;
+
+            case StorageDriverMode::DUAL_WRITE:
+                $local = self::attemptLocalUpload($file, $path, $visibility, $category);
+                if (!$local || empty($local['success'])) {
+                    throw self::uploadFailureException($local, 'فشل الرفع المحلي (الوضع المزدوج يتطلب نجاح اللوكال).');
+                }
+                $cloud = self::attemptCloudUpload($file, $path, $visibility, $category);
+                if ($cloud && !empty($cloud['success'])) {
+                    $result = array_merge($local, [
+                        'url' => $cloud['url'],
+                        'disk' => $cloud['disk'],
+                        'storage_provider' => $cloud['storage_provider'],
+                        'needs_sync' => false,
+                    ]);
+                } else {
+                    $result = $local;
+                    self::dispatchStorageSyncJob($path, $category);
+                }
+                break;
+
+            default:
+                $result = self::attemptCloudUpload($file, $path, $visibility, $category);
+                if (!$result || empty($result['success'])) {
+                    $result = self::attemptLocalUpload($file, $path, $visibility, $category);
+                    if (!empty($result['success'])) {
+                        self::dispatchStorageSyncJob($path, $category);
+                    }
+                }
+                break;
+        }
+
+        if (!$result || empty($result['success'])) {
+            $msg = (is_array($result) && isset($result['error'])) ? (string) $result['error'] : 'تعذّر رفع الملف (السحابة واللوكال).';
+            throw self::uploadFailureException($result, $msg);
         }
 
         // Calculate checksum
@@ -177,6 +233,12 @@ class MediaStorageService
                     'upload_time_ms' => 0,
                 ];
             }
+
+            Log::warning('Storage: Cloud upload did not succeed (using local if allowed by mode)', [
+                'path' => $path,
+                'logical_disk' => $diskName,
+                'error' => $result['error'] ?? 'unknown',
+            ]);
         } catch (\Exception $e) {
             Log::warning('Storage: Cloud upload failed, falling back to local', [
                 'path' => $path,
@@ -194,16 +256,31 @@ class MediaStorageService
     {
         try {
             $disk = Storage::disk(config('storage.fallback_disk', 'public'));
-            $stream = fopen($file->getRealPath(), 'r+');
-            
+            $realPath = $file->getRealPath();
+            if ($realPath === false || $realPath === '') {
+                return ['success' => false, 'error' => 'Cannot resolve temporary file path'];
+            }
+            $stream = @fopen($realPath, 'rb');
+            if ($stream === false) {
+                return ['success' => false, 'error' => 'Unable to open upload stream for local storage'];
+            }
+
             $options = ['visibility' => $visibility];
-            $result = $disk->put($path, $stream, $options);
-            
-            if (is_resource($stream)) {
-                fclose($stream);
+            try {
+                $result = $disk->put($path, $stream, $options);
+            } finally {
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
             }
 
             if ($result) {
+                if (! $disk->exists($path)) {
+                    Log::error('Storage: Local put returned true but file is missing', ['path' => $path]);
+
+                    return ['success' => false, 'error' => 'Local storage reported success but file was not written'];
+                }
+
                 return [
                     'success' => true,
                     'path' => $path,
@@ -222,6 +299,28 @@ class MediaStorageService
         }
 
         return ['success' => false, 'error' => 'All storage options failed'];
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $result
+     */
+    private static function uploadFailureException(?array $result, string $fallbackMessage): \RuntimeException
+    {
+        $msg = (is_array($result) && isset($result['error']) && $result['error'] !== '')
+            ? (string) $result['error']
+            : $fallbackMessage;
+
+        return new \RuntimeException($msg);
+    }
+
+    private static function dispatchStorageSyncJob(string $path, string $category): void
+    {
+        $diskName = self::resolveDiskName($path, $category);
+        try {
+            StorageSyncJob::dispatch($path, $diskName)->onQueue(config('storage.sync_queue', 'storage-sync'));
+        } catch (\Exception $e) {
+            Log::warning('Storage: Failed to queue sync job', ['path' => $path, 'error' => $e->getMessage()]);
+        }
     }
 
     /**
@@ -261,17 +360,20 @@ class MediaStorageService
      */
     public static function url(string $path, ?string $disk = null): string
     {
-        // محاولة السحابة أولاً
-        try {
-            $router = app(CloudFirstStorageRouter::class);
-            if ($router->exists($path, $disk)) {
-                return $router->url($path, $disk);
-            }
-        } catch (\Exception $e) {
-            //
+        $path = ltrim(str_replace('\\', '/', $path), '/');
+        if ($path === '') {
+            return '';
         }
 
-        // Fallback للوكال
+        // توجيه واحد: نفس منطق السحابة ثم اللوكال داخل الراوتر (بدون شرط exists منفصل قد يختلف عن url)
+        try {
+            $router = app(CloudFirstStorageRouter::class);
+
+            return $router->url($path, $disk);
+        } catch (\Exception $e) {
+            Log::debug('MediaStorageService::url router failed', ['path' => $path, 'error' => $e->getMessage()]);
+        }
+
         try {
             return Storage::disk(config('storage.fallback_disk', 'public'))->url($path);
         } catch (\Exception $e) {
@@ -401,7 +503,13 @@ class MediaStorageService
     private static function calculateChecksum(UploadedFile $file): ?string
     {
         try {
-            return hash_file('sha256', $file->getRealPath());
+            $real = $file->getRealPath();
+            $path = ($real !== false && $real !== '') ? $real : $file->getPathname();
+            if ($path === '' || ! is_readable($path)) {
+                return null;
+            }
+
+            return hash_file('sha256', $path);
         } catch (\Exception $e) {
             return null;
         }
@@ -426,15 +534,7 @@ class MediaStorageService
 
     private static function resolveDiskName(string $path, string $category): string
     {
-        $map = config('storage.disk_map', []);
-        
-        foreach ($map as $prefix => $disk) {
-            if (str_contains($path, $prefix)) {
-                return $disk;
-            }
-        }
-
-        return $map[$category] ?? 'images';
+        return CloudFirstStorageRouter::resolveLogicalDiskName($path, $category);
     }
 
     private static function resolveDiskFromPath(string $path): ?string
@@ -445,11 +545,8 @@ class MediaStorageService
 
     private static function getProviderName(string $diskName): string
     {
-        $mapping = \App\Models\StorageDiskMapping::where('disk_name', $diskName)
-            ->where('is_active', true)
-            ->with('primaryStorage')
-            ->first();
-        
+        $mapping = app(CloudFirstStorageRouter::class)->activeMappingForLogicalDisk($diskName);
+
         return $mapping?->primaryStorage?->driver ?? 'unknown';
     }
 

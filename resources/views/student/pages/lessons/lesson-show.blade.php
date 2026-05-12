@@ -58,7 +58,7 @@
                                     ></iframe>
                                 @elseif($actualType === 'upload')
                                     <video controls class="w-100 h-100" 
-                                           poster="{{ $lesson->thumbnail ? asset('storage/'.$lesson->thumbnail) : '' }}"
+                                           poster="{{ $lesson->thumbnail ? media_public_url($lesson->thumbnail) : '' }}"
                                            controlsList="nodownload">
                                         <source src="{{ $lesson->embed_url }}" type="video/mp4">
                                         <source src="{{ $lesson->embed_url }}" type="video/webm">
@@ -67,7 +67,7 @@
                                     </video>
                                 @else
                                     <video controls class="w-100 h-100" 
-                                           poster="{{ $lesson->thumbnail ? asset('storage/'.$lesson->thumbnail) : '' }}">
+                                           poster="{{ $lesson->thumbnail ? media_public_url($lesson->thumbnail) : '' }}">
                                         <source src="{{ $lesson->embed_url }}" type="video/mp4">
                                         المتصفح لا يدعم تشغيل الفيديو.
                                     </video>
@@ -156,7 +156,7 @@
                                             <div class="card-body">
                                                 <div class="d-flex align-items-start">
                                                     @if($quiz->image)
-                                                        <img src="{{ asset('storage/' . $quiz->image) }}" 
+                                                        <img src="{{ media_public_url($quiz->image) }}" 
                                                              alt="{{ $quiz->title }}" 
                                                              class="rounded me-3" 
                                                              style="width: 60px; height: 60px; object-fit: cover;">

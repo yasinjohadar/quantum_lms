@@ -311,7 +311,7 @@
                         <!-- Start::header-link|dropdown-toggle -->
                         <a href="javascript:void(0);" class="header-link dropdown-toggle" id="mainHeaderProfile" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                             @if(Auth::user()->avatar)
-                                <img src="{{ asset('storage/' . Auth::user()->avatar) }}" alt="صورة المستخدم" width="37" height="37" class="rounded-circle">
+                                <img src="{{ media_public_url(Auth::user()->avatar) }}" alt="صورة المستخدم" width="37" height="37" class="rounded-circle">
                             @else
                                 <svg xmlns="http://www.w3.org/2000/svg" class="header-link-icon" height="24" viewBox="0 0 24 24" width="24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                             @endif

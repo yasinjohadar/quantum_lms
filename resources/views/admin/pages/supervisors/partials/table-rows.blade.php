@@ -4,7 +4,7 @@
         <td>
             <div class="d-flex align-items-center">
                 @if($supervisor->photo)
-                    <img src="{{ asset('storage/' . $supervisor->photo) }}"
+                    <img src="{{ media_public_url($supervisor->photo) }}"
                          alt="{{ $supervisor->name }}"
                          class="rounded-circle me-2"
                          style="width: 40px; height: 40px; object-fit: cover;">

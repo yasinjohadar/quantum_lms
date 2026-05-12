@@ -222,7 +222,7 @@ class Lesson extends Model
 
         // للملفات المرفوعة
         if ($this->video_type === 'upload' && $this->video_url) {
-            return asset('storage/' . $this->video_url);
+            return media_public_url($this->video_url);
         }
 
         // رابط خارجي عادي

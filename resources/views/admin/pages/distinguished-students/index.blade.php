@@ -78,7 +78,7 @@
                                             <td>{{ $loop->iteration + ($items->currentPage() - 1) * $items->perPage() }}</td>
                                             <td>
                                                 @if ($item->photo)
-                                                    <img src="{{ asset('storage/' . $item->photo) }}" alt="{{ $item->user->name ?? '' }}"
+                                                    <img src="{{ media_public_url($item->photo) }}" alt="{{ $item->user->name ?? '' }}"
                                                          class="rounded-circle" style="width: 44px; height: 44px; object-fit: cover;"
                                                          onerror="this.src='{{ asset('assets/images/users/avatar.svg') }}'">
                                                 @else

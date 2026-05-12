@@ -8,6 +8,8 @@ use App\Models\StorageDiskMapping;
 use App\Services\Storage\AppStorageFactory;
 use App\Services\Storage\StorageConfigNormalizer;
 use Illuminate\Support\Facades\Log;
+use App\Support\Storage\FlysystemDriverRegistrar;
+use App\Services\Storage\StorageRuntimeConfig;
 
 class StorageServiceProvider extends ServiceProvider
 {
@@ -24,6 +26,14 @@ class StorageServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        FlysystemDriverRegistrar::register();
+
+        try {
+            StorageRuntimeConfig::applyFromDatabase();
+        } catch (\Throwable $e) {
+            Log::debug('StorageServiceProvider: runtime storage config skipped — '.$e->getMessage());
+        }
+
         // تسجيل الـ disks ديناميكياً من قاعدة البيانات
         try {
             $this->registerDynamicDisks();
@@ -78,15 +88,17 @@ class StorageServiceProvider extends ServiceProvider
                 'visibility' => 'public',
             ],
             's3' => [
-                'driver' => 's3',
-                'key' => $config['access_key_id'] ?? '',
-                'secret' => $config['secret_access_key'] ?? '',
-                'region' => $config['region'] ?? 'us-east-1',
-                'bucket' => $config['bucket'] ?? '',
-                'endpoint' => isset($config['endpoint']) && !str_starts_with($config['endpoint'], 'http://') && !str_starts_with($config['endpoint'], 'https://')
+                'driver'                  => 's3',
+                'key'                     => $config['access_key_id'] ?? '',
+                'secret'                  => $config['secret_access_key'] ?? '',
+                'region'                  => $config['region'] ?? 'us-east-1',
+                'bucket'                  => $config['bucket'] ?? '',
+                'endpoint'                => isset($config['endpoint']) && !str_starts_with($config['endpoint'], 'http://') && !str_starts_with($config['endpoint'], 'https://')
                     ? 'https://' . ltrim($config['endpoint'], '/')
                     : ($config['endpoint'] ?? null),
                 'use_path_style_endpoint' => StorageConfigNormalizer::toBool($config['use_path_style'] ?? false),
+                'visibility'              => 'public',
+                'throw'                   => false,
             ],
             'google_drive' => [
                 'driver' => 'google',

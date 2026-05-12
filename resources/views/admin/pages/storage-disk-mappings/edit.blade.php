@@ -22,7 +22,7 @@
             <div class="col-lg-8">
                 <div class="card shadow-sm border-0">
                     <div class="card-body">
-                        <form action="{{ route('admin.storage-disk-mappings.update', $mapping->id) }}" method="POST">
+                        <form action="{{ route('admin.storage-disk-mappings.update', $mapping) }}" method="POST">
                             @csrf
                             @method('PUT')
 

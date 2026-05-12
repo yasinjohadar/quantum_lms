@@ -8,7 +8,7 @@
             <div class="d-flex align-items-center gap-2">
                 @if($enrollment->user)
                     @if($enrollment->user->photo)
-                        <img src="{{ asset('storage/' . $enrollment->user->photo) }}" 
+                        <img src="{{ media_public_url($enrollment->user->photo) }}" 
                              alt="{{ $enrollment->user->name }}" 
                              class="rounded-circle" 
                              style="width: 40px; height: 40px; object-fit: cover;">

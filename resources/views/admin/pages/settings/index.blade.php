@@ -87,15 +87,54 @@
                                                     <i class="fab fa-telegram me-2 text-info"></i>رابط تيليجرام
                                                 @elseif($setting->key === 'social_youtube_url')
                                                     <i class="fab fa-youtube me-2 text-danger"></i>رابط يوتيوب
+                                                @elseif(str_starts_with((string) $setting->key, 'storage_'))
+                                                    <i class="fas fa-database me-2 text-secondary"></i>{{ $setting->description ?? $setting->key }}
                                                 @else
                                                     {{ $setting->key }}
                                                 @endif
-                                                @if($setting->description)
+                                                @if($setting->description && !str_starts_with((string) $setting->key, 'storage_'))
                                                     <small class="text-muted d-block mt-1">{{ $setting->description }}</small>
                                                 @endif
                                             </label>
                                             
-                                            @if($setting->key === 'otp_provider')
+                                            @if($setting->key === 'storage_driver_mode')
+                                                <select class="form-select" name="settings[storage_driver_mode]" id="setting_{{ $setting->id }}">
+                                                    @php
+                                                        $modeLabels = [
+                                                            'local_only' => 'محلي فقط',
+                                                            'cloud_only' => 'سحابة فقط (بدون لوكال)',
+                                                            'cloud_first' => 'السحابة أولاً ثم اللوكال عند الفشل',
+                                                            'local_first' => 'اللوكال أولاً ثم المزامنة للسحابة',
+                                                            'dual_write' => 'كتابة مزدوجة (لوكال + سحابة)',
+                                                        ];
+                                                    @endphp
+                                                    @foreach(\App\Enums\StorageDriverMode::cases() as $mode)
+                                                        <option value="{{ $mode->value }}" @selected((string) $setting->value === $mode->value)>
+                                                            {{ $modeLabels[$mode->value] ?? $mode->value }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            @elseif(str_starts_with((string) $setting->key, 'storage_') && $setting->type === 'boolean')
+                                                <div class="form-check form-switch">
+                                                    <input type="hidden" name="settings[{{ $setting->key }}]" value="0">
+                                                    <input class="form-check-input" type="checkbox"
+                                                           name="settings[{{ $setting->key }}]"
+                                                           value="1"
+                                                           id="setting_{{ $setting->id }}"
+                                                           {{ $setting->value ? 'checked' : '' }}>
+                                                    <label class="form-check-label" for="setting_{{ $setting->id }}">مفعّل</label>
+                                                </div>
+                                            @elseif(str_starts_with((string) $setting->key, 'storage_') && $setting->type === 'integer')
+                                                <input type="number" class="form-control" min="0"
+                                                       name="settings[{{ $setting->key }}]"
+                                                       id="setting_{{ $setting->id }}"
+                                                       value="{{ $setting->value }}">
+                                            @elseif(str_starts_with((string) $setting->key, 'storage_'))
+                                                <input type="text" class="form-control"
+                                                       name="settings[{{ $setting->key }}]"
+                                                       id="setting_{{ $setting->id }}"
+                                                       value="{{ $setting->value }}">
+                                            @elseif($setting->key === 'otp_provider')
                                                 {{-- معالجة خاصة لحقل otp_provider لعرضه كـ select --}}
                                                 <select class="form-select" 
                                                         name="settings[{{ $setting->key }}]" 

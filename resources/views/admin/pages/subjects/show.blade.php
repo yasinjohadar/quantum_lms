@@ -274,7 +274,7 @@
             {{-- شريط علوي: صورة المادة + الاسم + أزرار --}}
             <div class="d-flex align-items-center justify-content-between gap-3 py-3 mb-3 border-bottom">
                 <div class="d-flex align-items-center gap-3">
-                    <img src="{{ $subject->image ? asset('storage/'.$subject->image) : asset('assets/images/media/media-22.jpg') }}"
+                    <img src="{{ $subject->image ? media_public_url($subject->image) : asset('assets/images/media/media-22.jpg') }}"
                          alt="{{ $subject->name }}"
                          class="rounded flex-shrink-0"
                          style="width: 56px; height: 56px; object-fit: cover;">
@@ -1630,7 +1630,7 @@
                                             ></iframe>
                                         @elseif($actualType === 'upload')
                                             <video controls class="w-100 h-100"
-                                                   poster="{{ $lesson->thumbnail ? asset('storage/'.$lesson->thumbnail) : '' }}"
+                                                   poster="{{ $lesson->thumbnail ? media_public_url($lesson->thumbnail) : '' }}"
                                                    controlsList="nodownload">
                                                 <source src="{{ $lesson->embed_url }}" type="video/mp4">
                                                 <source src="{{ $lesson->embed_url }}" type="video/webm">
@@ -1639,7 +1639,7 @@
                                             </video>
                                         @else
                                             <video controls class="w-100 h-100"
-                                                   poster="{{ $lesson->thumbnail ? asset('storage/'.$lesson->thumbnail) : '' }}">
+                                                   poster="{{ $lesson->thumbnail ? media_public_url($lesson->thumbnail) : '' }}">
                                                 <source src="{{ $lesson->embed_url }}" type="video/mp4">
                                                 المتصفح لا يدعم تشغيل الفيديو.
                                             </video>
@@ -1891,14 +1891,14 @@
                                     @elseif($actualType === 'vimeo')
                                         <iframe src="{{ $lesson->embed_url }}?title=0&byline=0&portrait=0" title="{{ $lesson->title }}" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen loading="lazy"></iframe>
                                     @elseif($actualType === 'upload')
-                                        <video controls class="w-100 h-100" poster="{{ $lesson->thumbnail ? asset('storage/'.$lesson->thumbnail) : '' }}" controlsList="nodownload">
+                                        <video controls class="w-100 h-100" poster="{{ $lesson->thumbnail ? media_public_url($lesson->thumbnail) : '' }}" controlsList="nodownload">
                                             <source src="{{ $lesson->embed_url }}" type="video/mp4">
                                             <source src="{{ $lesson->embed_url }}" type="video/webm">
                                             <source src="{{ $lesson->embed_url }}" type="video/ogg">
                                             المتصفح لا يدعم تشغيل الفيديو.
                                         </video>
                                     @else
-                                        <video controls class="w-100 h-100" poster="{{ $lesson->thumbnail ? asset('storage/'.$lesson->thumbnail) : '' }}">
+                                        <video controls class="w-100 h-100" poster="{{ $lesson->thumbnail ? media_public_url($lesson->thumbnail) : '' }}">
                                             <source src="{{ $lesson->embed_url }}" type="video/mp4">
                                             المتصفح لا يدعم تشغيل الفيديو.
                                         </video>

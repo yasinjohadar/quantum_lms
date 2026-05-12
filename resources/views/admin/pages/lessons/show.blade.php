@@ -89,7 +89,7 @@
                                         ></iframe>
                                     @elseif($actualType === 'upload')
                                         <video controls class="w-100 h-100" 
-                                               poster="{{ $lesson->thumbnail ? asset('storage/'.$lesson->thumbnail) : '' }}"
+                                               poster="{{ $lesson->thumbnail ? media_public_url($lesson->thumbnail) : '' }}"
                                                controlsList="nodownload">
                                             <source src="{{ $lesson->embed_url }}" type="video/mp4">
                                             <source src="{{ $lesson->embed_url }}" type="video/webm">
@@ -99,7 +99,7 @@
                                     @else
                                         {{-- رابط خارجي - نحاول تشغيله كفيديو --}}
                                         <video controls class="w-100 h-100" 
-                                               poster="{{ $lesson->thumbnail ? asset('storage/'.$lesson->thumbnail) : '' }}">
+                                               poster="{{ $lesson->thumbnail ? media_public_url($lesson->thumbnail) : '' }}">
                                             <source src="{{ $lesson->embed_url }}" type="video/mp4">
                                             المتصفح لا يدعم تشغيل الفيديو.
                                         </video>

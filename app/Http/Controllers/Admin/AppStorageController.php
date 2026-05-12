@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AppStorageConfig;
+use App\Models\StorageDiskMapping;
 use App\Services\Storage\StorageConfigNormalizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,6 +12,14 @@ use Illuminate\Support\Facades\Log;
 
 class AppStorageController extends Controller
 {
+    /**
+     * عرض تفاصيل الإعداد (غير مستخدم في الواجهة — إعادة توجيه للتعديل لتجنب خطأ المسار المورد)
+     */
+    public function show(AppStorageConfig $config)
+    {
+        return redirect()->route('admin.app-storage.configs.edit', $config);
+    }
+
     /**
      * قائمة أماكن التخزين
      */
@@ -177,6 +186,18 @@ class AppStorageController extends Controller
      */
     public function destroy(AppStorageConfig $config)
     {
+        $inUse = StorageDiskMapping::query()
+            ->where(function ($q) use ($config) {
+                $q->where('primary_storage_id', $config->id)
+                    ->orWhereJsonContains('fallback_storage_ids', $config->id);
+            })
+            ->exists();
+
+        if ($inUse) {
+            return redirect()->route('admin.app-storage.configs.index')
+                ->with('error', 'لا يمكن حذف هذا التخزين لأنه مستخدم في تعيين أقراص (Disk Mapping). قم بتحديث التعيين أو حذفه أولاً.');
+        }
+
         try {
             $config->delete();
 

@@ -163,7 +163,7 @@
                                                 <td>
                                                     <div class="d-flex align-items-center">
                                                         @if($classEnrollment->user->avatar)
-                                                            <img src="{{ asset('storage/' . $classEnrollment->user->avatar) }}" 
+                                                            <img src="{{ media_public_url($classEnrollment->user->avatar) }}" 
                                                                  alt="{{ $classEnrollment->user->name }}" 
                                                                  class="rounded-circle me-2" width="32" height="32">
                                                         @else

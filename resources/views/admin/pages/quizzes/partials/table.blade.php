@@ -4,7 +4,7 @@
         <td>
             <div class="d-flex align-items-center">
                 @if($quiz->image)
-                    <img src="{{ asset('storage/'.$quiz->image) }}" 
+                    <img src="{{ media_public_url($quiz->image) }}" 
                          class="rounded me-2" style="width: 40px; height: 40px; object-fit: cover;">
                 @else
                     <div class="bg-primary-transparent text-primary rounded d-flex align-items-center justify-content-center me-2" 

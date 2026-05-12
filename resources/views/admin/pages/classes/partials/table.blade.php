@@ -6,7 +6,7 @@
         <td>{{ $loop->iteration + ($classes->currentPage() - 1) * $classes->perPage() }}</td>
         <td>
             <div class="d-flex justify-content-center">
-                <img src="{{ $class->image ? asset('storage/' . $class->image) : asset('assets/images/media/media-22.jpg') }}"
+                <img src="{{ $class->image ? media_public_url($class->image) : asset('assets/images/media/media-22.jpg') }}"
                      alt="{{ $class->name }}"
                      class="rounded"
                      style="width: 60px; height: 60px; object-fit: cover;">

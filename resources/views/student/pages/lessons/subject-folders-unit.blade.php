@@ -209,7 +209,7 @@
                             $actualType = $hasVideo ? $lesson->actual_video_type : '';
                             $embedUrl = $hasVideo ? $lesson->embed_url : '';
                             $iframeUrl = $actualType === 'youtube' ? $embedUrl . (str_contains($embedUrl, '?') ? '&' : '?') . 'rel=0&modestbranding=1' : ($actualType === 'vimeo' ? $embedUrl . (str_contains($embedUrl, '?') ? '&' : '?') . 'title=0&byline=0&portrait=0' : '');
-                            $posterUrl = $lesson->thumbnail ? asset('storage/' . $lesson->thumbnail) : '';
+                            $posterUrl = $lesson->thumbnail ? media_public_url($lesson->thumbnail) : '';
                         @endphp
                         <div class="lesson-row-card accordion-item border-0 mb-3 overflow-hidden" id="lesson-heading-{{ $lesson->id }}">
                             <div class="lesson-row-card__inner d-flex align-items-stretch">

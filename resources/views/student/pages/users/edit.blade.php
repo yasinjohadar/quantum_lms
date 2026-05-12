@@ -172,7 +172,7 @@
                                 <div class="d-flex align-items-center gap-3">
                                     <div class="photo-upload">
                                         <img id="photo-preview" 
-                                             src="{{ $user->photo ? asset('storage/' . $user->photo) : asset('assets/images/faces/default-avatar.jpg') }}" 
+                                             src="{{ $user->photo ? media_public_url($user->photo) : asset('assets/images/faces/default-avatar.jpg') }}" 
                                              alt="صورة المستخدم" class="photo-preview">
                                         <input type="file" name="photo" id="photo-input" accept="image/*" 
                                                onchange="previewPhoto(this)">

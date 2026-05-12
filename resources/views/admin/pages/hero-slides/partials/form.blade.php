@@ -116,7 +116,7 @@
             <label class="form-label">صورة الخلفية (اختياري)</label>
             @if (isset($heroSlide) && $heroSlide->background_image)
                 <div class="mb-2">
-                    <img src="{{ asset('storage/' . $heroSlide->background_image) }}" alt="خلفية"
+                    <img src="{{ media_public_url($heroSlide->background_image) }}" alt="خلفية"
                          class="rounded" style="width: 120px; height: 70px; object-fit: cover;">
                     <p class="small text-muted mb-1">ترك الحقل فارغاً = الإبقاء على الصورة الحالية</p>
                 </div>
@@ -133,7 +133,7 @@
             <label class="form-label">صورة المحتوى (اختياري)</label>
             @if (isset($heroSlide) && $heroSlide->content_image)
                 <div class="mb-2">
-                    <img src="{{ asset('storage/' . $heroSlide->content_image) }}" alt="محتوى"
+                    <img src="{{ media_public_url($heroSlide->content_image) }}" alt="محتوى"
                          class="rounded" style="width: 120px; height: 70px; object-fit: cover;">
                     <p class="small text-muted mb-1">ترك الحقل فارغاً = الإبقاء على الصورة الحالية</p>
                 </div>

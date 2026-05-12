@@ -61,7 +61,7 @@
                         <div class="class-card">
                             <div class="class-card-image">
                                 @if($subject['image'])
-                                    <img src="{{ asset('storage/' . $subject['image']) }}" alt="{{ $subject['name'] }}" class="img-fluid">
+                                    <img src="{{ media_public_url($subject['image']) }}" alt="{{ $subject['name'] }}" class="img-fluid">
                                 @else
                                     <div class="class-card-placeholder">
                                         <i class="fa-solid fa-book"></i>

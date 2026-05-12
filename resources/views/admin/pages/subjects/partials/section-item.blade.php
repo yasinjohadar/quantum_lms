@@ -121,7 +121,7 @@
                                     <div class="d-flex align-items-center min-w-0 flex-grow-1">
                                         <div class="me-3 position-relative flex-shrink-0">
                                             @if($lesson->thumbnail)
-                                                <img src="{{ asset('storage/'.$lesson->thumbnail) }}" alt="{{ $lesson->title }}" class="rounded" style="width:60px;height:40px;object-fit:cover;">
+                                                <img src="{{ media_public_url($lesson->thumbnail) }}" alt="{{ $lesson->title }}" class="rounded" style="width:60px;height:40px;object-fit:cover;">
                                             @else
                                                 <div class="bg-danger-transparent text-danger rounded d-flex align-items-center justify-content-center" style="width:60px;height:40px;">
                                                     <i class="bi bi-play-circle fs-4"></i>

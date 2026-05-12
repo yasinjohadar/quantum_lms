@@ -1,46 +1,71 @@
 <?php
 
-use App\Enums\StorageDriverMode;
-
 return [
+    /*
+    |--------------------------------------------------------------------------
+    | Runtime overlay from database
+    |--------------------------------------------------------------------------
+    |
+    | When true, StorageServiceProvider merges system_settings rows (group: storage)
+    | into this config at boot. Manage values under: الإعدادات → مجموعة «التخزين».
+    |
+    */
+    'runtime_from_database' => true,
+
     /*
     |--------------------------------------------------------------------------
     | Storage Driver Mode
     |--------------------------------------------------------------------------
     |
-    | Controls how files are stored across local and cloud providers.
-    |
+    | Default only — overridden by system_settings.storage_driver_mode when present.
     | Supported: local_only, cloud_only, cloud_first, local_first, dual_write
+    |
     */
-    'driver_mode' => env('STORAGE_DRIVER_MODE', 'cloud_first'),
+    'driver_mode' => 'cloud_first',
 
     /*
     |--------------------------------------------------------------------------
     | Cloud-First Storage (legacy, maps to driver_mode)
     |--------------------------------------------------------------------------
     */
-    'cloud_first' => env('USE_CLOUD_FIRST_STORAGE', true),
+    'cloud_first' => true,
 
     /*
     |--------------------------------------------------------------------------
     | Default Cloud Disk
     |--------------------------------------------------------------------------
+    |
+    | Optional logical disk name in storage_disk_mappings (fallback lookup).
+    | Overridden by system_settings.storage_default_cloud_disk (may be empty).
+    |
     */
-    'default_cloud_disk' => env('DEFAULT_CLOUD_DISK', 's3'),
+    'default_cloud_disk' => '',
 
     /*
     |--------------------------------------------------------------------------
     | Fallback Local Disk
     |--------------------------------------------------------------------------
     */
-    'fallback_disk' => env('STORAGE_FALLBACK_DISK', 'public'),
+    'fallback_disk' => 'public',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Media URLs (S3-compatible)
+    |--------------------------------------------------------------------------
+    |
+    | عند true: روابط الصور/الملفات من السحابة تُولَّد كـ temporary signed URLs
+    | (ضروري إذا كان الـ bucket يمنع القراءة العامة بدون توقيع).
+    | عند false: يُستخدم الرابط العام من الـ disk (مناسب لـ bucket + CDN عامّين).
+    |
+    */
+    'media_use_presigned_urls' => true,
 
     /*
     |--------------------------------------------------------------------------
     | Upload Settings
     |--------------------------------------------------------------------------
     */
-    'max_file_size' => (int) env('MAX_UPLOAD_SIZE_MB', 500) * 1024 * 1024,
+    'max_file_size' => 500 * 1024 * 1024,
 
     'allowed_mimes' => [
         'image' => ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'],
@@ -56,8 +81,8 @@ return [
     |--------------------------------------------------------------------------
     */
     'deduplication' => [
-        'enabled' => env('STORAGE_DEDUPLICATION', true),
-        'min_size_bytes' => (int) env('STORAGE_DEDUPLICATION_MIN_SIZE', 10240),
+        'enabled' => true,
+        'min_size_bytes' => 10240,
     ],
 
     /*
@@ -65,17 +90,17 @@ return [
     | Queue Settings
     |--------------------------------------------------------------------------
     */
-    'sync_queue' => env('STORAGE_SYNC_QUEUE', 'storage-sync'),
-    'sync_retries' => (int) env('STORAGE_SYNC_RETRIES', 3),
-    'sync_backoff_seconds' => (int) env('STORAGE_SYNC_BACKOFF', 30),
+    'sync_queue' => 'storage-sync',
+    'sync_retries' => 3,
+    'sync_backoff_seconds' => 30,
 
     /*
     |--------------------------------------------------------------------------
     | Logging
     |--------------------------------------------------------------------------
     */
-    'log_uploads' => env('STORAGE_LOG_UPLOADS', true),
-    'log_channel' => env('STORAGE_LOG_CHANNEL', 'daily'),
+    'log_uploads' => true,
+    'log_channel' => 'daily',
 
     /*
     |--------------------------------------------------------------------------
@@ -97,14 +122,14 @@ return [
     | Media Processing
     |--------------------------------------------------------------------------
     */
-    'virus_scan_enabled' => env('MEDIA_VIRUS_SCAN', false),
-    'auto_generate_thumbnails' => env('MEDIA_AUTO_THUMBNAILS', true),
-    'auto_optimize_images' => env('MEDIA_AUTO_OPTIMIZE', true),
+    'virus_scan_enabled' => false,
+    'auto_generate_thumbnails' => true,
+    'auto_optimize_images' => true,
 
     /*
     |--------------------------------------------------------------------------
     | Retention (days for soft-deleted files)
     |--------------------------------------------------------------------------
     */
-    'retention_days' => (int) env('MEDIA_RETENTION_DAYS', 30),
+    'retention_days' => 30,
 ];

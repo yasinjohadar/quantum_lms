@@ -79,7 +79,7 @@
                 <div class="card-body">
                     @if($quiz->image)
                         <div class="text-center mb-3">
-                            <img src="{{ asset('storage/'.$quiz->image) }}" 
+                            <img src="{{ media_public_url($quiz->image) }}" 
                                  class="img-fluid rounded" style="max-height: 200px;">
                         </div>
                     @endif

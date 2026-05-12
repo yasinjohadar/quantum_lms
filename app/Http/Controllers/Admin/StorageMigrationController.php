@@ -24,8 +24,17 @@ class StorageMigrationController extends Controller
     {
         $analysis = $this->migrationService->analyzeLocalFiles();
         $batches = $this->migrationService->getBatches(10);
-        
-        return view('admin.pages.storage-migration.index', compact('analysis', 'batches'));
+
+        $migrationUrls = [
+            'migrate' => route('admin.storage-migration.migrate'),
+            'migrateAll' => route('admin.storage-migration.migrate-all'),
+            'analyze' => route('admin.storage-migration.analyze'),
+            'verifyBase' => url('/admin/storage-migration/verify'),
+            'cleanupBase' => url('/admin/storage-migration/cleanup'),
+            'batchBase' => url('/admin/storage-migration/batch'),
+        ];
+
+        return view('admin.pages.storage-migration.index', compact('analysis', 'batches', 'migrationUrls'));
     }
 
     public function analyze(?string $disk = null)
@@ -38,15 +47,17 @@ class StorageMigrationController extends Controller
     {
         $validated = $request->validate([
             'disk_name' => 'required|string',
-            'batch_size' => 'integer|min:10|max:500',
-            'async' => 'boolean',
+            'batch_size' => 'nullable|integer|min:10|max:500',
+            'async' => 'nullable|boolean',
+            'delete_local' => 'nullable|boolean',
         ]);
 
         try {
             $batch = $this->migrationService->startMigration(
                 $validated['disk_name'],
                 $validated['batch_size'] ?? 50,
-                $validated['async'] ?? true
+                $validated['async'] ?? true,
+                (bool) ($validated['delete_local'] ?? false)
             );
 
             return response()->json([
@@ -66,13 +77,15 @@ class StorageMigrationController extends Controller
     public function startAllMigration(Request $request)
     {
         $validated = $request->validate([
-            'batch_size' => 'integer|min:10|max:500',
-            'async' => 'boolean',
+            'batch_size' => 'nullable|integer|min:10|max:500',
+            'async' => 'nullable|boolean',
+            'delete_local' => 'nullable|boolean',
         ]);
 
         $results = $this->migrationService->migrateAll(
             $validated['batch_size'] ?? 50,
-            $validated['async'] ?? true
+            $validated['async'] ?? true,
+            (bool) ($validated['delete_local'] ?? false)
         );
 
         return response()->json([

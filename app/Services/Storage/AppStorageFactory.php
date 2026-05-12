@@ -71,15 +71,16 @@ class AppStorageFactory
         }
 
         return [
-            'driver' => 's3',
-            'key' => $config['access_key_id'] ?? '',
-            'secret' => $config['secret_access_key'] ?? '',
-            'region' => $config['region'] ?? 'us-east-1',
-            'bucket' => $config['bucket'] ?? '',
-            'url' => $config['url'] ?? null,
-            'endpoint' => $endpoint,
+            'driver'                  => 's3',
+            'key'                     => $config['access_key_id'] ?? '',
+            'secret'                  => $config['secret_access_key'] ?? '',
+            'region'                  => $config['region'] ?? 'us-east-1',
+            'bucket'                  => $config['bucket'] ?? '',
+            'url'                     => $config['url'] ?? null,
+            'endpoint'                => $endpoint,
             'use_path_style_endpoint' => StorageConfigNormalizer::toBool($config['use_path_style'] ?? false),
-            'throw' => false,
+            'visibility'              => 'public',
+            'throw'                   => false,
         ];
     }
 

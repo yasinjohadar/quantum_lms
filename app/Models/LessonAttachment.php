@@ -101,7 +101,7 @@ class LessonAttachment extends Model
             return $this->url;
         }
 
-        return $this->file_path ? asset('storage/' . $this->file_path) : null;
+        return $this->file_path ? media_public_url($this->file_path) : null;
     }
 
     /**

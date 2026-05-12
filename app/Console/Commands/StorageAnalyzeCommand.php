@@ -19,7 +19,10 @@ class StorageAnalyzeCommand extends Command
         $this->newLine();
 
         foreach ($analysis['disks'] as $diskName => $data) {
-            $this->info("📁 {$diskName} ({$data['path_prefix']})");
+            $prefixLabel = ! empty($data['prefixes'])
+                ? implode(', ', $data['prefixes'])
+                : ($data['path_prefix'] ?? '');
+            $this->info("📁 {$diskName} ({$prefixLabel})");
             $this->line("   الملفات: {$data['total_files']}");
             $this->line("   الحجم: {$data['total_size_formatted']}");
             $this->newLine();

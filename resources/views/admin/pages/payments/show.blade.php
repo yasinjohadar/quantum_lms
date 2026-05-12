@@ -155,9 +155,9 @@
                                 </a>
                             </div>
                             @if(str_ends_with($payment->receipt_file, '.pdf'))
-                                <iframe src="{{ asset('storage/' . $payment->receipt_file) }}" width="100%" height="600px"></iframe>
+                                <iframe src="{{ media_public_url($payment->receipt_file) }}" width="100%" height="600px"></iframe>
                             @else
-                                <img src="{{ asset('storage/' . $payment->receipt_file) }}" class="img-fluid" alt="الوصل">
+                                <img src="{{ media_public_url($payment->receipt_file) }}" class="img-fluid" alt="الوصل">
                             @endif
                         </div>
                     </div>

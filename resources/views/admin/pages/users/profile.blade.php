@@ -125,7 +125,7 @@
                     <div class="card user-profile-card user-profile-hero h-100">
                         <div class="card-body text-center py-4">
                             <div class="mb-3">
-                                <img src="{{ $user->photo ? asset('storage/'.$user->photo) : asset('assets/images/faces/default-avatar.jpg') }}"
+                                <img src="{{ $user->photo ? media_public_url($user->photo) : asset('assets/images/faces/default-avatar.jpg') }}"
                                      alt="{{ $user->name }}"
                                      class="rounded-circle user-profile-avatar">
                             </div>

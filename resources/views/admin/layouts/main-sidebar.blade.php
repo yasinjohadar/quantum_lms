@@ -717,7 +717,7 @@
                         @endcanany
 
                         @canany(['settings-manage', 'question-create', 'quiz-attempt-needs-grading', 'enrollment-list', 'enrollment-pending-requests', 'enrollment-class-pending-requests', 'user-login-logs', 'class-list'])
-                        <li class="slide has-sub {{ request()->is('admin/settings*') || request()->is('admin/currencies*') || request()->is('admin/exchange-rates*') || request()->is('admin/sms-*') || request()->is('admin/email-*') || request()->is('admin/app-storage*') || request()->is('admin/storage-disk-mappings*') || request()->is('admin/backup*') || request()->is('admin/ai*') || request()->is('admin/quiz-attempts/needs-grading*') || request()->is('admin/enrollments/pending*') || request()->is('admin/enrollments/class-pending*') || request()->is('admin/login-logs*') || request()->is('admin/user-sessions*') || request()->is('admin/stages*') ? 'open' : '' }}">
+                        <li class="slide has-sub {{ request()->is('admin/settings*') || request()->is('admin/currencies*') || request()->is('admin/exchange-rates*') || request()->is('admin/sms-*') || request()->is('admin/email-*') || request()->is('admin/app-storage*') || request()->is('admin/storage-disk-mappings*') || request()->is('admin/storage-migration*') || request()->is('admin/backup*') || request()->is('admin/ai*') || request()->is('admin/quiz-attempts/needs-grading*') || request()->is('admin/enrollments/pending*') || request()->is('admin/enrollments/class-pending*') || request()->is('admin/login-logs*') || request()->is('admin/user-sessions*') || request()->is('admin/stages*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -949,7 +949,7 @@
 
                                 {{-- إعدادات التخزين --}}
                                 @can('settings-manage')
-                                <li class="slide has-sub {{ request()->is('admin/app-storage*') || request()->is('admin/storage-disk-mappings*') ? 'open' : '' }}">
+                                <li class="slide has-sub {{ request()->is('admin/app-storage*') || request()->is('admin/storage-disk-mappings*') || request()->is('admin/storage-migration*') ? 'open' : '' }}">
                                     <a href="javascript:void(0);" class="side-menu__item">
                                         <span class="side-menu__label">إعدادات التخزين</span>
                                         <i class="fe fe-chevron-right side-menu__angle"></i>
@@ -963,6 +963,11 @@
                                         <li class="slide {{ request()->is('admin/storage-disk-mappings*') ? 'active' : '' }}">
                                             <a href="{{ route('admin.storage-disk-mappings.index') }}" class="side-menu__item {{ request()->is('admin/storage-disk-mappings*') ? 'active' : '' }}">
                                                 <span class="side-menu__label">Disk Mappings</span>
+                                            </a>
+                                        </li>
+                                        <li class="slide {{ request()->is('admin/storage-migration*') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.storage-migration.index') }}" class="side-menu__item {{ request()->is('admin/storage-migration*') ? 'active' : '' }}">
+                                                <span class="side-menu__label">ترحيل الملفات للسحابة</span>
                                             </a>
                                         </li>
                                         <li class="slide {{ request()->is('admin/app-storage/analytics*') ? 'active' : '' }}">

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\SystemSetting;
+use App\Services\Storage\StorageRuntimeConfig;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
@@ -79,8 +80,12 @@ class SettingsController extends Controller
                 }
             }
 
+            if (($validated['group'] ?? 'general') === 'storage') {
+                StorageRuntimeConfig::resetApplicationCache();
+            }
+
             return redirect()->route('admin.settings.index', ['group' => $validated['group'] ?? 'general'])
-                ->with('success', 'تم حفظ الإعدادات بنجاح.');
+                           ->with('success', 'تم حفظ الإعدادات بنجاح.');
         } catch (\Exception $e) {
             Log::error('Error updating settings: ' . $e->getMessage());
             return redirect()->back()

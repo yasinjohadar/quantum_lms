@@ -25,7 +25,7 @@
                             <div class="card-body">
                                 <div class="d-flex align-items-center mb-3">
                                     @if($subject->image)
-                                        <img src="{{ asset('storage/' . $subject->image) }}" alt="{{ $subject->name }}" class="rounded me-3" style="width: 80px; height: 80px; object-fit: cover;">
+                                        <img src="{{ media_public_url($subject->image) }}" alt="{{ $subject->name }}" class="rounded me-3" style="width: 80px; height: 80px; object-fit: cover;">
                                     @else
                                         <div class="bg-primary text-white rounded d-flex align-items-center justify-content-center me-3" style="width: 80px; height: 80px;">
                                             <i class="bi bi-book fs-2"></i>

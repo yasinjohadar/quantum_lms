@@ -95,7 +95,7 @@
                         <div class="card custom-card {{ $isEnrolled ? 'subject-enrolled-card' : '' }}" 
                              @if($isEnrolled) onclick="window.location.href='{{ route('student.subjects.show', $subject->id) }}'" style="cursor: pointer; transition: all 0.3s ease;" @endif>
                             @if($subject->image)
-                                <img src="{{ asset('storage/' . $subject->image) }}" class="card-img-top" alt="{{ $subject->name }}">
+                                <img src="{{ media_public_url($subject->image) }}" class="card-img-top" alt="{{ $subject->name }}">
                             @else
                                 <div class="card-img-top bg-primary d-flex align-items-center justify-content-center" style="height: 150px;">
                                     <i class="bi bi-book text-white" style="font-size: 3rem;"></i>

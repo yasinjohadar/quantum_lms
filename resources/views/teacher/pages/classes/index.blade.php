@@ -63,7 +63,7 @@
                         <div class="col-md-4 mb-4">
                             <div class="card h-100 shadow-sm">
                                 @if($class->image)
-                                    <img src="{{ asset('storage/' . $class->image) }}" 
+                                    <img src="{{ media_public_url($class->image) }}" 
                                          class="card-img-top" 
                                          style="height: 200px; object-fit: cover;">
                                 @else

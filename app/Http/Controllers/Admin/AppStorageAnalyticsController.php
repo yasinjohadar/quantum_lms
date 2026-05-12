@@ -22,6 +22,7 @@ class AppStorageAnalyticsController extends Controller
         $configs = AppStorageConfig::where('is_active', true)->get();
         $selectedConfig = null;
         $stats = null;
+        $budgetAlert = null;
         $period = $request->get('period', 'month');
         $fileType = $request->get('file_type');
 
@@ -42,7 +43,6 @@ class AppStorageAnalyticsController extends Controller
             $budgetAlert = $this->analyticsService->checkBudgetAlert($selectedConfig);
         }
 
-        $budgetAlert = $budgetAlert ?? null;
         return view('admin.pages.app-storage.analytics', compact('configs', 'selectedConfig', 'stats', 'period', 'fileType', 'budgetAlert'));
     }
 }

@@ -30,7 +30,8 @@ class StorageSyncJob implements ShouldQueue
     public function __construct(
         public string $filePath,
         public string $targetDisk,
-        public ?int $batchId = null
+        public ?int $batchId = null,
+        public bool $deleteLocalAfterSuccess = false,
     ) {
         $this->tries = config('storage.sync_retries', 3);
         $this->backoff = config('storage.sync_backoff_seconds', 30);
@@ -75,6 +76,20 @@ class StorageSyncJob implements ShouldQueue
                 'time_ms' => $elapsed,
                 'attempt' => $this->attempts(),
             ]);
+
+            if ($this->deleteLocalAfterSuccess && $localDisk->exists($this->filePath)) {
+                try {
+                    $localDisk->delete($this->filePath);
+                    Log::info('StorageSyncJob: Deleted local copy after cloud sync', [
+                        'path' => $this->filePath,
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::warning('StorageSyncJob: Failed to delete local file after sync', [
+                        'path' => $this->filePath,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
 
             // تحديث MediaFile
             MediaFile::where('path', $this->filePath)

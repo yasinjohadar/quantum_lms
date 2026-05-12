@@ -79,7 +79,7 @@
                                             <td>
                                                 <div class="d-flex justify-content-center">
                                                     @if ($slide->background_image)
-                                                        <img src="{{ asset('storage/' . $slide->background_image) }}"
+                                                        <img src="{{ media_public_url($slide->background_image) }}"
                                                              alt="{{ $slide->title }}"
                                                              class="rounded"
                                                              style="width: 60px; height: 40px; object-fit: cover;"

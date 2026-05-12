@@ -17,7 +17,7 @@
                                 <div class="bg-primary-gradient d-flex align-items-center justify-content-center position-absolute top-0 start-0 w-100 h-100" id="subject-img-fallback-{{ $subject->id }}" style="display: none;">
                                     <i class="bi bi-book text-white" style="font-size: 3rem;"></i>
                                 </div>
-                                <img src="{{ asset('storage/' . $subject->image) }}" class="position-relative w-100 h-100" style="object-fit: cover;" alt="{{ $subject->name }}"
+                                <img src="{{ media_public_url($subject->image) }}" class="position-relative w-100 h-100" style="object-fit: cover;" alt="{{ $subject->name }}"
                                      onerror="this.style.display='none'; document.getElementById('subject-img-fallback-{{ $subject->id }}').style.display='flex';">
                             </div>
                         @else

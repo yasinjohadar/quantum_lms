@@ -45,7 +45,7 @@
                                     <a href="{{ route('frontend.class.show', $class->slug) }}" class="card h-100 text-decoration-none search-result-card border shadow-sm">
                                         <div class="card-body d-flex align-items-center gap-3">
                                             @if($class->image)
-                                                <img src="{{ asset('storage/' . $class->image) }}" alt="{{ $class->name }}" class="rounded" style="width: 56px; height: 56px; object-fit: cover;">
+                                                <img src="{{ media_public_url($class->image) }}" alt="{{ $class->name }}" class="rounded" style="width: 56px; height: 56px; object-fit: cover;">
                                             @else
                                                 <div class="rounded bg-primary bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
                                                     <i class="fa-solid fa-graduation-cap text-primary"></i>

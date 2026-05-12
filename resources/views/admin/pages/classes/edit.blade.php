@@ -209,7 +209,7 @@
                                 <label class="form-label">صورة الصف (اختياري)</label>
                                 @if ($class->image)
                                     <div class="mb-2">
-                                        <img src="{{ asset('storage/'.$class->image) }}" alt="{{ $class->name }}"
+                                        <img src="{{ media_public_url($class->image) }}" alt="{{ $class->name }}"
                                              class="rounded" style="width: 80px; height: 80px; object-fit: cover;">
                                     </div>
                                 @endif
@@ -225,7 +225,7 @@
                                 <label class="form-label">صورة Open Graph (اختياري)</label>
                                 @if ($class->og_image)
                                     <div class="mb-2">
-                                        <img src="{{ asset('storage/'.$class->og_image) }}" alt="{{ $class->name }}"
+                                        <img src="{{ media_public_url($class->og_image) }}" alt="{{ $class->name }}"
                                              class="rounded" style="width: 80px; height: 80px; object-fit: cover;">
                                     </div>
                                 @endif

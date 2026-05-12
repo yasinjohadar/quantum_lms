@@ -30,7 +30,7 @@
                     <div class="col-md-8">
                         <div class="d-flex align-items-center">
                             @if($student->photo)
-                                <img src="{{ asset('storage/' . $student->photo) }}" 
+                                <img src="{{ media_public_url($student->photo) }}" 
                                      alt="{{ $student->name }}" 
                                      class="rounded-circle me-3" 
                                      style="width: 60px; height: 60px; object-fit: cover;">

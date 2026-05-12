@@ -221,7 +221,7 @@
                         <!-- Start::header-link|dropdown-toggle -->
                         <a href="javascript:void(0);" class="header-link dropdown-toggle" id="mainHeaderProfile" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                             @if(Auth::user()->photo)
-                                <img src="{{ asset('storage/' . Auth::user()->photo) }}" alt="صورة المستخدم" width="37" height="37" class="rounded-circle">
+                                <img src="{{ media_public_url(Auth::user()->photo) }}" alt="صورة المستخدم" width="37" height="37" class="rounded-circle">
                             @else
                                 <img src="{{ asset('assets/images/faces/default-avatar.jpg') }}" alt="صورة المستخدم" width="37" height="37" class="rounded-circle">
                             @endif

@@ -67,7 +67,7 @@
                     <div class="row">
                         <div class="col-md-3 text-center mb-3">
                             @if($student->photo)
-                                <img src="{{ asset('storage/' . $student->photo) }}" 
+                                <img src="{{ media_public_url($student->photo) }}" 
                                      alt="{{ $student->name }}" 
                                      class="rounded-circle mb-2" 
                                      style="width: 100px; height: 100px; object-fit: cover;">

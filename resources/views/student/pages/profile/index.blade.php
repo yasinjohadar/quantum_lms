@@ -34,7 +34,7 @@
                     <div class="card-body text-center">
                         <div class="profile-img mb-3">
                             @if($user->photo)
-                                <img src="{{ asset('storage/' . $user->photo) }}" alt="صورة المستخدم" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+                                <img src="{{ media_public_url($user->photo) }}" alt="صورة المستخدم" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
                             @else
                                 <div class="rounded-circle bg-primary d-inline-flex align-items-center justify-content-center" style="width: 150px; height: 150px; font-size: 48px; color: white;">
                                     {{ strtoupper(substr($user->name, 0, 1)) }}
@@ -279,7 +279,7 @@
                     <div class="card-body text-center">
                         <div class="profile-img mb-3">
                             @if($user->photo)
-                                <img src="{{ asset('storage/' . $user->photo) }}" alt="صورة المستخدم" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+                                <img src="{{ media_public_url($user->photo) }}" alt="صورة المستخدم" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
                             @else
                                 <div class="rounded-circle bg-primary d-inline-flex align-items-center justify-content-center" style="width: 150px; height: 150px; font-size: 48px; color: white;">
                                     {{ strtoupper(substr($user->name, 0, 1)) }}

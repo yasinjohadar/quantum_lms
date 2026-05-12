@@ -52,6 +52,6 @@ class DistinguishedStudent extends Model
             return null;
         }
 
-        return asset('storage/' . $this->photo);
+        return media_public_url($this->photo);
     }
 }

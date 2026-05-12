@@ -45,7 +45,7 @@
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     @if($user->photo)
-                        <img src="{{ asset('storage/' . $user->photo) }}" 
+                        <img src="{{ media_public_url($user->photo) }}" 
                              alt="{{ $user->name }}" 
                              class="rounded-circle me-3" 
                              style="width: 60px; height: 60px; object-fit: cover;">

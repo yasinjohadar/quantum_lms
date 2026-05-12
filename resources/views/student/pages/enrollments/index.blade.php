@@ -35,7 +35,7 @@
                                         <div class="card custom-card h-100">
                                             <a href="{{ route('student.enrollments.class.show', $class->id) }}" class="text-decoration-none">
                                                 @if($class->image)
-                                                    <img src="{{ asset('storage/' . $class->image) }}" class="card-img-top" alt="{{ $class->name }}" style="height: 180px; object-fit: cover;">
+                                                    <img src="{{ media_public_url($class->image) }}" class="card-img-top" alt="{{ $class->name }}" style="height: 180px; object-fit: cover;">
                                                 @else
                                                     <div class="card-img-top bg-primary d-flex align-items-center justify-content-center" style="height: 180px;">
                                                         <i class="bi bi-building text-white" style="font-size: 4rem;"></i>

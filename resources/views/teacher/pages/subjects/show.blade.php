@@ -153,7 +153,7 @@
                     <div class="card">
                         <div class="card-body text-center">
                             <div class="mb-3">
-                                <img src="{{ $subject->image ? asset('storage/'.$subject->image) : asset('assets/images/media/media-22.jpg') }}"
+                                <img src="{{ $subject->image ? media_public_url($subject->image) : asset('assets/images/media/media-22.jpg') }}"
                                      alt="{{ $subject->name }}"
                                      class="rounded"
                                      style="width: 180px; height: 180px; object-fit: cover;">
@@ -205,7 +205,7 @@
                                 @if ($subject->og_image)
                                     <div class="mt-2">
                                         <span class="fw-semibold d-block mb-1">صورة Open Graph:</span>
-                                        <img src="{{ asset('storage/'.$subject->og_image) }}" alt="{{ $subject->name }}"
+                                        <img src="{{ media_public_url($subject->og_image) }}" alt="{{ $subject->name }}"
                                              class="rounded" style="width: 160px; height: 160px; object-fit: cover;">
                                     </div>
                                 @endif
@@ -564,7 +564,7 @@
                                                                                                     <div class="d-flex align-items-center">
                                                                                                         <div class="me-3 position-relative">
                                                                                                             @if($lesson->thumbnail)
-                                                                                                                <img src="{{ asset('storage/'.$lesson->thumbnail) }}" 
+                                                                                                                <img src="{{ media_public_url($lesson->thumbnail) }}" 
                                                                                                                      alt="{{ $lesson->title }}"
                                                                                                                      class="rounded" 
                                                                                                                      style="width:60px;height:40px;object-fit:cover;">
