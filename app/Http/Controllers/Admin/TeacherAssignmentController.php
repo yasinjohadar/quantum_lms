@@ -78,7 +78,11 @@ class TeacherAssignmentController extends Controller
 
         $perPage = min(100, max(1, (int) $request->input('per_page', 25)));
 
-        $teachersQuery = User::teachers()->with(['roles', 'assignedClasses', 'assignedSubjects']);
+        $teachersQuery = User::teachers()->with([
+            'roles',
+            'assignedClasses',
+            'assignedSubjects' => fn ($q) => $q->withTrashed(),
+        ]);
 
         // فلترة حسب البحث
         if ($request->filled('search')) {
@@ -289,7 +293,10 @@ class TeacherAssignmentController extends Controller
         }
 
         $assignedClasses = $teacher->assignedClasses()->with('stage')->get();
-        $assignedSubjects = $teacher->assignedSubjects()->with('schoolClass.stage')->get();
+        $assignedSubjects = $teacher->assignedSubjects()->withTrashed()->with([
+            'schoolClass' => fn ($q) => $q->withTrashed(),
+            'schoolClass.stage',
+        ])->get();
 
         // جميع الصفوف والمواد المتاحة
         $allClasses = SchoolClass::with('stage')->ordered()->get();
@@ -427,7 +434,10 @@ class TeacherAssignmentController extends Controller
         $teacher->refresh();
 
         $assignedClasses = $teacher->assignedClasses()->with('stage')->get();
-        $assignedSubjects = $teacher->assignedSubjects()->with('schoolClass.stage')->get();
+        $assignedSubjects = $teacher->assignedSubjects()->withTrashed()->with([
+            'schoolClass' => fn ($q) => $q->withTrashed(),
+            'schoolClass.stage',
+        ])->get();
         $allClasses = SchoolClass::with('stage')->ordered()->get();
         $allSubjects = Subject::with('schoolClass.stage')->ordered()->get();
 
@@ -614,7 +624,7 @@ class TeacherAssignmentController extends Controller
             abort(403);
         }
 
-        if (! $teacher->assignedSubjects()->where('subjects.id', $subject->id)->exists()) {
+        if (! $teacher->assignedSubjects()->withTrashed()->where('subjects.id', $subject->id)->exists()) {
             if ($request->wantsJson()) {
                 return response()->json(['message' => 'المعلم غير مخصّص لهذه المادة.'], 422);
             }
@@ -638,7 +648,7 @@ class TeacherAssignmentController extends Controller
         $weekId = $request->input('week_id');
         $weekId = ($weekId !== null && $weekId !== '') ? (int) $weekId : null;
 
-        $rowSubject = $teacher->assignedSubjects()->where('subjects.id', $subject->id)->first();
+        $rowSubject = $teacher->assignedSubjects()->withTrashed()->where('subjects.id', $subject->id)->first();
         $required = (int) ($rowSubject?->pivot?->required_pages ?? 0);
         $completed = TeacherProgressService::getSubjectCompletedPages($subject->id);
         $remaining = max(0, $required - $completed);

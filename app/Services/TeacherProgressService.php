@@ -64,7 +64,14 @@ class TeacherProgressService
     public static function getTeacherPagesProgress(User $teacher): array
     {
         $result = [];
-        $teacher->load('assignedSubjects');
+        // المواد المحذوفة ناعماً تبقى في teacher_subjects؛ بدون withTrashed تختفي من الواجهة والإحصائيات.
+        $teacher->unsetRelation('assignedSubjects');
+        $teacher->load(['assignedSubjects' => function ($query) {
+            $query->withTrashed()->with([
+                'schoolClass' => fn ($q) => $q->withTrashed(),
+                'schoolClass.stage',
+            ]);
+        }]);
         foreach ($teacher->assignedSubjects as $subject) {
             $required = (int) ($subject->pivot->required_pages ?? 0);
             $completed = self::getSubjectCompletedPages($subject->id);
@@ -114,7 +121,7 @@ class TeacherProgressService
      */
     public static function getTeacherWeeklyLessonsCompletedInAcademicWeek(User $teacher, AcademicWeek $week): int
     {
-        $subjectIds = $teacher->assignedSubjects()->pluck('subjects.id')->toArray();
+        $subjectIds = $teacher->assignedSubjects()->withTrashed()->pluck('subjects.id')->toArray();
         if (empty($subjectIds)) {
             return 0;
         }
@@ -135,7 +142,7 @@ class TeacherProgressService
 
     public static function getTeacherWeeklyLessonsCompleted(User $teacher, ?int $weekId = null): int
     {
-        $subjectIds = $teacher->assignedSubjects()->pluck('subjects.id')->toArray();
+        $subjectIds = $teacher->assignedSubjects()->withTrashed()->pluck('subjects.id')->toArray();
         if (empty($subjectIds)) {
             return 0;
         }
@@ -208,7 +215,7 @@ class TeacherProgressService
     public static function getAllTeachersProgress(?int $weekId = null): array
     {
         $query = User::query()
-            ->with('assignedSubjects')
+            ->with(['assignedSubjects' => fn ($q) => $q->withTrashed()])
             ->orderBy('name');
 
         $rolesTable = config('permission.table_names.roles', 'roles');
@@ -371,7 +378,6 @@ class TeacherProgressService
      */
     public static function getTeacherDetailStats(User $teacher, ?int $weekId = null): array
     {
-        $teacher->load('assignedSubjects');
         $pages_progress = self::getTeacherPagesProgress($teacher);
         $subjectIds = array_map(fn ($row) => $row['subject']->id, $pages_progress);
 

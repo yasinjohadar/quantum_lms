@@ -109,7 +109,12 @@
                                         : \App\Services\TeacherProgressService::getSubjectCompletedPages($subject->id);
                                 @endphp
                                 <tr data-subject-progress-row="{{ $subject->id }}">
-                                    <td class="fw-semibold">{{ $subject->name }}</td>
+                                    <td class="fw-semibold">
+                                        {{ $subject->name }}
+                                        @if($subject->trashed())
+                                            <span class="badge bg-secondary ms-1 align-middle">مؤرشفة</span>
+                                        @endif
+                                    </td>
                                     <td class="small text-muted">{{ $subject->schoolClass?->name ?? '—' }}</td>
                                     <td class="text-center">
                                         @if($showSubjectActions)

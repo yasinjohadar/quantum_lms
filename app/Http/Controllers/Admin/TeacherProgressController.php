@@ -82,7 +82,10 @@ class TeacherProgressController extends Controller
             ];
 
         $assignedClasses = $teacher->assignedClasses()->with('stage')->get();
-        $assignedSubjects = $teacher->assignedSubjects()->with('schoolClass.stage')->get();
+        $assignedSubjects = $teacher->assignedSubjects()->withTrashed()->with([
+            'schoolClass' => fn ($q) => $q->withTrashed(),
+            'schoolClass.stage',
+        ])->get();
 
         $unassignedClasses = collect();
         $unassignedSubjects = collect();
