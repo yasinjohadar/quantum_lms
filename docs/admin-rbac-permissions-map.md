@@ -19,6 +19,7 @@ This document standardizes the permissions used for teacher and supervisor opera
 - `teacher-assignment-manage-classes`: update class assignments (`classes[]`).
 - `teacher-assignment-manage-subjects`: update subject assignments (`subjects[]`, `required_pages[]`).
 - `teacher-progress-view`: open teacher progress pages.
+- Partial assignment changes from the teacher progress detail page still require `teacher-assignment-update` plus `teacher-assignment-manage-classes` / `teacher-assignment-manage-subjects` (same as the full teacher assignment editor).
 - `academic-year-list`: open academic years page.
 - `academic-week-list`: open academic weeks page.
 

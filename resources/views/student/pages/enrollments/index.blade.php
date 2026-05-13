@@ -17,6 +17,8 @@
         </div>
         <!-- End Page Header -->
 
+        @include('student.pages.enrollments.partials.stats-summary')
+
         @if($stages->count() > 0)
             @foreach($stages as $stage)
                 <div class="card mb-4">

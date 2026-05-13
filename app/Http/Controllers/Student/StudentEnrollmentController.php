@@ -9,6 +9,7 @@ use App\Models\Enrollment;
 use App\Models\ClassEnrollment;
 use App\Models\Stage;
 use App\Models\Purchase;
+use App\Models\User;
 use App\Services\PurchaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,7 +29,9 @@ class StudentEnrollmentController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        
+
+        $stats = $this->studentEnrollmentStats($user);
+
         // الحصول على جميع المراحل مع الصفوف فقط (بدون تحميل المواد)
         $stages = Stage::with(['classes' => function($query) {
             $query->where('is_active', true)->orderBy('order');
@@ -38,8 +41,8 @@ class StudentEnrollmentController extends Controller
         })
         ->orderBy('order')
         ->get();
-        
-        return view('student.pages.enrollments.index', compact('stages'));
+
+        return view('student.pages.enrollments.index', array_merge(compact('stages'), $stats));
     }
     
     /**
@@ -66,8 +69,40 @@ class StudentEnrollmentController extends Controller
             ->pending()
             ->pluck('subject_id')
             ->toArray();
-        
-        return view('student.pages.enrollments.class-show', compact('class', 'enrolledSubjectIds', 'pendingEnrollments'));
+
+        $stats = $this->studentEnrollmentStats($user);
+
+        return view('student.pages.enrollments.class-show', array_merge(
+            compact('class', 'enrolledSubjectIds', 'pendingEnrollments'),
+            $stats
+        ));
+    }
+
+    /**
+     * إحصائيات انضمام الطالب: عدد الصفوف التي لديه فيها وصول (مادة نشطة أو انضمام صف معتمد) وعدد المواد النشطة.
+     *
+     * @return array{assigned_classes_total: int, assigned_subjects_total: int}
+     */
+    private function studentEnrollmentStats(User $user): array
+    {
+        $assignedSubjectsTotal = $user->enrollments()->where('status', 'active')->count();
+
+        $classIdsFromSubjects = $user->subjects()
+            ->wherePivot('status', 'active')
+            ->pluck('class_id')
+            ->filter(fn ($id) => $id !== null && $id !== '');
+
+        $classIdsFromClassEnrollment = $user->classEnrollments()->approved()->pluck('class_id');
+
+        $assignedClassesTotal = $classIdsFromSubjects
+            ->merge($classIdsFromClassEnrollment)
+            ->unique()
+            ->count();
+
+        return [
+            'assigned_classes_total' => (int) $assignedClassesTotal,
+            'assigned_subjects_total' => (int) $assignedSubjectsTotal,
+        ];
     }
     
     /**

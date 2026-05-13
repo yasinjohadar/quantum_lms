@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\AcademicWeekService;
 use App\Services\TeacherProgressService;
 use App\Models\UserSession;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -22,7 +23,48 @@ class TeacherAssignmentController extends Controller
     {
         $this->middleware(['permission:teacher-assignment-list'])->only('index');
         $this->middleware(['permission:teacher-assignment-show'])->only('show');
-        $this->middleware(['permission:teacher-assignment-update'])->only('update');
+        $this->middleware(['permission:teacher-assignment-update'])->only([
+            'update',
+            'attachClass',
+            'detachClass',
+            'attachSubject',
+            'detachSubject',
+            'patchSubjectRequiredPages',
+        ]);
+    }
+
+    /**
+     * إعادة التوجيه إلى صفحة تقدم المعلم مع الحفاظ على week_id عند وجوده.
+     */
+    private function redirectToTeacherProgress(User $teacher, ?string $message = null, string $messageKey = 'success'): RedirectResponse
+    {
+        $url = route('admin.teachers.progress.show', $teacher);
+        if (request()->filled('week_id')) {
+            $url .= '?week_id='.(int) request('week_id');
+        }
+        if ($message === null) {
+            return redirect()->to($url);
+        }
+
+        return redirect()->to($url)->with($messageKey, $message);
+    }
+
+    /**
+     * إرفاق جميع مواد صف واحد بالمعلم (بدون استبدال المواد الأخرى).
+     */
+    private function attachAllSubjectsForClass(User $teacher, int $classId, ?int $assignedBy, $assignedAt): void
+    {
+        $subjectIds = Subject::query()->where('class_id', $classId)->pluck('id')->all();
+        foreach ($subjectIds as $sid) {
+            if ($teacher->assignedSubjects()->where('subjects.id', (int) $sid)->exists()) {
+                continue;
+            }
+            $teacher->assignedSubjects()->attach((int) $sid, [
+                'assigned_by' => $assignedBy,
+                'assigned_at' => $assignedAt,
+                'required_pages' => null,
+            ]);
+        }
     }
 
     /**
@@ -281,6 +323,10 @@ class TeacherAssignmentController extends Controller
     public function update(Request $request, User $teacher)
     {
         if (! $teacher->matchesAdminTeacherListingCriteria()) {
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'المستخدم المحدد ليس معلم'], 422);
+            }
+
             return redirect()->back()->with('error', 'المستخدم المحدد ليس معلم');
         }
 
@@ -294,14 +340,27 @@ class TeacherAssignmentController extends Controller
             'weekly_lessons_target' => 'nullable|integer|min:0',
         ]);
 
+        $this->applyTeacherAssignmentsFromRequest($request, $teacher);
+
+        if ($request->wantsJson()) {
+            return response()->json($this->buildAssignmentsSyncJsonResponse($teacher));
+        }
+
+        return redirect()->back()->with('success', 'تم تحديث تخصيصات المعلم بنجاح');
+    }
+
+    /**
+     * تطبيق حمولة النموذج على علاقات المعلم (صفوف ومواد وأهداف أسبوعية).
+     */
+    private function applyTeacherAssignmentsFromRequest(Request $request, User $teacher): void
+    {
         $assignedBy = auth()->id();
         $assignedAt = now();
         $canManageClasses = auth()->user()?->can('teacher-assignment-manage-classes');
         $canManageSubjects = auth()->user()?->can('teacher-assignment-manage-subjects');
 
-        // تحديث الصفوف المخصصة
+        $classesData = [];
         if ($canManageClasses) {
-            $classesData = [];
             if ($request->has('classes') && is_array($request->input('classes'))) {
                 foreach ($request->input('classes') as $classId) {
                     $classesData[$classId] = [
@@ -313,30 +372,299 @@ class TeacherAssignmentController extends Controller
             $teacher->assignedClasses()->sync($classesData);
         }
 
-        // تحديث المواد المخصصة (مع عدد الصفحات المطلوبة)
+        $keptClassIds = $canManageClasses
+            ? array_values(array_unique(array_map('intval', array_keys($classesData))))
+            : null;
+
         if ($canManageSubjects) {
             $subjectsData = [];
             if ($request->has('subjects') && is_array($request->input('subjects'))) {
                 foreach ($request->input('subjects') as $subjectId) {
                     $requiredPages = $request->input('required_pages.'.$subjectId);
-                    $subjectsData[$subjectId] = [
+                    $subjectsData[(int) $subjectId] = [
                         'assigned_by' => $assignedBy,
                         'assigned_at' => $assignedAt,
                         'required_pages' => $requiredPages !== null && $requiredPages !== '' ? (int) $requiredPages : null,
                     ];
                 }
             }
+
+            // عند عدم اختيار أي صف: إفراغ المواد كما كان. عند وجود صفوف محددة: نحترم قائمة المواد المرسلة كاملةً
+            // (يشمل تخصيص مواد من صف دون تفعيل «تضمين الصف» في العمود الرئيسي — قسم التخصيص المفصّل).
+            if ($keptClassIds !== null && $keptClassIds === []) {
+                $subjectsData = [];
+            }
+
             $teacher->assignedSubjects()->sync($subjectsData);
+        } elseif ($canManageClasses && $keptClassIds !== null) {
+            if ($keptClassIds === []) {
+                $teacher->assignedSubjects()->detach();
+            } else {
+                $orphanSubjectIds = $teacher->assignedSubjects()
+                    ->whereNotIn('subjects.class_id', $keptClassIds)
+                    ->pluck('subjects.id');
+                if ($orphanSubjectIds->isNotEmpty()) {
+                    $teacher->assignedSubjects()->detach($orphanSubjectIds->all());
+                }
+            }
         }
 
-        // تحديث عدد الدروس الأسبوعية المطلوبة
         if ($canManageSubjects || $canManageClasses) {
             $teacher->weekly_lessons_target = $request->input('weekly_lessons_target') !== null && $request->input('weekly_lessons_target') !== ''
                 ? (int) $request->input('weekly_lessons_target')
                 : null;
             $teacher->save();
         }
+    }
 
-        return redirect()->back()->with('success', 'تم تحديث تخصيصات المعلم بنجاح');
+    /**
+     * بيانات JSON بعد الحفظ (أجزاء HTML + حالة التخصيص) لتحديث الواجهة دون إعادة تحميل الصفحة.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildAssignmentsSyncJsonResponse(User $teacher): array
+    {
+        $teacher->refresh();
+
+        $assignedClasses = $teacher->assignedClasses()->with('stage')->get();
+        $assignedSubjects = $teacher->assignedSubjects()->with('schoolClass.stage')->get();
+        $allClasses = SchoolClass::with('stage')->ordered()->get();
+        $allSubjects = Subject::with('schoolClass.stage')->ordered()->get();
+
+        $activeWeeks = AcademicWeekService::getActiveYearWeeks();
+        $teacherProgressStats = TeacherProgressService::getTeacherDetailStats($teacher, null);
+        $yearWeeksLessons = $activeWeeks->isNotEmpty()
+            ? TeacherProgressService::getTeacherActiveYearWeeksLessonsBreakdown($teacher, $activeWeeks)
+            : [
+                'per_week' => [],
+                'year_total_target' => 0,
+                'year_total_completed' => 0,
+                'year_percentage' => null,
+            ];
+
+        $requiredPages = [];
+        foreach ($assignedSubjects as $s) {
+            $requiredPages[(int) $s->id] = $s->pivot->required_pages !== null && $s->pivot->required_pages !== ''
+                ? (int) $s->pivot->required_pages
+                : null;
+        }
+
+        return [
+            'ok' => true,
+            'message' => 'تم تحديث تخصيصات المعلم بنجاح',
+            'assigned_classes_count' => $assignedClasses->count(),
+            'assigned_subjects_count' => $assignedSubjects->count(),
+            'assigned_class_ids' => $assignedClasses->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+            'assigned_subject_ids' => $assignedSubjects->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+            'required_pages' => $requiredPages,
+            'html' => [
+                'progress_card' => view('admin.pages.teachers.partials.assignments-sync.progress-card', compact(
+                    'teacher',
+                    'teacherProgressStats',
+                    'yearWeeksLessons',
+                    'assignedClasses',
+                    'assignedSubjects'
+                ))->render(),
+                'side_panel' => view('admin.pages.teachers.partials.assignments-sync.side-panel-inner', compact(
+                    'assignedSubjects'
+                ))->render(),
+                'indep_body' => view('admin.pages.teachers.partials.assignments-sync.indep-card-body', compact(
+                    'allClasses',
+                    'allSubjects',
+                    'assignedSubjects'
+                ))->render(),
+            ],
+        ];
+    }
+
+    /**
+     * إرفاق صف واحد بالمعلم (من صفحة التقدم أو غيرها).
+     */
+    public function attachClass(Request $request, User $teacher)
+    {
+        if (! $teacher->matchesAdminTeacherListingCriteria()) {
+            return redirect()->back()->with('error', 'المستخدم المحدد ليس معلم');
+        }
+
+        if (! auth()->user()?->can('teacher-assignment-manage-classes')) {
+            abort(403);
+        }
+
+        $request->validate([
+            'class_id' => 'required|exists:classes,id',
+        ]);
+
+        $classId = (int) $request->input('class_id');
+        if ($teacher->assignedClasses()->where('classes.id', $classId)->exists()) {
+            return $this->redirectToTeacherProgress($teacher, 'هذا الصف مخصّص للمعلم بالفعل.');
+        }
+
+        $teacher->assignedClasses()->attach($classId, [
+            'assigned_by' => auth()->id(),
+            'assigned_at' => now(),
+        ]);
+
+        if (auth()->user()?->can('teacher-assignment-manage-subjects')) {
+            $this->attachAllSubjectsForClass($teacher, $classId, auth()->id(), now());
+        }
+
+        return $this->redirectToTeacherProgress($teacher, 'تم إضافة الصف للمعلم.');
+    }
+
+    /**
+     * فصل صف واحد عن المعلم.
+     */
+    public function detachClass(User $teacher, SchoolClass $schoolClass)
+    {
+        if (! $teacher->matchesAdminTeacherListingCriteria()) {
+            return redirect()->back()->with('error', 'المستخدم المحدد ليس معلم');
+        }
+
+        if (! auth()->user()?->can('teacher-assignment-manage-classes')) {
+            abort(403);
+        }
+
+        if (! $teacher->assignedClasses()->where('classes.id', $schoolClass->id)->exists()) {
+            return $this->redirectToTeacherProgress($teacher, 'المعلم غير مخصّص لهذا الصف.', 'error');
+        }
+
+        $teacher->assignedClasses()->detach($schoolClass->id);
+
+        if (auth()->user()?->can('teacher-assignment-manage-subjects')) {
+            $subjectIds = Subject::query()->where('class_id', $schoolClass->id)->pluck('id')->all();
+            if ($subjectIds !== []) {
+                $teacher->assignedSubjects()->detach($subjectIds);
+            }
+        }
+
+        return $this->redirectToTeacherProgress($teacher, 'تم فصل الصف عن المعلم.');
+    }
+
+    /**
+     * إرفاق مادة واحدة بالمعلم.
+     */
+    public function attachSubject(Request $request, User $teacher)
+    {
+        if (! $teacher->matchesAdminTeacherListingCriteria()) {
+            return redirect()->back()->with('error', 'المستخدم المحدد ليس معلم');
+        }
+
+        if (! auth()->user()?->can('teacher-assignment-manage-subjects')) {
+            abort(403);
+        }
+
+        $request->validate([
+            'subject_id' => 'required|exists:subjects,id',
+            'required_pages' => 'nullable|integer|min:0',
+        ]);
+
+        $subjectId = (int) $request->input('subject_id');
+        if ($teacher->assignedSubjects()->where('subjects.id', $subjectId)->exists()) {
+            return $this->redirectToTeacherProgress($teacher, 'هذه المادة مخصّصة للمعلم بالفعل.');
+        }
+
+        $requiredPages = $request->input('required_pages');
+        $requiredPagesValue = ($requiredPages !== null && $requiredPages !== '') ? (int) $requiredPages : null;
+
+        $teacher->assignedSubjects()->attach($subjectId, [
+            'assigned_by' => auth()->id(),
+            'assigned_at' => now(),
+            'required_pages' => $requiredPagesValue,
+        ]);
+
+        return $this->redirectToTeacherProgress($teacher, 'تم إضافة المادة للمعلم.');
+    }
+
+    /**
+     * فصل مادة واحدة عن المعلم.
+     */
+    public function detachSubject(User $teacher, Subject $subject)
+    {
+        if (! $teacher->matchesAdminTeacherListingCriteria()) {
+            return redirect()->back()->with('error', 'المستخدم المحدد ليس معلم');
+        }
+
+        if (! auth()->user()?->can('teacher-assignment-manage-subjects')) {
+            abort(403);
+        }
+
+        if (! $teacher->assignedSubjects()->where('subjects.id', $subject->id)->exists()) {
+            return $this->redirectToTeacherProgress($teacher, 'المعلم غير مخصّص لهذه المادة.', 'error');
+        }
+
+        $teacher->assignedSubjects()->detach($subject->id);
+
+        return $this->redirectToTeacherProgress($teacher, 'تم فصل المادة عن المعلم.');
+    }
+
+    /**
+     * تحديث عدد الصفحات المطلوبة لمادة مخصّصة (لصفحة تقدم المعلم + طلبات Ajax).
+     */
+    public function patchSubjectRequiredPages(Request $request, User $teacher, Subject $subject)
+    {
+        if (! $teacher->matchesAdminTeacherListingCriteria()) {
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'المستخدم المحدد ليس معلم'], 422);
+            }
+
+            return redirect()->back()->with('error', 'المستخدم المحدد ليس معلم');
+        }
+
+        if (! auth()->user()?->can('teacher-assignment-manage-subjects')) {
+            abort(403);
+        }
+
+        if (! $teacher->assignedSubjects()->where('subjects.id', $subject->id)->exists()) {
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'المعلم غير مخصّص لهذه المادة.'], 422);
+            }
+
+            return redirect()->back()->with('error', 'المعلم غير مخصّص لهذه المادة.');
+        }
+
+        $request->validate([
+            'required_pages' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $raw = $request->input('required_pages');
+        $value = ($raw === null || $raw === '') ? null : (int) $raw;
+
+        $teacher->assignedSubjects()->updateExistingPivot($subject->id, [
+            'required_pages' => $value,
+        ]);
+
+        $teacher->unsetRelation('assignedSubjects');
+
+        $weekId = $request->input('week_id');
+        $weekId = ($weekId !== null && $weekId !== '') ? (int) $weekId : null;
+
+        $rowSubject = $teacher->assignedSubjects()->where('subjects.id', $subject->id)->first();
+        $required = (int) ($rowSubject?->pivot?->required_pages ?? 0);
+        $completed = TeacherProgressService::getSubjectCompletedPages($subject->id);
+        $remaining = max(0, $required - $completed);
+        $percentage = $required > 0
+            ? min(100.0, round(($completed / $required) * 100, 1))
+            : null;
+
+        if ($request->wantsJson()) {
+            $stats = TeacherProgressService::getTeacherDetailStats($teacher->fresh(), $weekId);
+
+            return response()->json([
+                'ok' => true,
+                'subject_id' => (int) $subject->id,
+                'required_pages' => $value,
+                'required_pages_effective' => $required,
+                'completed_pages' => $completed,
+                'remaining_pages' => $remaining,
+                'percentage' => $percentage,
+                'summary' => [
+                    'total_pages_required' => $stats['total_pages_required'],
+                    'total_pages_completed' => $stats['total_pages_completed'],
+                    'total_pages_percentage' => $stats['total_pages_percentage'],
+                ],
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'تم تحديث الصفحات المطلوبة.');
     }
 }

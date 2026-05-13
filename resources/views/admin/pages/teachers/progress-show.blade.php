@@ -38,6 +38,13 @@
                 </div>
             @endif
 
+            @if (session('error'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    {{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
+
             {{-- فلتر الأسبوع وعرض السياق --}}
             @if(isset($activeWeeks) && $activeWeeks->isNotEmpty())
                 <div class="card shadow-sm border-0 mb-3">
@@ -78,15 +85,15 @@
                             <h6 class="text-muted small mb-1">الصفحات الموكّلة — الإنجاز</h6>
                             @if($total_pages_required > 0)
                                 <div class="d-flex align-items-baseline gap-2 flex-wrap mb-2">
-                                    <span class="fs-4 fw-bold text-success">{{ $total_pages_completed }}</span>
+                                    <span class="fs-4 fw-bold text-success" id="teacherProgressPagesSummaryCompleted">{{ $total_pages_completed }}</span>
                                     <span class="text-muted">من</span>
-                                    <span class="fs-4 fw-bold">{{ $total_pages_required }}</span>
+                                    <span class="fs-4 fw-bold" id="teacherProgressPagesSummaryRequired">{{ $total_pages_required }}</span>
                                     <span class="small text-muted">صفحة</span>
                                 </div>
                                 <div class="progress" style="height: 10px;">
-                                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ min(100, $total_pages_percentage) }}%;" aria-valuenow="{{ min(100, $total_pages_percentage) }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    <div id="teacherProgressPagesSummaryBar" class="progress-bar bg-success" role="progressbar" style="width: {{ min(100, $total_pages_percentage) }}%;" aria-valuenow="{{ min(100, $total_pages_percentage) }}" aria-valuemin="0" aria-valuemax="100"></div>
                                 </div>
-                                <div class="mt-2"><span class="badge bg-info text-dark">{{ number_format($total_pages_percentage, 1) }}%</span></div>
+                                <div class="mt-2"><span id="teacherProgressPagesSummaryBadge" class="badge bg-info text-dark">{{ number_format($total_pages_percentage, 1) }}%</span></div>
                             @else
                                 <p class="mb-0 text-muted">لا يوجد هدف صفحات موكّل في المواد المخصصة.</p>
                             @endif
@@ -140,6 +147,20 @@
                     </div>
                 </div>
             </div>
+
+            @include('admin.pages.teachers.partials.progress-assignments', [
+                'teacher' => $teacher,
+                'assignedClasses' => $assignedClasses,
+                'assignedSubjects' => $assignedSubjects,
+                'unassignedClasses' => $unassignedClasses,
+                'unassignedSubjects' => $unassignedSubjects,
+                'pagesProgressBySubjectId' => collect($pages_progress ?? [])->mapWithKeys(function ($row) {
+                    return [$row['subject']->id => [
+                        'completed_pages' => $row['completed_pages'],
+                        'required_pages' => $row['required_pages'],
+                    ]];
+                })->all(),
+            ])
 
             {{-- أهداف الأسابيع (Bulk override per week) --}}
             @if(isset($activeWeeks) && $activeWeeks->isNotEmpty())
@@ -336,6 +357,145 @@
         </div>
     </div>
 @stop
+
+@section('js')
+    @can('teacher-assignment-update')
+        @can('teacher-assignment-manage-subjects')
+            @if($assignedSubjects->isNotEmpty())
+                <script>
+                    (function () {
+                        const weekId = @json($displayWeekId ?? null);
+                        const subjectPatchUrls = @json($assignedSubjects->mapWithKeys(function ($sub) use ($teacher) {
+                            return [$sub->id => route('admin.teachers.assignments.subject-required-pages', [$teacher, $sub])];
+                        })->all());
+
+                        function csrfToken() {
+                            const m = document.querySelector('meta[name="csrf-token"]');
+                            return m ? m.getAttribute('content') : '';
+                        }
+
+                        function setStatus(subjectId, text, isError) {
+                            const el = document.querySelector('.teacher-progress-pages-save-status[data-subject-id="' + subjectId + '"]');
+                            if (!el) {
+                                return;
+                            }
+                            el.textContent = text || '';
+                            el.classList.toggle('text-danger', !!isError);
+                            el.classList.toggle('text-success', !isError && !!text);
+                        }
+
+                        function applySummary(summary) {
+                            if (!summary) {
+                                return;
+                            }
+                            const req = summary.total_pages_required;
+                            const done = summary.total_pages_completed;
+                            const pct = summary.total_pages_percentage;
+                            const elDone = document.getElementById('teacherProgressPagesSummaryCompleted');
+                            const elReq = document.getElementById('teacherProgressPagesSummaryRequired');
+                            const elBar = document.getElementById('teacherProgressPagesSummaryBar');
+                            const elBadge = document.getElementById('teacherProgressPagesSummaryBadge');
+                            if (elDone && typeof done === 'number') {
+                                elDone.textContent = String(done);
+                            }
+                            if (elReq && typeof req === 'number') {
+                                elReq.textContent = String(req);
+                            }
+                            if (elBar && typeof pct === 'number') {
+                                const w = Math.min(100, pct);
+                                elBar.style.width = w + '%';
+                                elBar.setAttribute('aria-valuenow', String(w));
+                            }
+                            if (elBadge && typeof pct === 'number') {
+                                elBadge.textContent = Number(pct).toFixed(1) + '%';
+                            }
+                        }
+
+                        function saveRequiredPages(subjectId, input) {
+                            const url = subjectPatchUrls[subjectId];
+                            if (!url) {
+                                return;
+                            }
+                            const raw = input.value.trim();
+                            let body = { required_pages: null, week_id: weekId };
+                            if (raw !== '') {
+                                const n = parseInt(raw, 10);
+                                if (Number.isNaN(n) || n < 0) {
+                                    setStatus(subjectId, 'رقم غير صالح', true);
+                                    return;
+                                }
+                                body.required_pages = n;
+                            }
+                            setStatus(subjectId, 'جاري الحفظ…', false);
+                            fetch(url, {
+                                method: 'PATCH',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'X-CSRF-TOKEN': csrfToken()
+                                },
+                                body: JSON.stringify(body),
+                                credentials: 'same-origin'
+                            }).then(function (r) {
+                                const ct = r.headers.get('content-type') || '';
+                                if (ct.indexOf('application/json') !== -1) {
+                                    return r.json().then(function (j) {
+                                        return { ok: r.ok, json: j };
+                                    });
+                                }
+                                return r.text().then(function (t) {
+                                    return { ok: false, json: { message: t } };
+                                });
+                            }).then(function (res) {
+                                if (res.ok && res.json && res.json.ok) {
+                                    const d = res.json;
+                                    if (d.required_pages === null || d.required_pages === undefined) {
+                                        input.value = '';
+                                    } else {
+                                        input.value = String(d.required_pages);
+                                    }
+                                    const doneEl = document.querySelector('.teacher-progress-completed-pages[data-subject-id="' + subjectId + '"]');
+                                    if (doneEl && typeof d.completed_pages === 'number') {
+                                        doneEl.textContent = String(d.completed_pages);
+                                    }
+                                    setStatus(subjectId, 'تم الحفظ', false);
+                                    applySummary(d.summary);
+                                    setTimeout(function () {
+                                        setStatus(subjectId, '', false);
+                                    }, 2000);
+                                } else {
+                                    const msg = (res.json && (res.json.message || (res.json.errors && 'تحقق من القيمة'))) || 'تعذر الحفظ';
+                                    setStatus(subjectId, msg, true);
+                                }
+                            }).catch(function () {
+                                setStatus(subjectId, 'خطأ في الاتصال', true);
+                            });
+                        }
+
+                        const timers = {};
+                        document.querySelectorAll('.teacher-progress-required-pages-input').forEach(function (input) {
+                            const sid = input.getAttribute('data-subject-id');
+                            if (!sid) {
+                                return;
+                            }
+                            input.addEventListener('input', function () {
+                                clearTimeout(timers[sid]);
+                                timers[sid] = setTimeout(function () {
+                                    saveRequiredPages(sid, input);
+                                }, 500);
+                            });
+                            input.addEventListener('change', function () {
+                                clearTimeout(timers[sid]);
+                                saveRequiredPages(sid, input);
+                            });
+                        });
+                    })();
+                </script>
+            @endif
+        @endcan
+    @endcan
+@endsection
 
 @push('styles')
     <style>

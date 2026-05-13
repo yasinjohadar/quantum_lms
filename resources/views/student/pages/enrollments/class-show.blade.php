@@ -29,6 +29,8 @@
         </div>
         <!-- End Page Header -->
 
+        @include('student.pages.enrollments.partials.stats-summary')
+
         <!-- معلومات الصف -->
         @php
             // التحقق مما إذا كان الطالب مسجل في جميع المواد النشطة

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicWeek;
+use App\Models\SchoolClass;
+use App\Models\Subject;
 use App\Models\TeacherWeekTarget;
 use App\Models\User;
 use App\Services\AcademicWeekService;
@@ -79,12 +81,39 @@ class TeacherProgressController extends Controller
                 'year_percentage' => null,
             ];
 
+        $assignedClasses = $teacher->assignedClasses()->with('stage')->get();
+        $assignedSubjects = $teacher->assignedSubjects()->with('schoolClass.stage')->get();
+
+        $unassignedClasses = collect();
+        $unassignedSubjects = collect();
+        $user = auth()->user();
+        if ($user?->can('teacher-assignment-update') && $user->can('teacher-assignment-manage-classes')) {
+            $assignedClassIds = $assignedClasses->pluck('id')->all();
+            $classQuery = SchoolClass::with('stage')->ordered();
+            if ($assignedClassIds !== []) {
+                $classQuery->whereNotIn('id', $assignedClassIds);
+            }
+            $unassignedClasses = $classQuery->get();
+        }
+        if ($user?->can('teacher-assignment-update') && $user->can('teacher-assignment-manage-subjects')) {
+            $assignedSubjectIds = $assignedSubjects->pluck('id')->all();
+            $subjectQuery = Subject::with('schoolClass.stage')->ordered();
+            if ($assignedSubjectIds !== []) {
+                $subjectQuery->whereNotIn('id', $assignedSubjectIds);
+            }
+            $unassignedSubjects = $subjectQuery->get();
+        }
+
         return view('admin.pages.teachers.progress-show', array_merge($stats, [
             'activeWeeks' => $activeWeeks,
             'currentWeek' => $currentWeek,
             'displayWeekId' => $displayWeekId,
             'weekTargets' => $weekTargets,
             'yearWeeksLessons' => $yearWeeksLessons,
+            'assignedClasses' => $assignedClasses,
+            'assignedSubjects' => $assignedSubjects,
+            'unassignedClasses' => $unassignedClasses,
+            'unassignedSubjects' => $unassignedSubjects,
         ]));
     }
 

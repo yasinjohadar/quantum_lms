@@ -49,68 +49,29 @@
             @endif
 
             @isset($teacherProgressStats, $yearWeeksLessons)
-            <div class="card border-0 shadow-sm mb-3">
-                <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center gap-2">
-                    <span class="fw-semibold"><i class="bi bi-speedometer2 me-2"></i> ملخص التقدم (قراءة فقط)</span>
-                    <a href="{{ route('admin.teachers.progress.show', $teacher) }}" class="btn btn-sm btn-outline-primary">تفاصيل أوضح مع الأسابيع</a>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <div class="small text-muted mb-1">دروس الأسبوع الحالي (منفّذ / هدف)</div>
-                            <div class="fs-5">
-                                <span class="fw-bold text-success">{{ $teacherProgressStats['weekly_progress']['completed'] ?? 0 }}</span>
-                                <span class="text-muted">/</span>
-                                <span class="fw-bold">{{ $teacherProgressStats['weekly_progress']['target'] ?? 0 }}</span>
-                            </div>
-                            @if(($teacherProgressStats['weekly_progress']['percentage'] ?? null) !== null)
-                                <span class="badge bg-primary mt-1">{{ number_format($teacherProgressStats['weekly_progress']['percentage'], 1) }}%</span>
-                            @endif
-                        </div>
-                        <div class="col-md-4">
-                            <div class="small text-muted mb-1">تراكمي السنة (منفّذ / مجموع أهداف الأسابيع)</div>
-                            @if(($yearWeeksLessons['year_total_target'] ?? 0) > 0)
-                                <div class="fs-5">
-                                    <span class="fw-bold text-success">{{ $yearWeeksLessons['year_total_completed'] }}</span>
-                                    <span class="text-muted">/</span>
-                                    <span class="fw-bold">{{ $yearWeeksLessons['year_total_target'] }}</span>
-                                </div>
-                                @if($yearWeeksLessons['year_percentage'] !== null)
-                                    <span class="badge bg-dark mt-1">{{ number_format($yearWeeksLessons['year_percentage'], 1) }}%</span>
-                                @endif
-                            @else
-                                <span class="text-muted small">لا أهداف دروس بعد</span>
-                            @endif
-                        </div>
-                        <div class="col-md-4">
-                            <div class="small text-muted mb-1">الصفحات (منجز / موكّل)</div>
-                            @if(($teacherProgressStats['total_pages_required'] ?? 0) > 0)
-                                <div class="fs-5">
-                                    <span class="fw-bold text-success">{{ $teacherProgressStats['total_pages_completed'] }}</span>
-                                    <span class="text-muted">/</span>
-                                    <span class="fw-bold">{{ $teacherProgressStats['total_pages_required'] }}</span>
-                                </div>
-                                @if($teacherProgressStats['total_pages_percentage'] !== null)
-                                    <span class="badge bg-success mt-1">{{ number_format($teacherProgressStats['total_pages_percentage'], 1) }}%</span>
-                                @endif
-                            @else
-                                <span class="text-muted small">لا هدف صفحات</span>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            </div>
+                @include('admin.pages.teachers.partials.assignments-sync.progress-card', [
+                    'teacher' => $teacher,
+                    'teacherProgressStats' => $teacherProgressStats,
+                    'yearWeeksLessons' => $yearWeeksLessons,
+                    'assignedClasses' => $assignedClasses,
+                    'assignedSubjects' => $assignedSubjects,
+                ])
             @endisset
 
-            <form action="{{ route('admin.teachers.assignments.update', $teacher->id) }}" method="POST">
+            <form id="teacherAssignmentsForm" action="{{ route('admin.teachers.assignments.update', $teacher->id) }}" method="POST">
                 @csrf
                 @method('PUT')
 
-                <div class="row">
+                @php
+                    $canManageClasses = auth()->user()->can('teacher-assignment-manage-classes');
+                    $canManageSubjects = auth()->user()->can('teacher-assignment-manage-subjects');
+                @endphp
+
+                <div class="row g-3 align-items-stretch">
                     <!-- الصفوف المخصصة -->
                     @can('teacher-assignment-manage-classes')
-                    <div class="col-xl-6">
-                        <div class="card" id="classSection">
+                    <div class="{{ $canManageSubjects ? 'col-xl-6' : 'col-12' }}">
+                        <div class="card h-100" id="classSection">
                             <div class="card-header">
                                 <h6 class="mb-0">
                                     <i class="bi bi-building me-2"></i>
@@ -148,7 +109,7 @@
                                     </div>
                                     <div class="list-group" style="max-height: 500px; overflow-y: auto;">
                                         @foreach($allClasses as $class)
-                                            <div class="list-group-item" data-stage-id="{{ $class->stage_id ?? '' }}">
+                                            <div class="list-group-item" data-stage-id="{{ $class->stage_id ?? '' }}" data-class-id="{{ $class->id }}">
                                                 <div class="form-check">
                                                     <input class="form-check-input class-checkbox" 
                                                            type="checkbox" 
@@ -168,12 +129,43 @@
                                                                     </small>
                                                                 @endif
                                                             </div>
-                                                            @if($assignedClasses->contains('id', $class->id))
-                                                                <span class="badge bg-success">مخصص</span>
-                                                            @endif
+                                                            <span class="badge bg-success class-assigned-badge {{ $assignedClasses->contains('id', $class->id) ? '' : 'd-none' }}">مخصص</span>
                                                         </div>
                                                     </label>
                                                 </div>
+                                                <div class="mt-2 ps-4 d-flex flex-wrap gap-1">
+                                                    @can('teacher-assignment-manage-subjects')
+                                                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" onclick="focusClassSubjects({{ $class->id }})">
+                                                            <i class="bi bi-check2-square me-1"></i> تضمين الصف وعرض مواده
+                                                        </button>
+                                                    @endcan
+                                                    @can('teacher-assignment-manage-classes')
+                                                        <span class="class-detach-actions {{ $assignedClasses->contains('id', $class->id) ? '' : 'd-none' }}">
+                                                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="detachClassFromTeacher({{ $class->id }}, @json($canManageSubjects))">
+                                                                <i class="bi bi-x-octagon me-1"></i> فصل الصف@if($canManageSubjects) وكل مواده@endif
+                                                            </button>
+                                                        </span>
+                                                    @endcan
+                                                </div>
+                                                @can('teacher-assignment-manage-subjects')
+                                                    @php
+                                                        $nestedSubjectsForClass = $allSubjects->where('class_id', $class->id);
+                                                    @endphp
+                                                    @if($nestedSubjectsForClass->count() > 0)
+                                                        <div class="class-nested-subjects mt-2 pt-2 border-top" data-nested-for-class="{{ $class->id }}" id="nestedSubjectsClass_{{ $class->id }}">
+                                                            <div class="small text-muted mb-1">مواد هذا الصف</div>
+                                                            <div class="list-group list-group-flush border rounded small" style="max-height: 280px; overflow-y: auto;">
+                                                                @foreach($nestedSubjectsForClass as $subject)
+                                                                    @include('admin.pages.teachers.partials.assignments-sync.subject-edit-row', [
+                                                                        'subject' => $subject,
+                                                                        'assignedSubjects' => $assignedSubjects,
+                                                                        'compactClassLabel' => true,
+                                                                    ])
+                                                                @endforeach
+                                                            </div>
+                                                        </div>
+                                                    @endif
+                                                @endcan
                                             </div>
                                         @endforeach
                                     </div>
@@ -185,16 +177,29 @@
                     </div>
                     @endcan
 
-                    <!-- المواد المخصصة -->
+                    <!-- لمحة المواد المخصصة + أدوات جماعية (تعديل المواد ضمن كل صف في العمود المجاور) -->
                     @can('teacher-assignment-manage-subjects')
-                    <div class="col-xl-6">
-                        <div class="card" id="subjectSection">
+                    @php
+                        $subjectsNestedUnderClasses = $canManageClasses && $allClasses->count() > 0;
+                    @endphp
+                    <div class="{{ $subjectsNestedUnderClasses ? 'col-xl-6' : 'col-12' }}">
+                        <div class="card h-100" id="{{ $subjectsNestedUnderClasses ? 'assignmentsOverviewColumn' : 'subjectSection' }}">
                             <div class="card-header">
                                 <h6 class="mb-0">
-                                    <i class="bi bi-book me-2"></i>
-                                    المواد المخصصة
+                                    <i class="bi bi-journal-check me-2"></i>
+                                    @if($subjectsNestedUnderClasses)
+                                        لمحة المواد المخصصة والأدوات الجماعية
+                                    @else
+                                        المواد المخصصة
+                                    @endif
                                 </h6>
-                                <small class="text-muted">تحديد المواد التي يمكن للمعلم الوصول إليها مباشرة</small>
+                                <small class="text-muted">
+                                    @if($subjectsNestedUnderClasses)
+                                        تُعدّل المواد تحت كل صف في «الصفوف المخصصة» بعد تحديد الصف؛ هنا ملخص التخصيص والفصل الجماعي. يُحفظ التخصيص <strong>تلقائياً</strong> بعد التعديل.
+                                    @else
+                                        يُحفظ التخصيص <strong>تلقائياً</strong> بعد التعديل. يمكنك أيضاً الضغط على <strong>حفظ التغييرات</strong> في الأسفل.
+                                    @endif
+                                </small>
                             </div>
                             <div class="card-body">
                                 @if($allSubjects->count() > 0)
@@ -202,72 +207,47 @@
                                         <div class="row g-2">
                                             <div class="col-md-6">
                                                 <button type="button" class="btn btn-sm btn-outline-primary w-100" onclick="selectAllSubjects()">
-                                                    <i class="bi bi-check-all me-1"></i> تحديد الكل
+                                                    <i class="bi bi-check-all me-1"></i> تحديد الكل (الظاهر فقط)
                                                 </button>
                                             </div>
                                             <div class="col-md-6">
                                                 <button type="button" class="btn btn-sm btn-outline-secondary w-100" onclick="deselectAllSubjects()">
-                                                    <i class="bi bi-x-lg me-1"></i> إلغاء تحديد الكل
+                                                    <i class="bi bi-x-lg me-1"></i> إلغاء تحديد الكل (الظاهر فقط)
                                                 </button>
                                             </div>
                                         </div>
+                                        <div class="d-flex flex-wrap gap-2 align-items-center mt-2">
+                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="detachBulkPickedSubjects()">
+                                                <i class="bi bi-collection-x me-1"></i> فصل المواد المحددة للفصل الجماعي
+                                            </button>
+                                            <span class="small text-muted">فعّل خانة «للفصل الجماعي» بجانب المادة ثم اضغط الزر أعلاه.</span>
+                                        </div>
                                     </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">فلترة حسب الصف:</label>
-                                        <select class="form-select form-select-sm" id="classFilter" onchange="filterByClass()">
-                                            <option value="">كل الصفوف</option>
-                                            @foreach($allClasses as $class)
-                                                <option value="{{ $class->id }}">{{ $class->name }}</option>
-                                            @endforeach
-                                        </select>
+                                    <div id="noSelectedClassesHint" class="alert alert-warning py-2 small mb-3 d-none">
+                                        حدد صفاً واحداً أو أكثر من عمود «الصفوف المخصصة» لتظهر مواد الصف تحته وتتمكن من تعديل الصفحات.
                                     </div>
-                                    <div class="list-group" style="max-height: 500px; overflow-y: auto;">
-                                        @foreach($allSubjects as $subject)
-                                            @php
-                                                $assignedSubject = $assignedSubjects->firstWhere('id', $subject->id);
-                                                $currentRequiredPages = $assignedSubject?->pivot?->required_pages ?? '';
-                                            @endphp
-                                            <div class="list-group-item" data-class-id="{{ $subject->class_id ?? '' }}">
-                                                <div class="form-check d-flex align-items-center flex-wrap gap-2">
-                                                    <input class="form-check-input subject-checkbox" 
-                                                           type="checkbox" 
-                                                           name="subjects[]" 
-                                                           value="{{ $subject->id }}" 
-                                                           id="subject_{{ $subject->id }}"
-                                                           {{ $assignedSubjects->contains('id', $subject->id) ? 'checked' : '' }}>
-                                                    <label class="form-check-label flex-grow-1" for="subject_{{ $subject->id }}">
-                                                        <div class="d-flex justify-content-between align-items-center">
-                                                            <div>
-                                                                <strong>{{ $subject->name }}</strong>
-                                                                @if($subject->schoolClass)
-                                                                    <br>
-                                                                    <small class="text-muted">
-                                                                        <i class="bi bi-building me-1"></i>
-                                                                        {{ $subject->schoolClass->name }}
-                                                                        @if($subject->schoolClass->stage)
-                                                                            - {{ $subject->schoolClass->stage->name }}
-                                                                        @endif
-                                                                    </small>
-                                                                @endif
-                                                            </div>
-                                                            @if($assignedSubjects->contains('id', $subject->id))
-                                                                <span class="badge bg-success">مخصص</span>
-                                                            @endif
-                                                        </div>
-                                                    </label>
-                                                    <div class="d-flex align-items-center gap-1" style="min-width: 140px;">
-                                                        <label class="form-label mb-0 small text-muted">صفحات مطلوبة:</label>
-                                                        <input type="number" 
-                                                               name="required_pages[{{ $subject->id }}]" 
-                                                               class="form-control form-control-sm" 
-                                                               min="0" 
-                                                               placeholder="0" 
-                                                               value="{{ $currentRequiredPages !== '' ? (int)$currentRequiredPages : '' }}">
-                                                    </div>
-                                                </div>
+                                    @if($subjectsNestedUnderClasses)
+                                        <div class="border rounded p-3 bg-light" id="assignedSubjectsSidePanel" style="min-height: 200px;">
+                                            <div id="assignedSubjectsSidePanelInner">
+                                                @include('admin.pages.teachers.partials.assignments-sync.side-panel-inner', ['assignedSubjects' => $assignedSubjects])
                                             </div>
-                                        @endforeach
-                                    </div>
+                                        </div>
+                                    @else
+                                        <div class="list-group subject-main-list mb-3" style="max-height: 480px; overflow-y: auto;">
+                                            @foreach($allSubjects as $subject)
+                                                @include('admin.pages.teachers.partials.assignments-sync.subject-edit-row', [
+                                                    'subject' => $subject,
+                                                    'assignedSubjects' => $assignedSubjects,
+                                                    'compactClassLabel' => false,
+                                                ])
+                                            @endforeach
+                                        </div>
+                                        <div class="border rounded p-3 bg-light" id="assignedSubjectsSidePanel" style="min-height: 200px;">
+                                            <div id="assignedSubjectsSidePanelInner">
+                                                @include('admin.pages.teachers.partials.assignments-sync.side-panel-inner', ['assignedSubjects' => $assignedSubjects])
+                                            </div>
+                                        </div>
+                                    @endif
                                 @else
                                     <p class="text-muted text-center py-4">لا توجد مواد متاحة</p>
                                 @endif
@@ -276,6 +256,26 @@
                     </div>
                     @endcan
                 </div>
+
+                @can('teacher-assignment-manage-subjects')
+                @if($allSubjects->count() > 0)
+                <div class="card border shadow-sm mt-3" id="indepSubjectAssignCard">
+                    <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <div>
+                            <h6 class="mb-0 fw-semibold"><i class="bi bi-sliders me-2"></i>الصف الثاني — تخصيص مواد من صفوف بشكل مخصص</h6>
+                            <small class="text-muted">هنا تختار <strong>صفاً واحداً للفلترة فقط</strong> لعرض المواد غير المخصصة أو المخصصة لهذا الصف وإضافة مادة دون تغيير تخصيص باقي الصفوف من هذا القسم.</small>
+                        </div>
+                    </div>
+                    <div class="card-body" id="indepSubjectAssignCardBody">
+                        @include('admin.pages.teachers.partials.assignments-sync.indep-card-body', [
+                            'allClasses' => $allClasses,
+                            'allSubjects' => $allSubjects,
+                            'assignedSubjects' => $assignedSubjects,
+                        ])
+                    </div>
+                </div>
+                @endif
+                @endcan
 
                 @cannot('teacher-assignment-manage-classes')
                     @cannot('teacher-assignment-manage-subjects')
@@ -301,13 +301,13 @@
                                     <div class="col-md-4">
                                         <p class="mb-1">
                                             <strong>الصفوف المخصصة حالياً:</strong> 
-                                            <span class="badge bg-primary">{{ $assignedClasses->count() }}</span>
+                                            <span class="badge bg-primary" id="teacherAssignmentsFooterClassesCount">{{ $assignedClasses->count() }}</span>
                                         </p>
                                     </div>
                                     <div class="col-md-4">
                                         <p class="mb-1">
                                             <strong>المواد المخصصة حالياً:</strong> 
-                                            <span class="badge bg-primary">{{ $assignedSubjects->count() }}</span>
+                                            <span class="badge bg-primary" id="teacherAssignmentsFooterSubjectsCount">{{ $assignedSubjects->count() }}</span>
                                         </p>
                                     </div>
                                     <div class="col-md-4 mt-2">
@@ -323,7 +323,8 @@
                 <!-- زر الحفظ -->
                 <div class="row mt-3">
                     <div class="col-12">
-                        <div class="d-flex justify-content-end gap-2">
+                        <div class="d-flex justify-content-end gap-2 align-items-center flex-wrap">
+                            <span id="teacherAssignmentsSyncStatus" class="small text-muted me-auto" aria-live="polite"></span>
                             <a href="{{ route('admin.teachers.assignments.index') }}" class="btn btn-secondary">
                                 <i class="bi bi-x-lg me-1"></i> إلغاء
                             </a>
@@ -346,34 +347,181 @@
 
 @section('js')
 <script>
+    function hasClassCheckboxes() {
+        return document.querySelectorAll('.class-checkbox').length > 0;
+    }
+
+    function getSelectedClassIds() {
+        return Array.from(document.querySelectorAll('.class-checkbox:checked')).map(function(cb) {
+            return String(cb.value);
+        });
+    }
+
+    function filterSubjectsBySelectedClasses() {
+        const classIds = getSelectedClassIds();
+        const hint = document.getElementById('noSelectedClassesHint');
+
+        document.querySelectorAll('.class-nested-subjects').forEach(function(wrap) {
+            if (!hasClassCheckboxes()) {
+                wrap.style.display = '';
+                return;
+            }
+            const nid = String(wrap.getAttribute('data-nested-for-class') || '');
+            if (classIds.length === 0) {
+                wrap.style.display = 'none';
+            } else if (classIds.indexOf(nid) !== -1) {
+                wrap.style.display = '';
+            } else {
+                wrap.style.display = 'none';
+            }
+        });
+
+        if (!hasClassCheckboxes()) {
+            document.querySelectorAll('.subject-main-row').forEach(function(row) {
+                row.style.display = '';
+                const scb = row.querySelector('.subject-checkbox');
+                if (scb) scb.disabled = false;
+                const pagesInp = row.querySelector('.subject-pages-input');
+                if (pagesInp) pagesInp.disabled = false;
+            });
+            document.querySelectorAll('.summary-assigned-item').forEach(function(el) {
+                el.classList.remove('d-none');
+            });
+            if (hint) hint.classList.add('d-none');
+            return;
+        }
+
+        document.querySelectorAll('.subject-main-row').forEach(function(row) {
+            const cid = String(row.getAttribute('data-class-id') || '');
+            const scb = row.querySelector('.subject-checkbox');
+            let visible;
+            if (classIds.length === 0) {
+                const keep = scb && scb.checked;
+                row.style.display = keep ? '' : 'none';
+                visible = !!keep;
+            } else if (classIds.indexOf(cid) !== -1) {
+                row.style.display = '';
+                visible = true;
+            } else {
+                row.style.display = 'none';
+                visible = false;
+            }
+            if (scb) {
+                if (classIds.length === 0) {
+                    scb.disabled = !visible;
+                } else {
+                    scb.disabled = !visible && !scb.checked;
+                }
+            }
+            const pagesInp = row.querySelector('.subject-pages-input');
+            if (pagesInp) {
+                if (classIds.length === 0) {
+                    pagesInp.disabled = !visible;
+                } else {
+                    pagesInp.disabled = !visible && !(scb && scb.checked);
+                }
+            }
+        });
+
+        document.querySelectorAll('.summary-assigned-item').forEach(function(el) {
+            const cid = String(el.getAttribute('data-summary-class-id') || '');
+            if (classIds.length === 0) {
+                el.classList.add('d-none');
+            } else if (classIds.indexOf(cid) !== -1) {
+                el.classList.remove('d-none');
+            } else {
+                el.classList.add('d-none');
+            }
+        });
+
+        if (hint) {
+            if (classIds.length === 0) {
+                hint.classList.remove('d-none');
+            } else {
+                hint.classList.add('d-none');
+            }
+        }
+    }
+
+    function syncAllSubjectsWithClasses() {
+        document.querySelectorAll('.class-checkbox').forEach(function(classCb) {
+            const classId = String(classCb.value);
+            const on = classCb.checked;
+            document.querySelectorAll('.subject-main-row[data-class-id="' + classId + '"]').forEach(function(row) {
+                const scb = row.querySelector('.subject-checkbox');
+                if (scb) {
+                    scb.disabled = false;
+                    scb.checked = on;
+                }
+            });
+        });
+    }
+
+    function bindClassCheckboxesToSubjects() {
+        document.querySelectorAll('.class-checkbox').forEach(function(classCb) {
+            classCb.addEventListener('change', function() {
+                const classId = String(this.value);
+                const on = this.checked;
+                document.querySelectorAll('.subject-main-row[data-class-id="' + classId + '"]').forEach(function(row) {
+                    const scb = row.querySelector('.subject-checkbox');
+                    if (scb) {
+                        scb.disabled = false;
+                        scb.checked = on;
+                    }
+                });
+                filterSubjectsBySelectedClasses();
+            });
+        });
+    }
+
     function selectAllClasses() {
         document.querySelectorAll('.class-checkbox').forEach(function(checkbox) {
             checkbox.checked = true;
         });
+        syncAllSubjectsWithClasses();
+        filterSubjectsBySelectedClasses();
+        if (window.scheduleTeacherAssignmentsAutoSave) {
+            window.scheduleTeacherAssignmentsAutoSave();
+        }
     }
 
     function deselectAllClasses() {
         document.querySelectorAll('.class-checkbox').forEach(function(checkbox) {
             checkbox.checked = false;
         });
+        syncAllSubjectsWithClasses();
+        filterSubjectsBySelectedClasses();
+        if (window.scheduleTeacherAssignmentsAutoSave) {
+            window.scheduleTeacherAssignmentsAutoSave();
+        }
     }
 
     function selectAllSubjects() {
-        document.querySelectorAll('.subject-checkbox').forEach(function(checkbox) {
-            checkbox.checked = true;
+        document.querySelectorAll('.subject-main-row').forEach(function(row) {
+            if (row.style.display === 'none') return;
+            const cb = row.querySelector('.subject-checkbox');
+            if (cb) cb.checked = true;
         });
+        if (window.scheduleTeacherAssignmentsAutoSave) {
+            window.scheduleTeacherAssignmentsAutoSave();
+        }
     }
 
     function deselectAllSubjects() {
-        document.querySelectorAll('.subject-checkbox').forEach(function(checkbox) {
-            checkbox.checked = false;
+        document.querySelectorAll('.subject-main-row').forEach(function(row) {
+            if (row.style.display === 'none') return;
+            const cb = row.querySelector('.subject-checkbox');
+            if (cb) cb.checked = false;
         });
+        if (window.scheduleTeacherAssignmentsAutoSave) {
+            window.scheduleTeacherAssignmentsAutoSave();
+        }
     }
 
     function filterByStage() {
         const stageId = document.getElementById('stageFilter').value;
         const classItems = document.querySelectorAll('#classSection .list-group-item');
-        
+
         classItems.forEach(item => {
             const classStageId = item.getAttribute('data-stage-id');
             if (!stageId || classStageId === stageId) {
@@ -384,18 +532,381 @@
         });
     }
 
-    function filterByClass() {
-        const classId = document.getElementById('classFilter').value;
-        const subjectItems = document.querySelectorAll('#subjectSection .list-group-item');
-        
-        subjectItems.forEach(item => {
+    function updateIndepSectionVisibility() {
+        const indep = document.getElementById('indepClassFilter');
+        const classId = indep ? indep.value : '';
+        const prompt = document.getElementById('indepNeedClassPrompt');
+        const listsRow = document.getElementById('indepListsRow');
+        if (!prompt || !listsRow) return;
+        if (!classId) {
+            prompt.classList.remove('d-none');
+            listsRow.classList.add('d-none');
+            return;
+        }
+        prompt.classList.add('d-none');
+        listsRow.classList.remove('d-none');
+    }
+
+    function filterIndepPanels() {
+        updateIndepSectionVisibility();
+        const classId = document.getElementById('indepClassFilter') ? document.getElementById('indepClassFilter').value : '';
+        if (!classId) {
+            return;
+        }
+        document.querySelectorAll('.indep-unassigned-row').forEach(function(item) {
             const subjectClassId = item.getAttribute('data-class-id');
-            if (!classId || subjectClassId === classId) {
+            if (String(subjectClassId) === String(classId)) {
                 item.style.display = '';
             } else {
                 item.style.display = 'none';
             }
         });
+        document.querySelectorAll('.indep-assigned-hint').forEach(function(el) {
+            const cid = el.getAttribute('data-indep-class-id');
+            if (String(cid) === String(classId)) {
+                el.style.display = '';
+            } else {
+                el.style.display = 'none';
+            }
+        });
     }
+
+    function syncIndepClassFilterFromIndep() {
+        filterIndepPanels();
+    }
+
+    function detachClassFromTeacher(classId, withSubjects) {
+        const msg = withSubjects
+            ? 'فصل هذا الصف عن المعلم وإزالة تخصيص جميع مواد هذا الصف؟'
+            : 'فصل هذا الصف عن المعلم؟';
+        if (!confirm(msg)) {
+            return;
+        }
+        const ccb = document.getElementById('class_' + classId);
+        if (ccb) {
+            ccb.checked = false;
+            ccb.dispatchEvent(new Event('change', { bubbles: true }));
+        } else if (withSubjects) {
+            document.querySelectorAll('.subject-main-row[data-class-id="' + String(classId) + '"]').forEach(function(row) {
+                const scb = row.querySelector('.subject-checkbox');
+                if (scb) {
+                    scb.disabled = false;
+                    scb.checked = false;
+                }
+                const inp = row.querySelector('.subject-pages-input');
+                if (inp) {
+                    inp.value = '';
+                }
+                const bp = row.querySelector('.subject-bulk-pick');
+                if (bp) {
+                    bp.checked = false;
+                }
+            });
+        }
+        filterSubjectsBySelectedClasses();
+    }
+
+    function detachSubject(subjectId) {
+        if (!confirm('فصل هذه المادة عن المعلم؟')) {
+            return;
+        }
+        const cb = document.getElementById('subject_' + subjectId);
+        if (cb) {
+            cb.disabled = false;
+            cb.checked = false;
+            cb.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        const inp = document.querySelector('.subject-pages-input[data-subject-id="' + subjectId + '"]');
+        if (inp) {
+            inp.value = '';
+        }
+        const bp = document.getElementById('bulk_pick_' + subjectId);
+        if (bp) {
+            bp.checked = false;
+        }
+        filterSubjectsBySelectedClasses();
+    }
+
+    function detachBulkPickedSubjects() {
+        let count = 0;
+        document.querySelectorAll('.subject-main-row').forEach(function(row) {
+            if (row.style.display === 'none') {
+                return;
+            }
+            const pick = row.querySelector('.subject-bulk-pick');
+            if (!pick || !pick.checked) {
+                return;
+            }
+            count++;
+            const cb = row.querySelector('.subject-checkbox');
+            if (cb) {
+                cb.disabled = false;
+                cb.checked = false;
+                cb.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            const sid = row.getAttribute('data-subject-id');
+            if (sid) {
+                const inp = document.querySelector('.subject-pages-input[data-subject-id="' + sid + '"]');
+                if (inp) {
+                    inp.value = '';
+                }
+            }
+            pick.checked = false;
+        });
+        if (count === 0) {
+            alert('لم يُحدد أي مادة. فعّل خانة «للفصل الجماعي» بجانب المواد ثم أعد المحاولة.');
+            return;
+        }
+        filterSubjectsBySelectedClasses();
+    }
+
+    function focusClassSubjects(classId) {
+        const cb = document.getElementById('class_' + classId);
+        if (cb) {
+            cb.checked = true;
+            cb.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        const indep = document.getElementById('indepClassFilter');
+        if (indep) {
+            indep.value = String(classId);
+            filterIndepPanels();
+        }
+        const nest = document.getElementById('nestedSubjectsClass_' + classId);
+        if (nest) {
+            nest.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            const overview = document.getElementById('assignmentsOverviewColumn');
+            const legacy = document.getElementById('subjectSection');
+            const sec = overview || legacy;
+            if (sec) {
+                sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    }
+
+    function assignSubjectFromHelper(subjectId) {
+        const cb = document.getElementById('subject_' + subjectId);
+        if (cb) {
+            cb.disabled = false;
+            cb.checked = true;
+        }
+        const wrap = document.getElementById('subject_row_wrap_' + subjectId);
+        if (wrap) {
+            wrap.style.display = '';
+        }
+        filterSubjectsBySelectedClasses();
+        if (cb) {
+            cb.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (wrap) {
+            wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        if (window.flushTeacherAssignmentsJsonSave) {
+            window.flushTeacherAssignmentsJsonSave();
+        } else if (window.scheduleTeacherAssignmentsAutoSave) {
+            window.scheduleTeacherAssignmentsAutoSave();
+        }
+    }
+
+    (function() {
+        let debounceTimer = null;
+        let inflight = false;
+        let queued = false;
+
+        function csrfToken() {
+            const m = document.querySelector('meta[name="csrf-token"]');
+            return m ? m.getAttribute('content') : '';
+        }
+
+        function setSyncStatus(text, isError) {
+            const el = document.getElementById('teacherAssignmentsSyncStatus');
+            if (!el) {
+                return;
+            }
+            el.textContent = text || '';
+            el.classList.toggle('text-danger', !!isError);
+            el.classList.toggle('text-muted', !isError);
+        }
+
+        function applyAssignmentsSyncResponse(data) {
+            if (data.html && data.html.progress_card) {
+                const old = document.getElementById('teacherAssignmentsProgressCard');
+                if (old) {
+                    old.insertAdjacentHTML('afterend', data.html.progress_card);
+                    old.remove();
+                }
+            }
+            const sideInner = document.getElementById('assignedSubjectsSidePanelInner');
+            if (sideInner && data.html && data.html.side_panel) {
+                sideInner.innerHTML = data.html.side_panel;
+            }
+            const indepBody = document.getElementById('indepSubjectAssignCardBody');
+            if (indepBody && data.html && data.html.indep_body) {
+                indepBody.innerHTML = data.html.indep_body;
+            }
+
+            const classSet = new Set((data.assigned_class_ids || []).map(Number));
+            const subjectSet = new Set((data.assigned_subject_ids || []).map(Number));
+            const rp = data.required_pages || {};
+
+            document.querySelectorAll('.class-checkbox').forEach(function(cb) {
+                const id = parseInt(cb.value, 10);
+                const assigned = classSet.has(id);
+                cb.checked = assigned;
+                const item = cb.closest('.list-group-item');
+                if (!item) {
+                    return;
+                }
+                const badge = item.querySelector('.class-assigned-badge');
+                if (badge) {
+                    badge.classList.toggle('d-none', !assigned);
+                }
+                const detach = item.querySelector('.class-detach-actions');
+                if (detach) {
+                    detach.classList.toggle('d-none', !assigned);
+                }
+            });
+
+            document.querySelectorAll('.subject-checkbox').forEach(function(cb) {
+                const id = parseInt(cb.value, 10);
+                const assigned = subjectSet.has(id);
+                cb.checked = assigned;
+                const row = document.getElementById('subject_row_wrap_' + id);
+                if (!row) {
+                    return;
+                }
+                const badge = row.querySelector('.subject-assigned-badge');
+                if (badge) {
+                    badge.classList.toggle('d-none', !assigned);
+                }
+                const inp = row.querySelector('.subject-pages-input');
+                if (inp) {
+                    const v = rp[id];
+                    inp.value = (v !== null && v !== undefined && v !== '') ? String(v) : '';
+                }
+            });
+
+            const fc = document.getElementById('teacherAssignmentsFooterClassesCount');
+            if (fc && typeof data.assigned_classes_count === 'number') {
+                fc.textContent = String(data.assigned_classes_count);
+            }
+            const fs = document.getElementById('teacherAssignmentsFooterSubjectsCount');
+            if (fs && typeof data.assigned_subjects_count === 'number') {
+                fs.textContent = String(data.assigned_subjects_count);
+            }
+
+            filterSubjectsBySelectedClasses();
+            filterIndepPanels();
+        }
+
+        function runTeacherAssignmentsJsonSave() {
+            const form = document.getElementById('teacherAssignmentsForm');
+            if (!form) {
+                return;
+            }
+            if (inflight) {
+                queued = true;
+                return;
+            }
+            inflight = true;
+            setSyncStatus('جاري الحفظ…');
+            const fd = new FormData(form);
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken()
+                },
+                body: fd,
+                credentials: 'same-origin'
+            }).then(function(r) {
+                const ct = r.headers.get('content-type') || '';
+                if (ct.indexOf('application/json') !== -1) {
+                    return r.json().then(function(json) {
+                        return { ok: r.ok, status: r.status, json: json };
+                    });
+                }
+                return r.text().then(function(t) {
+                    return { ok: r.ok, status: r.status, json: { message: t } };
+                });
+            }).then(function(res) {
+                inflight = false;
+                if (res.ok && res.json && res.json.ok) {
+                    applyAssignmentsSyncResponse(res.json);
+                    setSyncStatus('تم الحفظ');
+                    setTimeout(function() {
+                        setSyncStatus('');
+                    }, 2200);
+                } else {
+                    let msg = 'تعذر الحفظ';
+                    if (res.json) {
+                        if (res.json.message) {
+                            msg = res.json.message;
+                        } else if (res.json.errors) {
+                            msg = 'تحقق من الحقول';
+                        }
+                    }
+                    setSyncStatus(msg, true);
+                }
+                if (queued) {
+                    queued = false;
+                    window.scheduleTeacherAssignmentsAutoSave();
+                }
+            }).catch(function() {
+                inflight = false;
+                setSyncStatus('خطأ في الاتصال', true);
+                if (queued) {
+                    queued = false;
+                    window.scheduleTeacherAssignmentsAutoSave();
+                }
+            });
+        }
+
+        window.scheduleTeacherAssignmentsAutoSave = function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(runTeacherAssignmentsJsonSave, 420);
+        };
+
+        window.flushTeacherAssignmentsJsonSave = function() {
+            clearTimeout(debounceTimer);
+            runTeacherAssignmentsJsonSave();
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('teacherAssignmentsForm');
+            if (!form) {
+                return;
+            }
+            form.addEventListener('change', function(e) {
+                if (e.target.matches('.class-checkbox') || e.target.matches('.subject-checkbox')) {
+                    setTimeout(function() {
+                        if (window.scheduleTeacherAssignmentsAutoSave) {
+                            window.scheduleTeacherAssignmentsAutoSave();
+                        }
+                    }, 0);
+                }
+            });
+            form.addEventListener('input', function(e) {
+                if (e.target.matches('.subject-pages-input') || e.target.matches('input[name="weekly_lessons_target"]')) {
+                    if (window.scheduleTeacherAssignmentsAutoSave) {
+                        window.scheduleTeacherAssignmentsAutoSave();
+                    }
+                }
+            });
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                clearTimeout(debounceTimer);
+                runTeacherAssignmentsJsonSave();
+            });
+        });
+    })();
+
+    document.addEventListener('DOMContentLoaded', function() {
+        bindClassCheckboxesToSubjects();
+        syncAllSubjectsWithClasses();
+        filterSubjectsBySelectedClasses();
+        filterIndepPanels();
+    });
 </script>
 @stop

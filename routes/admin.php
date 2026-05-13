@@ -586,6 +586,16 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('teachers.assignments');
         Route::put('teachers/{teacher}/assignments', [\App\Http\Controllers\Admin\TeacherAssignmentController::class, 'update'])
             ->name('teachers.assignments.update');
+        Route::post('teachers/{teacher}/assignments/classes', [\App\Http\Controllers\Admin\TeacherAssignmentController::class, 'attachClass'])
+            ->name('teachers.assignments.attach-class');
+        Route::delete('teachers/{teacher}/assignments/classes/{schoolClass}', [\App\Http\Controllers\Admin\TeacherAssignmentController::class, 'detachClass'])
+            ->name('teachers.assignments.detach-class');
+        Route::post('teachers/{teacher}/assignments/subjects', [\App\Http\Controllers\Admin\TeacherAssignmentController::class, 'attachSubject'])
+            ->name('teachers.assignments.attach-subject');
+        Route::delete('teachers/{teacher}/assignments/subjects/{subject}', [\App\Http\Controllers\Admin\TeacherAssignmentController::class, 'detachSubject'])
+            ->name('teachers.assignments.detach-subject');
+        Route::patch('teachers/{teacher}/assignments/subjects/{subject}/required-pages', [\App\Http\Controllers\Admin\TeacherAssignmentController::class, 'patchSubjectRequiredPages'])
+            ->name('teachers.assignments.subject-required-pages');
 
         // تخصيص المشرفين
         Route::get('supervisors/assignments/subjects-by-class', [\App\Http\Controllers\Admin\SupervisorAssignmentController::class, 'getSubjectsByClass'])
