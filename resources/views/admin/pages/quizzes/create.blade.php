@@ -130,6 +130,13 @@
                                 </div>
                                 <input type="hidden" name="lesson_id" value="{{ $selectedLesson->id }}">
                                 <input type="hidden" name="scope" value="lesson">
+                            @elseif(!empty($isFromSection) && $selectedSection)
+                                <div class="alert alert-info py-2 mb-2">
+                                    <strong>اختبار على مستوى القسم</strong> (غير مرتبط بدرس محدد).<br>
+                                    القسم: <strong>{{ $selectedSection->title }}</strong>
+                                </div>
+                                <input type="hidden" name="section_id" value="{{ $selectedSection->id }}">
+                                <input type="hidden" name="scope" value="section">
                             @elseif($isFromSubjectOrUnit && $selectedUnit)
                                 {{-- إذا تم فتح النموذج من وحدة --}}
                                 <div class="alert alert-info py-2 mb-2">

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AIQuestionGeneration;
+use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\Lesson;
 use App\Models\AIModel;
@@ -12,6 +13,7 @@ use App\Services\AI\AIModelService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class AIQuestionGenerationController extends Controller
 {
@@ -63,36 +65,151 @@ class AIQuestionGenerationController extends Controller
      */
     public function createAdvanced(Request $request)
     {
-        $subjects = Subject::active()->ordered()->get();
+        $schoolClasses = SchoolClass::active()->ordered()->get();
+        $subjects = collect();
         $lessons = collect();
         $models = $this->modelService->getAvailableModels('question_generation');
         $difficulties = AIQuestionGeneration::DIFFICULTIES;
         $quiz = null;
+        $prefillClassId = old('class_id');
+        $prefillSubjectId = old('subject_id');
 
-        // التحقق من وجود quiz_id (اختياري)
         if ($request->filled('quiz_id')) {
-            $quiz = \App\Models\Quiz::find($request->quiz_id);
-            if ($quiz && $request->filled('subject_id')) {
-                // استخدام subject_id من الاختبار إذا كان متوفراً
-                $lessons = Lesson::whereHas('unit.section', function($q) use ($quiz) {
-                    $q->where('subject_id', $quiz->subject_id);
-                })->active()->get();
+            $quiz = \App\Models\Quiz::with('subject')->find($request->quiz_id);
+            if ($quiz && $quiz->subject) {
+                $prefillClassId = $prefillClassId ?: $quiz->subject->class_id;
+                $prefillSubjectId = $prefillSubjectId ?: $quiz->subject_id;
             }
         }
 
-        if ($request->filled('subject_id') && !$quiz) {
-            $lessons = Lesson::whereHas('unit.section', function($q) use ($request) {
-                $q->where('subject_id', $request->subject_id);
+        if (! $prefillClassId && $prefillSubjectId) {
+            $prefillClassId = Subject::whereKey($prefillSubjectId)->value('class_id');
+        }
+
+        if ($prefillClassId) {
+            $subjects = Subject::where('class_id', $prefillClassId)->active()->ordered()->get();
+        }
+
+        if ($prefillSubjectId) {
+            $lessons = Lesson::whereHas('unit.section', function ($q) use ($prefillSubjectId) {
+                $q->where('subject_id', $prefillSubjectId);
             })->active()->get();
         }
 
         return view('admin.pages.ai.question-generations.create-advanced', compact(
+            'schoolClasses',
             'subjects',
             'lessons',
             'models',
             'difficulties',
-            'quiz'
+            'quiz',
+            'prefillClassId',
+            'prefillSubjectId'
         ));
+    }
+
+    /**
+     * توليد أسئلة من صورة (تحليل بصري عميق).
+     */
+    public function createFromImage()
+    {
+        $models = $this->modelService->getAvailableModels('question_generation');
+        $difficulties = AIQuestionGeneration::DIFFICULTIES;
+
+        return view('admin.pages.ai.question-generations.create-from-image', compact('models', 'difficulties'));
+    }
+
+    /**
+     * حفظ طلب توليد من صورة.
+     */
+    public function storeFromImage(Request $request)
+    {
+        $validQuestionTypes = array_filter(array_keys(AIQuestionGeneration::QUESTION_TYPES), fn ($k) => $k !== 'mixed');
+
+        $validated = $request->validate([
+            'source_image' => 'required|image|mimes:jpeg,jpg,png,webp,gif|max:8192',
+            'instructions' => 'nullable|string|max:5000',
+            'question_types' => 'required|array|min:1',
+            'question_types.*' => 'in:'.implode(',', $validQuestionTypes),
+            'number_of_questions' => 'required|integer|min:1|max:50',
+            'difficulty_level' => 'required|in:'.implode(',', array_keys(AIQuestionGeneration::DIFFICULTIES)),
+            'ai_model_id' => 'nullable|exists:ai_models,id',
+        ], [
+            'source_image.required' => 'يرجى اختيار صورة',
+            'source_image.image' => 'الملف يجب أن يكون صورة',
+            'question_types.required' => 'يجب اختيار نوع واحد على الأقل',
+        ]);
+
+        try {
+            $model = $validated['ai_model_id']
+                ? AIModel::find($validated['ai_model_id'])
+                : null;
+
+            $generation = $this->generationService->generateFromUploadedImage($request->file('source_image'), [
+                'user' => Auth::user(),
+                'model' => $model,
+                'instructions' => $validated['instructions'] ?? '',
+                'question_types' => $validated['question_types'],
+                'number_of_questions' => $validated['number_of_questions'],
+                'difficulty_level' => $validated['difficulty_level'],
+            ]);
+
+            return redirect()->route('admin.ai.question-generations.show', $generation)
+                ->with('success', 'تم تحليل الصورة وتوليد الأسئلة بنجاح.');
+        } catch (\Exception $e) {
+            Log::error('storeFromImage: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
+            return redirect()->back()
+                ->with('error', 'حدث خطأ: '.$e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * عرض الصورة المصدرية (للطلبات من نوع صورة).
+     */
+    public function sourceImage(AIQuestionGeneration $generation)
+    {
+        if ($generation->source_type !== 'image' || ! $generation->source_image_path) {
+            abort(404);
+        }
+
+        if (! Storage::disk('local')->exists($generation->source_image_path)) {
+            abort(404);
+        }
+
+        $abs = Storage::disk('local')->path($generation->source_image_path);
+
+        return response()->file($abs);
+    }
+
+    /**
+     * مواد الصف (JSON) لتوليد الأسئلة — فلترة AJAX.
+     */
+    public function ajaxSubjectsByClass(SchoolClass $schoolClass)
+    {
+        $subjects = Subject::where('class_id', $schoolClass->id)
+            ->active()
+            ->ordered()
+            ->get(['id', 'name']);
+
+        return response()->json($subjects);
+    }
+
+    /**
+     * دروس المادة (JSON) — مع التحقق الاختياري من تطابق الصف.
+     */
+    public function ajaxLessonsBySubject(Request $request, Subject $subject)
+    {
+        if ($request->filled('class_id') && (int) $request->query('class_id') !== (int) $subject->class_id) {
+            abort(404);
+        }
+
+        $lessons = Lesson::whereHas('unit.section', function ($q) use ($subject) {
+            $q->where('subject_id', $subject->id);
+        })->active()->get(['id', 'title']);
+
+        return response()->json($lessons);
     }
 
     /**

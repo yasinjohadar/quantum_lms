@@ -17,6 +17,7 @@ class AIQuestionGeneration extends Model
         'lesson_id',
         'source_type',
         'source_content',
+        'source_image_path',
         'prompt',
         'question_type',
         'question_types',
@@ -45,6 +46,7 @@ class AIQuestionGeneration extends Model
         'lesson_content' => 'محتوى الدرس',
         'manual_text' => 'نص يدوي',
         'topic' => 'موضوع',
+        'image' => 'صورة (تحليل بصري)',
     ];
 
     /**

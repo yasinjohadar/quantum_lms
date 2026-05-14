@@ -18,6 +18,9 @@
                 <a href="{{ route('admin.ai.question-generations.create-advanced') }}" class="btn btn-success btn-sm">
                     <i class="fas fa-magic me-1"></i> توليد متقدم
                 </a>
+                <a href="{{ route('admin.ai.question-generations.create-from-image') }}" class="btn btn-info btn-sm text-white">
+                    <i class="fas fa-image me-1"></i> من صورة
+                </a>
             </div>
         </div>
 

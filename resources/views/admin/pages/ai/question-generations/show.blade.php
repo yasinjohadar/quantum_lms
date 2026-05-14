@@ -80,6 +80,22 @@
                                 <td class="text-muted">نوع المصدر:</td>
                                 <td>{{ \App\Models\AIQuestionGeneration::SOURCE_TYPES[$generation->source_type] ?? $generation->source_type }}</td>
                             </tr>
+                            @if($generation->source_type === 'image' && $generation->source_image_path)
+                            <tr>
+                                <td class="text-muted">الصورة:</td>
+                                <td>
+                                    <a href="{{ route('admin.ai.question-generations.source-image', $generation) }}" target="_blank" rel="noopener">
+                                        <img src="{{ route('admin.ai.question-generations.source-image', $generation) }}" alt="مصدر الصورة" class="img-fluid rounded border" style="max-height: 220px;">
+                                    </a>
+                                </td>
+                            </tr>
+                            @endif
+                            @if($generation->source_type === 'image' && $generation->source_content)
+                            <tr>
+                                <td class="text-muted">تعليمات إضافية:</td>
+                                <td><small>{{ $generation->source_content }}</small></td>
+                            </tr>
+                            @endif
                             <tr>
                                 <td class="text-muted">نوع الأسئلة:</td>
                                 <td>

@@ -36,14 +36,26 @@ class GoogleProviderService extends AIProviderService
             $endpoint = '/models/' . $modelKey . ':generateContent';
         }
 
-        // تحويل تنسيق الرسائل إلى Google Gemini
-        $contents = [];
+        // تحويل تنسيق الرسائل إلى Google Gemini (نص فقط أو رؤية)
+        $hasVisionPayload = false;
         foreach ($messages as $message) {
-            if ($message['role'] !== 'system') {
-                $contents[] = [
-                    'role' => $message['role'] === 'assistant' ? 'model' : 'user',
-                    'parts' => [['text' => $message['content']]]
-                ];
+            if (($message['role'] ?? '') !== 'system' && is_array($message['content'] ?? null)) {
+                $hasVisionPayload = true;
+                break;
+            }
+        }
+
+        if ($hasVisionPayload) {
+            $contents = VisionQuestionGenerationSupport::adaptMessagesToGeminiContents($messages);
+        } else {
+            $contents = [];
+            foreach ($messages as $message) {
+                if ($message['role'] !== 'system') {
+                    $contents[] = [
+                        'role' => $message['role'] === 'assistant' ? 'model' : 'user',
+                        'parts' => [['text' => (string) ($message['content'] ?? '')]],
+                    ];
+                }
             }
         }
 
@@ -86,8 +98,14 @@ class GoogleProviderService extends AIProviderService
 
             if ($response->successful()) {
                 $data = $response->json();
-                $content = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
-                
+                $content = '';
+                $parts = $data['candidates'][0]['content']['parts'] ?? [];
+                foreach ($parts as $part) {
+                    if (isset($part['text'])) {
+                        $content .= $part['text'];
+                    }
+                }
+
                 return [
                     'success' => true,
                     'content' => $content,

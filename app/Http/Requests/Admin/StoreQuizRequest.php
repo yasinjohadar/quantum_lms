@@ -19,6 +19,7 @@ class StoreQuizRequest extends FormRequest
             'unit_id' => ['nullable', 'integer', 'exists:units,id', 'required_without_all:section_id,lesson_id'],
             'section_id' => ['nullable', 'integer', 'exists:subject_sections,id', 'required_without_all:unit_id,lesson_id'],
             'lesson_id' => ['nullable', 'integer', 'exists:lessons,id'],
+            'scope' => ['nullable', 'string', 'in:unit,lesson,section'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'instructions' => ['nullable', 'string'],

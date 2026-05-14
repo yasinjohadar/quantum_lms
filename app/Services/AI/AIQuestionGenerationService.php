@@ -3,14 +3,17 @@
 namespace App\Services\AI;
 
 use App\Models\AIQuestionGeneration;
+use App\Models\AIModel;
 use App\Models\Question;
 use App\Models\QuestionOption;
 use App\Models\Lesson;
 use App\Models\User;
 use App\Models\Subject;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class AIQuestionGenerationService
 {
@@ -104,43 +107,107 @@ class AIQuestionGenerationService
     }
 
     /**
+     * توليد أسئلة من صورة مرفوعة (تحليل بصري عبر موديل رؤية).
+     *
+     * @param  array<string, mixed>  $options
+     */
+    public function generateFromUploadedImage(UploadedFile $file, array $options = []): AIQuestionGeneration
+    {
+        $user = $options['user'] ?? auth()->user();
+        $model = $options['model'] ?? $this->modelService->getBestModelFor('question_generation');
+
+        if (! $model) {
+            throw new \Exception('لا يوجد موديل AI متاح لتوليد الأسئلة');
+        }
+
+        if (! VisionQuestionGenerationSupport::providerSupportsVisionConversion($model->provider)) {
+            throw new \Exception('مزود النموذج الحالي لا يدعم توليد الأسئلة من الصورة. استخدم OpenAI أو OpenRouter أو Anthropic أو Google أو Z.ai مع موديل يدعم الرؤية.');
+        }
+
+        $path = $file->store('ai_question_images', 'local');
+
+        try {
+            $questionTypes = $options['question_types'] ?? null;
+            $instructions = isset($options['instructions']) ? (string) $options['instructions'] : '';
+
+            if ($questionTypes && is_array($questionTypes) && count($questionTypes) > 0) {
+                $generation = AIQuestionGeneration::create([
+                    'user_id' => $user->id,
+                    'subject_id' => $options['subject_id'] ?? null,
+                    'lesson_id' => $options['lesson_id'] ?? null,
+                    'source_type' => 'image',
+                    'source_content' => $instructions,
+                    'source_image_path' => $path,
+                    'question_type' => 'mixed',
+                    'question_types' => $questionTypes,
+                    'number_of_questions' => $options['number_of_questions'] ?? 5,
+                    'difficulty_level' => $options['difficulty_level'] ?? 'mixed',
+                    'ai_model_id' => $model->id,
+                    'status' => 'pending',
+                ]);
+            } else {
+                $generation = AIQuestionGeneration::create([
+                    'user_id' => $user->id,
+                    'subject_id' => $options['subject_id'] ?? null,
+                    'lesson_id' => $options['lesson_id'] ?? null,
+                    'source_type' => 'image',
+                    'source_content' => $instructions,
+                    'source_image_path' => $path,
+                    'question_type' => $options['question_type'] ?? 'mixed',
+                    'question_types' => null,
+                    'number_of_questions' => $options['number_of_questions'] ?? 5,
+                    'difficulty_level' => $options['difficulty_level'] ?? 'mixed',
+                    'ai_model_id' => $model->id,
+                    'status' => 'pending',
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Storage::disk('local')->delete($path);
+            throw $e;
+        }
+
+        $this->processVisionGeneration($generation);
+
+        return $generation->fresh();
+    }
+
+    /**
      * معالجة التوليد
      */
     public function processGeneration(AIQuestionGeneration $generation): array
     {
-        // زيادة وقت التنفيذ إلى 3 دقائق للطلبات الطويلة
+        if ($generation->source_type === 'image') {
+            return $this->processVisionGeneration($generation);
+        }
+
         set_time_limit(180);
-        
+
         $generation->update(['status' => 'processing']);
 
         try {
             $model = $generation->model;
-            if (!$model) {
+            if (! $model) {
                 throw new \Exception('الموديل غير موجود');
             }
 
-            // تحديد أنواع الأسئلة (question_types أولوية على question_type)
             $selectedTypes = $generation->getSelectedQuestionTypes();
-            $questionTypeForPrompt = !empty($selectedTypes) && count($selectedTypes) > 0 
+            $questionTypeForPrompt = ! empty($selectedTypes) && count($selectedTypes) > 0
                 ? (count($selectedTypes) === 1 ? $selectedTypes[0] : 'mixed')
                 : $generation->question_type;
-            
-            // بناء الـ prompt
+
             $prompt = $this->promptService->getQuestionGenerationPrompt(
                 $generation->source_content,
                 [
                     'question_type' => $questionTypeForPrompt,
-                    'question_types' => !empty($selectedTypes) ? $selectedTypes : null,
+                    'question_types' => ! empty($selectedTypes) ? $selectedTypes : null,
                     'number_of_questions' => $generation->number_of_questions,
                     'difficulty_level' => $generation->difficulty_level,
                 ]
             );
 
-            // حساب max_tokens بناءً على عدد الأسئلة (تقريباً 800 token لكل سؤال للأسئلة الطويلة)
-            // زيادة العدد لضمان عدم قطع الاستجابة
             $requiredTokens = max(4000, $generation->number_of_questions * 800);
             $maxTokens = min($requiredTokens, $model->max_tokens ?: 16000);
-            
+
             Log::info('Question generation tokens calculation', [
                 'generation_id' => $generation->id,
                 'required_questions' => $generation->number_of_questions,
@@ -148,78 +215,30 @@ class AIQuestionGenerationService
                 'max_tokens' => $maxTokens,
                 'model_max_tokens' => $model->max_tokens,
             ]);
-            
-            // إرسال الطلب
+
             $provider = AIProviderFactory::create($model);
             $response = $provider->generateText($prompt, [
                 'max_tokens' => $maxTokens,
-                'temperature' => 0.7, // درجة حرارة معتدلة للتنوع مع الدقة
+                'temperature' => 0.7,
             ]);
 
-            if (!$response || empty($response)) {
-                // محاولة الحصول على معلومات أكثر من آخر خطأ
+            if (! $response || empty($response)) {
                 $lastError = $provider->getLastError() ?? 'فشل في توليد الأسئلة - لم يتم الحصول على رد من API';
-                
+
                 Log::error('AI Question Generation Failed - Empty Response', [
                     'generation_id' => $generation->id,
                     'model_id' => $model->id,
                     'model_key' => $model->model_key,
                     'provider_class' => get_class($provider),
                     'last_error' => $lastError,
-                    'response_type' => gettype($response),
-                    'response_empty' => empty($response),
-                    'response_value' => $response, // Log the actual value for debugging
-                    'provider_has_error' => method_exists($provider, 'getLastError'),
                 ]);
-                
+
                 throw new \Exception($lastError);
             }
 
-            // حفظ الرد الكامل في logs للتصحيح
-            Log::info('Full AI response received', [
-                'generation_id' => $generation->id,
-                'response_length' => strlen($response),
-                'response_preview' => substr($response, 0, 1000),
-                'response_full' => $response, // حفظ الرد الكامل
-            ]);
-
-            // محاولة تحليل JSON
-            $questions = $this->parseGeneratedQuestions($response);
-
-            // التحقق من صحة الأسئلة
-            $validatedQuestions = $this->validateGeneratedQuestions($questions);
-            
-            // التحقق من العدد المطلوب
-            $requiredCount = $generation->number_of_questions;
-            $actualCount = count($validatedQuestions);
-            $warningMessage = null;
-            
-            if ($actualCount < $requiredCount) {
-                $missingCount = $requiredCount - $actualCount;
-                $warningMessage = "تم توليد {$actualCount} سؤال فقط من {$requiredCount} المطلوبة. ({$missingCount} سؤال مفقود)";
-                
-                Log::warning('Question generation incomplete', [
-                    'generation_id' => $generation->id,
-                    'required' => $requiredCount,
-                    'actual' => $actualCount,
-                    'missing' => $missingCount,
-                    'response_length' => strlen($response),
-                ]);
-            }
-
-            // حفظ النتائج مع رسالة التحذير إن وجدت
-            $generation->update([
-                'status' => 'completed',
-                'generated_questions' => $validatedQuestions,
-                'prompt' => $prompt,
-                'tokens_used' => $provider->estimateTokens($prompt . $response),
-                'cost' => $model->getCost($provider->estimateTokens($prompt . $response)),
-                'error_message' => $warningMessage, // نستخدم error_message لحفظ التحذير
-            ]);
-
-            return $validatedQuestions;
+            return $this->finalizeGenerationFromAiResponse($generation, $model, $provider, $prompt, $response, null);
         } catch (\Exception $e) {
-            Log::error('Error processing question generation: ' . $e->getMessage(), [
+            Log::error('Error processing question generation: '.$e->getMessage(), [
                 'generation_id' => $generation->id,
             ]);
 
@@ -230,6 +249,147 @@ class AIQuestionGenerationService
 
             throw $e;
         }
+    }
+
+    /**
+     * توليد من صورة عبر طلب رؤية (متعدد الوسائط).
+     */
+    public function processVisionGeneration(AIQuestionGeneration $generation): array
+    {
+        set_time_limit(180);
+
+        $generation->update(['status' => 'processing']);
+
+        try {
+            $model = $generation->model;
+            if (! $model) {
+                throw new \Exception('الموديل غير موجود');
+            }
+
+            if (! VisionQuestionGenerationSupport::providerSupportsVisionConversion($model->provider)) {
+                throw new \Exception('مزود النموذج لا يدعم توليد الأسئلة من الصورة. استخدم OpenAI أو OpenRouter أو Anthropic أو Google أو Z.ai مع موديل رؤية.');
+            }
+
+            $path = $generation->source_image_path;
+            if (! $path || ! Storage::disk('local')->exists($path)) {
+                throw new \Exception('ملف الصورة غير موجود أو تم حذفه.');
+            }
+
+            $binary = Storage::disk('local')->get($path);
+            $mime = Storage::disk('local')->mimeType($path) ?: 'image/jpeg';
+
+            $selectedTypes = $generation->getSelectedQuestionTypes();
+            $questionTypeForPrompt = ! empty($selectedTypes) && count($selectedTypes) > 0
+                ? (count($selectedTypes) === 1 ? $selectedTypes[0] : 'mixed')
+                : $generation->question_type;
+
+            $textPrompt = $this->promptService->getQuestionGenerationVisionTextPrompt(
+                $generation->source_content,
+                [
+                    'question_type' => $questionTypeForPrompt,
+                    'question_types' => ! empty($selectedTypes) ? $selectedTypes : null,
+                    'number_of_questions' => $generation->number_of_questions,
+                    'difficulty_level' => $generation->difficulty_level,
+                ]
+            );
+
+            $messages = VisionQuestionGenerationSupport::buildOpenAiStyleMessages($textPrompt, $mime, $binary);
+
+            $requiredTokens = max(8000, $generation->number_of_questions * 1000);
+            $maxTokens = min($requiredTokens, $model->max_tokens ?: 16000);
+
+            $provider = AIProviderFactory::create($model);
+            $chatResult = $provider->chat($messages, [
+                'max_tokens' => $maxTokens,
+                'temperature' => 0.25,
+            ]);
+
+            if (! ($chatResult['success'] ?? false)) {
+                throw new \Exception($chatResult['error'] ?? 'فشل طلب تحليل الصورة');
+            }
+
+            $response = (string) ($chatResult['content'] ?? '');
+            if ($response === '') {
+                throw new \Exception($provider->getLastError() ?? 'لم يُرجع النموذج أي نص بعد تحليل الصورة.');
+            }
+
+            $promptStored = mb_substr($textPrompt, 0, 60000);
+            $tokensOverride = (int) ($chatResult['tokens_used'] ?? 0);
+
+            return $this->finalizeGenerationFromAiResponse(
+                $generation,
+                $model,
+                $provider,
+                $promptStored,
+                $response,
+                $tokensOverride > 0 ? $tokensOverride : null
+            );
+        } catch (\Exception $e) {
+            Log::error('Error processing vision question generation: '.$e->getMessage(), [
+                'generation_id' => $generation->id,
+            ]);
+
+            $generation->update([
+                'status' => 'failed',
+                'error_message' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * @param  AIProviderService  $provider
+     */
+    private function finalizeGenerationFromAiResponse(
+        AIQuestionGeneration $generation,
+        AIModel $model,
+        AIProviderService $provider,
+        string $promptForStorage,
+        string $response,
+        ?int $tokensUsedOverride
+    ): array {
+        Log::info('Full AI response received', [
+            'generation_id' => $generation->id,
+            'response_length' => strlen($response),
+            'response_preview' => substr($response, 0, 1000),
+            'response_full' => $response,
+        ]);
+
+        $questions = $this->parseGeneratedQuestions($response);
+        $validatedQuestions = $this->validateGeneratedQuestions($questions);
+
+        $requiredCount = $generation->number_of_questions;
+        $actualCount = count($validatedQuestions);
+        $warningMessage = null;
+
+        if ($actualCount < $requiredCount) {
+            $missingCount = $requiredCount - $actualCount;
+            $warningMessage = "تم توليد {$actualCount} سؤال فقط من {$requiredCount} المطلوبة. ({$missingCount} سؤال مفقود)";
+
+            Log::warning('Question generation incomplete', [
+                'generation_id' => $generation->id,
+                'required' => $requiredCount,
+                'actual' => $actualCount,
+                'missing' => $missingCount,
+                'response_length' => strlen($response),
+            ]);
+        }
+
+        $tokensUsed = ($tokensUsedOverride !== null && $tokensUsedOverride > 0)
+            ? $tokensUsedOverride
+            : $provider->estimateTokens($promptForStorage.$response);
+
+        $generation->update([
+            'status' => 'completed',
+            'generated_questions' => $validatedQuestions,
+            'prompt' => $promptForStorage,
+            'tokens_used' => $tokensUsed,
+            'cost' => $model->getCost($tokensUsed),
+            'error_message' => $warningMessage,
+        ]);
+
+        return $validatedQuestions;
     }
 
     /**

@@ -12,6 +12,9 @@
                 <h5 class="page-title fs-21 mb-1">توليد أسئلة تلقائياً (متقدم)</h5>
             </div>
             <div>
+                <a href="{{ route('admin.ai.question-generations.create-from-image') }}" class="btn btn-info btn-sm text-white me-1">
+                    <i class="fas fa-image me-1"></i> من صورة
+                </a>
                 <a href="{{ route('admin.ai.question-generations.index') }}" class="btn btn-secondary btn-sm">
                     <i class="fas fa-arrow-right me-1"></i> رجوع
                 </a>
@@ -57,19 +60,32 @@
                             </div>
 
                             <div id="lesson_source" class="mb-3" style="display: none;">
+                                <label for="class_id" class="form-label">الصف <span class="text-danger">*</span></label>
+                                <select class="form-select" id="class_id" name="class_id">
+                                    <option value="">اختر الصف</option>
+                                    @foreach($schoolClasses as $schoolClass)
+                                        <option value="{{ $schoolClass->id }}" {{ (string) old('class_id', $prefillClassId ?? '') === (string) $schoolClass->id ? 'selected' : '' }}>{{ $schoolClass->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div id="subject_wrap" class="mb-3" style="display: none;">
                                 <label for="subject_id" class="form-label">المادة <span class="text-danger">*</span></label>
-                                <select class="form-select" id="subject_id" name="subject_id">
-                                    <option value="">اختر المادة</option>
+                                <select class="form-select" id="subject_id" name="subject_id" @if(!$prefillClassId) disabled @endif>
+                                    <option value="">{{ $prefillClassId ? 'اختر المادة' : 'اختر الصف أولاً' }}</option>
                                     @foreach($subjects as $subject)
-                                        <option value="{{ $subject->id }}" {{ old('subject_id') == $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
+                                        <option value="{{ $subject->id }}" {{ (string) old('subject_id', $prefillSubjectId ?? '') === (string) $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
 
                             <div id="lesson_select" class="mb-3" style="display: none;">
                                 <label for="lesson_id" class="form-label">الدرس <span class="text-danger">*</span></label>
-                                <select class="form-select" id="lesson_id" name="lesson_id" disabled>
-                                    <option value="">اختر المادة أولاً</option>
+                                <select class="form-select" id="lesson_id" name="lesson_id" @if(!$prefillSubjectId) disabled @endif>
+                                    <option value="">{{ $prefillSubjectId ? 'اختر الدرس' : 'اختر المادة أولاً' }}</option>
+                                    @foreach($lessons as $lesson)
+                                        <option value="{{ $lesson->id }}" {{ (string) old('lesson_id') === (string) $lesson->id ? 'selected' : '' }}>{{ $lesson->title }}</option>
+                                    @endforeach
                                 </select>
                             </div>
 
@@ -261,16 +277,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const sourceType = document.getElementById('source_type');
     const lessonSource = document.getElementById('lesson_source');
+    const subjectWrap = document.getElementById('subject_wrap');
     const lessonSelect = document.getElementById('lesson_select');
     const textSource = document.getElementById('text_source');
+    const classSelect = document.getElementById('class_id');
     const subjectSelect = document.getElementById('subject_id');
     const lessonIdSelect = document.getElementById('lesson_id');
     const sourceContent = document.getElementById('source_content');
     const form = document.getElementById('advancedForm');
+    const ajaxSubjectsBase = @json(url('/admin/ai/question-generations/ajax/classes'));
+    const ajaxLessonsBase = @json(url('/admin/ai/question-generations/ajax/subjects'));
 
     function toggleSourceFields() {
         if (sourceType.value === 'lesson_content') {
             lessonSource.style.display = 'block';
+            subjectWrap.style.display = 'block';
             lessonSelect.style.display = 'block';
             textSource.style.display = 'none';
             sourceContent.removeAttribute('required');
@@ -280,6 +301,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } else {
             lessonSource.style.display = 'none';
+            subjectWrap.style.display = 'none';
             lessonSelect.style.display = 'none';
             textSource.style.display = 'block';
             sourceContent.setAttribute('required', 'required');
@@ -293,21 +315,78 @@ document.addEventListener('DOMContentLoaded', function() {
     sourceType.addEventListener('change', toggleSourceFields);
     toggleSourceFields();
 
+    function resetLessonsPlaceholder() {
+        lessonIdSelect.disabled = true;
+        lessonIdSelect.innerHTML = '<option value="">اختر المادة أولاً</option>';
+    }
+
+    function resetSubjectsPlaceholder() {
+        subjectSelect.disabled = true;
+        subjectSelect.innerHTML = '<option value="">اختر الصف أولاً</option>';
+        resetLessonsPlaceholder();
+    }
+
+    classSelect.addEventListener('change', function() {
+        const classId = this.value;
+        if (!classId) {
+            resetSubjectsPlaceholder();
+            return;
+        }
+        subjectSelect.disabled = false;
+        subjectSelect.innerHTML = '<option value="">جاري التحميل...</option>';
+        lessonIdSelect.disabled = true;
+        lessonIdSelect.innerHTML = '<option value="">جاري التحميل...</option>';
+        fetch(`${ajaxSubjectsBase}/${classId}/subjects`, {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Network error');
+                }
+                return response.json();
+            })
+            .then(function (data) {
+                subjectSelect.innerHTML = '<option value="">اختر المادة</option>';
+                data.forEach(function (subject) {
+                    subjectSelect.innerHTML += '<option value="' + subject.id + '">' + subject.name + '</option>';
+                });
+                resetLessonsPlaceholder();
+            })
+            .catch(function () {
+                subjectSelect.innerHTML = '<option value="">تعذر تحميل المواد</option>';
+                resetLessonsPlaceholder();
+            });
+    });
+
     subjectSelect.addEventListener('change', function() {
         const subjectId = this.value;
-        if (subjectId) {
+        const classId = classSelect.value;
+        if (subjectId && classId) {
             lessonIdSelect.disabled = false;
-            fetch(`{{ url('student/subjects') }}/${subjectId}/lessons`)
-                .then(response => response.json())
-                .then(data => {
+            lessonIdSelect.innerHTML = '<option value="">جاري التحميل...</option>';
+            fetch(`${ajaxLessonsBase}/${subjectId}/lessons?class_id=${encodeURIComponent(classId)}`, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('Network error');
+                    }
+                    return response.json();
+                })
+                .then(function (data) {
                     lessonIdSelect.innerHTML = '<option value="">اختر الدرس</option>';
-                    data.forEach(lesson => {
-                        lessonIdSelect.innerHTML += `<option value="${lesson.id}">${lesson.title}</option>`;
+                    data.forEach(function (lesson) {
+                        lessonIdSelect.innerHTML += '<option value="' + lesson.id + '">' + lesson.title + '</option>';
                     });
+                })
+                .catch(function () {
+                    lessonIdSelect.disabled = true;
+                    lessonIdSelect.innerHTML = '<option value="">تعذر تحميل الدروس</option>';
                 });
         } else {
-            lessonIdSelect.disabled = true;
-            lessonIdSelect.innerHTML = '<option value="">اختر المادة أولاً</option>';
+            resetLessonsPlaceholder();
         }
     });
 

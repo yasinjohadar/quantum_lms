@@ -228,7 +228,12 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::post('ai/models/{model}/toggle-active', [\App\Http\Controllers\Admin\AIModelController::class, 'toggleActive'])->name('ai.models.toggle-active');
 
         Route::get('ai/question-generations/create-advanced', [\App\Http\Controllers\Admin\AIQuestionGenerationController::class, 'createAdvanced'])->name('ai.question-generations.create-advanced');
+        Route::get('ai/question-generations/ajax/classes/{schoolClass}/subjects', [\App\Http\Controllers\Admin\AIQuestionGenerationController::class, 'ajaxSubjectsByClass'])->name('ai.question-generations.ajax.subjects-by-class');
+        Route::get('ai/question-generations/ajax/subjects/{subject}/lessons', [\App\Http\Controllers\Admin\AIQuestionGenerationController::class, 'ajaxLessonsBySubject'])->name('ai.question-generations.ajax.lessons-by-subject');
         Route::post('ai/question-generations/store-advanced', [\App\Http\Controllers\Admin\AIQuestionGenerationController::class, 'storeAdvanced'])->name('ai.question-generations.store-advanced');
+        Route::get('ai/question-generations/create-from-image', [\App\Http\Controllers\Admin\AIQuestionGenerationController::class, 'createFromImage'])->name('ai.question-generations.create-from-image');
+        Route::post('ai/question-generations/store-from-image', [\App\Http\Controllers\Admin\AIQuestionGenerationController::class, 'storeFromImage'])->name('ai.question-generations.store-from-image');
+        Route::get('ai/question-generations/{generation}/source-image', [\App\Http\Controllers\Admin\AIQuestionGenerationController::class, 'sourceImage'])->name('ai.question-generations.source-image');
         Route::resource('ai/question-generations', \App\Http\Controllers\Admin\AIQuestionGenerationController::class)->names([
             'index' => 'ai.question-generations.index',
             'create' => 'ai.question-generations.create',

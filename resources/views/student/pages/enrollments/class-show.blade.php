@@ -32,12 +32,6 @@
         @include('student.pages.enrollments.partials.stats-summary')
 
         <!-- معلومات الصف -->
-        @php
-            // التحقق مما إذا كان الطالب مسجل في جميع المواد النشطة
-            $activeSubjectIds = $class->subjects()->where('is_active', true)->pluck('subjects.id')->toArray();
-            $allEnrolled = !empty($activeSubjectIds) && empty(array_diff($activeSubjectIds, $enrolledSubjectIds));
-            $hasNonEnrolledSubjects = count(array_diff($activeSubjectIds, $enrolledSubjectIds)) > 0;
-        @endphp
         <div class="card custom-card mb-4">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
@@ -48,12 +42,12 @@
                         @endif
                     </div>
                     <div class="text-end d-flex gap-2">
-                        @if($allEnrolled)
+                        @if($hasFullClassAccess)
                             <span class="btn btn-success btn-sm disabled">
                                 <i class="bi bi-check-circle me-1"></i>
                                 منضم لجميع المواد
                             </span>
-                        @elseif($hasNonEnrolledSubjects)
+                        @elseif($class->subjects->isNotEmpty())
                             <button class="btn btn-primary btn-sm" onclick="requestClassEnrollment({{ $class->id }}, '{{ addslashes($class->name) }}')" type="button">
                                 <i class="bi bi-plus-circle me-1"></i>
                                 انضمام للصف كامل
@@ -64,7 +58,7 @@
             </div>
         </div>
 
-        @if($class->whatsapp_group_url && $allEnrolled)
+        @if($class->whatsapp_group_url && $hasFullClassAccess)
         <div class="card custom-card mb-4 border-success">
             <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
                 <div class="d-flex align-items-center gap-3">
@@ -84,18 +78,16 @@
         </div>
         @endif
 
-        <!-- كاردات المواد -->
-        @if($class->subjects->count() > 0)
+        <!-- كاردات المواد (المواد ذات التسجيل النشط لا تُعرض هنا) -->
+        @if($subjectsToShow->count() > 0)
             <div class="row">
-                @foreach($class->subjects as $subject)
+                @foreach($subjectsToShow as $subject)
                     @php
-                        $isEnrolled = in_array($subject->id, $enrolledSubjectIds);
                         $isPending = in_array($subject->id, $pendingEnrollments);
                     @endphp
-                    
+
                     <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-4">
-                        <div class="card custom-card {{ $isEnrolled ? 'subject-enrolled-card' : '' }}" 
-                             @if($isEnrolled) onclick="window.location.href='{{ route('student.subjects.show', $subject->id) }}'" style="cursor: pointer; transition: all 0.3s ease;" @endif>
+                        <div class="card custom-card">
                             @if($subject->image)
                                 <img src="{{ media_public_url($subject->image) }}" class="card-img-top" alt="{{ $subject->name }}">
                             @else
@@ -108,15 +100,8 @@
                                 @if($subject->description)
                                     <p class="card-text text-muted">{{ \Illuminate\Support\Str::limit($subject->description, 80) }}</p>
                                 @endif
-                                
-                                @if($isEnrolled)
-                                    <div onclick="event.stopPropagation();">
-                                        <button class="btn btn-success btn-sm w-100" disabled>
-                                            <i class="bi bi-check-circle me-1"></i>
-                                            مسجل
-                                        </button>
-                                    </div>
-                                @elseif($isPending)
+
+                                @if($isPending)
                                     <div class="d-flex gap-2" onclick="event.stopPropagation();">
                                         <button class="btn btn-warning btn-sm flex-grow-1" disabled>
                                             <i class="bi bi-clock me-1"></i>
@@ -136,27 +121,23 @@
                                 @endif
                             </div>
                             <div class="card-footer">
-                                @if($isEnrolled)
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <small class="text-muted">
-                                            <i class="bi bi-building me-1"></i>
-                                            {{ $class->name }}
-                                        </small>
-                                        <span class="badge bg-primary-transparent text-primary">
-                                            <i class="bi bi-arrow-left me-1"></i>
-                                            اضغط لعرض الدروس
-                                        </span>
-                                    </div>
-                                @else
-                                    <small class="text-muted">
-                                        <i class="bi bi-building me-1"></i>
-                                        {{ $class->name }}
-                                    </small>
-                                @endif
+                                <small class="text-muted">
+                                    <i class="bi bi-building me-1"></i>
+                                    {{ $class->name }}
+                                </small>
                             </div>
                         </div>
                     </div>
                 @endforeach
+            </div>
+        @elseif($hasFullClassAccess)
+            <div class="card custom-card border-success">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-check-circle fs-1 text-success mb-3 d-block"></i>
+                    <h5 class="mb-2">أنت مسجل في جميع مواد هذا الصف</h5>
+                    <p class="text-muted mb-0">لا توجد مواد إضافية متاحة للانضمام من هذه الصفحة.</p>
+                    <a href="{{ route('student.enrollments.index') }}" class="btn btn-outline-primary mt-3">العودة إلى قائمة الصفوف</a>
+                </div>
             </div>
         @else
             <div class="card custom-card">
@@ -255,26 +236,38 @@
         </div>
     </div>
 </div>
-@stop
 
-@section('css')
-<style>
-    .subject-enrolled-card {
-        transition: all 0.3s ease;
-    }
-    .subject-enrolled-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.15) !important;
-    }
-</style>
+<!-- Modal الدفع (صف/مادة مدفوعة) -->
+<div class="modal fade" id="enrollmentPaymentModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-scrollable modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">إتمام الدفع</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="enrollmentPaymentModalBody"></div>
+        </div>
+    </div>
+</div>
 @stop
 
 @section('script')
+@include('student.pages.enrollments.partials.inline-purchase-payment-script')
 <script>
     // التأكد من تحميل الصفحة بالكامل
     document.addEventListener('DOMContentLoaded', function() {
         console.log('Enrollment page loaded');
         initializeModals();
+
+        var payModalEl = document.getElementById('enrollmentPaymentModal');
+        if (payModalEl) {
+            payModalEl.addEventListener('hidden.bs.modal', function () {
+                var body = document.getElementById('enrollmentPaymentModalBody');
+                if (body) {
+                    body.innerHTML = '';
+                }
+            });
+        }
     });
     
     // الحصول على CSRF token من meta tag
@@ -388,6 +381,21 @@
         })
         .then(data => {
             console.log('Response data:', data);
+            if (data.success && data.requires_payment && data.purchase_id) {
+                var payModalEl = document.getElementById('enrollmentPaymentModal');
+                var payBody = document.getElementById('enrollmentPaymentModalBody');
+                if (typeof window.EnrollmentInlinePurchase !== 'undefined') {
+                    window.EnrollmentInlinePurchase.openPaymentModal(payModalEl, payBody, data.purchase_id, {
+                        return: 'class',
+                        class_id: {{ (int) $class->id }}
+                    });
+                }
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = '<i class="bi bi-plus-circle me-1"></i> طلب الانضمام';
+                }
+                return;
+            }
             if (data.success) {
                 showSuccessMessage(data.message);
                 setTimeout(() => location.reload(), 1500);
@@ -464,6 +472,21 @@
         })
         .then(data => {
             console.log('Response data:', data);
+            if (data.success && data.requires_payment && data.purchase_id) {
+                var payModalEl = document.getElementById('enrollmentPaymentModal');
+                var payBody = document.getElementById('enrollmentPaymentModalBody');
+                if (typeof window.EnrollmentInlinePurchase !== 'undefined') {
+                    window.EnrollmentInlinePurchase.openPaymentModal(payModalEl, payBody, data.purchase_id, {
+                        return: 'class',
+                        class_id: {{ (int) $class->id }}
+                    });
+                }
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = '<i class="bi bi-plus-circle me-1"></i> انضمام للصف كامل';
+                }
+                return;
+            }
             if (data.success) {
                 showSuccessMessage(data.message);
                 setTimeout(() => location.reload(), 1500);

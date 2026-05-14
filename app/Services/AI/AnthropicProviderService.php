@@ -27,6 +27,8 @@ class AnthropicProviderService extends AIProviderService
             }
         }
 
+        $conversationMessages = VisionQuestionGenerationSupport::adaptMessagesForAnthropic($conversationMessages);
+
         $payload = [
             'model' => $this->model->model_key,
             'max_tokens' => $options['max_tokens'] ?? $this->model->max_tokens,

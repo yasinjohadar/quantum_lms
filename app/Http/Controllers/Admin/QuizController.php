@@ -145,14 +145,17 @@ class QuizController extends Controller
         $selectedSubjectId = $request->get('subject_id');
         $selectedUnitId = $request->get('unit_id');
         $selectedLessonId = $request->get('lesson_id');
-        
+        $selectedSectionId = $request->filled('section_id') ? (int) $request->input('section_id') : null;
+
         $selectedSubject = null;
         $selectedUnit = null;
         $selectedClass = null;
         $selectedLesson = null;
+        $selectedSection = null;
         $isFromSubjectOrUnit = false;
         $isFromLesson = false;
-        
+        $isFromSection = false;
+
         // في حال تم تمرير درس، نحمّل الدرس والوحدة والمادة المرتبطة به
         if ($selectedLessonId) {
             $selectedLesson = Lesson::with('unit.section.subject.schoolClass')->find($selectedLessonId);
@@ -172,15 +175,37 @@ class QuizController extends Controller
             }
         }
 
+        // إنشاء من شاشة القسم: ?section_id=...&scope=section (&subject_id اختياري)
+        if (! $selectedLessonId && $selectedSectionId) {
+            $selectedSection = SubjectSection::with('subject.schoolClass')->find($selectedSectionId);
+            if ($selectedSection) {
+                if ($selectedSubjectId && (int) $selectedSubjectId !== (int) $selectedSection->subject_id) {
+                    $selectedSubjectId = $selectedSection->subject_id;
+                }
+                if (! $selectedSubjectId) {
+                    $selectedSubjectId = $selectedSection->subject_id;
+                }
+                $selectedSubject = Subject::with('schoolClass')->find($selectedSubjectId);
+                $selectedClass = $selectedSubject?->schoolClass;
+                $isFromSubjectOrUnit = true;
+                $isFromSection = true;
+                $units = Unit::where('section_id', $selectedSection->id)->orderBy('title')->get();
+            }
+        }
+
         if ($selectedSubjectId) {
-            $selectedSubject = Subject::with('schoolClass')->find($selectedSubjectId);
+            if (! $selectedSubject) {
+                $selectedSubject = Subject::with('schoolClass')->find($selectedSubjectId);
+            }
             if ($selectedSubject) {
                 $selectedClass = $selectedSubject->schoolClass;
                 $isFromSubjectOrUnit = true;
-                
-                $units = Unit::whereHas('section', function ($q) use ($selectedSubjectId) {
-                    $q->where('subject_id', $selectedSubjectId);
-                })->orderBy('title')->get();
+
+                if (! $isFromSection) {
+                    $units = Unit::whereHas('section', function ($q) use ($selectedSubjectId) {
+                        $q->where('subject_id', $selectedSubjectId);
+                    })->orderBy('title')->get();
+                }
             }
         }
         
@@ -203,18 +228,27 @@ class QuizController extends Controller
             }
         }
 
+        if ($request->filled('section_id') && ! $selectedLessonId && ! $selectedSection) {
+            return redirect()
+                ->route('admin.quizzes.index')
+                ->with('error', 'القسم المحدد في الرابط غير موجود أو غير صالح.');
+        }
+
         return view('admin.pages.quizzes.create', compact(
-            'subjects', 
-            'units', 
-            'selectedSubjectId', 
+            'subjects',
+            'units',
+            'selectedSubjectId',
             'selectedUnitId',
             'selectedLessonId',
+            'selectedSectionId',
             'selectedSubject',
             'selectedUnit',
             'selectedClass',
             'selectedLesson',
+            'selectedSection',
             'isFromSubjectOrUnit',
-            'isFromLesson'
+            'isFromLesson',
+            'isFromSection'
         ));
     }
 
@@ -255,8 +289,13 @@ class QuizController extends Controller
 
             // نوع الاختبار والتبعية
             $data['lesson_id'] = $request->input('lesson_id');
-            // إن لم يتم تمرير scope نعتبره اختبار وحدة
-            $data['scope'] = $request->input('scope', $data['lesson_id'] ? 'lesson' : 'unit');
+            $defaultScope = 'unit';
+            if (! empty($data['lesson_id'])) {
+                $defaultScope = 'lesson';
+            } elseif (! empty($data['section_id']) && empty($data['unit_id'])) {
+                $defaultScope = 'section';
+            }
+            $data['scope'] = $request->input('scope', $defaultScope);
 
             if (!empty($data['unit_id']) && empty($data['section_id'])) {
                 $data['section_id'] = Unit::where('id', $data['unit_id'])->value('section_id');

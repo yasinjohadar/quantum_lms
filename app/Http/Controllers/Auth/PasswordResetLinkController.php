@@ -37,6 +37,7 @@ class PasswordResetLinkController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $rawPhoneInput = (string) $request->input('phone', '');
         $this->normalizeAuthPhoneForRequest($request);
 
         $validated = $request->validate([
@@ -44,13 +45,22 @@ class PasswordResetLinkController extends Controller
                 'required',
                 'string',
                 'regex:/^\+[1-9]\d{1,14}$/',
-                function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
-                    if (! PhoneRegionValidator::isValidForSelection(
+                function (string $attribute, mixed $value, \Closure $fail) use ($request, $rawPhoneInput): void {
+                    if ($rawHint = PhoneRegionValidator::messageIfRawPhoneHasInternationalPrefix(
+                        $request->input('country_code'),
+                        $rawPhoneInput
+                    )) {
+                        $fail($rawHint);
+
+                        return;
+                    }
+
+                    if ($regionMessage = PhoneRegionValidator::messageForSelection(
                         (string) $value,
                         $request->input('country_code'),
                         $request->input('manual_country_code')
                     )) {
-                        $fail(PhoneRegionValidator::MESSAGE_AR);
+                        $fail($regionMessage);
                     }
                 },
             ],
@@ -58,7 +68,7 @@ class PasswordResetLinkController extends Controller
             'manual_country_code' => ['nullable', 'string', 'regex:/^\d{1,4}$/', 'required_if:country_code,other'],
         ], [
             'phone.required' => 'رقم الهاتف مطلوب',
-            'phone.regex' => 'رقم الهاتف يجب أن يبدأ بـ + متبوعاً برمز الدولة',
+            'phone.regex' => 'تعذر تكوين رقم صالح. أدخل الرقم المحلي فقط (أرقام) واختر الدولة من القائمة.',
         ]);
 
         $phone = $validated['phone'];
@@ -113,6 +123,13 @@ class PasswordResetLinkController extends Controller
             'manual_country_code' => 'nullable|string',
         ]);
 
+        if ($rawHint = PhoneRegionValidator::messageIfRawPhoneHasInternationalPrefix(
+            $request->input('country_code'),
+            (string) $request->input('phone', '')
+        )) {
+            return response()->json(['valid' => false, 'message' => $rawHint]);
+        }
+
         $normalized = $this->normalizeAuthPhoneValue($request);
         if ($normalized === null || $normalized === '') {
             return response()->json(['valid' => true, 'cleared' => true]);
@@ -121,21 +138,16 @@ class PasswordResetLinkController extends Controller
         if (! preg_match('/^\+[1-9]\d{1,14}$/', $normalized)) {
             return response()->json([
                 'valid' => false,
-                'message' => 'رقم الهاتف يجب أن يبدأ بـ + متبوعاً برمز الدولة',
+                'message' => 'تعذر تكوين رقم صالح. أدخل الرقم المحلي فقط (أرقام) واختر الدولة من القائمة.',
             ]);
         }
 
-        $ok = PhoneRegionValidator::isValidForSelection(
+        if ($regionMessage = PhoneRegionValidator::messageForSelection(
             $normalized,
             $request->input('country_code'),
             $request->input('manual_country_code')
-        );
-
-        if (! $ok) {
-            return response()->json([
-                'valid' => false,
-                'message' => PhoneRegionValidator::MESSAGE_AR,
-            ]);
+        )) {
+            return response()->json(['valid' => false, 'message' => $regionMessage]);
         }
 
         return response()->json(['valid' => true]);

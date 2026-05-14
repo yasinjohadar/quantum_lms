@@ -44,6 +44,7 @@ class RegisteredUserController extends Controller
     {
         $phoneVerificationEnabled = SystemSetting::get('phone_verification_enabled', false);
 
+        $rawPhoneInput = (string) $request->input('phone', '');
         $this->normalizeAuthPhoneForRequest($request);
 
         // التحقق من التفرد تجاهل المستخدمين المحذوفين (soft-deleted) حتى لا يظهر "مستخدم بالفعل" لرقم/بريد سبق تسجيله ثم حذف
@@ -67,13 +68,22 @@ class RegisteredUserController extends Controller
                 'required',
                 'string',
                 'regex:/^\+[1-9]\d{1,14}$/',
-                function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
-                    if (! PhoneRegionValidator::isValidForSelection(
+                function (string $attribute, mixed $value, \Closure $fail) use ($request, $rawPhoneInput): void {
+                    if ($rawHint = PhoneRegionValidator::messageIfRawPhoneHasInternationalPrefix(
+                        $request->input('country_code'),
+                        $rawPhoneInput
+                    )) {
+                        $fail($rawHint);
+
+                        return;
+                    }
+
+                    if ($regionMessage = PhoneRegionValidator::messageForSelection(
                         (string) $value,
                         $request->input('country_code'),
                         $request->input('manual_country_code')
                     )) {
-                        $fail(PhoneRegionValidator::MESSAGE_AR);
+                        $fail($regionMessage);
                     }
                 },
                 Rule::unique('users', 'phone')->whereNull('deleted_at'),
@@ -84,7 +94,7 @@ class RegisteredUserController extends Controller
 
         $validated = $request->validate($validationRules, [
             'phone.required' => 'رقم الهاتف مطلوب',
-            'phone.regex' => 'رقم الهاتف يجب أن يبدأ بـ + متبوعاً برمز الدولة',
+            'phone.regex' => 'تعذر تكوين رقم صالح. أدخل الرقم المحلي فقط (أرقام) واختر الدولة من القائمة.',
             'phone.unique' => 'رقم الهاتف مستخدم بالفعل',
         ]);
 
@@ -190,6 +200,13 @@ class RegisteredUserController extends Controller
             'manual_country_code' => 'nullable|string',
         ]);
 
+        if ($rawHint = PhoneRegionValidator::messageIfRawPhoneHasInternationalPrefix(
+            $request->input('country_code'),
+            (string) $request->input('phone', '')
+        )) {
+            return response()->json(['valid' => false, 'message' => $rawHint]);
+        }
+
         $normalized = $this->normalizeAuthPhoneValue($request);
         if ($normalized === null || $normalized === '') {
             return response()->json(['valid' => true, 'cleared' => true]);
@@ -198,21 +215,16 @@ class RegisteredUserController extends Controller
         if (! preg_match('/^\+[1-9]\d{1,14}$/', $normalized)) {
             return response()->json([
                 'valid' => false,
-                'message' => 'رقم الهاتف يجب أن يبدأ بـ + متبوعاً برمز الدولة',
+                'message' => 'تعذر تكوين رقم صالح. أدخل الرقم المحلي فقط (أرقام) واختر الدولة من القائمة.',
             ]);
         }
 
-        $ok = PhoneRegionValidator::isValidForSelection(
+        if ($regionMessage = PhoneRegionValidator::messageForSelection(
             $normalized,
             $request->input('country_code'),
             $request->input('manual_country_code')
-        );
-
-        if (! $ok) {
-            return response()->json([
-                'valid' => false,
-                'message' => PhoneRegionValidator::MESSAGE_AR,
-            ]);
+        )) {
+            return response()->json(['valid' => false, 'message' => $regionMessage]);
         }
 
         return response()->json(['valid' => true]);

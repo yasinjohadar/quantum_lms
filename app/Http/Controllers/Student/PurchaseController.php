@@ -220,6 +220,48 @@ class PurchaseController extends Controller
     }
 
     /**
+     * جزء HTML لنموذج الدفع (مثلاً داخل نافذة طلب الانضمام).
+     */
+    public function paymentFragment(Request $request, Purchase $purchase)
+    {
+        $user = Auth::user();
+        $purchase = Purchase::query()
+            ->where('user_id', $user->id)
+            ->findOrFail($purchase->id);
+
+        if ($purchase->status !== 'pending') {
+            abort(403);
+        }
+
+        $purchase->load(['purchasable']);
+
+        $return = $request->query('return', 'classes');
+        $allowed = ['classes', 'enrollments', 'class'];
+        if (! in_array($return, $allowed, true)) {
+            $return = 'classes';
+        }
+
+        $classId = (int) $request->query('class_id', 0);
+        $afterSuccessUrl = match ($return) {
+            'enrollments' => route('student.enrollments.index'),
+            'class' => $classId > 0 ? route('student.enrollments.class.show', $classId) : route('student.enrollments.index'),
+            default => route('student.classes'),
+        };
+
+        $wallet = $this->walletService->getOrCreateWallet($user);
+        $customPaymentMethods = CustomPaymentMethod::active()->ordered()->get();
+
+        return response()
+            ->view('student.pages.purchases.payment-fragment', compact(
+                'purchase',
+                'wallet',
+                'customPaymentMethods',
+                'afterSuccessUrl'
+            ))
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+    }
+
+    /**
      * معالجة الدفع
      */
     public function processPayment(Request $request, $purchaseId)

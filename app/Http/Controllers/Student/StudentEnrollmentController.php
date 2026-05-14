@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\Enrollment;
-use App\Models\ClassEnrollment;
 use App\Models\Stage;
 use App\Models\Purchase;
 use App\Models\User;
@@ -42,6 +41,10 @@ class StudentEnrollmentController extends Controller
         ->orderBy('order')
         ->get();
 
+        $this->filterStagesForJoinableClasses($user, $stages);
+
+        $stages = $stages->filter(fn (Stage $stage) => $stage->classes->isNotEmpty())->values();
+
         return view('student.pages.enrollments.index', array_merge(compact('stages'), $stats));
     }
     
@@ -59,23 +62,95 @@ class StudentEnrollmentController extends Controller
         ->where('is_active', true)
         ->findOrFail($classId);
         
-        // الحصول على المواد المسجل فيها الطالب
-        $enrolledSubjectIds = $user->enrollments()
-            ->pluck('subject_id')
-            ->toArray();
-        
-        // الحصول على طلبات الانضمام المعلقة
+        $activeEnrolledSubjectIds = $user->enrollments()
+            ->where('status', 'active')
+            ->pluck('subject_id');
+
         $pendingEnrollments = $user->enrollments()
             ->pending()
             ->pluck('subject_id')
             ->toArray();
 
+        $hasFullClassAccess = $user->hasFullAccessToSchoolClass($class);
+
+        $subjectsToShow = $hasFullClassAccess
+            ? collect()
+            : $class->subjects
+                ->reject(fn (Subject $subject) => $activeEnrolledSubjectIds->contains($subject->id))
+                ->values();
+
         $stats = $this->studentEnrollmentStats($user);
 
         return view('student.pages.enrollments.class-show', array_merge(
-            compact('class', 'enrolledSubjectIds', 'pendingEnrollments'),
+            compact('class', 'subjectsToShow', 'pendingEnrollments', 'hasFullClassAccess'),
             $stats
         ));
+    }
+
+    /**
+     * إخفاء الصفوف التي لدى الطالب فيها وصول كامل لجميع المواد النشطة، وضبط عدد المواد المتاحة للانضمام على كل بطاقة.
+     *
+     * @param  \Illuminate\Support\Collection<int, Stage>  $stages
+     */
+    private function filterStagesForJoinableClasses(User $user, $stages): void
+    {
+        $approvedClassIdSet = array_flip($user->classEnrollments()->approved()->pluck('class_id')->all());
+        $completedClassPurchaseIdSet = array_flip(Purchase::query()
+            ->where('user_id', $user->id)
+            ->where('purchasable_type', SchoolClass::class)
+            ->where('status', 'completed')
+            ->pluck('purchasable_id')
+            ->all());
+        $userActiveSubjectIdSet = array_flip($user->enrollments()->where('status', 'active')->pluck('subject_id')->all());
+
+        $classIds = $stages->flatMap->classes->pluck('id')->unique()->values();
+        if ($classIds->isEmpty()) {
+            return;
+        }
+
+        $activeSubjectsByClass = Subject::query()
+            ->whereIn('class_id', $classIds)
+            ->where('is_active', true)
+            ->get(['id', 'class_id'])
+            ->groupBy('class_id');
+
+        foreach ($stages as $stage) {
+            $filtered = $stage->classes->filter(function (SchoolClass $class) use (
+                $approvedClassIdSet,
+                $completedClassPurchaseIdSet,
+                $userActiveSubjectIdSet,
+                $activeSubjectsByClass
+            ) {
+                if (isset($approvedClassIdSet[$class->id])) {
+                    return false;
+                }
+
+                if (isset($completedClassPurchaseIdSet[$class->id])) {
+                    return false;
+                }
+
+                $subjectIds = $activeSubjectsByClass->get($class->id, collect())->pluck('id');
+                if ($subjectIds->isEmpty()) {
+                    return true;
+                }
+
+                foreach ($subjectIds as $sid) {
+                    if (! isset($userActiveSubjectIdSet[$sid])) {
+                        return true;
+                    }
+                }
+
+                return false;
+            })->values();
+
+            $stage->setRelation('classes', $filtered);
+
+            foreach ($filtered as $class) {
+                $subjectIds = $activeSubjectsByClass->get($class->id, collect())->pluck('id');
+                $joinable = $subjectIds->filter(fn ($id) => ! isset($userActiveSubjectIdSet[$id]))->count();
+                $class->setAttribute('joinable_subjects_count', $joinable);
+            }
+        }
     }
 
     /**
@@ -112,10 +187,15 @@ class StudentEnrollmentController extends Controller
     {
         try {
             $user = Auth::user();
-            
+
+            $request->validate([
+                'currency_id' => 'nullable|exists:currencies,id',
+            ]);
+            $currencyId = $request->filled('currency_id') ? (int) $request->input('currency_id') : null;
+
             // التحقق من وجود المادة
             $subject = Subject::where('is_active', true)->findOrFail($subjectId);
-            
+
             // التحقق من وجود شراء مسبق
             $existingPurchase = Purchase::where('user_id', $user->id)
                 ->where('purchasable_type', Subject::class)
@@ -126,7 +206,7 @@ class StudentEnrollmentController extends Controller
             if ($existingPurchase) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'لقد قمت بشراء هذه المادة مسبقاً'
+                    'message' => 'لقد قمت بشراء هذه المادة مسبقاً',
                 ], 400);
             }
 
@@ -142,38 +222,47 @@ class StudentEnrollmentController extends Controller
                 if ($classPurchase) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'أنت مسجل في هذه المادة من خلال شراء الصف كاملاً'
+                        'message' => 'أنت مسجل في هذه المادة من خلال شراء الصف كاملاً',
                     ], 400);
                 }
             }
-            
-            // إذا كان السعر > 0، توجيه إلى صفحة الشراء
-            if (!$subject->is_free && $subject->price > 0) {
+
+            if (! $subject->is_free && $subject->price > 0) {
+                $purchase = $this->resolveOrCreatePendingPurchase($user, $subject, 'subject', $currencyId);
+
+                if ($purchase->status === 'completed') {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'تم التسجيل في المادة بنجاح',
+                    ]);
+                }
+
                 return response()->json([
-                    'success' => false,
-                    'message' => 'يجب شراء هذه المادة أولاً',
-                    'redirect' => route('student.purchases.subject.show', $subjectId),
-                    'requires_purchase' => true,
-                ], 400);
+                    'success' => true,
+                    'requires_payment' => true,
+                    'purchase_id' => $purchase->id,
+                    'message' => 'أكمل الدفع لإتمام التسجيل في المادة.',
+                ]);
             }
 
             // إذا كان السعر 0، إنشاء شراء مكتمل تلقائياً
-            $purchase = $this->purchaseService->createPurchase($user, $subject, 'subject');
-            
+            $this->purchaseService->createPurchase($user, $subject, 'subject');
+
             return response()->json([
                 'success' => true,
-                'message' => 'تم التسجيل في المادة بنجاح'
+                'message' => 'تم التسجيل في المادة بنجاح',
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'المادة غير موجودة أو غير نشطة'
+                'message' => 'المادة غير موجودة أو غير نشطة',
             ], 404);
         } catch (\Exception $e) {
-            \Log::error('Error in requestEnrollment: ' . $e->getMessage());
+            \Log::error('Error in requestEnrollment: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ أثناء إرسال الطلب: ' . $e->getMessage()
+                'message' => 'حدث خطأ أثناء إرسال الطلب: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -211,19 +300,24 @@ class StudentEnrollmentController extends Controller
     public function requestClassEnrollment(Request $request, $classId)
     {
         $user = Auth::user();
-        
+
+        $request->validate([
+            'currency_id' => 'nullable|exists:currencies,id',
+        ]);
+        $currencyId = $request->filled('currency_id') ? (int) $request->input('currency_id') : null;
+
         // التحقق من وجود الصف
-        $class = SchoolClass::with(['subjects' => function($query) {
+        $class = SchoolClass::with(['subjects' => function ($query) {
             $query->where('is_active', true);
         }])->findOrFail($classId);
-        
+
         if ($class->subjects->count() === 0) {
             return response()->json([
                 'success' => false,
-                'message' => 'لا توجد مواد دراسية في هذا الصف'
+                'message' => 'لا توجد مواد دراسية في هذا الصف',
             ], 400);
         }
-        
+
         try {
             // التحقق من وجود شراء مسبق
             $existingPurchase = Purchase::where('user_id', $user->id)
@@ -235,33 +329,61 @@ class StudentEnrollmentController extends Controller
             if ($existingPurchase) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'لقد قمت بشراء هذا الصف مسبقاً'
+                    'message' => 'لقد قمت بشراء هذا الصف مسبقاً',
                 ], 400);
             }
 
-            // إذا كان السعر > 0، توجيه إلى صفحة الشراء
-            if (!$class->is_free && $class->price > 0) {
+            if (! $class->is_free && $class->price > 0) {
+                $purchase = $this->resolveOrCreatePendingPurchase($user, $class, 'class', $currencyId);
+
+                if ($purchase->status === 'completed') {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'تم التسجيل في الصف بنجاح',
+                    ]);
+                }
+
                 return response()->json([
-                    'success' => false,
-                    'message' => 'يجب شراء هذا الصف أولاً',
-                    'redirect' => route('student.purchases.class.show', $classId),
-                    'requires_purchase' => true,
-                ], 400);
+                    'success' => true,
+                    'requires_payment' => true,
+                    'purchase_id' => $purchase->id,
+                    'message' => 'أكمل الدفع لإتمام التسجيل في الصف.',
+                ]);
             }
 
             // إذا كان السعر 0، إنشاء شراء مكتمل تلقائياً
-            $purchase = $this->purchaseService->createPurchase($user, $class, 'class');
-            
+            $this->purchaseService->createPurchase($user, $class, 'class');
+
             return response()->json([
                 'success' => true,
-                'message' => 'تم التسجيل في الصف بنجاح'
+                'message' => 'تم التسجيل في الصف بنجاح',
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error in requestClassEnrollment: ' . $e->getMessage());
+            \Log::error('Error in requestClassEnrollment: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ أثناء إرسال الطلب: ' . $e->getMessage()
+                'message' => 'حدث خطأ أثناء إرسال الطلب: '.$e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * إنشاء شراء معلّق أو إعادة استخدام شراء معلّق لنفس العنصر (صف/مادة) لإكمال الدفع من واجهة الانضمام.
+     */
+    private function resolveOrCreatePendingPurchase(User $user, object $purchasable, string $purchaseType, ?int $currencyId): Purchase
+    {
+        $pending = Purchase::query()
+            ->where('user_id', $user->id)
+            ->where('purchasable_type', $purchasable::class)
+            ->where('purchasable_id', $purchasable->id)
+            ->where('status', 'pending')
+            ->first();
+
+        if ($pending) {
+            return $pending;
+        }
+
+        return $this->purchaseService->createPurchase($user, $purchasable, $purchaseType, $currencyId);
     }
 }

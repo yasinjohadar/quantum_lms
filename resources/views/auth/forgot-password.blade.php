@@ -24,7 +24,14 @@
     @endif
 
     @if ($errors->any())
-        <div class="auth-alert auth-alert-danger">تعذر إكمال الطلب. تحقق من الحقول ثم حاول مرة أخرى.</div>
+        <div class="auth-alert auth-alert-danger" role="alert">
+            <p style="margin:0 0 8px;">تعذر إكمال الطلب. تحقق من الحقول ثم حاول مرة أخرى.</p>
+            <ul style="margin:0;padding-inline-start:1.25rem;">
+                @foreach ($errors->all() as $err)
+                    <li>{{ $err }}</li>
+                @endforeach
+            </ul>
+        </div>
     @endif
 
     <form method="POST" action="{{ route('password.email') }}">
@@ -195,11 +202,9 @@
                     }
                     var data = result.data;
                     if (data.valid) {
-                        hideServerPhoneError();
                         setLiveState(true);
                         return;
                     }
-                    hideServerPhoneError();
                     setLiveState(false, data.message || 'تحقق من رقم الهاتف ورمز الدولة.');
                 })
                 .catch(function (err) {
@@ -212,8 +217,13 @@
             debounceTimer = setTimeout(runValidate, 380);
         }
 
+        function onPhoneInput() {
+            hideServerPhoneError();
+            scheduleValidate();
+        }
+
         if (phoneEl) {
-            phoneEl.addEventListener('input', scheduleValidate);
+            phoneEl.addEventListener('input', onPhoneInput);
             phoneEl.addEventListener('blur', function () {
                 clearTimeout(debounceTimer);
                 runValidate();
@@ -222,11 +232,15 @@
         if (countryEl) {
             countryEl.addEventListener('change', function () {
                 clearTimeout(debounceTimer);
+                hideServerPhoneError();
                 runValidate();
             });
         }
         if (manualEl) {
-            manualEl.addEventListener('input', scheduleValidate);
+            manualEl.addEventListener('input', function () {
+                hideServerPhoneError();
+                scheduleValidate();
+            });
         }
 
         if (phoneEl && phoneEl.value.trim()) {

@@ -127,6 +127,43 @@ class User extends Authenticatable
     }
 
     /**
+     * هل لدى الطالب وصولاً لجميع المواد النشطة في الصف (انضمام صف معتمد أو تسجيل نشط لكل مادة نشطة).
+     */
+    public function hasFullAccessToSchoolClass(SchoolClass $class): bool
+    {
+        if (Purchase::query()
+            ->where('user_id', $this->id)
+            ->where('purchasable_type', SchoolClass::class)
+            ->where('purchasable_id', $class->id)
+            ->where('status', 'completed')
+            ->exists()) {
+            return true;
+        }
+
+        if ($this->classEnrollments()
+            ->where('class_id', $class->id)
+            ->approved()
+            ->exists()) {
+            return true;
+        }
+
+        $activeSubjectIds = $class->subjects()
+            ->where('is_active', true)
+            ->pluck('subjects.id');
+
+        if ($activeSubjectIds->isEmpty()) {
+            return false;
+        }
+
+        $enrolledActiveCount = $this->enrollments()
+            ->where('status', 'active')
+            ->whereIn('subject_id', $activeSubjectIds)
+            ->count();
+
+        return $enrolledActiveCount >= $activeSubjectIds->count();
+    }
+
+    /**
      * العلاقة مع سجلات الدخول
      */
     public function loginLogs()

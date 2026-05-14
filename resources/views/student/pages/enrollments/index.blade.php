@@ -54,7 +54,7 @@
                                                 <div class="d-flex align-items-center justify-content-between mt-3">
                                                     <span class="text-muted small">
                                                         <i class="bi bi-book me-1"></i>
-                                                        {{ $class->subjects()->where('is_active', true)->count() }} مادة
+                                                        {{ $class->joinable_subjects_count ?? $class->subjects()->where('is_active', true)->count() }} مادة متاحة
                                                     </span>
                                                     <button class="btn btn-primary btn-sm" onclick="requestClassEnrollment({{ $class->id }}, '{{ addslashes($class->name) }}')" type="button">
                                                         <i class="bi bi-plus-circle me-1"></i>
@@ -121,9 +121,23 @@
         </div>
     </div>
 </div>
+
+<!-- Modal الدفع (صف مدفوع) -->
+<div class="modal fade" id="classEnrollmentPaymentModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-scrollable modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">إتمام الدفع</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="classEnrollmentPaymentModalBody"></div>
+        </div>
+    </div>
+</div>
 @stop
 
 @push('scripts')
+@include('student.pages.enrollments.partials.inline-purchase-payment-script')
 <script>
     let pendingClassId = null;
     
@@ -150,20 +164,31 @@
         })
         .then(response => response.json())
         .then(data => {
-            var modal = bootstrap.Modal.getInstance(document.getElementById('confirmClassEnrollmentModal'));
-            modal.hide();
-            
+            var confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmClassEnrollmentModal'));
+            if (confirmModal) {
+                confirmModal.hide();
+            }
+
+            if (data.success && data.requires_payment && data.purchase_id) {
+                var payModalEl = document.getElementById('classEnrollmentPaymentModal');
+                var payBody = document.getElementById('classEnrollmentPaymentModalBody');
+                window.EnrollmentInlinePurchase.openPaymentModal(payModalEl, payBody, data.purchase_id, { return: 'enrollments' });
+                return;
+            }
+
             if (data.success) {
-                // عرض رسالة نجاح
                 showAlert('success', data.message || 'تم إرسال طلب الانضمام بنجاح!');
+                setTimeout(function () { window.location.reload(); }, 800);
             } else {
                 showAlert('warning', data.message || 'حدث خطأ أثناء إرسال الطلب');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            var modal = bootstrap.Modal.getInstance(document.getElementById('confirmClassEnrollmentModal'));
-            modal.hide();
+            var confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmClassEnrollmentModal'));
+            if (confirmModal) {
+                confirmModal.hide();
+            }
             showAlert('danger', 'حدث خطأ في الاتصال. حاول مرة أخرى.');
         })
         .finally(() => {
@@ -173,14 +198,24 @@
         });
     });
     
+    var payModalEl = document.getElementById('classEnrollmentPaymentModal');
+    if (payModalEl) {
+        payModalEl.addEventListener('hidden.bs.modal', function () {
+            var body = document.getElementById('classEnrollmentPaymentModalBody');
+            if (body) {
+                body.innerHTML = '';
+            }
+        });
+    }
+
     function showAlert(type, message) {
         var alertDiv = document.createElement('div');
         alertDiv.className = 'alert alert-' + type + ' alert-dismissible fade show position-fixed';
         alertDiv.style.cssText = 'top: 80px; right: 20px; z-index: 9999; min-width: 300px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
         alertDiv.innerHTML = message + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
         document.body.appendChild(alertDiv);
-        
-        setTimeout(function() {
+
+        setTimeout(function () {
             alertDiv.remove();
         }, 5000);
     }
