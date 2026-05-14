@@ -344,7 +344,6 @@ class TeacherAssignmentController extends Controller
             'subjects.*' => 'exists:subjects,id',
             'required_pages' => 'nullable|array',
             'required_pages.*' => 'nullable|integer|min:0',
-            'weekly_lessons_target' => 'nullable|integer|min:0',
         ]);
 
         $this->applyTeacherAssignmentsFromRequest($request, $teacher);
@@ -416,12 +415,6 @@ class TeacherAssignmentController extends Controller
             }
         }
 
-        if ($canManageSubjects || $canManageClasses) {
-            $teacher->weekly_lessons_target = $request->input('weekly_lessons_target') !== null && $request->input('weekly_lessons_target') !== ''
-                ? (int) $request->input('weekly_lessons_target')
-                : null;
-            $teacher->save();
-        }
     }
 
     /**

@@ -151,6 +151,7 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th>المادة</th>
+                                        <th>الصف</th>
                                         <th>عدد الدروس المعتمدة</th>
                                         <th>الصفحات المطلوبة</th>
                                         <th>المنجز</th>
@@ -161,7 +162,8 @@
                                 <tbody>
                                     @foreach($pages_progress as $row)
                                         <tr>
-                                            <td>{{ $row['subject']->name }}</td>
+                                            <td class="fw-semibold">{{ $row['subject']->name }}</td>
+                                            <td class="small text-muted">{{ $row['subject']->schoolClass?->name ?? '—' }}</td>
                                             <td>{{ $row['approved_lessons_count'] ?? 0 }}</td>
                                             <td>{{ $row['required_pages'] }}</td>
                                             <td>{{ $row['completed_pages'] }}</td>

@@ -50,28 +50,24 @@ class AcademicWeekService
     }
 
     /**
-     * حساب الهدف الأسبوعي لمعلم: override من teacher_week_targets ثم هدف الأسبوع ثم users.weekly_lessons_target ثم 0.
+     * حساب الهدف الأسبوعي لمعلم: سجل teacher_week_targets للأسبوع إن وُجد، وإلا هدف الأسبوع من academic_weeks.
+     * (لا يُستخدم حقل users.weekly_lessons_target — أُلغي من الواجهة والإحصائيات.)
      */
     public static function getWeeklyTargetForTeacher(User $teacher, ?AcademicWeek $week): int
     {
         if ($week === null) {
-            return (int) ($teacher->weekly_lessons_target ?? 0);
+            return 0;
         }
 
-        $override = $teacher->teacherWeekTargets()
+        $saved = $teacher->teacherWeekTargets()
             ->where('academic_week_id', $week->id)
-            ->value('required_lessons_target');
+            ->first();
 
-        if ($override !== null) {
-            return (int) $override;
+        if ($saved !== null) {
+            return (int) ($saved->required_lessons_target ?? 0);
         }
 
-        $weekTarget = (int) ($week->required_lessons_target ?? 0);
-        if ($weekTarget > 0) {
-            return $weekTarget;
-        }
-
-        return (int) ($teacher->weekly_lessons_target ?? 0);
+        return (int) ($week->required_lessons_target ?? 0);
     }
 
     /**

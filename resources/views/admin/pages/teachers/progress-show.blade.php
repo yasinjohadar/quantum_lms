@@ -232,7 +232,7 @@
                                                         required
                                                         class="form-control form-control-sm {{ $isPastWeek ? 'bg-light' : '' }}"
                                                         name="required_lessons_targets[{{ $w->id }}]"
-                                                        value="{{ old('required_lessons_targets.' . $w->id, $weekTargets[$w->id] ?? 0) }}"
+                                                        value="{{ old('required_lessons_targets.' . $w->id, $weekTargets[$w->id] ?? (int) ($w->required_lessons_target ?? 0)) }}"
                                                         style="max-width: 120px;"
                                                         @if($isPastWeek) disabled @endif
                                                     >

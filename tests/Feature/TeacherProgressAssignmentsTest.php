@@ -282,7 +282,6 @@ test('assignments update with Accept JSON returns payload and persists', functio
         'required_pages' => [
             (string) $subjectA->id => '7',
         ],
-        'weekly_lessons_target' => '',
     ]);
 
     $response->assertOk()
@@ -376,7 +375,6 @@ test('assignments JSON persists subject even when its class is not among selecte
         'required_pages' => [
             (string) $subjectInB->id => '3',
         ],
-        'weekly_lessons_target' => '',
     ]);
 
     $response->assertOk()->assertJsonPath('ok', true);

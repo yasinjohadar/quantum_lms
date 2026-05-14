@@ -88,7 +88,64 @@ class TeacherProgressService
                 'percentage' => $percentage,
             ];
         }
+
+        usort($result, [self::class, 'comparePagesProgressRowsByClassThenSubject']);
+
         return $result;
+    }
+
+    /**
+     * ترتيب صفوف تقدم الصفحات: مرحلة ← صف ← مادة (لعرض مواد كل صف معاً).
+     *
+     * @param  array{subject: \App\Models\Subject, required_pages: int, completed_pages: int, remaining_pages: int, percentage: float|null}  $a
+     * @param  array{subject: \App\Models\Subject, required_pages: int, completed_pages: int, remaining_pages: int, percentage: float|null}  $b
+     */
+    private static function comparePagesProgressRowsByClassThenSubject(array $a, array $b): int
+    {
+        $sa = $a['subject'];
+        $sb = $b['subject'];
+        $ca = $sa->schoolClass;
+        $cb = $sb->schoolClass;
+
+        if ($ca === null && $cb === null) {
+            return strcmp((string) $sa->name, (string) $sb->name);
+        }
+        if ($ca === null) {
+            return 1;
+        }
+        if ($cb === null) {
+            return -1;
+        }
+
+        $stageA = $ca->relationLoaded('stage') ? $ca->stage : null;
+        $stageB = $cb->relationLoaded('stage') ? $cb->stage : null;
+        $stageOrdA = $stageA ? (int) ($stageA->order ?? 0) : (int) ($ca->stage_id ?? 0);
+        $stageOrdB = $stageB ? (int) ($stageB->order ?? 0) : (int) ($cb->stage_id ?? 0);
+        if ($stageOrdA !== $stageOrdB) {
+            return $stageOrdA <=> $stageOrdB;
+        }
+        $stageIdA = (int) ($ca->stage_id ?? 0);
+        $stageIdB = (int) ($cb->stage_id ?? 0);
+        if ($stageIdA !== $stageIdB) {
+            return $stageIdA <=> $stageIdB;
+        }
+
+        $classOrdA = (int) ($ca->order ?? 0);
+        $classOrdB = (int) ($cb->order ?? 0);
+        if ($classOrdA !== $classOrdB) {
+            return $classOrdA <=> $classOrdB;
+        }
+        if ($ca->id !== $cb->id) {
+            return $ca->id <=> $cb->id;
+        }
+
+        $subOrdA = (int) ($sa->order ?? 0);
+        $subOrdB = (int) ($sb->order ?? 0);
+        if ($subOrdA !== $subOrdB) {
+            return $subOrdA <=> $subOrdB;
+        }
+
+        return strcmp((string) $sa->name, (string) $sb->name);
     }
 
     /**

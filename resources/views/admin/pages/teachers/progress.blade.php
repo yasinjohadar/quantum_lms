@@ -81,6 +81,7 @@
                                                         <thead class="table-light">
                                                             <tr>
                                                                 <th>المادة</th>
+                                                                <th>الصف</th>
                                                                 <th>المطلوب</th>
                                                                 <th>المنجز</th>
                                                                 <th>المتبقي</th>
@@ -90,7 +91,8 @@
                                                         <tbody>
                                                             @foreach($pagesProgress as $row)
                                                                 <tr>
-                                                                    <td>{{ $row['subject']->name }}</td>
+                                                                    <td class="fw-semibold">{{ $row['subject']->name }}</td>
+                                                                    <td class="small text-muted">{{ $row['subject']->schoolClass?->name ?? '—' }}</td>
                                                                     <td>{{ $row['required_pages'] }}</td>
                                                                     <td>{{ $row['completed_pages'] }}</td>
                                                                     <td>{{ $row['remaining_pages'] }}</td>

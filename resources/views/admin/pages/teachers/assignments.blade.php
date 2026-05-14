@@ -310,10 +310,6 @@
                                             <span class="badge bg-primary" id="teacherAssignmentsFooterSubjectsCount">{{ $assignedSubjects->count() }}</span>
                                         </p>
                                     </div>
-                                    <div class="col-md-4 mt-2">
-                                        <label class="form-label mb-1 small"><strong>عدد الدروس الأسبوعية المطلوبة:</strong></label>
-                                        <input type="number" name="weekly_lessons_target" class="form-control form-control-sm" min="0" placeholder="0" value="{{ $teacher->weekly_lessons_target ?? '' }}">
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -888,7 +884,7 @@
                 }
             });
             form.addEventListener('input', function(e) {
-                if (e.target.matches('.subject-pages-input') || e.target.matches('input[name="weekly_lessons_target"]')) {
+                if (e.target.matches('.subject-pages-input')) {
                     if (window.scheduleTeacherAssignmentsAutoSave) {
                         window.scheduleTeacherAssignmentsAutoSave();
                     }
