@@ -50,6 +50,7 @@ class SystemSetting extends Model
         'phone_verification' => 'Phone Verification',
         'social' => 'روابط التواصل الاجتماعي',
         'storage' => 'التخزين والملفات',
+        'payments' => 'المدفوعات',
     ];
 
     /**
@@ -123,6 +124,20 @@ class SystemSetting extends Model
                 'description' => $description,
             ]
         );
+    }
+
+    /** هل يُطلب رفع وصل التحويل البنكي (IBAN) من الطالب؟ */
+    public static function ibanReceiptRequired(): bool
+    {
+        return (bool) self::get('payments_iban_receipt_required', true);
+    }
+
+    /** تعليمات مخصصة تظهر للطالب عند اختيار التحويل البنكي */
+    public static function ibanStudentInstructions(): string
+    {
+        $v = self::get('payments_iban_student_instructions', '');
+
+        return is_string($v) ? $v : '';
     }
 }
 

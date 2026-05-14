@@ -8,6 +8,7 @@ use App\Models\Subject;
 use App\Models\Purchase;
 use App\Models\Payment;
 use App\Models\CustomPaymentMethod;
+use App\Models\SystemSetting;
 use App\Services\PurchaseService;
 use App\Services\PaymentService;
 use App\Services\WalletService;
@@ -276,10 +277,14 @@ class PurchaseController extends Controller
             ], 400);
         }
 
+        $ibanReceiptRules = SystemSetting::ibanReceiptRequired()
+            ? 'required_if:payment_method,iban|file|mimes:jpg,jpeg,png,pdf|max:5120'
+            : 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120';
+
         $request->validate([
             'payment_method' => 'required|in:stripe,paypal,wallet,iban,custom',
             'custom_payment_method_id' => 'required_if:payment_method,custom|integer|exists:custom_payment_methods,id',
-            'receipt_file' => 'required_if:payment_method,iban|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'receipt_file' => $ibanReceiptRules,
             'payment_data' => 'nullable|array',
             'currency_id' => 'nullable|exists:currencies,id',
         ]);

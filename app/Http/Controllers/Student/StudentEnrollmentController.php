@@ -333,7 +333,7 @@ class StudentEnrollmentController extends Controller
                 ], 400);
             }
 
-            if (! $class->is_free && $class->price > 0) {
+            if ($class->classJoinRequiresPayment()) {
                 $purchase = $this->resolveOrCreatePendingPurchase($user, $class, 'class', $currencyId);
 
                 if ($purchase->status === 'completed') {

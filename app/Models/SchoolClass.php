@@ -259,5 +259,13 @@ class SchoolClass extends Model
                 return $resolver->resolveSubjectAccessData($subject, $user, $currencyId);
             });
     }
+
+    /**
+     * هل يُتوقّع طلب دفع عند «الانضمام للصف كاملاً»؟ (متطابق مع StudentEnrollmentController::requestClassEnrollment)
+     */
+    public function classJoinRequiresPayment(): bool
+    {
+        return ! $this->is_free && (float) $this->price > 0;
+    }
 }
 

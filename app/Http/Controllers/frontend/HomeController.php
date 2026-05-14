@@ -507,7 +507,17 @@ class HomeController extends Controller
             $class = $purchase->purchasable->schoolClass ?? null;
         }
 
-        return view('frontend.pages.payment', compact('purchase', 'wallet', 'customPaymentMethods', 'class'));
+        $ibanReceiptRequired = SystemSetting::ibanReceiptRequired();
+        $ibanStudentInstructions = SystemSetting::ibanStudentInstructions();
+
+        return view('frontend.pages.payment', compact(
+            'purchase',
+            'wallet',
+            'customPaymentMethods',
+            'class',
+            'ibanReceiptRequired',
+            'ibanStudentInstructions'
+        ));
     }
 
     /**
@@ -539,7 +549,9 @@ class HomeController extends Controller
         
         // إضافة validation للـ receipt_file للـ IBAN
         if ($request->payment_method === 'iban') {
-            $rules['receipt_file'] = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
+            $rules['receipt_file'] = SystemSetting::ibanReceiptRequired()
+                ? 'required|file|mimes:jpg,jpeg,png,pdf|max:5120'
+                : 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120';
         }
         
         // إضافة validation للـ receipt_file للـ custom methods (إذا كان مطلوباً)

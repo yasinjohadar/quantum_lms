@@ -2,6 +2,14 @@
 
 @section('content')
 
+@php
+    $ibanReceiptRequired = $ibanReceiptRequired ?? true;
+    $ibanStudentInstructions = trim((string) ($ibanStudentInstructions ?? ''));
+    $ibanInstructionsDisplay = $ibanStudentInstructions !== ''
+        ? $ibanStudentInstructions
+        : 'سيتم مراجعة الوصل من قبل الإدارة';
+@endphp
+
 <!-- Payment Section Start -->
 <section class="payment-section py-5">
     <div class="container">
@@ -73,22 +81,26 @@
                                         <div>
                                             <i class="fa-solid fa-university me-2"></i>
                                             <strong>تحويل بنكي (IBAN)</strong>
-                                            <small class="payment-method-desc">سيتم مراجعة الوصل من قبل الإدارة</small>
                                         </div>
                                     </div>
                                 </div>
                             </label>
                             <div id="ibanDetails" class="payment-method-details" style="display: none;">
+                                <div class="alert alert-light border mb-3 text-muted small" role="note">
+                                    {!! nl2br(e($ibanInstructionsDisplay)) !!}
+                                </div>
                                 <div class="alert alert-info">
                                     <p class="mb-2"><strong>معلومات الحساب:</strong></p>
                                     <p class="mb-0">IBAN: SA1234567890123456789012</p>
                                     <p class="mb-0">اسم البنك: البنك الأهلي السعودي</p>
                                 </div>
-                                <div class="mb-3">
-                                    <label for="receipt_file" class="form-label">رفع الوصل <span class="text-danger">*</span></label>
-                                    <input type="file" class="form-control" id="receipt_file" name="receipt_file" accept="image/*,application/pdf">
-                                    <small class="text-muted">صيغ مدعومة: JPG, PNG, PDF (حجم أقصى 5MB)</small>
-                                </div>
+                                @if($ibanReceiptRequired)
+                                    <div class="mb-3">
+                                        <label for="receipt_file" class="form-label">رفع الوصل <span class="text-danger">*</span></label>
+                                        <input type="file" class="form-control" id="receipt_file" name="receipt_file" accept="image/*,application/pdf">
+                                        <small class="text-muted">صيغ مدعومة: JPG, PNG, PDF (حجم أقصى 5MB)</small>
+                                    </div>
+                                @endif
                             </div>
                         </div>
 
@@ -205,6 +217,7 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const ibanReceiptRequired = @json($ibanReceiptRequired);
     // إظهار/إخفاء تفاصيل طريقة الدفع
     document.querySelectorAll('.payment-method-radio').forEach(radio => {
         radio.addEventListener('change', function() {
@@ -237,8 +250,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // التحقق من وجود الملف للـ IBAN
-        if (paymentMethod.value === 'iban') {
+        // التحقق من وجود الملف للـ IBAN (عند تفعيل الإلزام من الإعدادات)
+        if (paymentMethod.value === 'iban' && ibanReceiptRequired) {
             const receiptFile = document.getElementById('receipt_file');
             if (!receiptFile || !receiptFile.files || receiptFile.files.length === 0) {
                 alert('يرجى رفع وصل الدفع');

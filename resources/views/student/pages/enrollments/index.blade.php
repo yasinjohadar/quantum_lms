@@ -35,15 +35,26 @@
                                     <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-4">
                                         <!-- كارد الصف -->
                                         <div class="card custom-card h-100">
-                                            <a href="{{ route('student.enrollments.class.show', $class->id) }}" class="text-decoration-none">
-                                                @if($class->image)
-                                                    <img src="{{ media_public_url($class->image) }}" class="card-img-top" alt="{{ $class->name }}" style="height: 180px; object-fit: cover;">
+                                            <div class="position-relative">
+                                                <a href="{{ route('student.enrollments.class.show', $class->id) }}" class="text-decoration-none">
+                                                    @if($class->image)
+                                                        <img src="{{ media_public_url($class->image) }}" class="card-img-top" alt="{{ $class->name }}" style="height: 180px; object-fit: cover;">
+                                                    @else
+                                                        <div class="card-img-top bg-primary d-flex align-items-center justify-content-center" style="height: 180px;">
+                                                            <i class="bi bi-building text-white" style="font-size: 4rem;"></i>
+                                                        </div>
+                                                    @endif
+                                                </a>
+                                                @if($class->classJoinRequiresPayment())
+                                                    <span class="position-absolute top-0 start-0 m-2 badge rounded-pill bg-warning text-dark shadow-sm" title="صف مدفوع">
+                                                        <i class="bi bi-star-fill me-1" aria-hidden="true"></i>مدفوع
+                                                    </span>
                                                 @else
-                                                    <div class="card-img-top bg-primary d-flex align-items-center justify-content-center" style="height: 180px;">
-                                                        <i class="bi bi-building text-white" style="font-size: 4rem;"></i>
-                                                    </div>
+                                                    <span class="position-absolute top-0 start-0 m-2 badge rounded-pill bg-success shadow-sm" title="صف مجاني">
+                                                        <i class="bi bi-gift me-1" aria-hidden="true"></i>مجاني
+                                                    </span>
                                                 @endif
-                                            </a>
+                                            </div>
                                             <div class="card-body">
                                                 <a href="{{ route('student.enrollments.class.show', $class->id) }}" class="text-decoration-none">
                                                     <h6 class="card-title fw-semibold text-dark">{{ $class->name }}</h6>

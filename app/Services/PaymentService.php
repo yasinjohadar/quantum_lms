@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Payment;
 use App\Models\Purchase;
 use App\Models\CustomPaymentMethod;
+use App\Models\SystemSetting;
 use App\Services\WalletService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -122,6 +123,7 @@ class PaymentService
     public function processIBANPayment(Purchase $purchase, $receiptFile): array
     {
         try {
+            $receiptRequired = SystemSetting::ibanReceiptRequired();
             $path = null;
             if ($receiptFile) {
                 // التحقق من أن الملف موجود وصحيح
@@ -147,7 +149,7 @@ class PaymentService
                     'file_path' => $path,
                     'file_size' => $receiptFile->getSize(),
                 ]);
-            } else {
+            } elseif ($receiptRequired) {
                 return [
                     'success' => false,
                     'error' => 'يرجى رفع وصل الدفع',

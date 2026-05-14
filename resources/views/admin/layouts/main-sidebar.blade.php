@@ -221,19 +221,19 @@
                         </li>
                         @endcanany
 
-                        @canany(['enrollment-list', 'enrollment-pending-requests', 'enrollment-class-pending-requests'])
-                        <li class="slide has-sub {{ request()->is('admin/enrollments*') ? 'open' : '' }}">
+                        @canany(['enrollment-list', 'enrollment-pending-requests', 'enrollment-class-pending-requests', 'payment-list'])
+                        <li class="slide has-sub {{ request()->is('admin/enrollments*') || request()->is('admin/payments*') || request()->is('admin/custom-payment-methods*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
                                     <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
                                 </svg>
-                                <span class="side-menu__label">الانضمامات</span>
+                                <span class="side-menu__label">الانضمامات والمدفوعات</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
                             <ul class="slide-menu child1">
                                 <li class="slide side-menu__label1">
-                                    <a href="javascript:void(0);">الانضمامات</a>
+                                    <a href="javascript:void(0);">الانضمامات والمدفوعات</a>
                                 </li>
                                 @can('enrollment-list')
                                 <li class="slide {{ request()->is('admin/enrollments') && !request()->is('admin/enrollments/pending*') && !request()->is('admin/enrollments/class-pending*') && !request()->is('admin/enrollments/create*') ? 'active' : '' }}">
@@ -288,6 +288,36 @@
                                     </a>
                                 </li>
                                 @endcan
+                                @can('payment-list')
+                                <li class="slide {{ request()->is('admin/payments*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.payments.index') }}" class="side-menu__item {{ request()->is('admin/payments*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
+                                        </svg>
+                                        <span class="side-menu__label">المدفوعات</span>
+                                        @php
+                                            try {
+                                                $paymentsNeedsReviewCount = \App\Models\Payment::needsReview()->count();
+                                            } catch (\Exception $e) {
+                                                $paymentsNeedsReviewCount = 0;
+                                            }
+                                        @endphp
+                                        @if($paymentsNeedsReviewCount > 0)
+                                            <span class="badge bg-warning-transparent text-warning ms-auto">{{ $paymentsNeedsReviewCount }}</span>
+                                        @endif
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/custom-payment-methods*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.custom-payment-methods.index') }}" class="side-menu__item {{ request()->is('admin/custom-payment-methods*') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm-5 14H4v-2h11v2zm5-4H4v-2h16v2zm0-4H4V8h16v2z"/>
+                                        </svg>
+                                        <span class="side-menu__label">وسائل الدفع المخصصة</span>
+                                    </a>
+                                </li>
+                                @endcan
                             </ul>
                         </li>
                         @endcanany
@@ -315,56 +345,6 @@
                             </a>
                         </li>
                         @endcan
-
-                        @canany(['payment-list'])
-                        <li class="slide has-sub {{ request()->is('admin/payments*') || request()->is('admin/custom-payment-methods*') ? 'open' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
-                                    <path d="M0 0h24v24H0z" fill="none"/>
-                                    <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
-                                </svg>
-                                <span class="side-menu__label">المدفوعات</span>
-                                <i class="fe fe-chevron-right side-menu__angle"></i>
-                            </a>
-                            <ul class="slide-menu child1">
-                                <li class="slide side-menu__label1">
-                                    <a href="javascript:void(0);">المدفوعات</a>
-                                </li>
-                                @can('payment-list')
-                                <li class="slide {{ request()->is('admin/payments*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.payments.index') }}" class="side-menu__item {{ request()->is('admin/payments*') ? 'active' : '' }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                                            <path d="M0 0h24v24H0z" fill="none"/>
-                                            <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
-                                        </svg>
-                                        <span class="side-menu__label">جميع المدفوعات</span>
-                                        @php
-                                            try {
-                                                $needsReviewCount = \App\Models\Payment::needsReview()->count();
-                                            } catch (\Exception $e) {
-                                                $needsReviewCount = 0;
-                                            }
-                                        @endphp
-                                        @if($needsReviewCount > 0)
-                                            <span class="badge bg-warning-transparent text-warning ms-auto">{{ $needsReviewCount }}</span>
-                                        @endif
-                                    </a>
-                                </li>
-                                @endcan
-                                @can('payment-list')
-                                <li class="slide {{ request()->is('admin/custom-payment-methods*') ? 'active' : '' }}">
-                                    <a href="{{ route('admin.custom-payment-methods.index') }}" class="side-menu__item {{ request()->is('admin/custom-payment-methods*') ? 'active' : '' }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                                            <path d="M0 0h24v24H0z" fill="none"/>
-                                            <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm-5 14H4v-2h11v2zm5-4H4v-2h16v2zm0-4H4V8h16v2z"/>
-                                        </svg>
-                                        <span class="side-menu__label">وسائل الدفع المخصصة</span>
-                                    </a>
-                                </li>
-                                @endcan
-                            </ul>
-                        </li>
-                        @endcanany
 
                         @canany(['report-view', 'enrollment-list'])
                         <li class="slide has-sub {{ request()->is('admin/reports*') || request()->is('admin/report-templates*') || request()->is('admin/analytics-dashboard*') || request()->is('admin/student-progress*') ? 'open' : '' }}">

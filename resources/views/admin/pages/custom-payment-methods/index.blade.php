@@ -13,6 +13,12 @@
                 <nav>
                     <ol class="breadcrumb mb-0">
                         <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                        @can('enrollment-list')
+                        <li class="breadcrumb-item"><a href="{{ route('admin.enrollments.index') }}">الانضمامات</a></li>
+                        @endcan
+                        @can('payment-list')
+                        <li class="breadcrumb-item"><a href="{{ route('admin.payments.index') }}">المدفوعات</a></li>
+                        @endcan
                         <li class="breadcrumb-item active" aria-current="page">وسائل الدفع المخصصة</li>
                     </ol>
                 </nav>

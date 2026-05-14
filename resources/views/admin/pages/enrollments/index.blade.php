@@ -27,6 +27,11 @@
                             </span>
                         </a>
                     @endif
+                    @can('payment-list')
+                    <a href="{{ route('admin.payments.index') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-credit-card me-1"></i> المدفوعات
+                    </a>
+                    @endcan
                     <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#unenrollByClassModal">
                         <i class="bi bi-people me-1"></i> فصل انضمامات صف
                     </button>

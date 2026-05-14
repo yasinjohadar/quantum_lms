@@ -13,6 +13,9 @@
                 <nav>
                     <ol class="breadcrumb mb-0">
                         <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                        @can('enrollment-list')
+                        <li class="breadcrumb-item"><a href="{{ route('admin.enrollments.index') }}">الانضمامات</a></li>
+                        @endcan
                         <li class="breadcrumb-item"><a href="{{ route('admin.payments.index') }}">المدفوعات</a></li>
                         <li class="breadcrumb-item active">تفاصيل الدفع</li>
                     </ol>
@@ -29,7 +32,7 @@
                             <i class="bi bi-check-circle me-1"></i>موافقة
                         </button>
                     </form>
-                    <button class="btn btn-danger btn-sm" onclick="rejectPayment({{ $payment->id }})">
+                    <button type="button" class="btn btn-danger btn-sm" onclick="rejectPayment()">
                         <i class="bi bi-x-circle me-1"></i>رفض
                     </button>
                 @endif
@@ -209,57 +212,84 @@
 </div>
 
 <!-- Modal رفض الدفع -->
-<div class="modal fade" id="rejectModal" tabindex="-1">
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalTitle" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">رفض الدفع</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="rejectModalTitle">رفض الدفع</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
             </div>
             <form id="rejectForm">
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="rejectNotes" class="form-label">سبب الرفض <span class="text-danger">*</span></label>
-                        <textarea class="form-control" id="rejectNotes" name="notes" rows="4" required></textarea>
+                        <label for="rejectNotes" class="form-label">سبب الرفض <span class="text-muted fw-normal">(اختياري)</span></label>
+                        <textarea class="form-control" id="rejectNotes" name="notes" rows="4" placeholder="يمكنك ترك الحقل فارغاً"></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="submit" class="btn btn-danger">رفض</button>
-                </div>
             </form>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="submit" form="rejectForm" class="btn btn-danger">رفض</button>
+            </div>
         </div>
     </div>
 </div>
 
 @push('scripts')
 <script>
-function rejectPayment(id) {
-    const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
+(function () {
+    var rejectModalEl = document.getElementById('rejectModal');
+    var rejectForm = document.getElementById('rejectForm');
+    if (rejectModalEl && rejectForm) {
+        rejectModalEl.addEventListener('hidden.bs.modal', function () {
+            rejectForm.reset();
+        });
+    }
+})();
+
+function rejectPayment() {
+    var rejectForm = document.getElementById('rejectForm');
+    if (rejectForm) {
+        rejectForm.reset();
+    }
+    var modal = new bootstrap.Modal(document.getElementById('rejectModal'));
     modal.show();
 }
 
 document.getElementById('rejectForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    const formData = new FormData(this);
-    const paymentId = {{ $payment->id }};
-    
-    fetch(`/admin/payments/${paymentId}/reject`, {
+    var formData = new FormData(this);
+    var paymentId = {{ $payment->id }};
+
+    fetch('/admin/payments/' + encodeURIComponent(paymentId) + '/reject', {
         method: 'POST',
         body: formData,
         headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json',
         }
     })
-    .then(response => {
-        if (response.ok) {
+    .then(function (response) {
+        return response.json().then(function (data) {
+            return { ok: response.ok, data: data };
+        });
+    })
+    .then(function (result) {
+        if (result.ok && result.data && result.data.success) {
             window.location.reload();
         } else {
-            alert('حدث خطأ أثناء رفض الدفع');
+            var msg = (result.data && result.data.message) ? result.data.message : 'حدث خطأ أثناء رفض الدفع';
+            if (result.data && result.data.errors) {
+                var first = Object.values(result.data.errors)[0];
+                if (Array.isArray(first) && first[0]) {
+                    msg = first[0];
+                }
+            }
+            alert(msg);
         }
     })
-    .catch(error => {
+    .catch(function (error) {
         console.error('Error:', error);
         alert('حدث خطأ أثناء رفض الدفع');
     });

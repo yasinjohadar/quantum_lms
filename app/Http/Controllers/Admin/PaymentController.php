@@ -44,8 +44,25 @@ class PaymentController extends Controller
         }
 
         // فلترة حسب المدفوعات التي تحتاج مراجعة
-        if ($request->has('needs_review') && $request->needs_review) {
+        if ($request->boolean('needs_review')) {
             $query->needsReview();
+        }
+
+        // نوع الشراء (صف / مادة)
+        if ($request->filled('purchase_type')) {
+            $purchaseType = $request->input('purchase_type');
+            if (in_array($purchaseType, ['class', 'subject'], true)) {
+                $query->whereHas('purchase', function ($q) use ($purchaseType) {
+                    $q->where('purchase_type', $purchaseType);
+                });
+            }
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->input('date_from'));
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->input('date_to'));
         }
 
         // البحث
@@ -57,7 +74,7 @@ class PaymentController extends Controller
             });
         }
 
-        $payments = $query->orderBy('created_at', 'desc')->paginate(20);
+        $payments = $query->orderBy('created_at', 'desc')->paginate(20)->withQueryString();
 
         return view('admin.pages.payments.index', compact('payments'));
     }
@@ -161,7 +178,7 @@ class PaymentController extends Controller
     public function rejectPayment(Request $request, $id)
     {
         $request->validate([
-            'notes' => 'required|string|max:1000',
+            'notes' => 'nullable|string|max:1000',
         ]);
 
         $payment = Payment::findOrFail($id);
@@ -173,10 +190,15 @@ class PaymentController extends Controller
             return back()->with('error', 'لا يمكن رفض هذا الدفع');
         }
 
+        $notes = $request->filled('notes') ? trim((string) $request->input('notes')) : null;
+        if ($notes === '') {
+            $notes = null;
+        }
+
         $success = $this->paymentService->reviewIBANPayment(
             $payment,
             false,
-            $request->notes,
+            $notes,
             auth()->id()
         );
 

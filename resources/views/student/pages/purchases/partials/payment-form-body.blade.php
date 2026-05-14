@@ -2,6 +2,11 @@
     $formId = $formId ?? 'paymentForm';
     $processPaymentUrl = $processPaymentUrl ?? route('student.purchases.process-payment', $purchase);
     $successUrl = $successUrl ?? route('student.classes');
+    $ibanReceiptRequired = $ibanReceiptRequired ?? \App\Models\SystemSetting::ibanReceiptRequired();
+    $ibanStudentInstructions = trim((string) ($ibanStudentInstructions ?? \App\Models\SystemSetting::ibanStudentInstructions()));
+    $ibanInstructionsDisplay = $ibanStudentInstructions !== ''
+        ? $ibanStudentInstructions
+        : 'سيتم مراجعة الوصل من قبل الإدارة';
 @endphp
 <div class="row">
     <div class="col-xl-8">
@@ -74,21 +79,25 @@
                                 <div>
                                     <i class="bi bi-bank me-2 text-info"></i>
                                     <strong>تحويل بنكي (IBAN)</strong>
-                                    <small class="text-muted d-block">سيتم مراجعة الوصل من قبل الإدارة</small>
                                 </div>
                             </label>
                         </div>
                         <div id="{{ $formId }}_ibanDetails" class="mt-3 js-iban-details" style="display: none;">
-                            <div class="alert alert-info">
+                            <div class="alert alert-light border mb-3 text-muted small" role="note">
+                                {!! nl2br(e($ibanInstructionsDisplay)) !!}
+                            </div>
+                            <div class="alert alert-info mt-3">
                                 <p class="mb-2"><strong>معلومات الحساب:</strong></p>
                                 <p class="mb-0">IBAN: SA1234567890123456789012</p>
                                 <p class="mb-0">اسم البنك: البنك الأهلي السعودي</p>
                             </div>
-                            <div class="mb-3">
-                                <label for="{{ $formId }}_receipt_file" class="form-label">رفع الوصل <span class="text-danger">*</span></label>
-                                <input type="file" class="form-control" id="{{ $formId }}_receipt_file" name="receipt_file" accept="image/*,application/pdf">
-                                <small class="text-muted">صيغ مدعومة: JPG, PNG, PDF (حجم أقصى 5MB)</small>
-                            </div>
+                            @if($ibanReceiptRequired)
+                                <div class="mb-3">
+                                    <label for="{{ $formId }}_receipt_file" class="form-label">رفع الوصل <span class="text-danger">*</span></label>
+                                    <input type="file" class="form-control" id="{{ $formId }}_receipt_file" name="receipt_file" accept="image/*,application/pdf">
+                                    <small class="text-muted">صيغ مدعومة: JPG, PNG, PDF (حجم أقصى 5MB)</small>
+                                </div>
+                            @endif
                         </div>
                     </div>
 

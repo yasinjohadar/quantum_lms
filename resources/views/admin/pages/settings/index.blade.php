@@ -79,6 +79,10 @@
                                                     <i class="fas fa-phone me-2 text-success"></i>الهاتف (الفوتر)
                                                 @elseif($setting->key === 'contact_email')
                                                     <i class="fas fa-envelope me-2 text-info"></i>البريد الإلكتروني (الفوتر)
+                                                @elseif($setting->key === 'payments_iban_receipt_required')
+                                                    <i class="fas fa-file-invoice me-2 text-primary"></i>طلب رفع وصل التحويل البنكي (IBAN)
+                                                @elseif($setting->key === 'payments_iban_student_instructions')
+                                                    <i class="fas fa-align-right me-2 text-secondary"></i>تعليمات التحويل البنكي للطالب
                                                 @elseif($setting->key === 'social_facebook_url')
                                                     <i class="fab fa-facebook-f me-2 text-primary"></i>رابط فيسبوك
                                                 @elseif($setting->key === 'social_instagram_url')
@@ -190,8 +194,8 @@
                                                 <textarea class="form-control" 
                                                          name="settings[{{ $setting->key }}]" 
                                                          id="setting_{{ $setting->id }}" 
-                                                         rows="3"
-                                                         @if($setting->key === 'otp_message_template') placeholder="مثال: رمز التحقق الخاص بك هو: {code} - صالح لمدة {expires_in} دقائق" @endif>{{ $setting->value }}</textarea>
+                                                         rows="{{ $setting->key === 'payments_iban_student_instructions' ? 5 : 3 }}"
+                                                         @if($setting->key === 'otp_message_template') placeholder="مثال: رمز التحقق الخاص بك هو: {code} - صالح لمدة {expires_in} دقائق" @elseif($setting->key === 'payments_iban_student_instructions') placeholder="مثال: أرسل المبلغ من حسابك باسمك الكامل، ثم احفظ رقم العملية..." @endif>{{ $setting->value }}</textarea>
                                             @else
                                                 <input type="text" 
                                                       class="form-control" 

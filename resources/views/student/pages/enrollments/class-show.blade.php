@@ -36,7 +36,18 @@
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <h5 class="mb-1">{{ $class->name }}</h5>
+                        <h5 class="mb-1 d-flex align-items-center flex-wrap gap-2">
+                            <span>{{ $class->name }}</span>
+                            @if($class->classJoinRequiresPayment())
+                                <span class="badge rounded-pill bg-warning text-dark">
+                                    <i class="bi bi-star-fill me-1" aria-hidden="true"></i>مدفوع
+                                </span>
+                            @else
+                                <span class="badge rounded-pill bg-success">
+                                    <i class="bi bi-gift me-1" aria-hidden="true"></i>مجاني
+                                </span>
+                            @endif
+                        </h5>
                         @if($class->description)
                             <p class="text-muted mb-0">{{ $class->description }}</p>
                         @endif

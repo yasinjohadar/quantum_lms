@@ -1,7 +1,7 @@
 @extends('admin.layouts.master')
 
 @section('page-title')
-    المدفوعات
+    المدفوعات — الانضمامات
 @stop
 
 @section('content')
@@ -13,6 +13,9 @@
                 <nav>
                     <ol class="breadcrumb mb-0">
                         <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                        @can('enrollment-list')
+                        <li class="breadcrumb-item"><a href="{{ route('admin.enrollments.index') }}">الانضمامات</a></li>
+                        @endcan
                         <li class="breadcrumb-item active" aria-current="page">المدفوعات</li>
                     </ol>
                 </nav>
@@ -51,7 +54,7 @@
             <div class="card-body">
                 <form method="GET" action="{{ route('admin.payments.index') }}" id="paymentsFilterForm">
                     <div class="row g-3">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label">الحالة</label>
                             <select name="status" class="form-select" id="statusFilter">
                                 <option value="">الكل</option>
@@ -61,7 +64,7 @@
                                 <option value="refunded" {{ request('status') == 'refunded' ? 'selected' : '' }}>مسترد</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label">طريقة الدفع</label>
                             <select name="payment_method" class="form-select" id="paymentMethodFilter">
                                 <option value="">الكل</option>
@@ -72,13 +75,37 @@
                                 <option value="paypal" {{ request('payment_method') == 'paypal' ? 'selected' : '' }}>PayPal</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label">البحث</label>
-                            <input type="text" name="search" class="form-control" id="searchQuery" value="{{ request('search') }}" placeholder="اسم الطالب أو البريد الإلكتروني">
+                        <div class="col-md-2">
+                            <label class="form-label">نوع الشراء</label>
+                            <select name="purchase_type" class="form-select" id="purchaseTypeFilter">
+                                <option value="">الكل</option>
+                                <option value="class" {{ request('purchase_type') == 'class' ? 'selected' : '' }}>صف</option>
+                                <option value="subject" {{ request('purchase_type') == 'subject' ? 'selected' : '' }}>مادة</option>
+                            </select>
                         </div>
-                        <div class="col-md-3 d-flex align-items-end gap-2">
+                        <div class="col-md-2">
+                            <label class="form-label">من تاريخ</label>
+                            <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">إلى تاريخ</label>
+                            <input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">البحث</label>
+                            <input type="text" name="search" class="form-control" id="searchQuery" value="{{ request('search') }}" placeholder="اسم الطالب أو البريد">
+                        </div>
+                    </div>
+                    <div class="row g-3 align-items-center mt-1">
+                        <div class="col-md-4 d-flex align-items-center">
+                            <div class="form-check mb-0">
+                                <input class="form-check-input" type="checkbox" name="needs_review" value="1" id="needsReviewFilter" {{ request()->boolean('needs_review') ? 'checked' : '' }}>
+                                <label class="form-check-label" for="needsReviewFilter">عرض المدفوعات التي تحتاج مراجعة فقط</label>
+                            </div>
+                        </div>
+                        <div class="col-md-8 d-flex align-items-end justify-content-md-end gap-2 flex-wrap">
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-search me-1"></i>بحث
+                                <i class="bi bi-search me-1"></i>تطبيق الفلاتر
                             </button>
                             <a href="{{ route('admin.payments.index') }}" class="btn btn-secondary">
                                 <i class="bi bi-arrow-clockwise me-1"></i>إعادة تعيين
@@ -188,60 +215,92 @@
 </div>
 
 <!-- Modal رفض الدفع -->
-<div class="modal fade" id="rejectModal" tabindex="-1">
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalTitle" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">رفض الدفع</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="rejectModalTitle">رفض الدفع</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
             </div>
             <form id="rejectForm">
                 @csrf
                 <div class="modal-body">
-                    <input type="hidden" id="rejectPaymentId" name="payment_id">
+                    <input type="hidden" id="rejectPaymentId" name="payment_id" value="">
                     <div class="mb-3">
-                        <label for="rejectNotes" class="form-label">سبب الرفض <span class="text-danger">*</span></label>
-                        <textarea class="form-control" id="rejectNotes" name="notes" rows="4" required></textarea>
+                        <label for="rejectNotes" class="form-label">سبب الرفض <span class="text-muted fw-normal">(اختياري)</span></label>
+                        <textarea class="form-control" id="rejectNotes" name="notes" rows="4" placeholder="يمكنك ترك الحقل فارغاً"></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="submit" class="btn btn-danger">رفض</button>
-                </div>
             </form>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="submit" form="rejectForm" class="btn btn-danger">رفض</button>
+            </div>
         </div>
     </div>
 </div>
 
 @push('scripts')
 <script>
+(function () {
+    var rejectModalEl = document.getElementById('rejectModal');
+    var rejectForm = document.getElementById('rejectForm');
+
+    rejectModalEl.addEventListener('hidden.bs.modal', function () {
+        if (rejectForm) {
+            rejectForm.reset();
+            document.getElementById('rejectPaymentId').value = '';
+        }
+    });
+})();
+
 function rejectPayment(id) {
     document.getElementById('rejectPaymentId').value = id;
-    const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
+    var rejectForm = document.getElementById('rejectForm');
+    if (rejectForm) {
+        rejectForm.reset();
+        document.getElementById('rejectPaymentId').value = id;
+    }
+    var modal = new bootstrap.Modal(document.getElementById('rejectModal'));
     modal.show();
 }
 
 document.getElementById('rejectForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    const formData = new FormData(this);
-    const paymentId = formData.get('payment_id');
-    
-    fetch(`/admin/payments/${paymentId}/reject`, {
+    var formData = new FormData(this);
+    var paymentId = formData.get('payment_id');
+    if (!paymentId) {
+        return;
+    }
+
+    fetch('/admin/payments/' + encodeURIComponent(paymentId) + '/reject', {
         method: 'POST',
         body: formData,
         headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json',
         }
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success || response.ok) {
+    .then(function(response) {
+        return response.json().then(function(data) {
+            return { ok: response.ok, data: data };
+        });
+    })
+    .then(function(result) {
+        if (result.ok && result.data && result.data.success) {
             window.location.reload();
         } else {
-            alert(data.message || 'حدث خطأ أثناء رفض الدفع');
+            var msg = (result.data && result.data.message) ? result.data.message : 'حدث خطأ أثناء رفض الدفع';
+            if (result.data && result.data.errors) {
+                var first = Object.values(result.data.errors)[0];
+                if (Array.isArray(first) && first[0]) {
+                    msg = first[0];
+                }
+            }
+            alert(msg);
         }
     })
-    .catch(error => {
+    .catch(function(error) {
         console.error('Error:', error);
         alert('حدث خطأ أثناء رفض الدفع');
     });
