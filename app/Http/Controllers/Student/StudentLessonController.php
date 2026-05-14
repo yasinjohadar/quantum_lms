@@ -182,13 +182,16 @@ class StudentLessonController extends Controller
                 'units' => function ($q) {
                     $q->where('is_active', true)->orderBy('order');
                 },
+                'mirroredUnits' => function ($q) {
+                    $q->where('is_active', true)->orderByPivot('order');
+                },
             ])
             ->firstOrFail();
 
-        $section->load(['units.quizzes', 'units.linkedQuizzes']);
+        $section->load(['units.quizzes', 'units.linkedQuizzes', 'mirroredUnits.quizzes', 'mirroredUnits.linkedQuizzes']);
 
         $children = $section->children;
-        $units = $section->units;
+        $units = $section->rootUnitsForDisplay();
         $directLessons = Lesson::where('section_id', $section->id)
             ->whereNull('unit_id')
             ->where('is_active', true)

@@ -17,11 +17,11 @@
                         <p class="text-muted mb-3 small">{{ $section->description }}</p>
                     @endif
                     
-                    @if($section->units->count() > 0)
+                    @if($section->rootUnitsForDisplay()->count() > 0)
                         <div class="accordion" id="section-{{ $section->id }}-{{ $suffix ?? 'sidebar' }}">
-                            @foreach($section->units as $unitIndex => $unit)
+                            @foreach($section->rootUnitsForDisplay() as $unitIndex => $unit)
                                 @php
-                                    $containsCurrentLesson = $unit->lessons->contains('id', $lesson->id);
+                                    $containsCurrentLesson = $unit->allLessons()->contains('id', $lesson->id);
                                 @endphp
                                 <div class="accordion-item border-0">
                                     <h2 class="accordion-header" id="unit-heading-{{ $unit->id }}-{{ $suffix ?? 'sidebar' }}">
@@ -32,7 +32,7 @@
                                                 aria-expanded="{{ ($unitIndex === 0 || $containsCurrentLesson) ? 'true' : 'false' }}">
                                             <i class="bi bi-file-text me-2"></i>
                                             <span class="small">{{ $unit->title }}</span>
-                                            <span class="badge bg-secondary ms-2 small">{{ $unit->lessons->count() }} درس</span>
+                                            <span class="badge bg-secondary ms-2 small">{{ $unit->allLessons()->count() }} درس</span>
                                         </button>
                                     </h2>
                                     <div id="unit-{{ $unit->id }}-{{ $suffix ?? 'sidebar' }}" 
@@ -43,9 +43,9 @@
                                                 <p class="text-muted mb-3 small">{{ $unit->description }}</p>
                                             @endif
                                             
-                                            @if($unit->lessons->count() > 0)
+                                            @if($unit->allLessons()->count() > 0)
                                                 <div class="list-group mb-2">
-                                                    @foreach($unit->lessons as $unitLesson)
+                                                    @foreach($unit->allLessons() as $unitLesson)
                                                         @php
                                                             $lessonUrl = (isset($lesson_route) && $lesson_route === 'student.lessons.show.folders')
                                                                 ? route('student.lessons.show.folders', $unitLesson)

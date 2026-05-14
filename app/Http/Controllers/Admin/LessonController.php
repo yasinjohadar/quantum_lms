@@ -342,7 +342,8 @@ class LessonController extends Controller
 
             unset($data['linked_unit_ids']);
             $preserveLinkedUnits = $request->boolean('preserve_linked_units');
-            $shouldSyncLinkedUnits = ! $preserveLinkedUnits && $request->has('linked_unit_ids');
+            // مودال المادة يرسل sync_linked_units ليعني «طابق الجدول مع القائمة المرسلة» حتى لو كانت فارغة (لا يعتمد على has('linked_unit_ids')).
+            $shouldSyncLinkedUnits = ! $preserveLinkedUnits && $request->boolean('sync_linked_units');
             $linkedUnitIds = $shouldSyncLinkedUnits
                 ? array_values(array_filter((array) $request->input('linked_unit_ids', [])))
                 : null;

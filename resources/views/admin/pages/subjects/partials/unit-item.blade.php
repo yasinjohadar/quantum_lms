@@ -1,10 +1,16 @@
 @php
     $childUnits = $allUnits->where('parent_id', $unit->id)->sortBy('order');
     $isChildUnit = $unit->parent_id !== null;
+    $isMirroredInThisSection = $isMirroredInThisSection ?? false;
+    $homeSectionId = $unit->section_id;
 @endphp
-<div class="accordion-item border rounded mb-2 shadow-sm unit-item {{ $isChildUnit ? 'unit-item-child' : 'unit-item-root' }}" data-id="{{ $unit->id }}">
+<div class="accordion-item border rounded mb-2 shadow-sm unit-item {{ $isChildUnit ? 'unit-item-child' : 'unit-item-root' }}" data-id="{{ $unit->id }}" data-home-section-id="{{ $homeSectionId }}">
     <h2 class="accordion-header d-flex" id="unitHeading{{ $unit->id }}">
-        <span class="sortable-handle d-flex align-items-center px-2 cursor-grab text-muted" title="اسحب لإعادة الترتيب"><i class="bi bi-grip-vertical"></i></span>
+        @if($isMirroredInThisSection)
+            <span class="d-flex align-items-center px-2 text-muted" style="width: 28px;" title="ظهور مرتبط — القسم المنزل: {{ $unit->section->title ?? '' }}"><i class="bi bi-link-45deg"></i></span>
+        @else
+            <span class="sortable-handle d-flex align-items-center px-2 cursor-grab text-muted" title="اسحب لإعادة الترتيب"><i class="bi bi-grip-vertical"></i></span>
+        @endif
         <button class="accordion-button collapsed flex-grow-1 py-3" type="button"
                 data-bs-toggle="collapse"
                 data-bs-target="#unitCollapse{{ $unit->id }}"
@@ -27,6 +33,12 @@
                             <span class="badge bg-success-transparent text-success ms-2">نشط</span>
                         @else
                             <span class="badge bg-secondary-transparent text-secondary ms-2">مخفي</span>
+                        @endif
+                        @if($unit->mirroredInSections->isNotEmpty())
+                            <span class="btn btn-sm btn-icon btn-outline-secondary border-secondary-subtle text-secondary ms-1 p-0" style="cursor: help; min-width: 2rem;" role="img"
+                                  title="@foreach($unit->mirroredInSections as $mis)يظهر أيضاً في: {{ $mis->subject->name ?? '' }} — {{ $mis->path_title }}@if(!$loop->last) | @endif @endforeach">
+                                <i class="bi bi-diagram-3"></i>
+                            </span>
                         @endif
                     </div>
                     @if($unit->description)
@@ -68,15 +80,15 @@
         <div class="accordion-body pt-0">
             @include('admin.pages.subjects.partials.unit-content', ['unit' => $unit, 'subject' => $subject])
 
-            {{-- زر إضافة قسم لرفع الدروس (فرعي تحت وحدة) --}}
+            {{-- زر إضافة قسم لرفع الدروس (فرعي تحت وحدة) — دائماً عبر القسم المنزل للوحدة --}}
             <div class="d-flex align-items-center gap-2 mt-3 pt-2 border-top">
                 @can('unit-create')
                 <button type="button"
                         class="btn btn-sm btn-outline-secondary add-child-unit-btn"
                         data-bs-toggle="modal"
-                        data-bs-target="#createUnitModal{{ $section->id }}"
+                        data-bs-target="#createUnitModal{{ $homeSectionId }}"
                         data-parent-id="{{ $unit->id }}"
-                        data-section-id="{{ $section->id }}"
+                        data-section-id="{{ $homeSectionId }}"
                         title="إضافة قسم لرفع الدروس">
                     <i class="bi bi-layers"></i> إضافة قسم لرفع الدروس
                 </button>
@@ -94,15 +106,22 @@
                         <button type="button"
                                 class="btn btn-sm btn-outline-secondary add-child-unit-btn"
                                 data-bs-toggle="modal"
-                                data-bs-target="#createUnitModal{{ $section->id }}"
+                                data-bs-target="#createUnitModal{{ $homeSectionId }}"
                                 data-parent-id="{{ $unit->id }}"
-                                data-section-id="{{ $section->id }}"
+                                data-section-id="{{ $homeSectionId }}"
                                 title="إضافة قسم لرفع الدروس">
                             <i class="bi bi-layers"></i> إضافة قسم لرفع الدروس
                         </button>
                         @endcan
                     </div>
-                    <div class="accordion accordion-secondary" id="childUnitsAccordion{{ $unit->id }}" data-sortable="units" data-section-id="{{ $section->id }}" data-parent-id="{{ $unit->id }}" data-reorder-url="{{ route('admin.sections.units.reorder', $section) }}">
+                    @php
+                        $childAccordionHasMirror = $childUnits->contains(fn ($cu) => (int) $cu->section_id !== (int) $section->id);
+                    @endphp
+                    <div class="accordion accordion-secondary" id="childUnitsAccordion{{ $unit->id }}"
+                        @unless($childAccordionHasMirror)
+                        data-sortable="units" data-section-id="{{ $homeSectionId }}" data-parent-id="{{ $unit->id }}" data-reorder-url="{{ route('admin.sections.units.reorder', $unit->section) }}"
+                        @endunless
+                        >
                         @foreach($childUnits->values() as $childIndex => $childUnit)
                             @include('admin.pages.subjects.partials.unit-item', [
                                 'unit' => $childUnit,
@@ -111,6 +130,7 @@
                                 'subject' => $subject,
                                 'unitIndex' => $childIndex,
                                 'parentUnitsAccordionId' => 'childUnitsAccordion' . $unit->id,
+                                'isMirroredInThisSection' => (int) $childUnit->section_id !== (int) $section->id,
                             ])
                         @endforeach
                     </div>
@@ -123,9 +143,9 @@
                         <button type="button"
                                 class="btn btn-sm btn-outline-secondary add-child-unit-btn"
                                 data-bs-toggle="modal"
-                                data-bs-target="#createUnitModal{{ $section->id }}"
+                                data-bs-target="#createUnitModal{{ $homeSectionId }}"
                                 data-parent-id="{{ $unit->id }}"
-                                data-section-id="{{ $section->id }}"
+                                data-section-id="{{ $homeSectionId }}"
                                 title="إضافة قسم لرفع الدروس">
                             <i class="bi bi-layers"></i> إضافة قسم لرفع الدروس
                         </button>

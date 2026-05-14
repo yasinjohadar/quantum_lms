@@ -80,6 +80,17 @@ class TeacherSubjectController extends Controller
             'sections.units.lessons.quizzes' => function ($q) {
                 $q->orderBy('order')->orderBy('title');
             },
+            'sections.mirroredUnits' => function ($q) {
+                $q->orderByPivot('order')->orderBy('title');
+            },
+            'sections.mirroredUnits.lessons' => function ($q) {
+                $q->orderBy('order');
+            },
+            'sections.mirroredUnits.lessons.quizzes' => function ($q) {
+                $q->orderBy('order')->orderBy('title');
+            },
+            'sections.mirroredUnits.section',
+            'sections.mirroredUnits.mirroredInSections.subject',
         ]);
 
         return view('teacher.pages.subjects.show', compact('subject'));

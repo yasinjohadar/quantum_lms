@@ -303,12 +303,23 @@
                                                         </p>
                                                     @endif
 
+                                                    @php
+                                                        $nativeUnitIdsForTeacher = $section->units->pluck('id');
+                                                        $mirroredExtraForTeacher = ($section->relationLoaded('mirroredUnits')
+                                                            ? $section->mirroredUnits
+                                                            : $section->mirroredUnits()->get())
+                                                            ->reject(fn ($u) => $nativeUnitIdsForTeacher->contains($u->id))
+                                                            ->sortBy(fn ($u) => (int) ($u->pivot->order ?? 0))
+                                                            ->values();
+                                                        $unitsForTeacherSectionDisplay = $section->units->values()->concat($mirroredExtraForTeacher);
+                                                    @endphp
+
                                                     {{-- الوحدات داخل القسم --}}
                                                     <div class="section-units">
                                                         <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
                                                             <span class="text-muted small">
                                                                 <i class="bi bi-layers me-1"></i>
-                                                                الوحدات ({{ $section->units->count() }})
+                                                                الوحدات ({{ $unitsForTeacherSectionDisplay->count() }})
                                                             </span>
                                                             <button type="button"
                                                                     class="btn btn-sm btn-outline-primary"
@@ -318,12 +329,12 @@
                                                             </button>
                                                         </div>
 
-                                                        @if($section->units->count() === 0)
+                                                        @if($unitsForTeacherSectionDisplay->isEmpty())
                                                             <p class="text-muted mb-0 mt-1" style="font-size: 0.75rem;">لا توجد وحدات في هذا القسم بعد</p>
                                                         @else
                                                             {{-- Accordion للوحدات --}}
                                                             <div class="accordion accordion-secondary" id="unitsAccordion{{ $section->id }}">
-                                                                @foreach($section->units as $unitIndex => $unit)
+                                                                @foreach($unitsForTeacherSectionDisplay as $unitIndex => $unit)
                                                                     <div class="accordion-item border rounded mb-2 shadow-sm unit-item {{ $unit->parent_id ? 'unit-item-child' : 'unit-item-root' }}">
                                                                         <h2 class="accordion-header" id="unitHeading{{ $unit->id }}">
                                                                             <button class="accordion-button collapsed py-3" type="button"
@@ -340,6 +351,9 @@
                                                                                     <div class="flex-grow-1">
                                                                                         <div class="d-flex align-items-center">
                                                                                             <span class="fw-semibold">{{ $unit->title }}</span>
+                                                                                            @if((int) $unit->section_id !== (int) $section->id)
+                                                                                                <span class="badge bg-secondary-transparent text-secondary ms-2" style="font-size:0.7rem;" title="ظهور مرتبط — القسم المنزل: {{ $unit->section->title ?? '' }}">ظهور مرتبط</span>
+                                                                                            @endif
                                                                                             @if($unit->is_active)
                                                                                                 <span class="badge bg-success-transparent text-success ms-2">نشط</span>
                                                                                             @else
@@ -419,6 +433,7 @@
                                                                                                 title="تعديل الوحدة">
                                                                                             <i class="bi bi-pencil me-1"></i> تعديل
                                                                                         </button>
+                                                                                        @if((int) $unit->section_id === (int) $section->id)
                                                                                         <button type="button"
                                                                                                 class="btn btn-sm btn-outline-danger"
                                                                                                 data-bs-toggle="modal"
@@ -426,6 +441,7 @@
                                                                                                 title="حذف الوحدة">
                                                                                             <i class="bi bi-trash"></i>
                                                                                         </button>
+                                                                                        @endif
                                                                                     </div>
                                                                                 </div>
 

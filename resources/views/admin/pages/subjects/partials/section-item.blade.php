@@ -3,7 +3,7 @@
         ->where('section_id', $section->id)
         ->whereNull('unit_id')
         ->orderBy('order')
-        ->with(['attachments', 'quizzes'])
+        ->with(['attachments', 'quizzes', 'linkedUnits.section.subject'])
         ->get();
     $childSections = $allSections->where('parent_id', $section->id)->sortBy('order');
     $isChildSection = $section->parent_id !== null;
@@ -20,6 +20,29 @@
         '124, 58, 237',
     ];
     $levelIconStyle = 'color: rgb(' . ($levelIconRgb[min($level, 5)] ?? $levelIconRgb[0]) . ')';
+    $linkedSubjectsPresenceLines = [];
+    $linkedSubjectsPresenceCount = 0;
+    if (!$isLinkedSection && $section->relationLoaded('linkedSubjects')) {
+        $linkedSubjectsPresenceCount = $section->linkedSubjects->count();
+        foreach ($section->linkedSubjects as $ls) {
+            $lst = optional(optional($ls->schoolClass)->stage)->name ?? '';
+            $lcl = $ls->schoolClass->name ?? '';
+            $ln = $ls->name ?? '';
+            $lprefix = $lst !== '' ? $lst.($lcl !== '' ? ' / '.$lcl : '') : $lcl;
+            $linkedSubjectsPresenceLines[] = $lprefix !== '' ? $lprefix.' — '.$ln : $ln;
+        }
+    }
+    $linkedSubjectsPresenceTitle = $linkedSubjectsPresenceCount > 0
+        ? 'يظهر هذا القسم أيضاً في: '.implode(' | ', $linkedSubjectsPresenceLines)
+        : '';
+    $sectionHomeOriginTitle = '';
+    if ($isLinkedSection && $section->relationLoaded('subject') && $section->subject) {
+        $os = $section->subject;
+        $ost = optional(optional($os->schoolClass)->stage)->name ?? '';
+        $ocl = $os->schoolClass->name ?? '';
+        $oprefix = $ost !== '' ? $ost.($ocl !== '' ? ' / '.$ocl : '') : $ocl;
+        $sectionHomeOriginTitle = 'أصل القسم: '.($oprefix !== '' ? $oprefix.' — ' : '').($os->name ?? '').' — مسار القسم: '.($section->path_title ?? $section->title);
+    }
 @endphp
 <div class="accordion-item mb-3 rounded overflow-hidden section-level-{{ $level }}{{ $isLinkedSection ? ' section-item-linked' : '' }}" data-id="{{ $section->id }}" data-section-id="{{ $section->id }}">
     <h2 class="accordion-header d-flex" id="sectionHeading{{ $section->id }}">
@@ -38,7 +61,7 @@
                 <div class="d-flex align-items-center">
                     <i class="bi {{ $levelIcon }} me-2" style="{{ $levelIconStyle }}"></i>
                     @if($isLinkedSection)
-                        <span class="badge bg-info-transparent text-info me-2" style="font-size:0.7rem;">مرتبط بمادة أخرى</span>
+                        <span class="badge bg-info-transparent text-info me-2" style="font-size:0.7rem;" @if($sectionHomeOriginTitle !== '') title="{{ e($sectionHomeOriginTitle) }}" @endif>مرتبط بمادة أخرى</span>
                     @endif
                     @if($isChildSection)
                         <span class="badge bg-primary-transparent text-primary me-2" style="font-size:0.7rem;">قسم فرعي</span>
@@ -56,6 +79,13 @@
             </div>
         </button>
         <div class="d-flex align-items-center gap-1 pe-2 flex-shrink-0" onclick="event.stopPropagation()">
+            @if(!$isLinkedSection && $linkedSubjectsPresenceCount > 0)
+            <button type="button"
+                    class="btn btn-sm btn-outline-info py-0 px-2 section-linked-presence-btn"
+                    title="{{ e($linkedSubjectsPresenceTitle) }}">
+                <i class="bi bi-box-arrow-up-right me-1"></i>تواجد {{ $linkedSubjectsPresenceCount }}
+            </button>
+            @endif
             @can('subject-section-edit')
             <button type="button"
                     class="btn btn-sm btn-icon btn-info-transparent link-section-subjects-btn"
@@ -169,6 +199,25 @@
                                         @can('lesson-attachment-create')
                                             <button type="button" class="btn btn-sm btn-icon btn-info-transparent" data-bs-toggle="modal" data-bs-target="#addLessonAttachment{{ $lesson->id }}" title="إضافة مرفقات"><i class="bi bi-paperclip"></i></button>
                                         @endcan
+                                        @if($lesson->linkedUnits->isNotEmpty())
+                                            @php
+                                                $sectionLessonLinkParts = [];
+                                                foreach ($lesson->linkedUnits as $lu) {
+                                                    $row = trim(implode(' — ', array_filter([optional(optional($lu->section)->subject)->name, optional($lu->section)->title, $lu->title])));
+                                                    if ($row !== '') {
+                                                        $sectionLessonLinkParts[] = 'يظهر أيضاً في: ' . $row;
+                                                    }
+                                                }
+                                                $sectionLessonLinkTooltip = implode(' ', array_filter($sectionLessonLinkParts));
+                                            @endphp
+                                            <span class="btn btn-sm btn-icon btn-outline-secondary border-secondary-subtle text-secondary lesson-cross-links-indicator"
+                                                  role="img"
+                                                  tabindex="0"
+                                                  style="cursor: help;"
+                                                  title="{{ e($sectionLessonLinkTooltip) }}">
+                                                <i class="bi bi-diagram-3"></i>
+                                            </span>
+                                        @endif
                                         @can('lesson-edit')
                                             <button type="button" class="btn btn-sm btn-icon btn-primary-transparent" data-bs-toggle="modal" data-bs-target="#editLesson{{ $lesson->id }}" title="تعديل"><i class="bi bi-pencil"></i></button>
                                         @endcan
@@ -206,10 +255,14 @@
 
             {{-- الوحدات داخل القسم --}}
             <div class="section-units">
+                @php
+                    $unitsForSectionDisplay = $section->rootUnitsForDisplay();
+                    $sectionRootHasMirroredUnit = $unitsForSectionDisplay->contains(fn ($u) => (int) $u->section_id !== (int) $section->id);
+                @endphp
                 <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
                     <span class="text-muted small">
                         <i class="bi bi-layers me-1"></i>
-                        الوحدات ({{ $section->units->count() }})
+                        الوحدات ({{ $unitsForSectionDisplay->count() }})
                     </span>
                     @if(!$isLinkedSection)
                     <div class="d-flex align-items-center gap-2">
@@ -250,22 +303,25 @@
                     @endif
                 </div>
 
-                @php
-                    $rootUnits = $section->units->whereNull('parent_id')->sortBy('order');
-                @endphp
-                @if($section->units->count() === 0)
+                @if($unitsForSectionDisplay->isEmpty())
                     <p class="text-muted mb-0 mt-1" style="font-size: 0.75rem;">لا توجد وحدات في هذا القسم بعد</p>
                 @else
-                    {{-- Accordion للوحدات (جذر فقط، الأبناء داخل unit-item) --}}
-                    <div class="accordion accordion-secondary" id="unitsAccordion{{ $section->id }}" data-sortable="units" data-section-id="{{ $section->id }}" data-parent-id="" data-reorder-url="{{ route('admin.sections.units.reorder', $section) }}">
-                        @foreach($rootUnits->values() as $unitIndex => $unit)
+                    {{-- Accordion للوحدات (جذر منزلية + وحدات مرآة من أقسام أخرى) --}}
+                    {{-- MVP: إعادة ترتيب السحب تُحدّث units.order للمنزل فقط؛ عند وجود جذور مرآة يُعطّل السحب حتى لا يُرسل ترتيب خاطئ (ترتيب pivot لاحقاً). --}}
+                    <div class="accordion accordion-secondary" id="unitsAccordion{{ $section->id }}"
+                        @unless($sectionRootHasMirroredUnit)
+                        data-sortable="units" data-section-id="{{ $section->id }}" data-parent-id="" data-reorder-url="{{ route('admin.sections.units.reorder', $section) }}"
+                        @endunless
+                        >
+                        @foreach($unitsForSectionDisplay->values() as $unitIndex => $unit)
                             @include('admin.pages.subjects.partials.unit-item', [
                                 'unit' => $unit,
-                                'allUnits' => $section->units,
+                                'allUnits' => $unit->section->units,
                                 'section' => $section,
                                 'subject' => $subject,
                                 'unitIndex' => $unitIndex,
                                 'parentUnitsAccordionId' => 'unitsAccordion' . $section->id,
+                                'isMirroredInThisSection' => (int) $unit->section_id !== (int) $section->id,
                             ])
                         @endforeach
                     </div>

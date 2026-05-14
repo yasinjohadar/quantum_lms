@@ -180,6 +180,35 @@
                         @can('lesson-attachment-create')
                             <button type="button" class="btn btn-sm btn-icon btn-info-transparent" data-bs-toggle="modal" data-bs-target="#addLessonAttachment{{ $lesson->id }}" title="إضافة مرفقات"><i class="bi bi-paperclip"></i></button>
                         @endcan
+                        @php
+                            $isMirroredInThisUnit = $lesson->unit_id !== null && (int) $lesson->unit_id !== (int) $unit->id;
+                            $hasExtraUnitLinks = $lesson->linkedUnits->isNotEmpty();
+                            $showLessonLinkIndicator = $isMirroredInThisUnit || $hasExtraUnitLinks;
+                            $lessonLinkTooltipParts = [];
+                            if ($isMirroredInThisUnit) {
+                                $pu = $lesson->unit;
+                                $orig = $pu ? trim(implode(' — ', array_filter([optional(optional($pu->section)->subject)->name, optional($pu->section)->title, $pu->title]))) : '';
+                                $lessonLinkTooltipParts[] = 'يظهر في هذه الوحدة عبر الربط الإضافي.' . ($orig !== '' ? ' المنشأ: ' . $orig : '');
+                            }
+                            if ($hasExtraUnitLinks) {
+                                foreach ($lesson->linkedUnits as $lu) {
+                                    $row = trim(implode(' — ', array_filter([optional(optional($lu->section)->subject)->name, optional($lu->section)->title, $lu->title])));
+                                    if ($row !== '') {
+                                        $lessonLinkTooltipParts[] = 'يظهر أيضاً في: ' . $row;
+                                    }
+                                }
+                            }
+                            $lessonLinkTooltip = implode(' ', array_filter($lessonLinkTooltipParts));
+                        @endphp
+                        @if($showLessonLinkIndicator)
+                            <span class="btn btn-sm btn-icon btn-outline-secondary border-secondary-subtle text-secondary lesson-cross-links-indicator"
+                                  role="img"
+                                  tabindex="0"
+                                  style="cursor: help;"
+                                  title="{{ e($lessonLinkTooltip) }}">
+                                <i class="bi bi-diagram-3"></i>
+                            </span>
+                        @endif
                         @can('lesson-edit')
                             <button type="button" class="btn btn-sm btn-icon btn-primary-transparent" data-bs-toggle="modal" data-bs-target="#editLesson{{ $lesson->id }}" title="تعديل"><i class="bi bi-pencil"></i></button>
                         @endcan

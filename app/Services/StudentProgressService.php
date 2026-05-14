@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Subject;
 use App\Models\SubjectSection;
+use App\Models\Unit;
 use App\Models\Lesson;
 use App\Models\Quiz;
 use App\Models\Question;
@@ -11,9 +12,57 @@ use App\Models\LessonCompletion;
 use App\Models\QuizAttempt;
 use App\Models\QuestionAttempt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 
 class StudentProgressService
 {
+    /**
+     * الوحدات المعروضة في القسم بما فيها الفروع تحت كل جذر (شجرة القسم المنزل لكل وحدة جذر).
+     *
+     * @return Collection<int, Unit>
+     */
+    protected function unitsForSectionProgressTree(SubjectSection $section): Collection
+    {
+        $collected = collect();
+        foreach ($section->rootUnitsForDisplay() as $root) {
+            if (!$root->relationLoaded('section')) {
+                $root->load([
+                    'section.units.lessons',
+                    'section.units.quizzes',
+                    'section.units.questions',
+                ]);
+            } else {
+                $root->section->loadMissing([
+                    'units.lessons',
+                    'units.quizzes',
+                    'units.questions',
+                ]);
+            }
+
+            $homeUnits = $root->section?->units;
+            if ($homeUnits === null || $homeUnits->isEmpty()) {
+                $collected->push($root);
+                continue;
+            }
+
+            $queue = collect([$root]);
+            $seen = [];
+            while ($queue->isNotEmpty()) {
+                $u = $queue->shift();
+                if (isset($seen[$u->id])) {
+                    continue;
+                }
+                $seen[$u->id] = true;
+                $collected->push($u);
+                foreach ($homeUnits->where('parent_id', $u->id)->sortBy('order') as $child) {
+                    $queue->push($child);
+                }
+            }
+        }
+
+        return $collected->unique('id')->values();
+    }
+
     /**
      * حساب نسبة إكمال درس معين
      */
@@ -57,8 +106,14 @@ class StudentProgressService
      */
     public function calculateSectionProgress($userId, $sectionId): array
     {
-        $section = SubjectSection::with(['units.lessons', 'units.quizzes', 'units.questions'])
-            ->findOrFail($sectionId);
+        $section = SubjectSection::with([
+            'units.lessons',
+            'units.quizzes',
+            'units.questions',
+            'mirroredUnits.lessons',
+            'mirroredUnits.quizzes',
+            'mirroredUnits.questions',
+        ])->findOrFail($sectionId);
         
         // التحقق من أن الطالب مسجل في المادة
         $subject = $section->subject;
@@ -87,11 +142,14 @@ class StudentProgressService
         $allQuizzes = collect();
         $allQuestions = collect();
         
-        foreach ($section->units as $unit) {
+        foreach ($this->unitsForSectionProgressTree($section) as $unit) {
             $allLessons = $allLessons->merge($unit->lessons->where('is_active', true));
             $allQuizzes = $allQuizzes->merge($unit->quizzes->where('is_active', true)->where('is_published', true));
             $allQuestions = $allQuestions->merge($unit->questions->where('is_active', true));
         }
+        $allLessons = $allLessons->unique('id')->values();
+        $allQuizzes = $allQuizzes->unique('id')->values();
+        $allQuestions = $allQuestions->unique('id')->values();
         
         // حساب الدروس المكتملة
         $lessonsTotal = $allLessons->count();
@@ -160,7 +218,14 @@ class StudentProgressService
      */
     public function calculateSubjectProgress($userId, $subjectId): array
     {
-        $subject = Subject::with(['sections.units.lessons', 'sections.units.quizzes', 'sections.units.questions'])
+        $subject = Subject::with([
+            'sections.units.lessons',
+            'sections.units.quizzes',
+            'sections.units.questions',
+            'sections.mirroredUnits.lessons',
+            'sections.mirroredUnits.quizzes',
+            'sections.mirroredUnits.questions',
+        ])
             ->findOrFail($subjectId);
         
         // التحقق من أن الطالب مسجل في المادة
@@ -190,12 +255,15 @@ class StudentProgressService
         $allQuestions = collect();
         
         foreach ($subject->sections as $section) {
-            foreach ($section->units as $unit) {
+            foreach ($this->unitsForSectionProgressTree($section) as $unit) {
                 $allLessons = $allLessons->merge($unit->lessons->where('is_active', true));
                 $allQuizzes = $allQuizzes->merge($unit->quizzes->where('is_active', true)->where('is_published', true));
                 $allQuestions = $allQuestions->merge($unit->questions->where('is_active', true));
             }
         }
+        $allLessons = $allLessons->unique('id')->values();
+        $allQuizzes = $allQuizzes->unique('id')->values();
+        $allQuestions = $allQuestions->unique('id')->values();
         
         // حساب الدروس المكتملة
         $lessonsTotal = $allLessons->count();
@@ -389,7 +457,14 @@ class StudentProgressService
      */
     public function getStudentSubjectStats($userId, $subjectId): array
     {
-        $subject = Subject::with(['sections.units.lessons', 'sections.units.quizzes', 'sections.units.questions'])
+        $subject = Subject::with([
+            'sections.units.lessons',
+            'sections.units.quizzes',
+            'sections.units.questions',
+            'sections.mirroredUnits.lessons',
+            'sections.mirroredUnits.quizzes',
+            'sections.mirroredUnits.questions',
+        ])
             ->findOrFail($subjectId);
         
         $progress = $this->calculateSubjectProgress($userId, $subjectId);
@@ -472,25 +547,44 @@ class StudentProgressService
     public function getSectionDetails($userId, $sectionId): array
     {
         $section = SubjectSection::with([
-            'units.lessons' => function($query) {
+            'units.lessons' => function ($query) {
                 $query->where('is_active', true)->orderBy('order');
             },
-            'units.quizzes' => function($query) {
+            'units.quizzes' => function ($query) {
                 $query->where('is_active', true)
                       ->where('is_published', true)
                       ->orderBy('order');
             },
-            'units.questions' => function($query) {
+            'units.questions' => function ($query) {
                 $query->where('is_active', true);
-            }
+            },
+            'mirroredUnits.lessons' => function ($query) {
+                $query->where('is_active', true)->orderBy('order');
+            },
+            'mirroredUnits.quizzes' => function ($query) {
+                $query->where('is_active', true)
+                      ->where('is_published', true)
+                      ->orderBy('order');
+            },
+            'mirroredUnits.questions' => function ($query) {
+                $query->where('is_active', true);
+            },
         ])->findOrFail($sectionId);
-        
+
         $progress = $this->calculateSectionProgress($userId, $sectionId);
-        
+
+        $treeUnits = $this->unitsForSectionProgressTree($section);
+        $unitIdsInSection = $treeUnits->pluck('id')->unique()->values()->all();
+
         // تفاصيل الدروس
         $lessonsDetails = [];
-        foreach ($section->units as $unit) {
+        $seenLessonIds = [];
+        foreach ($treeUnits as $unit) {
             foreach ($unit->lessons->where('is_active', true) as $lesson) {
+                if (isset($seenLessonIds[$lesson->id])) {
+                    continue;
+                }
+                $seenLessonIds[$lesson->id] = true;
                 $lessonProgress = $this->calculateLessonProgress($userId, $lesson->id);
                 $lessonsDetails[] = [
                     'lesson' => $lesson,
@@ -499,19 +593,17 @@ class StudentProgressService
                 ];
             }
         }
-        
+
         // تفاصيل الاختبارات
         $quizzesDetails = [];
         $quizAttempts = QuizAttempt::where('user_id', $userId)
-            ->whereHas('quiz', function($query) use ($section) {
-                $query->whereHas('unit', function($q) use ($section) {
-                    $q->where('section_id', $section->id);
-                });
+            ->whereHas('quiz', function ($query) use ($unitIdsInSection) {
+                $query->whereIn('unit_id', $unitIdsInSection);
             })
             ->get()
             ->keyBy('quiz_id');
-        
-        foreach ($section->units as $unit) {
+
+        foreach ($treeUnits as $unit) {
             foreach ($unit->quizzes->where('is_active', true)->where('is_published', true) as $quiz) {
                 $attempt = $quizAttempts->get($quiz->id);
                 $quizzesDetails[] = [
@@ -522,19 +614,19 @@ class StudentProgressService
                 ];
             }
         }
-        
+
         // تفاصيل الأسئلة
         $questionsDetails = [];
         $questionAttempts = QuestionAttempt::where('user_id', $userId)
-            ->whereHas('question', function($query) use ($section) {
-                $query->whereHas('units', function($q) use ($section) {
-                    $q->where('units.section_id', $section->id);
+            ->whereHas('question', function ($query) use ($unitIdsInSection) {
+                $query->whereHas('units', function ($q) use ($unitIdsInSection) {
+                    $q->whereIn('units.id', $unitIdsInSection);
                 });
             })
             ->get()
             ->keyBy('question_id');
-        
-        foreach ($section->units as $unit) {
+
+        foreach ($treeUnits as $unit) {
             foreach ($unit->questions->where('is_active', true) as $question) {
                 $attempt = $questionAttempts->get($question->id);
                 $questionsDetails[] = [

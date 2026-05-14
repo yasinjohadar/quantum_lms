@@ -90,6 +90,7 @@ class UnitController extends Controller
     {
         try {
             $data = $request->validated();
+            unset($data['linked_section_ids'], $data['sync_mirrored_sections']);
             $data['is_active'] = $request->has('is_active');
 
             $parentId = $request->input('parent_id');
@@ -119,6 +120,26 @@ class UnitController extends Controller
             }
 
             $unit->update($data);
+
+            if ($request->boolean('sync_mirrored_sections')) {
+                $sectionIds = array_values(array_unique(array_filter(array_map('intval', (array) $request->input('linked_section_ids', [])))));
+                $sectionIds = array_values(array_diff($sectionIds, [(int) $unit->section_id]));
+
+                $user = auth()->user();
+                if ($user->usesTeacherAssignmentScope()) {
+                    $allowed = $this->subjectSectionIdsForTeacher($user);
+                    $sectionIds = array_values(array_intersect($sectionIds, $allowed->all()));
+                } elseif ($user->usesSupervisorAssignmentScope()) {
+                    $allowed = $this->subjectSectionIdsForSupervisor($user);
+                    $sectionIds = array_values(array_intersect($sectionIds, $allowed->all()));
+                }
+
+                $syncPayload = [];
+                foreach ($sectionIds as $index => $sid) {
+                    $syncPayload[$sid] = ['order' => $index];
+                }
+                $unit->mirroredInSections()->sync($syncPayload);
+            }
 
             return redirect()
                 ->route('admin.subjects.show', $unit->section->subject_id)
@@ -303,6 +324,64 @@ class UnitController extends Controller
                 ];
             }),
         ]);
+    }
+
+    /**
+     * أقسام مسموح بها للمعلم (ربط ظهور وحدة بأقسام أخرى).
+     *
+     * @return \Illuminate\Support\Collection<int, int>
+     */
+    protected function subjectSectionIdsForTeacher($user): \Illuminate\Support\Collection
+    {
+        $classIds = $user->assignedClasses()->pluck('classes.id');
+        $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
+
+        return SubjectSection::query()
+            ->whereHas('subject', function ($q) use ($classIds, $subjectIds) {
+                if ($classIds->isEmpty() && $subjectIds->isEmpty()) {
+                    $q->whereRaw('1 = 0');
+
+                    return;
+                }
+                $q->where(function ($sq) use ($classIds, $subjectIds) {
+                    if ($classIds->isNotEmpty()) {
+                        $sq->whereIn('class_id', $classIds);
+                    }
+                    if ($subjectIds->isNotEmpty()) {
+                        $sq->orWhereIn('id', $subjectIds);
+                    }
+                });
+            })
+            ->pluck('id');
+    }
+
+    /**
+     * أقسام مسموح بها للمشرف.
+     *
+     * @return \Illuminate\Support\Collection<int, int>
+     */
+    protected function subjectSectionIdsForSupervisor($user): \Illuminate\Support\Collection
+    {
+        $classIds = $user->assignedClassesAsSupervisor()->pluck('classes.id');
+        $subjectIds = $user->assignedSubjectsAsSupervisor()->pluck('subjects.id');
+
+        return SubjectSection::query()
+            ->whereHas('subject', function ($q) use ($classIds, $subjectIds) {
+                if ($classIds->isEmpty() && $subjectIds->isEmpty()) {
+                    $q->whereRaw('1 = 0');
+
+                    return;
+                }
+                $q->where(function ($sq) use ($classIds, $subjectIds) {
+                    if ($classIds->isNotEmpty()) {
+                        $sq->whereIn('class_id', $classIds);
+                    }
+                    if ($subjectIds->isNotEmpty()) {
+                        $sq->orWhereIn('id', $subjectIds);
+                    }
+                });
+            })
+            ->pluck('id');
     }
 }
 

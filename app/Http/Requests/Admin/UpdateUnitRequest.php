@@ -18,6 +18,9 @@ class UpdateUnitRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'order' => ['nullable', 'integer', 'min:0'],
+            'sync_mirrored_sections' => ['sometimes', 'boolean'],
+            'linked_section_ids' => ['nullable', 'array'],
+            'linked_section_ids.*' => ['integer', 'exists:subject_sections,id'],
         ];
     }
 

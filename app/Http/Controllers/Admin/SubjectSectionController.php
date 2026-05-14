@@ -167,9 +167,25 @@ class SubjectSectionController extends Controller
                 'name' => $s->name ?? '',
                 'class_name' => optional($s->schoolClass)->name ?? '',
                 'stage_name' => optional(optional($s->schoolClass)->stage)->name ?? '',
+                'label' => $this->formatLinkedSubjectBadgeText($s),
             ];
         })->values();
         return response()->json($data);
+    }
+
+    /**
+     * نص موحّد لعرض مادة مرتبطة (مرحلة / صف — اسم المادة) مثل وحدات المرآة.
+     */
+    private function formatLinkedSubjectBadgeText(Subject $s): string
+    {
+        $stage = (string) (data_get($s, 'schoolClass.stage.name') ?? '');
+        $class = (string) (data_get($s, 'schoolClass.name') ?? '');
+        $name = (string) ($s->name ?? '');
+        $prefix = $stage !== ''
+            ? $stage.($class !== '' ? ' / '.$class : '')
+            : $class;
+
+        return $prefix !== '' ? $prefix.' — '.$name : $name;
     }
 
     /**
@@ -184,26 +200,17 @@ class SubjectSectionController extends Controller
 
         $linkedSubjectIds = $request->input('linked_subject_ids', []);
         $primarySubjectId = $section->subject_id;
-        $linkedSubjectIds = array_values(array_unique(array_filter($linkedSubjectIds)));
-
-        $existingLinkedIds = DB::table('section_subjects')
-            ->where('section_id', $section->id)
-            ->pluck('subject_id')
-            ->toArray();
-        $linkedSubjectIds = array_values(array_unique(array_merge($existingLinkedIds, $linkedSubjectIds)));
+        $linkedSubjectIds = array_values(array_unique(array_filter(
+            array_map('intval', $linkedSubjectIds),
+            fn ($id) => $id > 0
+        )));
         $linkedSubjectIds = array_values(array_diff($linkedSubjectIds, [$primarySubjectId]));
 
         $section->linkedSubjects()->sync($linkedSubjectIds);
 
         $linkedSubjects = $section->linkedSubjects()->with('schoolClass.stage')->get();
         $count = $linkedSubjects->count();
-        $labels = $linkedSubjects->map(function ($s) {
-            return trim(collect([
-                data_get($s, 'schoolClass.stage.name'),
-                data_get($s, 'schoolClass.name'),
-                $s->name,
-            ])->filter()->implode(' — '));
-        })->filter()->values()->toArray();
+        $labels = $linkedSubjects->map(fn ($s) => $this->formatLinkedSubjectBadgeText($s))->filter()->values()->toArray();
 
         $message = 'تم تحديث ربط القسم بالمواد بنجاح.';
         if ($count > 0) {

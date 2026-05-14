@@ -279,14 +279,17 @@ class SubjectController extends Controller
                 'sections' => function ($q) {
                     $q->orderBy('order')->orderBy('title');
                 },
+                'sections.linkedSubjects' => function ($q) {
+                    $q->with('schoolClass.stage');
+                },
                 'sections.units' => function ($q) {
                     $q->orderBy('order')->orderBy('title');
                 },
                 'sections.units.lessons' => function ($q) {
-                    $q->orderBy('order');
+                    $q->orderBy('order')->with('unit.section.subject');
                 },
                 'sections.units.linkedLessons' => function ($q) {
-                    $q->orderBy('lessons.order');
+                    $q->orderBy('lessons.order')->with(['linkedUnits.section.subject', 'unit.section.subject']);
                 },
                 'sections.units.lessons.linkedUnits' => function ($q) {
                     $q->orderBy('order')->with('section.subject');
@@ -308,14 +311,46 @@ class SubjectController extends Controller
                     $q->with('linkedUnits.section.subject.schoolClass.stage')
                         ->orderBy('order')->orderBy('title');
                 },
-                'linkedSections' => function ($q) {
+                'sections.units.mirroredInSections' => function ($q) {
+                    $q->with('subject.schoolClass.stage');
+                },
+                'sections.mirroredUnits' => function ($q) {
+                    $q->orderByPivot('order')->orderBy('title');
+                },
+                'sections.mirroredUnits.lessons' => function ($q) {
+                    $q->orderBy('order')->with('unit.section.subject');
+                },
+                'sections.mirroredUnits.linkedLessons' => function ($q) {
+                    $q->orderBy('lessons.order')->with(['linkedUnits.section.subject', 'unit.section.subject']);
+                },
+                'sections.mirroredUnits.lessons.linkedUnits' => function ($q) {
+                    $q->orderBy('order')->with('section.subject');
+                },
+                'sections.mirroredUnits.lessons.attachments' => function ($q) {
+                    $q->orderBy('order');
+                },
+                'sections.mirroredUnits.lessons.quizzes' => function ($q) {
                     $q->orderBy('order')->orderBy('title');
+                },
+                'sections.mirroredUnits.questions' => function ($q) {
+                    $q->orderBy('created_at', 'desc');
+                },
+                'sections.mirroredUnits.quizzes' => function ($q) {
+                    $q->with('linkedUnits.section.subject.schoolClass.stage')
+                        ->orderBy('order')->orderBy('title');
+                },
+                'sections.mirroredUnits.linkedQuizzes' => function ($q) {
+                    $q->with('linkedUnits.section.subject.schoolClass.stage')
+                        ->orderBy('order')->orderBy('title');
+                },
+                'linkedSections' => function ($q) {
+                    $q->with('subject.schoolClass.stage')->orderBy('order')->orderBy('title');
                 },
                 'linkedSections.units' => function ($q) {
                     $q->orderBy('order')->orderBy('title');
                 },
                 'linkedSections.units.lessons' => function ($q) {
-                    $q->orderBy('order');
+                    $q->orderBy('order')->with(['unit.section.subject', 'linkedUnits.section.subject']);
                 },
                 'linkedSections.units.lessons.attachments' => function ($q) {
                     $q->orderBy('order');
@@ -325,6 +360,38 @@ class SubjectController extends Controller
                 },
                 'linkedSections.units.questions' => function ($q) {
                     $q->orderBy('created_at', 'desc');
+                },
+                'linkedSections.units.mirroredInSections' => function ($q) {
+                    $q->with('subject.schoolClass.stage');
+                },
+                'linkedSections.mirroredUnits' => function ($q) {
+                    $q->orderByPivot('order')->orderBy('title');
+                },
+                'linkedSections.mirroredUnits.lessons' => function ($q) {
+                    $q->orderBy('order')->with('unit.section.subject');
+                },
+                'linkedSections.mirroredUnits.linkedLessons' => function ($q) {
+                    $q->orderBy('lessons.order')->with(['linkedUnits.section.subject', 'unit.section.subject']);
+                },
+                'linkedSections.mirroredUnits.lessons.linkedUnits' => function ($q) {
+                    $q->orderBy('order')->with('section.subject');
+                },
+                'linkedSections.mirroredUnits.lessons.attachments' => function ($q) {
+                    $q->orderBy('order');
+                },
+                'linkedSections.mirroredUnits.lessons.quizzes' => function ($q) {
+                    $q->orderBy('order')->orderBy('title');
+                },
+                'linkedSections.mirroredUnits.questions' => function ($q) {
+                    $q->orderBy('created_at', 'desc');
+                },
+                'linkedSections.mirroredUnits.quizzes' => function ($q) {
+                    $q->with('linkedUnits.section.subject.schoolClass.stage')
+                        ->orderBy('order')->orderBy('title');
+                },
+                'linkedSections.mirroredUnits.linkedQuizzes' => function ($q) {
+                    $q->with('linkedUnits.section.subject.schoolClass.stage')
+                        ->orderBy('order')->orderBy('title');
                 },
             ])->findOrFail($id);
             
@@ -376,12 +443,17 @@ class SubjectController extends Controller
                     'sections' => $s->sections->map(fn ($sec) => [
                         'id' => $sec->id,
                         'title' => $sec->title,
+                        'path_title' => $sec->path_title,
                         'units' => $sec->units->map(fn ($u) => ['id' => $u->id, 'title' => $u->title])->values(),
                     ])->values(),
                 ];
             })->values();
 
-            $linkableClasses = $linkableSubjects->pluck('schoolClass')->filter()->unique('id')->values()->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])->values();
+            $linkableClasses = $linkableSubjects->pluck('schoolClass')->filter()->unique('id')->values()->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'stage_name' => $c->stage->name ?? '',
+            ])->values();
 
             return view('admin.pages.subjects.show', compact('subject', 'linkableSubjects', 'linkableStructure', 'linkableClasses'));
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {

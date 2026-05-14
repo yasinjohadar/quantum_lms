@@ -389,7 +389,7 @@
                                     <option value="">-- اختر الصف --</option>
                                     @if(isset($linkableClasses))
                                     @foreach($linkableClasses as $cls)
-                                    <option value="{{ $cls['id'] }}">{{ $cls['name'] }}</option>
+                                    <option value="{{ $cls['id'] }}">{{ !empty($cls['stage_name'] ?? null) ? $cls['stage_name'].' / ' : '' }}{{ $cls['name'] }}</option>
                                     @endforeach
                                     @endif
                                 </select>
@@ -460,7 +460,7 @@
                                     <option value="">-- اختر الصف --</option>
                                     @if(isset($linkableClasses))
                                         @foreach($linkableClasses as $cls)
-                                            <option value="{{ $cls['id'] }}">{{ $cls['name'] }}</option>
+                                            <option value="{{ $cls['id'] }}">{{ !empty($cls['stage_name'] ?? null) ? $cls['stage_name'].' / ' : '' }}{{ $cls['name'] }}</option>
                                         @endforeach
                                     @endif
                                 </select>
@@ -957,7 +957,7 @@
             {{-- تعديل وحدة --}}
             @can('unit-edit')
             <div class="modal fade" id="editUnit{{ $unit->id }}" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
                     <div class="modal-content border-0 rounded-4">
                         <div class="modal-header border-0">
                             <h5 class="modal-title fw-bold">
@@ -966,9 +966,10 @@
                             </h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
                         </div>
-                        <form action="{{ route('admin.units.update', $unit->id) }}" method="POST">
+                        <form action="{{ route('admin.units.update', $unit->id) }}" method="POST" data-unit-home-section-id="{{ $unit->section_id }}">
                             @csrf
                             @method('PUT')
+                            <input type="hidden" name="sync_mirrored_sections" value="1">
                             <div class="modal-body">
                                 @php
                                     $unitExcludeIds = collect([$unit->id]);
@@ -1032,6 +1033,70 @@
                                         </div>
                                     </div>
                                 </div>
+                                @php
+                                    $showUnitMirrorLinks = (isset($linkableSubjects) && $linkableSubjects->isNotEmpty()) || $unit->mirroredInSections->isNotEmpty();
+                                @endphp
+                                @if($showUnitMirrorLinks)
+                                <hr class="my-3">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold"><i class="bi bi-link-45deg me-1"></i> ظهور الوحدة في أقسام إضافية</label>
+                                    <p class="small text-muted mb-2">القسم المنزل للوحدة: {{ $unit->section->title ?? $section->title }} — المادة: {{ $subject->name }}</p>
+                                    <div id="linkedSectionsListUnit{{ $unit->id }}" class="mb-2">
+                                        @foreach($unit->mirroredInSections as $mirSec)
+                                        @php
+                                            $mirSub = $mirSec->subject;
+                                            $mirStage = optional(optional($mirSub?->schoolClass)->stage)->name ?? '';
+                                            $mirClass = $mirSub?->schoolClass?->name ?? '';
+                                            $mirSubjectName = $mirSub?->name ?? '';
+                                            $mirSectionPath = $mirSec->path_title ?? $mirSec->title ?? '';
+                                            $mirPrefix = $mirStage !== ''
+                                                ? $mirStage.($mirClass !== '' ? ' / '.$mirClass : '')
+                                                : $mirClass;
+                                            $mirBadgeText = $mirPrefix !== ''
+                                                ? $mirPrefix.' — '.$mirSubjectName.' — '.$mirSectionPath
+                                                : ($mirSubjectName !== '' ? $mirSubjectName.' — '.$mirSectionPath : $mirSectionPath);
+                                        @endphp
+                                        <div class="d-flex align-items-center gap-2 mb-1 linked-section-mirror-row">
+                                            <span class="badge bg-secondary text-wrap text-start" style="max-width: 100%; white-space: normal;" title="{{ e($mirBadgeText) }}">{{ $mirBadgeText }}</span>
+                                            <input type="hidden" name="linked_section_ids[]" value="{{ $mirSec->id }}">
+                                            <button type="button" class="btn btn-sm btn-outline-danger py-0 remove-linked-unit" title="إزالة"><i class="bi bi-x"></i></button>
+                                        </div>
+                                        @endforeach
+                                    </div>
+                                    @if(isset($linkableSubjects) && $linkableSubjects->isNotEmpty())
+                                    <div class="row g-2 align-items-end mb-2" data-current-subject-id="{{ $subject->id }}" data-current-class-id="{{ $subject->class_id ?? '' }}">
+                                        <div class="col-md-3">
+                                            <label class="form-label small">الصف</label>
+                                            <select class="form-select form-select-sm unit-mirror-class-select">
+                                                <option value="">-- اختر الصف --</option>
+                                                @if(isset($linkableClasses))
+                                                @foreach($linkableClasses as $cls)
+                                                <option value="{{ $cls['id'] }}">{{ !empty($cls['stage_name'] ?? null) ? $cls['stage_name'].' / ' : '' }}{{ $cls['name'] }}</option>
+                                                @endforeach
+                                                @endif
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small">مادة</label>
+                                            <select class="form-select form-select-sm unit-mirror-subject-select" disabled>
+                                                <option value="">-- اختر المادة --</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small">القسم</label>
+                                            <select class="form-select form-select-sm unit-mirror-section-select" disabled>
+                                                <option value="">-- اختر القسم --</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <button type="button" class="btn btn-sm btn-success add-linked-section-for-unit" data-list-id="linkedSectionsListUnit{{ $unit->id }}" title="إضافة ظهور في قسم"><i class="bi bi-plus-lg"></i></button>
+                                        </div>
+                                    </div>
+                                    @else
+                                    <p class="small text-muted mb-0">لا تتوفر مواد أخرى للربط من حسابك؛ يمكنك إزالة الأقسام الحالية فقط.</p>
+                                    @endif
+                                </div>
+                                @endif
                             </div>
                             <div class="modal-footer border-0">
                                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
@@ -1286,6 +1351,7 @@
                             <form action="{{ route('admin.lessons.update', $lesson->id) }}" method="POST" enctype="multipart/form-data" class="js-lesson-ajax-form" data-lesson-action="update" data-unit-id="{{ $lesson->unit_id }}" data-lesson-id="{{ $lesson->id }}">
                                 @csrf
                                 @method('PUT')
+                                <input type="hidden" name="sync_linked_units" value="1">
                                 <div class="modal-body">
                                     <div class="row">
                                         <div class="col-md-8">
@@ -1416,13 +1482,20 @@
                                         </div>
                                     </div>
 
-                                    @if(isset($linkableSubjects) && $linkableSubjects->isNotEmpty())
+                                    @php
+                                        $showLessonUnitLinks = (isset($linkableSubjects) && $linkableSubjects->isNotEmpty()) || $lesson->linkedUnits->isNotEmpty();
+                                    @endphp
+                                    @if($showLessonUnitLinks)
                                     <hr class="my-3">
                                     <div class="mb-3">
                                         <label class="form-label fw-semibold">
                                             <i class="bi bi-link-45deg me-1"></i> ربط الدرس بمواد وأقسام إضافية
                                         </label>
-                                        <p class="small text-muted mb-2">الوحدة الأصلية: {{ $lesson->unit->section->subject->name ?? '' }} — {{ $lesson->unit->section->title ?? '' }} — {{ $lesson->unit->title ?? '' }}</p>
+                                        @if($lesson->unit)
+                                            <p class="small text-muted mb-2">الوحدة الأصلية: {{ $lesson->unit->section->subject->name ?? '' }} — {{ $lesson->unit->section->title ?? '' }} — {{ $lesson->unit->title ?? '' }}</p>
+                                        @else
+                                            <p class="small text-muted mb-2">لا توجد وحدة أصلية لهذا الدرس في هذا السياق؛ يمكنك إدارة الروابط الإضافية فقط.</p>
+                                        @endif
                                         <div id="linkedUnitsList{{ $lesson->id }}_{{ $unit->id }}" class="mb-2">
                                             @foreach($lesson->linkedUnits as $linkedUnit)
                                             <div class="d-flex align-items-center gap-2 mb-1 linked-unit-row" data-lesson-id="{{ $lesson->id }}">
@@ -1432,6 +1505,7 @@
                                             </div>
                                             @endforeach
                                         </div>
+                                        @if(isset($linkableSubjects) && $linkableSubjects->isNotEmpty())
                                         <div class="row g-2 align-items-end mb-2" data-lesson-id="{{ $lesson->id }}" data-current-subject-id="{{ $subject->id }}" data-current-class-id="{{ $subject->class_id ?? '' }}">
                                             <div class="col-md-3">
                                                 <label class="form-label small">الصف</label>
@@ -1439,7 +1513,7 @@
                                                     <option value="">-- اختر الصف --</option>
                                                     @if(isset($linkableClasses))
                                                     @foreach($linkableClasses as $cls)
-                                                    <option value="{{ $cls['id'] }}">{{ $cls['name'] }}</option>
+                                                    <option value="{{ $cls['id'] }}">{{ !empty($cls['stage_name'] ?? null) ? $cls['stage_name'].' / ' : '' }}{{ $cls['name'] }}</option>
                                                     @endforeach
                                                     @endif
                                                 </select>
@@ -1468,6 +1542,9 @@
                                                 </button>
                                             </div>
                                         </div>
+                                        @else
+                                        <p class="small text-muted mb-0">لا تتوفر مواد أخرى للربط من حسابك؛ يمكنك إزالة الروابط الحالية فقط.</p>
+                                        @endif
                                     </div>
                                     @endif
                                 </div>
@@ -1689,6 +1766,12 @@
                         <form action="{{ route('admin.lessons.update', $lesson->id) }}" method="POST" enctype="multipart/form-data" class="js-lesson-ajax-form" data-lesson-action="update" data-section-id="{{ $lesson->section_id }}" data-lesson-id="{{ $lesson->id }}">
                             @csrf
                             @method('PUT')
+                            @php
+                                $showLessonSectionLinks = (isset($linkableSubjects) && $linkableSubjects->isNotEmpty()) || $lesson->linkedUnits->isNotEmpty();
+                            @endphp
+                            @if($showLessonSectionLinks)
+                            <input type="hidden" name="sync_linked_units" value="1">
+                            @endif
                             <div class="modal-body">
                                 <div class="row">
                                     <div class="col-md-8">
@@ -1773,6 +1856,64 @@
                                         </div>
                                     </div>
                                 </div>
+                                @if($showLessonSectionLinks)
+                                <hr class="my-3">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">
+                                        <i class="bi bi-link-45deg me-1"></i> ربط الدرس بمواد وأقسام إضافية
+                                    </label>
+                                    <p class="small text-muted mb-2">الدرس ضمن القسم مباشرة: {{ $section->title ?? '' }} — المادة: {{ $subject->name ?? '' }}</p>
+                                    <div id="linkedUnitsListSection{{ $lesson->id }}" class="mb-2">
+                                        @foreach($lesson->linkedUnits as $linkedUnit)
+                                        <div class="d-flex align-items-center gap-2 mb-1 linked-unit-row" data-lesson-id="{{ $lesson->id }}">
+                                            <span class="badge bg-secondary">{{ $linkedUnit->section->subject->name ?? '' }} — {{ $linkedUnit->section->title ?? '' }} — {{ $linkedUnit->title }}</span>
+                                            <input type="hidden" name="linked_unit_ids[]" value="{{ $linkedUnit->id }}">
+                                            <button type="button" class="btn btn-sm btn-outline-danger py-0 remove-linked-unit" title="إزالة"><i class="bi bi-x"></i></button>
+                                        </div>
+                                        @endforeach
+                                    </div>
+                                    @if(isset($linkableSubjects) && $linkableSubjects->isNotEmpty())
+                                    <div class="row g-2 align-items-end mb-2" data-lesson-id="{{ $lesson->id }}" data-current-subject-id="{{ $subject->id }}" data-current-class-id="{{ $subject->class_id ?? '' }}">
+                                        <div class="col-md-3">
+                                            <label class="form-label small">الصف</label>
+                                            <select class="form-select form-select-sm link-class-select" data-lesson-id="{{ $lesson->id }}">
+                                                <option value="">-- اختر الصف --</option>
+                                                @if(isset($linkableClasses))
+                                                @foreach($linkableClasses as $cls)
+                                                <option value="{{ $cls['id'] }}">{{ !empty($cls['stage_name'] ?? null) ? $cls['stage_name'].' / ' : '' }}{{ $cls['name'] }}</option>
+                                                @endforeach
+                                                @endif
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small">مادة</label>
+                                            <select class="form-select form-select-sm link-subject-select" data-lesson-id="{{ $lesson->id }}" disabled>
+                                                <option value="">-- اختر المادة --</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small">القسم</label>
+                                            <select class="form-select form-select-sm link-section-select" data-lesson-id="{{ $lesson->id }}" disabled>
+                                                <option value="">-- اختر القسم --</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label small">الوحدة</label>
+                                            <select class="form-select form-select-sm link-unit-select" data-lesson-id="{{ $lesson->id }}" data-primary-unit-id="" disabled>
+                                                <option value="">-- اختر الوحدة --</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <button type="button" class="btn btn-sm btn-success add-linked-unit" data-lesson-id="{{ $lesson->id }}" data-list-id="linkedUnitsListSection{{ $lesson->id }}" title="إضافة وحدة">
+                                                <i class="bi bi-plus-lg"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    @else
+                                    <p class="small text-muted mb-0">لا تتوفر مواد أخرى للربط من حسابك؛ يمكنك إزالة الروابط الحالية فقط.</p>
+                                    @endif
+                                </div>
+                                @endif
                             </div>
                             <div class="modal-footer border-0">
                                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
@@ -2069,15 +2210,34 @@
 
 @section('js')
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-@isset($linkableStructure)
 <script>
-window.linkableStructure = @json($linkableStructure);
+window.linkableStructure = @json($linkableStructure ?? []);
 window.adminQuizzesLinkUnitsBase = "{{ url('admin/quizzes') }}";
 window.adminSectionsLinkSubjectsBase = "{{ url('admin/sections') }}";
+window.formatLinkedSubjectBadge = function(s) {
+    if (!s) return '';
+    if (s.label) return String(s.label);
+    var stage = s.stage_name || '';
+    var cls = s.class_name || '';
+    var name = s.name || '';
+    var prefix = stage ? (stage + (cls ? ' / ' + cls : '')) : cls;
+    return prefix ? (prefix + ' — ' + name) : name;
+};
 </script>
-@endisset
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    function esc(s) {
+        if (s == null || s === '') return '';
+        var div = document.createElement('div');
+        div.textContent = String(s);
+        return div.innerHTML;
+    }
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-linked-unit')) {
+            const row = e.target.closest('.linked-unit-row') || e.target.closest('.linked-section-mirror-row');
+            if (row) row.remove();
+        }
+    });
     // تعيين القسم الأب عند فتح مودال إنشاء قسم من "اضافة قسم تنظيمي"
     var createSectionModalEl = document.getElementById('createSectionModal');
     if (createSectionModalEl) {
@@ -2215,12 +2375,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 form.setAttribute('data-primary-subject-id', primarySubjectId);
                 titleEl.textContent = 'ربط القسم بمواد إضافية' + (sectionTitle ? ': ' + sectionTitle : '');
             }
-            function esc(s) {
-                if (s == null || s === '') return '';
-                var div = document.createElement('div');
-                div.textContent = s;
-                return div.innerHTML;
-            }
             function fillLinkedSubjectsUI(linkedSubjects, selectedIds) {
                 selectedIds = selectedIds || [];
                 if (currentLinkedEl) {
@@ -2228,7 +2382,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         currentLinkedEl.innerHTML = '<span class="text-muted">لا يوجد ربط لمواد إضافية</span>';
                     } else {
                         var parts = linkedSubjects.map(function(s) {
-                            var label = [s.stage_name, s.class_name, s.name].filter(Boolean).join(' — ');
+                            var label = (typeof window.formatLinkedSubjectBadge === 'function')
+                                ? window.formatLinkedSubjectBadge(s)
+                                : '';
                             return '<span class="badge bg-secondary me-1 mb-1">' + esc(label || s.name || '#' + s.id) + '</span>';
                         });
                         currentLinkedEl.innerHTML = parts.join('');
@@ -2238,7 +2394,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 (selectedIds || []).forEach(function(sid) {
                     if (String(sid) === String(primarySubjectId)) return;
                     var s = (linkedSubjects || []).find(function(x) { return String(x.id) === String(sid); });
-                    var label = s ? [s.stage_name, s.class_name, s.name].filter(Boolean).join(' — ') : ('#' + sid);
+                    var label = (typeof window.formatLinkedSubjectBadge === 'function')
+                        ? window.formatLinkedSubjectBadge(s || { id: sid, name: '#' + sid })
+                        : ('#' + sid);
                     var row = document.createElement('div');
                     row.className = 'd-flex align-items-center gap-2 mb-1 linked-subject-row';
                     row.innerHTML = '<span class="badge bg-secondary">' + esc(label) + '</span>' +
@@ -2320,11 +2478,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (existing[i].value === subjectId) return;
                 }
                 var s = window.linkableStructure.find(function(x) { return String(x.id) === String(subjectId); });
-                var label = s ? [s.stage_name, s.class_name, s.name].filter(Boolean).join(' — ') : ('#' + subjectId);
+                var label = (typeof window.formatLinkedSubjectBadge === 'function')
+                    ? window.formatLinkedSubjectBadge(s || { id: subjectId })
+                    : ('#' + subjectId);
                 var row = document.createElement('div');
                 row.className = 'd-flex align-items-center gap-2 mb-1 linked-subject-row';
-                row.innerHTML = '<span class="badge bg-secondary">' + label.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>' +
-                    '<input type="hidden" name="linked_subject_ids[]" value="' + subjectId + '">' +
+                row.innerHTML = '<span class="badge bg-secondary">' + esc(label) + '</span>' +
+                    '<input type="hidden" name="linked_subject_ids[]" value="' + esc(String(subjectId)) + '">' +
                     '<button type="button" class="btn btn-sm btn-outline-danger py-0 remove-linked-subject" title="إزالة"><i class="bi bi-x"></i></button>';
                 listEl.appendChild(row);
                 subjectSelect.value = '';
@@ -2396,7 +2556,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     subject.sections.forEach(function(sec) {
                         const opt = document.createElement('option');
                         opt.value = sec.id;
-                        opt.textContent = sec.title;
+                        opt.textContent = sec.path_title || sec.title || '';
                         sectionSelect.appendChild(opt);
                     });
                     sectionSelect.disabled = false;
@@ -2461,7 +2621,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     stageName = subject.stage_name || '';
                     const section = subject.sections && subject.sections.find(sec => String(sec.id) === String(sectionSelect.value));
                     if (section) {
-                        sectionName = section.title || '';
+                        sectionName = section.path_title || section.title || '';
                         const u = section.units && section.units.find(ux => String(ux.id) === String(unitId));
                         if (u) unitTitle = u.title || '';
                     }
@@ -2483,11 +2643,121 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (sectionSelect) sectionSelect.disabled = true;
             });
         });
-        document.addEventListener('click', function(e) {
-            if (e.target.closest('.remove-linked-unit')) {
-                const row = e.target.closest('.linked-unit-row');
-                if (row) row.remove();
-            }
+
+        document.querySelectorAll('.unit-mirror-class-select').forEach(function(classSelect) {
+            classSelect.addEventListener('change', function() {
+                const modal = this.closest('.modal');
+                if (!modal) return;
+                const subjectSelect = modal.querySelector('.unit-mirror-subject-select');
+                const sectionSelect = modal.querySelector('.unit-mirror-section-select');
+                if (!subjectSelect || !sectionSelect) return;
+                const classId = this.value;
+                subjectSelect.innerHTML = '<option value="">-- اختر المادة --</option>';
+                sectionSelect.innerHTML = '<option value="">-- اختر القسم --</option>';
+                sectionSelect.disabled = true;
+                if (!classId) {
+                    subjectSelect.disabled = true;
+                    return;
+                }
+                const row = this.closest('[data-current-subject-id]');
+                const currentSubjectId = row ? row.getAttribute('data-current-subject-id') : null;
+                const currentClassId = row ? row.getAttribute('data-current-class-id') : null;
+                const filtered = structure.filter(s => String(s.class_id) === String(classId));
+                const currentFirst = currentSubjectId && String(currentClassId) === String(classId)
+                    ? filtered.find(s => String(s.id) === String(currentSubjectId))
+                    : null;
+                if (currentFirst) {
+                    const opt = document.createElement('option');
+                    opt.value = currentFirst.id;
+                    opt.textContent = 'المادة الحالية: ' + (currentFirst.stage_name ? currentFirst.stage_name + ' / ' : '') + (currentFirst.class_name ? currentFirst.class_name + ' — ' : '') + currentFirst.name + ' (#' + currentFirst.id + ')';
+                    subjectSelect.appendChild(opt);
+                }
+                filtered.forEach(function(s) {
+                    if (currentSubjectId && String(s.id) === String(currentSubjectId)) return;
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = (s.stage_name ? s.stage_name + ' / ' : '') + (s.class_name ? s.class_name + ' — ' : '') + s.name + ' (#' + s.id + ')';
+                    subjectSelect.appendChild(opt);
+                });
+                subjectSelect.disabled = false;
+            });
+        });
+        document.querySelectorAll('.unit-mirror-subject-select').forEach(function(subjectSelect) {
+            subjectSelect.addEventListener('change', function() {
+                const modal = this.closest('.modal');
+                if (!modal) return;
+                const sectionSelect = modal.querySelector('.unit-mirror-section-select');
+                if (!sectionSelect) return;
+                const subjectId = this.value;
+                sectionSelect.innerHTML = '<option value="">-- اختر القسم --</option>';
+                if (!subjectId) {
+                    sectionSelect.disabled = true;
+                    return;
+                }
+                const subject = structure.find(s => String(s.id) === String(subjectId));
+                if (subject && subject.sections) {
+                    subject.sections.forEach(function(sec) {
+                        const opt = document.createElement('option');
+                        opt.value = sec.id;
+                        opt.textContent = sec.path_title || sec.title || '';
+                        sectionSelect.appendChild(opt);
+                    });
+                    sectionSelect.disabled = false;
+                }
+            });
+        });
+        document.querySelectorAll('.add-linked-section-for-unit').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const listId = this.getAttribute('data-list-id');
+                const list = listId ? document.getElementById(listId) : null;
+                const modal = this.closest('.modal');
+                if (!list || !modal) return;
+                const sectionSelect = modal.querySelector('.unit-mirror-section-select');
+                const subjectSelect = modal.querySelector('.unit-mirror-subject-select');
+                const classSelect = modal.querySelector('.unit-mirror-class-select');
+                const sectionId = sectionSelect ? sectionSelect.value : '';
+                const form = modal.querySelector('form[data-unit-home-section-id]');
+                const homeSectionId = form ? form.getAttribute('data-unit-home-section-id') : '';
+                if (!sectionId) {
+                    alert('يرجى اختيار الصف ثم المادة ثم القسم قبل الإضافة');
+                    return;
+                }
+                if (homeSectionId && String(sectionId) === String(homeSectionId)) {
+                    alert('لا يمكن إضافة القسم المنزل للوحدة كظهور إضافي');
+                    return;
+                }
+                const existing = list.querySelectorAll('input[name="linked_section_ids[]"]');
+                for (let i = 0; i < existing.length; i++) {
+                    if (existing[i].value === sectionId) return;
+                }
+                const subject = structure.find(s => String(s.id) === String(subjectSelect.value));
+                let subjectName = ''; let sectionName = ''; let className = ''; let stageName = '';
+                if (subject) {
+                    subjectName = subject.name || '';
+                    className = subject.class_name || '';
+                    stageName = subject.stage_name || '';
+                    const sec = subject.sections && subject.sections.find(se => String(se.id) === String(sectionId));
+                    if (sec) sectionName = (sec.path_title || sec.title || '');
+                }
+                const badgeText = (stageName ? stageName + ' / ' : '') + (className ? className + ' — ' : '') + subjectName + ' — ' + sectionName;
+                const row = document.createElement('div');
+                row.className = 'd-flex align-items-center gap-2 mb-1 linked-section-mirror-row';
+                row.innerHTML = '<span class="badge bg-secondary">' + badgeText + '</span>' +
+                    '<input type="hidden" name="linked_section_ids[]" value="' + sectionId + '">' +
+                    '<button type="button" class="btn btn-sm btn-outline-danger py-0 remove-linked-unit" title="إزالة"><i class="bi bi-x"></i></button>';
+                list.appendChild(row);
+                if (sectionSelect) sectionSelect.value = '';
+                if (subjectSelect) subjectSelect.value = '';
+                if (classSelect) classSelect.value = '';
+                if (sectionSelect) {
+                    sectionSelect.innerHTML = '<option value="">-- اختر القسم --</option>';
+                    sectionSelect.disabled = true;
+                }
+                if (subjectSelect) {
+                    subjectSelect.innerHTML = '<option value="">-- اختر المادة --</option>';
+                    subjectSelect.disabled = true;
+                }
+            });
         });
 
         // مودال ربط الاختبار: تسلسل الصف -> المادة -> القسم -> الوحدة
@@ -2531,7 +2801,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     subject.sections.forEach(function(sec) {
                         var opt = document.createElement('option');
                         opt.value = sec.id;
-                        opt.textContent = sec.title;
+                        opt.textContent = sec.path_title || sec.title || '';
                         sectionSelect.appendChild(opt);
                     });
                     sectionSelect.disabled = false;
@@ -2592,7 +2862,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     subjectName = subject.name || '';
                     var section = subject.sections && subject.sections.find(sec => String(sec.id) === String(sectionSelect.value));
                     if (section) {
-                        sectionName = section.title || '';
+                        sectionName = section.path_title || section.title || '';
                         var u = section.units && section.units.find(ux => String(ux.id) === String(unitId));
                         if (u) unitTitle = u.title || '';
                     }

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection;
 
 class SubjectSection extends Model
 {
@@ -104,6 +105,38 @@ class SubjectSection extends Model
     public function units()
     {
         return $this->hasMany(Unit::class, 'section_id')->orderBy('order');
+    }
+
+    /**
+     * وحدات من أقسام أخرى تظهر في هذا القسم عبر section_unit.
+     */
+    public function mirroredUnits(): BelongsToMany
+    {
+        return $this->belongsToMany(Unit::class, 'section_unit', 'subject_section_id', 'unit_id')
+            ->withPivot('order')
+            ->withTimestamps()
+            ->orderByPivot('order');
+    }
+
+    /**
+     * جذور الوحدات للعرض في القسم: وحدات المنزل (parent_id فارغ) ثم الوحدات المرآة حسب pivot.order.
+     *
+     * @return Collection<int, Unit>
+     */
+    public function rootUnitsForDisplay(): Collection
+    {
+        $primary = $this->relationLoaded('units')
+            ? $this->units->whereNull('parent_id')->sortBy('order')->values()
+            : $this->units()->whereNull('parent_id')->orderBy('order')->orderBy('title')->get();
+
+        $mirrored = $this->relationLoaded('mirroredUnits')
+            ? $this->mirroredUnits->sortBy(fn ($u) => (int) ($u->pivot->order ?? 0))->values()
+            : $this->mirroredUnits()->orderBy('section_unit.order')->orderBy('units.title')->get();
+
+        $primaryIds = $primary->pluck('id');
+        $mirrored = $mirrored->reject(fn ($u) => $primaryIds->contains($u->id))->values();
+
+        return $primary->concat($mirrored);
     }
 
     /**

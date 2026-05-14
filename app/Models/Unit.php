@@ -38,6 +38,17 @@ class Unit extends Model
     }
 
     /**
+     * أقسام إضافية تظهر فيها هذه الوحدة (محتوى مشترك) عبر جدول section_unit.
+     */
+    public function mirroredInSections(): BelongsToMany
+    {
+        return $this->belongsToMany(SubjectSection::class, 'section_unit', 'unit_id', 'subject_section_id')
+            ->withPivot('order')
+            ->withTimestamps()
+            ->orderByPivot('order');
+    }
+
+    /**
      * العلاقة مع الوحدة الأب.
      */
     public function parent()
