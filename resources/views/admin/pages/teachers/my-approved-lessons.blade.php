@@ -56,15 +56,15 @@
                     </div>
                 </div>
             @else
-                <div class="card shadow-sm border-0 mb-3">
-                    <div class="card-body py-3 d-flex flex-wrap gap-4 justify-content-between align-items-center">
+                <div class="card shadow-sm border mb-3">
+                    <div class="card-body py-3 d-flex flex-wrap gap-4 justify-content-between align-items-center bg-light bg-opacity-50 rounded-top">
                         <div>
-                            <span class="text-muted">إجمالي الدروس المعتمدة:</span>
-                            <strong class="ms-1">{{ $grandLessonsCount }}</strong>
+                            <span class="text-muted small d-block mb-1">إجمالي الدروس المعتمدة</span>
+                            <span class="fs-5 fw-bold text-primary">{{ $grandLessonsCount }}</span>
                         </div>
                         <div>
-                            <span class="text-muted">إجمالي الصفحات المحسوبة:</span>
-                            <strong class="ms-1">{{ $grandTotalPages }}</strong>
+                            <span class="text-muted small d-block mb-1">إجمالي الصفحات المحسوبة</span>
+                            <span class="fs-5 fw-bold text-primary">{{ $grandTotalPages }}</span>
                         </div>
                     </div>
                 </div>
@@ -75,36 +75,39 @@
                         $subject = $block['subject'];
                         $className = $subject->schoolClass?->name;
                     @endphp
-                    <div class="card shadow-sm border-0 mb-4">
-                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div class="card shadow-sm border mb-4 overflow-hidden">
+                        <div class="card-header bg-light border-bottom py-3">
                             <div>
-                                <h6 class="mb-0 fw-bold">
+                                <h6 class="mb-1 fw-bold">
                                     <a href="{{ route('admin.subjects.show', $subject) }}" class="text-decoration-none">{{ $subject->name }}</a>
                                     @if($className)
                                         <span class="text-muted fw-normal small"> — {{ $className }}</span>
                                     @endif
                                 </h6>
-                                <span class="small text-muted">
-                                    {{ $block['lessons_count'] }} درسًا معتمدًا · {{ $block['total_pages'] }} صفحة (محسوبة)
+                                <span class="badge bg-white text-dark border">
+                                    {{ $block['lessons_count'] }} درسًا معتمدًا
+                                </span>
+                                <span class="badge bg-primary-transparent text-primary border border-primary border-opacity-25 ms-1">
+                                    {{ $block['total_pages'] }} صفحة محسوبة
                                 </span>
                             </div>
                         </div>
                         <div class="card-body p-0">
                             @if(empty($block['lessons']))
-                                <p class="text-muted small mb-0 px-3 py-3">لا توجد دروس معتمدة في هذه المادة بعد.</p>
+                                <p class="text-muted small mb-0 px-3 py-4 text-center">لا توجد دروس معتمدة في هذه المادة بعد.</p>
                             @else
                                 <div class="table-responsive">
-                                    <table class="table table-sm table-bordered mb-0 align-middle">
+                                    <table class="table table-hover table-bordered table-striped mb-0 align-middle">
                                         <thead class="table-light">
-                                            <tr>
-                                                <th class="text-center" style="width: 3rem;">#</th>
-                                                <th class="text-center" style="width: 5.5rem;">عرض</th>
-                                                <th>عنوان الدرس</th>
-                                                <th>القسم</th>
-                                                <th>الوحدة</th>
-                                                <th>نطاق الصفحات في الكتاب</th>
-                                                <th class="text-center">عدد الصفحات</th>
-                                                <th class="text-center">تاريخ الاعتماد</th>
+                                            <tr class="text-nowrap">
+                                                <th class="text-center" scope="col" style="width: 3rem;">#</th>
+                                                <th class="text-center" scope="col" style="width: 5.5rem;">عرض</th>
+                                                <th scope="col">عنوان الدرس</th>
+                                                <th scope="col">القسم</th>
+                                                <th scope="col">الوحدة</th>
+                                                <th scope="col">نطاق الصفحات</th>
+                                                <th class="text-center" scope="col" style="width: 6rem;">الصفحات</th>
+                                                <th class="text-center" scope="col" style="width: 9rem;">تاريخ الاعتماد</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -113,45 +116,48 @@
                                                     $lesson = $row['lesson'];
                                                 @endphp
                                                 <tr>
-                                                    <td class="text-center text-muted">{{ $idx + 1 }}</td>
+                                                    <td class="text-center text-secondary small" style="font-variant-numeric: tabular-nums;">{{ $idx + 1 }}</td>
                                                     <td class="text-center">
-                                                        <div class="d-flex justify-content-center gap-1">
-                                                            @can('lesson-show')
-                                                                <a href="{{ route('admin.lessons.show', $lesson) }}" class="btn btn-sm btn-outline-primary py-0 px-2" title="معاينة الدرس">
-                                                                    <i class="bi bi-eye"></i>
-                                                                </a>
-                                                            @endcan
-                                                            @can('lesson-edit')
-                                                                <a href="{{ route('admin.lessons.edit', $lesson) }}" class="btn btn-sm btn-outline-secondary py-0 px-2" title="تعديل الدرس">
-                                                                    <i class="bi bi-pencil"></i>
-                                                                </a>
-                                                            @endcan
-                                                            @canany(['lesson-show', 'lesson-edit'])
-                                                            @else
-                                                                <span class="text-muted small">—</span>
-                                                            @endcanany
-                                                        </div>
+                                                        @canany(['lesson-show', 'lesson-edit'])
+                                                            <div class="btn-group btn-group-sm" role="group" aria-label="إجراءات الدرس">
+                                                                @can('lesson-show')
+                                                                    <a href="{{ route('admin.lessons.show', $lesson) }}" class="btn btn-outline-primary" title="معاينة الدرس">
+                                                                        <i class="bi bi-eye"></i>
+                                                                    </a>
+                                                                @endcan
+                                                                @can('lesson-edit')
+                                                                    <a href="{{ route('admin.lessons.edit', $lesson) }}" class="btn btn-outline-secondary" title="تعديل الدرس">
+                                                                        <i class="bi bi-pencil"></i>
+                                                                    </a>
+                                                                @endcan
+                                                            </div>
+                                                        @else
+                                                            <span class="text-muted small">—</span>
+                                                        @endcanany
                                                     </td>
-                                                    <td class="fw-semibold">
+                                                    <td>
                                                         @can('lesson-show')
-                                                            <a href="{{ route('admin.lessons.show', $lesson) }}" class="text-decoration-none">{{ $lesson->title }}</a>
+                                                            <a href="{{ route('admin.lessons.show', $lesson) }}" class="fw-semibold text-decoration-none text-body">{{ $lesson->title }}</a>
                                                         @else
                                                             @can('lesson-edit')
-                                                                <a href="{{ route('admin.lessons.edit', $lesson) }}" class="text-decoration-none">{{ $lesson->title }}</a>
+                                                                <a href="{{ route('admin.lessons.edit', $lesson) }}" class="fw-semibold text-decoration-none text-body">{{ $lesson->title }}</a>
                                                             @else
-                                                                {{ $lesson->title }}
+                                                                <span class="fw-semibold">{{ $lesson->title }}</span>
                                                             @endcan
                                                         @endcan
                                                     </td>
-                                                    <td class="small">{{ $row['section_title'] ?? '—' }}</td>
-                                                    <td class="small">{{ $row['unit_title'] ?? '—' }}</td>
-                                                    <td class="small">{{ $row['pages_label'] }}</td>
-                                                    <td class="text-center">{{ $row['pages_count'] }}</td>
-                                                    <td class="text-center small">
+                                                    <td class="small text-muted">{{ $row['section_title'] ?? '—' }}</td>
+                                                    <td class="small text-muted">{{ $row['unit_title'] ?? '—' }}</td>
+                                                    <td class="small"><span class="text-muted">{{ $row['pages_label'] }}</span></td>
+                                                    <td class="text-center">
+                                                        <span class="badge rounded-pill bg-light text-dark border fw-normal" style="font-variant-numeric: tabular-nums;">{{ $row['pages_count'] }}</span>
+                                                    </td>
+                                                    <td class="text-center small text-muted" style="font-variant-numeric: tabular-nums;">
                                                         @if($lesson->reviewed_at)
-                                                            {{ $lesson->reviewed_at->format('Y-m-d H:i') }}
+                                                            <span class="d-block">{{ $lesson->reviewed_at->format('Y-m-d') }}</span>
+                                                            <span class="d-block text-secondary" style="font-size: 0.8rem;">{{ $lesson->reviewed_at->format('H:i') }}</span>
                                                         @else
-                                                            <span class="text-muted">—</span>
+                                                            —
                                                         @endif
                                                     </td>
                                                 </tr>
