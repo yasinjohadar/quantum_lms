@@ -93,6 +93,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('units.lessons.reorder');
         Route::get('lessons/{lesson}', [LessonController::class, 'show'])
             ->name('lessons.show');
+        Route::get('lessons/{lesson}/edit', [LessonController::class, 'edit'])
+            ->name('lessons.edit');
         Route::put('lessons/{lesson}', [LessonController::class, 'update'])
             ->name('lessons.update');
         Route::delete('lessons/{lesson}', [LessonController::class, 'destroy'])

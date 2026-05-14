@@ -51,6 +51,11 @@
                     </ol>
                 </div>
                 <div class="d-flex gap-2">
+                    @can('lesson-edit')
+                    <a href="{{ route('admin.lessons.edit', $lesson) }}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-pencil-square me-1"></i> تعديل الدرس
+                    </a>
+                    @endcan
                     @if($lessonSubject)
                     <a href="{{ route('admin.subjects.show', $lessonSubject->id) }}" class="btn btn-secondary btn-sm">
                         <i class="fas fa-arrow-right me-1"></i> رجوع للمادة
@@ -153,12 +158,50 @@
                                     {{ $lessonSection?->title ?? '—' }}
                                 </span>
                             </p>
+                            @if($lesson->book_page_from !== null || $lesson->book_page_to !== null)
+                                <p class="mb-2">
+                                    <span class="fw-semibold">صفحات الكتاب:</span>
+                                    <span class="text-muted">
+                                        @if($lesson->book_page_from !== null && $lesson->book_page_to !== null)
+                                            من {{ $lesson->book_page_from }} إلى {{ $lesson->book_page_to }}
+                                        @elseif($lesson->book_page_from !== null)
+                                            من صفحة {{ $lesson->book_page_from }}
+                                        @else
+                                            إلى صفحة {{ $lesson->book_page_to }}
+                                        @endif
+                                    </span>
+                                </p>
+                            @else
+                                <p class="mb-2">
+                                    <span class="fw-semibold">صفحات الكتاب:</span>
+                                    <span class="text-muted">لم يُحدد نطاق (يُحسب كصفحة واحدة في إحصائيات التقدم)</span>
+                                </p>
+                            @endif
+                            <p class="mb-2">
+                                <span class="fw-semibold">عدد الصفحات في الإحصائيات:</span>
+                                <span class="badge bg-secondary-transparent text-secondary">{{ \App\Services\TeacherProgressService::lessonPageCount($lesson) }}</span>
+                            </p>
+                            <p class="mb-2">
+                                <span class="fw-semibold">ترتيب العرض:</span>
+                                <span class="text-muted">{{ (int) ($lesson->order ?? 0) }}</span>
+                            </p>
+                            <p class="mb-2 small text-muted">
+                                <span class="fw-semibold text-body">معرّف الدرس:</span> {{ $lesson->id }}
+                            </p>
                             <p class="mb-2">
                                 <span class="fw-semibold">نوع الفيديو:</span>
                                 <span class="badge bg-primary-transparent text-primary">
                                     {{ \App\Models\Lesson::VIDEO_TYPES[$lesson->video_type] ?? $lesson->video_type }}
                                 </span>
                             </p>
+                            @if($lesson->video_url)
+                                <p class="mb-2">
+                                    <span class="fw-semibold d-block mb-1">رابط الفيديو:</span>
+                                    <a href="{{ $lesson->video_url }}" target="_blank" rel="noopener noreferrer" class="small text-break d-inline-block">
+                                        {{ \Illuminate\Support\Str::limit($lesson->video_url, 80) }}
+                                    </a>
+                                </p>
+                            @endif
                             @if($lesson->formatted_duration)
                                 <p class="mb-2">
                                     <span class="fw-semibold">المدة:</span>

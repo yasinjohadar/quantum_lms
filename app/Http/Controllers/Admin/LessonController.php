@@ -47,7 +47,7 @@ class LessonController extends Controller
     public function __construct()
     {
         $this->middleware(['permission:lesson-create'])->only('store');
-        $this->middleware(['permission:lesson-edit'])->only(['update', 'reorder']);
+        $this->middleware(['permission:lesson-edit'])->only(['edit', 'update', 'reorder']);
         $this->middleware(['permission:lesson-delete'])->only('destroy');
         $this->middleware(['permission:lesson-show'])->only('show');
         $this->middleware(['permission:lesson-approve-review'])->only('approveReview');
@@ -295,6 +295,30 @@ class LessonController extends Controller
     }
 
     /**
+     * نموذج تعديل الدرس (صفحة مستقلة من معاينة الدرس أو من روابط أخرى).
+     */
+    public function edit(Lesson $lesson)
+    {
+        $lesson->load([
+            'unit.section.subject',
+            'section.subject',
+            'linkedUnits.section.subject',
+            'attachments',
+        ]);
+
+        $user = auth()->user();
+        $subject = $this->resolveSubjectFromLesson($lesson);
+        if ($user->usesTeacherAssignmentScope()) {
+            if (! $user->isAssignedToSubject($subject->id) &&
+                ! $user->isAssignedToClass($subject->class_id)) {
+                abort(403, 'غير مصرح لك بالوصول إلى هذا الدرس');
+            }
+        }
+
+        return view('admin.pages.lessons.edit', compact('lesson', 'subject'));
+    }
+
+    /**
      * تحديث درس موجود.
      */
     public function update(UpdateLessonRequest $request, Lesson $lesson)
@@ -316,9 +340,12 @@ class LessonController extends Controller
             $data['is_free'] = $request->has('is_free');
             $data['is_preview'] = $request->has('is_preview');
 
-            // استبعاد linked_unit_ids من التحديث المباشر على الدرس
-            $linkedUnitIds = $data['linked_unit_ids'] ?? [];
             unset($data['linked_unit_ids']);
+            $preserveLinkedUnits = $request->boolean('preserve_linked_units');
+            $shouldSyncLinkedUnits = ! $preserveLinkedUnits && $request->has('linked_unit_ids');
+            $linkedUnitIds = $shouldSyncLinkedUnits
+                ? array_values(array_filter((array) $request->input('linked_unit_ids', [])))
+                : null;
 
             $oldReviewStatus = $lesson->review_status;
             $isTeacher = $user->shouldSubmitContentForReview();
@@ -400,33 +427,35 @@ class LessonController extends Controller
                 }, 'lesson_review_submitted', $lesson->id);
             }
 
-            // مزامنة الوحدات الإضافية (ربط الدرس بوحدات أخرى): استبعاد الوحدة الأصلية
-            $linkedUnitIds = array_values(array_unique(array_filter($linkedUnitIds)));
-            $primaryUnitId = $lesson->unit_id;
-            $linkedUnitIds = array_values(array_diff($linkedUnitIds, [$primaryUnitId]));
+            if ($shouldSyncLinkedUnits && is_array($linkedUnitIds)) {
+                // مزامنة الوحدات الإضافية (ربط الدرس بوحدات أخرى): استبعاد الوحدة الأصلية
+                $linkedUnitIds = array_values(array_unique(array_filter($linkedUnitIds)));
+                $primaryUnitId = $lesson->unit_id;
+                $linkedUnitIds = array_values(array_diff($linkedUnitIds, [$primaryUnitId]));
 
-            // للمعلم: السماح فقط بوحدات من مواد/صفوف مخصصة له
-            if ($user->usesTeacherAssignmentScope()) {
-                $classIds = $user->assignedClasses()->pluck('classes.id');
-                $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
-                $allowedUnitIds = \App\Models\Unit::whereHas('section.subject', function ($q) use ($classIds, $subjectIds) {
-                    if ($classIds->isNotEmpty() || $subjectIds->isNotEmpty()) {
-                        $q->where(function ($sq) use ($classIds, $subjectIds) {
-                            if ($classIds->isNotEmpty()) {
-                                $sq->whereIn('class_id', $classIds);
-                            }
-                            if ($subjectIds->isNotEmpty()) {
-                                $sq->orWhereIn('id', $subjectIds);
-                            }
-                        });
-                    } else {
-                        $q->whereRaw('1 = 0');
-                    }
-                })->pluck('id')->toArray();
-                $linkedUnitIds = array_values(array_intersect($linkedUnitIds, $allowedUnitIds));
+                // للمعلم: السماح فقط بوحدات من مواد/صفوف مخصصة له
+                if ($user->usesTeacherAssignmentScope()) {
+                    $classIds = $user->assignedClasses()->pluck('classes.id');
+                    $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
+                    $allowedUnitIds = \App\Models\Unit::whereHas('section.subject', function ($q) use ($classIds, $subjectIds) {
+                        if ($classIds->isNotEmpty() || $subjectIds->isNotEmpty()) {
+                            $q->where(function ($sq) use ($classIds, $subjectIds) {
+                                if ($classIds->isNotEmpty()) {
+                                    $sq->whereIn('class_id', $classIds);
+                                }
+                                if ($subjectIds->isNotEmpty()) {
+                                    $sq->orWhereIn('id', $subjectIds);
+                                }
+                            });
+                        } else {
+                            $q->whereRaw('1 = 0');
+                        }
+                    })->pluck('id')->toArray();
+                    $linkedUnitIds = array_values(array_intersect($linkedUnitIds, $allowedUnitIds));
+                }
+
+                $lesson->linkedUnits()->sync($linkedUnitIds);
             }
-
-            $lesson->linkedUnits()->sync($linkedUnitIds);
 
             $subjectId = $subject->id;
 
@@ -447,6 +476,12 @@ class LessonController extends Controller
                     'section_id' => $lesson->section_id,
                     'subject_id' => $subjectId,
                 ]);
+            }
+
+            if ($request->boolean('redirect_to_lesson')) {
+                return redirect()
+                    ->route('admin.lessons.show', $lesson)
+                    ->with('success', 'تم تحديث الدرس بنجاح.');
             }
 
             return redirect()

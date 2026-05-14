@@ -98,6 +98,7 @@
                                         <thead class="table-light">
                                             <tr>
                                                 <th class="text-center" style="width: 3rem;">#</th>
+                                                <th class="text-center" style="width: 5.5rem;">عرض</th>
                                                 <th>عنوان الدرس</th>
                                                 <th>القسم</th>
                                                 <th>الوحدة</th>
@@ -113,7 +114,35 @@
                                                 @endphp
                                                 <tr>
                                                     <td class="text-center text-muted">{{ $idx + 1 }}</td>
-                                                    <td class="fw-semibold">{{ $lesson->title }}</td>
+                                                    <td class="text-center">
+                                                        <div class="d-flex justify-content-center gap-1">
+                                                            @can('lesson-show')
+                                                                <a href="{{ route('admin.lessons.show', $lesson) }}" class="btn btn-sm btn-outline-primary py-0 px-2" title="معاينة الدرس">
+                                                                    <i class="bi bi-eye"></i>
+                                                                </a>
+                                                            @endcan
+                                                            @can('lesson-edit')
+                                                                <a href="{{ route('admin.lessons.edit', $lesson) }}" class="btn btn-sm btn-outline-secondary py-0 px-2" title="تعديل الدرس">
+                                                                    <i class="bi bi-pencil"></i>
+                                                                </a>
+                                                            @endcan
+                                                            @canany(['lesson-show', 'lesson-edit'])
+                                                            @else
+                                                                <span class="text-muted small">—</span>
+                                                            @endcanany
+                                                        </div>
+                                                    </td>
+                                                    <td class="fw-semibold">
+                                                        @can('lesson-show')
+                                                            <a href="{{ route('admin.lessons.show', $lesson) }}" class="text-decoration-none">{{ $lesson->title }}</a>
+                                                        @else
+                                                            @can('lesson-edit')
+                                                                <a href="{{ route('admin.lessons.edit', $lesson) }}" class="text-decoration-none">{{ $lesson->title }}</a>
+                                                            @else
+                                                                {{ $lesson->title }}
+                                                            @endcan
+                                                        @endcan
+                                                    </td>
                                                     <td class="small">{{ $row['section_title'] ?? '—' }}</td>
                                                     <td class="small">{{ $row['unit_title'] ?? '—' }}</td>
                                                     <td class="small">{{ $row['pages_label'] }}</td>
