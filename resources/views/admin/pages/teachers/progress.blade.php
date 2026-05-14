@@ -71,10 +71,15 @@
                                     <div class="row">
                                         {{-- الصفحات (لكل مادة) --}}
                                         <div class="col-lg-7 mb-3 mb-lg-0">
-                                            <h6 class="text-muted mb-2">
-                                                <i class="bi bi-journal-bookmark me-1"></i>
-                                                تقدم الصفحات حسب المادة
-                                            </h6>
+                                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                                <h6 class="text-muted mb-0">
+                                                    <i class="bi bi-journal-bookmark me-1"></i>
+                                                    تقدم الصفحات حسب المادة
+                                                </h6>
+                                                <a href="{{ route('admin.teachers.approved-lessons', $teacher) }}" class="btn btn-outline-secondary btn-sm flex-shrink-0">
+                                                    <i class="bi bi-list-ul me-1"></i> تفاصيل الدروس المعتمدة
+                                                </a>
+                                            </div>
                                             @if(!empty($pagesProgress))
                                                 <div class="table-responsive">
                                                     <table class="table table-sm table-bordered mb-0">

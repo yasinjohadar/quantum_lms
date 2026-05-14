@@ -34,6 +34,27 @@ class TeacherProgressController extends Controller
     }
 
     /**
+     * تفاصيل الدروس المعتمدة وصفحات الكتاب لكل مادة (لمعلم محدد — للإدارة).
+     */
+    public function approvedLessonsDetail(User $teacher)
+    {
+        if (! $teacher->matchesAdminTeacherListingCriteria()) {
+            return redirect()->back()->with('error', 'المستخدم المحدد ليس معلم');
+        }
+
+        $bySubject = TeacherProgressService::getTeacherApprovedLessonsDetailBySubject($teacher);
+        $grandTotalPages = (int) array_sum(array_column($bySubject, 'total_pages'));
+        $grandLessonsCount = (int) array_sum(array_column($bySubject, 'lessons_count'));
+
+        return view('admin.pages.teachers.my-approved-lessons', [
+            'bySubject' => $bySubject,
+            'grandTotalPages' => $grandTotalPages,
+            'grandLessonsCount' => $grandLessonsCount,
+            'viewedTeacher' => $teacher,
+        ]);
+    }
+
+    /**
      * صفحة مخصصة: تقدم الصفحات الموكّلة لكل مادة (واضحة بصرياً).
      */
     public function materialPages(User $teacher)

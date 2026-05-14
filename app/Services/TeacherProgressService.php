@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AcademicWeek;
 use App\Models\Lesson;
+use App\Models\Subject;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -97,13 +98,19 @@ class TeacherProgressService
     /**
      * ترتيب صفوف تقدم الصفحات: مرحلة ← صف ← مادة (لعرض مواد كل صف معاً).
      *
-     * @param  array{subject: \App\Models\Subject, required_pages: int, completed_pages: int, remaining_pages: int, percentage: float|null}  $a
-     * @param  array{subject: \App\Models\Subject, required_pages: int, completed_pages: int, remaining_pages: int, percentage: float|null}  $b
+     * @param  array{subject: Subject, required_pages: int, completed_pages: int, remaining_pages: int, percentage: float|null}  $a
+     * @param  array{subject: Subject, required_pages: int, completed_pages: int, remaining_pages: int, percentage: float|null}  $b
      */
     private static function comparePagesProgressRowsByClassThenSubject(array $a, array $b): int
     {
-        $sa = $a['subject'];
-        $sb = $b['subject'];
+        return self::compareAssignedSubjectsForDisplayOrder($a['subject'], $b['subject']);
+    }
+
+    /**
+     * ترتيب المواد المخصّصة للمعلم: مرحلة ← صف ← مادة.
+     */
+    public static function compareAssignedSubjectsForDisplayOrder(Subject $sa, Subject $sb): int
+    {
         $ca = $sa->schoolClass;
         $cb = $sb->schoolClass;
 
@@ -146,6 +153,130 @@ class TeacherProgressService
         }
 
         return strcmp((string) $sa->name, (string) $sb->name);
+    }
+
+    /**
+     * الدروس المعتمدة في مواد المعلم المخصّصة، مع تفاصيل الصفحات، مرتّبة حسب الصف ثم المادة ثم المنهج.
+     *
+     * @return array<int, array{subject: Subject, lessons: array<int, array<string, mixed>>, total_pages: int, lessons_count: int}>
+     */
+    public static function getTeacherApprovedLessonsDetailBySubject(User $teacher): array
+    {
+        $teacher->unsetRelation('assignedSubjects');
+        $subjects = $teacher->assignedSubjects()->withTrashed()->with([
+            'schoolClass' => fn ($q) => $q->withTrashed(),
+            'schoolClass.stage',
+        ])->get()->sort(function (Subject $a, Subject $b) {
+            return self::compareAssignedSubjectsForDisplayOrder($a, $b);
+        })->values();
+
+        $subjectIds = $subjects->pluck('id')->all();
+        if ($subjectIds === []) {
+            return [];
+        }
+
+        $lessons = Lesson::query()
+            ->where('review_status', Lesson::REVIEW_STATUS_APPROVED)
+            ->where(function ($outer) use ($subjectIds) {
+                $outer->whereHas('unit', function ($q) use ($subjectIds) {
+                    $q->whereHas('section', function ($q2) use ($subjectIds) {
+                        $q2->whereIn('subject_id', $subjectIds);
+                    });
+                })->orWhereHas('section', function ($q) use ($subjectIds) {
+                    $q->whereIn('subject_id', $subjectIds);
+                });
+            })
+            ->with([
+                'unit' => fn ($q) => $q->withTrashed()->with(['section' => fn ($q2) => $q2->withTrashed()]),
+                'section' => fn ($q) => $q->withTrashed(),
+            ])
+            ->get();
+
+        $bySubjectId = [];
+        foreach ($lessons as $lesson) {
+            $sid = self::resolveLessonSubjectId($lesson);
+            if ($sid === null || ! in_array($sid, $subjectIds, true)) {
+                continue;
+            }
+            $section = $lesson->unit?->section ?? $lesson->section;
+            $unitTitle = $lesson->unit?->title;
+            $bySubjectId[$sid][] = [
+                'lesson' => $lesson,
+                'pages_count' => self::lessonPageCount($lesson),
+                'pages_label' => self::formatLessonPagesLabel($lesson),
+                'section_title' => $section?->title,
+                'unit_title' => $unitTitle,
+            ];
+        }
+
+        $out = [];
+        foreach ($subjects as $subject) {
+            $rows = $bySubjectId[$subject->id] ?? [];
+            usort($rows, function (array $ra, array $rb) {
+                return self::compareApprovedLessonsForDisplay($ra['lesson'], $rb['lesson']);
+            });
+            $totalPages = (int) array_sum(array_column($rows, 'pages_count'));
+            $out[] = [
+                'subject' => $subject,
+                'lessons' => $rows,
+                'total_pages' => $totalPages,
+                'lessons_count' => count($rows),
+            ];
+        }
+
+        return $out;
+    }
+
+    private static function resolveLessonSubjectId(Lesson $lesson): ?int
+    {
+        if ($lesson->unit && $lesson->unit->section) {
+            return (int) $lesson->unit->section->subject_id;
+        }
+        if ($lesson->section) {
+            return (int) $lesson->section->subject_id;
+        }
+
+        return null;
+    }
+
+    private static function formatLessonPagesLabel(Lesson $lesson): string
+    {
+        $from = $lesson->book_page_from;
+        $to = $lesson->book_page_to;
+        if ($from !== null && $to !== null) {
+            return 'من ' . $from . ' إلى ' . $to;
+        }
+        if ($from !== null) {
+            return 'من صفحة ' . $from;
+        }
+        if ($to !== null) {
+            return 'إلى صفحة ' . $to;
+        }
+
+        return '— (بدون نطاق؛ يُحسب كصفحة واحدة في الإحصائيات)';
+    }
+
+    private static function lessonDisplaySortTuple(Lesson $lesson): array
+    {
+        $section = $lesson->unit?->section ?? $lesson->section;
+        $secOrder = $section ? (int) ($section->order ?? 0) : 99999;
+        $unitOrder = $lesson->unit ? (int) ($lesson->unit->order ?? 0) : 99999;
+        $lessonOrder = (int) ($lesson->order ?? 0);
+
+        return [$secOrder, $unitOrder, $lessonOrder, $lesson->id];
+    }
+
+    private static function compareApprovedLessonsForDisplay(Lesson $a, Lesson $b): int
+    {
+        $ta = self::lessonDisplaySortTuple($a);
+        $tb = self::lessonDisplaySortTuple($b);
+        foreach ([0, 1, 2, 3] as $i) {
+            if ($ta[$i] !== $tb[$i]) {
+                return $ta[$i] <=> $tb[$i];
+            }
+        }
+
+        return 0;
     }
 
     /**

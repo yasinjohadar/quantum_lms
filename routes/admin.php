@@ -573,8 +573,12 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('academic-years.weeks.generate');
 
         // تخصيص المعلمين
+        Route::get('my-approved-lessons', [\App\Http\Controllers\Admin\TeacherOwnProgressController::class, 'approvedLessonsDetail'])
+            ->name('my-approved-lessons');
         Route::get('teachers/progress', [\App\Http\Controllers\Admin\TeacherProgressController::class, 'index'])
             ->name('teachers.progress.index');
+        Route::get('teachers/{teacher}/approved-lessons', [\App\Http\Controllers\Admin\TeacherProgressController::class, 'approvedLessonsDetail'])
+            ->name('teachers.approved-lessons');
         Route::get('teachers/{teacher}/progress/material-pages', [\App\Http\Controllers\Admin\TeacherProgressController::class, 'materialPages'])
             ->name('teachers.progress.material-pages');
         Route::get('teachers/{teacher}/progress', [\App\Http\Controllers\Admin\TeacherProgressController::class, 'show'])

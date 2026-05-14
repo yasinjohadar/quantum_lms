@@ -37,7 +37,7 @@
                         @endcan
 
                         @if(auth()->user()->usesTeacherAssignmentScope())
-                        <li class="slide has-sub {{ request()->is('admin/classes*') || request()->is('admin/subjects*') ? 'open' : '' }}">
+                        <li class="slide has-sub {{ request()->is('admin/classes*') || request()->is('admin/subjects*') || request()->routeIs('admin.my-approved-lessons') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -66,6 +66,15 @@
                                             <path d="M18 2H8a2 2 0 00-2 2v14a2 2 0 002 2h10l4-4V4a2 2 0 00-2-2zm0 13v3h-3a1 1 0 01-1-1v-2h4zm-6-4H8V9h4zm4-3H8V6h8z"/>
                                         </svg>
                                         <span class="side-menu__label">موادي المخصصة</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('admin.my-approved-lessons') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.my-approved-lessons') }}" class="side-menu__item {{ request()->routeIs('admin.my-approved-lessons') ? 'active' : '' }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                            <path d="M0 0h24v24H0z" fill="none"/>
+                                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                                        </svg>
+                                        <span class="side-menu__label">تفاصيل دروسي المعتمدة</span>
                                     </a>
                                 </li>
                             </ul>

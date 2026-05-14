@@ -296,9 +296,14 @@
                         </h6>
                         <small class="text-muted">لكل مادة: الصفحات الموكّلة (المطلوبة) مقابل ما تم إنجازه من صفحات الدروس المعتمدة، وعدد الدروس المعتمدة في المادة.</small>
                     </div>
-                    <a href="{{ route('admin.teachers.progress.material-pages', $teacher) }}" class="btn btn-sm btn-outline-primary flex-shrink-0">
-                        <i class="bi bi-arrows-fullscreen me-1"></i> صفحة الجدول الموسّعة
-                    </a>
+                    <div class="d-flex flex-wrap gap-2 align-items-center flex-shrink-0">
+                        <a href="{{ route('admin.teachers.approved-lessons', $teacher) }}" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-list-ul me-1"></i> تفاصيل الدروس المعتمدة
+                        </a>
+                        <a href="{{ route('admin.teachers.progress.material-pages', $teacher) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-arrows-fullscreen me-1"></i> صفحة الجدول الموسّعة
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body">
                     @if(!empty($pages_progress))
