@@ -117,23 +117,35 @@
                 <!-- الجدول -->
                 <div class="card custom-card">
                     <div class="card-header">
-                        <div class="card-title d-flex justify-content-between align-items-center w-100">
+                        <div class="card-title d-flex justify-content-between align-items-center flex-wrap gap-2 w-100">
                             <h5 class="mb-0">قائمة الطلبات المعلقة</h5>
                             @if($classEnrollments->count() > 0)
-                                <form method="POST" action="{{ route('admin.enrollments.class.approve-multiple') }}" class="d-inline" id="bulk-approve-form">
-                                    @csrf
-                                    <input type="hidden" name="class_enrollment_ids" id="bulk-approve-ids">
-                                    <button type="submit" class="btn btn-success btn-sm" id="bulk-approve-btn" disabled>
-                                        <i class="bi bi-check-circle me-1"></i> قبول المحدد
-                                    </button>
-                                </form>
-                                <form method="POST" action="{{ route('admin.enrollments.class.reject-multiple') }}" class="d-inline" id="bulk-reject-form">
-                                    @csrf
-                                    <input type="hidden" name="class_enrollment_ids" id="bulk-reject-ids">
-                                    <button type="submit" class="btn btn-danger btn-sm" id="bulk-reject-btn" disabled>
-                                        <i class="bi bi-x-circle me-1"></i> رفض المحدد
-                                    </button>
-                                </form>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <form method="POST" action="{{ route('admin.enrollments.class.approve-all') }}" class="d-inline"
+                                          onsubmit="return confirm('سيتم قبول جميع الطلبات المعلقة المطابقة للفلاتر الحالية (بما في ذلك صفحات أخرى غير المعروضة). هل تريد المتابعة؟');">
+                                        @csrf
+                                        <input type="hidden" name="search" value="{{ request('search') }}">
+                                        <input type="hidden" name="user_id" value="{{ request('user_id') }}">
+                                        <input type="hidden" name="class_id" value="{{ request('class_id') }}">
+                                        <button type="submit" class="btn btn-success btn-sm">
+                                            <i class="bi bi-check2-all me-1"></i> قبول الكل
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ route('admin.enrollments.class.approve-multiple') }}" class="d-inline" id="bulk-approve-form">
+                                        @csrf
+                                        <input type="hidden" name="class_enrollment_ids" id="bulk-approve-ids">
+                                        <button type="submit" class="btn btn-outline-success btn-sm" id="bulk-approve-btn" disabled>
+                                            <i class="bi bi-check-circle me-1"></i> قبول المحدد
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ route('admin.enrollments.class.reject-multiple') }}" class="d-inline" id="bulk-reject-form">
+                                        @csrf
+                                        <input type="hidden" name="class_enrollment_ids" id="bulk-reject-ids">
+                                        <button type="submit" class="btn btn-danger btn-sm" id="bulk-reject-btn" disabled>
+                                            <i class="bi bi-x-circle me-1"></i> رفض المحدد
+                                        </button>
+                                    </form>
+                                </div>
                             @endif
                         </div>
                     </div>

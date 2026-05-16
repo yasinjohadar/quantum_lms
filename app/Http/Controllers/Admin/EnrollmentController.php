@@ -38,7 +38,7 @@ class EnrollmentController extends Controller
         $this->middleware(['permission:enrollment-class-pending-requests'])->only('classPendingRequests');
         $this->middleware(['permission:enrollment-approve-class'])->only('approveClassEnrollment');
         $this->middleware(['permission:enrollment-reject-class'])->only('rejectClassEnrollment');
-        $this->middleware(['permission:enrollment-approve-multiple-class'])->only('approveMultipleClassEnrollments');
+        $this->middleware(['permission:enrollment-approve-multiple-class'])->only(['approveMultipleClassEnrollments', 'approveAllPendingClassEnrollments']);
         $this->middleware(['permission:enrollment-reject-multiple-class'])->only('rejectMultipleClassEnrollments');
     }
 
@@ -1146,6 +1146,35 @@ class EnrollmentController extends Controller
             return redirect()->back()
                 ->with('error', 'حدث خطأ أثناء قبول الطلبات');
         }
+    }
+
+    /**
+     * قبول جميع طلبات الصف المعلّقة المطابقة لنفس فلاتر الصفحة (بحث، طالب، صف).
+     */
+    public function approveAllPendingClassEnrollments(Request $request): RedirectResponse
+    {
+        $query = ClassEnrollment::query()->pending();
+
+        if ($request->filled('search')) {
+            $query->search($request->input('search'));
+        }
+        if ($request->filled('user_id')) {
+            $query->forUser($request->input('user_id'));
+        }
+        if ($request->filled('class_id')) {
+            $query->forClass($request->input('class_id'));
+        }
+
+        $ids = $query->pluck('id')->all();
+
+        if ($ids === []) {
+            return redirect()->back()
+                ->with('error', 'لا توجد طلبات معلقة للقبول ضمن الفلاتر الحالية.');
+        }
+
+        $request->merge(['class_enrollment_ids' => $ids]);
+
+        return $this->approveMultipleClassEnrollments($request);
     }
 
     /**

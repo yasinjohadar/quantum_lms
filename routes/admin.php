@@ -496,6 +496,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('enrollments.class.reject');
         Route::post('enrollments/class/approve-multiple', [EnrollmentController::class, 'approveMultipleClassEnrollments'])
             ->name('enrollments.class.approve-multiple');
+        Route::post('enrollments/class/approve-all', [EnrollmentController::class, 'approveAllPendingClassEnrollments'])
+            ->name('enrollments.class.approve-all');
         Route::post('enrollments/class/reject-multiple', [EnrollmentController::class, 'rejectMultipleClassEnrollments'])
             ->name('enrollments.class.reject-multiple');
         Route::post('enrollments/destroy-multiple', [EnrollmentController::class, 'destroyMultiple'])
