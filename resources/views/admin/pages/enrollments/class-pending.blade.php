@@ -119,7 +119,14 @@
                     <div class="card-header">
                         <div class="card-title d-flex justify-content-between align-items-center flex-wrap gap-2 w-100">
                             <h5 class="mb-0">قائمة الطلبات المعلقة</h5>
-                            @if($classEnrollments->count() > 0)
+                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                @can('enrollment-reject-multiple-class')
+                                    <button type="button" class="btn btn-outline-warning btn-sm"
+                                            data-bs-toggle="modal" data-bs-target="#cleanStalePendingModal">
+                                        <i class="bi bi-trash me-1"></i>تنظيف
+                                    </button>
+                                @endcan
+                                @if($classEnrollments->count() > 0)
                                 <div class="d-flex flex-wrap gap-2">
                                     <form method="POST" action="{{ route('admin.enrollments.class.approve-all') }}" class="d-inline"
                                           onsubmit="return confirm('سيتم قبول جميع الطلبات المعلقة المطابقة للفلاتر الحالية (بما في ذلك صفحات أخرى غير المعروضة). هل تريد المتابعة؟');">
@@ -148,6 +155,7 @@
                                 </div>
                             @endif
                         </div>
+                    </div>
                     </div>
                     <div class="card-body">
                         @if($classEnrollments->count() > 0)
@@ -238,6 +246,13 @@
         </div>
     </div>
 </div>
+
+@can('enrollment-reject-multiple-class')
+    @include('admin.pages.enrollments.partials.clean-stale-pending-modal', [
+        'action' => route('admin.enrollments.class.clean-stale-pending'),
+        'context' => 'class',
+    ])
+@endcan
 
 <!-- Modal قبول الطلب -->
 <div class="modal fade" id="approveModal" tabindex="-1" aria-labelledby="approveModalLabel" aria-hidden="true">

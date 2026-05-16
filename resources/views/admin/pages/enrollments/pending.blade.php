@@ -116,9 +116,15 @@
 
                 <!-- جدول الطلبات المعلقة -->
                 <div class="card shadow-sm border-0">
-                    <div class="card-header">
-                        <h5 class="mb-0 fw-bold">قائمة طلبات الانضمام المعلقة</h5>
-                    </div>
+                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <h5 class="mb-0 fw-bold">قائمة طلبات الانضمام المعلقة</h5>
+                            @can('enrollment-reject-multiple')
+                                <button type="button" class="btn btn-outline-warning btn-sm"
+                                        data-bs-toggle="modal" data-bs-target="#cleanStalePendingModal">
+                                    <i class="bi bi-trash me-1"></i>تنظيف
+                                </button>
+                            @endcan
+                        </div>
 
                     <div class="card-body">
                         @if($enrollments->count() > 0)
@@ -216,6 +222,13 @@
         </div>
     </div>
 </div>
+
+@can('enrollment-reject-multiple')
+    @include('admin.pages.enrollments.partials.clean-stale-pending-modal', [
+        'action' => route('admin.enrollments.clean-stale-pending'),
+        'context' => 'subject',
+    ])
+@endcan
 @endsection
 
 @push('scripts')

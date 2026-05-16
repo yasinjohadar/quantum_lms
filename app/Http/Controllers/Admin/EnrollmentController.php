@@ -32,14 +32,14 @@ class EnrollmentController extends Controller
         $this->middleware(['permission:enrollment-approve'])->only('approve');
         $this->middleware(['permission:enrollment-reject'])->only('reject');
         $this->middleware(['permission:enrollment-approve-multiple'])->only('approveMultiple');
-        $this->middleware(['permission:enrollment-reject-multiple'])->only('rejectMultiple');
+        $this->middleware(['permission:enrollment-reject-multiple'])->only(['rejectMultiple', 'cleanStalePendingEnrollments']);
         $this->middleware(['permission:enrollment-search-students'])->only('searchStudents');
         $this->middleware(['permission:enrollment-get-subjects-by-class|enrollment-create'])->only('getSubjectsByClass');
         $this->middleware(['permission:enrollment-class-pending-requests'])->only('classPendingRequests');
         $this->middleware(['permission:enrollment-approve-class'])->only('approveClassEnrollment');
         $this->middleware(['permission:enrollment-reject-class'])->only('rejectClassEnrollment');
         $this->middleware(['permission:enrollment-approve-multiple-class'])->only(['approveMultipleClassEnrollments', 'approveAllPendingClassEnrollments']);
-        $this->middleware(['permission:enrollment-reject-multiple-class'])->only('rejectMultipleClassEnrollments');
+        $this->middleware(['permission:enrollment-reject-multiple-class'])->only(['rejectMultipleClassEnrollments', 'cleanStalePendingClassEnrollments']);
     }
 
     /**
@@ -1221,6 +1221,94 @@ class EnrollmentController extends Controller
             return redirect()->back()
                 ->with('error', 'حدث خطأ أثناء رفض الطلبات');
         }
+    }
+
+    /**
+     * حذف نهائي لطلبات الصف المعلقة الأقدم من عدد الأيام المحدد، ضمن فلاتر الصفحة الحالية.
+     */
+    public function cleanStalePendingClassEnrollments(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'days' => 'required|integer|min:1|max:3650',
+            'search' => 'nullable|string|max:255',
+            'user_id' => 'nullable|integer',
+            'class_id' => 'nullable|integer',
+        ]);
+
+        $days = (int) $request->input('days');
+        $cutoff = now()->subDays($days);
+
+        $query = ClassEnrollment::withTrashed()
+            ->pending()
+            ->where('created_at', '<', $cutoff);
+
+        if ($request->filled('search')) {
+            $query->search($request->input('search'));
+        }
+        if ($request->filled('user_id')) {
+            $query->forUser((int) $request->input('user_id'));
+        }
+        if ($request->filled('class_id')) {
+            $query->forClass((int) $request->input('class_id'));
+        }
+
+        $rows = $query->get();
+        $count = 0;
+        foreach ($rows as $row) {
+            $row->forceDelete();
+            $count++;
+        }
+
+        return redirect()->back()->with(
+            'success',
+            $count > 0
+                ? "تم حذف {$count} طلباً معلقاً أقدم من {$days} يوماً."
+                : 'لم يُعثر على طلبات معلقة تطابق الشروط.'
+        );
+    }
+
+    /**
+     * حذف نهائي لطلبات المواد المعلقة الأقدم من عدد الأيام المحدد، ضمن فلاتر الصفحة الحالية.
+     */
+    public function cleanStalePendingEnrollments(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'days' => 'required|integer|min:1|max:3650',
+            'search' => 'nullable|string|max:255',
+            'user_id' => 'nullable|integer',
+            'subject_id' => 'nullable|integer',
+        ]);
+
+        $days = (int) $request->input('days');
+        $cutoff = now()->subDays($days);
+
+        $query = Enrollment::withTrashed()
+            ->pending()
+            ->where('created_at', '<', $cutoff);
+
+        if ($request->filled('search')) {
+            $query->search($request->input('search'));
+        }
+        if ($request->filled('user_id')) {
+            $query->forUser((int) $request->input('user_id'));
+        }
+        if ($request->filled('subject_id')) {
+            $query->forSubject((int) $request->input('subject_id'));
+        }
+
+        $rows = $query->get();
+        $count = 0;
+        foreach ($rows as $row) {
+            $row->forceDelete();
+            $count++;
+        }
+
+        return redirect()->back()->with(
+            'success',
+            $count > 0
+                ? "تم حذف {$count} طلباً معلقاً أقدم من {$days} يوماً."
+                : 'لم يُعثر على طلبات معلقة تطابق الشروط.'
+        );
     }
 
     protected function safeInternalRedirectPath(?string $path): ?string

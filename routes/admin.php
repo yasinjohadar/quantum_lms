@@ -486,6 +486,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('enrollments.approve-multiple');
         Route::post('enrollments/reject-multiple', [EnrollmentController::class, 'rejectMultiple'])
             ->name('enrollments.reject-multiple');
+        Route::post('enrollments/clean-stale-pending', [EnrollmentController::class, 'cleanStalePendingEnrollments'])
+            ->name('enrollments.clean-stale-pending');
 
         // طلبات الانضمام للصف
         Route::get('enrollments/class-pending', [EnrollmentController::class, 'classPendingRequests'])
@@ -500,6 +502,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('enrollments.class.approve-all');
         Route::post('enrollments/class/reject-multiple', [EnrollmentController::class, 'rejectMultipleClassEnrollments'])
             ->name('enrollments.class.reject-multiple');
+        Route::post('enrollments/class/clean-stale-pending', [EnrollmentController::class, 'cleanStalePendingClassEnrollments'])
+            ->name('enrollments.class.clean-stale-pending');
         Route::post('enrollments/destroy-multiple', [EnrollmentController::class, 'destroyMultiple'])
             ->name('enrollments.destroy-multiple');
         Route::get('enrollments/destroy-multiple', function () {
