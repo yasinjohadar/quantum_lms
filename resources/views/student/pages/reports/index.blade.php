@@ -502,6 +502,7 @@
 @stop
 
 @push('scripts')
+<script src="{{ asset('assets/libs/apexcharts/apexcharts.min.js') }}"></script>
 <style>
     /* تحسين CSS للمخططات */
     #progressChart,
@@ -529,38 +530,18 @@
 (function() {
     'use strict';
     
-    // Load ApexCharts if not already loaded
     function loadApexCharts(callback) {
-        // Wait a bit for ApexCharts to be available (it might be loading from footer-scripts)
-        var attempts = 0;
-        var maxAttempts = 20;
-        
-        function checkApexChartsLoaded() {
-            if (typeof ApexCharts !== 'undefined') {
-                callback();
-                return;
-            }
-            
-            attempts++;
-            if (attempts < maxAttempts) {
-                setTimeout(checkApexChartsLoaded, 100);
-            } else {
-                // Try to load from CDN as fallback
-                console.log('ApexCharts not found in footer, loading from CDN...');
-                var script = document.createElement('script');
-                script.src = 'https://cdn.jsdelivr.net/npm/apexcharts';
-                script.onload = function() {
-                    console.log('ApexCharts loaded from CDN');
-                    callback();
-                };
-                script.onerror = function() {
-                    console.error('Failed to load ApexCharts from CDN');
-                };
-                document.head.appendChild(script);
-            }
+        if (typeof ApexCharts !== 'undefined') {
+            callback();
+            return;
         }
-        
-        checkApexChartsLoaded();
+        var script = document.createElement('script');
+        script.src = '{{ asset("assets/libs/apexcharts/apexcharts.min.js") }}';
+        script.onload = function () { callback(); };
+        script.onerror = function () {
+            console.error('Failed to load ApexCharts bundle');
+        };
+        document.head.appendChild(script);
     }
     
     // Function to check if ApexCharts is loaded

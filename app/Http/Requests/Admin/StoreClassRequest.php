@@ -39,6 +39,7 @@ class StoreClassRequest extends FormRequest
             'is_free' => ['nullable', 'boolean'],
             'show_price' => ['nullable', 'boolean'],
             'allow_subjects_purchase' => ['nullable', 'boolean'],
+            'free_join_auto_approve' => ['nullable', 'boolean'],
             'default_currency_id' => ['nullable', 'integer', 'exists:currencies,id'],
             'prices' => ['nullable', 'array'],
             'prices.*.price' => ['nullable', 'numeric', 'min:0'],

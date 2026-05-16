@@ -21,13 +21,17 @@ class AccessResolver
         $pricingMode = $this->resolveSubjectPricingMode($subject);
 
         if ($pricingMode === PricingMode::FREE) {
-            return true;
+            if (! $this->subjectShouldGateFreeEnrollmentReview($subject)) {
+                return true;
+            }
         }
 
         if ($pricingMode === PricingMode::INHERIT) {
             $class = $subject->schoolClass;
             if ($class && $class->is_free) {
-                return true;
+                if (! $class->gatesFreeEnrollmentUntilApproved()) {
+                    return true;
+                }
             }
         }
 
@@ -57,7 +61,9 @@ class AccessResolver
     public function hasClassAccess(User $user, SchoolClass $class): bool
     {
         if ($class->is_free) {
-            return true;
+            if (! $class->gatesFreeEnrollmentUntilApproved()) {
+                return true;
+            }
         }
 
         if ($this->hasPurchasedClassDirectly($user, $class)) {
@@ -128,7 +134,7 @@ class AccessResolver
         }
 
         $class = $subject->schoolClass;
-        if ($class && !$class->is_free) {
+        if ($class && ! $class->is_free) {
             return 'requires_class_purchase';
         }
 
@@ -137,7 +143,7 @@ class AccessResolver
 
     public function getClassAccessType(User $user, SchoolClass $class): string
     {
-        if ($class->is_free) {
+        if ($class->is_free && ! $class->gatesFreeEnrollmentUntilApproved()) {
             return 'free';
         }
 
@@ -147,6 +153,10 @@ class AccessResolver
 
         if ($this->isEnrolledInClassDirectly($user, $class)) {
             return 'enrolled';
+        }
+
+        if ($class->is_free && $class->gatesFreeEnrollmentUntilApproved()) {
+            return 'no_access';
         }
 
         return 'purchasable';
@@ -179,13 +189,14 @@ class AccessResolver
             'requires_subscription' => ['text' => 'يتطلب اشتراك', 'class' => 'bg-danger', 'icon' => 'fa-key'],
             'bundle_only' => ['text' => 'ضمن الباقة', 'class' => 'bg-secondary', 'icon' => 'fa-box'],
             'requires_class_purchase' => ['text' => 'يتطلب شراء الصف', 'class' => 'bg-secondary', 'icon' => 'fa-lock'],
+            'no_access' => ['text' => 'غير متاح', 'class' => 'bg-secondary', 'icon' => 'fa-lock'],
             default => ['text' => 'مدفوع', 'class' => 'bg-warning', 'icon' => 'fa-lock'],
         };
     }
 
     public function getClassBadge(SchoolClass $class, ?User $user = null): array
     {
-        if ($class->is_free) {
+        if (!$user && $class->is_free) {
             return ['text' => 'مجاني', 'class' => 'bg-success', 'icon' => 'fa-check-circle'];
         }
 
@@ -199,8 +210,21 @@ class AccessResolver
             'free' => ['text' => 'مجاني', 'class' => 'bg-success', 'icon' => 'fa-check-circle'],
             'purchased' => ['text' => 'مشتريات', 'class' => 'bg-primary', 'icon' => 'fa-check'],
             'enrolled' => ['text' => 'مسجل', 'class' => 'bg-success', 'icon' => 'fa-check-circle'],
+            'no_access' => ['text' => 'غير متاح', 'class' => 'bg-secondary', 'icon' => 'fa-lock'],
             default => ['text' => 'مدفوع', 'class' => 'bg-warning', 'icon' => 'fa-lock'],
         };
+    }
+
+    /**
+     * هل تُعامَل المادة كمسار مجاني يتطلب موافقة إدارية (حسب إعداد صفها) بدل منح وصول فوري؟
+     */
+    private function subjectShouldGateFreeEnrollmentReview(Subject $subject): bool
+    {
+        $class = $subject->relationLoaded('schoolClass')
+            ? $subject->schoolClass
+            : $subject->schoolClass()->first();
+
+        return $class && $class->gatesFreeEnrollmentUntilApproved();
     }
 
     private function resolveSubjectPricingMode(Subject $subject): PricingMode

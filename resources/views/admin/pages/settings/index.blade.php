@@ -71,6 +71,8 @@
                                                     <i class="fas fa-paper-plane me-2 text-success"></i>مزود إرسال كود التحقق
                                                 @elseif($setting->key === 'whatsapp_contact_number')
                                                     <i class="fab fa-whatsapp me-2 text-success"></i>رقم واتساب للتواصل
+                                                @elseif($setting->key === 'student_supervisor_whatsapp_number')
+                                                    <i class="fab fa-whatsapp me-2 text-success"></i>رقم واتساب مشرفة الطلاب (متابعة التفعيل)
                                                 @elseif($setting->key === 'whatsapp_float_button_enabled')
                                                     <i class="fas fa-eye me-2 text-info"></i>إظهار أيقونة واتساب العائمة
                                                 @elseif($setting->key === 'contact_address')
@@ -153,6 +155,13 @@
                                                        id="setting_{{ $setting->id }}" 
                                                        value="{{ $setting->value }}" 
                                                        placeholder="963912345678">
+                                            @elseif($setting->key === 'student_supervisor_whatsapp_number')
+                                                <input type="text" 
+                                                       class="form-control" 
+                                                       name="settings[{{ $setting->key }}]" 
+                                                       id="setting_{{ $setting->id }}" 
+                                                       value="{{ $setting->value }}" 
+                                                       placeholder="9649xxxxxxxx">
                                             @elseif(in_array($setting->key, ['contact_address', 'contact_phone', 'contact_email']))
                                                 <input type="{{ $setting->key === 'contact_email' ? 'email' : 'text' }}" 
                                                        class="form-control" 

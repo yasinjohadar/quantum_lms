@@ -96,14 +96,24 @@
                             <input type="text" name="search" class="form-control" id="searchQuery" value="{{ request('search') }}" placeholder="اسم الطالب أو البريد">
                         </div>
                     </div>
-                    <div class="row g-3 align-items-center mt-1">
-                        <div class="col-md-4 d-flex align-items-center">
+                    <div class="row g-3 align-items-end mt-1">
+                        <div class="col-md-3">
                             <div class="form-check mb-0">
                                 <input class="form-check-input" type="checkbox" name="needs_review" value="1" id="needsReviewFilter" {{ request()->boolean('needs_review') ? 'checked' : '' }}>
                                 <label class="form-check-label" for="needsReviewFilter">عرض المدفوعات التي تحتاج مراجعة فقط</label>
                             </div>
                         </div>
-                        <div class="col-md-8 d-flex align-items-end justify-content-md-end gap-2 flex-wrap">
+                        <div class="col-md-2">
+                            <label class="form-label mb-1" for="purchaseStatusFilter">حالة الشراء</label>
+                            <select name="purchase_status" class="form-select" id="purchaseStatusFilter">
+                                <option value="">الكل</option>
+                                <option value="pending" {{ request('purchase_status') === 'pending' ? 'selected' : '' }}>شراء معلّق</option>
+                                <option value="completed" {{ request('purchase_status') === 'completed' ? 'selected' : '' }}>شراء مكتمل</option>
+                                <option value="cancelled" {{ request('purchase_status') === 'cancelled' ? 'selected' : '' }}>ملغى نهائي</option>
+                                <option value="refunded" {{ request('purchase_status') === 'refunded' ? 'selected' : '' }}>شراء مسترد</option>
+                            </select>
+                        </div>
+                        <div class="col-md-7 d-flex align-items-end justify-content-md-end gap-2 flex-wrap">
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-search me-1"></i>تطبيق الفلاتر
                             </button>
@@ -129,7 +139,8 @@
                                     <th>العنصر</th>
                                     <th>المبلغ</th>
                                     <th>طريقة الدفع</th>
-                                    <th>الحالة</th>
+                                    <th>حالة الشراء</th>
+                                    <th>حالة الدفع</th>
                                     <th>التاريخ</th>
                                     <th>الإجراءات</th>
                                 </tr>
@@ -165,6 +176,28 @@
                                             @endif
                                         </td>
                                         <td>
+                                            @php $pur = $payment->purchase; @endphp
+                                            @if(!$pur)
+                                                <span class="text-muted">—</span>
+                                            @elseif($pur->status === 'cancelled')
+                                                @if($pur->cancelled_by === 'student')
+                                                    <span class="badge bg-dark">ملغى نهائي (الطالب)</span>
+                                                @elseif($pur->cancelled_by === 'admin')
+                                                    <span class="badge bg-secondary">ملغى نهائي (الإدارة)</span>
+                                                @else
+                                                    <span class="badge bg-secondary">ملغى نهائي</span>
+                                                @endif
+                                            @elseif($pur->status === 'pending')
+                                                <span class="badge bg-warning">قيد المراجعة</span>
+                                            @elseif($pur->status === 'completed')
+                                                <span class="badge bg-success">مكتمل</span>
+                                            @elseif($pur->status === 'refunded')
+                                                <span class="badge bg-info">مسترد</span>
+                                            @else
+                                                <span class="badge bg-light text-dark">{{ $pur->status }}</span>
+                                            @endif
+                                        </td>
+                                        <td>
                                             @if($payment->status === 'completed')
                                                 <span class="badge bg-success">مكتمل</span>
                                             @elseif($payment->status === 'pending')
@@ -177,11 +210,12 @@
                                         </td>
                                         <td>{{ $payment->created_at->format('Y-m-d H:i') }}</td>
                                         <td>
+                                            @php $purchaseCancelled = $payment->purchase && $payment->purchase->status === 'cancelled'; @endphp
                                             <div class="btn-group">
                                                 <a href="{{ route('admin.payments.show', $payment->id) }}" class="btn btn-sm btn-info" title="عرض">
                                                     <i class="bi bi-eye"></i>
                                                 </a>
-                                                @if($payment->status === 'pending' && in_array($payment->payment_method, ['iban', 'custom']))
+                                                @if(!$purchaseCancelled && $payment->status === 'pending' && in_array($payment->payment_method, ['iban', 'custom']))
                                                     <form action="{{ route('admin.payments.approve', $payment->id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من الموافقة على هذا الدفع؟');">
                                                         @csrf
                                                         <button type="submit" class="btn btn-sm btn-success" title="موافقة">

@@ -337,6 +337,55 @@ class PurchaseService
     }
 
     /**
+     * إلغاء شراء معلّق بواسطة الطالب (والدفع المرتبط إن وجد حالته انتظار)
+     */
+    public function cancelPendingByStudent(Purchase $purchase, User $user): void
+    {
+        if ((int) $purchase->user_id !== (int) $user->id) {
+            throw new \Illuminate\Auth\Access\AuthorizationException('غير مصرح بإلغاء هذا الطلب');
+        }
+
+        if ($purchase->status !== 'pending') {
+            throw new \InvalidArgumentException('لا يمكن إلغاء هذا الطلب لأنه ليس قيد المراجعة');
+        }
+
+        DB::transaction(function () use ($purchase) {
+            $purchase->refresh();
+
+            if ($purchase->status !== 'pending') {
+                throw new \InvalidArgumentException('لا يمكن إلغاء هذا الطلب لأنه ليس قيد المراجعة');
+            }
+
+            $purchase->update([
+                'status' => 'cancelled',
+                'cancelled_by' => 'student',
+                'cancelled_at' => now(),
+            ]);
+
+            $pendingPayment = Payment::where('purchase_id', $purchase->id)
+                ->where('status', 'pending')
+                ->first();
+
+            if ($pendingPayment) {
+                $pendingPayment->update([
+                    'status' => 'failed',
+                    'reviewed_at' => now(),
+                    'review_notes' => 'ألغى الطالب الطلب نهائياً',
+                ]);
+            }
+        });
+
+        try {
+            $purchase->load('purchasable');
+            if ($purchase->purchasable) {
+                app(\App\Services\Pricing\PricingCacheManager::class)->invalidateOnPurchase($user, $purchase->purchasable);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Failed to invalidate pricing cache after purchase cancel: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * التحقق من وصول المستخدم للصف/المادة
      */
     public function checkAccess(User $user, $purchasable): bool

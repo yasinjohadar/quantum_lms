@@ -17,6 +17,8 @@ class Purchase extends Model
         'purchase_type',
         'price',
         'status',
+        'cancelled_at',
+        'cancelled_by',
         'purchased_at',
         'expires_at',
         'notes',
@@ -26,6 +28,7 @@ class Purchase extends Model
         'price' => 'decimal:2',
         'purchased_at' => 'datetime',
         'expires_at' => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     /**

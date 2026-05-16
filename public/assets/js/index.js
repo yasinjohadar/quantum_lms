@@ -656,7 +656,8 @@ function vectormap() {
 	};
 
 	var chartElement = document.querySelector('#chart');
-	if (!chartElement) return;
-	chartElement.innerHTML = "";
-	var chart = new ApexCharts(document.querySelector("#chart"), options);
-	chart.render();
+	if (chartElement) {
+		chartElement.innerHTML = "";
+		var chart = new ApexCharts(chartElement, options);
+		chart.render();
+	}

@@ -36,6 +36,7 @@ class SchoolClass extends Model
         'show_price',
         'default_currency_id',
         'allow_subjects_purchase',
+        'free_join_auto_approve',
     ];
 
     /**
@@ -51,6 +52,7 @@ class SchoolClass extends Model
         'is_free' => 'boolean',
         'show_price' => 'boolean',
         'allow_subjects_purchase' => 'boolean',
+        'free_join_auto_approve' => 'boolean',
     ];
 
     protected static function boot()
@@ -266,6 +268,32 @@ class SchoolClass extends Model
     public function classJoinRequiresPayment(): bool
     {
         return ! $this->is_free && (float) $this->price > 0;
+    }
+
+    /**
+     * هل يُقبل الانضمام للمسار المجاني (بدون طلب دفع) تلقائياً؟
+     * القيمة الافتراضية true للتوافق مع النسخ السابقة وعند null.
+     */
+    public function effectiveFreeJoinAutoApprove(): bool
+    {
+        if ($this->free_join_auto_approve === null) {
+            return true;
+        }
+
+        return (bool) $this->free_join_auto_approve;
+    }
+
+    /**
+     * هل يجب حجب الوصول المجاني التلقائي حتى موافقة إدارية؟
+     * ينطبق فقط عندما لا يُطلب دفع لانضمام الصف.
+     */
+    public function gatesFreeEnrollmentUntilApproved(): bool
+    {
+        if ($this->classJoinRequiresPayment()) {
+            return false;
+        }
+
+        return ! $this->effectiveFreeJoinAutoApprove();
     }
 }
 

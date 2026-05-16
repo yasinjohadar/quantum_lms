@@ -58,6 +58,11 @@
                                 <i class="bi bi-check-circle me-1"></i>
                                 منضم لجميع المواد
                             </span>
+                        @elseif($hasPendingClassEnrollment)
+                            <span class="btn btn-warning btn-sm disabled" title="طلب انضمام الصف قيد المراجعة">
+                                <i class="bi bi-clock me-1"></i>
+                                طلب الصف قيد المراجعة
+                            </span>
                         @elseif($class->subjects->isNotEmpty())
                             <button class="btn btn-primary btn-sm" onclick="requestClassEnrollment({{ $class->id }}, '{{ addslashes($class->name) }}')" type="button">
                                 <i class="bi bi-plus-circle me-1"></i>
@@ -120,6 +125,13 @@
                                         </button>
                                         <button class="btn btn-outline-danger btn-sm" onclick="cancelRequest({{ $subject->id }})" title="إلغاء الطلب" type="button">
                                             <i class="bi bi-x-circle"></i>
+                                        </button>
+                                    </div>
+                                @elseif($hasPendingClassEnrollment)
+                                    <div onclick="event.stopPropagation();">
+                                        <button class="btn btn-secondary btn-sm w-100" type="button" disabled title="طلب الانضمام للصف الكامل قيد المراجعة">
+                                            <i class="bi bi-clock me-1"></i>
+                                            انتظر قبول الصف الكامل
                                         </button>
                                     </div>
                                 @else
@@ -260,6 +272,7 @@
         </div>
     </div>
 </div>
+@include('student.pages.enrollments.partials.pending-review-modal')
 @stop
 
 @section('script')
@@ -408,8 +421,14 @@
                 return;
             }
             if (data.success) {
-                showSuccessMessage(data.message);
-                setTimeout(() => location.reload(), 1500);
+                if (data.under_review) {
+                    setTimeout(function () {
+                        showEnrollmentPendingReviewModal(data.message);
+                    }, 300);
+                } else {
+                    showSuccessMessage(data.message);
+                    setTimeout(() => location.reload(), 1500);
+                }
             } else {
                 showErrorMessage(data.message || 'حدث خطأ أثناء إرسال الطلب');
                 if (button) {
@@ -499,8 +518,14 @@
                 return;
             }
             if (data.success) {
-                showSuccessMessage(data.message);
-                setTimeout(() => location.reload(), 1500);
+                if (data.under_review) {
+                    setTimeout(function () {
+                        showEnrollmentPendingReviewModal(data.message);
+                    }, 300);
+                } else {
+                    showSuccessMessage(data.message);
+                    setTimeout(() => location.reload(), 1500);
+                }
             } else {
                 showErrorMessage(data.message || 'حدث خطأ أثناء إرسال الطلب');
                 if (button) {
@@ -584,6 +609,31 @@
         `;
         document.body.appendChild(alertDiv);
         setTimeout(() => alertDiv.remove(), 5000);
+    }
+
+    function showEnrollmentPendingReviewModal(message) {
+        var msgEl = document.getElementById('enrollmentPendingReviewModalMessage');
+        if (msgEl) {
+            msgEl.textContent = message || 'تم إرسال طلب الانضمام إلى الإدارة للمراجعة، وهو بانتظار القبول.';
+        }
+
+        var modalEl = document.getElementById('enrollmentPendingReviewModal');
+        if (!modalEl || typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+            showSuccessMessage(message || 'تم استلام طلبك وهو قيد المراجعة.');
+            setTimeout(() => location.reload(), 1500);
+            return;
+        }
+
+        modalEl.addEventListener('hidden.bs.modal', function () {
+            window.location.reload();
+        }, { once: true });
+
+        var instance = bootstrap.Modal.getInstance(modalEl);
+        if (instance) {
+            instance.show();
+        } else {
+            new bootstrap.Modal(modalEl).show();
+        }
     }
     
     function showErrorMessage(message) {

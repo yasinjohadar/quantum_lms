@@ -159,6 +159,36 @@
                             </div>
 
                             @php
+                                $postPriceEdit = (float) old('price', $class->price ?? 0);
+                                $oldIsFreeEdit = old('is_free');
+                                $isFreeEffectiveEdit = $oldIsFreeEdit !== null ? (bool) $oldIsFreeEdit : (bool) ($class->is_free ?? false);
+                                $joinRequiresPaymentEdit = ! $isFreeEffectiveEdit && $postPriceEdit > 0;
+                                $fjOldEdit = old('free_join_auto_approve');
+                                $freeJoinCheckedEdit = $fjOldEdit === null ? $class->effectiveFreeJoinAutoApprove() : filter_var($fjOldEdit, FILTER_VALIDATE_BOOLEAN);
+                            @endphp
+                            <div class="col-12">
+                                <div class="border rounded p-3 bg-light">
+                                    <input type="hidden" name="free_join_auto_approve" id="free_join_auto_approve_value_edit"
+                                           value="{{ $joinRequiresPaymentEdit ? '1' : ($freeJoinCheckedEdit ? '1' : '0') }}">
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" id="free_join_auto_approve_cb_edit"
+                                               {{ $freeJoinCheckedEdit ? 'checked' : '' }}
+                                               {{ $joinRequiresPaymentEdit ? 'disabled' : '' }}
+                                               onchange="document.getElementById('free_join_auto_approve_value_edit').value = this.checked ? '1' : '0'">
+                                        <label class="form-check-label" for="free_join_auto_approve_cb_edit">
+                                            قبول الانضمام للمسار المجاني تلقائياً (بدون انتظار موافقة الإدارة)
+                                        </label>
+                                    </div>
+                                    <small id="free_join_hint_paid_edit" class="text-muted d-block mt-2 {{ $joinRequiresPaymentEdit ? '' : 'd-none' }}">
+                                        لا ينطبق هذا الخيار إلا عندما يكون انضمام الصف بدون دفع. للصفوف المدفوعة يُحفظ القبول التلقائي.
+                                    </small>
+                                    <small id="free_join_hint_free_edit" class="text-muted d-block mt-2 {{ $joinRequiresPaymentEdit ? 'd-none' : '' }}">
+                                        عند التعطيل، يُنشأ طلب انضمام (صف أو مادة مجانية) بحالة «قيد المراجعة» إلى حين موافقة الإدارة.
+                                    </small>
+                                </div>
+                            </div>
+
+                            @php
                                 $editFeatureLabels = $class->features->pluck('label')->values()->all();
                                 $editFeatureLabels = array_pad($editFeatureLabels, 10, '');
                             @endphp
@@ -402,10 +432,40 @@ function togglePriceFieldsEdit() {
     } else {
         showPriceInput.disabled = false;
     }
+    syncFreeJoinAutoApproveEdit();
+}
+
+function syncFreeJoinAutoApproveEdit() {
+    var isFree = document.getElementById('is_free_edit').checked;
+    var priceInput = document.getElementById('price_input_edit');
+    var price = priceInput ? (parseFloat(priceInput.value) || 0) : 0;
+    var joinPaid = !isFree && price > 0;
+    var hidden = document.getElementById('free_join_auto_approve_value_edit');
+    var cb = document.getElementById('free_join_auto_approve_cb_edit');
+    var hintPaid = document.getElementById('free_join_hint_paid_edit');
+    var hintFree = document.getElementById('free_join_hint_free_edit');
+    if (!hidden || !cb) {
+        return;
+    }
+    if (joinPaid) {
+        cb.disabled = true;
+        hidden.value = '1';
+        if (hintPaid) { hintPaid.classList.remove('d-none'); }
+        if (hintFree) { hintFree.classList.add('d-none'); }
+    } else {
+        cb.disabled = false;
+        hidden.value = cb.checked ? '1' : '0';
+        if (hintPaid) { hintPaid.classList.add('d-none'); }
+        if (hintFree) { hintFree.classList.remove('d-none'); }
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
     togglePriceFieldsEdit();
+    var priceInputEdit = document.getElementById('price_input_edit');
+    if (priceInputEdit) {
+        priceInputEdit.addEventListener('input', syncFreeJoinAutoApproveEdit);
+    }
     
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function (tooltipTriggerEl) {

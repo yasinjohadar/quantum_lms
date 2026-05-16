@@ -9,7 +9,7 @@ use App\Http\Controllers\Student\StudentQuizController;
 use App\Http\Controllers\Student\StudentProgressController;
 use App\Http\Controllers\Student\NotificationPreferenceController as StudentNotificationPreferenceController;
 
-Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student.')->group(function () {
+Route::middleware(['auth', 'check.user.active', 'share.student.pending.purchases'])->prefix('student')->as('student.')->group(function () {
     // لوحة تحكم الطالب
     Route::get('/dashboard', [StudentController::class, 'dashboard'])->name('dashboard');
     
@@ -96,6 +96,7 @@ Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student
         Route::get('class/{class}', [\App\Http\Controllers\Student\PurchaseController::class, 'showClass'])->name('class.show');
         Route::get('subject/{subject}', [\App\Http\Controllers\Student\PurchaseController::class, 'showSubject'])->name('subject.show');
         Route::post('initiate', [\App\Http\Controllers\Student\PurchaseController::class, 'initiatePurchase'])->name('initiate');
+        Route::delete('{purchase}/cancel', [\App\Http\Controllers\Student\PurchaseController::class, 'cancelPending'])->name('cancel');
         Route::get('payment/{purchase}/fragment', [\App\Http\Controllers\Student\PurchaseController::class, 'paymentFragment'])->name('payment.fragment');
         Route::get('payment/{purchase}', [\App\Http\Controllers\Student\PurchaseController::class, 'showPayment'])->name('payment');
         Route::post('payment/{purchase}', [\App\Http\Controllers\Student\PurchaseController::class, 'processPayment'])->name('process-payment');

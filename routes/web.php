@@ -61,7 +61,7 @@ Route::middleware(['auth', 'check.user.active'])->group(function () {
 });
 
 // Profile route للطالب - يمكن الوصول من routes/student.php أيضاً
-Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student.')->group(function () {
+Route::middleware(['auth', 'check.user.active', 'share.student.pending.purchases'])->prefix('student')->as('student.')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile');
 });
 

@@ -19,7 +19,10 @@
 
         @include('student.pages.enrollments.partials.stats-summary')
 
-        @if($stages->count() > 0)
+                        @if($stages->count() > 0)
+            @php
+                $pendingClassIdSet = isset($pendingClassEnrollmentIds) ? array_flip($pendingClassEnrollmentIds) : [];
+            @endphp
             @foreach($stages as $stage)
                 <div class="card mb-4">
                     <div class="card-header bg-primary text-white">
@@ -67,10 +70,17 @@
                                                         <i class="bi bi-book me-1"></i>
                                                         {{ $class->joinable_subjects_count ?? $class->subjects()->where('is_active', true)->count() }} مادة متاحة
                                                     </span>
-                                                    <button class="btn btn-primary btn-sm" onclick="requestClassEnrollment({{ $class->id }}, '{{ addslashes($class->name) }}')" type="button">
-                                                        <i class="bi bi-plus-circle me-1"></i>
-                                                        انضم للصف
-                                                    </button>
+                                                    @if(isset($pendingClassIdSet[$class->id]))
+                                                        <button class="btn btn-warning btn-sm" type="button" disabled title="طلب انضمام الصف قيد المراجعة">
+                                                            <i class="bi bi-clock me-1"></i>
+                                                            قيد المراجعة
+                                                        </button>
+                                                    @else
+                                                        <button class="btn btn-primary btn-sm" onclick="requestClassEnrollment({{ $class->id }}, '{{ addslashes($class->name) }}')" type="button">
+                                                            <i class="bi bi-plus-circle me-1"></i>
+                                                            انضم للصف
+                                                        </button>
+                                                    @endif
                                                 </div>
                                             </div>
                                             <div class="card-footer bg-light">
@@ -145,6 +155,8 @@
         </div>
     </div>
 </div>
+
+@include('student.pages.enrollments.partials.pending-review-modal')
 @stop
 
 @push('scripts')
@@ -188,8 +200,14 @@
             }
 
             if (data.success) {
-                showAlert('success', data.message || 'تم إرسال طلب الانضمام بنجاح!');
-                setTimeout(function () { window.location.reload(); }, 800);
+                if (data.under_review) {
+                    setTimeout(function () {
+                        showEnrollmentPendingReviewModal(data.message);
+                    }, 300);
+                } else {
+                    showAlert('success', data.message || 'تم إرسال طلب الانضمام بنجاح!');
+                    setTimeout(function () { window.location.reload(); }, 800);
+                }
             } else {
                 showAlert('warning', data.message || 'حدث خطأ أثناء إرسال الطلب');
             }
@@ -217,6 +235,31 @@
                 body.innerHTML = '';
             }
         });
+    }
+
+    function showEnrollmentPendingReviewModal(message) {
+        var msgEl = document.getElementById('enrollmentPendingReviewModalMessage');
+        if (msgEl) {
+            msgEl.textContent = message || 'تم إرسال طلب الانضمام إلى الإدارة للمراجعة، وهو بانتظار القبول.';
+        }
+
+        var modalEl = document.getElementById('enrollmentPendingReviewModal');
+        if (!modalEl || typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+            showAlert('info', message || 'تم استلام طلبك وهو قيد المراجعة.');
+            setTimeout(function () { window.location.reload(); }, 1500);
+            return;
+        }
+
+        modalEl.addEventListener('hidden.bs.modal', function () {
+            window.location.reload();
+        }, { once: true });
+
+        var instance = bootstrap.Modal.getInstance(modalEl);
+        if (instance) {
+            instance.show();
+        } else {
+            new bootstrap.Modal(modalEl).show();
+        }
     }
 
     function showAlert(type, message) {

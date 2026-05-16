@@ -158,6 +158,36 @@
                                 </div>
                             </div>
 
+                            @php
+                                $postPriceCreate = (float) old('price', 0);
+                                $oldIsFreeCreate = old('is_free');
+                                $isFreeEffectiveCreate = $oldIsFreeCreate !== null ? (bool) $oldIsFreeCreate : false;
+                                $joinRequiresPaymentCreate = ! $isFreeEffectiveCreate && $postPriceCreate > 0;
+                                $fjOldCreate = old('free_join_auto_approve');
+                                $freeJoinCheckedCreate = $fjOldCreate === null ? true : filter_var($fjOldCreate, FILTER_VALIDATE_BOOLEAN);
+                            @endphp
+                            <div class="col-12">
+                                <div class="border rounded p-3 bg-light">
+                                    <input type="hidden" name="free_join_auto_approve" id="free_join_auto_approve_value_create"
+                                           value="{{ $joinRequiresPaymentCreate ? '1' : ($freeJoinCheckedCreate ? '1' : '0') }}">
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" id="free_join_auto_approve_cb_create"
+                                               {{ $freeJoinCheckedCreate ? 'checked' : '' }}
+                                               {{ $joinRequiresPaymentCreate ? 'disabled' : '' }}
+                                               onchange="document.getElementById('free_join_auto_approve_value_create').value = this.checked ? '1' : '0'">
+                                        <label class="form-check-label" for="free_join_auto_approve_cb_create">
+                                            قبول الانضمام للمسار المجاني تلقائياً (بدون انتظار موافقة الإدارة)
+                                        </label>
+                                    </div>
+                                    <small id="free_join_hint_paid_create" class="text-muted d-block mt-2 {{ $joinRequiresPaymentCreate ? '' : 'd-none' }}">
+                                        لا ينطبق هذا الخيار إلا عندما يكون انضمام الصف بدون دفع. للصفوف المدفوعة يُحفظ القبول التلقائي.
+                                    </small>
+                                    <small id="free_join_hint_free_create" class="text-muted d-block mt-2 {{ $joinRequiresPaymentCreate ? 'd-none' : '' }}">
+                                        عند التعطيل، يُنشأ طلب انضمام (صف أو مادة مجانية) بحالة «قيد المراجعة» إلى حين موافقة الإدارة.
+                                    </small>
+                                </div>
+                            </div>
+
                             <div class="col-md-6">
                                 <label for="default_currency_id" class="form-label">العملة الافتراضية</label>
                                 <select name="default_currency_id" id="default_currency_id" class="form-select @error('default_currency_id') is-invalid @enderror">
@@ -366,10 +396,40 @@ function togglePriceFieldsCreate() {
     } else {
         showPriceInput.disabled = false;
     }
+    syncFreeJoinAutoApproveCreate();
+}
+
+function syncFreeJoinAutoApproveCreate() {
+    var isFree = document.getElementById('is_free_create').checked;
+    var priceInput = document.getElementById('price_input_create');
+    var price = priceInput ? (parseFloat(priceInput.value) || 0) : 0;
+    var joinPaid = !isFree && price > 0;
+    var hidden = document.getElementById('free_join_auto_approve_value_create');
+    var cb = document.getElementById('free_join_auto_approve_cb_create');
+    var hintPaid = document.getElementById('free_join_hint_paid_create');
+    var hintFree = document.getElementById('free_join_hint_free_create');
+    if (!hidden || !cb) {
+        return;
+    }
+    if (joinPaid) {
+        cb.disabled = true;
+        hidden.value = '1';
+        if (hintPaid) { hintPaid.classList.remove('d-none'); }
+        if (hintFree) { hintFree.classList.add('d-none'); }
+    } else {
+        cb.disabled = false;
+        hidden.value = cb.checked ? '1' : '0';
+        if (hintPaid) { hintPaid.classList.add('d-none'); }
+        if (hintFree) { hintFree.classList.remove('d-none'); }
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
     togglePriceFieldsCreate();
+    var priceInputCreate = document.getElementById('price_input_create');
+    if (priceInputCreate) {
+        priceInputCreate.addEventListener('input', syncFreeJoinAutoApproveCreate);
+    }
     
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function (tooltipTriggerEl) {

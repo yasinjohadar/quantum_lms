@@ -58,6 +58,15 @@ class PaymentController extends Controller
             }
         }
 
+        if ($request->filled('purchase_status')) {
+            $purchaseStatus = $request->input('purchase_status');
+            if (in_array($purchaseStatus, ['pending', 'completed', 'cancelled', 'refunded'], true)) {
+                $query->whereHas('purchase', function ($q) use ($purchaseStatus) {
+                    $q->where('status', $purchaseStatus);
+                });
+            }
+        }
+
         if ($request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->input('date_from'));
         }
@@ -110,6 +119,12 @@ class PaymentController extends Controller
             return back()->with('error', 'لا يمكن مراجعة هذا الدفع');
         }
 
+        $payment->loadMissing('purchase');
+
+        if ($request->boolean('approved') && $payment->purchase && $payment->purchase->status === 'cancelled') {
+            return back()->with('error', 'لا يمكن الموافقة؛ الشراء ملغى نهائياً');
+        }
+
         $success = $this->paymentService->reviewIBANPayment(
             $payment,
             $request->approved,
@@ -131,6 +146,16 @@ class PaymentController extends Controller
     public function approvePayment($id)
     {
         $payment = Payment::findOrFail($id);
+
+        $payment->loadMissing('purchase');
+
+        if ($payment->purchase && $payment->purchase->status === 'cancelled') {
+            if (request()->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'لا يمكن الموافقة؛ الشراء ملغى نهائياً'], 400);
+            }
+
+            return back()->with('error', 'لا يمكن الموافقة؛ الشراء ملغى نهائياً');
+        }
 
         if ($payment->status !== 'pending') {
             if (request()->expectsJson()) {
@@ -182,6 +207,16 @@ class PaymentController extends Controller
         ]);
 
         $payment = Payment::findOrFail($id);
+
+        $payment->loadMissing('purchase');
+
+        if ($payment->purchase && $payment->purchase->status === 'cancelled') {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'لا يمكن رفض دفع مرتبط بشراء ملغى'], 400);
+            }
+
+            return back()->with('error', 'لا يمكن رفض دفع مرتبط بشراء ملغى');
+        }
 
         if ($payment->status !== 'pending') {
             if ($request->expectsJson()) {

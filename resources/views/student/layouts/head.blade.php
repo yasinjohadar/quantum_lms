@@ -30,9 +30,6 @@
 <!-- Choices Css -->
 <link rel="stylesheet" href="{{ asset('assets/libs/choices.js/public/assets/styles/choices.min.css') }}">
 
-<!-- Jsvector Maps -->
-<link rel="stylesheet" href="{{ asset('assets/libs/jsvectormap/css/jsvectormap.min.css') }}">
-
 <!-- Custom Css -->
 <link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}">
 

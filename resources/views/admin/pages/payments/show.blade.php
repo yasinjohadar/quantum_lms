@@ -25,7 +25,11 @@
                 <a href="{{ route('admin.payments.index') }}" class="btn btn-secondary btn-sm">
                     <i class="bi bi-arrow-right me-1"></i>رجوع
                 </a>
-                @if($payment->status === 'pending' && in_array($payment->payment_method, ['iban', 'custom']))
+                @php
+                    $purchaseForActions = $payment->purchase;
+                    $purchaseCancelledForActions = $purchaseForActions && $purchaseForActions->status === 'cancelled';
+                @endphp
+                @if(!$purchaseCancelledForActions && $payment->status === 'pending' && in_array($payment->payment_method, ['iban', 'custom']))
                     <form action="{{ route('admin.payments.approve', $payment->id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من الموافقة على هذا الدفع؟');">
                         @csrf
                         <button type="submit" class="btn btn-success btn-sm">
@@ -135,10 +139,26 @@
                             </div>
                             <div class="col-md-6">
                                 <strong>حالة الشراء:</strong>
-                                @if($payment->purchase->status === 'completed')
+                                @php $pPurchase = $payment->purchase; @endphp
+                                @if($pPurchase->status === 'completed')
                                     <span class="badge bg-success">مكتمل</span>
+                                @elseif($pPurchase->status === 'pending')
+                                    <span class="badge bg-warning">قيد المراجعة</span>
+                                @elseif($pPurchase->status === 'cancelled')
+                                    @if($pPurchase->cancelled_by === 'student')
+                                        <span class="badge bg-dark">ملغى نهائي (الطالب)</span>
+                                    @elseif($pPurchase->cancelled_by === 'admin')
+                                        <span class="badge bg-secondary">ملغى نهائي (الإدارة)</span>
+                                    @else
+                                        <span class="badge bg-secondary">ملغى نهائي</span>
+                                    @endif
+                                    @if($pPurchase->cancelled_at)
+                                        <small class="text-muted d-block mt-1">تاريخ الإلغاء: {{ $pPurchase->cancelled_at->format('Y-m-d H:i') }}</small>
+                                    @endif
+                                @elseif($pPurchase->status === 'refunded')
+                                    <span class="badge bg-info">مسترد</span>
                                 @else
-                                    <span class="badge bg-warning">{{ $payment->purchase->status }}</span>
+                                    <span class="badge bg-light text-dark">{{ $pPurchase->status }}</span>
                                 @endif
                             </div>
                         </div>

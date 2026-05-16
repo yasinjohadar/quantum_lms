@@ -28,18 +28,8 @@
 <!-- Color Picker JS -->
 <script src="{{ asset('assets/libs/@simonwep/pickr/pickr.es5.min.js') }}"></script>
 
-<!-- Apex Charts JS -->
-<script src="{{ asset('assets/libs/apexcharts/apexcharts.min.js') }}"></script>
-
-<!-- JSVector Maps JS -->
-<script src="{{ asset('assets/libs/jsvectormap/js/jsvectormap.min.js') }}"></script>
-
-<!-- JSVector Maps MapsJS -->
-<script src="{{ asset('assets/libs/jsvectormap/maps/world-merc.js') }}"></script>
-<script src="{{ asset('assets/js/us-merc-en.js') }}"></script>
-
-<!-- Chartjs Chart JS -->
-<script src="{{ asset('assets/js/index.js') }}"></script>
+{{-- ApexCharts / jsvectormap / assets/js/index.js are dashboard widgets; لا تُحمّل على صفحات الطالب
+     لتجنب أخطاء "Element not found" وبطء التحميل. صفحات التقارير تدفع ApexCharts محلياً عند الحاجة. --}}
 
 <!-- Custom-Switcher JS -->
 <script src="{{ asset('assets/js/custom-switcher.min.js') }}"></script>

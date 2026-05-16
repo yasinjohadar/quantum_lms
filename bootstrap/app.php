@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'role-list' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'check.user.active' => \App\Http\Middleware\CheckUserActive::class,
+            'share.student.pending.purchases' => \App\Http\Middleware\ShareStudentPendingPurchasesForLayout::class,
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
         ]);
     })

@@ -16,32 +16,6 @@
         </div>
         <!-- End Page Header -->
 
-        {{-- مشتريات قيد المراجعة --}}
-        @if(isset($pendingPurchases) && $pendingPurchases->count() > 0)
-            <div class="card custom-card mb-4 border-warning">
-                <div class="card-header bg-warning-transparent d-flex align-items-center">
-                    <i class="bi bi-hourglass-split fs-5 me-2 text-warning"></i>
-                    <h5 class="mb-0 text-warning">مشتريات قيد المراجعة</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        @foreach($pendingPurchases as $purchase)
-                            <div class="col-md-6 col-lg-4 mb-3">
-                                <div class="d-flex align-items-center p-3 rounded bg-light">
-                                    <i class="bi bi-{{ $purchase->purchase_type === 'class' ? 'building' : 'book' }} fs-4 text-warning me-3"></i>
-                                    <div class="flex-grow-1">
-                                        <div class="fw-semibold">{{ $purchase->purchasable->name ?? '—' }}</div>
-                                        <small class="text-muted">{{ $purchase->purchase_type === 'class' ? 'صف كامل' : 'مادة' }}</small>
-                                    </div>
-                                    <span class="badge bg-warning">قيد المراجعة</span>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-        @endif
-
         @if($classes->count() === 0)
             <div class="card">
                 <div class="card-body text-center py-5">
@@ -104,3 +78,4 @@
 </div>
 <!-- main-content closed -->
 @stop
+

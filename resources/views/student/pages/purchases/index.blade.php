@@ -39,7 +39,7 @@
                                         @elseif($purchase->status === 'pending')
                                             قيد الانتظار
                                         @elseif($purchase->status === 'cancelled')
-                                            ملغي
+                                            ملغى نهائي
                                         @else
                                             مسترد
                                         @endif

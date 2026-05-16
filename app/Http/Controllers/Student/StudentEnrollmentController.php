@@ -9,6 +9,7 @@ use App\Models\Enrollment;
 use App\Models\Stage;
 use App\Models\Purchase;
 use App\Models\User;
+use App\Models\ClassEnrollment;
 use App\Services\PurchaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -45,7 +46,17 @@ class StudentEnrollmentController extends Controller
 
         $stages = $stages->filter(fn (Stage $stage) => $stage->classes->isNotEmpty())->values();
 
-        return view('student.pages.enrollments.index', array_merge(compact('stages'), $stats));
+        $pendingClassEnrollmentIds = $user->classEnrollments()
+            ->pending()
+            ->pluck('class_id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        return view(
+            'student.pages.enrollments.index',
+            array_merge(compact('stages', 'pendingClassEnrollmentIds'), $stats)
+        );
     }
     
     /**
@@ -73,6 +84,11 @@ class StudentEnrollmentController extends Controller
 
         $hasFullClassAccess = $user->hasFullAccessToSchoolClass($class);
 
+        $hasPendingClassEnrollment = $user->classEnrollments()
+            ->pending()
+            ->where('class_id', $class->id)
+            ->exists();
+
         $subjectsToShow = $hasFullClassAccess
             ? collect()
             : $class->subjects
@@ -82,7 +98,13 @@ class StudentEnrollmentController extends Controller
         $stats = $this->studentEnrollmentStats($user);
 
         return view('student.pages.enrollments.class-show', array_merge(
-            compact('class', 'subjectsToShow', 'pendingEnrollments', 'hasFullClassAccess'),
+            compact(
+                'class',
+                'subjectsToShow',
+                'pendingEnrollments',
+                'hasFullClassAccess',
+                'hasPendingClassEnrollment'
+            ),
             $stats
         ));
     }
@@ -194,7 +216,7 @@ class StudentEnrollmentController extends Controller
             $currencyId = $request->filled('currency_id') ? (int) $request->input('currency_id') : null;
 
             // التحقق من وجود المادة
-            $subject = Subject::where('is_active', true)->findOrFail($subjectId);
+            $subject = Subject::with('schoolClass')->where('is_active', true)->findOrFail($subjectId);
 
             // التحقق من وجود شراء مسبق
             $existingPurchase = Purchase::where('user_id', $user->id)
@@ -225,6 +247,39 @@ class StudentEnrollmentController extends Controller
                         'message' => 'أنت مسجل في هذه المادة من خلال شراء الصف كاملاً',
                     ], 400);
                 }
+
+                $pendingClassJoin = ClassEnrollment::query()
+                    ->where('user_id', $user->id)
+                    ->where('class_id', $class->id)
+                    ->pending()
+                    ->exists();
+
+                if ($pendingClassJoin) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'لديك طلب انضمام لهذا الصف كاملاً قيد المراجعة. يمكنك انتظار الموافقة قبل طلب مادة منفردة.',
+                    ], 400);
+                }
+            }
+
+            if (Enrollment::where('user_id', $user->id)
+                ->where('subject_id', $subjectId)
+                ->where('status', 'active')
+                ->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'أنت مسجل بالفعل في هذه المادة',
+                ], 400);
+            }
+
+            if (Enrollment::where('user_id', $user->id)
+                ->where('subject_id', $subjectId)
+                ->pending()
+                ->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'لديك بالفعل طلب انضمام لهذه المادة قيد المراجعة',
+                ], 400);
             }
 
             if (! $subject->is_free && $subject->price > 0) {
@@ -245,7 +300,25 @@ class StudentEnrollmentController extends Controller
                 ]);
             }
 
-            // إذا كان السعر 0، إنشاء شراء مكتمل تلقائياً
+            $class = $subject->schoolClass;
+            if ($class && $class->gatesFreeEnrollmentUntilApproved()) {
+                Enrollment::create([
+                    'user_id' => $user->id,
+                    'subject_id' => $subject->id,
+                    'enrolled_by' => null,
+                    'enrolled_at' => now(),
+                    'status' => 'pending',
+                    'notes' => 'طلب انضمام لمسار مجاني بانتظار موافقة الإدارة',
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'under_review' => true,
+                    'message' => 'تم استلام طلبك وهو قيد مراجعة الإدارة. ستُفعَّل المادة بعد الموافقة.',
+                ]);
+            }
+
+            // مسار مجاني بدون مراجعة أو بدون صف يطبّق الإعداد: إكمال عبر PurchaseService
             $this->purchaseService->createPurchase($user, $subject, 'subject');
 
             return response()->json([
@@ -333,6 +406,42 @@ class StudentEnrollmentController extends Controller
                 ], 400);
             }
 
+            $existingClassEnrollment = ClassEnrollment::query()
+                ->where('user_id', $user->id)
+                ->where('class_id', $classId)
+                ->first();
+
+            if ($existingClassEnrollment) {
+                if ($existingClassEnrollment->status === 'approved') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'أنت مسجل بالفعل في هذا الصف',
+                    ], 400);
+                }
+
+                if ($existingClassEnrollment->status === 'pending') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'لديك بالفعل طلب انضمام لهذا الصف قيد المراجعة',
+                    ], 400);
+                }
+
+                if ($existingClassEnrollment->status === 'rejected') {
+                    $existingClassEnrollment->update([
+                        'status' => 'pending',
+                        'enrolled_by' => null,
+                        'enrolled_at' => null,
+                        'notes' => 'إعادة طلب من الطالب',
+                    ]);
+
+                    return response()->json([
+                        'success' => true,
+                        'under_review' => true,
+                        'message' => 'تم إرسال طلب الانضمام من جديد وهو قيد مراجعة الإدارة.',
+                    ]);
+                }
+            }
+
             if ($class->classJoinRequiresPayment()) {
                 $purchase = $this->resolveOrCreatePendingPurchase($user, $class, 'class', $currencyId);
 
@@ -351,7 +460,23 @@ class StudentEnrollmentController extends Controller
                 ]);
             }
 
-            // إذا كان السعر 0، إنشاء شراء مكتمل تلقائياً
+            if (! $class->effectiveFreeJoinAutoApprove()) {
+                ClassEnrollment::create([
+                    'user_id' => $user->id,
+                    'class_id' => $class->id,
+                    'enrolled_by' => null,
+                    'enrolled_at' => null,
+                    'status' => 'pending',
+                    'notes' => 'طلب انضمام لصف بمسار مجاني بانتظار موافقة الإدارة',
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'under_review' => true,
+                    'message' => 'تم استلام طلبك وهو قيد مراجعة الإدارة. ستُفعَّل مواد الصف بعد الموافقة.',
+                ]);
+            }
+
             $this->purchaseService->createPurchase($user, $class, 'class');
 
             return response()->json([

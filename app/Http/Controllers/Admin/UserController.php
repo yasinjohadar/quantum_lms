@@ -1016,7 +1016,11 @@ class UserController extends Controller
             Purchase::where('purchasable_type', SchoolClass::class)
                 ->where('purchasable_id', $classId)
                 ->whereIn('status', ['completed', 'pending'])
-                ->update(['status' => 'cancelled']);
+                ->update([
+                    'status' => 'cancelled',
+                    'cancelled_by' => 'admin',
+                    'cancelled_at' => now(),
+                ]);
 
             $this->flushPricingAccessCacheForClassUsers($classId, $cacheUserIds);
 
@@ -1370,7 +1374,11 @@ class UserController extends Controller
             ->where('purchasable_type', SchoolClass::class)
             ->where('purchasable_id', $classId)
             ->whereIn('status', ['completed', 'pending'])
-            ->update(['status' => 'cancelled']);
+            ->update([
+                'status' => 'cancelled',
+                'cancelled_by' => 'admin',
+                'cancelled_at' => now(),
+            ]);
 
         $this->flushPricingAccessCacheForClassUsers($classId, $userIds);
     }

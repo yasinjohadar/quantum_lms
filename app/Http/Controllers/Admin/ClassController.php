@@ -204,6 +204,10 @@ class ClassController extends Controller
             $data['show_price'] = $data['is_free'] ? true : $request->has('show_price');
             $data['allow_subjects_purchase'] = $request->has('allow_subjects_purchase');
             $data['default_currency_id'] = $request->input('default_currency_id');
+            $joinRequiresPayment = ! $data['is_free'] && (float) $data['price'] > 0;
+            $data['free_join_auto_approve'] = $joinRequiresPayment
+                ? true
+                : $request->boolean('free_join_auto_approve', true);
 
             $class = SchoolClass::create($data);
 
@@ -352,6 +356,10 @@ class ClassController extends Controller
             $data['show_price'] = $data['is_free'] ? true : $request->has('show_price');
             $data['allow_subjects_purchase'] = $request->has('allow_subjects_purchase');
             $data['default_currency_id'] = $request->input('default_currency_id');
+            $joinRequiresPayment = ! $data['is_free'] && (float) $data['price'] > 0;
+            $data['free_join_auto_approve'] = $joinRequiresPayment
+                ? true
+                : $request->boolean('free_join_auto_approve', true);
 
             $class->update($data);
 

@@ -14,7 +14,6 @@ use App\Models\QuizAttempt;
 use App\Models\SchoolClass;
 use App\Models\ClassEnrollment;
 use App\Models\LessonCompletion;
-use App\Models\Purchase;
 use App\Services\GamificationService;
 use App\Services\AnalyticsService;
 use Illuminate\Http\Request;
@@ -106,14 +105,7 @@ class StudentLessonController extends Controller
             return $item['class']->order ?? 999;
         });
 
-        // مشتريات قيد المراجعة (لم يتم الموافقة عليها بعد)
-        $pendingPurchases = Purchase::where('user_id', $user->id)
-            ->where('status', 'pending')
-            ->with('purchasable')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return view('student.pages.lessons.classes', compact('classes', 'pendingPurchases'));
+        return view('student.pages.lessons.classes', compact('classes'));
     }
     
     /**

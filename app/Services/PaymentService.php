@@ -226,6 +226,10 @@ class PaymentService
                 throw new \Exception('الشراء المرتبط بهذا الدفع غير موجود');
             }
 
+            if ($approved && $payment->purchase->status === 'cancelled') {
+                throw new \Exception('لا يمكن الموافقة على دفع مرتبط بشراء ملغى');
+            }
+
             Log::info('Payment purchase loaded', [
                 'payment_id' => $payment->id,
                 'purchase_id' => $payment->purchase->id,
@@ -289,6 +293,15 @@ class PaymentService
                 Log::info('completePurchase finished successfully', [
                     'purchase_id' => $purchase->id,
                 ]);
+            } else {
+                $purchase = $payment->purchase;
+                if ($purchase && $purchase->status === 'pending') {
+                    $purchase->update([
+                        'status' => 'cancelled',
+                        'cancelled_by' => 'admin',
+                        'cancelled_at' => now(),
+                    ]);
+                }
             }
 
             DB::commit();

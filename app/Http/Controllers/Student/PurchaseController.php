@@ -16,6 +16,7 @@ use App\Services\Storage\MediaStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Auth\Access\AuthorizationException;
 
 class PurchaseController extends Controller
 {
@@ -406,6 +407,33 @@ class PurchaseController extends Controller
                 'success' => false,
                 'message' => 'حدث خطأ أثناء رفع الوصل',
             ], 500);
+        }
+    }
+
+    /**
+     * إلغاء شراء قيد المراجعة (من قبل الطالب)
+     */
+    public function cancelPending(Purchase $purchase)
+    {
+        $user = Auth::user();
+
+        try {
+            $this->purchaseService->cancelPendingByStudent($purchase, $user);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إلغاء الطلب نهائياً',
+            ]);
+        } catch (AuthorizationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage() ?: 'غير مصرح',
+            ], 403);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
         }
     }
 
