@@ -55,15 +55,22 @@
                 <div class="d-flex flex-wrap gap-2 align-items-center">
                     @foreach ($user->classEnrollments as $enrollment)
                         @if ($enrollment->schoolClass)
-                            <span class="badge bg-info text-dark d-inline-flex align-items-center gap-2">
+                            @php
+                                $pendingClassEnrollment = $enrollment->status === 'pending';
+                            @endphp
+                            <span class="badge {{ $pendingClassEnrollment ? 'bg-warning text-dark' : 'bg-info text-dark' }} d-inline-flex align-items-center gap-2">
                                 {{ $enrollment->schoolClass->name }}
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-warning detach-class-btn px-2 py-0"
-                                        data-user-id="{{ $user->id }}"
-                                        data-class-id="{{ $enrollment->class_id }}"
-                                        title="فصل الطالب عن هذا الصف">
-                                    <i class="fas fa-user-slash"></i>
-                                </button>
+                                @if ($pendingClassEnrollment)
+                                    <span class="small">قيد المراجعة</span>
+                                @else
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-warning detach-class-btn px-2 py-0"
+                                            data-user-id="{{ $user->id }}"
+                                            data-class-id="{{ $enrollment->class_id }}"
+                                            title="فصل الطالب عن هذا الصف">
+                                        <i class="fas fa-user-slash"></i>
+                                    </button>
+                                @endif
                             </span>
                         @endif
                     @endforeach

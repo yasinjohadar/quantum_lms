@@ -90,7 +90,7 @@ class UserController extends Controller
         // بدء استعلام المستخدمين — الطلاب فقط (غير المؤرشفين)
         $usersQuery = User::query()->students();
         $usersQuery->with(['classEnrollments' => function ($q) {
-            $q->approved()->with('schoolClass');
+            $q->whereIn('status', ['pending', 'approved'])->with('schoolClass');
         }]);
 
         // فلترة حسب البحث (name, email, phone)
@@ -113,7 +113,7 @@ class UserController extends Controller
         if ($request->filled('class_id')) {
             $classId = (int) $request->input('class_id');
             $usersQuery->whereHas('classEnrollments', function ($q) use ($classId) {
-                $q->approved()->where('class_id', $classId);
+                $q->whereIn('status', ['pending', 'approved'])->where('class_id', $classId);
             });
         }
 

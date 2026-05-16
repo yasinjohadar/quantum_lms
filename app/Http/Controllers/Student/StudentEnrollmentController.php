@@ -48,8 +48,10 @@ class StudentEnrollmentController extends Controller
 
         $stages = $stages->filter(fn (Stage $stage) => $stage->classes->isNotEmpty())->values();
 
-        $pendingClassEnrollmentIds = $user->classEnrollments()
-            ->pending()
+        $pendingClassEnrollmentIds = ClassEnrollment::query()
+            ->withTrashed()
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
             ->pluck('class_id')
             ->map(fn ($id) => (int) $id)
             ->values()
