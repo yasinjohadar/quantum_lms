@@ -16,23 +16,17 @@ use Illuminate\Support\Collection;
 
 class AccessResolver
 {
+    public function __construct(
+        protected SubjectPricingResolver $subjectPricingResolver,
+    ) {
+    }
+
     public function hasSubjectAccess(User $user, Subject $subject): bool
     {
         $pricingMode = $this->resolveSubjectPricingMode($subject);
 
-        if ($pricingMode === PricingMode::FREE) {
-            if (! $this->subjectShouldGateFreeEnrollmentReview($subject)) {
-                return true;
-            }
-        }
-
-        if ($pricingMode === PricingMode::INHERIT) {
-            $class = $subject->schoolClass;
-            if ($class && $class->is_free) {
-                if (! $class->gatesFreeEnrollmentUntilApproved()) {
-                    return true;
-                }
-            }
+        if ($this->effectiveFreeGrantsImmediateAccess($subject)) {
+            return true;
         }
 
         if ($pricingMode === PricingMode::HIDDEN) {
@@ -43,12 +37,8 @@ class AccessResolver
             return true;
         }
 
-        if ($this->hasPurchasedClass($user, $subject)) {
-            return true;
-        }
-
-        if ($this->isEnrolledInClass($user, $subject)) {
-            return true;
+        if ($this->hasPurchasedClass($user, $subject) || $this->isEnrolledInClass($user, $subject)) {
+            return $this->subjectPricingResolver->isIncludedInClassBundle($subject);
         }
 
         if ($this->isEnrolledInSubject($user, $subject)) {
@@ -79,18 +69,11 @@ class AccessResolver
 
     public function canPurchaseSubject(User $user, Subject $subject): bool
     {
-        $pricingMode = $this->resolveSubjectPricingMode($subject);
-
-        if (!$pricingMode->isPurchasable()) {
+        if (! $this->subjectPricingResolver->canPurchaseSeparately($subject)) {
             return false;
         }
 
         if ($this->hasSubjectAccess($user, $subject)) {
-            return false;
-        }
-
-        $class = $subject->schoolClass;
-        if ($class && $class->is_free && $pricingMode === PricingMode::INHERIT) {
             return false;
         }
 
@@ -114,7 +97,10 @@ class AccessResolver
                 return 'purchased';
             }
 
-            if ($this->hasPurchasedClass($user, $subject) || $this->isEnrolledInClass($user, $subject)) {
+            if (
+                ($this->hasPurchasedClass($user, $subject) || $this->isEnrolledInClass($user, $subject))
+                && $this->subjectPricingResolver->isIncludedInClassBundle($subject)
+            ) {
                 return 'included_in_class';
             }
 
@@ -131,6 +117,10 @@ class AccessResolver
 
         if ($pricingMode === PricingMode::BUNDLE_ONLY) {
             return 'bundle_only';
+        }
+
+        if ($this->subjectPricingResolver->canPurchaseSeparately($subject)) {
+            return 'purchasable';
         }
 
         $class = $subject->schoolClass;
@@ -220,23 +210,42 @@ class AccessResolver
      */
     private function subjectShouldGateFreeEnrollmentReview(Subject $subject): bool
     {
-        $class = $subject->relationLoaded('schoolClass')
-            ? $subject->schoolClass
-            : $subject->schoolClass()->first();
+        return $subject->freeSubjectEnrollmentRequiresApproval();
+    }
 
-        return $class && $class->gatesFreeEnrollmentUntilApproved();
+    /**
+     * Subjects explicitly marked free on a paid class (FREE mode, etc.) can be accessed without buying the class.
+     * INHERIT with no separate price means "included in class bundle", not immediate access.
+     * Free-class subjects always require enrollment or class provisioning first.
+     */
+    private function effectiveFreeGrantsImmediateAccess(Subject $subject): bool
+    {
+        if (! $this->subjectPricingResolver->isEffectivelyFree($subject)) {
+            return false;
+        }
+
+        $subject->loadMissing('schoolClass');
+
+        if ($subject->schoolClass?->is_free) {
+            return false;
+        }
+
+        $pricingMode = $this->resolveSubjectPricingMode($subject);
+
+        if ($pricingMode === PricingMode::INHERIT || $pricingMode === PricingMode::BUNDLE_ONLY) {
+            return false;
+        }
+
+        if ($pricingMode === PricingMode::FREE) {
+            return false;
+        }
+
+        return true;
     }
 
     private function resolveSubjectPricingMode(Subject $subject): PricingMode
     {
-        if (isset($subject->pricing_mode) && !empty($subject->pricing_mode)) {
-            return PricingMode::from($subject->pricing_mode);
-        }
-
-        return PricingMode::fromLegacy(
-            $subject->is_free_override ?? false,
-            $subject->can_purchase_separately ?? true
-        );
+        return $this->subjectPricingResolver->resolvePricingMode($subject);
     }
 
     private function isSubjectInherentlyFree(Subject $subject): bool
@@ -248,8 +257,10 @@ class AccessResolver
         }
 
         if ($pricingMode === PricingMode::INHERIT) {
+            $subject->loadMissing('schoolClass');
             $class = $subject->schoolClass;
-            return $class && $class->is_free;
+
+            return $class && $class->is_free && $this->subjectPricingResolver->isEffectivelyFree($subject);
         }
 
         return false;

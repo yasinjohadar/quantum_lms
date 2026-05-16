@@ -139,5 +139,36 @@ class SystemSetting extends Model
 
         return is_string($v) ? $v : '';
     }
+
+    public static function ibanDisplayName(): string
+    {
+        $v = self::get('payments_iban_display_name', 'تحويل بنكي (IBAN)');
+
+        return is_string($v) && trim($v) !== '' ? trim($v) : 'تحويل بنكي (IBAN)';
+    }
+
+    /**
+     * @return array{iban: string, bank_name: string, account_holder: string}
+     */
+    public static function ibanAccountDetails(): array
+    {
+        $iban = self::get('payments_iban_account_iban', '');
+        $bankName = self::get('payments_iban_account_bank_name', '');
+        $holder = self::get('payments_iban_account_holder', '');
+
+        return [
+            'iban' => is_string($iban) ? trim($iban) : '',
+            'bank_name' => is_string($bankName) ? trim($bankName) : '',
+            'account_holder' => is_string($holder) ? trim($holder) : '',
+        ];
+    }
+
+    public static function ibanPendingMessage(): string
+    {
+        $default = 'الطلب قيد المعالجة. يجب التواصل مع المشرفة لتأكيد الاشتراك.';
+        $v = self::get('payments_iban_pending_message', $default);
+
+        return is_string($v) && trim($v) !== '' ? trim($v) : $default;
+    }
 }
 

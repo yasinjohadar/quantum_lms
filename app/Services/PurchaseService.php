@@ -8,10 +8,15 @@ use App\Models\User;
 use App\Models\SchoolClass;
 use App\Models\Subject;
 use Illuminate\Support\Facades\DB;
+use App\Services\Pricing\SubjectPricingResolver;
 use Illuminate\Support\Facades\Log;
 
 class PurchaseService
 {
+    public function __construct(
+        protected SubjectPricingResolver $subjectPricingResolver,
+    ) {
+    }
     /**
      * إنشاء عدة مشتريات (صف أو مواد متعددة)
      */
@@ -248,6 +253,9 @@ class PurchaseService
                 ]);
 
                 foreach ($subjects as $subject) {
+                    if (! $this->subjectPricingResolver->isIncludedInClassBundle($subject)) {
+                        continue;
+                    }
                     try {
                         $enrollment = \App\Models\Enrollment::updateOrCreate(
                             [

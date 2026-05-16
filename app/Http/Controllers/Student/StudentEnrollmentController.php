@@ -10,6 +10,8 @@ use App\Models\Stage;
 use App\Models\Purchase;
 use App\Models\User;
 use App\Models\ClassEnrollment;
+use App\Services\Pricing\PricingResolver;
+use App\Services\Pricing\SubjectPricingResolver;
 use App\Services\PurchaseService;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -19,11 +21,11 @@ use Illuminate\Support\Facades\DB;
 
 class StudentEnrollmentController extends Controller
 {
-    protected $purchaseService;
-
-    public function __construct(PurchaseService $purchaseService)
-    {
-        $this->purchaseService = $purchaseService;
+    public function __construct(
+        protected PurchaseService $purchaseService,
+        protected PricingResolver $pricingResolver,
+        protected SubjectPricingResolver $subjectPricingResolver,
+    ) {
     }
     /**
      * عرض جميع الصفوف والمواد المتاحة للانضمام
@@ -86,6 +88,7 @@ class StudentEnrollmentController extends Controller
             ->pluck('subject_id')
             ->toArray();
 
+        // اكتمال التسجيل لكل المواد النشطة (وليس الوصول النظري عبر التسعير المجاني للصف).
         $hasFullClassAccess = $user->hasFullAccessToSchoolClass($class);
 
         $hasPendingClassEnrollment = $user->classEnrollments()
@@ -101,13 +104,20 @@ class StudentEnrollmentController extends Controller
 
         $stats = $this->studentEnrollmentStats($user);
 
+        $subjectAccessById = $class->subjects->mapWithKeys(function (Subject $subject) use ($user) {
+            return [
+                $subject->id => $this->pricingResolver->resolveSubjectAccessData($subject, $user, null)->toArray(),
+            ];
+        });
+
         return view('student.pages.enrollments.class-show', array_merge(
             compact(
                 'class',
                 'subjectsToShow',
                 'pendingEnrollments',
                 'hasFullClassAccess',
-                'hasPendingClassEnrollment'
+                'hasPendingClassEnrollment',
+                'subjectAccessById'
             ),
             $stats
         ));
@@ -245,13 +255,18 @@ class StudentEnrollmentController extends Controller
                     ->where('status', 'completed')
                     ->first();
 
-                if ($classPurchase) {
+            if ($classPurchase) {
+                $includedInClassBundle = $this->subjectPricingResolver
+                    ->isIncludedInClassBundle($subject);
+                if ($includedInClassBundle) {
                     return response()->json([
                         'success' => false,
                         'message' => 'أنت مسجل في هذه المادة من خلال شراء الصف كاملاً',
                     ], 400);
                 }
+            }
 
+            // مواد تُباع منفردة فقط لا تُغطى بشراء الصف؛ يُسمح بمتابعة طلب شراء المادة.
                 $pendingClassJoin = ClassEnrollment::query()
                     ->where('user_id', $user->id)
                     ->where('class_id', $class->id)
@@ -286,7 +301,9 @@ class StudentEnrollmentController extends Controller
                 ], 400);
             }
 
-            if (! $subject->is_free && $subject->price > 0) {
+            $access = $this->pricingResolver->resolveSubjectAccessData($subject, $user, $currencyId);
+
+            if (! $access->isEffectivelyFree && $access->effectivePrice > 0) {
                 $purchase = $this->resolveOrCreatePendingPurchase($user, $subject, 'subject', $currencyId);
 
                 if ($purchase->status === 'completed') {
@@ -304,8 +321,7 @@ class StudentEnrollmentController extends Controller
                 ]);
             }
 
-            $class = $subject->schoolClass;
-            if ($class && $class->gatesFreeEnrollmentUntilApproved()) {
+            if ($subject->freeSubjectEnrollmentRequiresApproval()) {
                 Enrollment::create([
                     'user_id' => $user->id,
                     'subject_id' => $subject->id,

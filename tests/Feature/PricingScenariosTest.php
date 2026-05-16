@@ -70,8 +70,8 @@ class PricingScenariosTest extends TestCase
         ], $attributes));
     }
 
-    // Scenario 1: Free class + inherit subject = Access
-    public function test_free_class_with_inherit_subject_grants_access(): void
+    // Scenario 1: Free class + inherit subject requires enrollment before content access
+    public function test_free_class_with_inherit_subject_requires_enrollment_for_access(): void
     {
         $class = $this->createClass(['is_free' => true, 'price' => 0]);
         $subject = $this->createSubject($class, ['pricing_mode' => 'inherit']);
@@ -79,8 +79,19 @@ class PricingScenariosTest extends TestCase
         $resolver = app(AccessResolver::class);
 
         $this->assertTrue($resolver->hasClassAccess($this->user, $class));
+        $this->assertFalse($resolver->hasSubjectAccess($this->user, $subject));
+
+        Enrollment::create([
+            'user_id' => $this->user->id,
+            'subject_id' => $subject->id,
+            'enrolled_by' => 1,
+            'enrolled_at' => now(),
+            'status' => 'active',
+            'notes' => 'تسجيل تجريبي',
+        ]);
+
         $this->assertTrue($resolver->hasSubjectAccess($this->user, $subject));
-        $this->assertEquals('free', $resolver->getSubjectAccessType($this->user, $subject));
+        $this->assertEquals('enrolled', $resolver->getSubjectAccessType($this->user, $subject));
     }
 
     // Scenario 2: Free class + paid subject = Purchase required
@@ -114,17 +125,48 @@ class PricingScenariosTest extends TestCase
         $this->assertEquals('requires_class_purchase', $resolver->getSubjectAccessType($this->user, $subject));
     }
 
-    // Scenario 4: Paid class + free subject = Free access
-    public function test_paid_class_with_free_subject_grants_free_access(): void
+    // Scenario 4: Paid class + free subject = free enrollment, access after active enrollment
+    public function test_paid_class_with_free_subject_grants_access_after_enrollment(): void
     {
         $class = $this->createClass(['is_free' => false, 'price' => 100]);
         $subject = $this->createSubject($class, ['pricing_mode' => 'free']);
 
         $resolver = app(AccessResolver::class);
+        $pricing = app(SubjectPricingResolver::class);
 
         $this->assertFalse($resolver->hasClassAccess($this->user, $class));
+        $this->assertFalse($resolver->hasSubjectAccess($this->user, $subject));
+        $this->assertFalse($pricing->isIncludedInClassBundle($subject));
+
+        Enrollment::create([
+            'user_id' => $this->user->id,
+            'subject_id' => $subject->id,
+            'enrolled_by' => 1,
+            'enrolled_at' => now(),
+            'status' => 'active',
+            'notes' => 'انضمام مجاني',
+        ]);
+
         $this->assertTrue($resolver->hasSubjectAccess($this->user, $subject));
-        $this->assertEquals('free', $resolver->getSubjectAccessType($this->user, $subject));
+        $this->assertEquals('enrolled', $resolver->getSubjectAccessType($this->user, $subject));
+    }
+
+    public function test_is_free_override_on_paid_class_resolves_as_free_and_allows_free_enrollment(): void
+    {
+        $class = $this->createClass(['is_free' => false, 'price' => 100]);
+        $subject = $this->createSubject($class, [
+            'pricing_mode' => 'inherit',
+            'is_free_override' => true,
+            'can_purchase_separately' => false,
+        ]);
+
+        $pricing = app(SubjectPricingResolver::class);
+        $resolver = app(AccessResolver::class);
+
+        $this->assertEquals(PricingMode::FREE, $pricing->resolvePricingMode($subject));
+        $this->assertFalse($pricing->canPurchaseSeparately($subject));
+        $this->assertFalse($pricing->isIncludedInClassBundle($subject));
+        $this->assertFalse($resolver->hasSubjectAccess($this->user, $subject));
     }
 
     // Scenario 5: Paid class + paid subject = Separate purchase

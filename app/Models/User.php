@@ -108,45 +108,19 @@ class User extends Authenticatable
      */
     public function canAccessSubjectAsStudent(Subject $subject): bool
     {
-        if ($this->subjects()
-            ->where('subjects.id', $subject->id)
-            ->wherePivot('status', 'active')
-            ->exists()) {
-            return true;
-        }
-
-        if (!$subject->is_active) {
+        if (! $subject->is_active) {
             return false;
         }
 
-        return ClassEnrollment::query()
-            ->where('user_id', $this->id)
-            ->where('class_id', $subject->class_id)
-            ->approved()
-            ->exists();
+        return app(\App\Services\Pricing\AccessResolver::class)->hasSubjectAccess($this, $subject);
     }
 
     /**
-     * هل لدى الطالب وصولاً لجميع المواد النشطة في الصف (انضمام صف معتمد أو تسجيل نشط لكل مادة نشطة).
+     * هل اكتمل انضمام الطالب لجميع المواد النشطة في الصف (تسجيل active لكل مادة).
+     * يُستخدم في صفحة طلب الانضمام فقط — وليس كبديل لـ hasSubjectAccess لمحتوى الدروس.
      */
     public function hasFullAccessToSchoolClass(SchoolClass $class): bool
     {
-        if (Purchase::query()
-            ->where('user_id', $this->id)
-            ->where('purchasable_type', SchoolClass::class)
-            ->where('purchasable_id', $class->id)
-            ->where('status', 'completed')
-            ->exists()) {
-            return true;
-        }
-
-        if ($this->classEnrollments()
-            ->where('class_id', $class->id)
-            ->approved()
-            ->exists()) {
-            return true;
-        }
-
         $activeSubjectIds = $class->subjects()
             ->where('is_active', true)
             ->pluck('subjects.id');
@@ -155,12 +129,13 @@ class User extends Authenticatable
             return false;
         }
 
-        $enrolledActiveCount = $this->enrollments()
+        $enrolledSubjectIds = $this->enrollments()
             ->where('status', 'active')
             ->whereIn('subject_id', $activeSubjectIds)
-            ->count();
+            ->pluck('subject_id')
+            ->unique();
 
-        return $enrolledActiveCount >= $activeSubjectIds->count();
+        return $enrolledSubjectIds->count() >= $activeSubjectIds->count();
     }
 
     /**

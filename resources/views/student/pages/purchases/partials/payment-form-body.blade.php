@@ -1,4 +1,4 @@
-@php
+﻿@php
     $formId = $formId ?? 'paymentForm';
     $processPaymentUrl = $processPaymentUrl ?? route('student.purchases.process-payment', $purchase);
     $successUrl = $successUrl ?? route('student.classes');
@@ -7,6 +7,9 @@
     $ibanInstructionsDisplay = $ibanStudentInstructions !== ''
         ? $ibanStudentInstructions
         : 'سيتم مراجعة الوصل من قبل الإدارة';
+    $ibanDisplayName = $ibanDisplayName ?? \App\Models\SystemSetting::ibanDisplayName();
+    $ibanAccount = $ibanAccount ?? \App\Models\SystemSetting::ibanAccountDetails();
+    $ibanPendingMessage = $ibanPendingMessage ?? \App\Models\SystemSetting::ibanPendingMessage();
 @endphp
 <div class="row">
     <div class="col-xl-8">
@@ -35,7 +38,7 @@
 
         <div class="card custom-card">
             <div class="card-header">
-                <h6 class="mb-0">اختر طريقة الدفع</h6>
+                <h6 class="mb-0">طريقة الدفع</h6>
             </div>
             <div class="card-body">
                 <form
@@ -49,117 +52,49 @@
                 >
                     @csrf
                     <input type="hidden" name="purchase_id" value="{{ $purchase->id }}">
+                    <input type="hidden" name="payment_method" value="iban">
 
-                    <div class="payment-method mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="payment_method" id="{{ $formId }}_wallet" value="wallet" {{ $wallet && $wallet->balance >= $purchase->price ? '' : 'disabled' }}>
-                            <label class="form-check-label w-100" for="{{ $formId }}_wallet">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <i class="bi bi-wallet2 me-2 text-primary"></i>
-                                        <strong>المحفظة الإلكترونية</strong>
-                                        @if($wallet)
-                                            <small class="text-muted d-block">الرصيد المتاح: {{ number_format($wallet->balance, 2) }} ر.س</small>
-                                        @endif
-                                    </div>
-                                    @if($wallet && $wallet->balance >= $purchase->price)
-                                        <span class="badge bg-success">متاح</span>
-                                    @else
-                                        <span class="badge bg-danger">رصيد غير كافٍ</span>
-                                    @endif
-                                </div>
-                            </label>
-                        </div>
+                    <div class="alert alert-warning border mb-4" role="status">
+                        <i class="bi bi-info-circle me-2"></i>
+                        {!! nl2br(e($ibanPendingMessage)) !!}
                     </div>
 
                     <div class="payment-method mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="payment_method" id="{{ $formId }}_iban" value="iban">
-                            <label class="form-check-label w-100" for="{{ $formId }}_iban">
-                                <div>
-                                    <i class="bi bi-bank me-2 text-info"></i>
-                                    <strong>تحويل بنكي (IBAN)</strong>
-                                </div>
-                            </label>
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="bi bi-bank me-2 text-info fs-4"></i>
+                            <strong class="fs-5">{{ $ibanDisplayName }}</strong>
                         </div>
-                        <div id="{{ $formId }}_ibanDetails" class="mt-3 js-iban-details" style="display: none;">
+
+                        <div class="js-iban-details">
                             <div class="alert alert-light border mb-3 text-muted small" role="note">
                                 {!! nl2br(e($ibanInstructionsDisplay)) !!}
                             </div>
-                            <div class="alert alert-info mt-3">
+                            <div class="alert alert-info">
                                 <p class="mb-2"><strong>معلومات الحساب:</strong></p>
-                                <p class="mb-0">IBAN: SA1234567890123456789012</p>
-                                <p class="mb-0">اسم البنك: البنك الأهلي السعودي</p>
+                                @if(!empty($ibanAccount['iban']))
+                                    <p class="mb-0">IBAN: {{ $ibanAccount['iban'] }}</p>
+                                @endif
+                                @if(!empty($ibanAccount['bank_name']))
+                                    <p class="mb-0">اسم البنك: {{ $ibanAccount['bank_name'] }}</p>
+                                @endif
+                                @if(!empty($ibanAccount['account_holder']))
+                                    <p class="mb-0">صاحب الحساب: {{ $ibanAccount['account_holder'] }}</p>
+                                @endif
                             </div>
                             @if($ibanReceiptRequired)
                                 <div class="mb-3">
                                     <label for="{{ $formId }}_receipt_file" class="form-label">رفع الوصل <span class="text-danger">*</span></label>
-                                    <input type="file" class="form-control" id="{{ $formId }}_receipt_file" name="receipt_file" accept="image/*,application/pdf">
+                                    <input type="file" class="form-control" id="{{ $formId }}_receipt_file" name="receipt_file" accept="image/*,application/pdf" {{ $ibanReceiptRequired ? 'required' : '' }}>
                                     <small class="text-muted">صيغ مدعومة: JPG, PNG, PDF (حجم أقصى 5MB)</small>
                                 </div>
                             @endif
                         </div>
                     </div>
 
-                    @foreach($customPaymentMethods as $method)
-                        <div class="payment-method mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="payment_method" id="{{ $formId }}_custom_{{ $method->id }}" value="custom" data-method-id="{{ $method->id }}">
-                                <label class="form-check-label w-100" for="{{ $formId }}_custom_{{ $method->id }}">
-                                    <div>
-                                        <i class="bi bi-credit-card-2-front me-2 text-warning"></i>
-                                        <strong>{{ $method->name }}</strong>
-                                        @if($method->instructions)
-                                            <small class="text-muted d-block">{{ $method->instructions }}</small>
-                                        @endif
-                                    </div>
-                                </label>
-                            </div>
-                            <div id="{{ $formId }}_custom_{{ $method->id }}_details" class="mt-3 js-custom-details" style="display: none;">
-                                @if($method->account_info)
-                                    <div class="alert alert-info">
-                                        @foreach($method->account_info as $key => $value)
-                                            <p class="mb-1"><strong>{{ $key }}:</strong> {{ $value }}</p>
-                                        @endforeach
-                                    </div>
-                                @endif
-                                @if($method->requires_receipt)
-                                    <div class="mb-3">
-                                        <label for="{{ $formId }}_receipt_file_{{ $method->id }}" class="form-label">رفع الوصل <span class="text-danger">*</span></label>
-                                        <input type="file" class="form-control receipt-file" id="{{ $formId }}_receipt_file_{{ $method->id }}" data-method-id="{{ $method->id }}" name="receipt_file" accept="image/*,application/pdf">
-                                        <small class="text-muted">صيغ مدعومة: JPG, PNG, PDF (حجم أقصى 5MB)</small>
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                    @endforeach
-
-                    <div class="payment-method mb-3 opacity-50">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="payment_method" id="{{ $formId }}_stripe" value="stripe" disabled>
-                            <label class="form-check-label" for="{{ $formId }}_stripe">
-                                <i class="bi bi-credit-card me-2"></i>
-                                <strong>بطاقة ائتمانية (Stripe)</strong>
-                                <small class="text-muted d-block">قريباً</small>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="payment-method mb-3 opacity-50">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="payment_method" id="{{ $formId }}_paypal" value="paypal" disabled>
-                            <label class="form-check-label" for="{{ $formId }}_paypal">
-                                <i class="bi bi-paypal me-2"></i>
-                                <strong>PayPal</strong>
-                                <small class="text-muted d-block">قريباً</small>
-                            </label>
-                        </div>
-                    </div>
-
                     <div class="mt-4">
                         <button type="submit" class="btn btn-primary w-100 js-inline-payment-submit">
                             <i class="bi bi-check-circle me-2"></i>
-                            تأكيد الدفع
+                            تأكيد الدفع وإرسال الطلب
                         </button>
                     </div>
                 </form>

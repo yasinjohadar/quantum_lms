@@ -5,9 +5,14 @@ namespace App\Services;
 use App\Models\ClassEnrollment;
 use App\Models\Enrollment;
 use App\Models\SchoolClass;
+use App\Services\Pricing\SubjectPricingResolver;
 
 class AdminStudentEnrollmentService
 {
+    public function __construct(
+        protected SubjectPricingResolver $subjectPricingResolver,
+    ) {
+    }
     /**
      * ربط طالب بصف (موافقة) ومزامنة مواد الصف النشطة.
      *
@@ -67,6 +72,9 @@ class AdminStudentEnrollmentService
         $skippedCount = 0;
 
         foreach ($class->subjects as $subject) {
+            if (! $this->subjectPricingResolver->isIncludedInClassBundle($subject)) {
+                continue;
+            }
             $existingEnrollment = Enrollment::withTrashed()
                 ->where('user_id', $userId)
                 ->where('subject_id', $subject->id)

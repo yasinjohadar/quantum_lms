@@ -11,6 +11,51 @@
         return q ? (base + '?' + q) : base;
     };
 
+    window.EnrollmentInlinePurchase.showPaymentPendingModal = function (message, redirectUrl) {
+        var modalEl = document.getElementById('paymentPendingReviewModal');
+        var messageEl = document.getElementById('paymentPendingReviewModalMessage');
+        var okBtn = document.getElementById('paymentPendingReviewModalOk');
+        if (!modalEl || !messageEl) {
+            alert(message || 'تم إرسال طلب الدفع بنجاح');
+            if (redirectUrl) {
+                window.location.href = redirectUrl;
+            }
+            return;
+        }
+
+        messageEl.textContent = message || '';
+        ['enrollmentPaymentModal', 'classEnrollmentPaymentModal'].forEach(function (modalId) {
+            var paymentModal = document.getElementById(modalId);
+            if (paymentModal) {
+                var inst = bootstrap.Modal.getInstance(paymentModal);
+                if (inst) {
+                    inst.hide();
+                }
+            }
+        });
+
+        var pendingModal = bootstrap.Modal.getInstance(modalEl);
+        if (!pendingModal) {
+            pendingModal = new bootstrap.Modal(modalEl);
+        }
+
+        var onHidden = function () {
+            modalEl.removeEventListener('hidden.bs.modal', onHidden);
+            if (redirectUrl) {
+                window.location.href = redirectUrl;
+            }
+        };
+        modalEl.addEventListener('hidden.bs.modal', onHidden);
+
+        if (okBtn) {
+            okBtn.onclick = function () {
+                pendingModal.hide();
+            };
+        }
+
+        pendingModal.show();
+    };
+
     window.EnrollmentInlinePurchase.bindForm = function (root) {
         if (!root) {
             return;
@@ -21,44 +66,12 @@
         }
         form.setAttribute('data-inline-bound', '1');
 
-        function hidePaymentDetails() {
-            form.querySelectorAll('.js-iban-details, .js-custom-details').forEach(function (el) {
-                el.style.display = 'none';
-            });
-        }
-
-        form.querySelectorAll('input[name="payment_method"]').forEach(function (radio) {
-            radio.addEventListener('change', function () {
-                hidePaymentDetails();
-                if (this.value === 'iban') {
-                    var ibanEl = form.querySelector('[id$="_ibanDetails"]');
-                    if (ibanEl) {
-                        ibanEl.style.display = 'block';
-                    }
-                } else if (this.value === 'custom') {
-                    var methodId = this.getAttribute('data-method-id');
-                    if (methodId) {
-                        var customEl = document.getElementById(form.id + '_custom_' + methodId + '_details');
-                        if (customEl) {
-                            customEl.style.display = 'block';
-                        }
-                    }
-                }
-            });
-        });
-
         form.addEventListener('submit', function (e) {
             e.preventDefault();
 
-            var paymentMethod = form.querySelector('input[name="payment_method"]:checked');
-            if (!paymentMethod) {
-                alert('يرجى اختيار طريقة الدفع');
-                return;
-            }
-
             var formData = new FormData(form);
-            if (paymentMethod.value === 'custom') {
-                formData.append('custom_payment_method_id', paymentMethod.getAttribute('data-method-id'));
+            if (!formData.get('payment_method')) {
+                formData.set('payment_method', 'iban');
             }
 
             var submitBtn = form.querySelector('.js-inline-payment-submit');
@@ -84,6 +97,13 @@
                 })
                 .then(function (data) {
                     if (data.success) {
+                        if (data.pending_review) {
+                            window.EnrollmentInlinePurchase.showPaymentPendingModal(
+                                data.message,
+                                data.redirect || successUrl
+                            );
+                            return;
+                        }
                         alert(data.message || 'تم بنجاح');
                         window.location.href = data.redirect || successUrl;
                         return;
@@ -91,14 +111,14 @@
                     alert(data.message || 'حدث خطأ أثناء معالجة الدفع');
                     if (submitBtn) {
                         submitBtn.disabled = false;
-                        submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>تأكيد الدفع';
+                        submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>تأكيد الدفع وإرسال الطلب';
                     }
                 })
                 .catch(function () {
                     alert('حدث خطأ أثناء معالجة الدفع');
                     if (submitBtn) {
                         submitBtn.disabled = false;
-                        submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>تأكيد الدفع';
+                        submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>تأكيد الدفع وإرسال الطلب';
                     }
                 });
         });
@@ -106,7 +126,7 @@
 
     window.EnrollmentInlinePurchase.openPaymentModal = function (modalEl, bodyEl, purchaseId, queryParams) {
         var url = window.EnrollmentInlinePurchase.fragmentUrl(purchaseId, queryParams);
-        bodyEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">جاري التحميل...</p></div>';
+        bodyEl.innerHTML = '<motion class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">جاري التحميل...</p></div>';
 
         var modal = bootstrap.Modal.getInstance(modalEl);
         if (!modal) {

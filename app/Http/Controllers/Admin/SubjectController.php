@@ -204,20 +204,6 @@ class SubjectController extends Controller
                 }
             }
 
-            // صورة Open Graph
-            if ($request->hasFile('og_image')) {
-                try {
-                    $ogImage = $request->file('og_image');
-                    $ogImageName = time() . '_og_' . $ogImage->getClientOriginalName();
-                    $uploadResult = MediaStorageService::uploadImage($ogImage, 'subjects/og_images', $ogImageName);
-                    $data['og_image'] = $uploadResult['path'];
-                } catch (\Exception $e) {
-                    return back()
-                        ->withInput()
-                        ->with('error', 'حدث خطأ أثناء رفع صورة Open Graph للمادة: ' . $e->getMessage());
-                }
-            }
-
             $data['is_active'] = $request->has('is_active');
             $data['display_in_class'] = $request->has('display_in_class');
             $data['order'] = $request->input('order', 0);
@@ -225,6 +211,9 @@ class SubjectController extends Controller
             $data['is_free'] = $request->has('is_free') || $request->input('price', 0) == 0;
             $data['pricing_mode'] = $request->input('pricing_mode', 'inherit');
             $data['is_free_override'] = $request->has('is_free_override');
+            $data['free_join_auto_approve'] = $request->has('is_free_override')
+                ? $request->boolean('free_join_auto_approve', true)
+                : null;
             $data['can_purchase_separately'] = $request->has('can_purchase_separately');
             $data['show_price'] = $request->has('show_price');
             $data['default_currency_id'] = $request->input('default_currency_id');
@@ -252,6 +241,8 @@ class SubjectController extends Controller
                     }
                 }
             }
+
+            $this->syncPricingModeFromPrices($subject, $request);
 
             if ($request->filled('return_to_class_id')) {
                 return redirect()->route('admin.classes.show', $request->input('return_to_class_id'))
@@ -522,26 +513,6 @@ class SubjectController extends Controller
                 unset($data['image']);
             }
 
-            // صورة Open Graph
-            if ($request->hasFile('og_image')) {
-                try {
-                    if ($subject->og_image) {
-                        MediaStorageService::delete($subject->og_image);
-                    }
-
-                    $ogImage = $request->file('og_image');
-                    $ogImageName = time() . '_og_' . $ogImage->getClientOriginalName();
-                    $uploadResult = MediaStorageService::uploadImage($ogImage, 'subjects/og_images', $ogImageName);
-                    $data['og_image'] = $uploadResult['path'];
-                } catch (\Exception $e) {
-                    return back()
-                        ->withInput()
-                        ->with('error', 'حدث خطأ أثناء رفع صورة Open Graph: ' . $e->getMessage());
-                }
-            } else {
-                unset($data['og_image']);
-            }
-
             $data['is_active'] = $request->has('is_active');
             $data['display_in_class'] = $request->has('display_in_class');
             $data['order'] = $request->input('order', $subject->order);
@@ -549,6 +520,9 @@ class SubjectController extends Controller
             $data['is_free'] = $request->has('is_free') || $request->input('price', 0) == 0;
             $data['pricing_mode'] = $request->input('pricing_mode', $subject->pricing_mode ?? 'inherit');
             $data['is_free_override'] = $request->has('is_free_override');
+            $data['free_join_auto_approve'] = $request->has('is_free_override')
+                ? $request->boolean('free_join_auto_approve', true)
+                : null;
             $data['can_purchase_separately'] = $request->has('can_purchase_separately');
             $data['show_price'] = $request->has('show_price');
             $data['default_currency_id'] = $request->input('default_currency_id');
@@ -594,6 +568,8 @@ class SubjectController extends Controller
                     }
                 }
             }
+
+            $this->syncPricingModeFromPrices($subject, $request);
 
             if ($request->filled('return_to_class_id')) {
                 return redirect()->route('admin.classes.show', $request->return_to_class_id)
@@ -745,6 +721,35 @@ class SubjectController extends Controller
 
         if (!$user->can('subject-show')) {
             abort(403, 'غير مصرح لك بالوصول');
+        }
+    }
+
+    /**
+     * When a subject has an active price and separate purchase, persist pricing_mode as paid
+     * so storefront logic matches admin intent (avoids inherit-on-free-class treating it as free).
+     */
+    private function syncPricingModeFromPrices(Subject $subject, \Illuminate\Http\Request $request): void
+    {
+        if ($request->has('is_free_override')) {
+            $subject->update([
+                'pricing_mode' => 'free',
+                'can_purchase_separately' => false,
+            ]);
+
+            return;
+        }
+
+        if (! $request->has('can_purchase_separately')) {
+            return;
+        }
+
+        $hasPositiveActivePrice = $subject->prices()
+            ->active()
+            ->where('price', '>', 0)
+            ->exists();
+
+        if ($hasPositiveActivePrice) {
+            $subject->update(['pricing_mode' => 'paid']);
         }
     }
 }

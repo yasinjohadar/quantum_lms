@@ -42,17 +42,11 @@ class PurchasePolicyResolver
             return false;
         }
 
-        $pricingMode = $this->subjectPricingResolver->resolvePricingMode($subject);
-
-        if (!$pricingMode->isPurchasable()) {
+        if (! $this->subjectPricingResolver->canPurchaseSeparately($subject)) {
             return false;
         }
 
         if ($this->accessResolver->hasSubjectAccess($user, $subject)) {
-            return false;
-        }
-
-        if ($pricingMode === PricingMode::BUNDLE_ONLY) {
             return false;
         }
 

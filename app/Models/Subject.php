@@ -37,6 +37,7 @@ class Subject extends Model
         'is_free',
         'pricing_mode',
         'is_free_override',
+        'free_join_auto_approve',
         'can_purchase_separately',
         'show_price',
         'default_currency_id',
@@ -55,6 +56,7 @@ class Subject extends Model
         'price' => 'decimal:2',
         'is_free' => 'boolean',
         'is_free_override' => 'boolean',
+        'free_join_auto_approve' => 'boolean',
         'can_purchase_separately' => 'boolean',
         'show_price' => 'boolean',
     ];
@@ -373,6 +375,48 @@ class Subject extends Model
     public function getAccessData(?User $user = null, $currencyId = null): \App\DataTransferObjects\SubjectAccessData
     {
         return app(\App\Services\Pricing\PricingResolver::class)->resolveSubjectAccessData($this, $user, $currencyId);
+    }
+
+    /**
+     * هل يُقبل انضمام المادة المجانية تلقائياً؟ القيمة الافتراضية true للتوافق مع النسخ السابقة.
+     */
+    public function effectiveFreeJoinAutoApprove(): bool
+    {
+        if ($this->free_join_auto_approve === null) {
+            return true;
+        }
+
+        return (bool) $this->free_join_auto_approve;
+    }
+
+    /**
+     * هل يجب حجب الوصول المجاني للمادة حتى موافقة إدارية؟
+     * ينطبق على مسار «مجانية دائماً» أو pricing_mode = free.
+     */
+    public function gatesFreeEnrollmentUntilApproved(): bool
+    {
+        if (! ($this->is_free_override || $this->pricing_mode === 'free')) {
+            return false;
+        }
+
+        return ! $this->effectiveFreeJoinAutoApprove();
+    }
+
+    /**
+     * هل يتطلب انضمام هذه المادة (مسار مجاني) موافقة إدارية؟
+     * الأشد يفوز: إعداد الصف أو إعداد المادة.
+     */
+    public function freeSubjectEnrollmentRequiresApproval(): bool
+    {
+        $class = $this->relationLoaded('schoolClass')
+            ? $this->schoolClass
+            : $this->schoolClass()->first();
+
+        if ($class?->gatesFreeEnrollmentUntilApproved()) {
+            return true;
+        }
+
+        return $this->gatesFreeEnrollmentUntilApproved();
     }
 }
 

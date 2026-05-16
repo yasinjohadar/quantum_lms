@@ -85,6 +85,16 @@
                                                     <i class="fas fa-file-invoice me-2 text-primary"></i>طلب رفع وصل التحويل البنكي (IBAN)
                                                 @elseif($setting->key === 'payments_iban_student_instructions')
                                                     <i class="fas fa-align-right me-2 text-secondary"></i>تعليمات التحويل البنكي للطالب
+                                                @elseif($setting->key === 'payments_iban_display_name')
+                                                    <i class="fas fa-tag me-2 text-primary"></i>اسم طريقة الدفع (التحويل البنكي)
+                                                @elseif($setting->key === 'payments_iban_account_iban')
+                                                    <i class="fas fa-university me-2 text-info"></i>رقم IBAN للتحويل
+                                                @elseif($setting->key === 'payments_iban_account_bank_name')
+                                                    <i class="fas fa-building-columns me-2 text-info"></i>اسم البنك
+                                                @elseif($setting->key === 'payments_iban_account_holder')
+                                                    <i class="fas fa-user me-2 text-secondary"></i>اسم صاحب الحساب
+                                                @elseif($setting->key === 'payments_iban_pending_message')
+                                                    <i class="fas fa-hourglass-half me-2 text-warning"></i>رسالة «الطلب قيد المعالجة» للطالب
                                                 @elseif($setting->key === 'social_facebook_url')
                                                     <i class="fab fa-facebook-f me-2 text-primary"></i>رابط فيسبوك
                                                 @elseif($setting->key === 'social_instagram_url')
@@ -203,8 +213,8 @@
                                                 <textarea class="form-control" 
                                                          name="settings[{{ $setting->key }}]" 
                                                          id="setting_{{ $setting->id }}" 
-                                                         rows="{{ $setting->key === 'payments_iban_student_instructions' ? 5 : 3 }}"
-                                                         @if($setting->key === 'otp_message_template') placeholder="مثال: رمز التحقق الخاص بك هو: {code} - صالح لمدة {expires_in} دقائق" @elseif($setting->key === 'payments_iban_student_instructions') placeholder="مثال: أرسل المبلغ من حسابك باسمك الكامل، ثم احفظ رقم العملية..." @endif>{{ $setting->value }}</textarea>
+                                                         rows="{{ in_array($setting->key, ['payments_iban_student_instructions', 'payments_iban_pending_message'], true) ? 5 : 3 }}"
+                                                         @if($setting->key === 'otp_message_template') placeholder="مثال: رمز التحقق الخاص بك هو: {code} - صالح لمدة {expires_in} دقائق" @elseif($setting->key === 'payments_iban_student_instructions') placeholder="مثال: أرسل المبلغ من حسابك باسمك الكامل، ثم احفظ رقم العملية..." @elseif($setting->key === 'payments_iban_pending_message') placeholder="مثال: الطلب قيد المعالجة. يجب التواصل مع المشرفة لتأكيد الاشتراك." @endif>{{ $setting->value }}</textarea>
                                             @else
                                                 <input type="text" 
                                                       class="form-control" 

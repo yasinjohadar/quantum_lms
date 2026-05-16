@@ -157,6 +157,7 @@
 </div>
 
 @include('student.pages.enrollments.partials.pending-review-modal')
+@include('student.pages.purchases.partials.payment-pending-modal')
 @stop
 
 @push('scripts')

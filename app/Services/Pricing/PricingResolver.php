@@ -153,14 +153,7 @@ class PricingResolver
 
     private function resolveSubjectPricingMode(Subject $subject): PricingMode
     {
-        if (isset($subject->pricing_mode) && !empty($subject->pricing_mode)) {
-            return PricingMode::from($subject->pricing_mode);
-        }
-
-        return PricingMode::fromLegacy(
-            $subject->is_free_override ?? false,
-            $subject->can_purchase_separately ?? true
-        );
+        return $this->subjectPricingResolver->resolvePricingMode($subject);
     }
 
     private function getCurrency(Subject $subject, $currencyId = null): ?Currency

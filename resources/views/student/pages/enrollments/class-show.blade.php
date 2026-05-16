@@ -135,11 +135,39 @@
                                         </button>
                                     </div>
                                 @else
+                                    @php
+                                        $access = $subjectAccessById[$subject->id] ?? null;
+                                    @endphp
                                     <div onclick="event.stopPropagation();">
-                                        <button class="btn btn-primary btn-sm w-100" onclick="requestEnrollment({{ $subject->id }}, '{{ addslashes($subject->name) }}')" type="button">
-                                            <i class="bi bi-plus-circle me-1"></i>
-                                            طلب الانضمام
-                                        </button>
+                                        @if($access && ($access['can_access'] ?? false))
+                                            <a href="{{ route('student.subjects.show', $subject->id) }}" class="btn btn-success btn-sm w-100">
+                                                <i class="bi bi-box-arrow-in-right me-1"></i>
+                                                دخول المادة
+                                            </a>
+                                        @elseif($access && ($access['can_purchase'] ?? false))
+                                            @if(($access['show_price'] ?? false) && !empty($access['display_price']))
+                                                <p class="small text-muted mb-2 text-center">{{ $access['display_price'] }}</p>
+                                            @endif
+                                            <button class="btn btn-warning btn-sm w-100" onclick="requestEnrollment({{ $subject->id }}, '{{ addslashes($subject->name) }}')" type="button">
+                                                <i class="bi bi-cart-plus me-1"></i>
+                                                شراء / طلب الانضمام
+                                            </button>
+                                        @elseif($access && ($access['pricing_mode'] ?? '') === 'free' && !($access['can_access'] ?? false))
+                                            <button class="btn btn-primary btn-sm w-100" onclick="requestEnrollment({{ $subject->id }}, '{{ addslashes($subject->name) }}')" type="button">
+                                                <i class="bi bi-plus-circle me-1"></i>
+                                                طلب الانضمام
+                                            </button>
+                                        @elseif($access && !($access['can_purchase_separately'] ?? true))
+                                            <button class="btn btn-outline-secondary btn-sm w-100" type="button" disabled title="هذه المادة متاحة فقط عبر شراء الصف الكامل">
+                                                <i class="bi bi-building me-1"></i>
+                                                عبر الصف فقط
+                                            </button>
+                                        @else
+                                            <button class="btn btn-primary btn-sm w-100" onclick="requestEnrollment({{ $subject->id }}, '{{ addslashes($subject->name) }}')" type="button">
+                                                <i class="bi bi-plus-circle me-1"></i>
+                                                طلب الانضمام
+                                            </button>
+                                        @endif
                                     </div>
                                 @endif
                             </div>
@@ -273,6 +301,7 @@
     </div>
 </div>
 @include('student.pages.enrollments.partials.pending-review-modal')
+@include('student.pages.purchases.partials.payment-pending-modal')
 @stop
 
 @section('script')

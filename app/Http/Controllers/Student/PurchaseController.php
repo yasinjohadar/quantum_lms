@@ -9,6 +9,7 @@ use App\Models\Purchase;
 use App\Models\Payment;
 use App\Models\CustomPaymentMethod;
 use App\Models\SystemSetting;
+use App\Services\Pricing\PricingResolver;
 use App\Services\PurchaseService;
 use App\Services\PaymentService;
 use App\Services\WalletService;
@@ -27,7 +28,8 @@ class PurchaseController extends Controller
     public function __construct(
         PurchaseService $purchaseService,
         PaymentService $paymentService,
-        WalletService $walletService
+        WalletService $walletService,
+        protected PricingResolver $pricingResolver,
     ) {
         $this->purchaseService = $purchaseService;
         $this->paymentService = $paymentService;
@@ -78,19 +80,17 @@ class PurchaseController extends Controller
         $user = Auth::user();
         $subject = Subject::where('is_active', true)->findOrFail($subjectId);
 
-        // التحقق من الوصول باستخدام SubjectPricingService
-        $pricingService = app(\App\Services\SubjectPricingService::class);
+        $access = $this->pricingResolver->resolveSubjectAccessData($subject, $user, null);
 
-        if ($pricingService->hasAccess($user, $subject)) {
+        if ($access->canAccess) {
             return redirect()->route('student.subjects.show', $subject->id)
                 ->with('info', 'لديك وصول لهذه المادة');
         }
 
-        // التحقق من عدم إمكانية الشراء المنفصل
-        if (!$pricingService->canPurchaseSeparately($subject)) {
+        if (! $access->canPurchaseSeparately) {
             $class = $subject->schoolClass;
-            if ($class && !$class->is_free) {
-                return redirect()->route('student.purchase.class.show', $class->id)
+            if ($class && ! $class->is_free) {
+                return redirect()->route('student.purchases.class.show', $class->id)
                     ->with('info', 'هذه المادة متاحة فقط من خلال شراء الصف');
             }
         }
@@ -283,8 +283,7 @@ class PurchaseController extends Controller
             : 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120';
 
         $request->validate([
-            'payment_method' => 'required|in:stripe,paypal,wallet,iban,custom',
-            'custom_payment_method_id' => 'required_if:payment_method,custom|integer|exists:custom_payment_methods,id',
+            'payment_method' => 'required|in:iban',
             'receipt_file' => $ibanReceiptRules,
             'payment_data' => 'nullable|array',
             'currency_id' => 'nullable|exists:currencies,id',
@@ -294,35 +293,10 @@ class PurchaseController extends Controller
         $result = null;
 
         try {
-            switch ($paymentMethod) {
-                case 'stripe':
-                    $result = $this->paymentService->processStripePayment($purchase, $request->token);
-                    break;
-
-                case 'paypal':
-                    $result = $this->paymentService->processPayPalPayment($purchase, $request->all());
-                    break;
-
-                case 'wallet':
-                    $result = $this->paymentService->processWalletPayment($purchase);
-                    break;
-
-                case 'iban':
-                    $result = $this->paymentService->processIBANPayment($purchase, $request->hasFile('receipt_file') ? $request->file('receipt_file') : null);
-                    break;
-
-                case 'custom':
-                    $customData = $request->all();
-                    if ($request->hasFile('receipt_file')) {
-                        $customData['receipt_file'] = $request->file('receipt_file');
-                    }
-                    $result = $this->paymentService->processCustomPayment(
-                        $purchase,
-                        $request->custom_payment_method_id,
-                        $customData
-                    );
-                    break;
-            }
+            $result = $this->paymentService->processIBANPayment(
+                $purchase,
+                $request->hasFile('receipt_file') ? $request->file('receipt_file') : null
+            );
 
             if (!$result || !$result['success']) {
                 return response()->json([
@@ -353,15 +327,16 @@ class PurchaseController extends Controller
 
             $this->purchaseService->processPurchase($purchase, $paymentMethod, $data);
 
-            $message = 'تم إرسال طلب الدفع بنجاح';
-            if ($paymentMethod === 'iban' || $paymentMethod === 'custom') {
-                $message = 'تم إرسال طلب الدفع بنجاح. سيتم مراجعته من قبل الإدارة';
+            $redirect = $request->input('redirect_url', route('student.classes'));
+            if (! is_string($redirect) || $redirect === '' || ! str_starts_with($redirect, url('/'))) {
+                $redirect = route('student.classes');
             }
 
             return response()->json([
                 'success' => true,
-                'message' => $message,
-                'redirect' => route('student.classes'),
+                'pending_review' => true,
+                'message' => SystemSetting::ibanPendingMessage(),
+                'redirect' => $redirect,
             ]);
 
         } catch (\Exception $e) {

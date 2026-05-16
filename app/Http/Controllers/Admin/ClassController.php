@@ -183,20 +183,6 @@ class ClassController extends Controller
                 }
             }
 
-            // صورة Open Graph
-            if ($request->hasFile('og_image')) {
-                try {
-                    $ogImage = $request->file('og_image');
-                    $ogImageName = time() . '_og_' . $ogImage->getClientOriginalName();
-                    $uploadResult = MediaStorageService::uploadImage($ogImage, 'classes/og_images', $ogImageName);
-                    $data['og_image'] = $uploadResult['path'];
-                } catch (\Exception $e) {
-                    return back()
-                        ->withInput()
-                        ->with('error', 'حدث خطأ أثناء رفع صورة Open Graph للصف: ' . $e->getMessage());
-                }
-            }
-
             $data['is_active'] = $request->has('is_active');
             $data['order'] = $request->input('order', 0);
             $data['price'] = $request->input('price', 0);
@@ -327,26 +313,6 @@ class ClassController extends Controller
                 }
             } else {
                 unset($data['image']);
-            }
-
-            // صورة Open Graph
-            if ($request->hasFile('og_image')) {
-                try {
-                    if ($class->og_image) {
-                        MediaStorageService::delete($class->og_image);
-                    }
-
-                    $ogImage = $request->file('og_image');
-                    $ogImageName = time() . '_og_' . $ogImage->getClientOriginalName();
-                    $uploadResult = MediaStorageService::uploadImage($ogImage, 'classes/og_images', $ogImageName);
-                    $data['og_image'] = $uploadResult['path'];
-                } catch (\Exception $e) {
-                    return back()
-                        ->withInput()
-                        ->with('error', 'حدث خطأ أثناء رفع صورة Open Graph: ' . $e->getMessage());
-                }
-            } else {
-                unset($data['og_image']);
             }
 
             $data['is_active'] = $request->has('is_active');
