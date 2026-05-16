@@ -847,6 +847,48 @@ class UserController extends Controller
     }
 
     /**
+     * حذف نهائي لانضمامات الصف والمواد المرتبطة به (تجاوز SoftDeletes حتى يُعاد الطالب كجديد عند إعادة التسجيل).
+     *
+     * @return array{class_enrollments: int, enrollments: int}
+     */
+    protected function permanentlyDetachUsersFromClass(array $userIds, int $classId): array
+    {
+        $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds))));
+        if ($userIds === []) {
+            return ['class_enrollments' => 0, 'enrollments' => 0];
+        }
+
+        $subjectIds = Subject::withTrashed()->where('class_id', $classId)->pluck('id');
+
+        $classRows = ClassEnrollment::withTrashed()
+            ->whereIn('user_id', $userIds)
+            ->where('class_id', $classId)
+            ->get();
+        $deletedClassEnrollments = $classRows->count();
+        foreach ($classRows as $row) {
+            $row->forceDelete();
+        }
+
+        if ($subjectIds->isEmpty()) {
+            return ['class_enrollments' => $deletedClassEnrollments, 'enrollments' => 0];
+        }
+
+        $enrollmentRows = Enrollment::withTrashed()
+            ->whereIn('user_id', $userIds)
+            ->whereIn('subject_id', $subjectIds)
+            ->get();
+        $deletedEnrollments = $enrollmentRows->count();
+        foreach ($enrollmentRows as $row) {
+            $row->forceDelete();
+        }
+
+        return [
+            'class_enrollments' => $deletedClassEnrollments,
+            'enrollments' => $deletedEnrollments,
+        ];
+    }
+
+    /**
      * تبديل حالة المستخدم (تفعيل / إلغاء تفعيل) عبر فورم عادي بدون Ajax
      */
     public function toggleStatus(Request $request, $id)
@@ -873,8 +915,7 @@ class UserController extends Controller
     }
 
     /**
-     * فصل الطالب عن صف (بدون اعتبار status في ClassEnrollment).
-     * يتم حذف ClassEnrollment للصف + حذف Enrollments الخاصة بمواد هذا الصف.
+     * فصل الطالب عن صف: حذف نهائي لـ ClassEnrollment وسجلات Enrollment لمواد الصف (بدون Soft Delete).
      */
     public function detachFromClass(Request $request): JsonResponse
     {
@@ -887,26 +928,16 @@ class UserController extends Controller
             $userId = (int) $validated['user_id'];
             $classId = (int) $validated['class_id'];
 
-            // فصل الطالب عن هذا الصف (approved + pending + rejected ...).
-            $deletedClassEnrollments = ClassEnrollment::where('user_id', $userId)
-                ->where('class_id', $classId)
-                ->delete();
-
-            // حذف انضمامات الطالب للمواد التابعة لهذا الصف.
-            $deletedEnrollments = Enrollment::where('user_id', $userId)
-                ->whereHas('subject', function ($q) use ($classId) {
-                    $q->where('class_id', $classId);
-                })
-                ->delete();
+            $deleted = $this->permanentlyDetachUsersFromClass([$userId], $classId);
 
             $this->revokeClassPurchaseAccessForUsers([$userId], $classId);
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم فصل الطالب عن الصف بنجاح.',
+                'message' => 'تم فصل الطالب عن الصف نهائياً.',
                 'deleted' => [
-                    'class_enrollments' => $deletedClassEnrollments,
-                    'enrollments' => $deletedEnrollments,
+                    'class_enrollments' => $deleted['class_enrollments'],
+                    'enrollments' => $deleted['enrollments'],
                 ],
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -930,8 +961,7 @@ class UserController extends Controller
     }
 
     /**
-     * فصل جماعي للطلاب المحددين عن صف محدد.
-     * يتم حذف ClassEnrollment + Enrollment للمواد التابعة لنفس الصف.
+     * فصل جماعي للطلاب المحددين عن صف محدد (حذف نهائي).
      */
     public function detachMultipleFromClass(Request $request): JsonResponse
     {
@@ -945,24 +975,16 @@ class UserController extends Controller
             $userIds = array_map('intval', $validated['user_ids']);
             $classId = (int) $validated['class_id'];
 
-            $deletedClassEnrollments = ClassEnrollment::whereIn('user_id', $userIds)
-                ->where('class_id', $classId)
-                ->delete();
-
-            $deletedEnrollments = Enrollment::whereIn('user_id', $userIds)
-                ->whereHas('subject', function ($q) use ($classId) {
-                    $q->where('class_id', $classId);
-                })
-                ->delete();
+            $deleted = $this->permanentlyDetachUsersFromClass($userIds, $classId);
 
             $this->revokeClassPurchaseAccessForUsers($userIds, $classId);
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم فصل الطلاب عن الصف بنجاح.',
+                'message' => 'تم فصل الطلاب عن الصف نهائياً.',
                 'deleted' => [
-                    'class_enrollments' => $deletedClassEnrollments,
-                    'enrollments' => $deletedEnrollments,
+                    'class_enrollments' => $deleted['class_enrollments'],
+                    'enrollments' => $deleted['enrollments'],
                 ],
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -986,9 +1008,7 @@ class UserController extends Controller
     }
 
     /**
-     * فصل جميع الطلاب عن صف محدد:
-     * - حذف ClassEnrollment لهذا الصف
-     * - حذف Enrollment للمواد التابعة لنفس الصف (Enrollment عبر subject.class_id)
+     * فصل جميع الطلاب عن صف محدد (حذف نهائي لـ ClassEnrollment و Enrollment ذات الصلة).
      */
     public function detachAllFromClass(Request $request): JsonResponse
     {
@@ -999,19 +1019,25 @@ class UserController extends Controller
 
             $classId = (int) $validated['class_id'];
 
-            $cacheUserIds = ClassEnrollment::where('class_id', $classId)->pluck('user_id')
-                ->merge(Enrollment::whereHas('subject', fn ($q) => $q->where('class_id', $classId))->pluck('user_id'))
+            $subjectIds = Subject::withTrashed()->where('class_id', $classId)->pluck('id');
+
+            $cacheUserIds = ClassEnrollment::withTrashed()->where('class_id', $classId)->pluck('user_id')
+                ->merge(Enrollment::withTrashed()->whereIn('subject_id', $subjectIds)->pluck('user_id'))
                 ->merge(Purchase::where('purchasable_type', SchoolClass::class)->where('purchasable_id', $classId)->pluck('user_id'))
                 ->unique()
                 ->filter()
                 ->values()
                 ->all();
 
-            $deletedClassEnrollments = ClassEnrollment::where('class_id', $classId)->delete();
+            $detachUserIds = ClassEnrollment::withTrashed()->where('class_id', $classId)->pluck('user_id')
+                ->merge(Enrollment::withTrashed()->whereIn('subject_id', $subjectIds)->pluck('user_id'))
+                ->unique()
+                ->filter()
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all();
 
-            $deletedEnrollments = Enrollment::whereHas('subject', function ($q) use ($classId) {
-                $q->where('class_id', $classId);
-            })->delete();
+            $deleted = $this->permanentlyDetachUsersFromClass($detachUserIds, $classId);
 
             Purchase::where('purchasable_type', SchoolClass::class)
                 ->where('purchasable_id', $classId)
@@ -1026,10 +1052,10 @@ class UserController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم فصل جميع الطلاب عن الصف بنجاح.',
+                'message' => 'تم فصل جميع الطلاب عن الصف نهائياً.',
                 'deleted' => [
-                    'class_enrollments' => $deletedClassEnrollments,
-                    'enrollments' => $deletedEnrollments,
+                    'class_enrollments' => $deleted['class_enrollments'],
+                    'enrollments' => $deleted['enrollments'],
                 ],
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -1075,15 +1101,17 @@ class UserController extends Controller
                 ], 422);
             }
 
-            $deletedEnrollments = Enrollment::where('subject_id', $subjectId)
-                ->whereHas('subject', function ($q) use ($classId) {
-                    $q->where('class_id', $classId);
-                })
-                ->delete();
+            $enrollmentRows = Enrollment::withTrashed()
+                ->where('subject_id', $subjectId)
+                ->get();
+            $deletedEnrollments = $enrollmentRows->count();
+            foreach ($enrollmentRows as $row) {
+                $row->forceDelete();
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم فصل جميع الطلاب عن المادة بنجاح.',
+                'message' => 'تم فصل جميع الطلاب عن المادة نهائياً.',
                 'deleted' => [
                     'enrollments' => $deletedEnrollments,
                 ],
