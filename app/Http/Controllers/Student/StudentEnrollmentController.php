@@ -11,6 +11,8 @@ use App\Models\Purchase;
 use App\Models\User;
 use App\Models\ClassEnrollment;
 use App\Services\PurchaseService;
+use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -406,10 +408,15 @@ class StudentEnrollmentController extends Controller
                 ], 400);
             }
 
-            $existingClassEnrollment = ClassEnrollment::query()
+            // مع softDeletes: قد يبقى سطر محذوف ناعماً فيقاطع الـ INSERT بسبب unique (user_id, class_id)
+            $existingClassEnrollment = ClassEnrollment::withTrashed()
                 ->where('user_id', $user->id)
                 ->where('class_id', $classId)
                 ->first();
+
+            if ($existingClassEnrollment && $existingClassEnrollment->trashed()) {
+                $existingClassEnrollment->restore();
+            }
 
             if ($existingClassEnrollment) {
                 if ($existingClassEnrollment->status === 'approved') {
@@ -461,14 +468,26 @@ class StudentEnrollmentController extends Controller
             }
 
             if (! $class->effectiveFreeJoinAutoApprove()) {
-                ClassEnrollment::create([
-                    'user_id' => $user->id,
-                    'class_id' => $class->id,
-                    'enrolled_by' => null,
-                    'enrolled_at' => null,
-                    'status' => 'pending',
-                    'notes' => 'طلب انضمام لصف بمسار مجاني بانتظار موافقة الإدارة',
-                ]);
+                try {
+                    ClassEnrollment::create([
+                        'user_id' => $user->id,
+                        'class_id' => $class->id,
+                        'enrolled_by' => null,
+                        'enrolled_at' => null,
+                        'status' => 'pending',
+                        'notes' => 'طلب انضمام لصف بمسار مجاني بانتظار موافقة الإدارة',
+                    ]);
+                } catch (UniqueConstraintViolationException|QueryException $e) {
+                    $msg = $e instanceof QueryException ? (string) $e->getMessage() : '';
+                    $isDuplicate = str_contains($msg, 'Duplicate entry') || str_contains($msg, '1062');
+                    if ($isDuplicate || $e instanceof UniqueConstraintViolationException) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'لديك بالفعل طلب انضمام لهذا الصف قيد المراجعة أو مسجل مسبقاً.',
+                        ], 409);
+                    }
+                    throw $e;
+                }
 
                 return response()->json([
                     'success' => true,
@@ -484,11 +503,16 @@ class StudentEnrollmentController extends Controller
                 'message' => 'تم التسجيل في الصف بنجاح',
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error in requestClassEnrollment: '.$e->getMessage());
+            \Log::error('Error in requestClassEnrollment: '.$e->getMessage(), ['exception' => $e]);
+
+            $message = 'حدث خطأ أثناء إرسال الطلب. حاول مرة أخرى أو تواصل مع الإدارة.';
+            if (config('app.debug')) {
+                $message .= ' '.$e->getMessage();
+            }
 
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ أثناء إرسال الطلب: '.$e->getMessage(),
+                'message' => $message,
             ], 500);
         }
     }
