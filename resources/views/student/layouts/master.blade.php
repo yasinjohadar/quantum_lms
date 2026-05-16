@@ -52,9 +52,6 @@
         @include('student.layouts.main-sidebar')
 
 
-        @include('student.partials.pending-purchases-review-banner')
-
-
         @yield('content')
 
 

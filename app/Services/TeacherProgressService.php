@@ -14,7 +14,9 @@ use Illuminate\Support\Facades\Schema;
 class TeacherProgressService
 {
     /**
-     * عدد صفحات الدرس (من book_page_from و book_page_to)، أو 1 إذا كانت null.
+     * عدد صفحات الدرس من book_page_from و book_page_to.
+     * بدون نطاق كامل (الاثنان null) يُعامل كـ 0 في الإحصائيات.
+     * إذا وُجدت إحدى الصفحات فقط، يُحسب 1 (تقدير إلى أن الدرس له وزن غير صفري غير قابل للاحتساب بدقة).
      */
     public static function lessonPageCount(Lesson $lesson): int
     {
@@ -23,6 +25,10 @@ class TeacherProgressService
         if ($from !== null && $to !== null) {
             return max(0, $to - $from + 1);
         }
+        if ($from === null && $to === null) {
+            return 0;
+        }
+
         return 1;
     }
 
@@ -253,7 +259,7 @@ class TeacherProgressService
             return 'إلى صفحة ' . $to;
         }
 
-        return '— (بدون نطاق؛ يُحسب كصفحة واحدة في الإحصائيات)';
+        return '— (بدون نطاق؛ يُحسب 0 في إجمالي صفحات الإحصائيات)';
     }
 
     private static function lessonDisplaySortTuple(Lesson $lesson): array
@@ -478,7 +484,7 @@ class TeacherProgressService
                 ->whereNull('l.deleted_at')
                 ->whereNull('u.deleted_at')
                 ->whereNull('ss.deleted_at')
-                ->selectRaw('ss.subject_id as subject_id, SUM(CASE WHEN l.book_page_from IS NOT NULL AND l.book_page_to IS NOT NULL THEN GREATEST(0, l.book_page_to - l.book_page_from + 1) ELSE 1 END) as completed_pages')
+                ->selectRaw('ss.subject_id as subject_id, SUM(CASE WHEN l.book_page_from IS NOT NULL AND l.book_page_to IS NOT NULL THEN GREATEST(0, l.book_page_to - l.book_page_from + 1) WHEN l.book_page_from IS NULL AND l.book_page_to IS NULL THEN 0 ELSE 1 END) as completed_pages')
                 ->groupBy('ss.subject_id')
                 ->pluck('completed_pages', 'subject_id')
                 ->map(fn ($v) => (int) $v)

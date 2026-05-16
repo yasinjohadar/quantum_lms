@@ -8,6 +8,7 @@ use App\Services\LoginLogService;
 use App\Services\UserSessionService;
 use App\Services\SessionActivityService;
 use App\Services\AuditLogService;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -181,6 +182,35 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect()->route('login');
+        return redirect()->route($this->logoutRedirectRouteName($user));
+    }
+
+    /**
+     * بعد تسجيل الخروج: المستخدمون كالطالب (بدون لوحة إدارة/معلم) → بوابة الطلاب؛ غير ذلك → تسجيل الدخول العام.
+     */
+    private function logoutRedirectRouteName(?User $user): string
+    {
+        if ($user === null) {
+            return 'login';
+        }
+
+        $hasAdminDashboard = false;
+        try {
+            $hasAdminDashboard = $user->roles()
+                ->where('dashboard_type', 'admin')
+                ->exists();
+        } catch (\Exception $e) {
+            $hasAdminDashboard = false;
+        }
+
+        if ($hasAdminDashboard) {
+            return 'login';
+        }
+
+        if ($user->hasRole(['admin', 'supervisor', 'teacher'])) {
+            return 'login';
+        }
+
+        return 'student.login';
     }
 }

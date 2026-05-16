@@ -12,7 +12,8 @@ use Symfony\Component\HttpFoundation\Response;
 class ShareStudentPendingPurchasesForLayout
 {
     /**
-     * مشاركة مشتريات الطالب المعلّقة ورقم واتساب المشرفة مع كل واجهات تخطيط الطالب.
+     * مشاركة مشتريات الطالب المعلّقة ورقم واتساب المشرفة مع الواجهات التي تضمّنها صراحةً
+     * (مثل صفحة «صفوفي» عبر middleware على مسار student/classes).
      */
     public function handle(Request $request, Closure $next): Response
     {

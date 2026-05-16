@@ -9,12 +9,12 @@ use App\Http\Controllers\Student\StudentQuizController;
 use App\Http\Controllers\Student\StudentProgressController;
 use App\Http\Controllers\Student\NotificationPreferenceController as StudentNotificationPreferenceController;
 
-Route::middleware(['auth', 'check.user.active', 'share.student.pending.purchases'])->prefix('student')->as('student.')->group(function () {
+Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student.')->group(function () {
     // لوحة تحكم الطالب
     Route::get('/dashboard', [StudentController::class, 'dashboard'])->name('dashboard');
     
     // الدروس والمواد الدراسية
-    Route::get('/classes', [StudentLessonController::class, 'classes'])->name('classes');
+    Route::get('/classes', [StudentLessonController::class, 'classes'])->middleware('share.student.pending.purchases')->name('classes');
     Route::get('/subjects', [StudentLessonController::class, 'subjects'])->name('subjects');
     Route::get('/subjects/{subject}', [StudentLessonController::class, 'showSubject'])->name('subjects.show');
     Route::get('/subjects/{subject}/folders', [StudentLessonController::class, 'showSubjectFolders'])->name('subjects.folders');
