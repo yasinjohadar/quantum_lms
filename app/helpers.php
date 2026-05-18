@@ -1,5 +1,15 @@
 <?php
 
+if (! function_exists('question_heading_text')) {
+    /**
+     * عنوان الصفحة (ترويسة) بدون معادلات LaTeX خام.
+     */
+    function question_heading_text(?string $text, int $limit = 100): string
+    {
+        return \App\Support\QuestionMarkupFormatter::plainHeading($text, $limit);
+    }
+}
+
 if (! function_exists('format_question_markup')) {
     /**
      * تحويل النص بين backticks إلى كود مميز، مع دعم كتل ``` للنص متعدد الأسطر.

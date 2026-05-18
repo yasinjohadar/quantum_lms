@@ -654,8 +654,6 @@ document.addEventListener('DOMContentLoaded', function() {
     updateSelectedCount();
 });
 </script>
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
-    <script src="{{ asset('assets/js/question-math-katex.js') }}?v=20260518b"></script>
+    @include('partials.question-math-scripts')
 @stop
 

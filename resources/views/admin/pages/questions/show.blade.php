@@ -14,7 +14,7 @@
             <!-- Page Header -->
             <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
                 <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">{{ Str::limit(strip_tags($question->title), 50) }}</h5>
+                    <h5 class="page-title fs-21 mb-1">{{ question_heading_text($question->title) }}</h5>
                     <nav>
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
@@ -419,8 +419,6 @@
 @stop
 
 @section('js')
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
-    <script src="{{ asset('assets/js/question-math-katex.js') }}?v=20260518b"></script>
+    @include('partials.question-math-scripts')
 @stop
 

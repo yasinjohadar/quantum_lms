@@ -15,6 +15,29 @@ class QuestionMarkupFormatter
         return (bool) preg_match(self::MATH_SEGMENT_PATTERN, $text);
     }
 
+    /**
+     * عنوان مختصر للترويسة: عربي فقط بدون LaTeX خام في شريط الصفحة.
+     */
+    public static function plainHeading(?string $text, int $limit = 100): string
+    {
+        if ($text === null || trim($text) === '') {
+            return '';
+        }
+
+        $plain = trim(strip_tags($text));
+        $plain = preg_replace(self::MATH_SEGMENT_PATTERN, ' ', $plain) ?? $plain;
+        $plain = preg_replace('/`[^`\n]+`/u', ' ', $plain) ?? $plain;
+        $plain = preg_replace('/\s+/u', ' ', trim($plain)) ?? '';
+        $plain = preg_replace('/\s*[:،]\s*[.\s]*$/u', '', $plain) ?? $plain;
+        $plain = trim($plain);
+
+        if ($plain === '') {
+            return 'سؤال';
+        }
+
+        return \Illuminate\Support\Str::limit($plain, $limit);
+    }
+
     public static function format(?string $text): string
     {
         if ($text === null || trim($text) === '') {

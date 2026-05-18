@@ -37,6 +37,17 @@ test('wraps latex segments for katex rendering', function () {
         ->not->toContain('&lt;');
 });
 
+test('plain heading strips latex for page header', function () {
+    $input = 'احسب التكامل: \(\int x\cos(x^{2})\,dx\).';
+
+    $heading = QuestionMarkupFormatter::plainHeading($input);
+
+    expect($heading)
+        ->toBe('احسب التكامل')
+        ->not->toContain('\(')
+        ->not->toContain('\int');
+});
+
 test('auto wraps bare function calls like mcq answer options', function () {
     expect(QuestionMarkupFormatter::format('push()'))
         ->toBe('<code class="question-inline-code">push()</code>');

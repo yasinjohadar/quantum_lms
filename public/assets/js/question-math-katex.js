@@ -20,7 +20,9 @@
 
         var targets = root
             ? [root]
-            : Array.prototype.slice.call(document.querySelectorAll('.question-text-body'));
+            : Array.prototype.slice.call(
+                document.querySelectorAll('.question-text-body:not(.page-header-breadcrumb .question-text-body)')
+            );
 
         targets.forEach(function (el) {
             if (!el || el.dataset.mathRendered === '1') {
@@ -48,13 +50,22 @@
         }
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () {
-            boot(0);
-        });
-    } else {
+    function scheduleBoot() {
         boot(0);
     }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', scheduleBoot);
+    } else {
+        scheduleBoot();
+    }
+
+    window.addEventListener('load', function () {
+        document.querySelectorAll('.question-text-body[data-math-rendered="1"]').forEach(function (el) {
+            delete el.dataset.mathRendered;
+        });
+        boot(0);
+    });
 
     window.renderQuestionMath = renderQuestionMath;
 })();
