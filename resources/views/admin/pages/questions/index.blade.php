@@ -1,5 +1,7 @@
 @extends('admin.layouts.master')
 
+@include('partials.question-math-assets')
+
 @section('page-title')
     بنك الأسئلة
 @stop
@@ -23,6 +25,21 @@
     .question-type-fill_blanks { border-right-color: #007bff !important; }
     .question-type-numerical { border-right-color: #17a2b8 !important; }
     .question-type-drag_drop { border-right-color: #fd7e14 !important; }
+    .question-card-preview {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .question-card .question-text-body {
+        font-size: 0.95rem;
+        line-height: 1.65;
+    }
+    .question-card .question-text-body .katex {
+        font-size: 1em;
+        padding: 0.06em 0.3em;
+        margin: 0 0.08em;
+    }
 </style>
 @stop
 
@@ -194,16 +211,16 @@
 
                                 <h6 class="fw-semibold mb-2">
                                     @can('question-show')
-                                    <a href="{{ route('admin.questions.show', $question->id) }}" class="text-decoration-none">
-                                        {{ Str::limit(strip_tags($question->title), 60) }}
+                                    <a href="{{ route('admin.questions.show', $question->id) }}" class="text-decoration-none text-body question-text-body question-card-preview d-block">
+                                        {!! format_question_markup($question->title) !!}
                                     </a>
                                     @else
-                                    <span class="text-body">{{ Str::limit(strip_tags($question->title), 60) }}</span>
+                                    <span class="text-body question-text-body question-card-preview d-block">{!! format_question_markup($question->title) !!}</span>
                                     @endcan
                                 </h6>
 
-                                @if($question->content)
-                                    <p class="text-muted small mb-2">{!! Str::limit(strip_tags($question->content), 80) !!}</p>
+                                @if($question->content && trim(strip_tags($question->content)) !== trim(strip_tags($question->title)))
+                                    <p class="text-muted small mb-2 question-text-body question-card-preview">{!! format_question_markup($question->content) !!}</p>
                                 @endif
 
                                 <div class="d-flex flex-wrap gap-1 mb-2">
@@ -218,17 +235,45 @@
                                     @endif
                                 </div>
 
-                                @if($question->units->isNotEmpty())
-                                    <div class="border-top pt-2 mt-2">
+                                @php
+                                    $curriculumRows = $question->curriculumLocations();
+                                    $extraCurriculumCount = max(0, $curriculumRows->count() - 2);
+                                @endphp
+                                <div class="border-top pt-2 mt-2 question-card-curriculum">
+                                    @if($curriculumRows->isEmpty())
                                         <small class="text-muted">
-                                            <i class="bi bi-folder me-1"></i>
-                                            {{ $question->units->take(2)->pluck('title')->join('، ') }}
-                                            @if($question->units->count() > 2)
-                                                <span class="badge bg-light text-dark">+{{ $question->units->count() - 2 }}</span>
-                                            @endif
+                                            <i class="bi bi-globe me-1"></i> سؤال عام
                                         </small>
-                                    </div>
-                                @endif
+                                    @else
+                                        <table class="table table-sm table-borderless mb-0">
+                                            <thead>
+                                                <tr class="text-muted">
+                                                    <th class="ps-0 py-0 fw-normal">الصف</th>
+                                                    <th class="py-0 fw-normal">المادة</th>
+                                                    <th class="pe-0 py-0 fw-normal">الوحدة</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($curriculumRows->take(2) as $row)
+                                                    <tr>
+                                                        <td class="ps-0 py-1">
+                                                            <span class="fw-semibold text-body">{{ $row['class'] ?: '—' }}</span>
+                                                        </td>
+                                                        <td class="py-1">
+                                                            <span class="fw-semibold text-body">{{ $row['subject'] ?: '—' }}</span>
+                                                        </td>
+                                                        <td class="pe-0 py-1">
+                                                            <span class="text-primary fw-semibold">{{ $row['unit'] }}</span>
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                        @if($extraCurriculumCount > 0)
+                                            <small class="text-muted">+{{ $extraCurriculumCount }} موقع إضافي</small>
+                                        @endif
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -300,4 +345,7 @@
 @stop
 
 @section('js')
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+    <script src="{{ asset('assets/js/question-math-katex.js') }}?v=20260518b"></script>
 @stop

@@ -1,5 +1,7 @@
 @extends('admin.layouts.master')
 
+@include('partials.question-math-assets')
+
 @section('page-title')
     الأسئلة المولدة #{{ $generation->id }}
 @stop
@@ -32,6 +34,9 @@
         @if (session('success'))
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+                @if(session('saved_to_bank'))
+                    <a href="{{ route('admin.questions.index') }}" class="alert-link ms-2">فتح بنك الأسئلة</a>
+                @endif
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
             </div>
         @endif
@@ -39,6 +44,32 @@
         @if (session('error'))
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
                 <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+            </div>
+        @endif
+
+        @if (session('warning'))
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>{{ session('warning') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+            </div>
+        @endif
+
+        @if($generation->status === 'failed' && $generation->error_message)
+            @php
+                $displayError = \App\Services\AI\AIQuestionGenerationService::humanizeApiErrorMessage($generation->error_message);
+            @endphp
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-times-circle me-2"></i>
+                <strong>فشل التوليد:</strong> {{ $displayError }}
+                <div class="mt-2">
+                    <form action="{{ route('admin.ai.question-generations.regenerate', $generation->id) }}" method="POST" class="d-inline">
+                        @csrf
+                        <button type="submit" class="btn btn-sm btn-light">
+                            <i class="fas fa-redo me-1"></i> إعادة المحاولة
+                        </button>
+                    </form>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
             </div>
         @endif
@@ -52,6 +83,11 @@
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
             </div>
         @endif
+
+        @php
+            $questions = $questions ?? $generation->getResolvedGeneratedQuestions();
+            $questionsCount = $questionsCount ?? count($questions);
+        @endphp
 
         <div class="row">
             {{-- معلومات الطلب --}}
@@ -90,11 +126,41 @@
                                 </td>
                             </tr>
                             @endif
-                            @if($generation->source_type === 'image' && $generation->source_content)
+                            @if($generation->source_type === 'pdf' && $generation->source_image_path)
+                            <tr>
+                                <td class="text-muted">ملف PDF:</td>
+                                <td>
+                                    <a href="{{ route('admin.ai.question-generations.source-image', $generation) }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-file-pdf me-1"></i> عرض / تحميل PDF
+                                    </a>
+                                </td>
+                            </tr>
+                            @endif
+                            @if(in_array($generation->source_type, ['image', 'pdf'], true) && $generation->source_content)
                             <tr>
                                 <td class="text-muted">تعليمات إضافية:</td>
                                 <td><small>{{ $generation->source_content }}</small></td>
                             </tr>
+                            @endif
+                            @if($generation->subject_id || $generation->unit_id)
+                            @if($generation->subject?->schoolClass)
+                            <tr>
+                                <td class="text-muted">الصف:</td>
+                                <td>{{ $generation->subject->schoolClass->name }}</td>
+                            </tr>
+                            @endif
+                            @if($generation->subject)
+                            <tr>
+                                <td class="text-muted">المادة:</td>
+                                <td>{{ $generation->subject->name }}</td>
+                            </tr>
+                            @endif
+                            @if($generation->unit)
+                            <tr>
+                                <td class="text-muted">الوحدة:</td>
+                                <td>{{ $generation->unit->title }}</td>
+                            </tr>
+                            @endif
                             @endif
                             <tr>
                                 <td class="text-muted">نوع الأسئلة:</td>
@@ -185,15 +251,35 @@
             {{-- الأسئلة المولدة --}}
             <div class="col-lg-8">
                 @if($generation->status === 'completed')
-                    @php
-                        // التأكد من أن generated_questions هو array
-                        $rawQuestions = $generation->generated_questions;
-                        if (is_string($rawQuestions)) {
-                            $rawQuestions = json_decode($rawQuestions, true);
-                        }
-                        $questions = is_array($rawQuestions) ? $rawQuestions : [];
-                        $questionsCount = count($questions);
-                    @endphp
+                    <div class="card shadow-sm border-0 mb-3">
+                        <div class="card-body">
+                            <h6 class="mb-3"><i class="fas fa-clipboard-check me-2 text-primary"></i>ملخص المراجعة</h6>
+                            <div class="row g-2 small">
+                                <div class="col-md-4">
+                                    <span class="text-muted d-block">الأسئلة المولّدة</span>
+                                    <span class="fw-bold">{{ $questionsCount }} / {{ $generation->number_of_questions }}</span>
+                                </div>
+                                <div class="col-md-4">
+                                    <span class="text-muted d-block">الصف / المادة / الوحدة</span>
+                                    <span class="fw-bold">
+                                        {{ $generation->subject?->schoolClass?->name ?? '—' }}
+                                        /
+                                        {{ $generation->subject?->name ?? '—' }}
+                                        /
+                                        {{ $generation->unit?->title ?? '—' }}
+                                    </span>
+                                </div>
+                                <div class="col-md-4">
+                                    <span class="text-muted d-block">حالة الحفظ</span>
+                                    @if($generation->hasSavedQuestions())
+                                        <span class="badge bg-success">تم الحفظ في بنك الأسئلة ({{ $generation->questions_saved_at?->format('Y-m-d H:i') }})</span>
+                                    @else
+                                        <span class="badge bg-secondary">لم يُحفظ بعد — راجع ثم احفظ</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     @if($questionsCount > 0)
                         <div class="card shadow-sm border-0">
@@ -208,6 +294,7 @@
                                             </span>
                                         @endif
                                     </h6>
+                                    @if(!$generation->hasSavedQuestions())
                                     <div class="d-flex gap-2">
                                         <button type="button" class="btn btn-light btn-sm" onclick="selectAll()">
                                             <i class="fas fa-check-square me-1"></i> تحديد الكل
@@ -216,7 +303,9 @@
                                             <i class="fas fa-square me-1"></i> إلغاء التحديد
                                         </button>
                                     </div>
+                                    @endif
                                 </div>
+                                @if(!$generation->hasSavedQuestions())
                                 <div class="d-flex gap-2">
                                     <form action="{{ route('admin.ai.question-generations.save-selected', $generation->id) }}" method="POST" id="saveSelectedForm" class="d-inline" onsubmit="return saveSelected()">
                                         @csrf
@@ -231,40 +320,14 @@
                                             data-bs-target="#saveAllModal">
                                         <i class="fas fa-save me-1"></i> حفظ الكل
                                     </button>
-                                    
-                                    <!-- Modal for Save All -->
-                                    <div class="modal fade" id="saveAllModal" tabindex="-1" aria-labelledby="saveAllModalLabel" aria-hidden="true">
-                                        <div class="modal-dialog modal-dialog-centered">
-                                            <div class="modal-content">
-                                                <div class="modal-header border-0 pb-0">
-                                                    <h5 class="modal-title" id="saveAllModalLabel">
-                                                        <i class="fas fa-save text-success me-2"></i>
-                                                        تأكيد حفظ الأسئلة
-                                                    </h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                </div>
-                                                <div class="modal-body text-center py-4">
-                                                    <div class="mb-3">
-                                                        <i class="fas fa-question-circle fa-3x text-warning"></i>
-                                                    </div>
-                                                    <h6 class="mb-2">هل أنت متأكد من حفظ جميع الأسئلة؟</h6>
-                                                    <p class="text-muted mb-0">سيتم حفظ جميع الأسئلة المولدة في قاعدة البيانات</p>
-                                                </div>
-                                                <div class="modal-footer border-0 pt-0">
-                                                    <form action="{{ route('admin.ai.question-generations.save', $generation->id) }}" method="POST" class="d-inline">
-                                                        @csrf
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                                            <i class="fas fa-times me-1"></i> إلغاء
-                                                        </button>
-                                                        <button type="submit" class="btn btn-success">
-                                                            <i class="fas fa-save me-1"></i> نعم، احفظ الكل
-                                                        </button>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
+                                @else
+                                    <div class="alert alert-success mb-0 py-2">
+                                        <i class="fas fa-check-circle me-1"></i>
+                                        تم حفظ هذه الأسئلة في بنك الأسئلة.
+                                        <a href="{{ route('admin.questions.index') }}" class="alert-link">عرض بنك الأسئلة</a>
+                                    </div>
+                                @endif
                             </div>
                             <div class="card-body">
                                 <form id="questionsForm">
@@ -272,6 +335,7 @@
                                         <div class="card mb-3 border-start border-primary border-3 question-item" data-index="{{ $index }}">
                                             <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                                 <div class="d-flex align-items-center gap-2">
+                                                    @if(!$generation->hasSavedQuestions())
                                                     <div class="form-check">
                                                         <input class="form-check-input question-checkbox" type="checkbox" 
                                                                value="{{ $index }}" 
@@ -280,6 +344,7 @@
                                                                checked>
                                                         <label class="form-check-label" for="question_{{ $index }}"></label>
                                                     </div>
+                                                    @endif
                                                     <h6 class="mb-0">
                                                         <span class="badge bg-primary me-2">{{ $index + 1 }}</span>
                                                         {{ \App\Models\AIQuestionGeneration::QUESTION_TYPES[$question['type'] ?? 'single_choice'] ?? $question['type'] ?? 'سؤال' }}
@@ -290,31 +355,33 @@
                                                 </span>
                                             </div>
                                             <div class="card-body">
-                                                <p class="fw-bold fs-5 mb-3">{{ $question['question'] ?? '-' }}</p>
+                                                <div class="question-text-body fw-bold mb-3">
+                                                    {!! format_question_markup($question['question'] ?? '-') !!}
+                                                </div>
                                                 
                                                 @if(isset($question['options']) && is_array($question['options']) && count($question['options']) > 0)
                                                     <div class="mb-3">
-                                                        <strong class="text-muted">الخيارات:</strong>
-                                                        <ul class="list-group list-group-flush mt-2">
-                                                            @foreach($question['options'] as $optIndex => $option)
-                                                                @php
-                                                                    $isCorrect = false;
-                                                                    $correctAnswer = $question['correct_answer'] ?? '';
-                                                                    if (is_array($correctAnswer)) {
-                                                                        $isCorrect = in_array($option, $correctAnswer);
-                                                                    } else {
-                                                                        $isCorrect = trim($option) === trim($correctAnswer);
-                                                                    }
-                                                                @endphp
-                                                                <li class="list-group-item {{ $isCorrect ? 'list-group-item-success' : '' }}">
-                                                                    <span class="badge bg-secondary me-2">{{ chr(65 + $optIndex) }}</span>
-                                                                    {{ $option }}
-                                                                    @if($isCorrect)
-                                                                        <i class="fas fa-check text-success ms-2"></i>
-                                                                    @endif
-                                                                </li>
-                                                            @endforeach
-                                                        </ul>
+                                                        <strong class="text-muted d-block mb-2">الخيارات:</strong>
+                                                        @foreach($question['options'] as $optIndex => $option)
+                                                            @php
+                                                                $isCorrect = false;
+                                                                $correctAnswer = $question['correct_answer'] ?? '';
+                                                                if (is_array($correctAnswer)) {
+                                                                    $isCorrect = in_array($option, $correctAnswer);
+                                                                } else {
+                                                                    $isCorrect = trim($option) === trim($correctAnswer);
+                                                                }
+                                                            @endphp
+                                                            <div class="question-option-row {{ $isCorrect ? 'is-correct' : '' }}">
+                                                                <span class="badge bg-secondary me-2">{{ chr(65 + $optIndex) }}</span>
+                                                                <span class="question-text-body d-inline flex-grow-1">
+                                                                    {!! format_question_markup($option) !!}
+                                                                </span>
+                                                                @if($isCorrect)
+                                                                    <i class="fas fa-check text-success ms-2"></i>
+                                                                @endif
+                                                            </div>
+                                                        @endforeach
                                                     </div>
                                                 @endif
 
@@ -322,14 +389,14 @@
                                                     <div class="col-md-6">
                                                         <div class="bg-success bg-opacity-10 p-2 rounded">
                                                             <strong class="text-success"><i class="fas fa-check-circle me-1"></i>الإجابة الصحيحة:</strong>
-                                                            <p class="mb-0 mt-1">{{ is_array($question['correct_answer'] ?? '') ? implode(', ', $question['correct_answer']) : ($question['correct_answer'] ?? '-') }}</p>
+                                                            <p class="mb-0 mt-1 question-text-body">{!! format_question_markup(is_array($question['correct_answer'] ?? '') ? implode(', ', $question['correct_answer']) : ($question['correct_answer'] ?? '-')) !!}</p>
                                                         </div>
                                                     </div>
                                                     @if(isset($question['explanation']) && !empty($question['explanation']))
                                                     <div class="col-md-6">
                                                         <div class="bg-info bg-opacity-10 p-2 rounded">
                                                             <strong class="text-info"><i class="fas fa-lightbulb me-1"></i>الشرح:</strong>
-                                                            <p class="mb-0 mt-1">{{ $question['explanation'] }}</p>
+                                                            <p class="mb-0 mt-1 question-text-body">{!! format_question_markup($question['explanation']) !!}</p>
                                                         </div>
                                                     </div>
                                                     @endif
@@ -347,7 +414,9 @@
                                 <h6 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>التوليد اكتمل لكن لم يتم استخراج أسئلة</h6>
                             </div>
                             <div class="card-body">
-                                <p class="text-muted">الذكاء الاصطناعي أرسل رداً لكن لم يتم تحليله بشكل صحيح. قد يكون التنسيق غير متوقع.</p>
+                                <p class="text-muted mb-2">
+                                    اكتمل التوليد لكن لم يُستخرج أي سؤال صالح للعرض. راجع الرد الخام أدناه أو أعد التوليد.
+                                </p>
                                 
                                 <div class="d-flex gap-2 mb-3">
                                     <form action="{{ route('admin.ai.question-generations.regenerate', $generation->id) }}" method="POST" class="d-inline">
@@ -357,6 +426,15 @@
                                         </button>
                                     </form>
                                 </div>
+
+                                @if($generation->ai_response_preview)
+                                    <details class="mb-3">
+                                        <summary class="btn btn-outline-warning btn-sm">
+                                            <i class="fas fa-robot me-1"></i> عرض مقتطف رد الذكاء الاصطناعي
+                                        </summary>
+                                        <pre class="bg-dark text-light p-3 rounded mt-2" style="max-height: 300px; overflow-y: auto; direction: ltr; text-align: left;">{{ $generation->ai_response_preview }}</pre>
+                                    </details>
+                                @endif
 
                                 @if($generation->prompt)
                                     <details class="mb-3">
@@ -405,7 +483,7 @@
                         <div class="card-body text-center py-5">
                             <i class="fas fa-times-circle fa-4x text-danger mb-3"></i>
                             <h5>فشل التوليد</h5>
-                            <p class="text-danger">{{ $generation->error_message ?? 'حدث خطأ غير معروف' }}</p>
+                            <p class="text-danger">{{ \App\Services\AI\AIQuestionGenerationService::humanizeApiErrorMessage((string) ($generation->error_message ?? 'حدث خطأ غير معروف')) }}</p>
                             <form action="{{ route('admin.ai.question-generations.regenerate', $generation->id) }}" method="POST">
                                 @csrf
                                 <button type="submit" class="btn btn-primary btn-lg">
@@ -419,6 +497,41 @@
         </div>
     </div>
 </div>
+
+@if($generation->status === 'completed' && $questionsCount > 0 && !$generation->hasSavedQuestions())
+<!-- Modal for Save All -->
+<div class="modal fade" id="saveAllModal" tabindex="-1" aria-labelledby="saveAllModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title" id="saveAllModalLabel">
+                    <i class="fas fa-save text-success me-2"></i>
+                    تأكيد حفظ الأسئلة
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="mb-3">
+                    <i class="fas fa-question-circle fa-3x text-warning"></i>
+                </div>
+                <h6 class="mb-2">هل أنت متأكد من حفظ جميع الأسئلة؟</h6>
+                <p class="text-muted mb-0">سيتم حفظ جميع الأسئلة المولدة في قاعدة البيانات</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <form action="{{ route('admin.ai.question-generations.save', $generation->id) }}" method="POST" class="d-inline">
+                    @csrf
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i> إلغاء
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save me-1"></i> نعم، احفظ الكل
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 
 <!-- Modal for Save Selected Questions -->
 <div class="modal fade" id="saveSelectedModal" tabindex="-1" aria-labelledby="saveSelectedModalLabel" aria-hidden="true">
@@ -457,7 +570,10 @@
 function updateSelectedCount() {
     const checkboxes = document.querySelectorAll('.question-checkbox:checked');
     const count = checkboxes.length;
-    document.getElementById('selectedCount').textContent = count;
+    const counter = document.getElementById('selectedCount');
+    if (counter) {
+        counter.textContent = count;
+    }
 }
 
 // تحديد الكل
@@ -538,5 +654,8 @@ document.addEventListener('DOMContentLoaded', function() {
     updateSelectedCount();
 });
 </script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+    <script src="{{ asset('assets/js/question-math-katex.js') }}?v=20260518b"></script>
 @stop
 

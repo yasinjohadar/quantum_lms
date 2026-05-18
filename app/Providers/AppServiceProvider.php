@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use App\Events\LessonAttended;
 use App\Events\LessonCompleted;
@@ -41,6 +42,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // اجعل روابط asset()/route() تتبع المنفذ الحالي (مثلاً :7000 وليس APP_URL القديم :8000)
+        if (! $this->app->runningInConsole()) {
+            $request = request();
+            if ($request && $request->getHttpHost()) {
+                URL::forceRootUrl($request->getSchemeAndHttpHost());
+            }
+        }
+
         // Frontend footer data (dynamic classes list + contact info)
         View::composer('frontend.layouts.footer', function ($view) {
             try {

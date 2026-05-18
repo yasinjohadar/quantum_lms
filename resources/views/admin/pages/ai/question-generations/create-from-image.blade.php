@@ -1,7 +1,7 @@
 @extends('admin.layouts.master')
 
 @section('page-title')
-    توليد أسئلة من صورة (تحليل بصري)
+    توليد أسئلة من صورة أو PDF
 @stop
 
 @section('content')
@@ -9,7 +9,7 @@
     <div class="container-fluid">
         <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
             <div class="my-auto">
-                <h5 class="page-title fs-21 mb-1">توليد أسئلة من صورة</h5>
+                <h5 class="page-title fs-21 mb-1">توليد أسئلة من صورة أو PDF</h5>
             </div>
             <div>
                 <a href="{{ route('admin.ai.question-generations.index') }}" class="btn btn-secondary btn-sm">
@@ -30,8 +30,11 @@
         @endif
 
         <div class="alert alert-info">
-            <strong>متطلبات الموديل:</strong> يجب استخدام مزود يدعم <strong>الرؤية (Vision)</strong> مع مفتاح موديل يدعم الصور، مثل:
-            OpenAI (gpt-4o)، OpenRouter (موديلات vision)، Anthropic (Claude مع صور)، Google (Gemini Flash/Pro)، أو Z.ai إن كان الموديل يدعم الصور.
+            <strong>الصور:</strong> يتطلب موديلاً يدعم <strong>الرؤية (Vision)</strong> (مثل gpt-4o، Claude، Gemini).
+            <br>
+            <strong>PDF نصي:</strong> يعمل مع أي موديل توليد أسئلة (يُستخرج النص تلقائياً).
+            <br>
+            <strong>PDF ممسوح:</strong> يحتاج موديل رؤية + تفعيل <strong>Imagick</strong> و<strong>Ghostscript</strong> على الخادم.
         </div>
 
         <div class="row">
@@ -42,17 +45,45 @@
                             @csrf
 
                             <div class="mb-3">
-                                <label for="source_image" class="form-label">الصورة <span class="text-danger">*</span></label>
-                                <input type="file" class="form-control" id="source_image" name="source_image" accept="image/jpeg,image/png,image/webp,image/gif" required>
-                                <small class="text-muted">JPEG أو PNG أو WebP أو GIF — حتى 8 ميجابايت</small>
+                                <label for="source_file" class="form-label">الملف (صورة أو PDF) <span class="text-danger">*</span></label>
+                                <input type="file" class="form-control" id="source_file" name="source_file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" required>
+                                <small class="text-muted">صور: JPEG, PNG, WebP, GIF (حتى 8 ميجابايت) — PDF: حتى 15 ميجابايت</small>
                                 <div class="mt-2 d-none" id="imagePreviewWrap">
                                     <img src="" alt="" id="imagePreview" class="img-fluid rounded border" style="max-height: 280px;">
+                                </div>
+                                <div class="mt-2 d-none alert alert-secondary py-2 mb-0" id="pdfPreviewWrap">
+                                    <i class="fas fa-file-pdf text-danger me-2"></i>
+                                    <span id="pdfFileName"></span>
                                 </div>
                             </div>
 
                             <div class="mb-3">
                                 <label for="instructions" class="form-label">تعليمات إضافية (اختياري)</label>
                                 <textarea class="form-control" id="instructions" name="instructions" rows="4" placeholder="مثال: ركّز على المسائل العددية في الصورة، أو صغ الأسئلة للصف السادس...">{{ old('instructions') }}</textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="class_id" class="form-label">الصف (اختياري)</label>
+                                <select class="form-select" id="class_id" name="class_id">
+                                    <option value="">— بدون تحديد —</option>
+                                    @foreach($schoolClasses as $schoolClass)
+                                        <option value="{{ $schoolClass->id }}" {{ (string) old('class_id', $prefillClassId ?? '') === (string) $schoolClass->id ? 'selected' : '' }}>{{ $schoolClass->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="subject_id" class="form-label">المادة (اختياري)</label>
+                                <select class="form-select" id="subject_id" name="subject_id" @if(!$prefillClassId) disabled @endif>
+                                    <option value="">{{ $prefillClassId ? 'اختر المادة' : 'اختر الصف أولاً' }}</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="unit_id" class="form-label">الوحدة (اختياري)</label>
+                                <select class="form-select" id="unit_id" name="unit_id" @if(!$prefillSubjectId) disabled @endif>
+                                    <option value="">{{ $prefillSubjectId ? 'اختر الوحدة' : 'اختر المادة أولاً' }}</option>
+                                </select>
                             </div>
 
                             <div class="mb-3">
@@ -131,7 +162,7 @@
 
                             <div class="d-flex gap-2">
                                 <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-image me-1"></i> تحليل الصورة وتوليد الأسئلة
+                                    <i class="fas fa-file-upload me-1"></i> تحليل الملف وتوليد الأسئلة
                                 </button>
                                 <a href="{{ route('admin.ai.question-generations.index') }}" class="btn btn-secondary">إلغاء</a>
                             </div>
@@ -146,15 +177,126 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    var input = document.getElementById('source_image');
-    var wrap = document.getElementById('imagePreviewWrap');
-    var img = document.getElementById('imagePreview');
-    input.addEventListener('change', function() {
-        if (!input.files || !input.files[0]) {
-            wrap.classList.add('d-none');
+    var classSelect = document.getElementById('class_id');
+    var subjectSelect = document.getElementById('subject_id');
+    var unitSelect = document.getElementById('unit_id');
+    var ajaxSubjectsBase = @json(url('/admin/ai/question-generations/ajax/classes'));
+    var ajaxUnitsBase = @json(url('/admin/ai/question-generations/ajax/subjects'));
+    var prefillSubjectId = @json(old('subject_id', $prefillSubjectId ?? ''));
+    var prefillUnitId = @json(old('unit_id', $prefillUnitId ?? ''));
+
+    function resetUnitsPlaceholder() {
+        unitSelect.disabled = true;
+        unitSelect.innerHTML = '<option value="">اختر المادة أولاً</option>';
+    }
+
+    function resetSubjectsPlaceholder() {
+        subjectSelect.disabled = true;
+        subjectSelect.innerHTML = '<option value="">اختر الصف أولاً</option>';
+        resetUnitsPlaceholder();
+    }
+
+    function populateSubjects(classId, selectedSubjectId) {
+        subjectSelect.disabled = false;
+        subjectSelect.innerHTML = '<option value="">جاري التحميل...</option>';
+        resetUnitsPlaceholder();
+        return fetch(ajaxSubjectsBase + '/' + classId + '/subjects', {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+        })
+            .then(function (response) {
+                if (!response.ok) throw new Error('Network error');
+                return response.json();
+            })
+            .then(function (data) {
+                subjectSelect.innerHTML = '<option value="">اختر المادة</option>';
+                data.forEach(function (subject) {
+                    var opt = document.createElement('option');
+                    opt.value = subject.id;
+                    opt.textContent = subject.name;
+                    if (selectedSubjectId && String(subject.id) === String(selectedSubjectId)) {
+                        opt.selected = true;
+                    }
+                    subjectSelect.appendChild(opt);
+                });
+                if (selectedSubjectId) {
+                    return populateUnits(selectedSubjectId, prefillUnitId);
+                }
+            })
+            .catch(function () {
+                subjectSelect.innerHTML = '<option value="">تعذر تحميل المواد</option>';
+                resetUnitsPlaceholder();
+            });
+    }
+
+    function populateUnits(subjectId, selectedUnitId) {
+        unitSelect.disabled = false;
+        unitSelect.innerHTML = '<option value="">جاري التحميل...</option>';
+        return fetch(ajaxUnitsBase + '/' + subjectId + '/units', {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+        })
+            .then(function (response) {
+                if (!response.ok) throw new Error('Network error');
+                return response.json();
+            })
+            .then(function (data) {
+                unitSelect.innerHTML = '<option value="">اختر الوحدة</option>';
+                data.forEach(function (unit) {
+                    var opt = document.createElement('option');
+                    opt.value = unit.id;
+                    opt.textContent = unit.title;
+                    if (selectedUnitId && String(unit.id) === String(selectedUnitId)) {
+                        opt.selected = true;
+                    }
+                    unitSelect.appendChild(opt);
+                });
+            })
+            .catch(function () {
+                unitSelect.innerHTML = '<option value="">تعذر تحميل الوحدات</option>';
+            });
+    }
+
+    classSelect.addEventListener('change', function () {
+        var classId = this.value;
+        if (!classId) {
+            resetSubjectsPlaceholder();
             return;
         }
-        var url = URL.createObjectURL(input.files[0]);
+        populateSubjects(classId, null);
+    });
+
+    subjectSelect.addEventListener('change', function () {
+        var subjectId = this.value;
+        if (!subjectId) {
+            resetUnitsPlaceholder();
+            return;
+        }
+        populateUnits(subjectId, null);
+    });
+
+    if (classSelect.value) {
+        populateSubjects(classSelect.value, prefillSubjectId || null);
+    }
+
+    var input = document.getElementById('source_file');
+    var wrap = document.getElementById('imagePreviewWrap');
+    var img = document.getElementById('imagePreview');
+    var pdfWrap = document.getElementById('pdfPreviewWrap');
+    var pdfFileName = document.getElementById('pdfFileName');
+    input.addEventListener('change', function() {
+        wrap.classList.add('d-none');
+        pdfWrap.classList.add('d-none');
+        if (!input.files || !input.files[0]) {
+            return;
+        }
+        var file = input.files[0];
+        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+            pdfFileName.textContent = file.name;
+            pdfWrap.classList.remove('d-none');
+            return;
+        }
+        var url = URL.createObjectURL(file);
         img.src = url;
         wrap.classList.remove('d-none');
     });

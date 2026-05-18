@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\QuestionGenerationProcessException;
 use App\Http\Controllers\Controller;
 use App\Models\AIQuestionGeneration;
+use App\Services\AI\AIQuestionGenerationService;
 use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\Lesson;
+use App\Models\Unit;
 use App\Models\AIModel;
-use App\Services\AI\AIQuestionGenerationService;
 use App\Services\AI\AIModelService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -113,10 +115,25 @@ class AIQuestionGenerationController extends Controller
      */
     public function createFromImage()
     {
+        $schoolClasses = SchoolClass::active()->ordered()->get();
         $models = $this->modelService->getAvailableModels('question_generation');
         $difficulties = AIQuestionGeneration::DIFFICULTIES;
+        $prefillClassId = old('class_id');
+        $prefillSubjectId = old('subject_id');
+        $prefillUnitId = old('unit_id');
 
-        return view('admin.pages.ai.question-generations.create-from-image', compact('models', 'difficulties'));
+        if (! $prefillClassId && $prefillSubjectId) {
+            $prefillClassId = Subject::whereKey($prefillSubjectId)->value('class_id');
+        }
+
+        return view('admin.pages.ai.question-generations.create-from-image', compact(
+            'schoolClasses',
+            'models',
+            'difficulties',
+            'prefillClassId',
+            'prefillSubjectId',
+            'prefillUnitId'
+        ));
     }
 
     /**
@@ -126,51 +143,112 @@ class AIQuestionGenerationController extends Controller
     {
         $validQuestionTypes = array_filter(array_keys(AIQuestionGeneration::QUESTION_TYPES), fn ($k) => $k !== 'mixed');
 
+        $imageMaxKb = (int) config('ai.question_generation_pdf.image_max_size_kb', 8192);
+        $pdfMaxKb = (int) config('ai.question_generation_pdf.max_size_kb', 15360);
+
+        $uploadedFile = $request->file('source_file') ?? $request->file('source_image');
+
         $validated = $request->validate([
-            'source_image' => 'required|image|mimes:jpeg,jpg,png,webp,gif|max:8192',
+            'source_file' => [
+                'nullable',
+                'file',
+                'mimes:jpeg,jpg,png,webp,gif,pdf',
+                'max:'.max($imageMaxKb, $pdfMaxKb),
+            ],
+            'source_image' => [
+                'nullable',
+                'file',
+                'mimes:jpeg,jpg,png,webp,gif,pdf',
+                'max:'.max($imageMaxKb, $pdfMaxKb),
+            ],
             'instructions' => 'nullable|string|max:5000',
+            'class_id' => 'nullable|exists:classes,id',
+            'subject_id' => 'nullable|exists:subjects,id',
+            'unit_id' => 'nullable|exists:units,id',
             'question_types' => 'required|array|min:1',
             'question_types.*' => 'in:'.implode(',', $validQuestionTypes),
             'number_of_questions' => 'required|integer|min:1|max:50',
             'difficulty_level' => 'required|in:'.implode(',', array_keys(AIQuestionGeneration::DIFFICULTIES)),
             'ai_model_id' => 'nullable|exists:ai_models,id',
         ], [
-            'source_image.required' => 'يرجى اختيار صورة',
-            'source_image.image' => 'الملف يجب أن يكون صورة',
+            'source_file.mimes' => 'يُقبل فقط: JPEG, PNG, WebP, GIF أو PDF',
+            'source_image.mimes' => 'يُقبل فقط: JPEG, PNG, WebP, GIF أو PDF',
             'question_types.required' => 'يجب اختيار نوع واحد على الأقل',
         ]);
+
+        if (! $uploadedFile) {
+            return redirect()->back()
+                ->withErrors(['source_file' => 'يرجى اختيار ملف (صورة أو PDF)'])
+                ->withInput();
+        }
+
+        $curriculumError = $this->validateImageGenerationCurriculum(
+            $validated['class_id'] ?? null,
+            $validated['subject_id'] ?? null,
+            $validated['unit_id'] ?? null
+        );
+        if ($curriculumError) {
+            return redirect()->back()
+                ->withErrors(['subject_id' => $curriculumError])
+                ->withInput();
+        }
 
         try {
             $model = $validated['ai_model_id']
                 ? AIModel::find($validated['ai_model_id'])
                 : null;
 
-            $generation = $this->generationService->generateFromUploadedImage($request->file('source_image'), [
+            $generation = $this->generationService->generateFromUploadedFile($uploadedFile, [
                 'user' => Auth::user(),
                 'model' => $model,
                 'instructions' => $validated['instructions'] ?? '',
+                'subject_id' => $validated['subject_id'] ?? null,
+                'unit_id' => $validated['unit_id'] ?? null,
                 'question_types' => $validated['question_types'],
                 'number_of_questions' => $validated['number_of_questions'],
                 'difficulty_level' => $validated['difficulty_level'],
             ]);
 
+            $generation->refresh();
+
+            if ($generation->status === 'completed') {
+                return redirect()->route('admin.ai.question-generations.show', $generation)
+                    ->with('success', 'تم تحليل الملف وتوليد الأسئلة بنجاح.');
+            }
+
+            if ($generation->status === 'failed') {
+                $errorMessage = $generation->error_message
+                    ?? AIQuestionGenerationService::humanizeApiErrorMessage('فشل توليد الأسئلة.');
+
+                return redirect()->route('admin.ai.question-generations.show', $generation)
+                    ->with('error', $errorMessage);
+            }
+
             return redirect()->route('admin.ai.question-generations.show', $generation)
-                ->with('success', 'تم تحليل الصورة وتوليد الأسئلة بنجاح.');
+                ->with('warning', 'تم إنشاء الطلب وهو قيد المعالجة.');
+        } catch (QuestionGenerationProcessException $e) {
+            Log::error('storeFromImage: '.$e->getMessage(), [
+                'generation_id' => $e->generation->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->route('admin.ai.question-generations.show', $e->generation)
+                ->with('error', $e->getMessage());
         } catch (\Exception $e) {
             Log::error('storeFromImage: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
             return redirect()->back()
-                ->with('error', 'حدث خطأ: '.$e->getMessage())
+                ->with('error', AIQuestionGenerationService::humanizeApiErrorMessage($e->getMessage()))
                 ->withInput();
         }
     }
 
     /**
-     * عرض الصورة المصدرية (للطلبات من نوع صورة).
+     * عرض الملف المصدر (صورة أو PDF).
      */
     public function sourceImage(AIQuestionGeneration $generation)
     {
-        if ($generation->source_type !== 'image' || ! $generation->source_image_path) {
+        if (! in_array($generation->source_type, ['image', 'pdf'], true) || ! $generation->source_image_path) {
             abort(404);
         }
 
@@ -180,7 +258,45 @@ class AIQuestionGenerationController extends Controller
 
         $abs = Storage::disk('local')->path($generation->source_image_path);
 
+        if ($generation->source_type === 'pdf') {
+            return response()->file($abs, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="source.pdf"',
+            ]);
+        }
+
         return response()->file($abs);
+    }
+
+    /**
+     * التحقق من تطابق الصف والمادة والوحدة (اختياري).
+     */
+    private function validateImageGenerationCurriculum(?string $classId, ?string $subjectId, ?string $unitId): ?string
+    {
+        if ($unitId && ! $subjectId) {
+            return 'يجب اختيار المادة عند تحديد الوحدة.';
+        }
+
+        if ($subjectId) {
+            $subject = Subject::find($subjectId);
+            if (! $subject) {
+                return 'المادة المحددة غير صالحة.';
+            }
+            if ($classId && (int) $subject->class_id !== (int) $classId) {
+                return 'المادة لا تنتمي للصف المحدد.';
+            }
+        }
+
+        if ($unitId) {
+            $belongsToSubject = Unit::whereKey($unitId)
+                ->whereHas('section', fn ($q) => $q->where('subject_id', $subjectId))
+                ->exists();
+            if (! $belongsToSubject) {
+                return 'الوحدة لا تنتمي للمادة المحددة.';
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -210,6 +326,18 @@ class AIQuestionGenerationController extends Controller
         })->active()->get(['id', 'title']);
 
         return response()->json($lessons);
+    }
+
+    /**
+     * وحدات المادة (JSON) — فلترة AJAX.
+     */
+    public function ajaxUnitsBySubject(Subject $subject)
+    {
+        $units = Unit::whereHas('section', function ($q) use ($subject) {
+            $q->where('subject_id', $subject->id);
+        })->orderBy('title')->get(['id', 'title']);
+
+        return response()->json($units);
     }
 
     /**
@@ -279,17 +407,36 @@ class AIQuestionGenerationController extends Controller
      */
     public function show(AIQuestionGeneration $generation)
     {
-        $generation->load(['user', 'subject', 'lesson', 'model']);
-        
-        // تحديث البيانات من قاعدة البيانات
+        $generation->load(['user', 'subject.schoolClass', 'unit', 'lesson', 'model']);
         $generation->refresh();
-        
-        // التأكد من أن generated_questions هو array
-        if ($generation->generated_questions && !is_array($generation->generated_questions)) {
-            $generation->generated_questions = json_decode($generation->generated_questions, true) ?? [];
+
+        $questions = $generation->getResolvedGeneratedQuestions();
+        $questionsCount = count($questions);
+
+        // إصلاح سجلات قديمة: JSON بصيغة غلاف أو حقول بديلة تُخزَّن فارغة رغم وجود رد AI
+        if ($generation->status === 'completed' && $questionsCount > 0) {
+            $stored = $generation->generated_questions;
+            $needsRepair = ! is_array($stored)
+                || $stored === []
+                || ! array_is_list($stored)
+                || count($stored) !== $questionsCount;
+
+            if ($needsRepair) {
+                $validated = $this->generationService->validateGeneratedQuestions($questions);
+                if (count($validated) > 0) {
+                    $generation->update(['generated_questions' => $validated]);
+                    $generation->refresh();
+                    $questions = $generation->getResolvedGeneratedQuestions();
+                    $questionsCount = count($questions);
+                }
+            }
         }
 
-        return view('admin.pages.ai.question-generations.show', compact('generation'));
+        return view('admin.pages.ai.question-generations.show', compact(
+            'generation',
+            'questions',
+            'questionsCount'
+        ));
     }
 
     /**
@@ -319,9 +466,11 @@ class AIQuestionGenerationController extends Controller
     {
         try {
             $questions = $this->generationService->saveGeneratedQuestions($generation);
+            $generation->refresh();
 
-            return redirect()->route('admin.questions.index')
-                           ->with('success', 'تم حفظ ' . $questions->count() . ' سؤال بنجاح.');
+            return redirect()->route('admin.ai.question-generations.show', $generation)
+                ->with('success', 'تم حفظ '.$questions->count().' سؤال في بنك الأسئلة بنجاح.')
+                ->with('saved_to_bank', true);
         } catch (\Exception $e) {
             Log::error('Error saving generated questions: ' . $e->getMessage());
             return redirect()->back()
@@ -342,9 +491,11 @@ class AIQuestionGenerationController extends Controller
         try {
             $selectedIndices = array_map('intval', $validated['selected_questions']);
             $questions = $this->generationService->saveGeneratedQuestions($generation, $selectedIndices);
+            $generation->refresh();
 
-            return redirect()->route('admin.questions.index')
-                           ->with('success', 'تم حفظ ' . $questions->count() . ' سؤال بنجاح.');
+            return redirect()->route('admin.ai.question-generations.show', $generation)
+                ->with('success', 'تم حفظ '.$questions->count().' سؤال في بنك الأسئلة بنجاح.')
+                ->with('saved_to_bank', true);
         } catch (\Exception $e) {
             Log::error('Error saving selected questions: ' . $e->getMessage(), [
                 'generation_id' => $generation->id,

@@ -4,8 +4,16 @@
 <!-- Choices JS -->
 <script src="{{ asset('assets/libs/choices.js/public/assets/scripts/choices.min.js') }}"></script>
 
+<script>
+    window.LARAVEL_ASSET_BASE = @json(rtrim(asset('assets'), '/'));
+    window.laravelAsset = function (path) {
+        path = String(path).replace(/^\.\.\/assets\//, '').replace(/^assets\//, '');
+        return window.LARAVEL_ASSET_BASE + '/' + path.replace(/^\//, '');
+    };
+</script>
+
 <!-- Main Theme Js -->
-<script src="{{ asset('assets/js/main.js') }}"></script>
+<script src="{{ asset('assets/js/main.js') }}?v=20260518"></script>
 
 <!-- Bootstrap Css -->
 <link id="style" href="{{ asset('assets/libs/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">

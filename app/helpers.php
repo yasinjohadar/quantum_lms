@@ -1,5 +1,15 @@
 <?php
 
+if (! function_exists('format_question_markup')) {
+    /**
+     * تحويل النص بين backticks إلى كود مميز، مع دعم كتل ``` للنص متعدد الأسطر.
+     */
+    function format_question_markup(?string $text): string
+    {
+        return \App\Support\QuestionMarkupFormatter::format($text);
+    }
+}
+
 if (! function_exists('media_public_url')) {
     /**
      * رابط عام للملف المخزّن تحت مسار public storage (يفضّل السحابة عند توفر الملف هناك).

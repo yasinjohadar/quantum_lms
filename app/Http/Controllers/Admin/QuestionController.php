@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\UpdateQuestionRequest;
 use App\Models\Question;
 use App\Models\QuestionOption;
 use App\Models\QuizQuestion;
+use App\Models\SchoolClass;
 use App\Models\Unit;
 use App\Models\Subject;
 use App\Imports\QuestionsImport;
@@ -26,8 +27,8 @@ class QuestionController extends Controller
     public function __construct()
     {
         $this->middleware(['permission:question-list'])->only('index');
-        $this->middleware(['permission:question-create'])->only(['create', 'store']);
-        $this->middleware(['permission:question-edit'])->only(['edit', 'update']);
+        $this->middleware(['permission:question-create'])->only(['create', 'store', 'ajaxSubjectsByClass', 'ajaxUnitsBySubject']);
+        $this->middleware(['permission:question-edit'])->only(['edit', 'update', 'ajaxSubjectsByClass', 'ajaxUnitsBySubject']);
         $this->middleware(['permission:question-delete'])->only('destroy');
         $this->middleware(['permission:question-show'])->only('show');
         $this->middleware(['permission:question-duplicate'])->only('duplicate');
@@ -45,7 +46,7 @@ class QuestionController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Question::with(['units', 'creator', 'options'])
+        $query = Question::with(['units.section.subject.schoolClass', 'creator', 'options'])
             ->withCount(['quizzes']);
 
         // إذا كان المستخدم معلم وليس مشرف/مدير
@@ -130,21 +131,31 @@ class QuestionController extends Controller
      */
     public function create(Request $request)
     {
-        $units = Unit::with('section.subject.schoolClass')->orderBy('title')->get();
+        $schoolClasses = SchoolClass::active()->ordered()->get();
         $categories = Question::distinct()->whereNotNull('category')->pluck('category');
         $selectedType = $request->type ?? 'single_choice';
-        
-        // إذا تم تمرير unit_id فسيتم تحديد الوحدة تلقائياً
-        $preselectedUnitId = $request->unit_id;
-        $preselectedUnit = $preselectedUnitId ? Unit::with('section.subject')->find($preselectedUnitId) : null;
 
-        // إذا تم فتح الصفحة من صفحة أسئلة اختبار، نمرر quiz_id للعودة للاختبار بعد الحفظ (ونحفظه في الجلسة كنسخة احتياطية)
+        $preselectedUnitId = $request->unit_id;
+        $preselectedUnit = $preselectedUnitId
+            ? Unit::with('section.subject.schoolClass')->find($preselectedUnitId)
+            : null;
+
+        $initialUnitIds = old('units', $preselectedUnitId ? [(int) $preselectedUnitId] : []);
+        $linkedUnits = $this->resolveLinkedUnitsForForm($initialUnitIds);
+
         $preselectedQuizId = $request->query('quiz_id') ?? $request->input('quiz_id');
         if ($preselectedQuizId !== null && $preselectedQuizId !== '') {
             session(['create_question_return_quiz_id' => $preselectedQuizId]);
         }
 
-        return view('admin.pages.questions.create', compact('units', 'categories', 'selectedType', 'preselectedUnitId', 'preselectedUnit', 'preselectedQuizId'));
+        return view('admin.pages.questions.create', compact(
+            'schoolClasses',
+            'categories',
+            'selectedType',
+            'preselectedUnit',
+            'linkedUnits',
+            'preselectedQuizId'
+        ));
     }
 
     /**
@@ -266,7 +277,7 @@ class QuestionController extends Controller
      */
     public function show(string $id)
     {
-        $question = Question::with(['units.section.subject', 'creator', 'options', 'quizzes'])
+        $question = Question::with(['units.section.subject.schoolClass', 'creator', 'options', 'quizzes'])
             ->findOrFail($id);
             
         return view('admin.pages.questions.show', compact('question'));
@@ -277,15 +288,67 @@ class QuestionController extends Controller
      */
     public function edit(Request $request, string $id)
     {
-        $question = Question::with(['units', 'options'])->findOrFail($id);
-        $units = Unit::with('section.subject.schoolClass')->orderBy('title')->get();
+        $question = Question::with(['units.section.subject.schoolClass', 'options'])->findOrFail($id);
+        $schoolClasses = SchoolClass::active()->ordered()->get();
         $categories = Question::distinct()->whereNotNull('category')->pluck('category');
+        $linkedUnits = $this->resolveLinkedUnitsForForm(
+            old('units', $question->units->pluck('id')->all())
+        );
         $preselectedQuizId = $request->query('quiz_id');
         if ($preselectedQuizId !== null && $preselectedQuizId !== '') {
             session(['edit_question_return_quiz_id' => $preselectedQuizId]);
         }
 
-        return view('admin.pages.questions.edit', compact('question', 'units', 'categories', 'preselectedQuizId'));
+        return view('admin.pages.questions.edit', compact(
+            'question',
+            'schoolClasses',
+            'categories',
+            'linkedUnits',
+            'preselectedQuizId'
+        ));
+    }
+
+    /**
+     * مواد الصف (JSON) لنماذج ربط السؤال بالمنهج.
+     */
+    public function ajaxSubjectsByClass(SchoolClass $schoolClass)
+    {
+        $subjects = Subject::where('class_id', $schoolClass->id)
+            ->active()
+            ->ordered()
+            ->get(['id', 'name']);
+
+        return response()->json($subjects);
+    }
+
+    /**
+     * وحدات المادة (JSON) لنماذج ربط السؤال بالمنهج.
+     */
+    public function ajaxUnitsBySubject(Subject $subject)
+    {
+        $units = Unit::whereHas('section', function ($q) use ($subject) {
+            $q->where('subject_id', $subject->id);
+        })->orderBy('title')->get(['id', 'title']);
+
+        return response()->json($units);
+    }
+
+    /**
+     * @param  array<int|string>  $unitIds
+     * @return \Illuminate\Support\Collection<int, Unit>
+     */
+    protected function resolveLinkedUnitsForForm(array $unitIds): \Illuminate\Support\Collection
+    {
+        $unitIds = array_values(array_filter(array_map('intval', $unitIds)));
+        if ($unitIds === []) {
+            return collect();
+        }
+
+        return Unit::with('section.subject.schoolClass')
+            ->whereIn('id', $unitIds)
+            ->get()
+            ->sortBy(fn (Unit $unit) => array_search($unit->id, $unitIds, true))
+            ->values();
     }
 
     /**

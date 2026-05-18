@@ -348,30 +348,10 @@
                     </div>
                 </div>
 
-                {{-- ربط بالوحدات --}}
-                <div class="card custom-card mb-3">
-                    <div class="card-header">
-                        <h6 class="mb-0"><i class="bi bi-link-45deg me-2"></i> ربط بالوحدات</h6>
-                    </div>
-                    <div class="card-body">
-                        <div style="max-height: 250px; overflow-y: auto;">
-                            @php $selectedUnits = old('units', $question->units->pluck('id')->toArray()); @endphp
-                            @foreach($units as $unit)
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="checkbox" name="units[]" 
-                                           value="{{ $unit->id }}" id="unit{{ $unit->id }}"
-                                           {{ in_array($unit->id, $selectedUnits) ? 'checked' : '' }}>
-                                    <label class="form-check-label small" for="unit{{ $unit->id }}">
-                                        {{ $unit->title }}
-                                        @if($unit->section && $unit->section->subject)
-                                            <span class="text-muted">({{ $unit->section->subject->name }})</span>
-                                        @endif
-                                    </label>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                </div>
+                @include('admin.pages.questions.partials.curriculum-link', [
+                    'schoolClasses' => $schoolClasses,
+                    'linkedUnits' => $linkedUnits,
+                ])
 
                 {{-- أزرار الحفظ --}}
                 <div class="card custom-card">

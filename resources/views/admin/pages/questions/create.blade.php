@@ -261,45 +261,11 @@
                     </div>
                 </div>
 
-                {{-- ربط بالوحدات --}}
-                <div class="card custom-card mb-3">
-                    <div class="card-header">
-                        <h6 class="mb-0"><i class="bi bi-link-45deg me-2"></i> ربط بالوحدات (اختياري)</h6>
-                    </div>
-                    <div class="card-body">
-                        @if(isset($preselectedUnit) && $preselectedUnit)
-                            <div class="alert alert-info small mb-3">
-                                <i class="bi bi-info-circle me-1"></i>
-                                سيتم ربط هذا السؤال بالوحدة: <strong>{{ $preselectedUnit->title }}</strong>
-                                @if($preselectedUnit->section && $preselectedUnit->section->subject)
-                                    <br>
-                                    <span class="text-muted">المادة: {{ $preselectedUnit->section->subject->name }}</span>
-                                @endif
-                            </div>
-                        @else
-                            <p class="text-muted small mb-2">
-                                اترك فارغاً ليكون سؤالاً عاماً
-                            </p>
-                        @endif
-                        <div style="max-height: 250px; overflow-y: auto;">
-                            @foreach($units as $unit)
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="checkbox" name="units[]" 
-                                           value="{{ $unit->id }}" id="unit{{ $unit->id }}"
-                                           {{ (isset($preselectedUnitId) && $unit->id == $preselectedUnitId) || in_array($unit->id, old('units', [])) ? 'checked' : '' }}>
-                                    <label class="form-check-label small" for="unit{{ $unit->id }}">
-                                        {{ $unit->title }}
-                                        @if($unit->section && $unit->section->subject)
-                                            <span class="text-muted">
-                                                ({{ $unit->section->subject->name }})
-                                            </span>
-                                        @endif
-                                    </label>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                </div>
+                @include('admin.pages.questions.partials.curriculum-link', [
+                    'schoolClasses' => $schoolClasses,
+                    'linkedUnits' => $linkedUnits,
+                    'preselectedUnit' => $preselectedUnit ?? null,
+                ])
 
                 {{-- أزرار الحفظ --}}
                 <div class="card custom-card">

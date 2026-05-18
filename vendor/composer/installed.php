@@ -3,7 +3,7 @@
         'name' => 'laravel/laravel',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => 'dd1ae5f34452a921e32db5a0eb5e25e175a07a39',
+        'reference' => '0fc0851b9c600595574842690fdd6f3f700aea51',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -610,7 +610,7 @@
         'laravel/laravel' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => 'dd1ae5f34452a921e32db5a0eb5e25e175a07a39',
+            'reference' => '0fc0851b9c600595574842690fdd6f3f700aea51',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -1550,6 +1550,15 @@
             'aliases' => array(),
             'dev_requirement' => true,
         ),
+        'smalot/pdfparser' => array(
+            'pretty_version' => 'v2.12.5',
+            'version' => '2.12.5.0',
+            'reference' => '2cfa0d92bd557875c9f52a75fde0e8392302a354',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../smalot/pdfparser',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
         'spatie/dropbox-api' => array(
             'pretty_version' => '1.23.0',
             'version' => '1.23.0.0',
@@ -1582,6 +1591,15 @@
             'replaced' => array(
                 0 => '*',
             ),
+        ),
+        'spatie/pdf-to-image' => array(
+            'pretty_version' => '3.2.0',
+            'version' => '3.2.0.0',
+            'reference' => 'eb46281e228a2b9723d12c13c365d90b28b99253',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../spatie/pdf-to-image',
+            'aliases' => array(),
+            'dev_requirement' => false,
         ),
         'staabm/side-effects-detector' => array(
             'pretty_version' => '1.0.5',

@@ -408,8 +408,8 @@
                         </li>
                         @endcanany
 
-                        @canany(['question-list', 'quiz-list'])
-                        <li class="slide has-sub {{ request()->is('admin/questions*') || request()->is('admin/quizzes*') ? 'open' : '' }}">
+                        @canany(['question-list', 'quiz-list', 'question-create'])
+                        <li class="slide has-sub {{ request()->is('admin/questions*') || request()->is('admin/quizzes*') || request()->is('admin/ai/question-generations*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -430,6 +430,18 @@
                                             <path d="M4 6H2v14a2 2 0 002 2h14v-2H4V6zm16-4H8a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2zm0 14H8V4h12v12zM10 9h8v2h-8zm0 3h4v2h-4zm0-6h8v2h-8z"/>
                                         </svg>
                                         <span class="side-menu__label">بنك الأسئلة</span>
+                                    </a>
+                                </li>
+                                @endcan
+                                @can('question-create')
+                                <li class="slide {{ request()->is('admin/ai/question-generations*') && !request()->is('admin/ai/question-generations/create-advanced*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.ai.question-generations.index') }}" class="side-menu__item {{ request()->is('admin/ai/question-generations*') && !request()->is('admin/ai/question-generations/create-advanced*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">توليد الأسئلة</span>
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->is('admin/ai/question-generations/create-advanced*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.ai.question-generations.create-advanced') }}" class="side-menu__item {{ request()->is('admin/ai/question-generations/create-advanced*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">توليد متقدم</span>
                                     </a>
                                 </li>
                                 @endcan
@@ -1004,16 +1016,6 @@
                                         <li class="slide {{ request()->is('admin/ai/models*') ? 'active' : '' }}">
                                             <a href="{{ route('admin.ai.models.index') }}" class="side-menu__item {{ request()->is('admin/ai/models*') ? 'active' : '' }}">
                                                 <span class="side-menu__label">موديلات AI</span>
-                                            </a>
-                                        </li>
-                                        <li class="slide {{ request()->is('admin/ai/question-generations*') && !request()->is('admin/ai/question-generations/create-advanced*') ? 'active' : '' }}">
-                                            <a href="{{ route('admin.ai.question-generations.index') }}" class="side-menu__item {{ request()->is('admin/ai/question-generations*') && !request()->is('admin/ai/question-generations/create-advanced*') ? 'active' : '' }}">
-                                                <span class="side-menu__label">توليد الأسئلة</span>
-                                            </a>
-                                        </li>
-                                        <li class="slide {{ request()->is('admin/ai/question-generations/create-advanced*') ? 'active' : '' }}">
-                                            <a href="{{ route('admin.ai.question-generations.create-advanced') }}" class="side-menu__item {{ request()->is('admin/ai/question-generations/create-advanced*') ? 'active' : '' }}">
-                                                <span class="side-menu__label">توليد متقدم</span>
                                             </a>
                                         </li>
                                         <li class="slide {{ request()->is('admin/ai/question-solutions*') ? 'active' : '' }}">

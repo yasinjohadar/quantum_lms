@@ -265,11 +265,11 @@
                 </div>
                 <div class="card-body">
                     {{-- فلتر --}}
-                    <form action="{{ route('admin.quizzes.questions', $quiz->id) }}" method="GET" class="mb-3">
-                        <div class="row g-2">
+                    <form action="{{ route('admin.quizzes.questions', $quiz->id) }}" method="GET" class="mb-3" id="availableQuestionsFilterForm">
+                        <div class="row g-2 align-items-center">
                             <div class="col-md-3">
-                                <input type="text" name="search" class="form-control form-control-sm" 
-                                       placeholder="بحث..." value="{{ request('search') }}">
+                                <input type="text" name="search" id="availableSearchInput" class="form-control form-control-sm"
+                                       placeholder="بحث..." value="{{ request('search') }}" autocomplete="off">
                             </div>
                             <div class="col-md-2">
                                 <select name="class_id" id="classFilter" class="form-select form-select-sm">
@@ -298,7 +298,7 @@
                                 </select>
                             </div>
                             <div class="col-md-2">
-                                <select name="type" class="form-select form-select-sm">
+                                <select name="type" id="typeFilter" class="form-select form-select-sm">
                                     <option value="">كل الأنواع</option>
                                     @foreach(\App\Models\Question::TYPES as $key => $value)
                                         <option value="{{ $key }}" {{ request('type') == $key ? 'selected' : '' }}>
@@ -308,7 +308,7 @@
                                 </select>
                             </div>
                             <div class="col-md-2">
-                                <select name="difficulty" class="form-select form-select-sm">
+                                <select name="difficulty" id="difficultyFilter" class="form-select form-select-sm">
                                     <option value="">كل المستويات</option>
                                     @foreach(\App\Models\Question::DIFFICULTIES as $key => $value)
                                         <option value="{{ $key }}" {{ request('difficulty') == $key ? 'selected' : '' }}>
@@ -317,14 +317,15 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-1">
-                                <button type="submit" class="btn btn-sm btn-primary w-100">
-                                    <i class="bi bi-search"></i>
-                                </button>
+                            <div class="col-md-1 text-center">
+                                <span id="availableQuestionsLoading" class="d-none text-primary" title="جاري التحميل...">
+                                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                                </span>
                             </div>
                         </div>
                     </form>
 
+                    <div id="availableQuestionsResults">
                     @if($availableQuestions->isEmpty())
                         <div class="text-center py-4">
                             <i class="bi bi-search display-6 text-muted"></i>
@@ -393,10 +394,11 @@
                             @endforeach
                         </div>
                         
-                        <div class="mt-3">
+                        <div class="mt-3 available-questions-pagination">
                             {{ $availableQuestions->links() }}
                         </div>
                     @endif
+                    </div>
                 </div>
             </div>
         </div>
@@ -561,9 +563,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const selectedSubjectId = preserveSelected ? subjectFilter.value : null;
             
             if (!classId || classId === '') {
-                // إذا لم يتم اختيار صف، تعطيل select المواد وإفراغه
                 subjectFilter.disabled = true;
                 subjectFilter.innerHTML = '<option value="">اختر المادة</option>';
+                return Promise.resolve();
             } else {
                 // جلب المواد الخاصة بالصف المحدد عبر Ajax
                 const route = '{{ route("admin.quizzes.get-subjects-by-class") }}';
@@ -575,7 +577,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 subjectFilter.disabled = true;
                 subjectFilter.innerHTML = '<option value="">جاري التحميل...</option>';
 
-                fetch(`${route}?class_id=${encodeURIComponent(classId)}`, {
+                return fetch(`${route}?class_id=${encodeURIComponent(classId)}`, {
                     method: 'GET',
                     headers: {
                         'Accept': 'application/json',
@@ -627,12 +629,116 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // إضافة event listener على select الصف
+        const filterForm = document.getElementById('availableQuestionsFilterForm');
+        const resultsEl = document.getElementById('availableQuestionsResults');
+        const loadingEl = document.getElementById('availableQuestionsLoading');
+        const searchInput = document.getElementById('availableSearchInput');
+        const typeFilter = document.getElementById('typeFilter');
+        const difficultyFilter = document.getElementById('difficultyFilter');
+        let searchDebounceTimer = null;
+        let filterRequestId = 0;
+
+        function buildFilterUrl(page) {
+            const params = new URLSearchParams(new FormData(filterForm));
+            params.delete('page');
+            if (page && page > 1) {
+                params.set('page', page);
+            }
+            const qs = params.toString();
+            return filterForm.action + (qs ? '?' + qs : '');
+        }
+
+        function loadAvailableQuestions(page) {
+            if (!filterForm || !resultsEl) {
+                return Promise.resolve();
+            }
+            const requestId = ++filterRequestId;
+            if (loadingEl) {
+                loadingEl.classList.remove('d-none');
+            }
+            const url = buildFilterUrl(page || 1);
+            return fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'text/html',
+                },
+                credentials: 'same-origin',
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('filter failed');
+                    }
+                    return response.text();
+                })
+                .then(function (html) {
+                    if (requestId !== filterRequestId) {
+                        return;
+                    }
+                    resultsEl.innerHTML = html;
+                    if (window.history && window.history.replaceState) {
+                        window.history.replaceState({}, '', url);
+                    }
+                })
+                .catch(function () {
+                    if (requestId !== filterRequestId) {
+                        return;
+                    }
+                    resultsEl.innerHTML = '<p class="text-danger small text-center py-3 mb-0">تعذر تحميل الأسئلة</p>';
+                })
+                .finally(function () {
+                    if (requestId === filterRequestId && loadingEl) {
+                        loadingEl.classList.add('d-none');
+                    }
+                });
+        }
+
+        if (filterForm) {
+            filterForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                loadAvailableQuestions(1);
+            });
+
+            if (typeFilter) {
+                typeFilter.addEventListener('change', function () {
+                    loadAvailableQuestions(1);
+                });
+            }
+            if (difficultyFilter) {
+                difficultyFilter.addEventListener('change', function () {
+                    loadAvailableQuestions(1);
+                });
+            }
+            if (subjectFilter) {
+                subjectFilter.addEventListener('change', function () {
+                    loadAvailableQuestions(1);
+                });
+            }
+            if (searchInput) {
+                searchInput.addEventListener('input', function () {
+                    clearTimeout(searchDebounceTimer);
+                    searchDebounceTimer = setTimeout(function () {
+                        loadAvailableQuestions(1);
+                    }, 400);
+                });
+            }
+            if (resultsEl) {
+                resultsEl.addEventListener('click', function (e) {
+                    const link = e.target.closest('.available-questions-pagination a');
+                    if (!link || !link.href) {
+                        return;
+                    }
+                    e.preventDefault();
+                    const page = new URL(link.href, window.location.origin).searchParams.get('page');
+                    loadAvailableQuestions(page ? parseInt(page, 10) : 1);
+                });
+            }
+        }
+
         classFilter.addEventListener('change', function() {
             const classId = this.value;
-            console.log('Class changed to:', classId);
-            // إعادة تعيين المادة عند تغيير الصف
-            loadSubjectsByClass(classId, false);
+            loadSubjectsByClass(classId, false).then(function () {
+                loadAvailableQuestions(1);
+            });
         });
 
         // عند تحميل الصفحة، فلترة المواد حسب الصف المحدد (إن وجد)

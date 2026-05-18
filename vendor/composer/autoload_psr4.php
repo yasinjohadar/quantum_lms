@@ -47,6 +47,7 @@ return array(
     'Symfony\\Component\\Clock\\' => array($vendorDir . '/symfony/clock'),
     'Svg\\' => array($vendorDir . '/dompdf/php-svg-lib/src/Svg'),
     'Spatie\\Permission\\' => array($vendorDir . '/spatie/laravel-permission/src'),
+    'Spatie\\PdfToImage\\' => array($vendorDir . '/spatie/pdf-to-image/src'),
     'Spatie\\FlysystemDropbox\\' => array($vendorDir . '/spatie/flysystem-dropbox/src'),
     'Spatie\\Dropbox\\' => array($vendorDir . '/spatie/dropbox-api/src'),
     'Sabberworm\\CSS\\' => array($vendorDir . '/sabberworm/php-css-parser/src'),

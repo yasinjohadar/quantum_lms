@@ -1,4 +1,4 @@
-@extends('admin.layouts.master')
+﻿@extends('admin.layouts.master')
 
 @section('page-title')
     طلبات توليد الأسئلة
@@ -77,11 +77,7 @@
                                             <td>
                                                 @if($generation->status === 'completed')
                                                     @php
-                                                        $rawQuestions = $generation->generated_questions;
-                                                        if (is_string($rawQuestions)) {
-                                                            $rawQuestions = json_decode($rawQuestions, true);
-                                                        }
-                                                        $generatedCount = is_array($rawQuestions) ? count($rawQuestions) : 0;
+                                                        $generatedCount = $generation->getResolvedGeneratedQuestionsCount();
                                                         $requiredCount = $generation->number_of_questions;
                                                     @endphp
                                                     @if($generatedCount > 0)
@@ -120,15 +116,14 @@
                                                            title="مراجعة الأسئلة المولدة">
                                                             <i class="fas fa-eye me-1"></i> مراجعة
                                                         </a>
+                                                        @if(!$generation->hasSavedQuestions())
                                                         <button type="button" 
                                                                 class="btn btn-sm btn-success" 
-                                                                title="حفظ جميع الأسئلة"
+                                                                title="حفظ جميع الأسئلة (يُفضّل المراجعة أولاً)"
                                                                 data-bs-toggle="modal" 
                                                                 data-bs-target="#saveAllModal{{ $generation->id }}">
                                                             <i class="fas fa-save me-1"></i> حفظ الكل
                                                         </button>
-                                                        
-                                                        <!-- Modal for Save All -->
                                                         <div class="modal fade" id="saveAllModal{{ $generation->id }}" tabindex="-1" aria-labelledby="saveAllModalLabel{{ $generation->id }}" aria-hidden="true">
                                                             <div class="modal-dialog modal-dialog-centered">
                                                                 <div class="modal-content">
@@ -144,7 +139,10 @@
                                                                             <i class="fas fa-question-circle fa-3x text-warning"></i>
                                                                         </div>
                                                                         <h6 class="mb-2">هل أنت متأكد من حفظ جميع الأسئلة؟</h6>
-                                                                        <p class="text-muted mb-0">سيتم حفظ جميع الأسئلة المولدة في قاعدة البيانات</p>
+                                                                        <p class="text-muted mb-2">يُفضّل معاينة الأسئلة من زر «مراجعة» قبل الحفظ.</p>
+                                                                        <a href="{{ route('admin.ai.question-generations.show', $generation->id) }}" class="btn btn-sm btn-outline-primary">
+                                                                            <i class="fas fa-eye me-1"></i> مراجعة أولاً
+                                                                        </a>
                                                                     </div>
                                                                     <div class="modal-footer border-0 pt-0">
                                                                         <form action="{{ route('admin.ai.question-generations.save', $generation->id) }}" method="POST" class="d-inline">
@@ -160,6 +158,11 @@
                                                                 </div>
                                                             </div>
                                                         </div>
+                                                        @else
+                                                            <span class="badge bg-success align-self-center">
+                                                                <i class="fas fa-check me-1"></i> محفوظ
+                                                            </span>
+                                                        @endif
                                                     @elseif($generation->status === 'pending')
                                                         <a href="{{ route('admin.ai.question-generations.show', $generation->id) }}" 
                                                            class="btn btn-sm btn-info" 

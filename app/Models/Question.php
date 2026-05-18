@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Collection;
 
 class Question extends Model
 {
@@ -196,6 +197,26 @@ class Question extends Model
     public function units(): BelongsToMany
     {
         return $this->belongsToMany(Unit::class, 'question_units')->withTimestamps();
+    }
+
+    /**
+     * صفوف المنهج المرتبطة (صف، مادة، وحدة) بدون تكرار.
+     *
+     * @return Collection<int, array{class: ?string, subject: ?string, unit: string}>
+     */
+    public function curriculumLocations(): Collection
+    {
+        return $this->units->map(function (Unit $unit) {
+            $subject = $unit->section?->subject;
+
+            return [
+                'class' => $subject?->schoolClass?->name,
+                'subject' => $subject?->name,
+                'unit' => $unit->title,
+            ];
+        })->unique(function (array $row) {
+            return ($row['class'] ?? '').'|'.($row['subject'] ?? '').'|'.($row['unit'] ?? '');
+        })->values();
     }
 
     public function creator(): BelongsTo

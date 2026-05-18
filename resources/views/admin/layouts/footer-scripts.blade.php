@@ -52,6 +52,26 @@
 <script src="{{ asset('js/session-activity-tracker.js') }}"></script>
 @endif
 
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof window.laravelAsset !== 'function') {
+        return;
+    }
+    var style = document.getElementById('style');
+    if (!style) {
+        return;
+    }
+    var href = style.getAttribute('href') || '';
+    if (href.indexOf('://') !== -1) {
+        return;
+    }
+    if (href.indexOf('../') === 0 || href.indexOf('/admin/') === 0 || href.indexOf('assets/') === 0) {
+        var path = href.replace(/^(\.\.\/)+/, '').replace(/^\/+/, '');
+        style.setAttribute('href', window.laravelAsset(path));
+    }
+});
+</script>
+
 <!-- Page Specific JS -->
 @yield('js')
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\AI\AIQuestionGenerationService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -15,6 +16,7 @@ class AIQuestionGeneration extends Model
         'user_id',
         'subject_id',
         'lesson_id',
+        'unit_id',
         'source_type',
         'source_content',
         'source_image_path',
@@ -26,9 +28,11 @@ class AIQuestionGeneration extends Model
         'ai_model_id',
         'status',
         'generated_questions',
+        'questions_saved_at',
         'error_message',
         'tokens_used',
         'cost',
+        'ai_response_preview',
     ];
 
     protected $casts = [
@@ -37,6 +41,7 @@ class AIQuestionGeneration extends Model
         'cost' => 'decimal:6',
         'generated_questions' => 'array',
         'question_types' => 'array',
+        'questions_saved_at' => 'datetime',
     ];
 
     /**
@@ -47,6 +52,7 @@ class AIQuestionGeneration extends Model
         'manual_text' => 'نص يدوي',
         'topic' => 'موضوع',
         'image' => 'صورة (تحليل بصري)',
+        'pdf' => 'ملف PDF',
     ];
 
     /**
@@ -108,6 +114,14 @@ class AIQuestionGeneration extends Model
     public function lesson()
     {
         return $this->belongsTo(Lesson::class, 'lesson_id');
+    }
+
+    /**
+     * العلاقة مع الوحدة
+     */
+    public function unit()
+    {
+        return $this->belongsTo(Unit::class, 'unit_id');
     }
 
     /**
@@ -193,5 +207,35 @@ class AIQuestionGeneration extends Model
         }
         
         return [];
+    }
+
+    /**
+     * الأسئلة المولدة جاهزة للعرض (مع تطبيع JSON والحقول البديلة).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getResolvedGeneratedQuestions(): array
+    {
+        $raw = $this->generated_questions;
+
+        if (is_string($raw)) {
+            $raw = json_decode($raw, true);
+        }
+
+        if (! is_array($raw) || $raw === []) {
+            return [];
+        }
+
+        return AIQuestionGenerationService::normalizeParsedQuestionList($raw);
+    }
+
+    public function getResolvedGeneratedQuestionsCount(): int
+    {
+        return count($this->getResolvedGeneratedQuestions());
+    }
+
+    public function hasSavedQuestions(): bool
+    {
+        return $this->questions_saved_at !== null;
     }
 }

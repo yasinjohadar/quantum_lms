@@ -4,8 +4,7 @@
     عرض السؤال
 @stop
 
-@section('css')
-@stop
+@include('partials.question-math-assets')
 
 @section('content')
     <!-- Start::app-content -->
@@ -59,10 +58,14 @@
                         </div>
                     @endif
                     
-                    <div class="question-stem mb-3 fs-5">{!! $question->title !!}</div>
+                    <div class="question-text-body fs-5 mb-3">
+                        {!! format_question_markup($question->title) !!}
+                    </div>
                     
-                    @if($question->content)
-                        <div class="text-muted mb-3">{!! $question->content !!}</div>
+                    @if($question->content && trim(strip_tags($question->content)) !== trim(strip_tags($question->title)))
+                        <div class="question-text-body text-muted mb-3">
+                            {!! format_question_markup($question->content) !!}
+                        </div>
                     @endif
                 </div>
             </div>
@@ -85,8 +88,8 @@
                                 <tbody>
                                     @foreach($question->options as $option)
                                         <tr>
-                                            <td>{{ $option->content }}</td>
-                                            <td>{{ $option->match_target }}</td>
+                                            <td class="question-text-body">{!! format_question_markup($option->content) !!}</td>
+                                            <td class="question-text-body">{!! format_question_markup($option->match_target ?? '') !!}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -94,37 +97,38 @@
                         @elseif($question->type === 'ordering')
                             <ol class="list-group list-group-numbered">
                                 @foreach($question->options->sortBy('correct_order') as $option)
-                                    <li class="list-group-item">{{ $option->content }}</li>
+                                    <li class="list-group-item question-text-body">{!! format_question_markup($option->content) !!}</li>
                                 @endforeach
                             </ol>
                         @else
-                            <div class="list-group">
-                                @foreach($question->options as $option)
-                                    <div class="list-group-item d-flex align-items-center {{ $option->is_correct ? 'list-group-item-success' : '' }}">
-                                        @if($option->is_correct)
-                                            <i class="bi bi-check-circle-fill text-success me-2"></i>
-                                        @else
-                                            <i class="bi bi-circle me-2 text-muted"></i>
-                                        @endif
-                                        <div class="flex-grow-1">
+                            @foreach($question->options as $optIndex => $option)
+                                <div class="question-option-row {{ $option->is_correct ? 'is-correct' : '' }}">
+                                    @if($option->is_correct)
+                                        <i class="bi bi-check-circle-fill text-success flex-shrink-0 mt-1"></i>
+                                    @else
+                                        <i class="bi bi-circle text-muted flex-shrink-0 mt-1"></i>
+                                    @endif
+                                    <div class="flex-grow-1">
+                                        <span class="badge bg-secondary me-2">{{ chr(65 + $optIndex) }}</span>
+                                        <span class="question-text-body d-inline">
                                             @if($option->image)
                                                 <img src="{{ media_public_url($option->image) }}" 
                                                      class="me-2 rounded" style="height: 30px;">
                                             @endif
-                                            {{ $option->content }}
-                                            @if($option->feedback)
-                                                <small class="text-muted d-block">
-                                                    <i class="bi bi-chat-dots me-1"></i>
-                                                    {{ $option->feedback }}
-                                                </small>
-                                            @endif
-                                        </div>
-                                        @if($option->points)
-                                            <span class="badge bg-info">{{ $option->points }} درجة</span>
+                                            {!! format_question_markup($option->content) !!}
+                                        </span>
+                                        @if($option->feedback)
+                                            <small class="text-muted d-block mt-1">
+                                                <i class="bi bi-chat-dots me-1"></i>
+                                                {{ $option->feedback }}
+                                            </small>
                                         @endif
                                     </div>
-                                @endforeach
-                            </div>
+                                    @if($option->points)
+                                        <span class="badge bg-info">{{ $option->points }} درجة</span>
+                                    @endif
+                                </div>
+                            @endforeach
                         @endif
                     </div>
                 </div>
@@ -184,7 +188,9 @@
                         </h6>
                     </div>
                     <div class="card-body">
-                        {!! nl2br(e($question->explanation)) !!}
+                        <div class="question-text-body mb-0">
+                            {!! format_question_markup($question->explanation) !!}
+                        </div>
                     </div>
                 </div>
             @endif
@@ -277,31 +283,56 @@
                 </div>
             </div>
 
-            {{-- الوحدات المرتبطة --}}
+            {{-- الموقع في المنهج --}}
             <div class="card custom-card mb-3">
                 <div class="card-header">
-                    <h6 class="mb-0"><i class="bi bi-link-45deg me-2"></i> الوحدات المرتبطة</h6>
+                    <h6 class="mb-0"><i class="bi bi-diagram-3 me-2"></i> الموقع في المنهج</h6>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     @if($question->units->isEmpty())
-                        <div class="text-center text-muted py-3">
+                        <div class="text-center text-muted py-4 px-3">
                             <i class="bi bi-globe fs-3 d-block mb-2"></i>
-                            سؤال عام (غير مرتبط بوحدة)
+                            سؤال عام (غير مرتبط بمنهج محدد)
                         </div>
                     @else
-                        @foreach($question->units as $unit)
-                            <div class="d-flex align-items-center mb-2 p-2 bg-light rounded">
-                                <i class="bi bi-layers me-2 text-primary"></i>
-                                <div>
-                                    <span class="fw-semibold">{{ $unit->title }}</span>
-                                    @if($unit->section && $unit->section->subject)
-                                        <small class="text-muted d-block">
-                                            {{ $unit->section->subject->name }}
-                                        </small>
-                                    @endif
-                                </div>
-                            </div>
-                        @endforeach
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th scope="col" class="text-muted small">الصف</th>
+                                        <th scope="col" class="text-muted small">المادة</th>
+                                        <th scope="col" class="text-muted small">الوحدة</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($question->units as $unit)
+                                        @php
+                                            $subject = $unit->section?->subject;
+                                            $schoolClass = $subject?->schoolClass;
+                                        @endphp
+                                        <tr>
+                                            <td>
+                                                @if($schoolClass)
+                                                    <span class="fw-semibold">{{ $schoolClass->name }}</span>
+                                                @else
+                                                    <span class="text-muted">—</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if($subject)
+                                                    <span class="fw-semibold">{{ $subject->name }}</span>
+                                                @else
+                                                    <span class="text-muted">—</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <span class="fw-semibold text-primary">{{ $unit->title }}</span>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
                     @endif
                 </div>
             </div>
@@ -388,5 +419,8 @@
 @stop
 
 @section('js')
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+    <script src="{{ asset('assets/js/question-math-katex.js') }}?v=20260518b"></script>
 @stop
 

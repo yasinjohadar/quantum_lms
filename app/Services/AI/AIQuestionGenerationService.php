@@ -2,6 +2,7 @@
 
 namespace App\Services\AI;
 
+use App\Exceptions\QuestionGenerationProcessException;
 use App\Models\AIQuestionGeneration;
 use App\Models\AIModel;
 use App\Models\Question;
@@ -19,7 +20,9 @@ class AIQuestionGenerationService
 {
     public function __construct(
         private AIModelService $modelService,
-        private AIPromptService $promptService
+        private AIPromptService $promptService,
+        private PdfTextExtractionService $pdfTextExtraction,
+        private PdfPageImageService $pdfPageImage,
     ) {}
 
     /**
@@ -107,6 +110,80 @@ class AIQuestionGenerationService
     }
 
     /**
+     * توليد أسئلة من ملف مرفوع (صورة أو PDF).
+     *
+     * @param  array<string, mixed>  $options
+     */
+    public function generateFromUploadedFile(UploadedFile $file, array $options = []): AIQuestionGeneration
+    {
+        $mime = strtolower((string) $file->getMimeType());
+        $extension = strtolower((string) $file->getClientOriginalExtension());
+
+        if (str_starts_with($mime, 'image/') || in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
+            return $this->generateFromUploadedImage($file, $options);
+        }
+
+        if ($mime === 'application/pdf' || $extension === 'pdf') {
+            return $this->generateFromUploadedPdf($file, $options);
+        }
+
+        throw new \Exception('نوع الملف غير مدعوم. يُقبل صورة (JPEG, PNG, WebP, GIF) أو ملف PDF فقط.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    public function generateFromUploadedPdf(UploadedFile $file, array $options = []): AIQuestionGeneration
+    {
+        $user = $options['user'] ?? auth()->user();
+        $model = $options['model'] ?? $this->modelService->getBestModelFor('question_generation');
+
+        if (! $model) {
+            throw new \Exception('لا يوجد موديل AI متاح لتوليد الأسئلة');
+        }
+
+        $path = $file->store('ai_question_sources', 'local');
+
+        try {
+            $questionTypes = $options['question_types'] ?? null;
+            $instructions = isset($options['instructions']) ? (string) $options['instructions'] : '';
+
+            $base = [
+                'user_id' => $user->id,
+                'subject_id' => $options['subject_id'] ?? null,
+                'lesson_id' => $options['lesson_id'] ?? null,
+                'unit_id' => $options['unit_id'] ?? null,
+                'source_type' => 'pdf',
+                'source_content' => $instructions,
+                'source_image_path' => $path,
+                'number_of_questions' => $options['number_of_questions'] ?? 5,
+                'difficulty_level' => $options['difficulty_level'] ?? 'mixed',
+                'ai_model_id' => $model->id,
+                'status' => 'pending',
+            ];
+
+            if ($questionTypes && is_array($questionTypes) && count($questionTypes) > 0) {
+                $generation = AIQuestionGeneration::create(array_merge($base, [
+                    'question_type' => 'mixed',
+                    'question_types' => $questionTypes,
+                ]));
+            } else {
+                $generation = AIQuestionGeneration::create(array_merge($base, [
+                    'question_type' => $options['question_type'] ?? 'mixed',
+                    'question_types' => null,
+                ]));
+            }
+        } catch (\Throwable $e) {
+            Storage::disk('local')->delete($path);
+            throw $e;
+        }
+
+        $this->processPdfGeneration($generation);
+
+        return $generation->fresh();
+    }
+
+    /**
      * توليد أسئلة من صورة مرفوعة (تحليل بصري عبر موديل رؤية).
      *
      * @param  array<string, mixed>  $options
@@ -124,7 +201,7 @@ class AIQuestionGenerationService
             throw new \Exception('مزود النموذج الحالي لا يدعم توليد الأسئلة من الصورة. استخدم OpenAI أو OpenRouter أو Anthropic أو Google أو Z.ai مع موديل يدعم الرؤية.');
         }
 
-        $path = $file->store('ai_question_images', 'local');
+        $path = $file->store('ai_question_sources', 'local');
 
         try {
             $questionTypes = $options['question_types'] ?? null;
@@ -135,6 +212,7 @@ class AIQuestionGenerationService
                     'user_id' => $user->id,
                     'subject_id' => $options['subject_id'] ?? null,
                     'lesson_id' => $options['lesson_id'] ?? null,
+                    'unit_id' => $options['unit_id'] ?? null,
                     'source_type' => 'image',
                     'source_content' => $instructions,
                     'source_image_path' => $path,
@@ -150,6 +228,7 @@ class AIQuestionGenerationService
                     'user_id' => $user->id,
                     'subject_id' => $options['subject_id'] ?? null,
                     'lesson_id' => $options['lesson_id'] ?? null,
+                    'unit_id' => $options['unit_id'] ?? null,
                     'source_type' => 'image',
                     'source_content' => $instructions,
                     'source_image_path' => $path,
@@ -180,6 +259,72 @@ class AIQuestionGenerationService
             return $this->processVisionGeneration($generation);
         }
 
+        if ($generation->source_type === 'pdf') {
+            return $this->processPdfGeneration($generation);
+        }
+
+        return $this->processTextGeneration($generation, (string) $generation->source_content);
+    }
+
+    /**
+     * معالجة PDF: استخراج نص أو تحليل بصري للصفحات الممسوحة.
+     */
+    public function processPdfGeneration(AIQuestionGeneration $generation): array
+    {
+        set_time_limit(180);
+
+        $generation->update(['status' => 'processing']);
+
+        try {
+            $path = $generation->source_image_path;
+            if (! $path || ! Storage::disk('local')->exists($path)) {
+                throw new \Exception('ملف PDF غير موجود أو تم حذفه.');
+            }
+
+            $absolutePath = Storage::disk('local')->path($path);
+            $extracted = $this->pdfTextExtraction->extractFromPath($absolutePath);
+
+            if ($this->pdfTextExtraction->isTextSufficient($extracted['text'], $extracted['pageCount'])) {
+                $truncated = $this->pdfTextExtraction->truncateForPrompt($extracted['text']);
+                $instructions = trim((string) $generation->source_content);
+                $combined = $instructions !== ''
+                    ? $instructions."\n\n--- محتوى الملف ---\n\n".$truncated
+                    : $truncated;
+
+                return $this->processTextGeneration($generation, $combined);
+            }
+
+            if (! VisionQuestionGenerationSupport::providerSupportsVisionConversion($generation->model?->provider ?? '')) {
+                throw new \Exception(
+                    'ملف PDF يبدو ممسوحاً ضوئياً (نص غير كافٍ). استخدم موديلاً يدعم الرؤية (Vision)، '
+                    .'أو ثبّت Imagick وGhostscript على الخادم، أو ارفع صور الصفحات بدلاً من PDF.'
+                );
+            }
+
+            $maxPages = (int) config('ai.question_generation_pdf.max_pages_vision', 10);
+            $images = $this->pdfPageImage->renderPages($absolutePath, $maxPages);
+
+            $adminNotes = (string) $generation->source_content;
+            if ($extracted['pageCount'] > count($images)) {
+                $adminNotes .= "\n\n(تم تحليل أول ".count($images).' صفحات من '.$extracted['pageCount'].')';
+            }
+            $adminNotes .= "\n\nملف PDF ممسوح ضوئياً — حلّل محتوى الصفحات المرفقة وأنشئ الأسئلة منها.";
+
+            return $this->processVisionGenerationFromImages($generation, $images, trim($adminNotes));
+        } catch (\Throwable $e) {
+            Log::error('Error processing PDF question generation: '.$e->getMessage(), [
+                'generation_id' => $generation->id,
+            ]);
+
+            $this->failGeneration($generation, $e);
+        }
+    }
+
+    /**
+     * توليد أسئلة من نص (يدوي، درس، أو PDF نصي).
+     */
+    public function processTextGeneration(AIQuestionGeneration $generation, string $content): array
+    {
         set_time_limit(180);
 
         $generation->update(['status' => 'processing']);
@@ -196,7 +341,7 @@ class AIQuestionGenerationService
                 : $generation->question_type;
 
             $prompt = $this->promptService->getQuestionGenerationPrompt(
-                $generation->source_content,
+                $content,
                 [
                     'question_type' => $questionTypeForPrompt,
                     'question_types' => ! empty($selectedTypes) ? $selectedTypes : null,
@@ -208,14 +353,6 @@ class AIQuestionGenerationService
             $requiredTokens = max(4000, $generation->number_of_questions * 800);
             $maxTokens = min($requiredTokens, $model->max_tokens ?: 16000);
 
-            Log::info('Question generation tokens calculation', [
-                'generation_id' => $generation->id,
-                'required_questions' => $generation->number_of_questions,
-                'calculated_tokens' => $requiredTokens,
-                'max_tokens' => $maxTokens,
-                'model_max_tokens' => $model->max_tokens,
-            ]);
-
             $provider = AIProviderFactory::create($model);
             $response = $provider->generateText($prompt, [
                 'max_tokens' => $maxTokens,
@@ -225,29 +362,16 @@ class AIQuestionGenerationService
             if (! $response || empty($response)) {
                 $lastError = $provider->getLastError() ?? 'فشل في توليد الأسئلة - لم يتم الحصول على رد من API';
 
-                Log::error('AI Question Generation Failed - Empty Response', [
-                    'generation_id' => $generation->id,
-                    'model_id' => $model->id,
-                    'model_key' => $model->model_key,
-                    'provider_class' => get_class($provider),
-                    'last_error' => $lastError,
-                ]);
-
                 throw new \Exception($lastError);
             }
 
             return $this->finalizeGenerationFromAiResponse($generation, $model, $provider, $prompt, $response, null);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Error processing question generation: '.$e->getMessage(), [
                 'generation_id' => $generation->id,
             ]);
 
-            $generation->update([
-                'status' => 'failed',
-                'error_message' => $e->getMessage(),
-            ]);
-
-            throw $e;
+            $this->failGeneration($generation, $e);
         }
     }
 
@@ -278,13 +402,51 @@ class AIQuestionGenerationService
             $binary = Storage::disk('local')->get($path);
             $mime = Storage::disk('local')->mimeType($path) ?: 'image/jpeg';
 
+            return $this->processVisionGenerationFromImages($generation, [
+                ['mime' => $mime, 'binary' => $binary],
+            ], $generation->source_content);
+        } catch (\Throwable $e) {
+            Log::error('Error processing vision question generation: '.$e->getMessage(), [
+                'generation_id' => $generation->id,
+            ]);
+
+            $this->failGeneration($generation, $e);
+        }
+    }
+
+    /**
+     * @param  array<int, array{mime: string, binary: string}>  $images
+     */
+    public function processVisionGenerationFromImages(
+        AIQuestionGeneration $generation,
+        array $images,
+        ?string $adminNotes = null
+    ): array {
+        set_time_limit(180);
+
+        $generation->update(['status' => 'processing']);
+
+        try {
+            $model = $generation->model;
+            if (! $model) {
+                throw new \Exception('الموديل غير موجود');
+            }
+
+            if (! VisionQuestionGenerationSupport::providerSupportsVisionConversion($model->provider)) {
+                throw new \Exception('مزود النموذج لا يدعم توليد الأسئلة من الصورة. استخدم OpenAI أو OpenRouter أو Anthropic أو Google أو Z.ai مع موديل رؤية.');
+            }
+
+            if ($images === []) {
+                throw new \Exception('لا توجد صور للتحليل.');
+            }
+
             $selectedTypes = $generation->getSelectedQuestionTypes();
             $questionTypeForPrompt = ! empty($selectedTypes) && count($selectedTypes) > 0
                 ? (count($selectedTypes) === 1 ? $selectedTypes[0] : 'mixed')
                 : $generation->question_type;
 
             $textPrompt = $this->promptService->getQuestionGenerationVisionTextPrompt(
-                $generation->source_content,
+                $adminNotes ?? $generation->source_content,
                 [
                     'question_type' => $questionTypeForPrompt,
                     'question_types' => ! empty($selectedTypes) ? $selectedTypes : null,
@@ -293,7 +455,7 @@ class AIQuestionGenerationService
                 ]
             );
 
-            $messages = VisionQuestionGenerationSupport::buildOpenAiStyleMessages($textPrompt, $mime, $binary);
+            $messages = VisionQuestionGenerationSupport::buildOpenAiStyleMessagesWithImages($textPrompt, $images);
 
             $requiredTokens = max(8000, $generation->number_of_questions * 1000);
             $maxTokens = min($requiredTokens, $model->max_tokens ?: 16000);
@@ -324,18 +486,61 @@ class AIQuestionGenerationService
                 $response,
                 $tokensOverride > 0 ? $tokensOverride : null
             );
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Error processing vision question generation: '.$e->getMessage(), [
                 'generation_id' => $generation->id,
             ]);
 
-            $generation->update([
-                'status' => 'failed',
-                'error_message' => $e->getMessage(),
-            ]);
+            $this->failGeneration($generation, $e);
+        }
+    }
 
+    /**
+     * ترجمة رسائل أخطاء مزودي AI الشائعة إلى العربية.
+     */
+    public static function humanizeApiErrorMessage(string $message): string
+    {
+        $lower = strtolower($message);
+
+        if (str_contains($lower, 'high demand')
+            || str_contains($lower, 'rate limit')
+            || str_contains($lower, 'too many requests')
+            || str_contains($lower, '429')) {
+            return 'الموديل مشغول حالياً بسبب ضغط مرتفع على الخدمة. جرّب بعد قليل أو اختر موديلاً آخر.';
+        }
+
+        if (str_contains($lower, 'timeout') || str_contains($lower, 'timed out')) {
+            return 'انتهت مهلة الاتصال بمزود الذكاء الاصطناعي. جرّب تقليل عدد الأسئلة أو إعادة المحاولة.';
+        }
+
+        if (str_contains($lower, 'insufficient') && str_contains($lower, 'quota')) {
+            return 'رصيد أو حصة مزود الذكاء الاصطناعي غير كافٍ. تحقق من إعدادات الموديل أو استخدم موديلاً آخر.';
+        }
+
+        if (str_contains($lower, 'invalid api key') || str_contains($lower, 'incorrect api key')) {
+            return 'مفتاح API غير صالح. تحقق من إعدادات الموديل في لوحة التحكم.';
+        }
+
+        return $message;
+    }
+
+    /**
+     * @return never
+     */
+    private function failGeneration(AIQuestionGeneration $generation, \Throwable $e): never
+    {
+        if ($e instanceof QuestionGenerationProcessException) {
             throw $e;
         }
+
+        $message = self::humanizeApiErrorMessage($e->getMessage());
+
+        $generation->update([
+            'status' => 'failed',
+            'error_message' => $message,
+        ]);
+
+        throw new QuestionGenerationProcessException($generation->fresh(), $message, $e);
     }
 
     /**
@@ -384,6 +589,7 @@ class AIQuestionGenerationService
             'status' => 'completed',
             'generated_questions' => $validatedQuestions,
             'prompt' => $promptForStorage,
+            'ai_response_preview' => mb_substr($response, 0, 3000),
             'tokens_used' => $tokensUsed,
             'cost' => $model->getCost($tokensUsed),
             'error_message' => $warningMessage,
@@ -417,12 +623,13 @@ class AIQuestionGenerationService
 
         DB::beginTransaction();
         try {
+            $unitId = $generation->unit_id ?? $generation->lesson?->unit_id;
+
             foreach ($questions as $questionData) {
                 $questionType = $questionData['type'] ?? 'single_choice';
                 
                 // إنشاء السؤال
                 $question = Question::create([
-                    'unit_id' => $generation->lesson?->unit_id,
                     'type' => $questionType,
                     'title' => $questionData['question'] ?? '',
                     'content' => $questionData['question'] ?? '',
@@ -433,19 +640,108 @@ class AIQuestionGenerationService
                     'created_by' => $generation->user_id,
                 ]);
 
+                if ($unitId) {
+                    $question->units()->sync([$unitId]);
+                }
+
                 // معالجة الخيارات حسب نوع السؤال
                 $this->saveQuestionOptions($question, $questionType, $questionData);
 
                 $savedQuestions->push($question);
             }
 
+            $generation->update(['questions_saved_at' => now()]);
+
             DB::commit();
+
             return $savedQuestions;
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error saving generated questions: ' . $e->getMessage());
             throw $e;
         }
+    }
+
+    /**
+     * تطبيع قائمة الأسئلة بعد تحليل JSON (مفاتيح غلاف، بدائل لحقل السؤال).
+     *
+     * @param  array<mixed>  $decoded
+     * @return array<int, array<string, mixed>>
+     */
+    public static function normalizeParsedQuestionList(array $decoded): array
+    {
+        foreach (['questions', 'data', 'items', 'generated_questions', 'results'] as $wrapperKey) {
+            if (isset($decoded[$wrapperKey]) && is_array($decoded[$wrapperKey])) {
+                $decoded = $decoded[$wrapperKey];
+                break;
+            }
+        }
+
+        if (! array_is_list($decoded)) {
+            $list = [];
+            foreach ($decoded as $key => $value) {
+                if (is_array($value) && (is_int($key) || (is_string($key) && ctype_digit($key)))) {
+                    $list[] = $value;
+                }
+            }
+            if ($list !== []) {
+                $decoded = $list;
+            }
+        }
+
+        $normalized = [];
+        foreach ($decoded as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $item = self::normalizeQuestionItemFields($item);
+            $questionText = trim((string) ($item['question'] ?? ''));
+
+            if ($questionText !== '') {
+                $normalized[] = $item;
+            }
+        }
+
+        return array_values($normalized);
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @return array<string, mixed>
+     */
+    public static function normalizeQuestionItemFields(array $item): array
+    {
+        if (isset($item['question']) && is_array($item['question'])) {
+            $item['question'] = implode(' ', array_filter(array_map(
+                static fn ($part) => is_scalar($part) ? trim((string) $part) : '',
+                $item['question']
+            )));
+        }
+
+        if (empty($item['question']) || ! is_string($item['question'])) {
+            foreach (['title', 'text', 'stem', 'question_text', 'content'] as $altKey) {
+                if (! empty($item[$altKey]) && is_string($item[$altKey])) {
+                    $item['question'] = $item[$altKey];
+                    break;
+                }
+            }
+        }
+
+        return $item;
+    }
+
+    /**
+     * @param  array<mixed>  $decoded
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeDecodedQuestions(array $decoded): array
+    {
+        $normalized = self::normalizeParsedQuestionList($decoded);
+
+        Log::info('Normalized parsed question list', ['count' => count($normalized)]);
+
+        return $normalized;
     }
 
     /**
@@ -797,10 +1093,13 @@ class AIQuestionGenerationService
      */
     public function validateGeneratedQuestions(array $questions): array
     {
+        $questions = self::normalizeParsedQuestionList($questions);
         $validated = [];
 
         foreach ($questions as $question) {
-            if (!isset($question['question']) || empty($question['question'])) {
+            $question = self::normalizeQuestionItemFields($question);
+
+            if (! isset($question['question']) || trim((string) $question['question']) === '') {
                 continue;
             }
 
@@ -925,42 +1224,72 @@ class AIQuestionGenerationService
         // محاولة 1: تحليل JSON مباشرة
         $decoded = json_decode($cleanedResponse, true);
         if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            Log::info('JSON parsed successfully (direct)', ['count' => count($decoded)]);
-            return $decoded;
+            $normalized = $this->normalizeDecodedQuestions($decoded);
+            if ($normalized !== []) {
+                Log::info('JSON parsed successfully (direct)', ['count' => count($normalized)]);
+
+                return $normalized;
+            }
         }
 
         // محاولة 2: استخراج JSON array من النص
         if (preg_match('/\[\s*\{.*?\}\s*\]/s', $cleanedResponse, $matches)) {
             $jsonString = $matches[0];
             $decoded = json_decode($jsonString, true);
-            
+
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                Log::info('JSON parsed successfully (regex array)', ['count' => count($decoded)]);
-                return $decoded;
+                $normalized = $this->normalizeDecodedQuestions($decoded);
+                if ($normalized !== []) {
+                    Log::info('JSON parsed successfully (regex array)', ['count' => count($normalized)]);
+
+                    return $normalized;
+                }
             }
         }
 
-        // محاولة 3: البحث عن [ و ] يدوياً
+        // محاولة 3: استخراج JSON object يحتوي questions
+        if (preg_match('/\{\s*"questions"\s*:\s*\[.*?\]\s*\}/s', $cleanedResponse, $matches)) {
+            $decoded = json_decode($matches[0], true);
+
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $normalized = $this->normalizeDecodedQuestions($decoded);
+                if ($normalized !== []) {
+                    Log::info('JSON parsed successfully (questions wrapper)', ['count' => count($normalized)]);
+
+                    return $normalized;
+                }
+            }
+        }
+
+        // محاولة 4: البحث عن [ و ] يدوياً
         $jsonStart = strpos($cleanedResponse, '[');
         $jsonEnd = strrpos($cleanedResponse, ']');
 
         if ($jsonStart !== false && $jsonEnd !== false && $jsonEnd > $jsonStart) {
             $jsonString = substr($cleanedResponse, $jsonStart, $jsonEnd - $jsonStart + 1);
             $decoded = json_decode($jsonString, true);
-            
+
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                Log::info('JSON parsed successfully (manual extraction)', ['count' => count($decoded)]);
-                return $decoded;
+                $normalized = $this->normalizeDecodedQuestions($decoded);
+                if ($normalized !== []) {
+                    Log::info('JSON parsed successfully (manual extraction)', ['count' => count($normalized)]);
+
+                    return $normalized;
+                }
             }
         }
 
-        // محاولة 4: البحث عن JSON object واحد
+        // محاولة 5: البحث عن JSON object واحد
         if (preg_match('/\{[^{}]*"question"[^{}]*\}/s', $cleanedResponse, $matches)) {
-            $decoded = json_decode('[' . $matches[0] . ']', true);
-            
+            $decoded = json_decode('['.$matches[0].']', true);
+
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                Log::info('JSON parsed successfully (single object)', ['count' => count($decoded)]);
-                return $decoded;
+                $normalized = $this->normalizeDecodedQuestions($decoded);
+                if ($normalized !== []) {
+                    Log::info('JSON parsed successfully (single object)', ['count' => count($normalized)]);
+
+                    return $normalized;
+                }
             }
         }
 

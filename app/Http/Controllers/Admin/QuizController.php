@@ -699,6 +699,10 @@ class QuizController extends Controller
             ->paginate(10)
             ->withQueryString();
 
+        if ($request->ajax()) {
+            return view('admin.pages.quizzes.partials.available-questions-list', compact('availableQuestions', 'quiz'));
+        }
+
         return view('admin.pages.quizzes.questions', compact('quiz', 'availableQuestions', 'classes', 'subjects'));
     }
 

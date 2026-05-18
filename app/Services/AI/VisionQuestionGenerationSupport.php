@@ -15,20 +15,36 @@ final class VisionQuestionGenerationSupport
      */
     public static function buildOpenAiStyleMessages(string $textPrompt, string $mimeType, string $binaryImage): array
     {
-        $b64 = base64_encode($binaryImage);
-        $mimeType = self::normalizeMime($mimeType);
+        return self::buildOpenAiStyleMessagesWithImages($textPrompt, [
+            ['mime' => $mimeType, 'binary' => $binaryImage],
+        ]);
+    }
+
+    /**
+     * @param  array<int, array{mime: string, binary: string}>  $images
+     * @return array<int, array{role: string, content: array<int, mixed>|string}>
+     */
+    public static function buildOpenAiStyleMessagesWithImages(string $textPrompt, array $images): array
+    {
+        $content = [['type' => 'text', 'text' => $textPrompt]];
+
+        foreach ($images as $image) {
+            $mime = self::normalizeMime((string) ($image['mime'] ?? 'image/jpeg'));
+            $binary = (string) ($image['binary'] ?? '');
+            if ($binary === '') {
+                continue;
+            }
+            $content[] = [
+                'type' => 'image_url',
+                'image_url' => [
+                    'url' => 'data:'.$mime.';base64,'.base64_encode($binary),
+                ],
+            ];
+        }
 
         return [[
             'role' => 'user',
-            'content' => [
-                ['type' => 'text', 'text' => $textPrompt],
-                [
-                    'type' => 'image_url',
-                    'image_url' => [
-                        'url' => 'data:'.$mimeType.';base64,'.$b64,
-                    ],
-                ],
-            ],
+            'content' => $content,
         ]];
     }
 
