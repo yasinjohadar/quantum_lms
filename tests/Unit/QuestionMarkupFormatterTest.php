@@ -37,6 +37,28 @@ test('wraps latex segments for katex rendering', function () {
         ->not->toContain('&lt;');
 });
 
+test('wraps bare latex in mcq options for katex', function () {
+    $input = 'ln|1+\cos^{2}x|+C\-';
+
+    $result = QuestionMarkupFormatter::format($input);
+
+    expect($result)
+        ->toContain('question-math-fragment')
+        ->toContain('\(')
+        ->toContain('\cos^{2}x')
+        ->not->toContain('question-inline-code');
+});
+
+test('bare latex option arctan', function () {
+    $input = 'arctan(\cos x)+C';
+
+    $result = QuestionMarkupFormatter::format($input);
+
+    expect($result)
+        ->toContain('question-math-fragment')
+        ->toContain('arctan(\cos x)+C');
+});
+
 test('plain heading strips latex for page header', function () {
     $input = 'احسب التكامل: \(\int x\cos(x^{2})\,dx\).';
 

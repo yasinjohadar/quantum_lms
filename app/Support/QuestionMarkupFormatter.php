@@ -6,6 +6,9 @@ class QuestionMarkupFormatter
 {
     private const MATH_SEGMENT_PATTERN = '/(\$\$[\s\S]*?\$\$|\\\\\[[\s\S]*?\\\\\]|\\\\\([\s\S]*?\\\\\))/u';
 
+    /** أوامر LaTeX شائعة في خيارات الإجابة (بدون delimiters) */
+    private const BARE_LATEX_PATTERN = '/\\\\(?:frac|int|sum|sqrt|sin|cos|tan|cot|sec|csc|ln|log|arctan|arcsin|arccos|pi|theta|alpha|beta|gamma|delta|cdot|times|left|right|text|quad|,)|\^{|_{}/u';
+
     public static function containsMath(?string $text): bool
     {
         if ($text === null || trim($text) === '') {
@@ -38,6 +41,38 @@ class QuestionMarkupFormatter
         return \Illuminate\Support\Str::limit($plain, $limit);
     }
 
+    public static function looksLikeBareLatex(string $text): bool
+    {
+        if (self::containsMath($text)) {
+            return false;
+        }
+
+        $trimmed = trim($text);
+        if ($trimmed === '') {
+            return false;
+        }
+
+        // كود برمجة بسيط: push() — ليس LaTeX
+        if (! preg_match('/\\\\/', $trimmed) && preg_match('/^[a-zA-Z_$][\w$.]*\([^)]*\)$/u', $trimmed)) {
+            return false;
+        }
+
+        if (! preg_match('/\\\\/', $trimmed) && preg_match('/^[a-zA-Z_$][\w$]*$/u', $trimmed) && strlen($trimmed) <= 40) {
+            return false;
+        }
+
+        return (bool) preg_match(self::BARE_LATEX_PATTERN, $text);
+    }
+
+    public static function wrapBareLatex(string $text): string
+    {
+        $text = trim($text);
+        $text = preg_replace('/\\\\-+$/u', '', $text) ?? $text;
+        $text = rtrim($text, " \t\\");
+
+        return '<span class="question-math-fragment">\('.$text.'\)</span>';
+    }
+
     public static function format(?string $text): string
     {
         if ($text === null || trim($text) === '') {
@@ -48,6 +83,10 @@ class QuestionMarkupFormatter
 
         if (str_contains($text, 'question-inline-code')) {
             return $text;
+        }
+
+        if (self::looksLikeBareLatex($text)) {
+            return self::wrapBareLatex($text);
         }
 
         if (! self::containsMath($text)) {
@@ -78,6 +117,10 @@ class QuestionMarkupFormatter
 
     private static function formatWithoutMath(string $text): string
     {
+        if (self::looksLikeBareLatex($text)) {
+            return self::wrapBareLatex($text);
+        }
+
         $text = self::replaceCodeBlocks($text);
         $text = self::replaceInlineCode($text);
         $text = self::autoWrapCodePatterns($text);
