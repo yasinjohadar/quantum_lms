@@ -17,10 +17,11 @@ class QuizTimer {
         this.onWarning = typeof options.onWarning === 'function' ? options.onWarning : null;
         this.tickIntervalId = null;
         this.syncIntervalId = null;
-        this.updateIntervalMs = 15000; // تحديث من الخادم كل 15 ثانية
+        this.updateIntervalMs = 15000;
         this.lastUpdateAt = 0;
         this.warningFired = {};
         this.timeoutFired = false;
+        this.started = false;
     }
 
     formatSeconds(totalSeconds) {
@@ -38,9 +39,96 @@ class QuizTimer {
         return document.getElementById('timer-card');
     }
 
-    start() {
-        this.stop();
+    getCsrfToken() {
+        const token = document.querySelector('meta[name="csrf-token"]');
+        return token ? token.getAttribute('content') : '';
+    }
 
+    handleSyncResponse(data) {
+        if (!data) {
+            return false;
+        }
+
+        if (data.timeout && data.redirect_url) {
+            this.stop();
+            window.location.href = data.redirect_url;
+            return true;
+        }
+
+        if (data.timeout) {
+            this.stop();
+            this.fireTimeout();
+            return true;
+        }
+
+        if (typeof data.remaining === 'number' && data.remaining >= 0) {
+            this.remainingSeconds = data.remaining;
+            const displayEl = this.getDisplayElement();
+            if (displayEl) {
+                displayEl.textContent = this.formatSeconds(this.remainingSeconds);
+                displayEl.setAttribute('data-remaining-seconds', String(this.remainingSeconds));
+            }
+        }
+
+        return false;
+    }
+
+    syncFromServer(options = {}) {
+        const { immediate = false, onComplete } = options;
+
+        if (!this.updateUrl) {
+            if (typeof onComplete === 'function') {
+                onComplete(false);
+            }
+            return Promise.resolve(false);
+        }
+
+        const now = Date.now();
+        if (!immediate && now - this.lastUpdateAt < this.updateIntervalMs) {
+            if (typeof onComplete === 'function') {
+                onComplete(false);
+            }
+            return Promise.resolve(false);
+        }
+
+        this.lastUpdateAt = now;
+
+        return fetch(this.updateUrl, {
+            method: 'GET',
+            headers: {
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': this.getCsrfToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        })
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                const handled = this.handleSyncResponse(data);
+                if (typeof onComplete === 'function') {
+                    onComplete(handled);
+                }
+                return handled;
+            })
+            .catch(() => {
+                if (typeof onComplete === 'function') {
+                    onComplete(false);
+                }
+                return false;
+            });
+    }
+
+    fireTimeout() {
+        if (this.timeoutFired) {
+            return;
+        }
+        this.timeoutFired = true;
+        if (this.onTimeout) {
+            this.onTimeout();
+        }
+    }
+
+    startTicking() {
         const tick = () => {
             const displayEl = this.getDisplayElement();
             const cardEl = this.getCardElement();
@@ -49,16 +137,18 @@ class QuizTimer {
                 if (displayEl) {
                     displayEl.textContent = '0:00';
                 }
-                this.stop();
-                if (!this.timeoutFired && this.onTimeout) {
-                    this.timeoutFired = true;
-                    this.onTimeout();
-                }
+                this.stopTickOnly();
+                this.syncFromServer({ immediate: true, onComplete: (handled) => {
+                    if (!handled && !this.timeoutFired) {
+                        this.fireTimeout();
+                    }
+                }});
                 return;
             }
 
             if (displayEl) {
                 displayEl.textContent = this.formatSeconds(this.remainingSeconds);
+                displayEl.setAttribute('data-remaining-seconds', String(this.remainingSeconds));
             }
 
             if (this.onWarning && cardEl) {
@@ -80,50 +170,59 @@ class QuizTimer {
 
         tick();
         this.tickIntervalId = window.setInterval(tick, 1000);
-
-        if (this.updateUrl) {
-            const syncFromServer = () => {
-                const now = Date.now();
-                if (now - this.lastUpdateAt < this.updateIntervalMs) {
-                    return;
-                }
-                this.lastUpdateAt = now;
-
-                const token = document.querySelector('meta[name="csrf-token"]');
-                const csrf = token ? token.getAttribute('content') : '';
-
-                fetch(this.updateUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': csrf || '',
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                    credentials: 'same-origin',
-                })
-                    .then((res) => (res.ok ? res.json() : null))
-                    .then((data) => {
-                        if (data && typeof data.remaining === 'number' && data.remaining >= 0) {
-                            this.remainingSeconds = data.remaining;
-                            const displayEl = this.getDisplayElement();
-                            if (displayEl) {
-                                displayEl.textContent = this.formatSeconds(this.remainingSeconds);
-                            }
-                        }
-                    })
-                    .catch(() => {});
-            };
-
-            syncFromServer();
-            this.syncIntervalId = window.setInterval(syncFromServer, this.updateIntervalMs);
-        }
     }
 
-    stop() {
+    stopTickOnly() {
         if (this.tickIntervalId !== null) {
             window.clearInterval(this.tickIntervalId);
             this.tickIntervalId = null;
         }
+    }
+
+    start() {
+        if (this.started) {
+            return;
+        }
+        this.started = true;
+        this.stop();
+
+        const begin = () => {
+            this.startTicking();
+
+            if (this.updateUrl) {
+                this.syncFromServer({ immediate: true });
+                this.syncIntervalId = window.setInterval(() => {
+                    this.syncFromServer();
+                }, this.updateIntervalMs);
+            }
+        };
+
+        if (this.remainingSeconds <= 0 && this.updateUrl) {
+            this.syncFromServer({
+                immediate: true,
+                onComplete: (handled) => {
+                    if (!handled && this.remainingSeconds <= 0) {
+                        this.fireTimeout();
+                        return;
+                    }
+                    if (!handled) {
+                        begin();
+                    }
+                },
+            });
+            return;
+        }
+
+        if (this.remainingSeconds <= 0) {
+            this.fireTimeout();
+            return;
+        }
+
+        begin();
+    }
+
+    stop() {
+        this.stopTickOnly();
         if (this.syncIntervalId !== null) {
             window.clearInterval(this.syncIntervalId);
             this.syncIntervalId = null;

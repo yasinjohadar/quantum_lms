@@ -150,8 +150,10 @@ class StudentQuizController extends Controller
             ->findOrFail($attemptId);
 
         if ($attempt->status !== 'in_progress') {
-            return redirect()->back()
-                ->with('info', 'هذه المحاولة مكتملة. يمكنك بدء محاولة جديدة.');
+            return redirect()->route('student.quizzes.result', [
+                'quiz' => $quizId,
+                'attempt' => $attemptId,
+            ])->with('info', 'هذه المحاولة مكتملة.');
         }
 
         // الحصول على الأسئلة بالترتيب المحفوظ
@@ -211,6 +213,30 @@ class StudentQuizController extends Controller
             $question = Question::findOrFail($request->question_id);
             $answerData = $this->prepareAnswerData($request, $question);
 
+            $existingAnswer = QuizAnswer::where('attempt_id', $attemptId)
+                ->where('question_id', $request->question_id)
+                ->first();
+
+            if ($this->isAnswerDataEmpty($answerData, $question)
+                && $existingAnswer
+                && $this->answerHasContent($existingAnswer)) {
+                $attempt->updateActivity();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم حفظ الإجابة بنجاح',
+                    'answer' => [
+                        'selected_options' => $existingAnswer->selected_options,
+                        'answer_text' => $existingAnswer->answer_text,
+                        'numeric_answer' => $existingAnswer->numeric_answer,
+                        'matching_pairs' => $existingAnswer->matching_pairs,
+                        'ordering' => $existingAnswer->ordering,
+                        'fill_blanks_answers' => $existingAnswer->fill_blanks_answers,
+                        'drag_drop_assignments' => $existingAnswer->drag_drop_assignments,
+                    ],
+                ]);
+            }
+
             $answer = QuizAnswer::updateOrCreate(
                 [
                     'attempt_id' => $attemptId,
@@ -257,8 +283,18 @@ class StudentQuizController extends Controller
             ->findOrFail($attemptId);
 
         if ($attempt->status !== 'in_progress') {
-            return redirect()->back()
-                ->with('error', 'لا يمكن إرسال محاولة مكتملة');
+            $resultUrl = $this->quizResultUrl($attempt);
+
+            if ($this->wantsJsonResponse($request)) {
+                return response()->json([
+                    'success' => true,
+                    'redirect_url' => $resultUrl,
+                    'message' => 'تم إرسال الاختبار مسبقاً',
+                ]);
+            }
+
+            return redirect()->to($resultUrl)
+                ->with('info', 'تم إرسال هذه المحاولة مسبقاً');
         }
 
         try {
@@ -308,15 +344,33 @@ class StudentQuizController extends Controller
 
             DB::commit();
 
-            return redirect()->route('student.quizzes.result', [
-                'quiz' => $attempt->quiz_id,
-                'attempt' => $attemptId
-            ])->with('success', 'تم إرسال الاختبار بنجاح');
+            $resultUrl = $this->quizResultUrl($attempt);
+
+            if ($this->wantsJsonResponse($request)) {
+                return response()->json([
+                    'success' => true,
+                    'redirect_url' => $resultUrl,
+                    'message' => 'تم إرسال الاختبار بنجاح',
+                ]);
+            }
+
+            return redirect()->to($resultUrl)
+                ->with('success', 'تم إرسال الاختبار بنجاح');
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error submitting quiz: ' . $e->getMessage());
-            return redirect()->back()
-                ->with('error', 'حدث خطأ أثناء إرسال الاختبار: ' . $e->getMessage());
+
+            if ($this->wantsJsonResponse($request)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ أثناء إرسال الاختبار: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return redirect()->route('student.quizzes.show', [
+                'quiz' => $attempt->quiz_id,
+                'attempt' => $attemptId,
+            ])->with('error', 'حدث خطأ أثناء إرسال الاختبار: ' . $e->getMessage());
         }
     }
 
@@ -350,17 +404,18 @@ class StudentQuizController extends Controller
         if ($attempt->status !== 'in_progress') {
             return response()->json([
                 'success' => false,
-                'message' => 'المحاولة غير جارية'
-            ], 400);
+                'timeout' => true,
+                'redirect_url' => $this->quizResultUrl($attempt),
+                'message' => 'المحاولة مكتملة',
+            ]);
         }
 
         $remaining = $attempt->remaining_time;
 
         // التحقق من انتهاء الوقت
         if ($remaining !== null && $remaining <= 0) {
-            $attempt->timeout();
+            $this->finalizeTimedOutAttempt($attempt);
 
-            // تسجيل في AuditLog أن المحاولة انتهت لانتهاء الوقت
             $this->auditLogService->logQuizSecurity($user, 'quiz_timeout', [
                 'quiz_id' => $attempt->quiz_id,
                 'attempt_id' => $attempt->id,
@@ -369,7 +424,8 @@ class StudentQuizController extends Controller
             return response()->json([
                 'success' => false,
                 'timeout' => true,
-                'message' => 'انتهى الوقت'
+                'redirect_url' => $this->quizResultUrl($attempt),
+                'message' => 'انتهى الوقت',
             ]);
         }
 
@@ -485,5 +541,86 @@ class StudentQuizController extends Controller
         }
 
         return $data;
+    }
+
+    private function wantsJsonResponse(Request $request): bool
+    {
+        return $request->expectsJson()
+            || $request->ajax()
+            || $request->wantsJson();
+    }
+
+    private function quizResultUrl(QuizAttempt $attempt): string
+    {
+        return route('student.quizzes.result', [
+            'quiz' => $attempt->quiz_id,
+            'attempt' => $attempt->id,
+        ]);
+    }
+
+    private function finalizeTimedOutAttempt(QuizAttempt $attempt): void
+    {
+        if ($attempt->status !== 'in_progress') {
+            return;
+        }
+
+        $attempt->timeout();
+
+        foreach ($attempt->answers()->with('question')->get() as $answer) {
+            if (!$answer->is_graded && !$answer->needs_manual_grading) {
+                $answer->autoGrade();
+            }
+        }
+    }
+
+    private function isAnswerDataEmpty(array $data, Question $question): bool
+    {
+        if (empty($data)) {
+            return true;
+        }
+
+        return match ($question->type) {
+            'single_choice', 'multiple_choice', 'true_false' => empty($data['selected_options'] ?? []),
+            'short_answer', 'essay' => !isset($data['answer_text']) || trim((string) $data['answer_text']) === '',
+            'matching' => empty($data['matching_pairs'] ?? []),
+            'ordering' => empty($data['ordering'] ?? []),
+            'numerical', 'numeric' => !isset($data['numeric_answer']) || $data['numeric_answer'] === '' || $data['numeric_answer'] === null,
+            'fill_blanks', 'fill_blank' => empty($data['fill_blanks_answers'] ?? []),
+            'drag_drop' => empty($data['drag_drop_assignments'] ?? []),
+            default => empty(array_filter($data, fn ($value) => $value !== null && $value !== '' && $value !== [])),
+        };
+    }
+
+    private function answerHasContent(QuizAnswer $answer): bool
+    {
+        if (!empty($answer->selected_options)) {
+            return true;
+        }
+
+        if ($answer->answer_text !== null && trim((string) $answer->answer_text) !== '') {
+            return true;
+        }
+
+        if ($answer->numeric_answer !== null && $answer->numeric_answer !== '') {
+            return true;
+        }
+
+        if (!empty($answer->matching_pairs)) {
+            return true;
+        }
+
+        if (!empty($answer->ordering)) {
+            return true;
+        }
+
+        if (!empty($answer->fill_blanks_answers)) {
+            return true;
+        }
+
+        if (!empty($answer->drag_drop_assignments)) {
+            return true;
+        }
+
+        return false;
     }
 }

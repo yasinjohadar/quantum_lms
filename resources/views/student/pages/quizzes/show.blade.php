@@ -345,7 +345,7 @@
 @endpush
 
 @push('scripts')
-<script src="{{ asset('js/quiz-timer.js') }}?v=3"></script>
+<script src="{{ asset('js/quiz-timer.js') }}?v=4"></script>
 <script src="{{ asset('js/auto-save-answer.js') }}?v=2"></script>
 <script src="{{ asset('js/question-types.js') }}"></script>
 <script>
@@ -415,7 +415,10 @@
     
     let currentQuestionIndex = 0;
     const saveUrl = '{{ route("student.quizzes.save-answer", $attempt->id) }}';
+    const submitUrl = '{{ route("student.quizzes.submit", $attempt->id) }}';
+    const resultUrl = '{{ route("student.quizzes.result", ["quiz" => $quiz->id, "attempt" => $attempt->id]) }}';
     const csrfToken = '{{ csrf_token() }}';
+    let isSubmittingQuiz = false;
 
     // تحميل سؤال
     function loadQuestion(index) {
@@ -1394,6 +1397,88 @@
         saveUrl: saveUrl,
         interval: 30000
     });
+
+    function submitQuizAttempt(options) {
+        options = options || {};
+        if (isSubmittingQuiz) {
+            return Promise.resolve();
+        }
+
+        isSubmittingQuiz = true;
+        const submitBtn = document.getElementById('submit-quiz-btn');
+        const nextBtn = document.getElementById('next-btn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+        }
+        if (nextBtn) {
+            nextBtn.disabled = true;
+        }
+
+        const savePromise = (Array.isArray(questions) && questions.length > 0 && questions[currentQuestionIndex])
+            ? saveCurrentAnswer(questions[currentQuestionIndex])
+            : Promise.resolve();
+
+        return savePromise.then(function() {
+            const formData = new FormData();
+            formData.append('_token', csrfToken);
+
+            return fetch(submitUrl, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+        }).then(function(response) {
+            return response.json().then(function(data) {
+                return { response: response, data: data };
+            }).catch(function() {
+                return { response: response, data: null };
+            });
+        }).then(function(result) {
+            const response = result.response;
+            const data = result.data;
+
+            if (data && data.redirect_url) {
+                window.location.href = data.redirect_url;
+                return;
+            }
+
+            if (data && data.success) {
+                window.location.href = resultUrl;
+                return;
+            }
+
+            if (response.ok) {
+                window.location.href = resultUrl;
+                return;
+            }
+
+            const message = (data && data.message)
+                ? data.message
+                : 'حدث خطأ أثناء إرسال الاختبار. حاول مرة أخرى.';
+            alert(message);
+            isSubmittingQuiz = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+            }
+            if (nextBtn) {
+                nextBtn.disabled = false;
+            }
+        }).catch(function(err) {
+            console.error('Submit quiz error:', err);
+            alert('حدث خطأ أثناء إرسال الاختبار. تحقق من الاتصال وحاول مرة أخرى.');
+            isSubmittingQuiz = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+            }
+            if (nextBtn) {
+                nextBtn.disabled = false;
+            }
+        });
+    }
     
     function startQuizCountdown() {
         @if($quiz->show_timer)
@@ -1412,12 +1497,7 @@
             : {{ (int) ($initialRemaining ?? 0) }};
 
         const onTimeout = function() {
-            const savePromises = questions.map(function(question) {
-                return saveCurrentAnswer(question);
-            });
-            Promise.all(savePromises).then(function() {
-                document.getElementById('submit-quiz-form').submit();
-            });
+            submitQuizAttempt({ reason: 'timeout' });
         };
 
         const onWarning = function(seconds) {
@@ -1481,9 +1561,7 @@
         if (submitForm) {
             submitForm.addEventListener('submit', function(e) {
                 e.preventDefault();
-                const form = this;
-                const savePromises = questions.map(question => saveCurrentAnswer(question));
-                Promise.all(savePromises).then(() => { form.submit(); });
+                submitQuizAttempt({ reason: 'manual' });
             });
         }
     })();
