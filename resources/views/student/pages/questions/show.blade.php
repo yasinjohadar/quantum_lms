@@ -243,8 +243,8 @@
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-<script src="{{ asset('js/quiz-timer.js') }}"></script>
-<script src="{{ asset('js/auto-save-answer.js') }}"></script>
+<script src="{{ asset('js/quiz-timer.js') }}?v=3"></script>
+<script src="{{ asset('js/auto-save-answer.js') }}?v=2"></script>
 <script src="{{ asset('js/question-types.js') }}"></script>
 <script>
     // تهيئة العداد - دائماً يعرض العداد

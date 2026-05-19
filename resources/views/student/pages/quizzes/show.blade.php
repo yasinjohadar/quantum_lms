@@ -345,8 +345,8 @@
 @endpush
 
 @push('scripts')
-<script src="{{ asset('js/quiz-timer.js') }}?v=2"></script>
-<script src="{{ asset('js/auto-save-answer.js') }}"></script>
+<script src="{{ asset('js/quiz-timer.js') }}?v=3"></script>
+<script src="{{ asset('js/auto-save-answer.js') }}?v=2"></script>
 <script src="{{ asset('js/question-types.js') }}"></script>
 <script>
     @php
