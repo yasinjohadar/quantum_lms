@@ -557,6 +557,26 @@
         div.innerHTML = html;
         return div.textContent || div.innerText || '';
     }
+
+    function isTrueFalseTrueLabel(content) {
+        const text = plainTextFromHtml(content || '').trim().toLowerCase();
+        return ['صح', 'صحيح', 'true', 'نعم'].includes(text);
+    }
+
+    function isTrueFalseFalseLabel(content) {
+        const text = plainTextFromHtml(content || '').trim().toLowerCase();
+        return ['خطأ', 'خطا', 'false', 'لا'].includes(text);
+    }
+
+    function trueFalseIconHtml(content) {
+        if (isTrueFalseTrueLabel(content)) {
+            return '<i class="bi bi-check-circle text-success me-2"></i>';
+        }
+        if (isTrueFalseFalseLabel(content)) {
+            return '<i class="bi bi-x-circle text-danger me-2"></i>';
+        }
+        return '';
+    }
     
     function renderSingleChoice(question, answer) {
         // Handle both array and string formats for selected_options
@@ -634,26 +654,24 @@
         
         let html = '<div class="d-flex gap-3">';
         
-        // Find true and false options
-        const trueOption = question.options?.find(opt => opt.is_correct === true);
-        const falseOption = question.options?.find(opt => opt.is_correct === false);
-        
-        // If options are not available, fallback to old system
-        if (!trueOption || !falseOption) {
+        const sahOption = question.options?.find(opt => isTrueFalseTrueLabel(opt.content));
+        const khataOption = question.options?.find(opt => isTrueFalseFalseLabel(opt.content));
+
+        if (!sahOption || !khataOption) {
             const trueChecked = selectedOptions.includes('true') || selectedOptions.includes(true) ? 'checked' : '';
             const falseChecked = selectedOptions.includes('false') || selectedOptions.includes(false) ? 'checked' : '';
             
             html += `
                 <div class="form-check p-4 border rounded flex-fill text-center ${trueChecked ? 'border-success bg-success-transparent' : ''}">
-                    <input class="form-check-input" type="radio" name="answer_${question.id}" 
-                           id="true_${question.id}" value="true" ${trueChecked}>
+                    <input class="form-check-input true-false-radio" type="radio" name="answer_${question.id}" 
+                           id="true_${question.id}" value="true" data-tf-choice="true" ${trueChecked}>
                     <label class="form-check-label w-100 cursor-pointer fs-5" for="true_${question.id}">
                         <i class="bi bi-check-circle text-success me-2"></i> صحيح
                     </label>
                 </div>
                 <div class="form-check p-4 border rounded flex-fill text-center ${falseChecked ? 'border-danger bg-danger-transparent' : ''}">
-                    <input class="form-check-input" type="radio" name="answer_${question.id}" 
-                           id="false_${question.id}" value="false" ${falseChecked}>
+                    <input class="form-check-input true-false-radio" type="radio" name="answer_${question.id}" 
+                           id="false_${question.id}" value="false" data-tf-choice="false" ${falseChecked}>
                     <label class="form-check-label w-100 cursor-pointer fs-5" for="false_${question.id}">
                         <i class="bi bi-x-circle text-danger me-2"></i> خطأ
                     </label>
@@ -664,31 +682,30 @@
             const selectedIds = selectedOptions.map(val => {
                 // If it's "true" or "false", convert to option ID
                 if (val === 'true' || val === true) {
-                    return trueOption.id;
+                    return parseInt(sahOption.id, 10);
                 } else if (val === 'false' || val === false) {
-                    return falseOption.id;
+                    return parseInt(khataOption.id, 10);
                 }
                 // Otherwise, try to parse as integer (should be option ID)
                 return parseInt(val) || val;
             }).map(id => parseInt(id)); // Ensure all are integers for comparison
             
-            // Use option IDs
-            const trueChecked = selectedIds.includes(trueOption.id) ? 'checked' : '';
-            const falseChecked = selectedIds.includes(falseOption.id) ? 'checked' : '';
-            
+            const sahChecked = selectedIds.includes(parseInt(sahOption.id, 10)) ? 'checked' : '';
+            const khataChecked = selectedIds.includes(parseInt(khataOption.id, 10)) ? 'checked' : '';
+
             html += `
-                <div class="form-check p-4 border rounded flex-fill text-center ${trueChecked ? 'border-success bg-success-transparent' : ''}">
-                    <input class="form-check-input" type="radio" name="answer_${question.id}" 
-                           id="option_${trueOption.id}" value="${trueOption.id}" ${trueChecked}>
-                    <label class="form-check-label w-100 cursor-pointer fs-5" for="option_${trueOption.id}">
-                        <i class="bi bi-check-circle text-success me-2"></i> ${trueOption.content || 'صحيح'}
+                <div class="form-check p-4 border rounded flex-fill text-center ${sahChecked ? 'border-success bg-success-transparent' : ''}">
+                    <input class="form-check-input true-false-radio" type="radio" name="answer_${question.id}"
+                           id="option_${sahOption.id}" value="${sahOption.id}" data-tf-choice="true" ${sahChecked}>
+                    <label class="form-check-label w-100 cursor-pointer fs-5" for="option_${sahOption.id}">
+                        ${trueFalseIconHtml(sahOption.content)} ${sahOption.content || 'صح'}
                     </label>
                 </div>
-                <div class="form-check p-4 border rounded flex-fill text-center ${falseChecked ? 'border-danger bg-danger-transparent' : ''}">
-                    <input class="form-check-input" type="radio" name="answer_${question.id}" 
-                           id="option_${falseOption.id}" value="${falseOption.id}" ${falseChecked}>
-                    <label class="form-check-label w-100 cursor-pointer fs-5" for="option_${falseOption.id}">
-                        <i class="bi bi-x-circle text-danger me-2"></i> ${falseOption.content || 'خطأ'}
+                <div class="form-check p-4 border rounded flex-fill text-center ${khataChecked ? 'border-danger bg-danger-transparent' : ''}">
+                    <input class="form-check-input true-false-radio" type="radio" name="answer_${question.id}"
+                           id="option_${khataOption.id}" value="${khataOption.id}" data-tf-choice="false" ${khataChecked}>
+                    <label class="form-check-label w-100 cursor-pointer fs-5" for="option_${khataOption.id}">
+                        ${trueFalseIconHtml(khataOption.content)} ${khataOption.content || 'خطأ'}
                     </label>
                 </div>
             `;
@@ -1202,20 +1219,20 @@
         });
         
         // True/False highlighting
-        document.querySelectorAll('.form-check input[type="radio"]').forEach(input => {
+        document.querySelectorAll('.true-false-radio').forEach(input => {
             input.addEventListener('change', function() {
                 document.querySelectorAll(`input[name="${this.name}"]`).forEach(radio => {
                     const parent = radio.closest('.form-check');
                     parent.classList.remove('border-success', 'border-danger', 'bg-success-transparent', 'bg-danger-transparent');
                 });
-                
+
                 const parent = this.closest('.form-check');
-                if (this.value === 'true') {
+                if (this.dataset.tfChoice === 'true') {
                     parent.classList.add('border-success', 'bg-success-transparent');
-                } else {
+                } else if (this.dataset.tfChoice === 'false') {
                     parent.classList.add('border-danger', 'bg-danger-transparent');
                 }
-                
+
                 saveCurrentAnswer(question);
             });
         });
