@@ -54,12 +54,16 @@
         <div class="col-lg-9 order-lg-2">
             <!-- عداد الوقت -->
             @if($quiz->show_timer)
+                @php
+                    $initialRemaining = $attempt->remaining_time
+                        ?? ($quiz->duration_minutes ? $quiz->duration_minutes * 60 : null);
+                @endphp
                 <div class="card mb-3" id="timer-card">
                     <div class="card-body text-center">
                         <div class="d-flex align-items-center justify-content-center gap-3">
                             <i class="bi bi-clock-history fs-4 text-primary"></i>
                             <div>
-                                <h5 class="mb-0" id="timer-display">--:--</h5>
+                                <h5 class="mb-0" id="timer-display">{{ $initialRemaining !== null ? ($attempt->formatted_remaining_time ?? '--:--') : '--:--' }}</h5>
                                 <small class="text-muted">الوقت المتبقي</small>
                             </div>
                         </div>
@@ -341,73 +345,7 @@
 @endpush
 
 @push('scripts')
-<script>
-(function() {
-    class QuizTimer {
-        constructor(options = {}) {
-            this.remainingSeconds = Math.max(0, parseInt(options.remainingTime, 10) || 0);
-            this.updateUrl = options.updateUrl || null;
-            this.onTimeout = typeof options.onTimeout === 'function' ? options.onTimeout : null;
-            this.onWarning = typeof options.onWarning === 'function' ? options.onWarning : null;
-            this.intervalId = null;
-            this.updateIntervalMs = 15000;
-            this.lastUpdateAt = 0;
-            this.warningFired = {};
-        }
-        start() {
-            const displayEl = document.getElementById('timer-display');
-            const cardEl = document.getElementById('timer-card');
-            const self = this;
-            const updateDisplay = function() {
-                if (self.remainingSeconds <= 0) {
-                    self.stop();
-                    if (self.onTimeout) self.onTimeout();
-                    if (displayEl) displayEl.textContent = '0:00';
-                    return;
-                }
-                const m = Math.floor(self.remainingSeconds / 60);
-                const s = self.remainingSeconds % 60;
-                if (displayEl) displayEl.textContent = m + ':' + (s < 10 ? '0' : '') + s;
-                if (self.onWarning && cardEl) {
-                    if (self.remainingSeconds <= 60 && !self.warningFired[60]) {
-                        self.warningFired[60] = true;
-                        cardEl.classList.add('danger');
-                        cardEl.classList.remove('warning');
-                        self.onWarning(self.remainingSeconds);
-                    } else if (self.remainingSeconds <= 300 && self.remainingSeconds > 60 && !self.warningFired[300]) {
-                        self.warningFired[300] = true;
-                        cardEl.classList.add('warning');
-                        cardEl.classList.remove('danger');
-                        self.onWarning(self.remainingSeconds);
-                    }
-                }
-                self.remainingSeconds--;
-            };
-            updateDisplay();
-            self.intervalId = setInterval(updateDisplay, 1000);
-            if (self.updateUrl) {
-                const syncFromServer = function() {
-                    const now = Date.now();
-                    if (now - self.lastUpdateAt < self.updateIntervalMs) return;
-                    self.lastUpdateAt = now;
-                    const token = document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                    fetch(self.updateUrl, {
-                        method: 'GET',
-                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': token || '', 'X-Requested-With': 'XMLHttpRequest' }
-                    }).then(function(res) { return res.ok ? res.json() : null; }).then(function(data) {
-                        if (data && typeof data.remaining === 'number' && data.remaining >= 0) self.remainingSeconds = data.remaining;
-                    }).catch(function() {});
-                };
-                setInterval(syncFromServer, self.updateIntervalMs);
-            }
-        }
-        stop() {
-            if (this.intervalId !== null) { clearInterval(this.intervalId); this.intervalId = null; }
-        }
-    }
-    window.QuizTimer = QuizTimer;
-})();
-</script>
+<script src="{{ asset('js/quiz-timer.js') }}"></script>
 <script src="{{ asset('js/auto-save-answer.js') }}"></script>
 <script src="{{ asset('js/question-types.js') }}"></script>
 <script>
@@ -442,8 +380,8 @@
         })->toArray();
     @endphp
     
-    let questions = {!! json_encode($questionsJson) !!};
-    let answers = {!! json_encode($answersJson) !!};
+    let questions = @json($questionsJson);
+    let answers = @json($answersJson);
     
     // Ensure questions is an array
     if (!Array.isArray(questions)) {
@@ -458,6 +396,22 @@
     }
     
     console.log('Quiz initialized with', questions.length, 'questions');
+
+    function countAnsweredQuestions() {
+        return Object.keys(answers).filter((k) => {
+            const ans = answers[k];
+            if (!ans) return false;
+            return (
+                (Array.isArray(ans.selected_options) && ans.selected_options.length > 0) ||
+                !!ans.answer_text ||
+                (ans.numeric_answer !== null && ans.numeric_answer !== '') ||
+                (ans.matching_pairs && Object.keys(ans.matching_pairs).length > 0) ||
+                (Array.isArray(ans.ordering) && ans.ordering.length > 0) ||
+                (ans.fill_blanks_answers && Object.keys(ans.fill_blanks_answers).length > 0) ||
+                (ans.drag_drop_assignments && Object.keys(ans.drag_drop_assignments).length > 0)
+            );
+        }).length;
+    }
     
     let currentQuestionIndex = 0;
     const saveUrl = '{{ route("student.quizzes.save-answer", $attempt->id) }}';
@@ -503,8 +457,8 @@
         }
         
         // تحديث Progress
-        const answeredCount = Object.keys(answers).length;
-        const progress = ((answeredCount / questions.length) * 100).toFixed(0);
+        const answeredCount = countAnsweredQuestions();
+        const progress = questions.length > 0 ? ((answeredCount / questions.length) * 100).toFixed(0) : 0;
         document.getElementById('progress-bar').style.width = progress + '%';
         document.getElementById('progress-text').textContent = answeredCount + ' / ' + questions.length;
         
@@ -1370,19 +1324,8 @@
                       }
                       
                       // Update progress
-                      const answeredCount = Object.keys(answers).filter(k => {
-                          const ans = answers[k];
-                          return ans && (
-                              (ans.selected_options && ans.selected_options.length > 0) ||
-                              ans.answer_text ||
-                              ans.numeric_answer !== null ||
-                          (ans.matching_pairs && Object.keys(ans.matching_pairs).length > 0) ||
-                          (ans.ordering && ans.ordering.length > 0) ||
-                          (ans.fill_blanks_answers && Object.keys(ans.fill_blanks_answers).length > 0) ||
-                          (ans.drag_drop_assignments && Object.keys(ans.drag_drop_assignments).length > 0)
-                      );
-                  }).length;
-                  const progress = ((answeredCount / questions.length) * 100).toFixed(0);
+                      const answeredCount = countAnsweredQuestions();
+                  const progress = questions.length > 0 ? ((answeredCount / questions.length) * 100).toFixed(0) : 0;
                   document.getElementById('progress-bar').style.width = progress + '%';
                   document.getElementById('progress-text').textContent = answeredCount + ' / ' + questions.length;
                   
@@ -1444,7 +1387,7 @@
         try {
             if (typeof QuizTimer !== 'undefined') {
                 const timer = new QuizTimer({
-                    remainingTime: {{ $attempt->remaining_time ?? (($quiz->duration_minutes ?? 60) * 60) }},
+                    remainingTime: {{ (int) ($initialRemaining ?? 0) }},
                     updateUrl: '{{ route("student.quizzes.time", $attempt->id) }}',
                     onTimeout: function() {
                         const savePromises = questions.map(question => saveCurrentAnswer(question));

@@ -27,6 +27,7 @@ return [
     // دول إضافية مطلوبة
     ['iso2' => 'TR', 'name_ar' => 'تركيا', 'dial_code' => '90', 'flag_emoji' => '🇹🇷'],
     ['iso2' => 'DE', 'name_ar' => 'ألمانيا', 'dial_code' => '49', 'flag_emoji' => '🇩🇪'],
+    ['iso2' => 'AT', 'name_ar' => 'النمسا', 'dial_code' => '43', 'flag_emoji' => '🇦🇹'],
     ['iso2' => 'NL', 'name_ar' => 'هولندا', 'dial_code' => '31', 'flag_emoji' => '🇳🇱'],
     ['iso2' => 'SE', 'name_ar' => 'السويد', 'dial_code' => '46', 'flag_emoji' => '🇸🇪'],
 ];

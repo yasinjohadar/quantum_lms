@@ -144,7 +144,8 @@ class StudentQuizController extends Controller
         }])->where('is_active', true)
         ->findOrFail($quizId);
 
-        $attempt = QuizAttempt::where('user_id', $user->id)
+        $attempt = QuizAttempt::with('quiz')
+            ->where('user_id', $user->id)
             ->where('quiz_id', $quizId)
             ->findOrFail($attemptId);
 
