@@ -343,7 +343,8 @@ class StudentQuizController extends Controller
     public function getRemainingTime($attemptId)
     {
         $user = Auth::user();
-        $attempt = QuizAttempt::where('user_id', $user->id)
+        $attempt = QuizAttempt::with('quiz')
+            ->where('user_id', $user->id)
             ->findOrFail($attemptId);
 
         if ($attempt->status !== 'in_progress') {

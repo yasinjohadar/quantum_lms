@@ -176,7 +176,7 @@ class QuizAttempt extends Model
 
         $endTime = $this->started_at->copy()->addMinutes($this->quiz->duration_minutes);
 
-        return max(0, (int) $endTime->diffInSeconds(now(), false));
+        return max(0, (int) now()->diffInSeconds($endTime, false));
     }
 
     public function getFormattedRemainingTimeAttribute(): ?string
