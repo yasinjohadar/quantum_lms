@@ -63,7 +63,7 @@
                         <div class="d-flex align-items-center justify-content-center gap-3">
                             <i class="bi bi-clock-history fs-4 text-primary"></i>
                             <div>
-                                <h5 class="mb-0" id="timer-display">{{ $initialRemaining !== null ? ($attempt->formatted_remaining_time ?? '--:--') : '--:--' }}</h5>
+                                <h5 class="mb-0" id="timer-display" data-remaining-seconds="{{ (int) ($initialRemaining ?? 0) }}">{{ $initialRemaining !== null ? ($attempt->formatted_remaining_time ?? '--:--') : '--:--' }}</h5>
                                 <small class="text-muted">الوقت المتبقي</small>
                             </div>
                         </div>
@@ -345,7 +345,7 @@
 @endpush
 
 @push('scripts')
-<script src="{{ asset('js/quiz-timer.js') }}"></script>
+<script src="{{ asset('js/quiz-timer.js') }}?v=2"></script>
 <script src="{{ asset('js/auto-save-answer.js') }}"></script>
 <script src="{{ asset('js/question-types.js') }}"></script>
 <script>
@@ -1378,44 +1378,85 @@
         interval: 30000
     });
     
+    function startQuizCountdown() {
+        @if($quiz->show_timer)
+        if (window.__quizAttemptTimerStarted) {
+            return;
+        }
+
+        const displayEl = document.getElementById('timer-display');
+        if (!displayEl) {
+            return;
+        }
+
+        const remainingFromData = parseInt(displayEl.getAttribute('data-remaining-seconds') || '0', 10);
+        const remainingTime = Number.isFinite(remainingFromData) && remainingFromData > 0
+            ? remainingFromData
+            : {{ (int) ($initialRemaining ?? 0) }};
+
+        const onTimeout = function() {
+            const savePromises = questions.map(function(question) {
+                return saveCurrentAnswer(question);
+            });
+            Promise.all(savePromises).then(function() {
+                document.getElementById('submit-quiz-form').submit();
+            });
+        };
+
+        const onWarning = function(seconds) {
+            const card = document.getElementById('timer-card');
+            if (!card) {
+                return;
+            }
+            if (seconds <= 60) {
+                card.classList.add('danger');
+                card.classList.remove('warning');
+            } else if (seconds <= 300) {
+                card.classList.add('warning');
+                card.classList.remove('danger');
+            }
+        };
+
+        if (typeof window.QuizTimer !== 'undefined') {
+            if (window.__quizAttemptTimer && typeof window.__quizAttemptTimer.stop === 'function') {
+                window.__quizAttemptTimer.stop();
+            }
+            window.__quizAttemptTimer = new window.QuizTimer({
+                remainingTime: remainingTime,
+                updateUrl: '{{ route("student.quizzes.time", $attempt->id) }}',
+                onTimeout: onTimeout,
+                onWarning: onWarning,
+            });
+            window.__quizAttemptTimer.start();
+        } else {
+            let remaining = remainingTime;
+            const tick = function() {
+                if (remaining <= 0) {
+                    displayEl.textContent = '0:00';
+                    if (window.__quizAttemptTimerInterval) {
+                        clearInterval(window.__quizAttemptTimerInterval);
+                        window.__quizAttemptTimerInterval = null;
+                    }
+                    onTimeout();
+                    return;
+                }
+                const m = Math.floor(remaining / 60);
+                const s = remaining % 60;
+                displayEl.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+                remaining -= 1;
+            };
+            tick();
+            window.__quizAttemptTimerInterval = setInterval(tick, 1000);
+        }
+
+        window.__quizAttemptTimerStarted = true;
+        @endif
+    }
+
     // Initialize when DOM is ready so first question and timer render correctly
     function initQuiz() {
-        // Load first question first and independently
         loadQuestion(0);
-
-        @if($quiz->show_timer)
-        try {
-            if (typeof QuizTimer !== 'undefined') {
-                const timer = new QuizTimer({
-                    remainingTime: {{ (int) ($initialRemaining ?? 0) }},
-                    updateUrl: '{{ route("student.quizzes.time", $attempt->id) }}',
-                    onTimeout: function() {
-                        const savePromises = questions.map(question => saveCurrentAnswer(question));
-                        Promise.all(savePromises).then(() => {
-                            document.getElementById('submit-quiz-form').submit();
-                        });
-                    },
-                    onWarning: function(seconds) {
-                        const card = document.getElementById('timer-card');
-                        if (card) {
-                            if (seconds <= 60) {
-                                card.classList.add('danger');
-                                card.classList.remove('warning');
-                            } else if (seconds <= 300) {
-                                card.classList.add('warning');
-                                card.classList.remove('danger');
-                            }
-                        }
-                    }
-                });
-                timer.start();
-            } else {
-                console.error('QuizTimer not loaded');
-            }
-        } catch (e) {
-            console.error('QuizTimer error:', e);
-        }
-        @endif
+        startQuizCountdown();
     }
 
     (function () {
@@ -1494,6 +1535,7 @@
         if (contentEl && !contentEl.innerHTML.trim()) {
             loadQuestion(0);
         }
+        startQuizCountdown();
     });
 </script>
 @endpush
