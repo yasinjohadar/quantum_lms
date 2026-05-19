@@ -537,14 +537,12 @@
                         </button>
                     </form>
                     @endcan
-                    @if($quiz->attempts()->count() == 0)
-                        @can('quiz-delete')
-                        <button type="button" class="btn btn-outline-danger w-100" 
-                                data-bs-toggle="modal" data-bs-target="#deleteModal">
-                            <i class="bi bi-trash me-1"></i> حذف الاختبار
-                        </button>
-                        @endcan
-                    @endif
+                    @can('quiz-delete')
+                    <button type="button" class="btn btn-outline-danger w-100" 
+                            data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        <i class="bi bi-trash me-1"></i> حذف الاختبار
+                    </button>
+                    @endcan
                 </div>
             </div>
         </div>
@@ -552,9 +550,8 @@
 </div>
 
 {{-- مودال الحذف --}}
-@if($quiz->attempts()->count() == 0)
-    @can('quiz-delete')
-    <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+@can('quiz-delete')
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 rounded-4">
                 <div class="border-0 text-center pt-4 px-4">
@@ -579,6 +576,11 @@
                     <div class="modal-body text-center pt-0 pb-3 px-4">
                         <p class="mb-1 text-muted">هل أنت متأكد من حذف الاختبار:</p>
                         <p class="fw-bold mb-1">{{ $quiz->title }}</p>
+                        @if($quiz->attempts_count > 0)
+                            <p class="text-danger small mb-0 mt-2">
+                                سيتم حذف {{ $quiz->attempts_count }} محاولة طالب مرتبطة بهذا الاختبار. لا يمكن التراجع.
+                            </p>
+                        @endif
                     </div>
                     <div class="modal-footer border-0 justify-content-center pb-4">
                         <button type="button" class="btn btn-outline-secondary px-4 me-2" 
@@ -591,8 +593,7 @@
             </div>
         </div>
     </div>
-    @endcan
-@endif
+@endcan
 
         </div>
     </div>

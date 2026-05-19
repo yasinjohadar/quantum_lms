@@ -629,23 +629,29 @@ class QuizController extends Controller
                 }
             }
 
-            // التحقق من وجود محاولات
-            if ($quiz->attempts()->count() > 0) {
-                return redirect()
-                    ->back()
-                    ->with('error', 'لا يمكن حذف الاختبار لوجود محاولات مسجلة');
-            }
+            $attemptsCount = $quiz->attempts()->count();
 
-            // حذف الصورة
-            if ($quiz->image) {
-                StorageHelper::delete('images', $quiz->image);
-            }
+            DB::transaction(function () use ($quiz) {
+                foreach ($quiz->attempts()->get() as $attempt) {
+                    $attempt->answers()->delete();
+                    $attempt->delete();
+                }
 
-            $quiz->delete();
+                if ($quiz->image) {
+                    StorageHelper::delete('images', $quiz->image);
+                }
+
+                $quiz->delete();
+            });
+
+            $message = 'تم حذف الاختبار بنجاح';
+            if ($attemptsCount > 0) {
+                $message .= " (تم حذف {$attemptsCount} محاولة مرتبطة)";
+            }
 
             return redirect()
                 ->route('admin.quizzes.index')
-                ->with('success', 'تم حذف الاختبار بنجاح');
+                ->with('success', $message);
 
         } catch (\Exception $e) {
             Log::error('Error deleting quiz: ' . $e->getMessage());
