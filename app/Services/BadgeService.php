@@ -9,7 +9,7 @@ use App\Models\SystemSetting;
 use App\Services\PointService;
 use App\Services\GamificationNotificationService;
 use App\Events\BadgeEarned;
-use Illuminate\Support\Facades\Event;
+use App\Support\SafeEvent;
 
 class BadgeService
 {
@@ -119,7 +119,7 @@ class BadgeService
         ]);
 
         // إرسال Event
-        Event::dispatch(new BadgeEarned($user, $badge, $metadata));
+        SafeEvent::dispatch(new BadgeEarned($user, $badge, $metadata));
 
         // إرسال إشعار (سيتم التعامل معه عبر Listener)
         $notificationService = app(GamificationNotificationService::class);

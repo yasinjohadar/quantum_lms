@@ -8,7 +8,7 @@ use App\Models\UserAchievement;
 use App\Services\PointService;
 use App\Services\GamificationNotificationService;
 use App\Events\AchievementUnlocked;
-use Illuminate\Support\Facades\Event;
+use App\Support\SafeEvent;
 
 class AchievementService
 {
@@ -163,7 +163,7 @@ class AchievementService
         }
 
         // إرسال Event
-        Event::dispatch(new AchievementUnlocked($user, $achievement, [
+        SafeEvent::dispatch(new AchievementUnlocked($user, $achievement, [
             'user_achievement_id' => $userAchievement->id,
         ]));
 

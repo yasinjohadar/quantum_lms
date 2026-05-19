@@ -6,6 +6,7 @@ use App\Models\SchoolClass;
 use App\Models\Stage;
 use App\Models\Subject;
 use App\Models\User;
+use App\Services\GamificationService;
 use Illuminate\Support\Facades\DB;
 
 beforeEach(function () {
@@ -136,4 +137,29 @@ test('save answer with empty payload does not wipe existing answer', function ()
         ->first();
 
     expect($answer->selected_options)->toBe([$option->id]);
+});
+
+test('submit in progress quiz succeeds when gamification throws broadcast error', function () {
+    ['user' => $user, 'quiz' => $quiz, 'attempt' => $attempt] = createStudentQuizAttempt('in_progress', 60);
+    $attempt->update(['started_at' => now()]);
+
+    $this->mock(GamificationService::class, function ($mock) {
+        $mock->shouldReceive('processQuizCompletion')
+            ->once()
+            ->andThrow(new RuntimeException('Pusher error: cURL error 7'));
+    });
+
+    $response = $this->actingAs($user)
+        ->postJson(route('student.quizzes.submit', $attempt->id));
+
+    $response->assertOk()
+        ->assertJson([
+            'success' => true,
+        ])
+        ->assertJsonPath('redirect_url', route('student.quizzes.result', [
+            'quiz' => $quiz->id,
+            'attempt' => $attempt->id,
+        ]));
+
+    expect($attempt->fresh()->status)->toBe('completed');
 });

@@ -8,9 +8,9 @@ use App\Models\UserTask;
 use App\Models\User;
 use App\Models\SystemSetting;
 use App\Events\TaskCompleted;
+use App\Support\SafeEvent;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Event;
 
 class TaskService
 {
@@ -153,7 +153,7 @@ class TaskService
             $userTask->save();
 
             // إرسال Event
-            Event::dispatch(new TaskCompleted($user, get_class($task), $task->name, [
+            SafeEvent::dispatch(new TaskCompleted($user, get_class($task), $task->name, [
                 'task_id' => $task->id,
                 'points' => $task->points_reward,
             ]));

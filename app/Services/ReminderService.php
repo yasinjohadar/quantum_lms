@@ -9,7 +9,7 @@ use App\Models\Quiz;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use App\Services\GamificationNotificationService;
-use Illuminate\Support\Facades\Event;
+use App\Support\SafeEvent;
 use Illuminate\Support\Facades\Log;
 
 class ReminderService
@@ -97,7 +97,7 @@ class ReminderService
 
         foreach ($users as $user) {
             // إرسال Event للتذكير
-            Event::dispatch(new \App\Events\EventReminderSent(
+            SafeEvent::dispatch(new \App\Events\EventReminderSent(
                 $user,
                 $reminder,
                 $title,

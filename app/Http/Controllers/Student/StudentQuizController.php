@@ -328,21 +328,37 @@ class StudentQuizController extends Controller
             // إنهاء المحاولة
             $attempt->finish();
 
-            // ربط مع نظام التحفيز
-            $gamificationService = app(GamificationService::class);
-            $gamificationService->processQuizCompletion($attempt);
-
-            // تسجيل حدث في Analytics
-            $this->analyticsService->trackEvent('complete_quiz', $user->id, [
-                'quiz_id' => $attempt->quiz_id,
-                'subject_id' => $attempt->quiz->subject_id ?? null,
-                'attempt_id' => $attempt->id,
-                'score' => $attempt->score,
-                'percentage' => $attempt->percentage,
-                'passed' => $attempt->passed,
-            ]);
-
             DB::commit();
+
+            // ربط مع نظام التحفيز (غير حرج — لا يمنع إرسال الاختبار)
+            try {
+                $gamificationService = app(GamificationService::class);
+                $gamificationService->processQuizCompletion($attempt->fresh(['user', 'quiz']));
+            } catch (\Throwable $e) {
+                Log::warning('Gamification after quiz submit failed (non-fatal)', [
+                    'attempt_id' => $attempt->id,
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            // تسجيل حدث في Analytics (غير حرج)
+            try {
+                $this->analyticsService->trackEvent('complete_quiz', $user->id, [
+                    'quiz_id' => $attempt->quiz_id,
+                    'subject_id' => $attempt->quiz->subject_id ?? null,
+                    'attempt_id' => $attempt->id,
+                    'score' => $attempt->score,
+                    'percentage' => $attempt->percentage,
+                    'passed' => $attempt->passed,
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('Analytics after quiz submit failed (non-fatal)', [
+                    'attempt_id' => $attempt->id,
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             $resultUrl = $this->quizResultUrl($attempt);
 

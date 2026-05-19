@@ -8,7 +8,7 @@ use App\Models\UserLevel;
 use App\Services\PointService;
 use App\Services\GamificationNotificationService;
 use App\Events\LevelUp;
-use Illuminate\Support\Facades\Event;
+use App\Support\SafeEvent;
 
 class LevelService
 {
@@ -54,7 +54,7 @@ class LevelService
         $totalPoints = $this->pointService->getUserTotalPoints($user);
 
         // إرسال Event
-        Event::dispatch(new LevelUp($user, $newLevel, [
+        SafeEvent::dispatch(new LevelUp($user, $newLevel, [
             'total_points' => $totalPoints,
             'previous_level' => $currentLevel?->id,
         ]));
