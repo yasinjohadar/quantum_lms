@@ -97,3 +97,35 @@ test('preserves html while formatting inline code', function () {
         ->toContain('<p>')
         ->toContain('question-inline-code">at(1)</code>');
 });
+
+test('decodes html entities in arabic question text', function () {
+    $input = 'ما هو الشكل الصحيح للعبارة التي تبدأ بـ &quot;2.. ) حُدّثي&quot; في النص؟';
+
+    $result = QuestionMarkupFormatter::format($input);
+
+    expect($result)
+        ->toContain('2.. ) حُدّثي')
+        ->not->toContain('&amp;quot;')
+        ->not->toContain('&amp;#');
+});
+
+test('decodes double-encoded html entities', function () {
+    $input = '&amp;quot;نص عربي&amp;quot;';
+
+    $result = QuestionMarkupFormatter::format($input);
+
+    expect($result)
+        ->toContain('نص عربي')
+        ->not->toContain('&amp;quot;')
+        ->not->toContain('&amp;#');
+});
+
+test('plain heading decodes entities before stripping', function () {
+    $input = '&quot;عنوان قصير&quot; للسؤال';
+
+    $heading = QuestionMarkupFormatter::plainHeading($input, 50);
+
+    expect($heading)
+        ->toContain('"عنوان قصير"')
+        ->not->toContain('&quot;');
+});

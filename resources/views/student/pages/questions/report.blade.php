@@ -184,7 +184,7 @@
                                                 {!! $question->title !!}
                                             </div>
                                             @if($question->content)
-                                                <p class="text-muted small mb-0">{{ Str::limit(strip_tags($question->content), 150) }}</p>
+                                                <p class="text-muted small mb-0 question-text-body">{!! format_question_markup(\Illuminate\Support\Str::limit(strip_tags($question->content), 150)) !!}</p>
                                             @endif
                                         </div>
                                         <div class="text-end">
@@ -224,7 +224,7 @@
                                                         $selectedOption = $question->options->firstWhere('id', $answer->selected_options[0] ?? null);
                                                     @endphp
                                                     @if($selectedOption)
-                                                        <p class="mb-0">{{ $selectedOption->content }}</p>
+                                                        <p class="mb-0 question-text-body">{!! format_question_markup($selectedOption->content) !!}</p>
                                                     @else
                                                         <p class="text-muted mb-0">لم يتم اختيار إجابة</p>
                                                     @endif
@@ -235,7 +235,7 @@
                                                     @if($selectedOptions->count() > 0)
                                                         <ul class="mb-0">
                                                             @foreach($selectedOptions as $option)
-                                                                <li>{{ $option->content }}</li>
+                                                                <li class="question-text-body">{!! format_question_markup($option->content) !!}</li>
                                                             @endforeach
                                                         </ul>
                                                     @else
@@ -254,7 +254,7 @@
                                                                     $option = $question->options->firstWhere('id', $optionId);
                                                                 @endphp
                                                                 @if($option)
-                                                                    <li><strong>{{ $option->content }}</strong> → {{ $target }}</li>
+                                                                    <li class="question-text-body"><strong>{!! format_question_markup($option->content) !!}</strong> → {{ $target }}</li>
                                                                 @endif
                                                             @endforeach
                                                         </ul>
@@ -272,7 +272,7 @@
                                                                     $option = $question->options->firstWhere('id', $optionId);
                                                                 @endphp
                                                                 @if($option)
-                                                                    <li>{{ $option->content }}</li>
+                                                                    <li class="question-text-body">{!! format_question_markup($option->content) !!}</li>
                                                                 @endif
                                                             @endforeach
                                                         </ol>
@@ -315,26 +315,26 @@
                                                     $correctOption = $question->correctOptions->first();
                                                 @endphp
                                                 @if($correctOption)
-                                                    <p class="mb-0">{{ $correctOption->content }}</p>
+                                                    <p class="mb-0 question-text-body">{!! format_question_markup($correctOption->content) !!}</p>
                                                 @endif
                                             @elseif($question->type === 'multiple_choice')
                                                 <ul class="mb-0">
                                                     @foreach($question->correctOptions as $option)
-                                                        <li>{{ $option->content }}</li>
+                                                        <li class="question-text-body">{!! format_question_markup($option->content) !!}</li>
                                                     @endforeach
                                                 </ul>
                                             @elseif($question->type === 'matching')
                                                 <ul class="mb-0">
                                                     @foreach($question->options as $option)
                                                         @if($option->match_target)
-                                                            <li><strong>{{ $option->content }}</strong> → {{ $option->match_target }}</li>
+                                                            <li class="question-text-body"><strong>{!! format_question_markup($option->content) !!}</strong> → {!! format_question_markup($option->match_target) !!}</li>
                                                         @endif
                                                     @endforeach
                                                 </ul>
                                             @elseif($question->type === 'ordering')
                                                 <ol class="mb-0">
                                                     @foreach($question->options->sortBy('correct_order') as $option)
-                                                        <li>{{ $option->content }}</li>
+                                                        <li class="question-text-body">{!! format_question_markup($option->content) !!}</li>
                                                     @endforeach
                                                 </ol>
                                             @else

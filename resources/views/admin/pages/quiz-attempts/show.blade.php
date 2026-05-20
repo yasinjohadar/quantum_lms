@@ -161,8 +161,8 @@
                                             @else
                                                 <i class="bi bi-circle text-muted"></i>
                                             @endif
-                                            <span class="{{ $selected && !$option->is_correct ? 'text-danger text-decoration-line-through' : '' }}">
-                                                {{ $option->content }}
+                                            <span class="{{ $selected && !$option->is_correct ? 'text-danger text-decoration-line-through' : '' }} question-text-body">
+                                                {!! format_question_markup($option->content) !!}
                                             </span>
                                             @if($option->is_correct)
                                                 <span class="badge bg-success small">صحيح</span>
@@ -185,8 +185,8 @@
                                     </span>
                                     <br>
                                     <strong class="small text-muted">الإجابة الصحيحة:</strong>
-                                    <span class="badge bg-success ms-2">
-                                        {{ $answer->question->options->first()->content ?? '-' }}
+                                    <span class="badge bg-success ms-2 question-text-body">
+                                        {!! format_question_markup($answer->question->options->first()->content ?? '-') !!}
                                     </span>
                                 </div>
                             @endif

@@ -142,7 +142,7 @@
                                             <img src="{{ media_public_url($option->image) }}" 
                                                  class="me-2 rounded" style="height: 30px;">
                                         @endif
-                                        <span>{{ $option->content }}</span>
+                                        <span class="question-text-body">{!! format_question_markup($option->content) !!}</span>
                                         @if($option->is_correct)
                                             <span class="badge bg-success ms-auto">
                                                 <i class="bi bi-check"></i> صحيح
@@ -157,7 +157,7 @@
                             <div class="col-md-5">
                                 <h6 class="text-muted mb-2">العناصر</h6>
                                 @foreach($question->options as $option)
-                                    <div class="p-2 bg-light rounded mb-2">{{ $option->content }}</div>
+                                    <div class="p-2 bg-light rounded mb-2 question-text-body">{!! format_question_markup($option->content) !!}</div>
                                 @endforeach
                             </div>
                             <div class="col-md-2 d-flex align-items-center justify-content-center">
@@ -166,7 +166,7 @@
                             <div class="col-md-5">
                                 <h6 class="text-muted mb-2">المطابقات</h6>
                                 @foreach($question->options as $option)
-                                    <div class="p-2 bg-success-transparent rounded mb-2">{{ $option->match_target }}</div>
+                                    <div class="p-2 bg-success-transparent rounded mb-2 question-text-body">{!! format_question_markup($option->match_target) !!}</div>
                                 @endforeach
                             </div>
                         </div>
@@ -178,7 +178,7 @@
                         @foreach($question->options->sortBy('correct_order') as $option)
                             <div class="p-2 bg-light rounded mb-2 d-flex align-items-center">
                                 <span class="badge bg-primary me-2">{{ $option->correct_order }}</span>
-                                {{ $option->content }}
+                                <span class="question-text-body">{!! format_question_markup($option->content) !!}</span>
                             </div>
                         @endforeach
                     @elseif($question->type === 'fill_blanks')
@@ -202,7 +202,7 @@
                         <input type="number" class="form-control" style="max-width: 200px;" placeholder="الإجابة" disabled>
                         <div class="mt-2">
                             <strong>الإجابة الصحيحة:</strong>
-                            <span class="badge bg-success">{{ $question->options->first()->content ?? '-' }}</span>
+                            <span class="badge bg-success question-text-body">{!! format_question_markup($question->options->first()->content ?? '-') !!}</span>
                             @if($question->tolerance)
                                 <span class="text-muted">(± {{ $question->tolerance }})</span>
                             @endif

@@ -147,7 +147,7 @@
                                         <span class="badge {{ $isCorrect ? 'bg-success' : 'bg-danger' }} me-2">
                                             {{ $index + 1 }}
                                         </span>
-                                        <span class="fw-semibold question-stem">{!! $question->title ?? 'سؤال ' . ($index + 1) !!}</span>
+                                        <span class="fw-semibold question-stem">{!! format_question_markup($question->title ?? 'سؤال ' . ($index + 1)) !!}</span>
                                     </div>
                                     <div>
                                         @if($isCorrect)
@@ -165,8 +165,8 @@
                                 </div>
                                 
                                 @if($question->content)
-                                    <div class="mb-3 text-muted">
-                                        {!! strip_tags($question->content) !!}
+                                    <div class="mb-3 text-muted question-text-body">
+                                        {!! format_question_markup($question->content) !!}
                                     </div>
                                 @endif
                                 
@@ -178,8 +178,8 @@
                                             $selectedOptions = $answer->selected_options ?? [];
                                             $selectedOption = $question->options->whereIn('id', $selectedOptions)->first();
                                         @endphp
-                                        <span class="{{ $isCorrect ? 'text-success' : 'text-danger' }}">
-                                            {{ $selectedOption->content ?? 'لم يتم الإجابة' }}
+                                        <span class="{{ $isCorrect ? 'text-success' : 'text-danger' }} question-text-body">
+                                            {!! $selectedOption ? format_question_markup($selectedOption->content) : 'لم يتم الإجابة' !!}
                                         </span>
                                     @elseif($question->type == 'true_false')
                                         @php
@@ -213,10 +213,12 @@
                                     @elseif($question->type == 'multi_select')
                                         @php
                                             $selectedOptions = $answer->selected_options ?? [];
-                                            $selectedItems = $question->options->whereIn('id', $selectedOptions)->pluck('content')->toArray();
+                                            $selectedItems = $question->options->whereIn('id', $selectedOptions)
+                                                ->map(fn ($opt) => format_question_markup($opt->content))
+                                                ->toArray();
                                         @endphp
-                                        <span class="{{ $isCorrect ? 'text-success' : 'text-danger' }}">
-                                            {{ count($selectedItems) > 0 ? implode('، ', $selectedItems) : 'لم يتم الإجابة' }}
+                                        <span class="{{ $isCorrect ? 'text-success' : 'text-danger' }} question-text-body">
+                                            {!! count($selectedItems) > 0 ? implode('، ', $selectedItems) : 'لم يتم الإجابة' !!}
                                         </span>
                                     @elseif($question->type == 'ordering')
                                         @php
@@ -226,7 +228,7 @@
                                                 foreach ($ordering as $index => $optionId) {
                                                     $option = $question->options->firstWhere('id', $optionId);
                                                     if ($option) {
-                                                        $orderedItems[] = ($index + 1) . '. ' . $option->content;
+                                                        $orderedItems[] = ($index + 1) . '. ' . format_question_markup($option->content);
                                                     }
                                                 }
                                             }
@@ -235,7 +237,7 @@
                                             @if(count($orderedItems) > 0)
                                                 <br>
                                                 @foreach($orderedItems as $item)
-                                                    {{ $item }}<br>
+                                                    <span class="question-text-body">{!! $item !!}</span><br>
                                                 @endforeach
                                             @else
                                                 لم يتم الإجابة
@@ -253,7 +255,7 @@
                                                     if (!isset($zoneItems[$zoneName])) {
                                                         $zoneItems[$zoneName] = [];
                                                     }
-                                                    $zoneItems[$zoneName][] = $option->content;
+                                                    $zoneItems[$zoneName][] = format_question_markup($option->content);
                                                 }
                                             }
                                         @endphp
@@ -262,7 +264,7 @@
                                                 <br>
                                                 @foreach($zoneItems as $zoneName => $items)
                                                     <strong>{{ $zoneName }}:</strong>
-                                                    {{ implode('، ', $items) }}
+                                                    {!! implode('، ', $items) !!}
                                                     <br>
                                                 @endforeach
                                             @else
@@ -277,7 +279,7 @@
                                                 $leftOption = $question->options->firstWhere('id', $leftId);
                                                 $rightOption = $question->options->firstWhere('id', $rightId);
                                                 if ($leftOption && $rightOption) {
-                                                    $pairItems[] = $leftOption->content . ' ← ' . $rightOption->content;
+                                                    $pairItems[] = format_question_markup($leftOption->content) . ' ← ' . format_question_markup($rightOption->content);
                                                 }
                                             }
                                         @endphp
@@ -285,7 +287,7 @@
                                             @if(!empty($pairItems))
                                                 <br>
                                                 @foreach($pairItems as $pair)
-                                                    {{ $pair }}<br>
+                                                    <span class="question-text-body">{!! $pair !!}</span><br>
                                                 @endforeach
                                             @else
                                                 لم يتم الإجابة
@@ -303,7 +305,7 @@
                                             <i class="bi bi-lightbulb-fill {{ $isCorrect ? 'text-success' : 'text-info' }} me-2 mt-1"></i>
                                             <div>
                                                 <strong class="{{ $isCorrect ? 'text-success' : 'text-info' }}">الشرح:</strong>
-                                                <p class="mb-0 mt-1">{{ $question->explanation }}</p>
+                                                <p class="mb-0 mt-1 question-text-body">{!! format_question_markup($question->explanation) !!}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -317,7 +319,7 @@
                                             @php
                                                 $correctOption = $question->options->where('is_correct', true)->first();
                                             @endphp
-                                            <span class="text-success">{{ $correctOption->content ?? '-' }}</span>
+                                            <span class="text-success question-text-body">{!! format_question_markup($correctOption->content ?? '-') !!}</span>
                                         @elseif($question->type == 'true_false')
                                             @php
                                                 $correctOption = $question->options->where('is_correct', true)->first();
@@ -325,17 +327,21 @@
                                             <span class="text-success">{{ $correctOption ? ($correctOption->content == 'true' ? 'صحيح' : 'خطأ') : '-' }}</span>
                                         @elseif($question->type == 'multi_select')
                                             @php
-                                                $correctItems = $question->options->where('is_correct', true)->pluck('content')->toArray();
+                                                $correctItems = $question->options->where('is_correct', true)
+                                                    ->map(fn ($opt) => format_question_markup($opt->content))
+                                                    ->toArray();
                                             @endphp
-                                            <span class="text-success">{{ implode('، ', $correctItems) }}</span>
+                                            <span class="text-success question-text-body">{!! implode('، ', $correctItems) !!}</span>
                                         @elseif($question->type == 'ordering')
                                             @php
-                                                $correctOrder = $question->options->sortBy('order')->pluck('content')->toArray();
+                                                $correctOrder = $question->options->sortBy('order')
+                                                    ->map(fn ($opt) => format_question_markup($opt->content))
+                                                    ->toArray();
                                             @endphp
-                                            <span class="text-success">
+                                            <span class="text-success question-text-body">
                                                 <br>
                                                 @foreach($correctOrder as $index => $item)
-                                                    {{ ($index + 1) }}. {{ $item }}<br>
+                                                    {{ ($index + 1) }}. {!! $item !!}<br>
                                                 @endforeach
                                             </span>
                                         @elseif($question->type == 'drag_drop')
@@ -347,14 +353,14 @@
                                                     if (!isset($correctAssignments[$zone])) {
                                                         $correctAssignments[$zone] = [];
                                                     }
-                                                    $correctAssignments[$zone][] = $option->content;
+                                                    $correctAssignments[$zone][] = format_question_markup($option->content);
                                                 }
                                             @endphp
                                             <span class="text-success">
                                                 @if(!empty($correctAssignments))
                                                     <br>
                                                     @foreach($correctAssignments as $zone => $items)
-                                                        <strong>{{ $zone }}:</strong> {{ implode('، ', $items) }}<br>
+                                                        <strong>{{ $zone }}:</strong> <span class="question-text-body">{!! implode('، ', $items) !!}</span><br>
                                                     @endforeach
                                                 @else
                                                     -
@@ -373,7 +379,7 @@
                                                 @if(!empty($correctPairs))
                                                     <br>
                                                     @foreach($correctPairs as $left => $right)
-                                                        {{ $left }} ← {{ $right }}<br>
+                                                        <span class="question-text-body">{!! format_question_markup($left) !!}</span> ← <span class="question-text-body">{!! format_question_markup($right) !!}</span><br>
                                                     @endforeach
                                                 @else
                                                     -
@@ -387,7 +393,7 @@
                                             <span class="text-success">
                                                 @if(!empty($correctBlanks))
                                                     @foreach($correctBlanks as $index => $blank)
-                                                        ({{ $index + 1 }}) {{ $blank }}{{ !$loop->last ? '، ' : '' }}
+                                                        ({{ $index + 1 }}) <span class="question-text-body">{!! format_question_markup($blank) !!}</span>{{ !$loop->last ? '، ' : '' }}
                                                     @endforeach
                                                 @else
                                                     -

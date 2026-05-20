@@ -21,12 +21,34 @@ class QuestionMarkupFormatter
     /**
      * عنوان مختصر للترويسة: عربي فقط بدون LaTeX خام في شريط الصفحة.
      */
+    /**
+     * فكّ كيانات HTML المخزّنة كنص (مثل &quot;) بما فيها التشفير المزدوج.
+     */
+    public static function normalizeStoredText(?string $text): string
+    {
+        if ($text === null || $text === '') {
+            return '';
+        }
+
+        $decoded = $text;
+        for ($i = 0; $i < 3; $i++) {
+            $next = html_entity_decode($decoded, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            if ($next === $decoded) {
+                break;
+            }
+            $decoded = $next;
+        }
+
+        return $decoded;
+    }
+
     public static function plainHeading(?string $text, int $limit = 100): string
     {
         if ($text === null || trim($text) === '') {
             return '';
         }
 
+        $text = self::normalizeStoredText($text);
         $plain = trim(strip_tags($text));
         $plain = preg_replace(self::MATH_SEGMENT_PATTERN, ' ', $plain) ?? $plain;
         $plain = preg_replace('/`[^`\n]+`/u', ' ', $plain) ?? $plain;
@@ -79,7 +101,7 @@ class QuestionMarkupFormatter
             return '';
         }
 
-        $text = trim($text);
+        $text = trim(self::normalizeStoredText($text));
 
         if (str_contains($text, 'question-inline-code')) {
             return $text;
@@ -117,6 +139,8 @@ class QuestionMarkupFormatter
 
     private static function formatWithoutMath(string $text): string
     {
+        $text = self::normalizeStoredText($text);
+
         if (self::looksLikeBareLatex($text)) {
             return self::wrapBareLatex($text);
         }
@@ -185,7 +209,7 @@ class QuestionMarkupFormatter
         $parts = preg_split($codePattern, $text, -1, PREG_SPLIT_DELIM_CAPTURE);
 
         if ($parts === false) {
-            return e($text);
+            return self::escapePlainSegment($text);
         }
 
         $output = '';
@@ -196,7 +220,7 @@ class QuestionMarkupFormatter
             if (preg_match($codePattern, $part)) {
                 $output .= '<code class="question-inline-code">'.e($part).'</code>';
             } else {
-                $output .= e($part);
+                $output .= self::escapePlainSegment($part);
             }
         }
 
@@ -228,7 +252,7 @@ class QuestionMarkupFormatter
 
         $parts = preg_split('/(`[^`\n]+`)/u', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
         if ($parts === false) {
-            return e($text);
+            return $text;
         }
 
         $output = '';
@@ -239,10 +263,15 @@ class QuestionMarkupFormatter
             if (preg_match('/^`([^`\n]+)`$/u', $part, $matches)) {
                 $output .= '<code class="question-inline-code">'.e($matches[1]).'</code>';
             } else {
-                $output .= e($part);
+                $output .= $part;
             }
         }
 
         return $output;
+    }
+
+    private static function escapePlainSegment(string $text): string
+    {
+        return e(self::normalizeStoredText($text));
     }
 }

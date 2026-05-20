@@ -353,14 +353,14 @@
         $questionsJson = $questions->map(function($q) {
             return [
                 'id' => $q->id,
-                'title' => $q->title,
-                'content' => $q->content,
+                'title' => format_question_markup($q->title),
+                'content' => format_question_markup($q->content),
                 'type' => $q->type,
                 'default_points' => $q->default_points ?? 0,
                 'options' => $q->options->map(function($opt) {
                     return [
                         'id' => $opt->id,
-                        'content' => $opt->content,
+                        'content' => format_question_markup($opt->content),
                         'is_correct' => $opt->is_correct,
                     ];
                 })->values()->toArray()
