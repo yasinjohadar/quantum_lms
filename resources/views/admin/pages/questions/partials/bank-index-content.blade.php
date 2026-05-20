@@ -119,3 +119,34 @@
         'showGlobalTools' => $showGlobalTools ?? false,
     ])
 </div>
+
+@if(isset($subject))
+    @can('quiz-add-question')
+    <div class="modal fade" id="addQuestionToQuizModal" tabindex="-1" aria-labelledby="addQuestionToQuizModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 rounded-4">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="addQuestionToQuizModalLabel">إضافة إلى اختبار</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                </div>
+                <div class="modal-body pt-2">
+                    <p class="text-muted small mb-3" id="addToQuizQuestionPreview"></p>
+                    <div id="addToQuizLoading" class="text-center py-4 d-none">
+                        <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+                        <span class="ms-2 text-muted small">جاري تحميل الاختبارات...</span>
+                    </div>
+                    <div id="addToQuizError" class="alert alert-danger small d-none mb-0"></div>
+                    <div id="addToQuizEmpty" class="text-center py-4 d-none">
+                        <i class="bi bi-journal-x display-6 text-muted"></i>
+                        <p class="text-muted small mt-2 mb-0">لا توجد اختبارات لهذه المادة</p>
+                    </div>
+                    <div class="list-group list-group-flush d-none" id="addToQuizList" style="max-height: 320px; overflow-y: auto;"></div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إغلاق</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endcan
+@endif

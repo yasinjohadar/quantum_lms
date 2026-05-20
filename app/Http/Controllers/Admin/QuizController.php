@@ -731,6 +731,25 @@ class QuizController extends Controller
             $quiz = Quiz::findOrFail($id);
             $question = Question::with(['options', 'units'])->findOrFail($request->question_id);
 
+            if ($quiz->subject_id) {
+                $belongsToSubject = Question::forSubject($quiz->subject_id)
+                    ->whereKey($question->id)
+                    ->exists();
+
+                if (! $belongsToSubject) {
+                    $message = 'السؤال لا ينتمي لمادة هذا الاختبار';
+
+                    if ($request->expectsJson() || $request->wantsJson()) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => $message,
+                        ], 422);
+                    }
+
+                    return redirect()->back()->with('error', $message);
+                }
+            }
+
             // التحقق من عدم وجود السؤال مسبقاً
             if ($quiz->questions()->where('question_id', $question->id)->exists()) {
                 if ($request->expectsJson()) {

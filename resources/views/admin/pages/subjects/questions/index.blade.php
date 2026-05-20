@@ -74,4 +74,7 @@
 
 @section('js')
     @include('partials.question-math-scripts')
+    @can('quiz-add-question')
+        @include('admin.pages.questions.partials.bank-add-to-quiz', ['subject' => $subject])
+    @endcan
 @stop

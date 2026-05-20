@@ -71,6 +71,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('subjects.questions.ai-create');
         Route::get('subjects/{subject}/questions/ai-create-from-image', [SubjectQuestionBankController::class, 'aiCreateFromImage'])
             ->name('subjects.questions.ai-create-from-image');
+        Route::get('subjects/{subject}/quizzes-for-add', [SubjectQuestionBankController::class, 'quizzesForAdd'])
+            ->name('subjects.quizzes.for-add');
 
         // أقسام المواد (داخل كل مادة)
         Route::post('subjects/{subject}/sections', [SubjectSectionController::class, 'store'])

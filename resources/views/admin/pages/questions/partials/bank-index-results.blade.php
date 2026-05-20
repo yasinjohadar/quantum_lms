@@ -33,6 +33,19 @@
                                 @can('question-edit')
                                     <li><a class="dropdown-item" href="{{ route('admin.questions.edit', $question->id) }}{{ isset($subject) ? '?subject_id='.$subject->id : '' }}"><i class="bi bi-pencil me-2"></i>تعديل</a></li>
                                 @endcan
+                                @if(isset($subject))
+                                    @can('quiz-add-question')
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <button type="button" class="dropdown-item add-to-quiz-btn"
+                                                data-question-id="{{ $question->id }}"
+                                                data-subject-id="{{ $subject->id }}"
+                                                data-question-points="{{ $question->default_points }}">
+                                                <i class="bi bi-journal-plus me-2"></i> إضافة إلى اختبار
+                                            </button>
+                                        </li>
+                                    @endcan
+                                @endif
                                 @can('question-delete')
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
