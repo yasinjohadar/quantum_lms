@@ -279,10 +279,18 @@ class QuizAnswer extends Model
                 break;
                 
             case 'fill_blanks':
+            case 'fill_blank':
                 $result = $this->gradeFillBlanks();
                 $isCorrect = $result['is_correct'];
                 $pointsEarned = $result['points'];
                 break;
+
+            case 'drag_drop':
+                $this->needs_manual_grading = true;
+                $this->is_graded = false;
+                $this->save();
+
+                return;
         }
 
         // إذا لم يتم تحديد درجة جزئية
@@ -296,6 +304,23 @@ class QuizAnswer extends Model
         $this->is_graded = true;
         $this->graded_at = now();
         $this->save();
+    }
+
+    /**
+     * حساب نقاط التصحيح الجزئي دون قسمة على صفر.
+     */
+    protected function pointsForCorrectParts(int $correctCount, int $totalParts): float
+    {
+        if ($totalParts <= 0) {
+            return 0.0;
+        }
+
+        $maxPoints = (float) ($this->max_points ?? 0);
+        if ($maxPoints <= 0) {
+            return 0.0;
+        }
+
+        return ($correctCount / $totalParts) * $maxPoints;
     }
 
     protected function gradeSingleChoice(): bool
@@ -327,7 +352,10 @@ class QuizAnswer extends Model
 
     protected function gradeMultipleChoice(): array
     {
-        $correctOptions = $this->question->correctOptions()->pluck('id')->toArray();
+        $correctOptions = $this->question->relationLoaded('correctOptions')
+            ? $this->question->correctOptions->pluck('id')->all()
+            : $this->question->correctOptions()->pluck('id')->all();
+
         $selectedIds = $this->selected_options ?? [];
         
         if (empty($selectedIds)) {
@@ -342,8 +370,11 @@ class QuizAnswer extends Model
         $wrongCount = count(array_diff($selectedIds, $correctOptions));
         $totalCorrect = count($correctOptions);
 
-        // التصحيح الجزئي
-        $pointsPerCorrect = $this->max_points / $totalCorrect;
+        if ($totalCorrect === 0) {
+            return ['is_correct' => false, 'points' => 0];
+        }
+
+        $pointsPerCorrect = (float) $this->max_points / $totalCorrect;
         $points = ($correctCount * $pointsPerCorrect) - ($wrongCount * $pointsPerCorrect);
         $points = max(0, $points);
 
@@ -369,14 +400,17 @@ class QuizAnswer extends Model
         $correctPairs = 0;
         $totalPairs = $options->count();
 
+        if ($totalPairs === 0) {
+            return ['is_correct' => false, 'points' => 0];
+        }
+
         foreach ($options as $option) {
             if (isset($pairs[$option->id]) && $pairs[$option->id] == $option->match_target) {
                 $correctPairs++;
             }
         }
 
-        $pointsPerPair = $this->max_points / $totalPairs;
-        $points = $correctPairs * $pointsPerPair;
+        $points = $this->pointsForCorrectParts($correctPairs, $totalPairs);
         $isCorrect = $correctPairs === $totalPairs;
 
         return ['is_correct' => $isCorrect, 'points' => $points];
@@ -384,7 +418,10 @@ class QuizAnswer extends Model
 
     protected function gradeOrdering(): array
     {
-        $options = $this->question->options()->orderBy('correct_order')->get();
+        $options = $this->question->relationLoaded('options')
+            ? $this->question->options->sortBy('correct_order')->values()
+            : $this->question->options()->orderBy('correct_order')->get();
+
         $ordering = $this->ordering ?? [];
         
         if (empty($ordering)) {
@@ -394,14 +431,17 @@ class QuizAnswer extends Model
         $correctPositions = 0;
         $totalPositions = $options->count();
 
+        if ($totalPositions === 0) {
+            return ['is_correct' => false, 'points' => 0];
+        }
+
         foreach ($options as $index => $option) {
             if (isset($ordering[$index]) && $ordering[$index] == $option->id) {
                 $correctPositions++;
             }
         }
 
-        $pointsPerPosition = $this->max_points / $totalPositions;
-        $points = $correctPositions * $pointsPerPosition;
+        $points = $this->pointsForCorrectParts($correctPositions, $totalPositions);
         $isCorrect = $correctPositions === $totalPositions;
 
         return ['is_correct' => $isCorrect, 'points' => $points];
@@ -425,31 +465,35 @@ class QuizAnswer extends Model
     protected function gradeFillBlanks(): array
     {
         $blankAnswers = $this->question->blank_answers ?? [];
-        $userAnswers = $this->answer ?? [];
-        
+        $userAnswers = $this->fill_blanks_answers ?? [];
+
         if (empty($userAnswers)) {
             return ['is_correct' => false, 'points' => 0];
         }
 
-        $correctBlanks = 0;
         $totalBlanks = count($blankAnswers);
+
+        if ($totalBlanks === 0) {
+            return ['is_correct' => false, 'points' => 0];
+        }
+
+        $correctBlanks = 0;
 
         foreach ($blankAnswers as $index => $correctAnswer) {
             $userAnswer = $userAnswers[$index] ?? '';
-            
+
             if ($this->question->case_sensitive) {
                 if ($userAnswer === $correctAnswer) {
                     $correctBlanks++;
                 }
             } else {
-                if (strtolower(trim($userAnswer)) === strtolower(trim($correctAnswer))) {
+                if (strtolower(trim((string) $userAnswer)) === strtolower(trim((string) $correctAnswer))) {
                     $correctBlanks++;
                 }
             }
         }
 
-        $pointsPerBlank = $this->max_points / $totalBlanks;
-        $points = $correctBlanks * $pointsPerBlank;
+        $points = $this->pointsForCorrectParts($correctBlanks, $totalBlanks);
         $isCorrect = $correctBlanks === $totalBlanks;
 
         return ['is_correct' => $isCorrect, 'points' => $points];

@@ -372,21 +372,26 @@ class StudentQuizController extends Controller
 
             return redirect()->to($resultUrl)
                 ->with('success', 'تم إرسال الاختبار بنجاح');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Error submitting quiz: ' . $e->getMessage());
+            Log::error('Error submitting quiz: ' . $e->getMessage(), [
+                'attempt_id' => $attemptId,
+                'exception' => $e,
+            ]);
+
+            $userMessage = 'حدث خطأ أثناء إرسال الاختبار. يرجى المحاولة مرة أخرى أو التواصل مع الدعم.';
 
             if ($this->wantsJsonResponse($request)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'حدث خطأ أثناء إرسال الاختبار: ' . $e->getMessage(),
+                    'message' => $userMessage,
                 ], 500);
             }
 
             return redirect()->route('student.quizzes.show', [
                 'quiz' => $attempt->quiz_id,
                 'attempt' => $attemptId,
-            ])->with('error', 'حدث خطأ أثناء إرسال الاختبار: ' . $e->getMessage());
+            ])->with('error', $userMessage);
         }
     }
 
