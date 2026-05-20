@@ -1,0 +1,167 @@
+<div class="d-flex flex-wrap gap-2 mb-3">
+    @if($showGlobalTools ?? false)
+        <a href="{{ route('admin.questions.index', ['filter' => 'orphan']) }}" class="btn btn-sm {{ request('filter') == 'orphan' ? 'btn-warning' : 'btn-outline-warning' }}">
+            <i class="bi bi-exclamation-circle me-1"></i> أسئلة غير مرتبطة
+        </a>
+        <a href="{{ route('admin.questions.index', ['with_deleted' => '1']) }}" class="btn btn-sm {{ request('with_deleted') == '1' ? 'btn-danger' : 'btn-outline-danger' }}">
+            <i class="bi bi-trash me-1"></i> سلة المحذوفات
+        </a>
+    @endif
+    <span class="badge bg-info-transparent text-info d-flex align-items-center" id="questionBankTotalBadge">
+        <i class="bi bi-info-circle me-1"></i>
+        إجمالي الأسئلة: {{ $questions->total() }}
+    </span>
+</div>
+
+<div class="row" id="questionBankCards">
+    @forelse($questions as $question)
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card custom-card question-card question-type-{{ $question->type }} h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="badge bg-{{ $question->type_color }}-transparent text-{{ $question->type_color }}">
+                            {{ $question->type_label }}
+                        </span>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-icon btn-light" data-bs-toggle="dropdown">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                @can('question-show')
+                                    <li><a class="dropdown-item" href="{{ route('admin.questions.show', $question->id) }}"><i class="bi bi-eye me-2"></i>عرض</a></li>
+                                @endcan
+                                @can('question-edit')
+                                    <li><a class="dropdown-item" href="{{ route('admin.questions.edit', $question->id) }}{{ isset($subject) ? '?subject_id='.$subject->id : '' }}"><i class="bi bi-pencil me-2"></i>تعديل</a></li>
+                                @endcan
+                                @can('question-delete')
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <button class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteQuestion{{ $question->id }}">
+                                            <i class="bi bi-trash me-2"></i>حذف
+                                        </button>
+                                    </li>
+                                @endcan
+                            </ul>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-semibold mb-2">
+                        @can('question-show')
+                            <a href="{{ route('admin.questions.show', $question->id) }}" class="text-decoration-none text-body question-text-body question-card-preview d-block">
+                                {!! format_question_markup($question->title) !!}
+                            </a>
+                        @else
+                            <span class="text-body question-text-body question-card-preview d-block">{!! format_question_markup($question->title) !!}</span>
+                        @endcan
+                    </h6>
+
+                    @if($question->content && trim(strip_tags($question->content)) !== trim(strip_tags($question->title)))
+                        <p class="text-muted small mb-2 question-text-body question-card-preview">{!! format_question_markup($question->content) !!}</p>
+                    @endif
+
+                    <div class="d-flex flex-wrap gap-1 mb-2">
+                        <span class="badge bg-light text-dark">
+                            <i class="bi bi-star me-1"></i>{{ $question->default_points }} نقطة
+                        </span>
+                        <span class="badge bg-{{ $question->difficulty_color }}-transparent text-{{ $question->difficulty_color }}">
+                            {{ $question->difficulty_label }}
+                        </span>
+                        @if(!$question->is_active)
+                            <span class="badge bg-secondary">غير نشط</span>
+                        @endif
+                    </div>
+
+                    @php
+                        $curriculumRows = $question->curriculumLocations();
+                        $extraCurriculumCount = max(0, $curriculumRows->count() - 2);
+                    @endphp
+                    <div class="border-top pt-2 mt-2 question-card-curriculum">
+                        @if($curriculumRows->isEmpty())
+                            <small class="text-muted">
+                                <i class="bi bi-globe me-1"></i> سؤال عام
+                            </small>
+                        @else
+                            <table class="table table-sm table-borderless mb-0">
+                                <thead>
+                                    <tr class="text-muted">
+                                        <th class="ps-0 py-0 fw-normal">الصف</th>
+                                        <th class="py-0 fw-normal">المادة</th>
+                                        <th class="pe-0 py-0 fw-normal">الوحدة</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($curriculumRows->take(2) as $row)
+                                        <tr>
+                                            <td class="ps-0 py-1"><span class="fw-semibold text-body">{{ $row['class'] ?: '—' }}</span></td>
+                                            <td class="py-1"><span class="fw-semibold text-body">{{ $row['subject'] ?: '—' }}</span></td>
+                                            <td class="pe-0 py-1"><span class="text-primary fw-semibold">{{ $row['unit'] }}</span></td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                            @if($extraCurriculumCount > 0)
+                                <small class="text-muted">+{{ $extraCurriculumCount }} موقع إضافي</small>
+                            @endif
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @can('question-delete')
+        <div class="modal fade" id="deleteQuestion{{ $question->id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 rounded-4">
+                    <div class="border-0 text-center pt-4 px-4">
+                        <div class="d-inline-flex align-items-center justify-content-center mb-3">
+                            <span class="me-2 fs-4 text-warning"><i class="bi bi-exclamation-triangle-fill"></i></span>
+                            <h5 class="modal-title mb-0 fw-bold">حذف السؤال</h5>
+                        </div>
+                        <button type="button" class="btn-close position-absolute top-0 start-0 m-3" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="{{ route('admin.questions.destroy', $question->id) }}" method="POST">
+                        @csrf
+                        @method('DELETE')
+                        <div class="modal-body text-center pt-0 pb-3 px-4">
+                            <p class="mb-1 text-muted">هل أنت متأكد من حذف السؤال:</p>
+                            <p class="fw-bold mb-1">{{ Str::limit(strip_tags($question->title), 50) }}</p>
+                        </div>
+                        <div class="modal-footer border-0 justify-content-center pb-4">
+                            <button type="button" class="btn btn-outline-secondary px-4 me-2" data-bs-dismiss="modal">إلغاء</button>
+                            <button type="submit" class="btn btn-danger px-4"><i class="bi bi-trash me-1"></i> حذف</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        @endcan
+    @empty
+        <div class="col-12">
+            <div class="card custom-card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-inbox display-4 text-muted"></i>
+                    <p class="text-muted mt-3">
+                        @if(isset($subject))
+                            لا توجد أسئلة لهذه المادة حالياً
+                        @else
+                            لا توجد أسئلة تطابق الفلاتر المحددة
+                        @endif
+                    </p>
+                    @can('question-create')
+                        <a href="{{ $createRoute }}" class="btn btn-primary">
+                            <i class="bi bi-plus-lg me-1"></i> إضافة أول سؤال
+                        </a>
+                    @endcan
+                </div>
+            </div>
+        </div>
+    @endforelse
+</div>
+
+@if($questions->hasPages())
+    <div class="d-flex justify-content-center mt-3" id="questionBankPagination">
+        {{ $questions->links() }}
+    </div>
+@else
+    <div id="questionBankPagination"></div>
+@endif

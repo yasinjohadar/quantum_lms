@@ -2,26 +2,25 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Helpers\StorageHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreQuizRequest;
 use App\Http\Requests\Admin\UpdateQuizRequest;
+use App\Models\Lesson;
+use App\Models\Question;
 use App\Models\Quiz;
 use App\Models\QuizQuestion;
-use App\Models\Question;
+use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\SubjectSection;
 use App\Models\Unit;
-use App\Models\Lesson;
-use App\Models\SchoolClass;
 use App\Services\ReminderService;
 use App\Services\StaffNotificationService;
+use App\Services\Storage\MediaStorageService;
 use App\Services\StudentContentNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use App\Helpers\StorageHelper;
-use App\Services\Storage\MediaStorageService;
 
 class QuizController extends Controller
 {
@@ -64,8 +63,8 @@ class QuizController extends Controller
         if ($user->usesTeacherAssignmentScope()) {
             $classIds = $user->assignedClasses()->pluck('classes.id');
             $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
-            
-            $query->whereHas('subject', function($q) use ($classIds, $subjectIds) {
+
+            $query->whereHas('subject', function ($q) use ($classIds, $subjectIds) {
                 // المواد من الصفوف المخصصة
                 if ($classIds->isNotEmpty()) {
                     $q->whereIn('class_id', $classIds);
@@ -89,7 +88,7 @@ class QuizController extends Controller
 
         // تصفية حسب الصف
         if ($request->filled('class_id')) {
-            $query->whereHas('subject', function($q) use ($request) {
+            $query->whereHas('subject', function ($q) use ($request) {
                 $q->where('class_id', $request->input('class_id'));
             });
         }
@@ -122,7 +121,7 @@ class QuizController extends Controller
         if ($request->expectsJson() || $request->ajax()) {
             $html = view('admin.pages.quizzes.partials.table', compact('quizzes'))->render();
             $pagination = view('admin.pages.quizzes.partials.pagination', compact('quizzes'))->render();
-            
+
             return response()->json([
                 'success' => true,
                 'html' => $html,
@@ -141,7 +140,7 @@ class QuizController extends Controller
     {
         $subjects = Subject::with('schoolClass')->orderBy('name')->get();
         $units = collect();
-        
+
         $selectedSubjectId = $request->get('subject_id');
         $selectedUnitId = $request->get('unit_id');
         $selectedLessonId = $request->get('lesson_id');
@@ -208,16 +207,16 @@ class QuizController extends Controller
                 }
             }
         }
-        
+
         if ($selectedUnitId) {
             $selectedUnit = Unit::with('section.subject.schoolClass')->find($selectedUnitId);
             if ($selectedUnit) {
-                if (!$selectedSubject) {
+                if (! $selectedSubject) {
                     $selectedSubject = $selectedUnit->section->subject;
                     $selectedClass = $selectedSubject->schoolClass;
                 }
                 $isFromSubjectOrUnit = true;
-                
+
                 // إذا لم تكن الوحدات محملة بعد، قم بتحميلها
                 if ($units->isEmpty() && $selectedSubject) {
                     $subjectId = $selectedSubject->id;
@@ -297,13 +296,13 @@ class QuizController extends Controller
             }
             $data['scope'] = $request->input('scope', $defaultScope);
 
-            if (!empty($data['unit_id']) && empty($data['section_id'])) {
+            if (! empty($data['unit_id']) && empty($data['section_id'])) {
                 $data['section_id'] = Unit::where('id', $data['unit_id'])->value('section_id');
             }
 
-            if (!empty($data['lesson_id']) && empty($data['section_id'])) {
+            if (! empty($data['lesson_id']) && empty($data['section_id'])) {
                 $lessonSectionId = Lesson::where('id', $data['lesson_id'])->value('section_id');
-                if (!$lessonSectionId) {
+                if (! $lessonSectionId) {
                     $lessonSectionId = Lesson::query()
                         ->where('id', $data['lesson_id'])
                         ->join('units', 'units.id', '=', 'lessons.unit_id')
@@ -312,7 +311,7 @@ class QuizController extends Controller
                 $data['section_id'] = $lessonSectionId;
             }
 
-            if (!empty($data['unit_id']) && !empty($data['section_id'])) {
+            if (! empty($data['unit_id']) && ! empty($data['section_id'])) {
                 $unitSectionId = Unit::where('id', $data['unit_id'])->value('section_id');
                 if ((int) $unitSectionId !== (int) $data['section_id']) {
                     return redirect()
@@ -345,12 +344,12 @@ class QuizController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error creating quiz: ' . $e->getMessage());
-            
+            Log::error('Error creating quiz: '.$e->getMessage());
+
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'حدث خطأ أثناء إنشاء الاختبار: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء إنشاء الاختبار: '.$e->getMessage());
         }
     }
 
@@ -381,7 +380,7 @@ class QuizController extends Controller
             'attempts' => function ($q) {
                 $q->latest()->limit(10);
             },
-            'attempts.user'
+            'attempts.user',
         ])->withCount(['questions', 'attempts'])->findOrFail($id);
 
         // إحصائيات
@@ -403,16 +402,16 @@ class QuizController extends Controller
     public function edit(string $id)
     {
         $quiz = Quiz::findOrFail($id);
-        
+
         // التحقق من التخصيص
         $user = auth()->user();
         if ($user->usesTeacherAssignmentScope()) {
-            if (!$user->isAssignedToSubject($quiz->subject_id) && 
-                !$user->isAssignedToClass($quiz->subject->class_id)) {
+            if (! $user->isAssignedToSubject($quiz->subject_id) &&
+                ! $user->isAssignedToClass($quiz->subject->class_id)) {
                 abort(403, 'غير مصرح لك بالوصول إلى هذا الاختبار');
             }
         }
-        
+
         $subjects = Subject::with('schoolClass')->orderBy('name')->get();
         $units = Unit::whereHas('section', function ($q) use ($quiz) {
             $q->where('subject_id', $quiz->subject_id);
@@ -453,7 +452,7 @@ class QuizController extends Controller
                 $data['is_published'] = $request->has('is_active');
                 if ($data['is_published'] && $quiz->review_status !== Quiz::REVIEW_STATUS_APPROVED) {
                     $data['review_status'] = Quiz::REVIEW_STATUS_APPROVED;
-                } elseif (!$data['is_published']) {
+                } elseif (! $data['is_published']) {
                     $data['review_status'] = Quiz::REVIEW_STATUS_DRAFT;
                 }
             }
@@ -463,13 +462,13 @@ class QuizController extends Controller
             $data['lesson_id'] = $quiz->lesson_id;
             $data['scope'] = $quiz->scope ?? ($quiz->lesson_id ? 'lesson' : 'unit');
 
-            if (!empty($data['unit_id']) && empty($data['section_id'])) {
+            if (! empty($data['unit_id']) && empty($data['section_id'])) {
                 $data['section_id'] = Unit::where('id', $data['unit_id'])->value('section_id');
             }
 
-            if (!empty($data['lesson_id']) && empty($data['section_id'])) {
+            if (! empty($data['lesson_id']) && empty($data['section_id'])) {
                 $lessonSectionId = Lesson::where('id', $data['lesson_id'])->value('section_id');
-                if (!$lessonSectionId) {
+                if (! $lessonSectionId) {
                     $lessonSectionId = Lesson::query()
                         ->where('id', $data['lesson_id'])
                         ->join('units', 'units.id', '=', 'lessons.unit_id')
@@ -478,7 +477,7 @@ class QuizController extends Controller
                 $data['section_id'] = $lessonSectionId;
             }
 
-            if (!empty($data['unit_id']) && !empty($data['section_id'])) {
+            if (! empty($data['unit_id']) && ! empty($data['section_id'])) {
                 $unitSectionId = Unit::where('id', $data['unit_id'])->value('section_id');
                 if ((int) $unitSectionId !== (int) $data['section_id']) {
                     return redirect()
@@ -503,7 +502,7 @@ class QuizController extends Controller
             }
 
             // إزالة كلمة المرور إذا لم يعد مطلوباً
-            if (!$data['requires_password']) {
+            if (! $data['requires_password']) {
                 $data['password'] = null;
             }
 
@@ -523,12 +522,12 @@ class QuizController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error updating quiz: ' . $e->getMessage());
-            
+            Log::error('Error updating quiz: '.$e->getMessage());
+
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'حدث خطأ أثناء تحديث الاختبار: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحديث الاختبار: '.$e->getMessage());
         }
     }
 
@@ -553,6 +552,7 @@ class QuizController extends Controller
                 'stage_name' => optional(optional(optional(optional($u->section)->subject)->schoolClass)->stage)->name ?? '',
             ];
         })->values();
+
         return response()->json($data);
     }
 
@@ -594,9 +594,9 @@ class QuizController extends Controller
 
         $message = 'تم تحديث ربط الاختبار بالوحدات بنجاح.';
         if ($count > 0) {
-            $message .= ' الاختبار مربوط بـ ' . $count . ' وحدة';
-            if (!empty($labels)) {
-                $message .= ': ' . implode('، ', array_slice($labels, 0, 5));
+            $message .= ' الاختبار مربوط بـ '.$count.' وحدة';
+            if (! empty($labels)) {
+                $message .= ': '.implode('، ', array_slice($labels, 0, 5));
                 if (count($labels) > 5) {
                     $message .= '...';
                 }
@@ -623,8 +623,8 @@ class QuizController extends Controller
             // التحقق من التخصيص
             $user = auth()->user();
             if ($user->usesTeacherAssignmentScope()) {
-                if (!$user->isAssignedToSubject($quiz->subject_id) && 
-                    !$user->isAssignedToClass($quiz->subject->class_id)) {
+                if (! $user->isAssignedToSubject($quiz->subject_id) &&
+                    ! $user->isAssignedToClass($quiz->subject->class_id)) {
                     abort(403, 'غير مصرح لك بالوصول إلى هذا الاختبار');
                 }
             }
@@ -654,8 +654,8 @@ class QuizController extends Controller
                 ->with('success', $message);
 
         } catch (\Exception $e) {
-            Log::error('Error deleting quiz: ' . $e->getMessage());
-            
+            Log::error('Error deleting quiz: '.$e->getMessage());
+
             return redirect()
                 ->back()
                 ->with('error', 'حدث خطأ أثناء حذف الاختبار');
@@ -667,21 +667,34 @@ class QuizController extends Controller
      */
     public function questions(string $id, Request $request)
     {
-        $quiz = Quiz::with(['questions.options', 'subject'])->findOrFail($id);
-        
-        // جلب الصفوف والمواد للفلاتر
+        $quiz = Quiz::with(['questions.options', 'subject.schoolClass.stage'])->findOrFail($id);
+
+        $quizSubject = $quiz->subject;
+        $filterLocked = (bool) $quiz->subject_id;
+
         $classes = SchoolClass::with('stage')->ordered()->get();
         $subjects = Subject::with('schoolClass')->active()->ordered()->get();
-        
-        // إذا كان هناك class_id محدد، فلتر المواد
-        if ($request->filled('class_id')) {
+
+        if (! $filterLocked && $request->filled('class_id')) {
             $subjects = $subjects->where('class_id', $request->input('class_id'));
         }
-        
-        // الأسئلة المتاحة للإضافة
-        $availableQuestions = Question::with(['units', 'options'])
+
+        $availableQuestions = Question::with(['units', 'options', 'subject'])
             ->active()
             ->whereNotIn('id', $quiz->questions->pluck('id'))
+            ->when($quiz->subject_id, function ($q) use ($quiz) {
+                $q->forSubject($quiz->subject_id);
+            })
+            ->when(! $filterLocked && $request->filled('class_id'), function ($q) use ($request) {
+                $classId = (int) $request->class_id;
+                $q->where(function ($query) use ($classId) {
+                    $query->whereHas('subject', fn ($sq) => $sq->where('class_id', $classId))
+                        ->orWhereHas('units.section.subject', fn ($sq) => $sq->where('class_id', $classId));
+                });
+            })
+            ->when(! $filterLocked && $request->filled('subject_id'), function ($q) use ($request) {
+                $q->forSubject((int) $request->subject_id);
+            })
             ->when($request->filled('type'), function ($q) use ($request) {
                 $q->ofType($request->type);
             })
@@ -691,16 +704,6 @@ class QuizController extends Controller
             ->when($request->filled('search'), function ($q) use ($request) {
                 $q->search($request->search);
             })
-            ->when($request->filled('class_id'), function ($q) use ($request) {
-                $q->whereHas('units.section.subject', function ($query) use ($request) {
-                    $query->where('class_id', $request->class_id);
-                });
-            })
-            ->when($request->filled('subject_id'), function ($q) use ($request) {
-                $q->whereHas('units.section', function ($query) use ($request) {
-                    $query->where('subject_id', $request->subject_id);
-                });
-            })
             ->latest()
             ->paginate(10)
             ->withQueryString();
@@ -709,7 +712,14 @@ class QuizController extends Controller
             return view('admin.pages.quizzes.partials.available-questions-list', compact('availableQuestions', 'quiz'));
         }
 
-        return view('admin.pages.quizzes.questions', compact('quiz', 'availableQuestions', 'classes', 'subjects'));
+        return view('admin.pages.quizzes.questions', compact(
+            'quiz',
+            'availableQuestions',
+            'classes',
+            'subjects',
+            'quizSubject',
+            'filterLocked'
+        ));
     }
 
     /**
@@ -726,9 +736,10 @@ class QuizController extends Controller
                 if ($request->expectsJson()) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'السؤال موجود مسبقاً في الاختبار'
+                        'message' => 'السؤال موجود مسبقاً في الاختبار',
                     ], 400);
                 }
+
                 return redirect()->back()->with('error', 'السؤال موجود مسبقاً في الاختبار');
             }
 
@@ -762,22 +773,22 @@ class QuizController extends Controller
                     'statistics' => [
                         'total_questions' => $quiz->questions->count(),
                         'total_points' => $quiz->total_points,
-                    ]
+                    ],
                 ]);
             }
 
             return redirect()->back()->with('success', 'تم إضافة السؤال للاختبار بنجاح');
 
         } catch (\Exception $e) {
-            Log::error('Error adding question to quiz: ' . $e->getMessage());
-            
+            Log::error('Error adding question to quiz: '.$e->getMessage());
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'حدث خطأ أثناء إضافة السؤال: ' . $e->getMessage()
+                    'message' => 'حدث خطأ أثناء إضافة السؤال: '.$e->getMessage(),
                 ], 500);
             }
-            
+
             return redirect()->back()->with('error', 'حدث خطأ أثناء إضافة السؤال');
         }
     }
@@ -797,7 +808,7 @@ class QuizController extends Controller
             foreach ($questionIds as $questionId) {
                 // التحقق من وجود السؤال
                 $question = Question::find($questionId);
-                if (!$question) {
+                if (! $question) {
                     continue;
                 }
 
@@ -825,7 +836,7 @@ class QuizController extends Controller
 
             return $attachedCount;
         } catch (\Exception $e) {
-            Log::error('Error attaching questions to quiz: ' . $e->getMessage(), [
+            Log::error('Error attaching questions to quiz: '.$e->getMessage(), [
                 'quiz_id' => $quizId,
                 'question_ids' => $questionIds,
             ]);
@@ -841,14 +852,14 @@ class QuizController extends Controller
         try {
             $quiz = Quiz::findOrFail($id);
             $question = Question::findOrFail($questionId);
-            
+
             // الحصول على معلومات السؤال قبل الحذف
             $quizQuestion = QuizQuestion::where('quiz_id', $quiz->id)
                 ->where('question_id', $questionId)
                 ->first();
-            
+
             $points = $quizQuestion ? $quizQuestion->points : 0;
-            
+
             $quiz->questions()->detach($questionId);
             $quiz->calculateTotalPoints();
             $quiz->refresh();
@@ -871,22 +882,22 @@ class QuizController extends Controller
                     'statistics' => [
                         'total_questions' => $quiz->questions->count(),
                         'total_points' => $quiz->total_points,
-                    ]
+                    ],
                 ]);
             }
 
             return redirect()->back()->with('success', 'تم إزالة السؤال من الاختبار');
 
         } catch (\Exception $e) {
-            Log::error('Error removing question from quiz: ' . $e->getMessage());
-            
+            Log::error('Error removing question from quiz: '.$e->getMessage());
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'حدث خطأ أثناء إزالة السؤال: ' . $e->getMessage()
+                    'message' => 'حدث خطأ أثناء إزالة السؤال: '.$e->getMessage(),
                 ], 500);
             }
-            
+
             return redirect()->back()->with('error', 'حدث خطأ أثناء إزالة السؤال');
         }
     }
@@ -909,7 +920,8 @@ class QuizController extends Controller
             return response()->json(['success' => true]);
 
         } catch (\Exception $e) {
-            Log::error('Error reordering questions: ' . $e->getMessage());
+            Log::error('Error reordering questions: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
@@ -925,7 +937,7 @@ class QuizController extends Controller
             ]);
 
             $quiz = Quiz::findOrFail($id);
-            
+
             QuizQuestion::where('quiz_id', $quiz->id)
                 ->where('question_id', $questionId)
                 ->update(['points' => $request->points]);
@@ -954,17 +966,18 @@ class QuizController extends Controller
                     'errors' => $e->errors(),
                 ], 422);
             }
+
             return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
-            Log::error('Error updating question points: ' . $e->getMessage());
-            
+            Log::error('Error updating question points: '.$e->getMessage());
+
             if ($request->wantsJson() || $request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'حدث خطأ أثناء تحديث الدرجة: ' . $e->getMessage(),
+                    'message' => 'حدث خطأ أثناء تحديث الدرجة: '.$e->getMessage(),
                 ], 500);
             }
-            
+
             return redirect()->back()->with('error', 'حدث خطأ أثناء تحديث الدرجة');
         }
     }
@@ -999,10 +1012,10 @@ class QuizController extends Controller
             DB::beginTransaction();
 
             $original = Quiz::with('questions')->findOrFail($id);
-            
+
             // نسخ الاختبار
             $newQuiz = $original->replicate();
-            $newQuiz->title = $original->title . ' (نسخة)';
+            $newQuiz->title = $original->title.' (نسخة)';
             $newQuiz->is_published = false;
             $newQuiz->created_by = auth()->id();
             $newQuiz->save();
@@ -1029,8 +1042,8 @@ class QuizController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error duplicating quiz: ' . $e->getMessage());
-            
+            Log::error('Error duplicating quiz: '.$e->getMessage());
+
             return redirect()->back()->with('error', 'حدث خطأ أثناء نسخ الاختبار');
         }
     }
@@ -1052,11 +1065,11 @@ class QuizController extends Controller
             }
 
             // التحقق من وجود أسئلة قبل النشر
-            if (!$quiz->is_published && $quiz->questions()->count() === 0) {
+            if (! $quiz->is_published && $quiz->questions()->count() === 0) {
                 return redirect()->back()->with('error', 'لا يمكن نشر اختبار بدون أسئلة');
             }
 
-            $quiz->is_published = !$quiz->is_published;
+            $quiz->is_published = ! $quiz->is_published;
             if ($quiz->is_published) {
                 $quiz->review_status = Quiz::REVIEW_STATUS_APPROVED;
             }
@@ -1083,7 +1096,7 @@ class QuizController extends Controller
     public function preview(string $id)
     {
         $quiz = Quiz::with(['questions.options', 'subject'])->findOrFail($id);
-        
+
         return view('admin.pages.quizzes.preview', compact('quiz'));
     }
 
@@ -1093,7 +1106,7 @@ class QuizController extends Controller
     public function results(string $id)
     {
         $quiz = Quiz::with(['subject'])->findOrFail($id);
-        
+
         $attempts = $quiz->attempts()
             ->with(['user'])
             ->completed()
@@ -1132,23 +1145,23 @@ class QuizController extends Controller
         try {
             $quiz = Quiz::findOrFail($id);
             $user = auth()->user();
-            
+
             // التحقق من أن المستخدم معلم
-            if (!$user->shouldSubmitContentForReview()) {
+            if (! $user->shouldSubmitContentForReview()) {
                 abort(403, 'غير مصرح لك بإرسال الاختبار للمراجعة');
             }
-            
+
             // التحقق من وجود أسئلة
             if ($quiz->questions()->count() === 0) {
                 return redirect()->back()->with('error', 'لا يمكن إرسال اختبار بدون أسئلة للمراجعة');
             }
-            
+
             // التحقق من التخصيص
-            if (!$user->isAssignedToSubject($quiz->subject_id) && 
-                !$user->isAssignedToClass($quiz->subject->class_id)) {
+            if (! $user->isAssignedToSubject($quiz->subject_id) &&
+                ! $user->isAssignedToClass($quiz->subject->class_id)) {
                 abort(403, 'غير مصرح لك بالوصول إلى هذا الاختبار');
             }
-            
+
             $quiz->update([
                 'review_status' => Quiz::REVIEW_STATUS_PENDING,
                 'submitted_for_review_at' => now(),
@@ -1161,7 +1174,8 @@ class QuizController extends Controller
             return redirect()->back()->with('success', 'تم إرسال الاختبار للمراجعة بنجاح. سيتم مراجعته من قبل المشرف/الأدمن.');
 
         } catch (\Exception $e) {
-            Log::error('Error submitting quiz for review: ' . $e->getMessage());
+            Log::error('Error submitting quiz for review: '.$e->getMessage());
+
             return redirect()->back()->with('error', 'حدث خطأ أثناء إرسال الاختبار للمراجعة');
         }
     }
@@ -1178,13 +1192,13 @@ class QuizController extends Controller
         try {
             $quiz = Quiz::findOrFail($id);
             $quizBeforeApprove = clone $quiz;
-            
+
             // التحقق من الصلاحية (admin/supervisor فقط)
             $user = auth()->user();
-            if (!$user->canReviewContent()) {
+            if (! $user->canReviewContent()) {
                 abort(403, 'غير مصرح لك بالموافقة على نشر الاختبار');
             }
-            
+
             // التحقق من وجود أسئلة
             if ($quiz->questions()->count() === 0) {
                 return redirect()->back()->with('error', 'لا يمكن الموافقة على نشر اختبار بدون أسئلة');
@@ -1211,7 +1225,8 @@ class QuizController extends Controller
                 ->with('success', 'تم الموافقة على نشر الاختبار بنجاح.');
 
         } catch (\Exception $e) {
-            Log::error('Error approving quiz review: ' . $e->getMessage());
+            Log::error('Error approving quiz review: '.$e->getMessage());
+
             return redirect()->back()->with('error', 'حدث خطأ أثناء الموافقة على نشر الاختبار');
         }
     }
@@ -1227,10 +1242,10 @@ class QuizController extends Controller
 
         try {
             $quiz = Quiz::findOrFail($id);
-            
+
             // التحقق من الصلاحية (admin/supervisor فقط)
             $user = auth()->user();
-            if (!$user->canReviewContent()) {
+            if (! $user->canReviewContent()) {
                 abort(403, 'غير مصرح لك برفض نشر الاختبار');
             }
 
@@ -1249,9 +1264,9 @@ class QuizController extends Controller
                 ->with('success', 'تم رفض نشر الاختبار وتم إرسال الملاحظات للمعلم.');
 
         } catch (\Exception $e) {
-            Log::error('Error rejecting quiz review: ' . $e->getMessage());
+            Log::error('Error rejecting quiz review: '.$e->getMessage());
+
             return redirect()->back()->with('error', 'حدث خطأ أثناء رفض نشر الاختبار');
         }
     }
 }
-

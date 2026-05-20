@@ -12,7 +12,7 @@
                 <h5 class="page-title fs-21 mb-1">توليد أسئلة من صورة أو PDF</h5>
             </div>
             <div>
-                <a href="{{ route('admin.ai.question-generations.index') }}" class="btn btn-secondary btn-sm">
+                <a href="{{ !empty($lockedSubject) ? route('admin.subjects.questions.index', $lockedSubject->id) : route('admin.ai.question-generations.index') }}" class="btn btn-secondary btn-sm">
                     <i class="fas fa-arrow-right me-1"></i> رجوع
                 </a>
             </div>
@@ -26,6 +26,16 @@
                     @endforeach
                 </ul>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+            </div>
+        @endif
+
+        @if(!empty($lockedSubject))
+            <div class="alert alert-primary">
+                <i class="fas fa-link me-1"></i>
+                الأسئلة المولدة ستُربط بمادة <strong>{{ $lockedSubject->name }}</strong>
+                @if($lockedSubject->schoolClass)
+                    — {{ $lockedSubject->schoolClass->name }}
+                @endif
             </div>
         @endif
 
@@ -43,6 +53,10 @@
                     <div class="card-body">
                         <form action="{{ route('admin.ai.question-generations.store-from-image') }}" method="POST" enctype="multipart/form-data" id="imageGenForm">
                             @csrf
+                            @if(!empty($lockedSubject))
+                                <input type="hidden" name="subject_id" value="{{ $lockedSubject->id }}">
+                                <input type="hidden" name="class_id" value="{{ $lockedSubject->class_id }}">
+                            @endif
 
                             <div class="mb-3">
                                 <label for="source_file" class="form-label">الملف (صورة أو PDF) <span class="text-danger">*</span></label>
@@ -62,22 +76,34 @@
                                 <textarea class="form-control" id="instructions" name="instructions" rows="4" placeholder="مثال: ركّز على المسائل العددية في الصورة، أو صغ الأسئلة للصف السادس...">{{ old('instructions') }}</textarea>
                             </div>
 
-                            <div class="mb-3">
-                                <label for="class_id" class="form-label">الصف (اختياري)</label>
-                                <select class="form-select" id="class_id" name="class_id">
-                                    <option value="">— بدون تحديد —</option>
-                                    @foreach($schoolClasses as $schoolClass)
-                                        <option value="{{ $schoolClass->id }}" {{ (string) old('class_id', $prefillClassId ?? '') === (string) $schoolClass->id ? 'selected' : '' }}>{{ $schoolClass->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
+                            @if(empty($lockedSubject))
+                                <div class="mb-3">
+                                    <label for="class_id" class="form-label">الصف (اختياري)</label>
+                                    <select class="form-select" id="class_id" name="class_id">
+                                        <option value="">— بدون تحديد —</option>
+                                        @foreach($schoolClasses as $schoolClass)
+                                            <option value="{{ $schoolClass->id }}" {{ (string) old('class_id', $prefillClassId ?? '') === (string) $schoolClass->id ? 'selected' : '' }}>{{ $schoolClass->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
 
-                            <div class="mb-3">
-                                <label for="subject_id" class="form-label">المادة (اختياري)</label>
-                                <select class="form-select" id="subject_id" name="subject_id" @if(!$prefillClassId) disabled @endif>
-                                    <option value="">{{ $prefillClassId ? 'اختر المادة' : 'اختر الصف أولاً' }}</option>
-                                </select>
-                            </div>
+                                <div class="mb-3">
+                                    <label for="subject_id" class="form-label">المادة (اختياري)</label>
+                                    <select class="form-select" id="subject_id" name="subject_id" @if(!$prefillClassId) disabled @endif>
+                                        <option value="">{{ $prefillClassId ? 'اختر المادة' : 'اختر الصف أولاً' }}</option>
+                                    </select>
+                                </div>
+                            @else
+                                <div class="mb-3">
+                                    <label class="form-label">المادة</label>
+                                    <p class="form-control-plaintext mb-0">
+                                        <strong>{{ $lockedSubject->name }}</strong>
+                                        @if($lockedSubject->schoolClass)
+                                            <span class="text-muted">({{ $lockedSubject->schoolClass->name }})</span>
+                                        @endif
+                                    </p>
+                                </div>
+                            @endif
 
                             <div class="mb-3">
                                 <label for="unit_id" class="form-label">الوحدة (اختياري)</label>
@@ -164,7 +190,7 @@
                                 <button type="submit" class="btn btn-primary">
                                     <i class="fas fa-file-upload me-1"></i> تحليل الملف وتوليد الأسئلة
                                 </button>
-                                <a href="{{ route('admin.ai.question-generations.index') }}" class="btn btn-secondary">إلغاء</a>
+                                <a href="{{ !empty($lockedSubject) ? route('admin.subjects.questions.index', $lockedSubject->id) : route('admin.ai.question-generations.index') }}" class="btn btn-secondary">إلغاء</a>
                             </div>
                         </form>
                     </div>
@@ -184,6 +210,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var ajaxUnitsBase = @json(url('/admin/ai/question-generations/ajax/subjects'));
     var prefillSubjectId = @json(old('subject_id', $prefillSubjectId ?? ''));
     var prefillUnitId = @json(old('unit_id', $prefillUnitId ?? ''));
+    var lockedSubjectId = @json(!empty($lockedSubject) ? $lockedSubject->id : null);
 
     function resetUnitsPlaceholder() {
         unitSelect.disabled = true;
@@ -191,12 +218,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function resetSubjectsPlaceholder() {
+        if (!subjectSelect) {
+            return;
+        }
         subjectSelect.disabled = true;
         subjectSelect.innerHTML = '<option value="">اختر الصف أولاً</option>';
         resetUnitsPlaceholder();
     }
 
     function populateSubjects(classId, selectedSubjectId) {
+        if (!subjectSelect) {
+            return Promise.resolve();
+        }
         subjectSelect.disabled = false;
         subjectSelect.innerHTML = '<option value="">جاري التحميل...</option>';
         resetUnitsPlaceholder();
@@ -257,25 +290,31 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    classSelect.addEventListener('change', function () {
-        var classId = this.value;
-        if (!classId) {
-            resetSubjectsPlaceholder();
-            return;
-        }
-        populateSubjects(classId, null);
-    });
+    if (classSelect) {
+        classSelect.addEventListener('change', function () {
+            var classId = this.value;
+            if (!classId) {
+                resetSubjectsPlaceholder();
+                return;
+            }
+            populateSubjects(classId, null);
+        });
+    }
 
-    subjectSelect.addEventListener('change', function () {
-        var subjectId = this.value;
-        if (!subjectId) {
-            resetUnitsPlaceholder();
-            return;
-        }
-        populateUnits(subjectId, null);
-    });
+    if (subjectSelect) {
+        subjectSelect.addEventListener('change', function () {
+            var subjectId = this.value;
+            if (!subjectId) {
+                resetUnitsPlaceholder();
+                return;
+            }
+            populateUnits(subjectId, null);
+        });
+    }
 
-    if (classSelect.value) {
+    if (lockedSubjectId) {
+        populateUnits(lockedSubjectId, prefillUnitId || null);
+    } else if (classSelect && classSelect.value) {
         populateSubjects(classSelect.value, prefillSubjectId || null);
     }
 

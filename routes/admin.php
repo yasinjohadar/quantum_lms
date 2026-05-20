@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Admin\AnalyticsDashboardController;
-use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ClassController;
 use App\Http\Controllers\Admin\DistinguishedStudentController;
 use App\Http\Controllers\Admin\EnrollmentController;
@@ -10,16 +9,18 @@ use App\Http\Controllers\Admin\LessonAttachmentController;
 use App\Http\Controllers\Admin\LessonController;
 use App\Http\Controllers\Admin\LoginLogController;
 use App\Http\Controllers\Admin\NotificationController;
-use App\Http\Controllers\Admin\NotificationsInboxController;
 use App\Http\Controllers\Admin\NotificationPreferenceController as AdminNotificationPreferenceController;
+use App\Http\Controllers\Admin\NotificationsInboxController;
 use App\Http\Controllers\Admin\QuestionController;
 use App\Http\Controllers\Admin\QuizAttemptController;
 use App\Http\Controllers\Admin\QuizController;
 use App\Http\Controllers\Admin\SocialLinkController;
 use App\Http\Controllers\Admin\StageController;
 use App\Http\Controllers\Admin\SubjectController;
+use App\Http\Controllers\Admin\SubjectQuestionBankController;
 use App\Http\Controllers\Admin\SubjectSectionController;
 use App\Http\Controllers\Admin\UnitController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserSessionController;
 use App\Http\Controllers\Api\SessionActivityController;
 use Illuminate\Support\Facades\Route;
@@ -59,6 +60,17 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('subjects.toggle-status');
         Route::post('subjects/reorder', [SubjectController::class, 'reorder'])
             ->name('subjects.reorder');
+
+        Route::get('subjects/{subject}/questions', [SubjectQuestionBankController::class, 'index'])
+            ->name('subjects.questions.index');
+        Route::get('subjects/{subject}/questions/create', [SubjectQuestionBankController::class, 'create'])
+            ->name('subjects.questions.create');
+        Route::get('subjects/{subject}/questions/import', [SubjectQuestionBankController::class, 'import'])
+            ->name('subjects.questions.import');
+        Route::get('subjects/{subject}/questions/ai-create', [SubjectQuestionBankController::class, 'aiCreate'])
+            ->name('subjects.questions.ai-create');
+        Route::get('subjects/{subject}/questions/ai-create-from-image', [SubjectQuestionBankController::class, 'aiCreateFromImage'])
+            ->name('subjects.questions.ai-create-from-image');
 
         // أقسام المواد (داخل كل مادة)
         Route::post('subjects/{subject}/sections', [SubjectSectionController::class, 'store'])

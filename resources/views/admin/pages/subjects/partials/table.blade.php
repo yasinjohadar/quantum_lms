@@ -50,6 +50,13 @@
         <td>{{ $subject->created_at?->format('Y-m-d H:i') }}</td>
         <td>
             <div class="d-flex gap-1 flex-wrap justify-content-center">
+                @can('question-list')
+                    <a href="{{ route('admin.subjects.questions.index', $subject->id) }}"
+                       class="btn btn-sm btn-secondary text-white"
+                       title="بنك أسئلة المادة">
+                        <i class="bi bi-journal-text"></i> بنك الأسئلة
+                    </a>
+                @endcan
                 @can('subject-show')
                     <a href="{{ route('admin.subjects.show', $subject->id) }}"
                        class="btn btn-sm btn-info text-white"

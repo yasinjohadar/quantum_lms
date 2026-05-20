@@ -4,10 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 
 class Question extends Model
@@ -84,6 +84,7 @@ class Question extends Model
         'blank_answers',
         'is_active',
         'created_by',
+        'subject_id',
         'category',
         'tags',
     ];
@@ -224,6 +225,11 @@ class Question extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function subject(): BelongsTo
+    {
+        return $this->belongsTo(Subject::class);
+    }
+
     public function quizzes(): BelongsToMany
     {
         return $this->belongsToMany(Quiz::class, 'quiz_questions')
@@ -271,6 +277,7 @@ class Question extends Model
         if ($correctOptions->count() > 0) {
             return $correctOptions->pluck('content')->implode(', ');
         }
+
         return '';
     }
 
@@ -304,6 +311,21 @@ class Question extends Model
         });
     }
 
+    /**
+     * أسئلة مرتبطة بمادة: subject_id مباشر أو وحدات ضمن المادة.
+     */
+    public function scopeForSubject($query, Subject|int $subject)
+    {
+        $subjectId = $subject instanceof Subject ? $subject->id : (int) $subject;
+
+        return $query->where(function ($q) use ($subjectId) {
+            $q->where('subject_id', $subjectId)
+                ->orWhereHas('units.section', function ($sq) use ($subjectId) {
+                    $sq->where('subject_id', $subjectId);
+                });
+        });
+    }
+
     public function scopeGeneral($query)
     {
         return $query->whereDoesntHave('units');
@@ -313,8 +335,8 @@ class Question extends Model
     {
         return $query->where(function ($q) use ($search) {
             $q->where('title', 'like', "%{$search}%")
-              ->orWhere('content', 'like', "%{$search}%")
-              ->orWhere('category', 'like', "%{$search}%");
+                ->orWhere('content', 'like', "%{$search}%")
+                ->orWhere('category', 'like', "%{$search}%");
         });
     }
 
@@ -343,7 +365,7 @@ class Question extends Model
 
     public function getDifficultyColorAttribute(): string
     {
-        return match($this->difficulty) {
+        return match ($this->difficulty) {
             'easy' => 'success',
             'medium' => 'warning',
             'hard' => 'danger',
@@ -372,4 +394,3 @@ class Question extends Model
         return in_array($this->type, ['single_choice', 'multiple_choice', 'true_false', 'matching', 'ordering', 'drag_drop']);
     }
 }
-

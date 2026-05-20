@@ -3,17 +3,15 @@
 namespace App\Services\AI;
 
 use App\Exceptions\QuestionGenerationProcessException;
-use App\Models\AIQuestionGeneration;
 use App\Models\AIModel;
+use App\Models\AIQuestionGeneration;
+use App\Models\Lesson;
 use App\Models\Question;
 use App\Models\QuestionOption;
-use App\Models\Lesson;
-use App\Models\User;
-use App\Models\Subject;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class AIQuestionGenerationService
@@ -31,7 +29,7 @@ class AIQuestionGenerationService
     public function generateFromLesson(Lesson $lesson, array $options = []): AIQuestionGeneration
     {
         $content = $lesson->description ?? $lesson->title;
-        
+
         // جمع محتوى إضافي من الدرس
         if ($lesson->attachments) {
             // يمكن إضافة محتوى من المرفقات
@@ -52,14 +50,14 @@ class AIQuestionGenerationService
         $user = $options['user'] ?? auth()->user();
         $model = $options['model'] ?? $this->modelService->getBestModelFor('question_generation');
 
-        if (!$model) {
+        if (! $model) {
             throw new \Exception('لا يوجد موديل AI متاح لتوليد الأسئلة');
         }
 
         // دعم question_types (array) أو question_type (string) للتوافق
         $questionType = $options['question_type'] ?? null;
         $questionTypes = $options['question_types'] ?? null;
-        
+
         // إذا تم تمرير question_types، استخدمه، وإلا استخدم question_type
         if ($questionTypes && is_array($questionTypes) && count($questionTypes) > 0) {
             // استخدام question_types الجديد
@@ -524,9 +522,6 @@ class AIQuestionGenerationService
         return $message;
     }
 
-    /**
-     * @return never
-     */
     private function failGeneration(AIQuestionGeneration $generation, \Throwable $e): never
     {
         if ($e instanceof QuestionGenerationProcessException) {
@@ -543,9 +538,6 @@ class AIQuestionGenerationService
         throw new QuestionGenerationProcessException($generation->fresh(), $message, $e);
     }
 
-    /**
-     * @param  AIProviderService  $provider
-     */
     private function finalizeGenerationFromAiResponse(
         AIQuestionGeneration $generation,
         AIModel $model,
@@ -601,7 +593,7 @@ class AIQuestionGenerationService
     /**
      * حفظ الأسئلة المولدة
      */
-    public function saveGeneratedQuestions(AIQuestionGeneration $generation, array $selectedIndices = null): Collection
+    public function saveGeneratedQuestions(AIQuestionGeneration $generation, ?array $selectedIndices = null): Collection
     {
         if ($generation->status !== 'completed') {
             throw new \Exception('التوليد لم يكتمل بعد');
@@ -611,7 +603,7 @@ class AIQuestionGenerationService
         $savedQuestions = collect();
 
         // إذا تم تحديد indices، احفظ فقط المحددة
-        if ($selectedIndices !== null && !empty($selectedIndices)) {
+        if ($selectedIndices !== null && ! empty($selectedIndices)) {
             $filteredQuestions = [];
             foreach ($questions as $index => $questionData) {
                 if (in_array($index, $selectedIndices)) {
@@ -627,7 +619,7 @@ class AIQuestionGenerationService
 
             foreach ($questions as $questionData) {
                 $questionType = $questionData['type'] ?? 'single_choice';
-                
+
                 // إنشاء السؤال
                 $question = Question::create([
                     'type' => $questionType,
@@ -638,6 +630,7 @@ class AIQuestionGenerationService
                     'default_points' => $questionData['points'] ?? 10,
                     'is_active' => true,
                     'created_by' => $generation->user_id,
+                    'subject_id' => $generation->subject_id,
                 ]);
 
                 if ($unitId) {
@@ -657,7 +650,7 @@ class AIQuestionGenerationService
             return $savedQuestions;
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error saving generated questions: ' . $e->getMessage());
+            Log::error('Error saving generated questions: '.$e->getMessage());
             throw $e;
         }
     }
@@ -754,36 +747,36 @@ class AIQuestionGenerationService
             case 'multiple_choice':
                 $this->saveChoiceOptions($question, $type, $questionData);
                 break;
-                
+
             case 'true_false':
                 $this->saveTrueFalseOptions($question, $questionData);
                 break;
-                
+
             case 'matching':
                 $this->saveMatchingOptions($question, $questionData);
                 break;
-                
+
             case 'ordering':
                 $this->saveOrderingOptions($question, $questionData);
                 break;
-                
+
             case 'numerical':
                 $this->saveNumericalAnswer($question, $questionData);
                 break;
-                
+
             case 'fill_blanks':
                 $this->saveFillBlanksAnswer($question, $questionData);
                 break;
-                
+
             case 'drag_drop':
                 $this->saveDragDropOptions($question, $questionData);
                 break;
-                
+
             case 'essay':
             case 'short_answer':
                 // لا تحتاج خيارات
                 break;
-                
+
             default:
                 // Fallback: محاولة حفظ الخيارات بشكل عام
                 if (isset($questionData['options']) && is_array($questionData['options']) && count($questionData['options']) >= 2) {
@@ -800,7 +793,7 @@ class AIQuestionGenerationService
     {
         $options = $questionData['options'] ?? [];
         $correctAnswer = $questionData['correct_answer'] ?? '';
-        
+
         // التحقق من وجود خيارات كافية
         if (count($options) < 2) {
             Log::warning('Insufficient options for choice question', [
@@ -808,30 +801,31 @@ class AIQuestionGenerationService
                 'type' => $type,
                 'options_count' => count($options),
             ]);
+
             return;
         }
-        
+
         // لـ multiple_choice، correct_answer يجب أن يكون array
-        if ($type === 'multiple_choice' && !is_array($correctAnswer)) {
+        if ($type === 'multiple_choice' && ! is_array($correctAnswer)) {
             $correctAnswer = [$correctAnswer];
         }
-        
+
         foreach ($options as $index => $optionText) {
             if (empty(trim($optionText))) {
                 continue; // تخطي الخيارات الفارغة
             }
-            
+
             $isCorrect = false;
             if (is_array($correctAnswer)) {
                 // للبحث في array (دعم multiple_choice)
                 // محاولة 1: البحث في النصوص مباشرة
                 $isCorrect = in_array(trim($optionText), array_map('trim', $correctAnswer), true);
                 // محاولة 2: البحث في الـ indices (0, 1, 2, ...)
-                if (!$isCorrect) {
+                if (! $isCorrect) {
                     $isCorrect = in_array($index, $correctAnswer, true);
                 }
                 // محاولة 3: البحث في array indexed
-                if (!$isCorrect && isset($correctAnswer[$index])) {
+                if (! $isCorrect && isset($correctAnswer[$index])) {
                     $isCorrect = trim($optionText) === trim($correctAnswer[$index]);
                 }
             } else {
@@ -839,11 +833,11 @@ class AIQuestionGenerationService
                 // محاولة 1: مطابقة النص
                 $isCorrect = trim($optionText) === trim($correctAnswer);
                 // محاولة 2: دعم index-based answer (0, 1, 2, ...)
-                if (!$isCorrect && is_numeric($correctAnswer)) {
-                    $isCorrect = ($index == (int)$correctAnswer);
+                if (! $isCorrect && is_numeric($correctAnswer)) {
+                    $isCorrect = ($index == (int) $correctAnswer);
                 }
             }
-            
+
             QuestionOption::create([
                 'question_id' => $question->id,
                 'content' => trim($optionText),
@@ -861,7 +855,7 @@ class AIQuestionGenerationService
         $correctAnswer = $questionData['correct_answer'] ?? '';
         $correctAnswerStr = is_array($correctAnswer) ? ($correctAnswer[0] ?? '') : $correctAnswer;
         $correctAnswerStr = strtolower(trim($correctAnswerStr));
-        
+
         // إنشاء خيارين فقط
         $trueOption = QuestionOption::create([
             'question_id' => $question->id,
@@ -869,7 +863,7 @@ class AIQuestionGenerationService
             'is_correct' => in_array($correctAnswerStr, ['true', 'صح', '1', 'yes', 'نعم', 'صحيح'], true),
             'order' => 1,
         ]);
-        
+
         $falseOption = QuestionOption::create([
             'question_id' => $question->id,
             'content' => 'خطأ',
@@ -886,17 +880,18 @@ class AIQuestionGenerationService
         $options = $questionData['options'] ?? [];
         $matchTargets = $questionData['match_targets'] ?? [];
         $matches = $questionData['matches'] ?? [];
-        
+
         if (count($options) < 2) {
             Log::warning('Insufficient options for matching question', [
                 'question_id' => $question->id,
                 'options_count' => count($options),
             ]);
+
             return;
         }
-        
+
         // محاولة استخراج matches من structure مختلف
-        if (empty($matchTargets) && !empty($matches) && is_array($matches)) {
+        if (empty($matchTargets) && ! empty($matches) && is_array($matches)) {
             // Structure 1: [{'item': 'A', 'target': '1'}, ...]
             if (isset($matches[0]) && is_array($matches[0]) && isset($matches[0]['item'])) {
                 foreach ($matches as $match) {
@@ -909,7 +904,7 @@ class AIQuestionGenerationService
                 }
             }
             // Structure 2: {'A': '1', 'B': '2', ...}
-            elseif (isset($matches[0]) && !is_array($matches[0])) {
+            elseif (isset($matches[0]) && ! is_array($matches[0])) {
                 foreach ($matches as $key => $value) {
                     $itemIndex = array_search($key, $options);
                     if ($itemIndex !== false) {
@@ -918,16 +913,16 @@ class AIQuestionGenerationService
                 }
             }
         }
-        
+
         foreach ($options as $index => $optionText) {
             if (empty(trim($optionText))) {
                 continue;
             }
-            
+
             $matchTarget = $matchTargets[$index] ?? '';
-            
+
             // إذا لم يكن match_target موجوداً، محاولة البحث في matches مرة أخرى
-            if (empty($matchTarget) && !empty($matches)) {
+            if (empty($matchTarget) && ! empty($matches)) {
                 foreach ($matches as $match) {
                     if (is_array($match)) {
                         if ((isset($match['item']) && trim($match['item']) === trim($optionText)) ||
@@ -938,7 +933,7 @@ class AIQuestionGenerationService
                     }
                 }
             }
-            
+
             QuestionOption::create([
                 'question_id' => $question->id,
                 'content' => trim($optionText),
@@ -955,35 +950,36 @@ class AIQuestionGenerationService
     protected function saveOrderingOptions(Question $question, array $questionData): void
     {
         $options = $questionData['options'] ?? [];
-        
+
         if (count($options) < 2) {
             Log::warning('Insufficient options for ordering question', [
                 'question_id' => $question->id,
                 'options_count' => count($options),
             ]);
+
             return;
         }
-        
+
         $correctOrder = $questionData['correct_order'] ?? [];
-        
+
         foreach ($options as $index => $optionText) {
             if (empty(trim($optionText))) {
                 continue;
             }
-            
+
             // تحديد الترتيب الصحيح
             $order = $index + 1;
             if (is_array($correctOrder)) {
                 if (isset($correctOrder[$index])) {
-                    $order = (int)$correctOrder[$index];
+                    $order = (int) $correctOrder[$index];
                 } elseif (isset($correctOrder[$optionText])) {
-                    $order = (int)$correctOrder[$optionText];
+                    $order = (int) $correctOrder[$optionText];
                 }
             } elseif (is_numeric($correctOrder) && $index === 0) {
                 // إذا كان correct_order رقم واحد، استخدمه للخيار الأول
-                $order = (int)$correctOrder;
+                $order = (int) $correctOrder;
             }
-            
+
             QuestionOption::create([
                 'question_id' => $question->id,
                 'content' => trim($optionText),
@@ -1000,23 +996,24 @@ class AIQuestionGenerationService
     protected function saveNumericalAnswer(Question $question, array $questionData): void
     {
         $correctAnswer = $questionData['correct_answer'] ?? '';
-        
-        if (empty($correctAnswer) && !is_numeric($correctAnswer)) {
+
+        if (empty($correctAnswer) && ! is_numeric($correctAnswer)) {
             Log::warning('Missing correct answer for numerical question', [
                 'question_id' => $question->id,
             ]);
+
             return;
         }
-        
+
         // حفظ tolerance إذا كان موجوداً
         if (isset($questionData['tolerance'])) {
-            $question->update(['tolerance' => (float)$questionData['tolerance']]);
+            $question->update(['tolerance' => (float) $questionData['tolerance']]);
         }
-        
+
         // إنشاء خيار واحد يحتوي على الإجابة الصحيحة
         QuestionOption::create([
             'question_id' => $question->id,
-            'content' => (string)$correctAnswer,
+            'content' => (string) $correctAnswer,
             'is_correct' => true,
             'order' => 1,
         ]);
@@ -1028,14 +1025,15 @@ class AIQuestionGenerationService
     protected function saveFillBlanksAnswer(Question $question, array $questionData): void
     {
         $blankAnswers = $questionData['blank_answers'] ?? $questionData['correct_answers'] ?? [];
-        
+
         if (empty($blankAnswers)) {
             Log::warning('Missing blank answers for fill_blanks question', [
                 'question_id' => $question->id,
             ]);
+
             return;
         }
-        
+
         // حفظ blank_answers كـ array في Question
         if (is_array($blankAnswers)) {
             $question->update(['blank_answers' => $blankAnswers]);
@@ -1043,10 +1041,10 @@ class AIQuestionGenerationService
             // إذا كان string، محاولة تحويله إلى array
             $question->update(['blank_answers' => explode(',', $blankAnswers)]);
         }
-        
+
         // حفظ case_sensitive إذا كان موجوداً
         if (isset($questionData['case_sensitive'])) {
-            $question->update(['case_sensitive' => (bool)$questionData['case_sensitive']]);
+            $question->update(['case_sensitive' => (bool) $questionData['case_sensitive']]);
         }
     }
 
@@ -1057,20 +1055,21 @@ class AIQuestionGenerationService
     {
         $options = $questionData['options'] ?? [];
         $correctAnswer = $questionData['correct_answer'] ?? '';
-        
+
         if (count($options) < 2) {
             Log::warning('Insufficient options for drag_drop question', [
                 'question_id' => $question->id,
                 'options_count' => count($options),
             ]);
+
             return;
         }
-        
+
         foreach ($options as $index => $optionText) {
             if (empty(trim($optionText))) {
                 continue;
             }
-            
+
             $isCorrect = false;
             if (is_array($correctAnswer)) {
                 $isCorrect = in_array(trim($optionText), array_map('trim', $correctAnswer), true) ||
@@ -1078,7 +1077,7 @@ class AIQuestionGenerationService
             } else {
                 $isCorrect = trim($optionText) === trim($correctAnswer);
             }
-            
+
             QuestionOption::create([
                 'question_id' => $question->id,
                 'content' => trim($optionText),
@@ -1105,13 +1104,14 @@ class AIQuestionGenerationService
 
             $type = $question['type'] ?? 'single_choice';
             $options = $question['options'] ?? [];
-            
+
             // التحقق من صحة البيانات حسب نوع السؤال
-            if (!$this->validateQuestionData($type, $question)) {
+            if (! $this->validateQuestionData($type, $question)) {
                 Log::warning('Invalid question data, skipping', [
                     'type' => $type,
                     'question_preview' => substr($question['question'] ?? '', 0, 50),
                 ]);
+
                 continue;
             }
 
@@ -1140,7 +1140,7 @@ class AIQuestionGenerationService
     protected function validateQuestionData(string $type, array $questionData): bool
     {
         $options = $questionData['options'] ?? [];
-        
+
         switch ($type) {
             case 'single_choice':
             case 'multiple_choice':
@@ -1153,42 +1153,47 @@ class AIQuestionGenerationService
                 if (empty($questionData['correct_answer'])) {
                     return false;
                 }
+
                 return true;
-                
+
             case 'true_false':
                 // لا يحتاج options، سيتم إنشاؤها تلقائياً
-                return !empty($questionData['correct_answer']);
-                
+                return ! empty($questionData['correct_answer']);
+
             case 'matching':
                 // يجب أن يكون هناك خياران على الأقل
                 if (count($options) < 2) {
                     return false;
                 }
+
                 // match_targets اختياري - يمكن إنشاؤه لاحقاً
                 return true;
-                
+
             case 'ordering':
                 // يجب أن يكون هناك خياران على الأقل
                 if (count($options) < 2) {
                     return false;
                 }
+
                 return true;
-                
+
             case 'numerical':
                 // يجب أن تكون هناك إجابة رقمية
                 $correctAnswer = $questionData['correct_answer'] ?? '';
-                return !empty($correctAnswer) && (is_numeric($correctAnswer) || is_numeric(str_replace(',', '.', $correctAnswer)));
-                
+
+                return ! empty($correctAnswer) && (is_numeric($correctAnswer) || is_numeric(str_replace(',', '.', $correctAnswer)));
+
             case 'fill_blanks':
                 // يجب أن تكون هناك blank_answers
                 $blankAnswers = $questionData['blank_answers'] ?? $questionData['correct_answers'] ?? [];
-                return !empty($blankAnswers);
-                
+
+                return ! empty($blankAnswers);
+
             case 'essay':
             case 'short_answer':
                 // لا يحتاج خيارات
                 return true;
-                
+
             default:
                 return true; // السماح بالأنواع الأخرى
         }
@@ -1205,22 +1210,22 @@ class AIQuestionGenerationService
         ]);
 
         // محاولة إصلاح encoding issues
-        if (!mb_check_encoding($response, 'UTF-8')) {
+        if (! mb_check_encoding($response, 'UTF-8')) {
             $response = mb_convert_encoding($response, 'UTF-8', 'auto');
             Log::info('Fixed encoding issues in response');
         }
-        
+
         // تنظيف الرد من markdown code blocks
         $cleanedResponse = $response;
-        
+
         // إزالة ```json و ``` من البداية والنهاية
         $cleanedResponse = preg_replace('/^```(?:json)?\s*/i', '', trim($cleanedResponse));
         $cleanedResponse = preg_replace('/\s*```$/i', '', $cleanedResponse);
-        
+
         // إزالة أي BOM أو characters غريبة
         $cleanedResponse = preg_replace('/^\xEF\xBB\xBF/', '', $cleanedResponse);
         $cleanedResponse = trim($cleanedResponse);
-        
+
         // محاولة 1: تحليل JSON مباشرة
         $decoded = json_decode($cleanedResponse, true);
         if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
@@ -1295,8 +1300,9 @@ class AIQuestionGenerationService
 
         // محاولة 5: تحليل نص غير JSON (fallback)
         $questions = $this->parseTextBasedQuestions($cleanedResponse);
-        if (!empty($questions)) {
+        if (! empty($questions)) {
             Log::info('Questions parsed from text format', ['count' => count($questions)]);
+
             return $questions;
         }
 
@@ -1314,7 +1320,7 @@ class AIQuestionGenerationService
     private function parseTextBasedQuestions(string $text): array
     {
         $questions = [];
-        
+
         // البحث عن أنماط مثل "1. سؤال" أو "السؤال 1:"
         $patterns = [
             '/(?:سؤال|السؤال|Question)\s*(\d+)[:\.\)]\s*(.+?)(?=(?:سؤال|السؤال|Question)\s*\d+|$)/is',
@@ -1336,8 +1342,8 @@ class AIQuestionGenerationService
                         ];
                     }
                 }
-                
-                if (!empty($questions)) {
+
+                if (! empty($questions)) {
                     break;
                 }
             }
@@ -1346,4 +1352,3 @@ class AIQuestionGenerationService
         return $questions;
     }
 }
-

@@ -351,6 +351,7 @@
                 @include('admin.pages.questions.partials.curriculum-link', [
                     'schoolClasses' => $schoolClasses,
                     'linkedUnits' => $linkedUnits,
+                    'lockedSubject' => $lockedSubject ?? null,
                 ])
 
                 {{-- أزرار الحفظ --}}

@@ -6,10 +6,21 @@
         <h6 class="mb-0"><i class="bi bi-diagram-3 me-2"></i> الربط بالمنهج (اختياري)</h6>
     </div>
     <div class="card-body">
+        @if(!empty($lockedSubject))
+            <input type="hidden" name="subject_id" value="{{ $lockedSubject->id }}">
+            <div class="alert alert-info small mb-3">
+                <i class="bi bi-pin-angle me-1"></i>
+                ربط السؤال بمادة <strong>{{ $lockedSubject->name }}</strong>
+                @if($lockedSubject->schoolClass)
+                    — {{ $lockedSubject->schoolClass->name }}
+                @endif
+            </div>
+        @else
         <p class="text-muted small mb-3">
             <i class="bi bi-info-circle me-1"></i>
             اختر الصف ثم المادة ثم الوحدة، واضغط «إضافة». اترك القائمة فارغة ليكون السؤال <strong>سؤالاً عاماً</strong>.
         </p>
+        @endif
 
         @if(isset($preselectedUnit) && $preselectedUnit)
             <div class="alert alert-info small mb-3">
@@ -20,12 +31,18 @@
 
         <div class="mb-3">
             <label for="link_class_id" class="form-label small text-muted mb-1">الصف</label>
-            <select class="form-select form-select-sm" id="link_class_id">
+            <select class="form-select form-select-sm" id="link_class_id" @if(!empty($lockedSubject)) disabled @endif>
                 <option value="">— اختر الصف —</option>
                 @foreach($schoolClasses as $schoolClass)
-                    <option value="{{ $schoolClass->id }}">{{ $schoolClass->name }}</option>
+                    <option value="{{ $schoolClass->id }}"
+                        @if(!empty($lockedSubject) && $lockedSubject->class_id == $schoolClass->id) selected @endif>
+                        {{ $schoolClass->name }}
+                    </option>
                 @endforeach
             </select>
+            @if(!empty($lockedSubject) && $lockedSubject->class_id)
+                <input type="hidden" id="locked_class_id" value="{{ $lockedSubject->class_id }}">
+            @endif
         </div>
 
         <div class="mb-3">
@@ -252,6 +269,19 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     updateEmptyState();
+
+    @if(!empty($lockedSubject))
+    var lockedClassId = document.getElementById('locked_class_id');
+    var lockedSubjectId = {{ (int) $lockedSubject->id }};
+    if (lockedClassId && lockedClassId.value) {
+        populateSubjects(lockedClassId.value).then(function () {
+            subjectSelect.value = String(lockedSubjectId);
+            return populateUnits(lockedSubjectId);
+        });
+        subjectSelect.disabled = true;
+        classSelect.disabled = true;
+    }
+    @endif
 });
 </script>
 @endpush

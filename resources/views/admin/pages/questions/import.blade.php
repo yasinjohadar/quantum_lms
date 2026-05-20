@@ -446,6 +446,9 @@
 
                     <form action="{{ route('admin.questions.import') }}" method="POST" enctype="multipart/form-data" id="importForm">
                         @csrf
+                        @if(!empty($lockedSubject))
+                            <input type="hidden" name="subject_id" value="{{ $lockedSubject->id }}">
+                        @endif
                         <input type="file" name="file" id="hiddenFileInput" style="display: none;">
                         <input type="hidden" name="column_mapping" id="columnMappingInput">
                         
@@ -456,7 +459,7 @@
                             <button type="button" class="btn btn-secondary btn-lg" id="backBtn">
                                 <i class="bi bi-arrow-right me-2"></i> رجوع
                             </button>
-                            <a href="{{ route('admin.questions.index') }}" class="btn btn-outline-secondary btn-lg">
+                            <a href="{{ !empty($lockedSubject) ? route('admin.subjects.questions.index', $lockedSubject->id) : route('admin.questions.index') }}" class="btn btn-outline-secondary btn-lg">
                                 <i class="bi bi-x me-2"></i> إلغاء
                             </a>
                         </div>

@@ -2,33 +2,36 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exports\QuestionsTemplateExport;
+use App\Helpers\StorageHelper;
+use App\Http\Controllers\Admin\Concerns\BuildsQuestionBankIndex;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreQuestionRequest;
 use App\Http\Requests\Admin\UpdateQuestionRequest;
+use App\Imports\QuestionsImport;
 use App\Models\Question;
 use App\Models\QuestionOption;
 use App\Models\QuizQuestion;
 use App\Models\SchoolClass;
-use App\Models\Unit;
 use App\Models\Subject;
-use App\Imports\QuestionsImport;
-use App\Exports\QuestionsTemplateExport;
+use App\Models\Unit;
+use App\Services\Storage\MediaStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
-use App\Helpers\StorageHelper;
-use App\Services\Storage\MediaStorageService;
 use Maatwebsite\Excel\Facades\Excel;
 
 class QuestionController extends Controller
 {
+    use BuildsQuestionBankIndex;
+
     public function __construct()
     {
         $this->middleware(['permission:question-list'])->only('index');
-        $this->middleware(['permission:question-create'])->only(['create', 'store', 'ajaxSubjectsByClass', 'ajaxUnitsBySubject']);
-        $this->middleware(['permission:question-edit'])->only(['edit', 'update', 'ajaxSubjectsByClass', 'ajaxUnitsBySubject']);
+        $this->middleware(['permission:question-list|question-create|question-edit'])->only(['ajaxSubjectsByClass', 'ajaxUnitsBySubject']);
+        $this->middleware(['permission:question-create'])->only(['create', 'store']);
+        $this->middleware(['permission:question-edit'])->only(['edit', 'update']);
         $this->middleware(['permission:question-delete'])->only('destroy');
         $this->middleware(['permission:question-show'])->only('show');
         $this->middleware(['permission:question-duplicate'])->only('duplicate');
@@ -46,84 +49,31 @@ class QuestionController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Question::with(['units.section.subject.schoolClass', 'creator', 'options'])
-            ->withCount(['quizzes']);
+        $query = $this->buildQuestionIndexQuery($request, null);
+        $questions = $query->paginate(20)->withQueryString();
+        $filterLists = $this->questionIndexFilterLists(null, $request);
 
-        // إذا كان المستخدم معلم وليس مشرف/مدير
-        $user = auth()->user();
-        if ($user->hasRole('teacher') && !$user->hasAnyRole(['admin', 'supervisor'])) {
-            $classIds = $user->assignedClasses()->pluck('classes.id');
-            $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
-            
-            // جلب معرفات الوحدات من المواد المخصصة
-            $unitIds = \App\Models\Unit::whereHas('section', function($q) use ($classIds, $subjectIds) {
-                $q->whereHas('subject', function($sq) use ($classIds, $subjectIds) {
-                    if ($classIds->isNotEmpty()) {
-                        $sq->whereIn('class_id', $classIds);
-                    }
-                    if ($subjectIds->isNotEmpty()) {
-                        $sq->orWhereIn('id', $subjectIds);
-                    }
-                });
-            })->pluck('id');
-            
-            $query->where(function($q) use ($unitIds) {
-                // الأسئلة المرتبطة بالوحدات المخصصة
-                if ($unitIds->isNotEmpty()) {
-                    $q->whereHas('units', function($uq) use ($unitIds) {
-                        $uq->whereIn('units.id', $unitIds);
-                    });
-                }
-            });
+        $viewData = [
+            'questions' => $questions,
+            'units' => $filterLists['units'],
+            'categories' => $filterLists['categories'],
+            'subjects' => $filterLists['subjects'],
+            'schoolClasses' => $filterLists['schoolClasses'] ?? collect(),
+            'initialSubjects' => $filterLists['initialSubjects'] ?? collect(),
+            'subject' => null,
+            'createRoute' => route('admin.questions.create'),
+            'showGlobalTools' => true,
+            'enableAjaxFilters' => true,
+        ];
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'html' => view('admin.pages.questions.partials.bank-index-results', $viewData)->render(),
+            ]);
         }
 
-        // البحث
-        if ($request->filled('search')) {
-            $query->search($request->search);
-        }
-
-        // تصفية حسب النوع
-        if ($request->filled('type')) {
-            $query->ofType($request->type);
-        }
-
-        // تصفية حسب الصعوبة
-        if ($request->filled('difficulty')) {
-            $query->ofDifficulty($request->difficulty);
-        }
-
-        // تصفية حسب التصنيف
-        if ($request->filled('category')) {
-            $query->inCategory($request->category);
-        }
-
-        // تصفية حسب الحالة
-        if ($request->filled('is_active')) {
-            $query->where('is_active', $request->is_active === '1');
-        }
-
-        // تصفية حسب الوحدة
-        if ($request->filled('unit_id')) {
-            if ($request->unit_id === 'general') {
-                $query->general();
-            } else {
-                $query->inUnits([$request->unit_id]);
-            }
-        }
-
-        $questions = $query->latest()->paginate(20)->withQueryString();
-        
-        // للقوائم المنسدلة
-        $units = Unit::with('section.subject')->orderBy('title')->get();
-        $categories = Question::distinct()->whereNotNull('category')->pluck('category');
-        $subjects = Subject::with('schoolClass')->orderBy('name')->get();
-
-        return view('admin.pages.questions.index', compact(
-            'questions', 
-            'units', 
-            'categories',
-            'subjects'
-        ));
+        return view('admin.pages.questions.index', $viewData);
     }
 
     /**
@@ -131,6 +81,8 @@ class QuestionController extends Controller
      */
     public function create(Request $request)
     {
+        $lockedSubject = $this->resolveLockedSubject($request);
+
         $schoolClasses = SchoolClass::active()->ordered()->get();
         $categories = Question::distinct()->whereNotNull('category')->pluck('category');
         $selectedType = $request->type ?? 'single_choice';
@@ -148,13 +100,18 @@ class QuestionController extends Controller
             session(['create_question_return_quiz_id' => $preselectedQuizId]);
         }
 
+        if ($lockedSubject) {
+            session(['create_question_return_subject_id' => $lockedSubject->id]);
+        }
+
         return view('admin.pages.questions.create', compact(
             'schoolClasses',
             'categories',
             'selectedType',
             'preselectedUnit',
             'linkedUnits',
-            'preselectedQuizId'
+            'preselectedQuizId',
+            'lockedSubject'
         ));
     }
 
@@ -196,9 +153,12 @@ class QuestionController extends Controller
             $question = Question::create($data);
 
             // ربط الوحدات
+            $unitIds = $request->input('units', []);
             if ($request->filled('units')) {
-                $question->units()->sync($request->units);
+                $question->units()->sync($unitIds);
             }
+
+            $this->applyQuestionSubjectId($question, $request->input('subject_id'), $unitIds);
 
             // إنشاء الخيارات
             if ($request->filled('options') && $question->has_options) {
@@ -231,7 +191,7 @@ class QuestionController extends Controller
             if ($quizId !== null && $quizId !== '') {
                 $quiz = \App\Models\Quiz::find($quizId);
                 if ($quiz) {
-                    if (!$quiz->questions()->where('question_id', $question->id)->exists()) {
+                    if (! $quiz->questions()->where('question_id', $question->id)->exists()) {
                         $maxOrder = $quiz->quizQuestions()->max('order') ?? 0;
                         QuizQuestion::create([
                             'quiz_id' => $quiz->id,
@@ -249,6 +209,7 @@ class QuestionController extends Controller
                             ->route('admin.questions.create', ['quiz_id' => $quiz->id])
                             ->with('success', 'تم حفظ السؤال وإضافته للاختبار. أضف سؤالاً جديداً أدناه.');
                     }
+
                     return redirect()
                         ->route('admin.quizzes.questions', $quiz->id)
                         ->with('success', 'تم إنشاء السؤال وإضافته للاختبار بنجاح')
@@ -257,18 +218,16 @@ class QuestionController extends Controller
                 session()->forget('create_question_return_quiz_id');
             }
 
-            return redirect()
-                ->route('admin.questions.index')
-                ->with('success', 'تم إنشاء السؤال بنجاح');
+            return $this->redirectAfterQuestionSave($request, 'تم إنشاء السؤال بنجاح');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error creating question: ' . $e->getMessage());
-            
+            Log::error('Error creating question: '.$e->getMessage());
+
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'حدث خطأ أثناء إنشاء السؤال: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء إنشاء السؤال: '.$e->getMessage());
         }
     }
 
@@ -279,7 +238,7 @@ class QuestionController extends Controller
     {
         $question = Question::with(['units.section.subject.schoolClass', 'creator', 'options', 'quizzes'])
             ->findOrFail($id);
-            
+
         return view('admin.pages.questions.show', compact('question'));
     }
 
@@ -289,6 +248,13 @@ class QuestionController extends Controller
     public function edit(Request $request, string $id)
     {
         $question = Question::with(['units.section.subject.schoolClass', 'options'])->findOrFail($id);
+        $lockedSubject = $this->resolveLockedSubject($request) ?? $question->subject;
+
+        if ($lockedSubject) {
+            $this->authorizeManagedSubjectAccess(auth()->user(), $lockedSubject);
+            session(['edit_question_return_subject_id' => $lockedSubject->id]);
+        }
+
         $schoolClasses = SchoolClass::active()->ordered()->get();
         $categories = Question::distinct()->whereNotNull('category')->pluck('category');
         $linkedUnits = $this->resolveLinkedUnitsForForm(
@@ -304,7 +270,8 @@ class QuestionController extends Controller
             'schoolClasses',
             'categories',
             'linkedUnits',
-            'preselectedQuizId'
+            'preselectedQuizId',
+            'lockedSubject'
         ));
     }
 
@@ -313,9 +280,7 @@ class QuestionController extends Controller
      */
     public function ajaxSubjectsByClass(SchoolClass $schoolClass)
     {
-        $subjects = Subject::where('class_id', $schoolClass->id)
-            ->active()
-            ->ordered()
+        $subjects = $this->subjectsForClassFilterQuery($schoolClass)
             ->get(['id', 'name']);
 
         return response()->json($subjects);
@@ -398,7 +363,10 @@ class QuestionController extends Controller
             $question->update($data);
 
             // تحديث الوحدات
-            $question->units()->sync($request->units ?? []);
+            $unitIds = $request->input('units', []);
+            $question->units()->sync($unitIds);
+
+            $this->applyQuestionSubjectId($question, $request->input('subject_id'), $unitIds);
 
             // تحديث الخيارات
             if ($question->has_options) {
@@ -429,23 +397,22 @@ class QuestionController extends Controller
             $quizId = $request->input('quiz_id') ?? session('edit_question_return_quiz_id');
             if ($quizId) {
                 session()->forget('edit_question_return_quiz_id');
+
                 return redirect()
                     ->route('admin.quizzes.questions', $quizId)
                     ->with('success', 'تم تحديث السؤال بنجاح');
             }
 
-            return redirect()
-                ->route('admin.questions.index')
-                ->with('success', 'تم تحديث السؤال بنجاح');
+            return $this->redirectAfterQuestionSave($request, 'تم تحديث السؤال بنجاح', 'update');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error updating question: ' . $e->getMessage());
-            
+            Log::error('Error updating question: '.$e->getMessage());
+
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'حدث خطأ أثناء تحديث السؤال: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء تحديث السؤال: '.$e->getMessage());
         }
     }
 
@@ -456,7 +423,7 @@ class QuestionController extends Controller
     {
         try {
             $question = Question::findOrFail($id);
-            
+
             // التحقق من عدم استخدام السؤال في اختبارات
             if ($question->quizzes()->count() > 0) {
                 return redirect()
@@ -483,11 +450,11 @@ class QuestionController extends Controller
                 ->with('success', 'تم حذف السؤال بنجاح');
 
         } catch (\Exception $e) {
-            Log::error('Error deleting question: ' . $e->getMessage());
-            
+            Log::error('Error deleting question: '.$e->getMessage());
+
             return redirect()
                 ->back()
-                ->with('error', 'حدث خطأ أثناء حذف السؤال: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء حذف السؤال: '.$e->getMessage());
         }
     }
 
@@ -500,10 +467,10 @@ class QuestionController extends Controller
             DB::beginTransaction();
 
             $original = Question::with(['units', 'options'])->findOrFail($id);
-            
+
             // نسخ السؤال
             $newQuestion = $original->replicate();
-            $newQuestion->title = $original->title . ' (نسخة)';
+            $newQuestion->title = $original->title.' (نسخة)';
             $newQuestion->created_by = auth()->id();
             $newQuestion->save();
 
@@ -525,8 +492,8 @@ class QuestionController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error duplicating question: ' . $e->getMessage());
-            
+            Log::error('Error duplicating question: '.$e->getMessage());
+
             return redirect()
                 ->back()
                 ->with('error', 'حدث خطأ أثناء نسخ السؤال');
@@ -540,7 +507,7 @@ class QuestionController extends Controller
     {
         try {
             $question = Question::findOrFail($id);
-            $question->is_active = !$question->is_active;
+            $question->is_active = ! $question->is_active;
             $question->save();
 
             $status = $question->is_active ? 'تفعيل' : 'إلغاء تفعيل';
@@ -599,7 +566,7 @@ class QuestionController extends Controller
                 'order' => $index + 1,
             ];
 
-            if (!empty($optionData['id'])) {
+            if (! empty($optionData['id'])) {
                 // تحديث خيار موجود
                 $option = QuestionOption::find($optionData['id']);
                 if ($option) {
@@ -609,7 +576,7 @@ class QuestionController extends Controller
                             MediaStorageService::delete($option->image);
                         }
                         $imageFile = $optionData['image'];
-                        $imageName = time() . '_' . $imageFile->getClientOriginalName();
+                        $imageName = time().'_'.$imageFile->getClientOriginalName();
                         $uploadResult = MediaStorageService::uploadImage($imageFile, 'question_options', $imageName);
                         $data['image'] = $uploadResult['path'];
                     } elseif (isset($optionData['remove_image']) && $optionData['remove_image']) {
@@ -625,10 +592,10 @@ class QuestionController extends Controller
             } else {
                 // إنشاء خيار جديد
                 $data['question_id'] = $question->id;
-                
+
                 if (isset($optionData['image']) && $optionData['image'] instanceof \Illuminate\Http\UploadedFile) {
                     $imageFile = $optionData['image'];
-                    $imageName = time() . '_' . $imageFile->getClientOriginalName();
+                    $imageName = time().'_'.$imageFile->getClientOriginalName();
                     $uploadResult = MediaStorageService::uploadImage($imageFile, 'question_options', $imageName);
                     $data['image'] = $uploadResult['path'];
                 }
@@ -787,9 +754,10 @@ class QuestionController extends Controller
             ];
 
             return Excel::download(new QuestionsTemplateExport($data), 'questions_template.xlsx');
-            
+
         } catch (\Exception $e) {
-            Log::error('Error exporting template: ' . $e->getMessage());
+            Log::error('Error exporting template: '.$e->getMessage());
+
             return redirect()->back()->with('error', 'حدث خطأ أثناء تصدير الملف');
         }
     }
@@ -797,9 +765,11 @@ class QuestionController extends Controller
     /**
      * عرض صفحة الاستيراد
      */
-    public function showImport()
+    public function showImport(Request $request)
     {
-        return view('admin.pages.questions.import');
+        $lockedSubject = $this->resolveLockedSubject($request);
+
+        return view('admin.pages.questions.import', compact('lockedSubject'));
     }
 
     /**
@@ -808,50 +778,124 @@ class QuestionController extends Controller
     public function import(Request $request)
     {
         $request->validate([
-            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'], // 10MB max
-            'column_mapping' => ['nullable', 'string'], // JSON string
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+            'column_mapping' => ['nullable', 'string'],
+            'subject_id' => ['nullable', 'exists:subjects,id'],
         ]);
+
+        $lockedSubject = $this->resolveLockedSubject($request);
 
         try {
             $columnMapping = [];
             if ($request->filled('column_mapping')) {
                 $columnMapping = json_decode($request->column_mapping, true) ?? [];
             }
-            
-            $import = new QuestionsImport($columnMapping);
-            
+
+            $import = new QuestionsImport($columnMapping, $lockedSubject?->id);
+
             Excel::import($import, $request->file('file'));
-            
+
             $successCount = $import->getSuccessCount();
             $errorCount = $import->getErrorCount();
             $errors = $import->getErrors();
-            
+
             $message = "تم استيراد {$successCount} سؤال بنجاح";
-            
+
             if ($errorCount > 0) {
                 $message .= "، وحدثت {$errorCount} أخطاء";
-                
-                // حفظ الأخطاء في الجلسة لعرضها
                 session()->flash('import_errors', $errors);
             }
-            
+
+            $redirectRoute = $lockedSubject
+                ? route('admin.subjects.questions.index', $lockedSubject->id)
+                : route('admin.questions.index');
+
             return redirect()
-                ->route('admin.questions.index')
+                ->to($redirectRoute)
                 ->with('success', $message)
                 ->with('import_summary', [
                     'success' => $successCount,
                     'errors' => $errorCount,
                     'total' => $successCount + $errorCount,
                 ]);
-                
+
         } catch (\Exception $e) {
-            Log::error('Error importing questions: ' . $e->getMessage());
-            
+            Log::error('Error importing questions: '.$e->getMessage());
+
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'حدث خطأ أثناء استيراد الملف: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء استيراد الملف: '.$e->getMessage());
         }
     }
-}
 
+    protected function resolveLockedSubject(Request $request): ?Subject
+    {
+        $subjectId = $request->input('subject_id') ?? $request->query('subject_id');
+        if (! $subjectId) {
+            return null;
+        }
+
+        $subject = Subject::with('schoolClass.stage')->find($subjectId);
+        if (! $subject) {
+            return null;
+        }
+
+        $this->authorizeManagedSubjectAccess(auth()->user(), $subject);
+
+        return $subject;
+    }
+
+    protected function applyQuestionSubjectId(Question $question, ?int $subjectId, array $unitIds): void
+    {
+        if ($subjectId) {
+            $question->update(['subject_id' => $subjectId]);
+
+            return;
+        }
+
+        if ($unitIds !== []) {
+            $unit = Unit::with('section')->find($unitIds[0]);
+            if ($unit?->section?->subject_id) {
+                $question->update(['subject_id' => $unit->section->subject_id]);
+            }
+        }
+    }
+
+    protected function redirectAfterQuestionSave(Request $request, string $message, string $action = 'create')
+    {
+        $quizId = $request->input('quiz_id')
+            ?? ($action === 'create' ? session('create_question_return_quiz_id') : session('edit_question_return_quiz_id'));
+
+        if ($quizId) {
+            if ($action === 'create') {
+                session()->forget('create_question_return_quiz_id');
+            } else {
+                session()->forget('edit_question_return_quiz_id');
+            }
+
+            return redirect()
+                ->route('admin.quizzes.questions', $quizId)
+                ->with('success', $message);
+        }
+
+        $subjectId = $request->input('subject_id')
+            ?? ($action === 'create' ? session('create_question_return_subject_id') : session('edit_question_return_subject_id'));
+
+        if ($subjectId) {
+            if ($action === 'create') {
+                session()->forget('create_question_return_subject_id');
+            } else {
+                session()->forget('edit_question_return_subject_id');
+            }
+
+            return redirect()
+                ->route('admin.subjects.questions.index', $subjectId)
+                ->with('success', $message);
+        }
+
+        return redirect()
+            ->route('admin.questions.index')
+            ->with('success', $message);
+    }
+}

@@ -9,26 +9,31 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Maatwebsite\Excel\Concerns\SkipsFailures;
+use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
-use Maatwebsite\Excel\Concerns\WithValidation;
-use Maatwebsite\Excel\Concerns\SkipsOnFailure;
-use Maatwebsite\Excel\Concerns\SkipsFailures;
-use Maatwebsite\Excel\Validators\Failure;
 
-class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
+class QuestionsImport implements SkipsOnFailure, ToCollection, WithHeadingRow
 {
     use SkipsFailures;
 
     protected $errors = [];
+
     protected $successCount = 0;
+
     protected $errorCount = 0;
+
     protected $unitIds = [];
+
     protected $columnMapping = [];
 
-    public function __construct(array $columnMapping = [])
+    protected ?int $subjectId = null;
+
+    public function __construct(array $columnMapping = [], ?int $subjectId = null)
     {
         $this->columnMapping = $columnMapping;
+        $this->subjectId = $subjectId;
     }
 
     /**
@@ -39,50 +44,51 @@ class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
         foreach ($rows as $index => $row) {
             try {
                 $rowNumber = $index + 2; // +2 لأن الصف الأول هو headers و index يبدأ من 0
-                
+
                 // تنظيف البيانات
                 $data = $this->cleanRowData($row);
-                
+
                 // التحقق من صحة البيانات
                 $validator = $this->validateRow($data, $rowNumber);
-                
+
                 if ($validator->fails()) {
                     $this->errors[] = [
                         'row' => $rowNumber,
                         'errors' => $validator->errors()->all(),
-                        'data' => $data
+                        'data' => $data,
                     ];
                     $this->errorCount++;
+
                     continue;
                 }
 
                 // إنشاء السؤال
                 DB::beginTransaction();
-                
+
                 $question = $this->createQuestion($data);
-                
+
                 // ربط الوحدات
-                if (!empty($data['units'])) {
+                if (! empty($data['units'])) {
                     $this->attachUnits($question, $data['units']);
                 }
-                
+
                 // إنشاء الخيارات
-                if ($question->has_options && !empty($data['options'])) {
+                if ($question->has_options && ! empty($data['options'])) {
                     $this->createOptions($question, $data['options']);
                 }
-                
+
                 DB::commit();
                 $this->successCount++;
-                
+
             } catch (\Exception $e) {
                 DB::rollBack();
                 $this->errors[] = [
                     'row' => $rowNumber ?? ($index + 2),
                     'errors' => [$e->getMessage()],
-                    'data' => $data ?? []
+                    'data' => $data ?? [],
                 ];
                 $this->errorCount++;
-                Log::error('Error importing question at row ' . ($index + 2) . ': ' . $e->getMessage());
+                Log::error('Error importing question at row '.($index + 2).': '.$e->getMessage());
             }
         }
     }
@@ -93,24 +99,25 @@ class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
     protected function getRowValue($row, $fieldKey, $default = null)
     {
         // إذا كان هناك column mapping، استخدمه
-        if (!empty($this->columnMapping) && isset($this->columnMapping[$fieldKey])) {
+        if (! empty($this->columnMapping) && isset($this->columnMapping[$fieldKey])) {
             $columnName = $this->columnMapping[$fieldKey];
+
             return $row[$columnName] ?? $default;
         }
-        
+
         // محاولة البحث بأسماء مختلفة
         $possibleKeys = [
             $fieldKey,
             str_replace('_', ' ', $fieldKey),
             $this->getArabicFieldName($fieldKey),
         ];
-        
+
         foreach ($possibleKeys as $key) {
             if (isset($row[$key])) {
                 return $row[$key];
             }
         }
-        
+
         return $default;
     }
 
@@ -129,7 +136,7 @@ class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
             'category' => 'تصنيف',
             'units' => 'وحدات',
         ];
-        
+
         return $arabicNames[$fieldKey] ?? $fieldKey;
     }
 
@@ -139,7 +146,7 @@ class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
     protected function cleanRowData($row): array
     {
         $data = [];
-        
+
         // البيانات الأساسية - استخدام column mapping
         $data['type'] = $this->normalizeType($this->getRowValue($row, 'type', ''));
         $data['title'] = trim($this->getRowValue($row, 'title', ''));
@@ -151,23 +158,23 @@ class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
         $data['case_sensitive'] = $this->normalizeBoolean($this->getRowValue($row, 'case_sensitive', false));
         $data['tolerance'] = $this->getRowValue($row, 'tolerance') ? floatval($this->getRowValue($row, 'tolerance')) : null;
         $data['is_active'] = $this->normalizeBoolean($this->getRowValue($row, 'is_active', true));
-        
+
         // الوحدات
         $data['units'] = $this->parseUnits($this->getRowValue($row, 'units', ''));
-        
+
         // الخيارات
         $data['options'] = $this->parseOptions($row, $data['type']);
-        
+
         // للأسئلة الرقمية
         if ($data['type'] === 'numerical') {
             $data['correct_answer'] = $this->getRowValue($row, 'correct_answer') ? floatval($this->getRowValue($row, 'correct_answer')) : null;
         }
-        
+
         // لملء الفراغات
         if ($data['type'] === 'fill_blanks') {
             $data['blank_answers'] = $this->parseBlankAnswers($this->getRowValue($row, 'blank_answers', ''));
         }
-        
+
         return $data;
     }
 
@@ -177,7 +184,7 @@ class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
     protected function validateRow(array $data, int $rowNumber): \Illuminate\Contracts\Validation\Validator
     {
         $rules = [
-            'type' => ['required', 'string', 'in:' . implode(',', array_keys(Question::TYPES))],
+            'type' => ['required', 'string', 'in:'.implode(',', array_keys(Question::TYPES))],
             'title' => ['required', 'string', 'max:500'],
             'content' => ['nullable', 'string'],
             'difficulty' => ['required', 'string', 'in:easy,medium,hard'],
@@ -220,10 +227,11 @@ class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
             'tolerance' => $data['tolerance'],
             'is_active' => $data['is_active'],
             'created_by' => auth()->id(),
+            'subject_id' => $this->subjectId,
         ];
 
         // لملء الفراغات
-        if ($data['type'] === 'fill_blanks' && !empty($data['blank_answers'])) {
+        if ($data['type'] === 'fill_blanks' && ! empty($data['blank_answers'])) {
             $questionData['blank_answers'] = $data['blank_answers'];
         }
 
@@ -235,8 +243,22 @@ class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
      */
     protected function attachUnits(Question $question, array $unitIds): void
     {
-        if (!empty($unitIds)) {
+        if (! empty($unitIds)) {
+            if ($this->subjectId) {
+                $unitIds = Unit::query()
+                    ->whereIn('id', $unitIds)
+                    ->whereHas('section', fn ($q) => $q->where('subject_id', $this->subjectId))
+                    ->pluck('id')
+                    ->all();
+            }
             $question->units()->sync($unitIds);
+
+            if (! $this->subjectId && $unitIds !== []) {
+                $unit = Unit::with('section')->find($unitIds[0]);
+                if ($unit?->section?->subject_id) {
+                    $question->update(['subject_id' => $unit->section->subject_id]);
+                }
+            }
         }
     }
 
@@ -269,11 +291,13 @@ class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
 
         $unitIds = [];
         $units = is_array($unitsInput) ? $unitsInput : explode(',', $unitsInput);
-        
+
         foreach ($units as $unit) {
             $unit = trim($unit);
-            if (empty($unit)) continue;
-            
+            if (empty($unit)) {
+                continue;
+            }
+
             // إذا كان رقم
             if (is_numeric($unit)) {
                 $unitIds[] = (int) $unit;
@@ -285,7 +309,7 @@ class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
                 }
             }
         }
-        
+
         return array_unique($unitIds);
     }
 
@@ -295,42 +319,42 @@ class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
     protected function parseOptions($row, string $type): array
     {
         $options = [];
-        
+
         // استخدام column mapping للخيارات
         $optionIndex = 1;
         while (true) {
             $optionContentKey = "option{$optionIndex}";
             $optionCorrectKey = "option{$optionIndex}_correct";
-            
+
             // البحث في column mapping أولاً
             $contentColumn = $this->columnMapping[$optionContentKey] ?? null;
             $correctColumn = $this->columnMapping[$optionCorrectKey] ?? null;
-            
+
             // إذا لم يكن في mapping، جرب الأسماء الافتراضية
-            if (!$contentColumn) {
+            if (! $contentColumn) {
                 $contentColumn = $row[$optionContentKey] ?? $row["خيار{$optionIndex}"] ?? null;
             } else {
                 $contentColumn = $row[$contentColumn] ?? null;
             }
-            
-            if (!$contentColumn || trim($contentColumn) === '') {
+
+            if (! $contentColumn || trim($contentColumn) === '') {
                 break;
             }
-            
+
             $content = trim($contentColumn);
-            
+
             // الحصول على قيمة is_correct
             $isCorrect = false;
             if ($correctColumn) {
                 $isCorrect = $this->normalizeBoolean($row[$correctColumn] ?? false);
             } else {
                 $isCorrect = $this->normalizeBoolean(
-                    $row[$optionCorrectKey] ?? 
-                    $row["خيار{$optionIndex}_صحيح"] ?? 
+                    $row[$optionCorrectKey] ??
+                    $row["خيار{$optionIndex}_صحيح"] ??
                     false
                 );
             }
-            
+
             $options[] = [
                 'content' => $content,
                 'is_correct' => $isCorrect,
@@ -338,28 +362,30 @@ class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
                 'correct_order' => isset($row["option{$optionIndex}_order"]) ? (int) $row["option{$optionIndex}_order"] : null,
                 'feedback' => $row["option{$optionIndex}_feedback"] ?? null,
             ];
-            
+
             $optionIndex++;
-            
+
             // حد أقصى 10 خيارات
-            if ($optionIndex > 10) break;
+            if ($optionIndex > 10) {
+                break;
+            }
         }
-        
+
         // إذا لم توجد خيارات في أعمدة منفصلة، حاول قراءة من عمود واحد
         if (empty($options)) {
             $optionsColumn = $this->columnMapping['options'] ?? 'options';
             $optionsString = $row[$optionsColumn] ?? null;
-            
+
             if ($optionsString) {
                 $optionsArray = explode('|', $optionsString);
-                
+
                 foreach ($optionsArray as $index => $optionString) {
                     // تنسيق: "النص|صحيح" أو "النص"
                     $parts = explode('|', $optionString);
                     $content = trim($parts[0]);
                     $isCorrect = isset($parts[1]) && $this->normalizeBoolean(trim($parts[1]));
-                    
-                    if (!empty($content)) {
+
+                    if (! empty($content)) {
                         $options[] = [
                             'content' => $content,
                             'is_correct' => $isCorrect,
@@ -368,7 +394,7 @@ class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
                 }
             }
         }
-        
+
         return $options;
     }
 
@@ -387,6 +413,7 @@ class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
 
         // فصل بفواصل أو |
         $answers = preg_split('/[,|]/', $blankAnswersInput);
+
         return array_map('trim', array_filter($answers));
     }
 
@@ -396,7 +423,7 @@ class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
     protected function normalizeType($type): string
     {
         $type = strtolower(trim($type));
-        
+
         $typeMap = [
             'single_choice' => 'single_choice',
             'اختيار واحد' => 'single_choice',
@@ -420,7 +447,7 @@ class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
             'drag_drop' => 'drag_drop',
             'سحب وإفلات' => 'drag_drop',
         ];
-        
+
         return $typeMap[$type] ?? 'single_choice';
     }
 
@@ -430,7 +457,7 @@ class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
     protected function normalizeDifficulty($difficulty): string
     {
         $difficulty = strtolower(trim($difficulty));
-        
+
         $difficultyMap = [
             'easy' => 'easy',
             'سهل' => 'easy',
@@ -439,7 +466,7 @@ class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
             'hard' => 'hard',
             'صعب' => 'hard',
         ];
-        
+
         return $difficultyMap[$difficulty] ?? 'medium';
     }
 
@@ -451,9 +478,9 @@ class QuestionsImport implements ToCollection, WithHeadingRow, SkipsOnFailure
         if (is_bool($value)) {
             return $value;
         }
-        
+
         $value = strtolower(trim((string) $value));
-        
+
         return in_array($value, ['1', 'true', 'yes', 'نعم', 'صحيح', 'نشط', '1', 'y']);
     }
 

@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Admin;
 
-use Illuminate\Foundation\Http\FormRequest;
 use App\Models\Question;
+use App\Models\Unit;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class UpdateQuestionRequest extends FormRequest
 {
@@ -21,9 +23,9 @@ class UpdateQuestionRequest extends FormRequest
     public function rules(): array
     {
         $type = $this->input('type');
-        
+
         $rules = [
-            'type' => ['required', 'string', 'in:' . implode(',', array_keys(Question::TYPES))],
+            'type' => ['required', 'string', 'in:'.implode(',', array_keys(Question::TYPES))],
             'title' => ['required', 'string', 'max:500000'],
             'content' => ['nullable', 'string', 'max:50000'], // زيادة الحد للسماح بـ HTML
             'explanation' => ['nullable', 'string', 'max:10000'], // زيادة الحد للسماح بـ HTML
@@ -37,11 +39,12 @@ class UpdateQuestionRequest extends FormRequest
             'tags' => ['nullable', 'array'],
             'tags.*' => ['string', 'max:50'],
             'is_active' => ['nullable'],
-            
+            'subject_id' => ['nullable', 'exists:subjects,id'],
+
             // الوحدات المرتبطة
             'units' => ['nullable', 'array'],
             'units.*' => ['exists:units,id'],
-            
+
             // خيارات السؤال
             'options' => ['required_if:type,single_choice,multiple_choice,true_false,matching,ordering', 'array', 'min:2'],
             'options.*.id' => ['nullable', 'exists:question_options,id'],
@@ -52,11 +55,11 @@ class UpdateQuestionRequest extends FormRequest
             'options.*.match_target' => ['nullable', 'string'],
             'options.*.correct_order' => ['nullable', 'integer', 'min:1'],
             'options.*.feedback' => ['nullable', 'string'],
-            
+
             // للأسئلة الرقمية
             'correct_answer' => ['required_if:type,numerical', 'nullable', 'numeric'],
         ];
-        
+
         // لملء الفراغات - فقط إذا كان نوع السؤال fill_blanks
         if ($type === 'fill_blanks') {
             $rules['blank_answers'] = ['required', 'array', 'min:1'];
@@ -65,8 +68,29 @@ class UpdateQuestionRequest extends FormRequest
             // إذا لم يكن fill_blanks، تجاهل blank_answers تماماً
             $rules['blank_answers'] = ['nullable'];
         }
-        
+
         return $rules;
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            $subjectId = $this->input('subject_id');
+            $units = array_filter((array) $this->input('units', []));
+
+            if (! $subjectId || $units === []) {
+                return;
+            }
+
+            $validCount = Unit::query()
+                ->whereIn('id', $units)
+                ->whereHas('section', fn ($q) => $q->where('subject_id', $subjectId))
+                ->count();
+
+            if ($validCount !== count($units)) {
+                $validator->errors()->add('units', 'يجب أن تنتمي جميع الوحدات المختارة إلى نفس المادة.');
+            }
+        });
     }
 
     /**
@@ -94,4 +118,3 @@ class UpdateQuestionRequest extends FormRequest
         ];
     }
 }
-

@@ -265,6 +265,7 @@
                     'schoolClasses' => $schoolClasses,
                     'linkedUnits' => $linkedUnits,
                     'preselectedUnit' => $preselectedUnit ?? null,
+                    'lockedSubject' => $lockedSubject ?? null,
                 ])
 
                 {{-- أزرار الحفظ --}}
@@ -278,7 +279,7 @@
                             <i class="bi bi-plus-circle me-1"></i> حفظ وإنشاء سؤال جديد
                         </button>
                         @endif
-                        <a href="{{ isset($preselectedQuizId) && $preselectedQuizId ? route('admin.quizzes.questions', $preselectedQuizId) : route('admin.questions.index') }}" class="btn btn-outline-secondary w-100">
+                        <a href="{{ isset($preselectedQuizId) && $preselectedQuizId ? route('admin.quizzes.questions', $preselectedQuizId) : (isset($lockedSubject) && $lockedSubject ? route('admin.subjects.questions.index', $lockedSubject->id) : route('admin.questions.index')) }}" class="btn btn-outline-secondary w-100">
                             <i class="bi bi-x-lg me-1"></i> إلغاء
                         </a>
                     </div>

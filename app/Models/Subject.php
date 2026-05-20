@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -67,13 +68,13 @@ class Subject extends Model
 
         static::creating(function (Subject $subject) {
             if (empty($subject->slug)) {
-                $subject->slug = Str::slug($subject->name . '-' . ($subject->class_id ?? ''));
+                $subject->slug = Str::slug($subject->name.'-'.($subject->class_id ?? ''));
             }
         });
 
         static::updating(function (Subject $subject) {
             if (empty($subject->slug)) {
-                $subject->slug = Str::slug($subject->name . '-' . ($subject->class_id ?? ''));
+                $subject->slug = Str::slug($subject->name.'-'.($subject->class_id ?? ''));
             }
         });
     }
@@ -95,6 +96,14 @@ class Subject extends Model
     }
 
     /**
+     * أسئلة مرتبطة مباشرة بالمادة (بنك أسئلة المادة).
+     */
+    public function questions(): HasMany
+    {
+        return $this->hasMany(Question::class);
+    }
+
+    /**
      * الأقسام المرتبطة بهذه المادة عبر section_subjects (أقسام من مواد أخرى تظهر هنا).
      */
     public function linkedSections(): BelongsToMany
@@ -113,6 +122,7 @@ class Subject extends Model
         $linked = $this->relationLoaded('linkedSections')
             ? $this->linkedSections
             : $this->linkedSections()->get();
+
         return $primary->merge($linked)->unique('id')->sortBy('order')->values();
     }
 
@@ -142,10 +152,10 @@ class Subject extends Model
         }
 
         return $query->where(function ($q) use ($search) {
-            $q->where('name', 'like', '%' . $search . '%')
-              ->orWhere('description', 'like', '%' . $search . '%')
-              ->orWhere('meta_title', 'like', '%' . $search . '%')
-              ->orWhere('meta_description', 'like', '%' . $search . '%');
+            $q->where('name', 'like', '%'.$search.'%')
+                ->orWhere('description', 'like', '%'.$search.'%')
+                ->orWhere('meta_title', 'like', '%'.$search.'%')
+                ->orWhere('meta_description', 'like', '%'.$search.'%');
         });
     }
 
@@ -175,8 +185,8 @@ class Subject extends Model
     public function students()
     {
         return $this->belongsToMany(User::class, 'enrollments', 'subject_id', 'user_id')
-                    ->withPivot(['enrolled_by', 'enrolled_at', 'status', 'notes'])
-                    ->withTimestamps();
+            ->withPivot(['enrolled_by', 'enrolled_at', 'status', 'notes'])
+            ->withTimestamps();
     }
 
     /**
@@ -199,6 +209,7 @@ class Subject extends Model
         if (empty($uniqueIds)) {
             return 0;
         }
+
         return (int) Lesson::whereIn('id', $uniqueIds)->sum(DB::raw('COALESCE(duration, 0)'));
     }
 
@@ -208,12 +219,12 @@ class Subject extends Model
     public function getTotalLessonsAttribute(): int
     {
         return $this->sections()
-            ->with(['units.lessons' => function($query) {
+            ->with(['units.lessons' => function ($query) {
                 $query->where('is_active', true);
             }])
             ->get()
-            ->sum(function($section) {
-                return $section->units->sum(function($unit) {
+            ->sum(function ($section) {
+                return $section->units->sum(function ($unit) {
                     return $unit->lessons->count();
                 });
             });
@@ -235,17 +246,8 @@ class Subject extends Model
      */
     public function getTotalQuestionsAttribute(): int
     {
-        $unitIds = $this->sections()
-            ->with('units')
-            ->get()
-            ->flatMap(function($section) {
-                return $section->units->pluck('id');
-            })
-            ->toArray();
-
-        return \App\Models\Question::whereHas('units', function($query) use ($unitIds) {
-                $query->whereIn('units.id', $unitIds);
-            })
+        return Question::query()
+            ->forSubject($this)
             ->where('is_active', true)
             ->count();
     }
@@ -279,11 +281,12 @@ class Subject extends Model
      */
     public function getPrice($currencyId = null)
     {
-        if (!$currencyId) {
+        if (! $currencyId) {
             $currencyId = $this->default_currency_id ?? Currency::getDefault()->id;
         }
 
         $price = $this->prices()->active()->forCurrency($currencyId)->first();
+
         return $price ? $price->price : 0;
     }
 
@@ -301,8 +304,8 @@ class Subject extends Model
     public function assignedTeachers()
     {
         return $this->belongsToMany(User::class, 'teacher_subjects', 'subject_id', 'teacher_id')
-                    ->withPivot(['assigned_by', 'assigned_at', 'notes'])
-                    ->withTimestamps();
+            ->withPivot(['assigned_by', 'assigned_at', 'notes'])
+            ->withTimestamps();
     }
 
     /**
@@ -342,7 +345,7 @@ class Subject extends Model
      */
     public function hasAccess(?User $user = null): bool
     {
-        if (!$user) {
+        if (! $user) {
             return $this->isEffectivelyFree();
         }
 
@@ -354,7 +357,7 @@ class Subject extends Model
      */
     public function getAccessType(?User $user = null): string
     {
-        if (!$user) {
+        if (! $user) {
             return $this->isEffectivelyFree() ? 'free' : 'requires_purchase';
         }
 
@@ -419,4 +422,3 @@ class Subject extends Model
         return $this->gatesFreeEnrollmentUntilApproved();
     }
 }
-

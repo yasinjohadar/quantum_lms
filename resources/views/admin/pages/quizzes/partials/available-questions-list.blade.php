@@ -3,7 +3,7 @@
         <i class="bi bi-search display-6 text-muted"></i>
         <p class="text-muted mt-2">لا توجد أسئلة متاحة</p>
         @can('question-create')
-        <a href="{{ route('admin.questions.create', ['quiz_id' => $quiz->id]) }}" class="btn btn-sm btn-primary">
+        <a href="{{ route('admin.questions.create', array_filter(['quiz_id' => $quiz->id, 'subject_id' => $quiz->subject_id])) }}" class="btn btn-sm btn-primary">
             <i class="bi bi-plus-lg me-1"></i> إنشاء سؤال جديد
         </a>
         @endcan

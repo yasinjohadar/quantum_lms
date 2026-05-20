@@ -25,7 +25,7 @@
                         </button>
                     </form>
                 @endif
-                <a href="{{ route('admin.ai.question-generations.index') }}" class="btn btn-secondary btn-sm">
+                <a href="{{ $returnUrl ?? route('admin.ai.question-generations.index') }}" class="btn btn-secondary btn-sm">
                     <i class="fas fa-arrow-right me-1"></i> رجوع
                 </a>
             </div>
@@ -35,7 +35,7 @@
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
                 @if(session('saved_to_bank'))
-                    <a href="{{ route('admin.questions.index') }}" class="alert-link ms-2">فتح بنك الأسئلة</a>
+                    <a href="{{ session('return_url', $returnUrl ?? route('admin.questions.index')) }}" class="alert-link ms-2">فتح بنك الأسئلة</a>
                 @endif
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
             </div>
@@ -325,7 +325,7 @@
                                     <div class="alert alert-success mb-0 py-2">
                                         <i class="fas fa-check-circle me-1"></i>
                                         تم حفظ هذه الأسئلة في بنك الأسئلة.
-                                        <a href="{{ route('admin.questions.index') }}" class="alert-link">عرض بنك الأسئلة</a>
+                                        <a href="{{ $returnUrl ?? route('admin.questions.index') }}" class="alert-link">عرض بنك الأسئلة</a>
                                     </div>
                                 @endif
                             </div>

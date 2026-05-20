@@ -266,34 +266,58 @@
                 <div class="card-body">
                     {{-- فلتر --}}
                     <form action="{{ route('admin.quizzes.questions', $quiz->id) }}" method="GET" class="mb-3" id="availableQuestionsFilterForm">
+                        @if(!empty($filterLocked) && !empty($quizSubject))
+                            <input type="hidden" name="class_id" value="{{ $quizSubject->class_id }}">
+                            <input type="hidden" name="subject_id" value="{{ $quizSubject->id }}">
+                            <p class="small text-muted mb-2">
+                                <i class="bi bi-funnel me-1"></i>
+                                عرض أسئلة مادة <strong>{{ $quizSubject->name }}</strong>
+                                @if($quizSubject->schoolClass)
+                                    — {{ $quizSubject->schoolClass->name }}
+                                    @if($quizSubject->schoolClass->stage)
+                                        ({{ $quizSubject->schoolClass->stage->name }})
+                                    @endif
+                                @endif
+                            </p>
+                        @endif
                         <div class="row g-2 align-items-center">
                             <div class="col-md-3">
                                 <input type="text" name="search" id="availableSearchInput" class="form-control form-control-sm"
                                        placeholder="بحث..." value="{{ request('search') }}" autocomplete="off">
                             </div>
                             <div class="col-md-2">
-                                <select name="class_id" id="classFilter" class="form-select form-select-sm">
-                                    <option value="">كل الصفوف</option>
-                                    @foreach($classes ?? [] as $class)
-                                        <option value="{{ $class->id }}" {{ request('class_id') == $class->id ? 'selected' : '' }}>
-                                            {{ $class->name }} - {{ $class->stage?->name }}
+                                <select name="{{ !empty($filterLocked) ? '' : 'class_id' }}" id="classFilter" class="form-select form-select-sm" @if(!empty($filterLocked)) disabled @endif>
+                                    @if(!empty($filterLocked) && !empty($quizSubject) && $quizSubject->schoolClass)
+                                        <option value="{{ $quizSubject->class_id }}" selected>
+                                            {{ $quizSubject->schoolClass->name }}@if($quizSubject->schoolClass->stage) - {{ $quizSubject->schoolClass->stage->name }}@endif
                                         </option>
-                                    @endforeach
+                                    @else
+                                        <option value="">كل الصفوف</option>
+                                        @foreach($classes ?? [] as $class)
+                                            <option value="{{ $class->id }}" {{ request('class_id') == $class->id ? 'selected' : '' }}>
+                                                {{ $class->name }} - {{ $class->stage?->name }}
+                                            </option>
+                                        @endforeach
+                                    @endif
                                 </select>
                             </div>
                             <div class="col-md-2">
-                                <select name="subject_id" id="subjectFilter" class="form-select form-select-sm" {{ !request('class_id') ? 'disabled' : '' }}>
-                                    <option value="">اختر المادة</option>
-                                    @if(request('class_id'))
-                                        @foreach($subjects ?? [] as $subject)
-                                            @if($subject->class_id == request('class_id'))
-                                                <option value="{{ $subject->id }}" 
-                                                        data-class-id="{{ $subject->class_id }}"
-                                                        {{ request('subject_id') == $subject->id ? 'selected' : '' }}>
-                                                    {{ $subject->name }}
-                                                </option>
-                                            @endif
-                                        @endforeach
+                                <select name="{{ !empty($filterLocked) ? '' : 'subject_id' }}" id="subjectFilter" class="form-select form-select-sm" @if(!empty($filterLocked) || !request('class_id')) disabled @endif>
+                                    @if(!empty($filterLocked) && !empty($quizSubject))
+                                        <option value="{{ $quizSubject->id }}" selected>{{ $quizSubject->name }}</option>
+                                    @else
+                                        <option value="">اختر المادة</option>
+                                        @if(request('class_id'))
+                                            @foreach($subjects ?? [] as $subject)
+                                                @if($subject->class_id == request('class_id'))
+                                                    <option value="{{ $subject->id }}"
+                                                            data-class-id="{{ $subject->class_id }}"
+                                                            {{ request('subject_id') == $subject->id ? 'selected' : '' }}>
+                                                        {{ $subject->name }}
+                                                    </option>
+                                                @endif
+                                            @endforeach
+                                        @endif
                                     @endif
                                 </select>
                             </div>
@@ -331,7 +355,7 @@
                             <i class="bi bi-search display-6 text-muted"></i>
                             <p class="text-muted mt-2">لا توجد أسئلة متاحة</p>
                             @can('question-create')
-                            <a href="{{ route('admin.questions.create', ['quiz_id' => $quiz->id]) }}" class="btn btn-sm btn-primary">
+                            <a href="{{ route('admin.questions.create', array_filter(['quiz_id' => $quiz->id, 'subject_id' => $quiz->subject_id])) }}" class="btn btn-sm btn-primary">
                                 <i class="bi bi-plus-lg me-1"></i> إنشاء سؤال جديد
                             </a>
                             @endcan
@@ -536,29 +560,110 @@ document.addEventListener('DOMContentLoaded', function() {
     // تعريف CSRF token مرة واحدة لاستخدامه في جميع الـ Ajax requests
     const csrfToken = '{{ csrf_token() }}';
 
-    // ربط فلتر الصف بالمواد (Dependent Dropdown)
+    const filterLocked = @json($filterLocked ?? false);
     const classFilter = document.getElementById('classFilter');
     const subjectFilter = document.getElementById('subjectFilter');
+    const filterForm = document.getElementById('availableQuestionsFilterForm');
+    const resultsEl = document.getElementById('availableQuestionsResults');
+    const loadingEl = document.getElementById('availableQuestionsLoading');
+    const searchInput = document.getElementById('availableSearchInput');
+    const typeFilter = document.getElementById('typeFilter');
+    const difficultyFilter = document.getElementById('difficultyFilter');
+    let searchDebounceTimer = null;
+    let filterRequestId = 0;
 
-    console.log('Initializing class-subject filter');
-    console.log('Class filter found:', !!classFilter);
-    console.log('Subject filter found:', !!subjectFilter);
+    function buildFilterUrl(page) {
+        const params = new URLSearchParams(new FormData(filterForm));
+        params.delete('page');
+        if (page && page > 1) {
+            params.set('page', page);
+        }
+        const qs = params.toString();
+        return filterForm.action + (qs ? '?' + qs : '');
+    }
 
-    if (classFilter && subjectFilter) {
-        // حفظ جميع خيارات المواد الأصلية من الـ HTML
-        const allSubjectOptions = [];
-        Array.from(subjectFilter.options).forEach(option => {
-            if (option.value) {
-                allSubjectOptions.push({
-                    value: option.value,
-                    text: option.textContent,
-                    classId: option.getAttribute('data-class-id'),
-                    selected: option.selected
-                });
-            }
+    function loadAvailableQuestions(page) {
+        if (!filterForm || !resultsEl) {
+            return Promise.resolve();
+        }
+        const requestId = ++filterRequestId;
+        if (loadingEl) {
+            loadingEl.classList.remove('d-none');
+        }
+        const url = buildFilterUrl(page || 1);
+        return fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html',
+            },
+            credentials: 'same-origin',
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('filter failed');
+                }
+                return response.text();
+            })
+            .then(function (html) {
+                if (requestId !== filterRequestId) {
+                    return;
+                }
+                resultsEl.innerHTML = html;
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState({}, '', url);
+                }
+            })
+            .catch(function () {
+                if (requestId !== filterRequestId) {
+                    return;
+                }
+                resultsEl.innerHTML = '<p class="text-danger small text-center py-3 mb-0">تعذر تحميل الأسئلة</p>';
+            })
+            .finally(function () {
+                if (requestId === filterRequestId && loadingEl) {
+                    loadingEl.classList.add('d-none');
+                }
+            });
+    }
+
+    if (filterForm) {
+        filterForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            loadAvailableQuestions(1);
         });
 
-        // دالة لجلب المواد حسب الصف
+        if (typeFilter) {
+            typeFilter.addEventListener('change', function () {
+                loadAvailableQuestions(1);
+            });
+        }
+        if (difficultyFilter) {
+            difficultyFilter.addEventListener('change', function () {
+                loadAvailableQuestions(1);
+            });
+        }
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                clearTimeout(searchDebounceTimer);
+                searchDebounceTimer = setTimeout(function () {
+                    loadAvailableQuestions(1);
+                }, 400);
+            });
+        }
+        if (resultsEl) {
+            resultsEl.addEventListener('click', function (e) {
+                const link = e.target.closest('.available-questions-pagination a');
+                if (!link || !link.href) {
+                    return;
+                }
+                e.preventDefault();
+                const page = new URL(link.href, window.location.origin).searchParams.get('page');
+                loadAvailableQuestions(page ? parseInt(page, 10) : 1);
+            });
+        }
+    }
+
+    if (!filterLocked && classFilter && subjectFilter) {
         function loadSubjectsByClass(classId, preserveSelected = false) {
             const selectedSubjectId = preserveSelected ? subjectFilter.value : null;
             
@@ -569,10 +674,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 // جلب المواد الخاصة بالصف المحدد عبر Ajax
                 const route = '{{ route("admin.quizzes.get-subjects-by-class") }}';
-                
-                console.log('Loading subjects for class:', classId);
-                console.log('Route:', route);
-                
+
                 // إظهار loading
                 subjectFilter.disabled = true;
                 subjectFilter.innerHTML = '<option value="">جاري التحميل...</option>';
@@ -586,14 +688,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     credentials: 'same-origin'
                 })
                 .then(response => {
-                    console.log('Response status:', response.status);
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
                     return response.json();
                 })
                 .then(data => {
-                    console.log('Subjects data received:', data);
                     subjectFilter.disabled = false;
                     subjectFilter.innerHTML = '<option value="">اختر المادة</option>';
                     
@@ -614,125 +714,21 @@ document.addEventListener('DOMContentLoaded', function() {
                                 
                                 subjectFilter.appendChild(option);
                             });
-                            console.log(`Loaded ${data.data.length} subjects`);
                         }
                     } else {
-                        console.warn('No subjects found or invalid response:', data);
                         subjectFilter.innerHTML = '<option value="">لا توجد مواد</option>';
                     }
                 })
-                .catch(error => {
-                    console.error('Error loading subjects:', error);
+                .catch(function () {
                     subjectFilter.disabled = false;
                     subjectFilter.innerHTML = '<option value="">خطأ في التحميل</option>';
                 });
             }
         }
 
-        const filterForm = document.getElementById('availableQuestionsFilterForm');
-        const resultsEl = document.getElementById('availableQuestionsResults');
-        const loadingEl = document.getElementById('availableQuestionsLoading');
-        const searchInput = document.getElementById('availableSearchInput');
-        const typeFilter = document.getElementById('typeFilter');
-        const difficultyFilter = document.getElementById('difficultyFilter');
-        let searchDebounceTimer = null;
-        let filterRequestId = 0;
-
-        function buildFilterUrl(page) {
-            const params = new URLSearchParams(new FormData(filterForm));
-            params.delete('page');
-            if (page && page > 1) {
-                params.set('page', page);
-            }
-            const qs = params.toString();
-            return filterForm.action + (qs ? '?' + qs : '');
-        }
-
-        function loadAvailableQuestions(page) {
-            if (!filterForm || !resultsEl) {
-                return Promise.resolve();
-            }
-            const requestId = ++filterRequestId;
-            if (loadingEl) {
-                loadingEl.classList.remove('d-none');
-            }
-            const url = buildFilterUrl(page || 1);
-            return fetch(url, {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'text/html',
-                },
-                credentials: 'same-origin',
-            })
-                .then(function (response) {
-                    if (!response.ok) {
-                        throw new Error('filter failed');
-                    }
-                    return response.text();
-                })
-                .then(function (html) {
-                    if (requestId !== filterRequestId) {
-                        return;
-                    }
-                    resultsEl.innerHTML = html;
-                    if (window.history && window.history.replaceState) {
-                        window.history.replaceState({}, '', url);
-                    }
-                })
-                .catch(function () {
-                    if (requestId !== filterRequestId) {
-                        return;
-                    }
-                    resultsEl.innerHTML = '<p class="text-danger small text-center py-3 mb-0">تعذر تحميل الأسئلة</p>';
-                })
-                .finally(function () {
-                    if (requestId === filterRequestId && loadingEl) {
-                        loadingEl.classList.add('d-none');
-                    }
-                });
-        }
-
-        if (filterForm) {
-            filterForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-                loadAvailableQuestions(1);
-            });
-
-            if (typeFilter) {
-                typeFilter.addEventListener('change', function () {
-                    loadAvailableQuestions(1);
-                });
-            }
-            if (difficultyFilter) {
-                difficultyFilter.addEventListener('change', function () {
-                    loadAvailableQuestions(1);
-                });
-            }
-            if (subjectFilter) {
-                subjectFilter.addEventListener('change', function () {
-                    loadAvailableQuestions(1);
-                });
-            }
-            if (searchInput) {
-                searchInput.addEventListener('input', function () {
-                    clearTimeout(searchDebounceTimer);
-                    searchDebounceTimer = setTimeout(function () {
-                        loadAvailableQuestions(1);
-                    }, 400);
-                });
-            }
-            if (resultsEl) {
-                resultsEl.addEventListener('click', function (e) {
-                    const link = e.target.closest('.available-questions-pagination a');
-                    if (!link || !link.href) {
-                        return;
-                    }
-                    e.preventDefault();
-                    const page = new URL(link.href, window.location.origin).searchParams.get('page');
-                    loadAvailableQuestions(page ? parseInt(page, 10) : 1);
-                });
-            }
-        }
+        subjectFilter.addEventListener('change', function () {
+            loadAvailableQuestions(1);
+        });
 
         classFilter.addEventListener('change', function() {
             const classId = this.value;
@@ -741,14 +737,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        // عند تحميل الصفحة، فلترة المواد حسب الصف المحدد (إن وجد)
         const selectedClassId = classFilter.value;
         if (selectedClassId) {
-            // تحميل المواد الخاصة بالصف المحدد فوراً عبر Ajax
-            // هذا يضمن أن المواد المحدثة من قاعدة البيانات يتم جلبها
-            loadSubjectsByClass(selectedClassId, true); // الحفاظ على المادة المحددة إن كانت صحيحة
+            loadSubjectsByClass(selectedClassId, true);
         } else {
-            // إذا لم يكن هناك صف محدد، تعطيل select المواد
             subjectFilter.disabled = true;
             subjectFilter.innerHTML = '<option value="">اختر المادة</option>';
         }

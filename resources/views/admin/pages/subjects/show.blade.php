@@ -281,6 +281,12 @@
                     <h5 class="page-title mb-0">تفاصيل المادة: {{ $subject->name }}</h5>
                 </div>
                 <div class="d-flex gap-2 flex-shrink-0">
+                    @can('question-list')
+                    <a href="{{ route('admin.subjects.questions.index', $subject->id) }}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-journal-text me-1"></i> بنك الأسئلة
+                        <span class="badge bg-light text-dark ms-1">{{ $subject->total_questions }}</span>
+                    </a>
+                    @endcan
                     @can('subject-edit')
                     <a href="{{ route('admin.subjects.edit', $subject->id) }}{{ request('return_to_class_id') ? '?return_to_class_id=' . request('return_to_class_id') : '' }}" class="btn btn-warning btn-sm text-white">
                         <i class="fas fa-edit me-1"></i> تعديل
