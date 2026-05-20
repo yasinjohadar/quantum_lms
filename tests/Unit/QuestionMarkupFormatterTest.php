@@ -129,3 +129,26 @@ test('plain heading decodes entities before stripping', function () {
         ->toContain('"عنوان قصير"')
         ->not->toContain('&quot;');
 });
+
+test('wraps absolute value inequalities in inline code', function () {
+    $input = 'حدد جميع القيم التي تحقق المتباينة |x| ≤ 3.';
+
+    $result = QuestionMarkupFormatter::format($input);
+
+    expect($result)
+        ->toContain('<code class="question-inline-code">|x| ≤ 3</code>')
+        ->toContain('حدد جميع القيم');
+});
+
+test('wraps numeric intervals and mcq numeric options', function () {
+    $explanation = 'القيم ضمن الفترة [-3, 3].';
+
+    expect(QuestionMarkupFormatter::format($explanation))
+        ->toContain('<code class="question-inline-code">[-3, 3]</code>');
+
+    expect(QuestionMarkupFormatter::format('-4'))
+        ->toBe('<code class="question-inline-code">-4</code>');
+
+    expect(QuestionMarkupFormatter::format('2'))
+        ->toBe('<code class="question-inline-code">2</code>');
+});

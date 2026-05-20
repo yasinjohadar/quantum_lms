@@ -475,12 +475,12 @@
         
         // عنوان السؤال (يُخزَّن كـ HTML من TinyMCE — لا نستخدم escapeHtml)
         if (question.title) {
-            html += `<div class="question-stem mb-3">${question.title}</div>`;
+            html += `<div class="question-stem question-text-body mb-3">${question.title}</div>`;
         }
         
         // محتوى السؤال (لا نعرضه لـ drag_drop و fill_blanks لأنها تحتاج معالجة خاصة)
         if (question.content && question.type !== 'drag_drop' && question.type !== 'fill_blank' && question.type !== 'fill_blanks') {
-            html += `<div class="mb-4 p-3 bg-light rounded question-content-html">${question.content}</div>`;
+            html += `<div class="mb-4 p-3 bg-light rounded question-content-html question-text-body">${question.content}</div>`;
         } else if (question.content && question.type === 'drag_drop') {
             // Extract text content without drop-zones div for drag_drop
             const tempDiv = document.createElement('div');
@@ -492,7 +492,7 @@
                     html += `<div class="mb-4 p-3 bg-light rounded">${escapeHtml(textContent)}</div>`;
                 }
             } else {
-                html += `<div class="mb-4 p-3 bg-light rounded question-content-html">${question.content}</div>`;
+                html += `<div class="mb-4 p-3 bg-light rounded question-content-html question-text-body">${question.content}</div>`;
             }
         }
         // Note: fill_blank/fill_blanks content is handled inside renderFillBlank
@@ -602,7 +602,7 @@
                 <div class="form-check p-3 mb-2 border rounded option-item ${isChecked ? 'border-primary bg-primary-transparent' : ''}">
                     <input class="form-check-input" type="radio" name="answer_${question.id}" 
                            id="opt_${opt.id}" value="${opt.id}" ${isChecked}>
-                    <label class="form-check-label w-100 cursor-pointer" for="opt_${opt.id}">
+                    <label class="form-check-label question-text-body w-100 cursor-pointer" for="opt_${opt.id}">
                         ${opt.content || ''}
                     </label>
                 </div>
@@ -635,7 +635,7 @@
                 <div class="form-check p-3 mb-2 border rounded option-item ${isChecked ? 'border-primary bg-primary-transparent' : ''}">
                     <input class="form-check-input" type="checkbox" name="answer_${question.id}[]" 
                            id="opt_${opt.id}" value="${opt.id}" ${isChecked}>
-                    <label class="form-check-label w-100 cursor-pointer" for="opt_${opt.id}">
+                    <label class="form-check-label question-text-body w-100 cursor-pointer" for="opt_${opt.id}">
                         ${opt.content || ''}
                     </label>
                 </div>
@@ -764,7 +764,7 @@
                 <div class="form-check p-3 mb-2 border rounded option-item ${isChecked ? 'border-primary bg-primary-transparent' : ''}">
                     <input class="form-check-input" type="checkbox" name="answer_${question.id}[]" 
                            id="opt_${opt.id}" value="${opt.id}" ${isChecked}>
-                    <label class="form-check-label w-100 cursor-pointer" for="opt_${opt.id}">
+                    <label class="form-check-label question-text-body w-100 cursor-pointer" for="opt_${opt.id}">
                         ${opt.content || ''}
                     </label>
                 </div>

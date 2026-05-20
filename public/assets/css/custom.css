@@ -316,6 +316,17 @@ a:hover .folder-card .card-body i[class*="bi-"] {
     white-space: nowrap;
 }
 
+/* تمييز المعادلات والرموز الرياضية داخل نص السؤال (|x| ≤ 3 ، [-3, 3] ، -4) */
+.question-text-body .question-inline-code,
+.question-stem .question-inline-code,
+#question-content .question-inline-code {
+    font-size: 0.95em;
+    font-weight: 600;
+    color: #0d47a1;
+    background: #e8f4fd;
+    border-color: #90caf9;
+}
+
 .question-code-block {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 0.9em;

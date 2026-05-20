@@ -9,6 +9,12 @@ class QuestionMarkupFormatter
     /** أوامر LaTeX شائعة في خيارات الإجابة (بدون delimiters) */
     private const BARE_LATEX_PATTERN = '/\\\\(?:frac|int|sum|sqrt|sin|cos|tan|cot|sec|csc|ln|log|arctan|arcsin|arccos|pi|theta|alpha|beta|gamma|delta|cdot|times|left|right|text|quad|,)|\^{|_{}/u';
 
+    /** متباينات القيمة المطلقة: |x| ≤ 3 (بدون محددات regex) */
+    private const ABS_INEQUALITY_PATTERN = '\|[^|\n]+\|\s*(?:≤|≥|<|>|<=|>=|≠|!=)\s*[-−+]?[\d]+(?:[.,][\d]+)?';
+
+    /** فترة عددية: [-3, 3] */
+    private const INTERVAL_PATTERN = '\[-?[\d]+(?:[.,][\d]+)?\s*,\s*-?[\d]+(?:[.,][\d]+)?\]';
+
     public static function containsMath(?string $text): bool
     {
         if ($text === null || trim($text) === '') {
@@ -18,9 +24,6 @@ class QuestionMarkupFormatter
         return (bool) preg_match(self::MATH_SEGMENT_PATTERN, $text);
     }
 
-    /**
-     * عنوان مختصر للترويسة: عربي فقط بدون LaTeX خام في شريط الصفحة.
-     */
     /**
      * فكّ كيانات HTML المخزّنة كنص (مثل &quot;) بما فيها التشفير المزدوج.
      */
@@ -193,19 +196,31 @@ class QuestionMarkupFormatter
     {
         $trimmed = trim($text);
 
+        if ($trimmed !== '' && self::isSimpleMathValue($trimmed)) {
+            return self::wrapInlineCode($trimmed);
+        }
+
+        if ($trimmed !== '' && preg_match('/^'.self::ABS_INEQUALITY_PATTERN.'$/u', $trimmed)) {
+            return self::wrapInlineCode($trimmed);
+        }
+
         if ($trimmed !== '' && preg_match('/^[a-zA-Z_$][\w$.]*\([^)]*\)$/u', $trimmed)) {
-            return '<code class="question-inline-code">'.e($trimmed).'</code>';
+            return self::wrapInlineCode($trimmed);
+        }
+
+        if ($trimmed !== '' && preg_match('/^'.self::INTERVAL_PATTERN.'$/u', $trimmed)) {
+            return self::wrapInlineCode($trimmed);
         }
 
         if ($trimmed !== '' && preg_match('/^\[[^\]]+\]$/u', $trimmed)) {
-            return '<code class="question-inline-code">'.e($trimmed).'</code>';
+            return self::wrapInlineCode($trimmed);
         }
 
         if ($trimmed !== '' && preg_match('/^[a-zA-Z_$][\w$]*$/u', $trimmed) && strlen($trimmed) <= 40) {
-            return '<code class="question-inline-code">'.e($trimmed).'</code>';
+            return self::wrapInlineCode($trimmed);
         }
 
-        $codePattern = '/(\[[^\]]+\])|([a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)*\([^)]*\))/u';
+        $codePattern = '/('.self::ABS_INEQUALITY_PATTERN.')|('.self::INTERVAL_PATTERN.')|(\[[^\]]+\])|([a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)*\([^)]*\))/u';
         $parts = preg_split($codePattern, $text, -1, PREG_SPLIT_DELIM_CAPTURE);
 
         if ($parts === false) {
@@ -218,13 +233,23 @@ class QuestionMarkupFormatter
                 continue;
             }
             if (preg_match($codePattern, $part)) {
-                $output .= '<code class="question-inline-code">'.e($part).'</code>';
+                $output .= self::wrapInlineCode($part);
             } else {
                 $output .= self::escapePlainSegment($part);
             }
         }
 
         return $output;
+    }
+
+    private static function isSimpleMathValue(string $text): bool
+    {
+        return (bool) preg_match('/^[-−+]?[\d]+(?:[.,][\d]+)?$/u', trim($text));
+    }
+
+    private static function wrapInlineCode(string $text): string
+    {
+        return '<code class="question-inline-code">'.e(trim($text)).'</code>';
     }
 
     private static function replaceCodeBlocks(string $text): string
@@ -243,9 +268,7 @@ class QuestionMarkupFormatter
         if ($text !== strip_tags($text)) {
             return preg_replace_callback(
                 '/`([^`\n]+)`/u',
-                static fn (array $matches): string => '<code class="question-inline-code">'
-                    .e($matches[1])
-                    .'</code>',
+                static fn (array $matches): string => self::wrapInlineCode($matches[1]),
                 $text
             ) ?? $text;
         }
@@ -261,7 +284,7 @@ class QuestionMarkupFormatter
                 continue;
             }
             if (preg_match('/^`([^`\n]+)`$/u', $part, $matches)) {
-                $output .= '<code class="question-inline-code">'.e($matches[1]).'</code>';
+                $output .= self::wrapInlineCode($matches[1]);
             } else {
                 $output .= $part;
             }
