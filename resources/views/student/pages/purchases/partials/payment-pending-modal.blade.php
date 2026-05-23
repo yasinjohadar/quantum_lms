@@ -1,8 +1,3 @@
-@php
-    $supervisorWhatsapp = \App\Models\SystemSetting::get('student_supervisor_whatsapp_number', '');
-    $supervisorWhatsappDigits = preg_replace('/\D/', '', (string) $supervisorWhatsapp);
-    $hasSupervisorWa = $supervisorWhatsappDigits !== '';
-@endphp
 <div class="modal fade" id="paymentPendingReviewModal" tabindex="-1"
      aria-labelledby="paymentPendingReviewModalLabel"
      aria-hidden="true">
@@ -18,17 +13,12 @@
                     تم إرسال طلب الدفع
                 </h4>
                 <p class="fs-5 text-dark mb-2 px-md-4" id="paymentPendingReviewModalMessage"></p>
-                @if($hasSupervisorWa)
-                    <a href="https://wa.me/{{ $supervisorWhatsappDigits }}" target="_blank" rel="noopener noreferrer"
-                       class="btn btn-success btn-lg px-4 rounded-pill mb-3 d-inline-flex align-items-center gap-2">
-                        <i class="fab fa-whatsapp" aria-hidden="true"></i>
-                        واتساب المشرفة
-                    </a>
-                @else
-                    <p class="text-muted small mb-3 px-md-2">
-                        سيتم تفعيل رابط التواصل عبر واتساب عند ضبط رقم المشرفة من إعدادات النظام.
-                    </p>
-                @endif
+                @include('student.partials.supervisor-whatsapp-cta', [
+                    'btnSize' => 'lg',
+                    'align' => 'center',
+                    'showMissingHint' => true,
+                    'wrapperClass' => 'mb-3',
+                ])
                 <p class="text-muted mb-4 small px-md-2">
                     سيتم مراجعة طلبك من الإدارة. يمكنك إغلاق هذه النافذة ومتابعة التصفح؛ سيُحدَّث الوضع بعد الموافقة.
                 </p>

@@ -54,3 +54,24 @@ if (! function_exists('media_public_url')) {
         }
     }
 }
+
+if (! function_exists('linkify_plain_text')) {
+    /**
+     * نص عادي آمن مع أسطر جديدة وروابط http/https قابلة للنقر.
+     */
+    function linkify_plain_text(?string $text): string
+    {
+        $escaped = e($text ?? '');
+        $withBreaks = nl2br($escaped);
+
+        return (string) preg_replace_callback(
+            '~\bhttps?://[^\s<]+~iu',
+            static function (array $matches): string {
+                $url = $matches[0];
+
+                return '<a href="'.e($url).'" target="_blank" rel="noopener noreferrer">'.e($url).'</a>';
+            },
+            $withBreaks
+        );
+    }
+}

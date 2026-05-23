@@ -170,5 +170,13 @@ class SystemSetting extends Model
 
         return is_string($v) && trim($v) !== '' ? trim($v) : $default;
     }
+
+    /** أرقام واتساب المشرفة فقط (بدون رموز) من إعداد student_supervisor_whatsapp_number */
+    public static function supervisorWhatsappDigits(): string
+    {
+        $raw = self::get('student_supervisor_whatsapp_number', '');
+
+        return preg_replace('/\D/', '', (string) $raw);
+    }
 }
 

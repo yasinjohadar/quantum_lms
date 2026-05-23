@@ -35,12 +35,9 @@ class ShareStudentPendingPurchasesForLayout
             ->orderByDesc('created_at')
             ->get();
 
-        $supervisorWhatsapp = SystemSetting::get('student_supervisor_whatsapp_number', '');
-        $supervisorWhatsappDigits = preg_replace('/\D/', '', (string) $supervisorWhatsapp);
-
         View::share([
             'pendingPurchases' => $pendingPurchases,
-            'supervisorWhatsappDigits' => $supervisorWhatsappDigits,
+            'supervisorWhatsappDigits' => SystemSetting::supervisorWhatsappDigits(),
         ]);
 
         return $next($request);

@@ -54,10 +54,11 @@
                     <input type="hidden" name="purchase_id" value="{{ $purchase->id }}">
                     <input type="hidden" name="payment_method" value="iban">
 
-                    <div class="alert alert-warning border mb-4" role="status">
+                    <div class="alert alert-warning border mb-2" role="status">
                         <i class="bi bi-info-circle me-2"></i>
-                        {!! nl2br(e($ibanPendingMessage)) !!}
+                        {!! linkify_plain_text($ibanPendingMessage) !!}
                     </div>
+                    @include('student.partials.supervisor-whatsapp-cta', ['wrapperClass' => 'mb-4'])
 
                     <div class="payment-method mb-3">
                         <div class="d-flex align-items-center mb-3">
@@ -66,9 +67,10 @@
                         </div>
 
                         <div class="js-iban-details">
-                            <div class="alert alert-light border mb-3 text-muted small" role="note">
-                                {!! nl2br(e($ibanInstructionsDisplay)) !!}
+                            <div class="alert alert-light border mb-2 text-muted small" role="note">
+                                {!! linkify_plain_text($ibanInstructionsDisplay) !!}
                             </div>
+                            @include('student.partials.supervisor-whatsapp-cta', ['wrapperClass' => 'mb-3'])
                             <div class="alert alert-info">
                                 <p class="mb-2"><strong>معلومات الحساب:</strong></p>
                                 @if(!empty($ibanAccount['iban']))

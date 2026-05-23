@@ -73,7 +73,7 @@
                                                     <i class="fab fa-whatsapp me-2 text-success"></i>رقم واتساب للتواصل
                                                 @elseif($setting->key === 'student_supervisor_whatsapp_number')
                                                     <i class="fab fa-whatsapp me-2 text-success"></i>رقم واتساب مشرفة الطلاب (متابعة التفعيل)
-                                                    <small class="text-muted d-block mt-1">يُستخدم في شريط «مشتريات قيد المراجعة» ومودال تأكيد الدفع (زر واتساب مع أيقونة).</small>
+                                                    <small class="text-muted d-block mt-1">يُستخدم في نموذج «إتمام الدفع»، شريط «مشتريات قيد المراجعة»، ومودال تأكيد الدفع (زر واتساب مع أيقونة).</small>
                                                 @elseif($setting->key === 'whatsapp_float_button_enabled')
                                                     <i class="fas fa-eye me-2 text-info"></i>إظهار أيقونة واتساب العائمة
                                                 @elseif($setting->key === 'contact_address')
@@ -86,6 +86,7 @@
                                                     <i class="fas fa-file-invoice me-2 text-primary"></i>طلب رفع وصل التحويل البنكي (IBAN)
                                                 @elseif($setting->key === 'payments_iban_student_instructions')
                                                     <i class="fas fa-align-right me-2 text-secondary"></i>تعليمات التحويل البنكي للطالب
+                                                    <small class="text-muted d-block mt-1">تظهر في نموذج «إتمام الدفع». يُفضّل النص التوضيحي فقط؛ زر واتساب المشرفة يُضاف تلقائياً عند ضبط رقم المشرفة. الروابط http/https تصبح قابلة للنقر تلقائياً.</small>
                                                 @elseif($setting->key === 'payments_iban_display_name')
                                                     <i class="fas fa-tag me-2 text-primary"></i>اسم طريقة الدفع (التحويل البنكي)
                                                 @elseif($setting->key === 'payments_iban_account_iban')
@@ -96,7 +97,7 @@
                                                     <i class="fas fa-user me-2 text-secondary"></i>اسم صاحب الحساب
                                                 @elseif($setting->key === 'payments_iban_pending_message')
                                                     <i class="fas fa-hourglass-half me-2 text-warning"></i>رسالة «الطلب قيد المعالجة» للطالب
-                                                    <small class="text-muted d-block mt-1">تظهر في مودال «تم إرسال طلب الدفع» بعد رفع الإيصال. يُضاف زر واتساب المشرفة تلقائياً أسفلها عند ضبط «رقم واتساب مشرفة الطلاب».</small>
+                                                    <small class="text-muted d-block mt-1">تظهر في نموذج «إتمام الدفع» (تنبيه أصفر) وبعد رفع الإيصال في مودال التأكيد. يُضاف زر واتساب المشرفة تلقائياً أسفلها عند ضبط «رقم واتساب مشرفة الطلاب».</small>
                                                 @elseif($setting->key === 'social_facebook_url')
                                                     <i class="fab fa-facebook-f me-2 text-primary"></i>رابط فيسبوك
                                                 @elseif($setting->key === 'social_instagram_url')

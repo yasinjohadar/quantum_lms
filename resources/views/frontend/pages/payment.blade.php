@@ -86,9 +86,10 @@
                                 </div>
                             </label>
                             <div id="ibanDetails" class="payment-method-details" style="display: none;">
-                                <div class="alert alert-light border mb-3 text-muted small" role="note">
-                                    {!! nl2br(e($ibanInstructionsDisplay)) !!}
+                                <div class="alert alert-light border mb-2 text-muted small" role="note">
+                                    {!! linkify_plain_text($ibanInstructionsDisplay) !!}
                                 </div>
+                                @include('student.partials.supervisor-whatsapp-cta', ['wrapperClass' => 'mb-3'])
                                 <div class="alert alert-info">
                                     <p class="mb-2"><strong>معلومات الحساب:</strong></p>
                                     <p class="mb-0">IBAN: SA1234567890123456789012</p>

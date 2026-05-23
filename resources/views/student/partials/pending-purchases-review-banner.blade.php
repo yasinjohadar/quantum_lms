@@ -17,7 +17,8 @@
 
 {{-- مشتريات قيد المراجعة: يظهر في تخطيط الطالب على كل الصفحات عند وجود طلبات --}}@if(isset($pendingPurchases) && $pendingPurchases->isNotEmpty())
     @php
-        $hasSupervisorWa = isset($supervisorWhatsappDigits) && $supervisorWhatsappDigits !== '';
+        $supervisorWhatsappDigits = $supervisorWhatsappDigits ?? \App\Models\SystemSetting::supervisorWhatsappDigits();
+        $hasSupervisorWa = $supervisorWhatsappDigits !== '';
     @endphp
     <div class="student-pending-purchases-banner main-content pt-2 pb-0">        <div class="container-fluid">
             <div class="card custom-card mb-3 mb-md-4 border-warning">
@@ -40,11 +41,10 @@
                             </p>
                         </div>
                         @if($hasSupervisorWa)
-                            <a href="https://wa.me/{{ $supervisorWhatsappDigits }}" target="_blank" rel="noopener noreferrer"
-                               class="btn btn-success btn-sm align-self-center d-inline-flex align-items-center gap-1">
-                                <i class="fab fa-whatsapp"></i>
-                                واتساب المشرفة
-                            </a>
+                            @include('student.partials.supervisor-whatsapp-cta', [
+                                'supervisorWhatsappDigits' => $supervisorWhatsappDigits,
+                                'wrapperClass' => 'align-self-center mb-0',
+                            ])
                         @endif
                     </div>
                     <div class="row" id="pendingPurchasesGrid">
