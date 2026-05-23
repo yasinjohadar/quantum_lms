@@ -97,6 +97,8 @@ Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student
         Route::get('subject/{subject}', [\App\Http\Controllers\Student\PurchaseController::class, 'showSubject'])->name('subject.show');
         Route::post('initiate', [\App\Http\Controllers\Student\PurchaseController::class, 'initiatePurchase'])->name('initiate');
         Route::delete('{purchase}/cancel', [\App\Http\Controllers\Student\PurchaseController::class, 'cancelPending'])->name('cancel');
+        Route::get('prepare-class/{class}/fragment', [\App\Http\Controllers\Student\PurchaseController::class, 'prepareClassPaymentFragment'])->name('prepare-class.fragment');
+        Route::get('prepare-subject/{subject}/fragment', [\App\Http\Controllers\Student\PurchaseController::class, 'prepareSubjectPaymentFragment'])->name('prepare-subject.fragment');
         Route::get('payment/{purchase}/fragment', [\App\Http\Controllers\Student\PurchaseController::class, 'paymentFragment'])->name('payment.fragment');
         Route::get('payment/{purchase}', [\App\Http\Controllers\Student\PurchaseController::class, 'showPayment'])->name('payment');
         Route::post('payment/{purchase}', [\App\Http\Controllers\Student\PurchaseController::class, 'processPayment'])->name('process-payment');

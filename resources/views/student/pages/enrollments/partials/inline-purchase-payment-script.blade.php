@@ -11,6 +11,44 @@
         return q ? (base + '?' + q) : base;
     };
 
+    window.EnrollmentInlinePurchase.prepareClassFragmentUrl = function (classId, queryParams) {
+        var base = '/student/purchases/prepare-class/' + encodeURIComponent(classId) + '/fragment';
+        if (!queryParams || typeof queryParams !== 'object') {
+            return base;
+        }
+        var params = Object.assign({}, queryParams);
+        delete params.purchase_type;
+        delete params.class_id;
+        var q = new URLSearchParams(params).toString();
+        return q ? (base + '?' + q) : base;
+    };
+
+    window.EnrollmentInlinePurchase.prepareSubjectFragmentUrl = function (subjectId, queryParams) {
+        var base = '/student/purchases/prepare-subject/' + encodeURIComponent(subjectId) + '/fragment';
+        if (!queryParams || typeof queryParams !== 'object') {
+            return base;
+        }
+        var params = Object.assign({}, queryParams);
+        delete params.purchase_type;
+        delete params.subject_id;
+        var q = new URLSearchParams(params).toString();
+        return q ? (base + '?' + q) : base;
+    };
+
+    window.EnrollmentInlinePurchase.resolveFragmentUrl = function (purchaseId, queryParams) {
+        queryParams = queryParams || {};
+        if (queryParams.purchase_type === 'class' && queryParams.class_id) {
+            return window.EnrollmentInlinePurchase.prepareClassFragmentUrl(queryParams.class_id, queryParams);
+        }
+        if (queryParams.purchase_type === 'subject' && queryParams.subject_id) {
+            return window.EnrollmentInlinePurchase.prepareSubjectFragmentUrl(queryParams.subject_id, queryParams);
+        }
+        if (purchaseId) {
+            return window.EnrollmentInlinePurchase.fragmentUrl(purchaseId, queryParams);
+        }
+        return null;
+    };
+
     window.EnrollmentInlinePurchase.showPaymentPendingModal = function (message, redirectUrl) {
         var modalEl = document.getElementById('paymentPendingReviewModal');
         var messageEl = document.getElementById('paymentPendingReviewModalMessage');
@@ -125,8 +163,13 @@
     };
 
     window.EnrollmentInlinePurchase.openPaymentModal = function (modalEl, bodyEl, purchaseId, queryParams) {
-        var url = window.EnrollmentInlinePurchase.fragmentUrl(purchaseId, queryParams);
-        bodyEl.innerHTML = '<motion class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">جاري التحميل...</p></div>';
+        var url = window.EnrollmentInlinePurchase.resolveFragmentUrl(purchaseId, queryParams || {});
+        if (!url) {
+            bodyEl.innerHTML = '<div class="alert alert-danger m-3">تعذر تحميل نموذج الدفع.</div>';
+            return;
+        }
+
+        bodyEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">جاري التحميل...</p></div>';
 
         var modal = bootstrap.Modal.getInstance(modalEl);
         if (!modal) {

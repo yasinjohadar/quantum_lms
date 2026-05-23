@@ -222,6 +222,74 @@ class PurchaseController extends Controller
     }
 
     /**
+     * تحضير شراء الصف وعرض جزء HTML لنموذج الدفع (عند فتح نافذة الدفع من الانضمام).
+     */
+    public function prepareClassPaymentFragment(Request $request, SchoolClass $class)
+    {
+        $user = Auth::user();
+        $class = SchoolClass::with(['subjects' => fn ($q) => $q->where('is_active', true)])
+            ->where('is_active', true)
+            ->findOrFail($class->id);
+
+        if ($class->subjects->isEmpty()) {
+            abort(404);
+        }
+
+        if (! $class->classJoinRequiresPayment($request->filled('currency_id') ? (int) $request->currency_id : null)) {
+            abort(403);
+        }
+
+        $completed = Purchase::query()
+            ->where('user_id', $user->id)
+            ->where('purchasable_type', SchoolClass::class)
+            ->where('purchasable_id', $class->id)
+            ->where('status', 'completed')
+            ->exists();
+
+        if ($completed) {
+            abort(403);
+        }
+
+        $currencyId = $request->filled('currency_id') ? (int) $request->currency_id : null;
+        $purchase = $this->purchaseService->resolveOrCreatePendingPurchase($user, $class, 'class', $currencyId);
+
+        return $this->renderPaymentFragment($request, $purchase);
+    }
+
+    /**
+     * تحضير شراء المادة وعرض جزء HTML لنموذج الدفع.
+     */
+    public function prepareSubjectPaymentFragment(Request $request, Subject $subject)
+    {
+        $user = Auth::user();
+        $subject = Subject::with('schoolClass')
+            ->where('is_active', true)
+            ->findOrFail($subject->id);
+
+        $currencyId = $request->filled('currency_id') ? (int) $request->currency_id : null;
+        $access = $this->pricingResolver->resolveSubjectAccessData($subject, $user, $currencyId);
+
+        if ($access->isEffectivelyFree || $access->effectivePrice <= 0) {
+            abort(403);
+        }
+
+        $completed = Purchase::query()
+            ->where('user_id', $user->id)
+            ->where('purchasable_type', Subject::class)
+            ->where('purchasable_id', $subject->id)
+            ->where('status', 'completed')
+            ->exists();
+
+        if ($completed) {
+            abort(403);
+        }
+
+        $purchase = $this->purchaseService->resolveOrCreatePendingPurchase($user, $subject, 'subject', $currencyId);
+
+        return $this->renderPaymentFragment($request, $purchase);
+    }
+
+    /**
      * جزء HTML لنموذج الدفع (مثلاً داخل نافذة طلب الانضمام).
      */
     public function paymentFragment(Request $request, Purchase $purchase)
@@ -235,6 +303,15 @@ class PurchaseController extends Controller
             abort(403);
         }
 
+        return $this->renderPaymentFragment($request, $purchase);
+    }
+
+    /**
+     * @return \Illuminate\Http\Response
+     */
+    private function renderPaymentFragment(Request $request, Purchase $purchase)
+    {
+        $user = Auth::user();
         $purchase->load(['purchasable']);
 
         $return = $request->query('return', 'classes');
@@ -244,6 +321,10 @@ class PurchaseController extends Controller
         }
 
         $classId = (int) $request->query('class_id', 0);
+        if ($classId === 0 && $purchase->purchase_type === 'class' && $purchase->purchasable) {
+            $classId = (int) $purchase->purchasable_id;
+        }
+
         $afterSuccessUrl = match ($return) {
             'enrollments' => route('student.enrollments.index'),
             'class' => $classId > 0 ? route('student.enrollments.class.show', $classId) : route('student.enrollments.index'),

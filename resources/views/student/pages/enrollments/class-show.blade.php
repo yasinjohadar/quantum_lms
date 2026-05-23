@@ -64,7 +64,7 @@
                                 طلب الصف قيد المراجعة
                             </span>
                         @elseif($class->subjects->isNotEmpty())
-                            <button class="btn btn-primary btn-sm" onclick="requestClassEnrollment({{ $class->id }}, '{{ addslashes($class->name) }}')" type="button">
+                            <button class="btn btn-primary btn-sm" onclick="requestClassEnrollment({{ $class->id }}, '{{ addslashes($class->name) }}', {{ $class->classJoinRequiresPayment() ? 'true' : 'false' }})" type="button">
                                 <i class="bi bi-plus-circle me-1"></i>
                                 انضمام للصف كامل
                             </button>
@@ -434,13 +434,15 @@
         })
         .then(data => {
             console.log('Response data:', data);
-            if (data.success && data.requires_payment && data.purchase_id) {
+            if (data.success && data.requires_payment) {
                 var payModalEl = document.getElementById('enrollmentPaymentModal');
                 var payBody = document.getElementById('enrollmentPaymentModalBody');
                 if (typeof window.EnrollmentInlinePurchase !== 'undefined') {
-                    window.EnrollmentInlinePurchase.openPaymentModal(payModalEl, payBody, data.purchase_id, {
+                    window.EnrollmentInlinePurchase.openPaymentModal(payModalEl, payBody, data.purchase_id || null, {
                         return: 'class',
-                        class_id: {{ (int) $class->id }}
+                        purchase_type: data.purchase_type || 'subject',
+                        subject_id: data.subject_id || subjectId,
+                        class_id: {{ (int) $class->id }},
                     });
                 }
                 if (button) {
@@ -476,17 +478,21 @@
         });
     }
     
-    function requestClassEnrollment(classId, className) {
+    function requestClassEnrollment(classId, className, requiresPayment) {
         console.log('requestClassEnrollment called with:', classId, className);
         
         pendingClassId = classId;
         pendingClassName = className;
         currentButton = event.target;
         
-        // تحديث رسالة المودال
         const messageEl = document.getElementById('confirmClassEnrollmentModalMessage');
         if (messageEl) {
-            messageEl.textContent = 'هل أنت متأكد من طلب الانضمام لجميع مواد صف "' + className + '"؟';
+            if (requiresPayment) {
+                messageEl.innerHTML = 'لإتمام الانضمام لصف <strong>' + className + '</strong> يجب دفع الرسوم ورفع الإيصال. ' +
+                    'يُرسل طلبك للإدارة <strong>بعد</strong> تأكيد الدفع وليس عند الضغط على التالي.';
+            } else {
+                messageEl.textContent = 'هل أنت متأكد من طلب الانضمام لجميع مواد صف "' + className + '"؟';
+            }
         }
         
         // إظهار المودال
@@ -531,13 +537,14 @@
         })
         .then(data => {
             console.log('Response data:', data);
-            if (data.success && data.requires_payment && data.purchase_id) {
+            if (data.success && data.requires_payment) {
                 var payModalEl = document.getElementById('enrollmentPaymentModal');
                 var payBody = document.getElementById('enrollmentPaymentModalBody');
                 if (typeof window.EnrollmentInlinePurchase !== 'undefined') {
-                    window.EnrollmentInlinePurchase.openPaymentModal(payModalEl, payBody, data.purchase_id, {
+                    window.EnrollmentInlinePurchase.openPaymentModal(payModalEl, payBody, data.purchase_id || null, {
                         return: 'class',
-                        class_id: {{ (int) $class->id }}
+                        purchase_type: data.purchase_type || 'class',
+                        class_id: data.class_id || classId,
                     });
                 }
                 if (button) {

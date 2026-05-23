@@ -7,6 +7,7 @@ use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\Enrollment;
 use App\Models\Stage;
+use App\Models\Payment;
 use App\Models\Purchase;
 use App\Models\User;
 use App\Models\ClassEnrollment;
@@ -304,20 +305,17 @@ class StudentEnrollmentController extends Controller
             $access = $this->pricingResolver->resolveSubjectAccessData($subject, $user, $currencyId);
 
             if (! $access->isEffectivelyFree && $access->effectivePrice > 0) {
-                $purchase = $this->resolveOrCreatePendingPurchase($user, $subject, 'subject', $currencyId);
-
-                if ($purchase->status === 'completed') {
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'تم التسجيل في المادة بنجاح',
-                    ]);
+                $paymentBlock = $this->subjectPaymentBlockResponse($user, $subject);
+                if ($paymentBlock) {
+                    return $paymentBlock;
                 }
 
                 return response()->json([
                     'success' => true,
                     'requires_payment' => true,
-                    'purchase_id' => $purchase->id,
-                    'message' => 'أكمل الدفع لإتمام التسجيل في المادة.',
+                    'subject_id' => $subject->id,
+                    'purchase_type' => 'subject',
+                    'message' => 'أكمل الدفع وارفع الإيصال لإرسال طلبك للإدارة.',
                 ]);
             }
 
@@ -426,6 +424,21 @@ class StudentEnrollmentController extends Controller
                 ], 400);
             }
 
+            if ($class->classJoinRequiresPayment($currencyId)) {
+                $paymentBlock = $this->classPaymentBlockResponse($user, $class, $currencyId);
+                if ($paymentBlock) {
+                    return $paymentBlock;
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'requires_payment' => true,
+                    'class_id' => $class->id,
+                    'purchase_type' => 'class',
+                    'message' => 'أكمل الدفع وارفع الإيصال لإرسال طلبك للإدارة.',
+                ]);
+            }
+
             // مع softDeletes: قد يبقى سطر محذوف ناعماً فيقاطع الـ INSERT بسبب unique (user_id, class_id)
             $existingClassEnrollment = ClassEnrollment::withTrashed()
                 ->where('user_id', $user->id)
@@ -465,24 +478,6 @@ class StudentEnrollmentController extends Controller
                         'message' => 'تم إرسال طلب الانضمام من جديد وهو قيد مراجعة الإدارة.',
                     ]);
                 }
-            }
-
-            if ($class->classJoinRequiresPayment()) {
-                $purchase = $this->resolveOrCreatePendingPurchase($user, $class, 'class', $currencyId);
-
-                if ($purchase->status === 'completed') {
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'تم التسجيل في الصف بنجاح',
-                    ]);
-                }
-
-                return response()->json([
-                    'success' => true,
-                    'requires_payment' => true,
-                    'purchase_id' => $purchase->id,
-                    'message' => 'أكمل الدفع لإتمام التسجيل في الصف.',
-                ]);
             }
 
             if (! $class->effectiveFreeJoinAutoApprove()) {
@@ -536,21 +531,64 @@ class StudentEnrollmentController extends Controller
     }
 
     /**
-     * إنشاء شراء معلّق أو إعادة استخدام شراء معلّق لنفس العنصر (صف/مادة) لإكمال الدفع من واجهة الانضمام.
+     * منع تكرار طلب الدفع أو إرجاع رسالة عند وجود دفع قيد المراجعة (صف).
      */
-    private function resolveOrCreatePendingPurchase(User $user, object $purchasable, string $purchaseType, ?int $currencyId): Purchase
+    private function classPaymentBlockResponse(User $user, SchoolClass $class, ?int $currencyId): ?\Illuminate\Http\JsonResponse
     {
-        $pending = Purchase::query()
+        $pendingPurchase = Purchase::query()
             ->where('user_id', $user->id)
-            ->where('purchasable_type', $purchasable::class)
-            ->where('purchasable_id', $purchasable->id)
+            ->where('purchasable_type', SchoolClass::class)
+            ->where('purchasable_id', $class->id)
             ->where('status', 'pending')
             ->first();
 
-        if ($pending) {
-            return $pending;
+        if (! $pendingPurchase) {
+            return null;
         }
 
-        return $this->purchaseService->createPurchase($user, $purchasable, $purchaseType, $currencyId);
+        $hasPendingPayment = Payment::query()
+            ->where('purchase_id', $pendingPurchase->id)
+            ->where('status', 'pending')
+            ->exists();
+
+        if ($hasPendingPayment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لديك طلب دفع لهذا الصف قيد مراجعة الإدارة. يرجى انتظار الموافقة.',
+            ], 400);
+        }
+
+        return null;
+    }
+
+    /**
+     * منع تكرار طلب الدفع أو إرجاع رسالة عند وجود دفع قيد المراجعة (مادة).
+     */
+    private function subjectPaymentBlockResponse(User $user, Subject $subject): ?\Illuminate\Http\JsonResponse
+    {
+        $pendingPurchase = Purchase::query()
+            ->where('user_id', $user->id)
+            ->where('purchasable_type', Subject::class)
+            ->where('purchasable_id', $subject->id)
+            ->where('status', 'pending')
+            ->first();
+
+        if (! $pendingPurchase) {
+            return null;
+        }
+
+        $hasPendingPayment = Payment::query()
+            ->where('purchase_id', $pendingPurchase->id)
+            ->where('status', 'pending')
+            ->exists();
+
+        if ($hasPendingPayment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لديك طلب دفع لهذه المادة قيد مراجعة الإدارة. يرجى انتظار الموافقة.',
+            ], 400);
+        }
+
+        return null;
     }
 }

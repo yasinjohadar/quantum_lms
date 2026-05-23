@@ -76,7 +76,7 @@
                                                             قيد المراجعة
                                                         </button>
                                                     @else
-                                                        <button class="btn btn-primary btn-sm" onclick="requestClassEnrollment({{ $class->id }}, '{{ addslashes($class->name) }}')" type="button">
+                                                        <button class="btn btn-primary btn-sm" onclick="requestClassEnrollment({{ $class->id }}, '{{ addslashes($class->name) }}', {{ $class->classJoinRequiresPayment() ? 'true' : 'false' }})" type="button">
                                                             <i class="bi bi-plus-circle me-1"></i>
                                                             انضم للصف
                                                         </button>
@@ -127,7 +127,7 @@
                     </div>
                 </div>
                 <h5 class="modal-title mb-3" id="confirmClassEnrollmentModalLabel">طلب الانضمام للصف</h5>
-                <p class="text-muted mb-4">
+                <p class="text-muted mb-4" id="confirmClassEnrollmentModalMessage">
                     هل تريد طلب الانضمام لجميع المواد في صف <strong id="classNameInModal"></strong>؟
                 </p>
                 <div class="d-flex gap-2 justify-content-center">
@@ -165,9 +165,16 @@
 <script>
     let pendingClassId = null;
     
-    function requestClassEnrollment(classId, className) {
+    function requestClassEnrollment(classId, className, requiresPayment) {
         pendingClassId = classId;
         document.getElementById('classNameInModal').textContent = className;
+        var msgEl = document.getElementById('confirmClassEnrollmentModalMessage');
+        if (requiresPayment) {
+            msgEl.innerHTML = 'لإتمام الانضمام لصف <strong>' + className + '</strong> يجب دفع الرسوم ورفع الإيصال. ' +
+                'يُرسل طلبك للإدارة <strong>بعد</strong> تأكيد الدفع وليس عند الضغط على التالي.';
+        } else {
+            msgEl.innerHTML = 'هل تريد طلب الانضمام لجميع المواد في صف <strong>' + className + '</strong>؟';
+        }
         var modal = new bootstrap.Modal(document.getElementById('confirmClassEnrollmentModal'));
         modal.show();
     }
@@ -193,10 +200,14 @@
                 confirmModal.hide();
             }
 
-            if (data.success && data.requires_payment && data.purchase_id) {
+            if (data.success && data.requires_payment) {
                 var payModalEl = document.getElementById('classEnrollmentPaymentModal');
                 var payBody = document.getElementById('classEnrollmentPaymentModalBody');
-                window.EnrollmentInlinePurchase.openPaymentModal(payModalEl, payBody, data.purchase_id, { return: 'enrollments' });
+                window.EnrollmentInlinePurchase.openPaymentModal(payModalEl, payBody, data.purchase_id || null, {
+                    return: 'enrollments',
+                    purchase_type: data.purchase_type || 'class',
+                    class_id: data.class_id || pendingClassId,
+                });
                 return;
             }
 

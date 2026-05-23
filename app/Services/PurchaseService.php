@@ -47,6 +47,25 @@ class PurchaseService
     }
 
     /**
+     * إنشاء شراء معلّق أو إعادة استخدام شراء معلّق لنفس العنصر (صف/مادة).
+     */
+    public function resolveOrCreatePendingPurchase(User $user, object $purchasable, string $purchaseType, ?int $currencyId = null): Purchase
+    {
+        $pending = Purchase::query()
+            ->where('user_id', $user->id)
+            ->where('purchasable_type', $purchasable::class)
+            ->where('purchasable_id', $purchasable->id)
+            ->where('status', 'pending')
+            ->first();
+
+        if ($pending) {
+            return $pending;
+        }
+
+        return $this->createPurchase($user, $purchasable, $purchaseType, $currencyId);
+    }
+
+    /**
      * إنشاء شراء جديد
      */
     public function createPurchase(User $user, $purchasable, string $type, $currencyId = null): Purchase
