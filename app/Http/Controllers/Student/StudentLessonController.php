@@ -252,7 +252,9 @@ class StudentLessonController extends Controller
                     $query->orderBy('order');
                 },
                 'questions' => function ($query) {
-                    $query->where('is_active', true)->orderBy('created_at', 'desc');
+                    $query->where('is_active', true)
+                        ->forStudentUnitPractice()
+                        ->orderBy('created_at', 'desc');
                 },
             ])
             ->firstOrFail();

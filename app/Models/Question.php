@@ -331,6 +331,14 @@ class Question extends Model
         return $query->whereDoesntHave('units');
     }
 
+    /**
+     * أسئلة تُعرض للطالب تحت الدروس في صفحة الوحدة (ليست أسئلة بنك المادة).
+     */
+    public function scopeForStudentUnitPractice($query)
+    {
+        return $query->whereNull('subject_id');
+    }
+
     public function scopeSearch($query, $search)
     {
         return $query->where(function ($q) use ($search) {
