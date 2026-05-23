@@ -108,6 +108,47 @@
             });
         }
 
+        var pinStorageKey = 'rolePermissionsSummaryPinned';
+        var summaryPanel = document.getElementById('role-permissions-summary-panel');
+        var pinToggleBtn = document.getElementById('role-permissions-pin-toggle');
+        var pinToggleLabel = document.getElementById('role-permissions-pin-toggle-label');
+        var pinToggleIcon = document.getElementById('role-permissions-pin-toggle-icon');
+
+        function applySummaryPinState(isPinned) {
+            if (!summaryPanel) {
+                return;
+            }
+            summaryPanel.classList.toggle('is-pinned', isPinned);
+            if (pinToggleBtn) {
+                pinToggleBtn.setAttribute('aria-pressed', isPinned ? 'true' : 'false');
+                pinToggleBtn.setAttribute('title', isPinned
+                    ? 'إلغاء تثبيت الملخص أعلى الصفحة'
+                    : 'تثبيت الملخص أعلى الصفحة عند التمرير');
+            }
+            if (pinToggleLabel) {
+                pinToggleLabel.textContent = isPinned ? 'إلغاء التثبيت' : 'تثبيت الملخص';
+            }
+            if (pinToggleIcon) {
+                pinToggleIcon.className = isPinned ? 'bi bi-pin-angle-fill' : 'bi bi-pin-angle';
+            }
+        }
+
+        if (summaryPanel && pinToggleBtn) {
+            var storedPin = localStorage.getItem(pinStorageKey);
+            var isPinned = storedPin === null ? true : storedPin === '1';
+            applySummaryPinState(isPinned);
+
+            pinToggleBtn.addEventListener('click', function () {
+                var nextPinned = !summaryPanel.classList.contains('is-pinned');
+                applySummaryPinState(nextPinned);
+                try {
+                    localStorage.setItem(pinStorageKey, nextPinned ? '1' : '0');
+                } catch (e) {
+                    /* تجاهل إن كان التخزين غير متاح */
+                }
+            });
+        }
+
         refreshRolePermissionSummary();
 
         var searchInput = document.getElementById('permissionSearch');

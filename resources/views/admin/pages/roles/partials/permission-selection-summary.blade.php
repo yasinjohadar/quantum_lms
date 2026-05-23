@@ -1,20 +1,22 @@
 {{-- ملخص الصلاحيات المحددة (يُحدَّث عبر JavaScript) --}}
 <style>
-    /* يبقى ملخص الصلاحيات ظاهراً أعلى منطقة العرض عند التمرير */
+    /* التثبيت اختياري عبر class is-pinned (زر التبديل) */
     /* top ≈ هامش .app-content تحت الهيدر الثابت (3.85rem) + هامش بسيط */
     #role-permissions-summary-panel {
+        background-color: var(--bs-body-bg, #fff);
+    }
+    #role-permissions-summary-panel.is-pinned {
         position: sticky;
         top: 4.25rem;
         z-index: 99;
-        background-color: var(--bs-body-bg, #fff);
         box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.08);
     }
     #role-permissions-summary-panel .card-header,
     #role-permissions-summary-panel .card-body {
         background-color: var(--bs-card-bg, var(--bs-body-bg, #fff));
     }
-    [data-theme-mode="dark"] #role-permissions-summary-panel,
-    [data-bs-theme="dark"] #role-permissions-summary-panel {
+    [data-theme-mode="dark"] #role-permissions-summary-panel.is-pinned,
+    [data-bs-theme="dark"] #role-permissions-summary-panel.is-pinned {
         box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.35);
     }
     [data-theme-mode="dark"] #role-permissions-summary-panel .card-header,
@@ -65,13 +67,23 @@
         flex: 1 1 auto;
     }
 </style>
-<div class="card mb-3 border-info border-opacity-50" id="role-permissions-summary-panel">
+<div class="card mb-3 border-info border-opacity-50 is-pinned" id="role-permissions-summary-panel">
     <div class="card-header py-2 d-flex flex-wrap align-items-center gap-2">
         <span class="fw-semibold">ملخص الصلاحيات المحددة</span>
         <span class="badge bg-primary" id="role-permissions-summary-count">0</span>
-        <button type="button" class="btn btn-sm btn-outline-danger ms-auto" id="role-permissions-deselect-all">
-            إلغاء تحديد الكل
-        </button>
+        <div class="d-flex flex-wrap align-items-center gap-2 ms-auto">
+            <button type="button"
+                class="btn btn-sm btn-outline-secondary"
+                id="role-permissions-pin-toggle"
+                aria-pressed="true"
+                title="إلغاء تثبيت الملخص أعلى الصفحة">
+                <i class="bi bi-pin-angle-fill" id="role-permissions-pin-toggle-icon" aria-hidden="true"></i>
+                <span id="role-permissions-pin-toggle-label">إلغاء التثبيت</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger" id="role-permissions-deselect-all">
+                إلغاء تحديد الكل
+            </button>
+        </div>
     </div>
     <div class="card-body py-3">
         <p class="text-muted small mb-2 mb-0" id="role-permissions-summary-empty">لم يتم تحديد أي صلاحية بعد.</p>
