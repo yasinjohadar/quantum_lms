@@ -11,6 +11,7 @@ use App\Models\Question;
 use App\Models\Quiz;
 use App\Models\QuizQuestion;
 use App\Models\SchoolClass;
+use App\Models\Stage;
 use App\Models\Subject;
 use App\Models\SubjectSection;
 use App\Models\Unit;
@@ -44,6 +45,7 @@ class QuizController extends Controller
         $this->middleware(['permission:quiz-results'])->only('results');
         $this->middleware(['permission:quiz-export-results'])->only('exportResults');
         $this->middleware(['permission:quiz-get-subjects-by-class'])->only('getSubjectsByClass');
+        $this->middleware(['permission:quiz-get-classes-by-stage'])->only('getClassesByStage');
         $this->middleware(['permission:quiz-get-units'])->only('getUnits');
         $this->middleware(['permission:quiz-approve-review'])->only('approveReview');
         $this->middleware(['permission:quiz-reject-review'])->only('rejectReview');
@@ -138,8 +140,10 @@ class QuizController extends Controller
      */
     public function create(Request $request)
     {
-        $subjects = Subject::with('schoolClass')->orderBy('name')->get();
+        $stages = Stage::ordered()->get();
         $units = collect();
+        $selectedStageId = null;
+        $selectedClassId = null;
 
         $selectedSubjectId = $request->get('subject_id');
         $selectedUnitId = $request->get('unit_id');
@@ -233,9 +237,16 @@ class QuizController extends Controller
                 ->with('error', 'القسم المحدد في الرابط غير موجود أو غير صالح.');
         }
 
+        if ($selectedClass) {
+            $selectedStageId = $selectedClass->stage_id;
+            $selectedClassId = $selectedClass->id;
+        }
+
         return view('admin.pages.quizzes.create', compact(
-            'subjects',
+            'stages',
             'units',
+            'selectedStageId',
+            'selectedClassId',
             'selectedSubjectId',
             'selectedUnitId',
             'selectedLessonId',
@@ -261,6 +272,7 @@ class QuizController extends Controller
 
             $data = $request->validated();
             $data['created_by'] = auth()->id();
+            $this->syncQuizSubjectFromUnit($data);
 
             // منطق المراجعة: إذا كان المستخدم معلم وليس مشرف أو مدير
             $user = auth()->user();
@@ -401,23 +413,31 @@ class QuizController extends Controller
      */
     public function edit(string $id)
     {
-        $quiz = Quiz::findOrFail($id);
+        $quiz = Quiz::with('subject.schoolClass')->findOrFail($id);
 
-        // التحقق من التخصيص
-        $user = auth()->user();
-        if ($user->usesTeacherAssignmentScope()) {
-            if (! $user->isAssignedToSubject($quiz->subject_id) &&
-                ! $user->isAssignedToClass($quiz->subject->class_id)) {
-                abort(403, 'غير مصرح لك بالوصول إلى هذا الاختبار');
-            }
-        }
+        $this->assertTeacherCanAccessQuiz($quiz);
 
-        $subjects = Subject::with('schoolClass')->orderBy('name')->get();
-        $units = Unit::whereHas('section', function ($q) use ($quiz) {
-            $q->where('subject_id', $quiz->subject_id);
-        })->orderBy('title')->get();
+        $stages = Stage::ordered()->get();
+        $selectedStageId = $quiz->subject?->schoolClass?->stage_id;
+        $selectedClassId = $quiz->subject?->schoolClass?->id;
+        $selectedSubjectId = $quiz->subject_id;
+        $selectedUnitId = $quiz->unit_id;
 
-        return view('admin.pages.quizzes.edit', compact('quiz', 'subjects', 'units'));
+        $units = $quiz->subject_id
+            ? Unit::whereHas('section', function ($q) use ($quiz) {
+                $q->where('subject_id', $quiz->subject_id);
+            })->orderBy('title')->get()
+            : collect();
+
+        return view('admin.pages.quizzes.edit', compact(
+            'quiz',
+            'stages',
+            'units',
+            'selectedStageId',
+            'selectedClassId',
+            'selectedSubjectId',
+            'selectedUnitId'
+        ));
     }
 
     /**
@@ -431,6 +451,7 @@ class QuizController extends Controller
             $quiz = Quiz::findOrFail($id);
             $quizBeforeUpdate = clone $quiz;
             $data = $request->validated();
+            $this->syncQuizSubjectFromUnit($data);
 
             // منطق المراجعة: إذا كان المستخدم معلم وليس مشرف أو مدير
             $user = auth()->user();
@@ -620,14 +641,7 @@ class QuizController extends Controller
         try {
             $quiz = Quiz::findOrFail($id);
 
-            // التحقق من التخصيص
-            $user = auth()->user();
-            if ($user->usesTeacherAssignmentScope()) {
-                if (! $user->isAssignedToSubject($quiz->subject_id) &&
-                    ! $user->isAssignedToClass($quiz->subject->class_id)) {
-                    abort(403, 'غير مصرح لك بالوصول إلى هذا الاختبار');
-                }
-            }
+            $this->assertTeacherCanAccessQuiz($quiz);
 
             $attemptsCount = $quiz->attempts()->count();
 
@@ -1002,23 +1016,49 @@ class QuizController extends Controller
     }
 
     /**
-     * AJAX endpoint للحصول على المواد حسب الصف
+     * AJAX endpoint للحصول على الصفوف حسب المرحلة
+     */
+    public function getClassesByStage(Request $request)
+    {
+        $request->validate([
+            'stage_id' => ['nullable', 'integer', 'exists:stages,id'],
+        ]);
+
+        $query = SchoolClass::query()->active()->ordered();
+
+        if ($request->filled('stage_id')) {
+            $query->where('stage_id', $request->input('stage_id'));
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $query->get(['id', 'name', 'stage_id']),
+        ]);
+    }
+
+    /**
+     * AJAX endpoint للحصول على المواد حسب الصف أو المرحلة
      */
     public function getSubjectsByClass(Request $request)
     {
         $request->validate([
-            'class_id' => 'required|exists:classes,id',
+            'class_id' => ['nullable', 'integer', 'exists:classes,id'],
+            'stage_id' => ['nullable', 'integer', 'exists:stages,id'],
         ]);
 
-        $subjects = Subject::with('schoolClass.stage')
-            ->where('class_id', $request->input('class_id'))
-            ->active()
-            ->ordered()
-            ->get();
+        $query = Subject::with('schoolClass.stage')->active()->ordered();
+
+        if ($request->filled('class_id')) {
+            $query->where('class_id', $request->input('class_id'));
+        } elseif ($request->filled('stage_id')) {
+            $query->whereHas('schoolClass', function ($q) use ($request) {
+                $q->where('stage_id', $request->input('stage_id'));
+            });
+        }
 
         return response()->json([
             'success' => true,
-            'data' => $subjects,
+            'data' => $query->get(),
         ]);
     }
 
@@ -1149,6 +1189,10 @@ class QuizController extends Controller
      */
     public function getUnits(Request $request)
     {
+        $request->validate([
+            'subject_id' => ['required', 'integer', 'exists:subjects,id'],
+        ]);
+
         $units = Unit::whereHas('section', function ($q) use ($request) {
             $q->where('subject_id', $request->subject_id);
         })->orderBy('title')->get(['id', 'title']);
@@ -1175,11 +1219,7 @@ class QuizController extends Controller
                 return redirect()->back()->with('error', 'لا يمكن إرسال اختبار بدون أسئلة للمراجعة');
             }
 
-            // التحقق من التخصيص
-            if (! $user->isAssignedToSubject($quiz->subject_id) &&
-                ! $user->isAssignedToClass($quiz->subject->class_id)) {
-                abort(403, 'غير مصرح لك بالوصول إلى هذا الاختبار');
-            }
+            $this->assertTeacherCanAccessQuiz($quiz);
 
             $quiz->update([
                 'review_status' => Quiz::REVIEW_STATUS_PENDING,
@@ -1286,6 +1326,35 @@ class QuizController extends Controller
             Log::error('Error rejecting quiz review: '.$e->getMessage());
 
             return redirect()->back()->with('error', 'حدث خطأ أثناء رفض نشر الاختبار');
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function syncQuizSubjectFromUnit(array &$data): void
+    {
+        if (empty($data['subject_id']) && ! empty($data['unit_id'])) {
+            $data['subject_id'] = Unit::query()
+                ->whereKey($data['unit_id'])
+                ->join('subject_sections', 'subject_sections.id', '=', 'units.section_id')
+                ->value('subject_sections.subject_id');
+        }
+    }
+
+    protected function assertTeacherCanAccessQuiz(Quiz $quiz): void
+    {
+        $user = auth()->user();
+
+        if (! $user->usesTeacherAssignmentScope() || ! $quiz->subject_id) {
+            return;
+        }
+
+        $classId = $quiz->subject?->class_id;
+
+        if (! $user->isAssignedToSubject($quiz->subject_id) &&
+            (! $classId || ! $user->isAssignedToClass($classId))) {
+            abort(403, 'غير مصرح لك بالوصول إلى هذا الاختبار');
         }
     }
 }

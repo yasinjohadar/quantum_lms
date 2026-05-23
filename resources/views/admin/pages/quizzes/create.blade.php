@@ -50,11 +50,10 @@
                         <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i> المعلومات الأساسية</h6>
                     </div>
                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">المادة <span class="text-danger">*</span></label>
-                                @if($isFromSubjectOrUnit && $selectedSubject)
-                                    {{-- عرض معلومات المادة للقراءة فقط --}}
+                        @if($isFromSubjectOrUnit && $selectedSubject)
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">المادة</label>
                                     <div class="form-control bg-light" style="cursor: not-allowed;">
                                         <strong>{{ $selectedSubject->name }}</strong>
                                         @if($selectedClass)
@@ -65,48 +64,41 @@
                                     <small class="text-muted d-block mt-1">
                                         <i class="fas fa-info-circle me-1"></i>المادة محددة مسبقاً ولا يمكن تغييرها
                                     </small>
-                                @else
-                                    <select name="subject_id" class="form-select" id="subjectSelect" required>
-                                        <option value="">اختر المادة</option>
-                                        @foreach($subjects as $subject)
-                                            <option value="{{ $subject->id }}" {{ (old('subject_id', $selectedSubjectId ?? '') == $subject->id) ? 'selected' : '' }}>
-                                                {{ $subject->name }}
-                                                @if($subject->schoolClass)
-                                                    ({{ $subject->schoolClass->name }})
-                                                @endif
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                @endif
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">الوحدة (اختياري)</label>
-                                @if($isFromSubjectOrUnit && $selectedUnit)
-                                    {{-- عرض معلومات الوحدة للقراءة فقط --}}
-                                    <div class="form-control bg-light" style="cursor: not-allowed;">
-                                        <strong>{{ $selectedUnit->title }}</strong>
-                                    </div>
-                                    <input type="hidden" name="unit_id" value="{{ $selectedUnit->id }}">
-                                    <small class="text-muted d-block mt-1">
-                                        <i class="fas fa-info-circle me-1"></i>الوحدة محددة مسبقاً ولا يمكن تغييرها
-                                    </small>
-                                @else
-                                    <select name="unit_id" class="form-select" id="unitSelect">
-                                        <option value="">كل الوحدات</option>
-                                        @foreach($units as $unit)
-                                            <option value="{{ $unit->id }}" {{ (old('unit_id', $selectedUnitId ?? '') == $unit->id) ? 'selected' : '' }}>
-                                                {{ $unit->title }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    @if($isFromSubjectOrUnit && $selectedSubject && !$selectedUnit)
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">الوحدة (اختياري)</label>
+                                    @if($selectedUnit)
+                                        <div class="form-control bg-light" style="cursor: not-allowed;">
+                                            <strong>{{ $selectedUnit->title }}</strong>
+                                        </div>
+                                        <input type="hidden" name="unit_id" value="{{ $selectedUnit->id }}">
                                         <small class="text-muted d-block mt-1">
-                                            <i class="fas fa-info-circle me-1"></i>اختر وحدة من المادة المحددة
+                                            <i class="fas fa-info-circle me-1"></i>الوحدة محددة مسبقاً ولا يمكن تغييرها
+                                        </small>
+                                    @else
+                                        <select name="unit_id" class="form-select" id="unitSelectLocked">
+                                            <option value="">كل الوحدات</option>
+                                            @foreach($units as $unit)
+                                                <option value="{{ $unit->id }}" {{ (old('unit_id', $selectedUnitId ?? '') == $unit->id) ? 'selected' : '' }}>
+                                                    {{ $unit->title }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <small class="text-muted d-block mt-1">
+                                            <i class="fas fa-info-circle me-1"></i>اختر وحدة من المادة المحددة (اختياري)
                                         </small>
                                     @endif
-                                @endif
+                                </div>
                             </div>
-                        </div>
+                        @else
+                            @include('admin.pages.quizzes.partials.curriculum-cascade-fields', [
+                                'stages' => $stages,
+                                'selectedStageId' => $selectedStageId ?? null,
+                                'selectedClassId' => $selectedClassId ?? null,
+                                'selectedSubjectId' => old('subject_id', $selectedSubjectId ?? ''),
+                                'selectedUnitId' => old('unit_id', $selectedUnitId ?? ''),
+                            ])
+                        @endif
 
                         {{-- نوع الاختبار (وحدة / درس) --}}
                         <div class="mb-3">
@@ -435,56 +427,16 @@
 @stop
 
 @section('js')
+@if(!($isFromSubjectOrUnit && $selectedSubject))
+    @include('admin.pages.quizzes.partials.curriculum-cascade-script', [
+        'selectedStageId' => $selectedStageId ?? null,
+        'selectedClassId' => $selectedClassId ?? null,
+        'selectedSubjectId' => old('subject_id', $selectedSubjectId ?? ''),
+        'selectedUnitId' => old('unit_id', $selectedUnitId ?? ''),
+    ])
+@endif
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const subjectSelect = document.getElementById('subjectSelect');
-    const unitSelect = document.getElementById('unitSelect');
-    
-    // التحقق من أن النموذج جاء من رابط محدد
-    const isFromSubjectOrUnit = {{ $isFromSubjectOrUnit ? 'true' : 'false' }};
-    const preselectedSubjectId = '{{ $selectedSubjectId ?? '' }}';
-    const preselectedUnitId = '{{ $selectedUnitId ?? '' }}';
-    
-    // إذا كانت المادة محددة مسبقاً، لا تضيف event listener
-    if (subjectSelect && !isFromSubjectOrUnit) {
-        subjectSelect.addEventListener('change', function() {
-            const subjectId = this.value;
-            if (unitSelect) {
-                unitSelect.innerHTML = '<option value="">جاري التحميل...</option>';
-                
-                if (!subjectId) {
-                    unitSelect.innerHTML = '<option value="">كل الوحدات</option>';
-                    return;
-                }
-                
-                fetch(`{{ route('admin.quizzes.get-units') }}?subject_id=${subjectId}`)
-                    .then(response => response.json())
-                    .then(units => {
-                        unitSelect.innerHTML = '<option value="">كل الوحدات</option>';
-                        units.forEach(unit => {
-                            const selected = (unit.id == preselectedUnitId) ? 'selected' : '';
-                            unitSelect.innerHTML += `<option value="${unit.id}" ${selected}>${unit.title}</option>`;
-                        });
-                    })
-                    .catch(() => {
-                        unitSelect.innerHTML = '<option value="">كل الوحدات</option>';
-                    });
-            }
-        });
-
-        // تحميل الوحدات إذا كانت المادة محددة (فقط إذا لم تكن الوحدات محملة مسبقاً من PHP)
-        if (subjectSelect.value && unitSelect && unitSelect.options.length <= 1) {
-            subjectSelect.dispatchEvent(new Event('change'));
-        }
-    } else if (subjectSelect && isFromSubjectOrUnit) {
-        } else if (subjectSelect && isFromSubjectOrUnit) {
-        // إذا كانت المادة محددة مسبقاً، الحقل غير موجود (تم استبداله بـ div)
-        // لا حاجة لفعل أي شيء
-    }
-    
-    // إذا كانت الوحدة محددة مسبقاً، الحقل غير موجود (تم استبداله بـ div)
-    // لا حاجة لفعل أي شيء
-
     togglePasswordField();
 });
 

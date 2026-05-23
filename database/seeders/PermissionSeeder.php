@@ -137,6 +137,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'quiz-results', 'description' => 'عرض نتائج الاختبار'],
             ['name' => 'quiz-export-results', 'description' => 'تصدير نتائج الاختبار'],
             ['name' => 'quiz-get-subjects-by-class', 'description' => 'الحصول على المواد حسب الصف'],
+            ['name' => 'quiz-get-classes-by-stage', 'description' => 'الحصول على الصفوف حسب المرحلة'],
             ['name' => 'quiz-get-units', 'description' => 'الحصول على الوحدات'],
             ['name' => 'quiz-approve-review', 'description' => 'الموافقة على نشر الاختبار'],
             ['name' => 'quiz-reject-review', 'description' => 'رفض نشر الاختبار'],

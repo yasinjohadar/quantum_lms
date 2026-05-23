@@ -50,33 +50,13 @@
                         <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i> المعلومات الأساسية</h6>
                     </div>
                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">المادة <span class="text-danger">*</span></label>
-                                <select name="subject_id" class="form-select" id="subjectSelect" required>
-                                    <option value="">اختر المادة</option>
-                                    @foreach($subjects as $subject)
-                                        <option value="{{ $subject->id }}" {{ old('subject_id', $quiz->subject_id) == $subject->id ? 'selected' : '' }}>
-                                            {{ $subject->name }}
-                                            @if($subject->schoolClass)
-                                                ({{ $subject->schoolClass->name }})
-                                            @endif
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">الوحدة (اختياري)</label>
-                                <select name="unit_id" class="form-select" id="unitSelect">
-                                    <option value="">كل الوحدات</option>
-                                    @foreach($units as $unit)
-                                        <option value="{{ $unit->id }}" {{ old('unit_id', $quiz->unit_id) == $unit->id ? 'selected' : '' }}>
-                                            {{ $unit->title }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
+                        @include('admin.pages.quizzes.partials.curriculum-cascade-fields', [
+                            'stages' => $stages,
+                            'selectedStageId' => $selectedStageId ?? null,
+                            'selectedClassId' => $selectedClassId ?? null,
+                            'selectedSubjectId' => old('subject_id', $selectedSubjectId ?? ''),
+                            'selectedUnitId' => old('unit_id', $selectedUnitId ?? ''),
+                        ])
 
                         {{-- عرض نوع الاختبار (للمعلومة فقط حالياً) --}}
                         <div class="mb-3">
@@ -398,6 +378,12 @@
 @stop
 
 @section('js')
+@include('admin.pages.quizzes.partials.curriculum-cascade-script', [
+    'selectedStageId' => $selectedStageId ?? null,
+    'selectedClassId' => $selectedClassId ?? null,
+    'selectedSubjectId' => old('subject_id', $selectedSubjectId ?? ''),
+    'selectedUnitId' => old('unit_id', $selectedUnitId ?? ''),
+])
 <script>
 function togglePasswordField() {
     const checkbox = document.getElementById('requiresPassword');

@@ -2,11 +2,14 @@
 
 namespace App\Http\Requests\Admin;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\Admin\Concerns\ValidatesQuizCurriculum;
 use App\Models\Quiz;
+use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateQuizRequest extends FormRequest
 {
+    use ValidatesQuizCurriculum;
+
     public function authorize(): bool
     {
         return true;
@@ -15,7 +18,7 @@ class UpdateQuizRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'subject_id' => ['required', 'exists:subjects,id'],
+            'subject_id' => ['nullable', 'integer', 'exists:subjects,id'],
             'unit_id' => ['nullable', 'integer', 'exists:units,id'],
             'section_id' => ['nullable', 'integer', 'exists:subject_sections,id'],
             'lesson_id' => ['nullable', 'integer', 'exists:lessons,id'],
@@ -24,54 +27,56 @@ class UpdateQuizRequest extends FormRequest
             'instructions' => ['nullable', 'string'],
             'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:5120'],
             'remove_image' => ['nullable', 'boolean'],
-            
+
             // إعدادات الوقت
             'duration_minutes' => ['nullable', 'integer', 'min:1', 'max:600'],
             'show_timer' => ['nullable', 'boolean'],
             'auto_submit' => ['nullable', 'boolean'],
-            
+
             // إعدادات المحاولات
             'max_attempts' => ['nullable', 'integer', 'min:0', 'max:100'],
             'delay_between_attempts' => ['nullable', 'integer', 'min:0'],
-            
+
             // إعدادات التقييم
             'pass_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
-            'grading_method' => ['required', 'string', 'in:' . implode(',', array_keys(Quiz::GRADING_METHODS))],
-            
+            'grading_method' => ['required', 'string', 'in:'.implode(',', array_keys(Quiz::GRADING_METHODS))],
+
             // إعدادات العرض
             'shuffle_questions' => ['nullable', 'boolean'],
             'shuffle_options' => ['nullable', 'boolean'],
             'questions_per_page' => ['nullable', 'integer', 'min:0'],
             'allow_back_navigation' => ['nullable', 'boolean'],
-            
+
             // إعدادات النتائج
             'show_result_immediately' => ['nullable', 'boolean'],
             'show_correct_answers' => ['nullable', 'boolean'],
             'show_explanation' => ['nullable', 'boolean'],
             'show_points_per_question' => ['nullable', 'boolean'],
-            'review_options' => ['required', 'string', 'in:' . implode(',', array_keys(Quiz::REVIEW_OPTIONS))],
-            
+            'review_options' => ['required', 'string', 'in:'.implode(',', array_keys(Quiz::REVIEW_OPTIONS))],
+
             // الجدولة
             'available_from' => ['nullable', 'date'],
             'available_to' => ['nullable', 'date', 'after_or_equal:available_from'],
-            
+
             // الحالة
             'is_active' => ['nullable', 'boolean'],
             'is_published' => ['nullable', 'boolean'],
             'requires_password' => ['nullable', 'boolean'],
             'password' => ['nullable', 'string', 'min:4', 'max:50'],
-            
+
             // إعدادات إضافية
             'require_webcam' => ['nullable', 'boolean'],
             'prevent_copy_paste' => ['nullable', 'boolean'],
             'fullscreen_required' => ['nullable', 'boolean'],
-            
+
             'order' => ['nullable', 'integer', 'min:0'],
         ];
     }
 
     protected function prepareForValidation(): void
     {
+        $this->prepareQuizCurriculumForValidation();
+
         $this->merge([
             'show_timer' => $this->boolean('show_timer'),
             'auto_submit' => $this->boolean('auto_submit'),
@@ -91,10 +96,14 @@ class UpdateQuizRequest extends FormRequest
         ]);
     }
 
+    public function withValidator($validator): void
+    {
+        $this->withQuizCurriculumValidator($validator);
+    }
+
     public function messages(): array
     {
         return [
-            'subject_id.required' => 'المادة مطلوبة',
             'subject_id.exists' => 'المادة غير موجودة',
             'title.required' => 'عنوان الاختبار مطلوب',
             'title.max' => 'عنوان الاختبار يجب ألا يتجاوز 255 حرف',
@@ -108,4 +117,3 @@ class UpdateQuizRequest extends FormRequest
         ];
     }
 }
-

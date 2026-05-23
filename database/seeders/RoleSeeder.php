@@ -54,7 +54,7 @@ class RoleSeeder extends Seeder
             'quiz-questions', 'quiz-add-question', 'quiz-remove-question',
             'quiz-reorder-questions', 'quiz-update-question-points', 'quiz-duplicate',
             'quiz-toggle-publish', 'quiz-preview', 'quiz-results', 'quiz-export-results',
-            'quiz-get-subjects-by-class', 'quiz-get-units',
+            'quiz-get-subjects-by-class', 'quiz-get-classes-by-stage', 'quiz-get-units',
             'quiz-approve-review', 'quiz-reject-review',
             
             // صلاحيات إدارة محاولات الاختبارات
@@ -192,6 +192,7 @@ class RoleSeeder extends Seeder
             'quiz-toggle-publish',
             'quiz-preview',
             'quiz-get-subjects-by-class',
+            'quiz-get-classes-by-stage',
             'quiz-get-units',
             'quiz-submit-for-review',
             'question-list',

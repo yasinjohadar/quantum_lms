@@ -361,6 +361,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
 
         // الاختبارات
         // يجب أن يكون هذا الـ route قبل Route::resource لتجنب التعارض مع quizzes/{quiz}
+        Route::get('quizzes/get-classes-by-stage', [QuizController::class, 'getClassesByStage'])
+            ->name('quizzes.get-classes-by-stage');
         Route::get('quizzes/get-subjects-by-class', [QuizController::class, 'getSubjectsByClass'])
             ->name('quizzes.get-subjects-by-class');
         Route::post('sections/{section}/quizzes', [QuizController::class, 'storeForSection'])

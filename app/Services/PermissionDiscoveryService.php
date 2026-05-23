@@ -182,6 +182,8 @@ class PermissionDiscoveryService
             'search-students' => 'البحث عن الطلاب',
             'getSubjectsByClass' => 'الحصول على المواد حسب الصف',
             'get-subjects-by-class' => 'الحصول على المواد حسب الصف',
+            'getClassesByStage' => 'الحصول على الصفوف حسب المرحلة',
+            'get-classes-by-stage' => 'الحصول على الصفوف حسب المرحلة',
             'getUnits' => 'الحصول على الوحدات',
             'get-units' => 'الحصول على الوحدات',
             'review' => 'مراجعة',
