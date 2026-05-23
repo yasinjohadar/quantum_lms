@@ -24,6 +24,7 @@ readonly class SubjectAccessData
         public ?Currency $currency,
         public float $oldPrice,
         public bool $isEffectivelyFree,
+        public string $priceDisplayMode = 'hidden',
     ) {
     }
 
@@ -51,6 +52,7 @@ readonly class SubjectAccessData
             ] : null,
             'old_price' => $this->oldPrice,
             'is_effectively_free' => $this->isEffectivelyFree,
+            'price_display_mode' => $this->priceDisplayMode,
         ];
     }
 

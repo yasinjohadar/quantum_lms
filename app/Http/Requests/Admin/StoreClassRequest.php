@@ -34,6 +34,8 @@ class StoreClassRequest extends FormRequest
             'price' => ['nullable', 'numeric', 'min:0'],
             'is_free' => ['nullable', 'boolean'],
             'show_price' => ['nullable', 'boolean'],
+            'use_custom_price_label' => ['nullable', 'boolean'],
+            'custom_price_label' => ['nullable', 'string', 'max:100'],
             'allow_subjects_purchase' => ['nullable', 'boolean'],
             'free_join_auto_approve' => ['nullable', 'boolean'],
             'default_currency_id' => ['nullable', 'integer', 'exists:currencies,id'],

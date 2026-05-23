@@ -336,6 +336,24 @@
                                     </small>
                                 </div>
                             </div>
+
+                            <div class="row g-3 mt-2" id="custom_price_label_wrapper_subject">
+                                <div class="col-lg-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="use_custom_price_label"
+                                               id="use_custom_price_label_subject" value="1"
+                                               {{ old('use_custom_price_label') ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="use_custom_price_label_subject">عرض كلمة بدل السعر</label>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4">
+                                    <label for="custom_price_label_input_subject" class="form-label">الكلمة المعروضة</label>
+                                    <input type="text" class="form-control" name="custom_price_label"
+                                           id="custom_price_label_input_subject" maxlength="100"
+                                           value="{{ old('custom_price_label', 'مدفوع') }}"
+                                           placeholder="مدفوع">
+                                </div>
+                            </div>
                         </div>
 
                         <div class="text-end mt-4">
@@ -355,6 +373,28 @@
 
 @section('js')
 <script>
+function toggleSubjectCustomPriceLabel() {
+    var isFreeOverride = document.getElementById('is_free_override').checked;
+    var showPrice = document.getElementById('show_price');
+    var wrapper = document.getElementById('custom_price_label_wrapper_subject');
+    var useCustom = document.getElementById('use_custom_price_label_subject');
+    var labelInput = document.getElementById('custom_price_label_input_subject');
+    var canUse = !isFreeOverride && showPrice && showPrice.checked;
+
+    if (wrapper) {
+        wrapper.style.display = canUse ? '' : 'none';
+    }
+    if (useCustom) {
+        useCustom.disabled = !canUse;
+        if (!canUse) {
+            useCustom.checked = false;
+        }
+    }
+    if (labelInput) {
+        labelInput.disabled = !canUse || !useCustom || !useCustom.checked;
+    }
+}
+
 function toggleSubjectPricingOptions() {
     var isFreeOverride = document.getElementById('is_free_override').checked;
     var canPurchaseSeparately = document.getElementById('can_purchase_separately');
@@ -377,10 +417,19 @@ function toggleSubjectPricingOptions() {
             freeJoinBlock.classList.add('d-none');
         }
     }
+    toggleSubjectCustomPriceLabel();
 }
 
 document.addEventListener('DOMContentLoaded', function() {
     toggleSubjectPricingOptions();
+    var showPrice = document.getElementById('show_price');
+    if (showPrice) {
+        showPrice.addEventListener('change', toggleSubjectCustomPriceLabel);
+    }
+    var useCustom = document.getElementById('use_custom_price_label_subject');
+    if (useCustom) {
+        useCustom.addEventListener('change', toggleSubjectCustomPriceLabel);
+    }
 });
 </script>
 @stop

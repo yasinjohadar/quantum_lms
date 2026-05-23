@@ -186,6 +186,25 @@
                                 </div>
                             </div>
 
+                            <div class="row g-3 mt-2" id="custom_price_label_wrapper_edit">
+                                <div class="col-lg-4">
+                                    <div class="form-check form-switch mt-2 pt-1">
+                                        <input class="form-check-input" type="checkbox" name="use_custom_price_label"
+                                               id="use_custom_price_label_edit" value="1"
+                                               {{ old('use_custom_price_label', $class->use_custom_price_label ?? false) ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="use_custom_price_label_edit">عرض كلمة بدل السعر</label>
+                                    </div>
+                                    <small class="form-text text-muted d-block mt-1">عند التفعيل مع «إظهار السعر» يُعرض نص مخصص (مثل مدفوع) بدل المبلغ في الواجهة.</small>
+                                </div>
+                                <div class="col-lg-4">
+                                    <label for="custom_price_label_input_edit" class="form-label">الكلمة المعروضة</label>
+                                    <input type="text" class="form-control" name="custom_price_label"
+                                           id="custom_price_label_input_edit" maxlength="100"
+                                           value="{{ old('custom_price_label', $class->custom_price_label ?? 'مدفوع') }}"
+                                           placeholder="مدفوع">
+                                </div>
+                            </div>
+
                             @php
                                 $postPriceEdit = (float) old('price', $class->price ?? 0);
                                 $oldIsFreeEdit = old('is_free');
@@ -434,6 +453,28 @@
 
 @section('js')
 <script>
+function toggleCustomPriceLabelEdit() {
+    var isFree = document.getElementById('is_free_edit').checked;
+    var showPriceInput = document.getElementById('show_price_edit');
+    var wrapper = document.getElementById('custom_price_label_wrapper_edit');
+    var useCustom = document.getElementById('use_custom_price_label_edit');
+    var labelInput = document.getElementById('custom_price_label_input_edit');
+    var canUse = !isFree && showPriceInput && showPriceInput.checked;
+
+    if (wrapper) {
+        wrapper.style.display = canUse ? '' : 'none';
+    }
+    if (useCustom) {
+        useCustom.disabled = !canUse;
+        if (!canUse) {
+            useCustom.checked = false;
+        }
+    }
+    if (labelInput) {
+        labelInput.disabled = !canUse || !useCustom || !useCustom.checked;
+    }
+}
+
 function togglePriceFieldsEdit() {
     var isFree = document.getElementById('is_free_edit').checked;
     var priceInput = document.getElementById('price_input_edit');
@@ -447,6 +488,7 @@ function togglePriceFieldsEdit() {
     } else {
         showPriceInput.disabled = false;
     }
+    toggleCustomPriceLabelEdit();
     syncFreeJoinAutoApproveEdit();
 }
 
@@ -480,6 +522,14 @@ document.addEventListener('DOMContentLoaded', function() {
     var priceInputEdit = document.getElementById('price_input_edit');
     if (priceInputEdit) {
         priceInputEdit.addEventListener('input', syncFreeJoinAutoApproveEdit);
+    }
+    var showPriceEdit = document.getElementById('show_price_edit');
+    if (showPriceEdit) {
+        showPriceEdit.addEventListener('change', toggleCustomPriceLabelEdit);
+    }
+    var useCustomEdit = document.getElementById('use_custom_price_label_edit');
+    if (useCustomEdit) {
+        useCustomEdit.addEventListener('change', toggleCustomPriceLabelEdit);
     }
 });
 </script>

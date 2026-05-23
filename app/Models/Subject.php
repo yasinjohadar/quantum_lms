@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasFrontendPriceLabel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -12,7 +13,7 @@ use Illuminate\Support\Str;
 
 class Subject extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, HasFrontendPriceLabel, SoftDeletes;
 
     protected $table = 'subjects';
 
@@ -60,6 +61,7 @@ class Subject extends Model
         'free_join_auto_approve' => 'boolean',
         'can_purchase_separately' => 'boolean',
         'show_price' => 'boolean',
+        'use_custom_price_label' => 'boolean',
     ];
 
     protected static function boot()

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasFrontendPriceLabel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -9,7 +10,7 @@ use Illuminate\Support\Str;
 
 class SchoolClass extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, HasFrontendPriceLabel, SoftDeletes;
 
     protected $table = 'classes';
 
@@ -34,6 +35,8 @@ class SchoolClass extends Model
         'price',
         'is_free',
         'show_price',
+        'use_custom_price_label',
+        'custom_price_label',
         'default_currency_id',
         'allow_subjects_purchase',
         'free_join_auto_approve',
@@ -51,6 +54,7 @@ class SchoolClass extends Model
         'price' => 'decimal:2',
         'is_free' => 'boolean',
         'show_price' => 'boolean',
+        'use_custom_price_label' => 'boolean',
         'allow_subjects_purchase' => 'boolean',
         'free_join_auto_approve' => 'boolean',
     ];

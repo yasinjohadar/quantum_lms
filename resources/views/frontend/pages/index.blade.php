@@ -162,18 +162,9 @@
                                         </ul>
                                     @endif
                                     <div class="class-card-price">
-                                        @if(!empty($class['is_free']) || (isset($class['price']) && $class['price'] == 0))
-                                            <div class="price-free-wrapper">
-                                                <span class="price-free">مجاني</span>
-                                            </div>
-                                        @elseif(!empty($class['show_price']))
-                                            <div class="price-content">
-                                                <div class="price-current">
-                                                    <span class="price-amount">{{ number_format($class['price'] ?? 0, 2) }}</span>
-                                                    <span class="price-currency">{{ isset($class['currency']) && $class['currency'] ? ($class['currency']->symbol ?? $class['currency']->code ?? '') : '' }}</span>
-                                                </div>
-                                            </div>
-                                        @endif
+                                        @include('frontend.partials.price-presentation', [
+                                            'presentation' => $class['price_presentation'] ?? ['mode' => 'hidden', 'text' => ''],
+                                        ])
                                     </div>
                                     <div class="class-card-buttons d-flex gap-2 flex-nowrap">
                                         <a href="{{ !empty($class['slug']) ? route('frontend.class.show', $class['slug']) : '#' }}" class="class-card-btn enroll-btn">

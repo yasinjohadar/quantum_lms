@@ -216,6 +216,11 @@ class SubjectController extends Controller
                 : null;
             $data['can_purchase_separately'] = $request->has('can_purchase_separately');
             $data['show_price'] = $request->has('show_price');
+            $data = \App\Support\AdminCustomPriceLabelInput::merge(
+                $data,
+                $request,
+                (bool) ($data['is_free_override'] ?? false) || (bool) ($data['is_free'] ?? false)
+            );
             $data['default_currency_id'] = $request->input('default_currency_id');
 
             $subject = Subject::create($data);
@@ -525,6 +530,11 @@ class SubjectController extends Controller
                 : null;
             $data['can_purchase_separately'] = $request->has('can_purchase_separately');
             $data['show_price'] = $request->has('show_price');
+            $data = \App\Support\AdminCustomPriceLabelInput::merge(
+                $data,
+                $request,
+                (bool) ($data['is_free_override'] ?? false) || (bool) ($data['is_free'] ?? false)
+            );
             $data['default_currency_id'] = $request->input('default_currency_id');
 
             $subject->update($data);

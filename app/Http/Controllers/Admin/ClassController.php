@@ -188,6 +188,7 @@ class ClassController extends Controller
             $data['price'] = $request->input('price', 0);
             $data['is_free'] = $request->has('is_free') || $request->input('price', 0) == 0;
             $data['show_price'] = $data['is_free'] ? true : $request->has('show_price');
+            $data = \App\Support\AdminCustomPriceLabelInput::merge($data, $request);
             $data['allow_subjects_purchase'] = $request->has('allow_subjects_purchase');
             $data['default_currency_id'] = $request->input('default_currency_id');
             $joinRequiresPayment = ! $data['is_free'] && (float) $data['price'] > 0;
@@ -320,6 +321,7 @@ class ClassController extends Controller
             $data['price'] = $request->input('price', 0);
             $data['is_free'] = $request->has('is_free') || $request->input('price', 0) == 0;
             $data['show_price'] = $data['is_free'] ? true : $request->has('show_price');
+            $data = \App\Support\AdminCustomPriceLabelInput::merge($data, $request);
             $data['allow_subjects_purchase'] = $request->has('allow_subjects_purchase');
             $data['default_currency_id'] = $request->input('default_currency_id');
             $joinRequiresPayment = ! $data['is_free'] && (float) $data['price'] > 0;

@@ -37,6 +37,8 @@ class StoreSubjectRequest extends FormRequest
             'free_join_auto_approve' => ['nullable', 'boolean'],
             'can_purchase_separately' => ['nullable', 'boolean'],
             'show_price' => ['nullable', 'boolean'],
+            'use_custom_price_label' => ['nullable', 'boolean'],
+            'custom_price_label' => ['nullable', 'string', 'max:100'],
             'default_currency_id' => ['nullable', 'integer', 'exists:currencies,id'],
             'prices' => ['nullable', 'array'],
             'prices.*.price' => ['nullable', 'numeric', 'min:0'],

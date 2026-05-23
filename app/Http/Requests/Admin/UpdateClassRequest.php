@@ -41,6 +41,8 @@ class UpdateClassRequest extends FormRequest
             'allow_subjects_purchase' => ['nullable', 'boolean'],
             'free_join_auto_approve' => ['nullable', 'boolean'],
             'show_price' => ['nullable', 'boolean'],
+            'use_custom_price_label' => ['nullable', 'boolean'],
+            'custom_price_label' => ['nullable', 'string', 'max:100'],
             'features' => ['nullable', 'array', 'max:10'],
             'features.*' => ['nullable', 'string', 'max:255'],
         ];

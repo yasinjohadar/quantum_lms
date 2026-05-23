@@ -185,6 +185,24 @@
                                 </div>
                             </div>
 
+                            <div class="row g-3 mt-2" id="custom_price_label_wrapper_create">
+                                <div class="col-lg-4">
+                                    <div class="form-check form-switch mt-2 pt-1">
+                                        <input class="form-check-input" type="checkbox" name="use_custom_price_label"
+                                               id="use_custom_price_label_create" value="1"
+                                               {{ old('use_custom_price_label') ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="use_custom_price_label_create">عرض كلمة بدل السعر</label>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4">
+                                    <label for="custom_price_label_input_create" class="form-label">الكلمة المعروضة</label>
+                                    <input type="text" class="form-control" name="custom_price_label"
+                                           id="custom_price_label_input_create" maxlength="100"
+                                           value="{{ old('custom_price_label', 'مدفوع') }}"
+                                           placeholder="مدفوع">
+                                </div>
+                            </div>
+
                             @php
                                 $postPriceCreate = (float) old('price', 0);
                                 $oldIsFreeCreate = old('is_free');
@@ -407,6 +425,28 @@
 
 @section('js')
 <script>
+function toggleCustomPriceLabelCreate() {
+    var isFree = document.getElementById('is_free_create').checked;
+    var showPriceInput = document.getElementById('show_price_create');
+    var wrapper = document.getElementById('custom_price_label_wrapper_create');
+    var useCustom = document.getElementById('use_custom_price_label_create');
+    var labelInput = document.getElementById('custom_price_label_input_create');
+    var canUse = !isFree && showPriceInput && showPriceInput.checked;
+
+    if (wrapper) {
+        wrapper.style.display = canUse ? '' : 'none';
+    }
+    if (useCustom) {
+        useCustom.disabled = !canUse;
+        if (!canUse) {
+            useCustom.checked = false;
+        }
+    }
+    if (labelInput) {
+        labelInput.disabled = !canUse || !useCustom || !useCustom.checked;
+    }
+}
+
 function togglePriceFieldsCreate() {
     var isFree = document.getElementById('is_free_create').checked;
     var priceInput = document.getElementById('price_input_create');
@@ -420,6 +460,7 @@ function togglePriceFieldsCreate() {
     } else {
         showPriceInput.disabled = false;
     }
+    toggleCustomPriceLabelCreate();
     syncFreeJoinAutoApproveCreate();
 }
 
@@ -453,6 +494,14 @@ document.addEventListener('DOMContentLoaded', function() {
     var priceInputCreate = document.getElementById('price_input_create');
     if (priceInputCreate) {
         priceInputCreate.addEventListener('input', syncFreeJoinAutoApproveCreate);
+    }
+    var showPriceCreate = document.getElementById('show_price_create');
+    if (showPriceCreate) {
+        showPriceCreate.addEventListener('change', toggleCustomPriceLabelCreate);
+    }
+    var useCustomCreate = document.getElementById('use_custom_price_label_create');
+    if (useCustomCreate) {
+        useCustomCreate.addEventListener('change', toggleCustomPriceLabelCreate);
     }
 });
 </script>

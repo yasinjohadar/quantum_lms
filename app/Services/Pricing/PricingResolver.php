@@ -68,12 +68,8 @@ class PricingResolver
         $accessType = $user ? $this->accessResolver->getSubjectAccessType($user, $subject) : ($isFree ? 'free' : 'requires_purchase');
         $badge = $this->accessResolver->getSubjectBadge($subject, $user);
 
-        $displayPrice = null;
-        if ($showPrice && !$isFree && $price > 0) {
-            $displayPrice = number_format($price, 2) . ' ' . ($currency->symbol ?? $currency->code ?? '');
-        } elseif ($isFree) {
-            $displayPrice = null;
-        }
+        $pricePresentation = $subject->resolveFrontendPricePresentation($isFree, $price, $currency);
+        $displayPrice = $this->displayPriceFromPresentation($pricePresentation);
 
         return new SubjectAccessData(
             id: $subject->id,
@@ -92,6 +88,7 @@ class PricingResolver
             currency: $currency,
             oldPrice: $price > 0 ? $price * 1.2 : 0,
             isEffectivelyFree: $isFree,
+            priceDisplayMode: $pricePresentation['mode'],
         );
     }
 
@@ -111,10 +108,8 @@ class PricingResolver
         $accessType = $user ? $this->accessResolver->getClassAccessType($user, $class) : ($isFree ? 'free' : 'purchasable');
         $badge = $this->accessResolver->getClassBadge($class, $user);
 
-        $displayPrice = null;
-        if ($showPrice && !$isFree && $price > 0) {
-            $displayPrice = number_format($price, 2) . ' ' . ($currency->symbol ?? $currency->code ?? '');
-        }
+        $pricePresentation = $class->resolveFrontendPricePresentation($isFree, $price, $currency);
+        $displayPrice = $this->displayPriceFromPresentation($pricePresentation);
 
         $subjects = $class->subjects()
             ->active()
@@ -149,6 +144,15 @@ class PricingResolver
         $currencyId = null
     ): \Illuminate\Support\Collection {
         return $subjects->map(fn ($s) => $this->resolveSubjectAccessData($s, $user, $currencyId));
+    }
+
+    private function displayPriceFromPresentation(array $presentation): ?string
+    {
+        return match ($presentation['mode']) {
+            'label' => $presentation['text'],
+            'amount' => trim($presentation['text'].' '.($presentation['currency_symbol'] ?: $presentation['currency_code'])),
+            default => null,
+        };
     }
 
     private function resolveSubjectPricingMode(Subject $subject): PricingMode

@@ -91,11 +91,14 @@
                                         <div class="price-access-wrapper">
                                             <span class="price-access"><i class="fa-solid fa-check-circle text-success"></i> لديك وصول</span>
                                         </div>
-                                    @else
+                                    @elseif($subject->showPrice && $subject->displayPrice)
                                         <div class="price-content">
                                             <div class="price-current">
-                                                <span class="price-amount">{{ number_format($subject->effectivePrice, 2) }}</span>
-                                                <span class="price-currency">{{ $subject->currency?->symbol ?? $subject->currency?->code ?? '' }}</span>
+                                                @if(($subject->priceDisplayMode ?? '') === 'label')
+                                                    <span class="price-label">{{ $subject->displayPrice }}</span>
+                                                @else
+                                                    <span class="price-amount">{{ $subject->displayPrice }}</span>
+                                                @endif
                                             </div>
                                         </div>
                                     @endif
@@ -162,13 +165,16 @@
                                                 شراء الصف بالكامل
                                             </span>
                                             <span class="purchase-option-price">
-                                                @if($class->is_free || $class->getPrice($class->defaultCurrency->id ?? null) == 0)
-                                                    <span class="text-success">مجاني</span>
-                                                @elseif($class->show_price)
-                                                    {{ number_format($class->getPrice($class->defaultCurrency->id ?? null), 2) }}
-                                                    {{ $class->defaultCurrency->symbol ?? $class->defaultCurrency->code ?? '' }}
+                                                @php $classPurchasePrice = $classPricePresentation ?? ['mode' => 'hidden', 'text' => '']; @endphp
+                                                @if(($classPurchasePrice['mode'] ?? '') === 'free')
+                                                    <span class="text-success">{{ $classPurchasePrice['text'] }}</span>
+                                                @elseif(($classPurchasePrice['mode'] ?? '') === 'label')
+                                                    <span class="price-label">{{ $classPurchasePrice['text'] }}</span>
+                                                @elseif(($classPurchasePrice['mode'] ?? '') === 'amount')
+                                                    {{ $classPurchasePrice['text'] }}
+                                                    {{ $classPurchasePrice['currency_symbol'] ?? $classPurchasePrice['currency_code'] ?? '' }}
                                                 @else
-                                                    <span class="text-muted">تواصل لمعرفة السعر</span>
+                                                    <span class="text-muted">{{ $classPurchasePrice['text'] ?? 'تواصل لمعرفة السعر' }}</span>
                                                 @endif
                                             </span>
                                         </div>
@@ -206,8 +212,12 @@
                                                         <span class="subject-checkbox-price">
                                                             @if(!$subject->showPrice)
                                                                 <span class="text-muted">السعر مخفي</span>
-                                                            @else
-                                                                {{ number_format($subject->effectivePrice, 2) }} {{ $subject->currency?->symbol ?? $subject->currency?->code ?? '' }}
+                                                            @elseif($subject->displayPrice)
+                                                                @if(($subject->priceDisplayMode ?? '') === 'label')
+                                                                    <span class="price-label">{{ $subject->displayPrice }}</span>
+                                                                @else
+                                                                    {{ $subject->displayPrice }}
+                                                                @endif
                                                             @endif
                                                         </span>
                                                     </span>
@@ -345,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Get class price and currency
-    const classPrice = {{ $class->show_price ? ($class->getPrice($class->defaultCurrency->id ?? null) ?? 0) : 0 }};
+    const classPrice = {{ (float) ($classEffectivePrice ?? ($class->getPrice($class->defaultCurrency->id ?? null) ?? 0)) }};
     const classCurrency = '{{ $class->defaultCurrency->symbol ?? $class->defaultCurrency->code ?? "" }}';
     const classIsFree = {{ $class->is_free || $class->getPrice($class->defaultCurrency->id ?? null) == 0 ? 'true' : 'false' }};
     const classShowPrice = {{ $class->show_price ? 'true' : 'false' }};

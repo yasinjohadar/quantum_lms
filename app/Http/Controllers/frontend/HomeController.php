@@ -59,6 +59,8 @@ class HomeController extends Controller
                     // حساب السعر القديم (يمكن أن يكون 20% أكثر من السعر الحالي)
                     $oldPrice = $price > 0 ? $price * 1.2 : 0;
                     
+                    $isFree = $class->is_free ?? ($price == 0);
+
                     return [
                         'id' => $class->id,
                         'name' => $class->name,
@@ -70,8 +72,9 @@ class HomeController extends Controller
                         'price' => $price,
                         'old_price' => $oldPrice,
                         'currency' => $currency,
-                        'is_free' => $class->is_free ?? ($price == 0),
+                        'is_free' => $isFree,
                         'show_price' => $class->show_price ?? true,
+                        'price_presentation' => $class->resolveFrontendPricePresentation($isFree, (float) $price, $currency),
                         'features' => $class->features->pluck('label')->values(),
                         'created_at' => $class->created_at,
                         'updated_at' => $class->updated_at,
@@ -91,6 +94,7 @@ class HomeController extends Controller
                         'currency' => $defaultCurrency,
                         'is_free' => $class->is_free ?? true,
                         'show_price' => $class->show_price ?? true,
+                        'price_presentation' => $class->resolveFrontendPricePresentation(true, 0.0, $defaultCurrency),
                         'features' => $class->features->pluck('label')->values(),
                         'created_at' => $class->created_at,
                         'updated_at' => $class->updated_at,
@@ -213,7 +217,24 @@ class HomeController extends Controller
             }
         }
 
-        return view('frontend.pages.class-show', compact('class', 'subjects', 'isEnrolled', 'purchaseStatus', 'enrollmentStatus', 'pendingPurchase'));
+        $classEffectivePrice = (float) $class->getPrice($defaultCurrency->id ?? null);
+        $classIsEffectivelyFree = $class->is_free || $classEffectivePrice <= 0;
+        $classPricePresentation = $class->resolveFrontendPricePresentation(
+            $classIsEffectivelyFree,
+            $classEffectivePrice,
+            $class->defaultCurrency ?? $defaultCurrency
+        );
+
+        return view('frontend.pages.class-show', compact(
+            'class',
+            'subjects',
+            'isEnrolled',
+            'purchaseStatus',
+            'enrollmentStatus',
+            'pendingPurchase',
+            'classPricePresentation',
+            'classEffectivePrice'
+        ));
     }
 
     /**

@@ -1267,6 +1267,19 @@ html[data-bs-theme="light"] .classes-section.homepage-classes::after {
     display: inline-block;
 }
 
+.price-label-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.price-label {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--brand-gold);
+    display: inline-block;
+}
+
 .subject-badge {
     position: absolute;
     top: 12px;
