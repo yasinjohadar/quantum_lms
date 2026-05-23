@@ -78,12 +78,16 @@ class AIQuestionGenerationController extends Controller
         $quiz = null;
         $prefillClassId = old('class_id');
         $prefillSubjectId = old('subject_id');
+        $prefillUnitId = old('unit_id');
 
         if ($request->filled('quiz_id')) {
             $quiz = \App\Models\Quiz::with('subject')->find($request->quiz_id);
-            if ($quiz && $quiz->subject) {
-                $prefillClassId = $prefillClassId ?: $quiz->subject->class_id;
-                $prefillSubjectId = $prefillSubjectId ?: $quiz->subject_id;
+            if ($quiz) {
+                if ($quiz->subject) {
+                    $prefillClassId = $prefillClassId ?: $quiz->subject->class_id;
+                    $prefillSubjectId = $prefillSubjectId ?: $quiz->subject_id;
+                }
+                $prefillUnitId = $prefillUnitId ?: $quiz->unit_id;
             }
         }
 
@@ -109,7 +113,8 @@ class AIQuestionGenerationController extends Controller
             'difficulties',
             'quiz',
             'prefillClassId',
-            'prefillSubjectId'
+            'prefillSubjectId',
+            'prefillUnitId'
         ));
     }
 
@@ -542,6 +547,9 @@ class AIQuestionGenerationController extends Controller
             'source_type' => 'required|in:lesson_content,manual_text,topic',
             'lesson_id' => 'nullable|required_if:source_type,lesson_content|exists:lessons,id',
             'source_content' => 'required_if:source_type,manual_text,topic|string',
+            'class_id' => 'nullable|exists:classes,id',
+            'subject_id' => 'nullable|exists:subjects,id',
+            'unit_id' => 'nullable|exists:units,id',
             'question_types' => 'required|array|min:1',
             'question_types.*' => 'in:'.implode(',', $validQuestionTypes),
             'number_of_questions' => 'required|integer|min:1|max:50',
@@ -557,10 +565,33 @@ class AIQuestionGenerationController extends Controller
             'number_of_questions.required' => 'عدد الأسئلة مطلوب',
         ]);
 
+        if (in_array($validated['source_type'], ['manual_text', 'topic'], true)) {
+            $curriculumError = $this->validateImageGenerationCurriculum(
+                $validated['class_id'] ?? null,
+                $validated['subject_id'] ?? null,
+                $validated['unit_id'] ?? null
+            );
+            if ($curriculumError) {
+                return redirect()->back()
+                    ->withErrors(['unit_id' => $curriculumError])
+                    ->withInput();
+            }
+        }
+
         try {
             $model = $validated['ai_model_id']
                 ? AIModel::find($validated['ai_model_id'])
                 : null;
+
+            $textGenerationOptions = [
+                'user' => Auth::user(),
+                'model' => $model,
+                'question_types' => $validated['question_types'],
+                'number_of_questions' => $validated['number_of_questions'],
+                'difficulty_level' => $validated['difficulty_level'],
+                'subject_id' => $validated['subject_id'] ?? null,
+                'unit_id' => $validated['unit_id'] ?? null,
+            ];
 
             // إنشاء التوليد
             if ($validated['source_type'] === 'lesson_content') {
@@ -573,21 +604,9 @@ class AIQuestionGenerationController extends Controller
                     'difficulty_level' => $validated['difficulty_level'],
                 ]);
             } elseif ($validated['source_type'] === 'topic') {
-                $generation = $this->generationService->generateFromTopic($validated['source_content'], [
-                    'user' => Auth::user(),
-                    'model' => $model,
-                    'question_types' => $validated['question_types'],
-                    'number_of_questions' => $validated['number_of_questions'],
-                    'difficulty_level' => $validated['difficulty_level'],
-                ]);
+                $generation = $this->generationService->generateFromTopic($validated['source_content'], $textGenerationOptions);
             } else {
-                $generation = $this->generationService->generateFromText($validated['source_content'], [
-                    'user' => Auth::user(),
-                    'model' => $model,
-                    'question_types' => $validated['question_types'],
-                    'number_of_questions' => $validated['number_of_questions'],
-                    'difficulty_level' => $validated['difficulty_level'],
-                ]);
+                $generation = $this->generationService->generateFromText($validated['source_content'], $textGenerationOptions);
             }
 
             // إذا كان quiz_id موجوداً، معالجة التوليد وحفظ الأسئلة وربطها بالاختبار

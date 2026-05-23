@@ -77,40 +77,22 @@
                             </div>
 
                             @if(empty($lockedSubject))
-                                <div class="mb-3">
-                                    <label for="class_id" class="form-label">الصف (اختياري)</label>
-                                    <select class="form-select" id="class_id" name="class_id">
-                                        <option value="">— بدون تحديد —</option>
-                                        @foreach($schoolClasses as $schoolClass)
-                                            <option value="{{ $schoolClass->id }}" {{ (string) old('class_id', $prefillClassId ?? '') === (string) $schoolClass->id ? 'selected' : '' }}>{{ $schoolClass->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="subject_id" class="form-label">المادة (اختياري)</label>
-                                    <select class="form-select" id="subject_id" name="subject_id" @if(!$prefillClassId) disabled @endif>
-                                        <option value="">{{ $prefillClassId ? 'اختر المادة' : 'اختر الصف أولاً' }}</option>
-                                    </select>
-                                </div>
+                                @include('admin.pages.ai.question-generations.partials.optional-curriculum-fields', [
+                                    'fieldPrefix' => '',
+                                    'schoolClasses' => $schoolClasses,
+                                    'prefillClassId' => $prefillClassId,
+                                    'prefillSubjectId' => $prefillSubjectId,
+                                    'prefillUnitId' => $prefillUnitId,
+                                ])
                             @else
-                                <div class="mb-3">
-                                    <label class="form-label">المادة</label>
-                                    <p class="form-control-plaintext mb-0">
-                                        <strong>{{ $lockedSubject->name }}</strong>
-                                        @if($lockedSubject->schoolClass)
-                                            <span class="text-muted">({{ $lockedSubject->schoolClass->name }})</span>
-                                        @endif
-                                    </p>
-                                </div>
+                                @include('admin.pages.ai.question-generations.partials.optional-curriculum-fields', [
+                                    'fieldPrefix' => '',
+                                    'schoolClasses' => $schoolClasses,
+                                    'lockedSubject' => $lockedSubject,
+                                    'prefillSubjectId' => $prefillSubjectId,
+                                    'prefillUnitId' => $prefillUnitId,
+                                ])
                             @endif
-
-                            <div class="mb-3">
-                                <label for="unit_id" class="form-label">الوحدة (اختياري)</label>
-                                <select class="form-select" id="unit_id" name="unit_id" @if(!$prefillSubjectId) disabled @endif>
-                                    <option value="">{{ $prefillSubjectId ? 'اختر الوحدة' : 'اختر المادة أولاً' }}</option>
-                                </select>
-                            </div>
 
                             <div class="mb-3">
                                 <label class="form-label">أنواع الأسئلة المطلوبة <span class="text-danger">*</span></label>
@@ -201,121 +183,18 @@
 </div>
 
 @push('scripts')
+@include('admin.pages.ai.question-generations.partials.optional-curriculum-scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    var classSelect = document.getElementById('class_id');
-    var subjectSelect = document.getElementById('subject_id');
-    var unitSelect = document.getElementById('unit_id');
-    var ajaxSubjectsBase = @json(url('/admin/ai/question-generations/ajax/classes'));
-    var ajaxUnitsBase = @json(url('/admin/ai/question-generations/ajax/subjects'));
-    var prefillSubjectId = @json(old('subject_id', $prefillSubjectId ?? ''));
-    var prefillUnitId = @json(old('unit_id', $prefillUnitId ?? ''));
-    var lockedSubjectId = @json(!empty($lockedSubject) ? $lockedSubject->id : null);
-
-    function resetUnitsPlaceholder() {
-        unitSelect.disabled = true;
-        unitSelect.innerHTML = '<option value="">اختر المادة أولاً</option>';
-    }
-
-    function resetSubjectsPlaceholder() {
-        if (!subjectSelect) {
-            return;
-        }
-        subjectSelect.disabled = true;
-        subjectSelect.innerHTML = '<option value="">اختر الصف أولاً</option>';
-        resetUnitsPlaceholder();
-    }
-
-    function populateSubjects(classId, selectedSubjectId) {
-        if (!subjectSelect) {
-            return Promise.resolve();
-        }
-        subjectSelect.disabled = false;
-        subjectSelect.innerHTML = '<option value="">جاري التحميل...</option>';
-        resetUnitsPlaceholder();
-        return fetch(ajaxSubjectsBase + '/' + classId + '/subjects', {
-            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            credentials: 'same-origin',
-        })
-            .then(function (response) {
-                if (!response.ok) throw new Error('Network error');
-                return response.json();
-            })
-            .then(function (data) {
-                subjectSelect.innerHTML = '<option value="">اختر المادة</option>';
-                data.forEach(function (subject) {
-                    var opt = document.createElement('option');
-                    opt.value = subject.id;
-                    opt.textContent = subject.name;
-                    if (selectedSubjectId && String(subject.id) === String(selectedSubjectId)) {
-                        opt.selected = true;
-                    }
-                    subjectSelect.appendChild(opt);
-                });
-                if (selectedSubjectId) {
-                    return populateUnits(selectedSubjectId, prefillUnitId);
-                }
-            })
-            .catch(function () {
-                subjectSelect.innerHTML = '<option value="">تعذر تحميل المواد</option>';
-                resetUnitsPlaceholder();
-            });
-    }
-
-    function populateUnits(subjectId, selectedUnitId) {
-        unitSelect.disabled = false;
-        unitSelect.innerHTML = '<option value="">جاري التحميل...</option>';
-        return fetch(ajaxUnitsBase + '/' + subjectId + '/units', {
-            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            credentials: 'same-origin',
-        })
-            .then(function (response) {
-                if (!response.ok) throw new Error('Network error');
-                return response.json();
-            })
-            .then(function (data) {
-                unitSelect.innerHTML = '<option value="">اختر الوحدة</option>';
-                data.forEach(function (unit) {
-                    var opt = document.createElement('option');
-                    opt.value = unit.id;
-                    opt.textContent = unit.title;
-                    if (selectedUnitId && String(unit.id) === String(selectedUnitId)) {
-                        opt.selected = true;
-                    }
-                    unitSelect.appendChild(opt);
-                });
-            })
-            .catch(function () {
-                unitSelect.innerHTML = '<option value="">تعذر تحميل الوحدات</option>';
-            });
-    }
-
-    if (classSelect) {
-        classSelect.addEventListener('change', function () {
-            var classId = this.value;
-            if (!classId) {
-                resetSubjectsPlaceholder();
-                return;
-            }
-            populateSubjects(classId, null);
+    if (typeof window.initOptionalCurriculumCascade === 'function') {
+        window.initOptionalCurriculumCascade({
+            classSelectId: 'class_id',
+            subjectSelectId: 'subject_id',
+            unitSelectId: 'unit_id',
+            prefillSubjectId: @json(old('subject_id', $prefillSubjectId ?? '')),
+            prefillUnitId: @json(old('unit_id', $prefillUnitId ?? '')),
+            lockedSubjectId: @json(!empty($lockedSubject) ? $lockedSubject->id : null),
         });
-    }
-
-    if (subjectSelect) {
-        subjectSelect.addEventListener('change', function () {
-            var subjectId = this.value;
-            if (!subjectId) {
-                resetUnitsPlaceholder();
-                return;
-            }
-            populateUnits(subjectId, null);
-        });
-    }
-
-    if (lockedSubjectId) {
-        populateUnits(lockedSubjectId, prefillUnitId || null);
-    } else if (classSelect && classSelect.value) {
-        populateSubjects(classSelect.value, prefillSubjectId || null);
     }
 
     var input = document.getElementById('source_file');

@@ -64,6 +64,7 @@ class AIQuestionGenerationService
             $generation = AIQuestionGeneration::create([
                 'user_id' => $user->id,
                 'subject_id' => $options['subject_id'] ?? null,
+                'unit_id' => $options['unit_id'] ?? null,
                 'lesson_id' => $options['lesson_id'] ?? null,
                 'source_type' => $options['source_type'] ?? 'manual_text',
                 'source_content' => $text,
@@ -79,6 +80,7 @@ class AIQuestionGenerationService
             $generation = AIQuestionGeneration::create([
                 'user_id' => $user->id,
                 'subject_id' => $options['subject_id'] ?? null,
+                'unit_id' => $options['unit_id'] ?? null,
                 'lesson_id' => $options['lesson_id'] ?? null,
                 'source_type' => $options['source_type'] ?? 'manual_text',
                 'source_content' => $text,

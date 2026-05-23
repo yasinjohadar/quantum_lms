@@ -59,34 +59,47 @@
                                 </select>
                             </div>
 
-                            <div id="lesson_source" class="mb-3" style="display: none;">
-                                <label for="class_id" class="form-label">الصف <span class="text-danger">*</span></label>
-                                <select class="form-select" id="class_id" name="class_id">
-                                    <option value="">اختر الصف</option>
-                                    @foreach($schoolClasses as $schoolClass)
-                                        <option value="{{ $schoolClass->id }}" {{ (string) old('class_id', $prefillClassId ?? '') === (string) $schoolClass->id ? 'selected' : '' }}>{{ $schoolClass->name }}</option>
-                                    @endforeach
-                                </select>
+                            <div id="lesson_curriculum_group" style="display: none;">
+                                <div id="lesson_source" class="mb-3">
+                                    <label for="lesson_class_id" class="form-label">الصف <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="lesson_class_id" name="class_id" disabled>
+                                        <option value="">اختر الصف</option>
+                                        @foreach($schoolClasses as $schoolClass)
+                                            <option value="{{ $schoolClass->id }}" {{ (string) old('class_id', $prefillClassId ?? '') === (string) $schoolClass->id ? 'selected' : '' }}>{{ $schoolClass->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div id="subject_wrap" class="mb-3">
+                                    <label for="lesson_subject_id" class="form-label">المادة <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="lesson_subject_id" name="subject_id" disabled>
+                                        <option value="">{{ $prefillClassId ? 'اختر المادة' : 'اختر الصف أولاً' }}</option>
+                                        @foreach($subjects as $subject)
+                                            <option value="{{ $subject->id }}" {{ (string) old('subject_id', $prefillSubjectId ?? '') === (string) $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div id="lesson_select" class="mb-3">
+                                    <label for="lesson_id" class="form-label">الدرس <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="lesson_id" name="lesson_id" disabled>
+                                        <option value="">{{ $prefillSubjectId ? 'اختر الدرس' : 'اختر المادة أولاً' }}</option>
+                                        @foreach($lessons as $lesson)
+                                            <option value="{{ $lesson->id }}" {{ (string) old('lesson_id') === (string) $lesson->id ? 'selected' : '' }}>{{ $lesson->title }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
                             </div>
 
-                            <div id="subject_wrap" class="mb-3" style="display: none;">
-                                <label for="subject_id" class="form-label">المادة <span class="text-danger">*</span></label>
-                                <select class="form-select" id="subject_id" name="subject_id" @if(!$prefillClassId) disabled @endif>
-                                    <option value="">{{ $prefillClassId ? 'اختر المادة' : 'اختر الصف أولاً' }}</option>
-                                    @foreach($subjects as $subject)
-                                        <option value="{{ $subject->id }}" {{ (string) old('subject_id', $prefillSubjectId ?? '') === (string) $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div id="lesson_select" class="mb-3" style="display: none;">
-                                <label for="lesson_id" class="form-label">الدرس <span class="text-danger">*</span></label>
-                                <select class="form-select" id="lesson_id" name="lesson_id" @if(!$prefillSubjectId) disabled @endif>
-                                    <option value="">{{ $prefillSubjectId ? 'اختر الدرس' : 'اختر المادة أولاً' }}</option>
-                                    @foreach($lessons as $lesson)
-                                        <option value="{{ $lesson->id }}" {{ (string) old('lesson_id') === (string) $lesson->id ? 'selected' : '' }}>{{ $lesson->title }}</option>
-                                    @endforeach
-                                </select>
+                            <div id="optional_curriculum_group" style="display: none;">
+                                @include('admin.pages.ai.question-generations.partials.optional-curriculum-fields', [
+                                    'fieldPrefix' => 'opt',
+                                    'schoolClasses' => $schoolClasses,
+                                    'prefillClassId' => $prefillClassId,
+                                    'prefillSubjectId' => $prefillSubjectId,
+                                    'prefillUnitId' => $prefillUnitId ?? null,
+                                    'disabledByDefault' => true,
+                                ])
                             </div>
 
                             <div id="text_source" class="mb-3">
@@ -193,6 +206,7 @@
 </div>
 
 @push('scripts')
+@include('admin.pages.ai.question-generations.partials.optional-curriculum-scripts')
 <!-- TinyMCE Self-Hosted (Free & Open Source) -->
 <script src="https://cdn.jsdelivr.net/npm/tinymce@7.3.0/tinymce.min.js"></script>
 <script>
@@ -276,36 +290,50 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     const sourceType = document.getElementById('source_type');
-    const lessonSource = document.getElementById('lesson_source');
-    const subjectWrap = document.getElementById('subject_wrap');
-    const lessonSelect = document.getElementById('lesson_select');
+    const lessonCurriculumGroup = document.getElementById('lesson_curriculum_group');
+    const optionalCurriculumGroup = document.getElementById('optional_curriculum_group');
     const textSource = document.getElementById('text_source');
-    const classSelect = document.getElementById('class_id');
-    const subjectSelect = document.getElementById('subject_id');
+    const classSelect = document.getElementById('lesson_class_id');
+    const subjectSelect = document.getElementById('lesson_subject_id');
     const lessonIdSelect = document.getElementById('lesson_id');
     const sourceContent = document.getElementById('source_content');
     const form = document.getElementById('advancedForm');
     const ajaxSubjectsBase = @json(url('/admin/ai/question-generations/ajax/classes'));
     const ajaxLessonsBase = @json(url('/admin/ai/question-generations/ajax/subjects'));
 
+    function setGroupFieldsEnabled(group, enabled) {
+        if (!group) {
+            return;
+        }
+        group.querySelectorAll('select, input, textarea').forEach(function (el) {
+            el.disabled = !enabled;
+        });
+    }
+
     function toggleSourceFields() {
         if (sourceType.value === 'lesson_content') {
-            lessonSource.style.display = 'block';
-            subjectWrap.style.display = 'block';
-            lessonSelect.style.display = 'block';
+            lessonCurriculumGroup.style.display = 'block';
+            optionalCurriculumGroup.style.display = 'none';
+            setGroupFieldsEnabled(lessonCurriculumGroup, true);
+            setGroupFieldsEnabled(optionalCurriculumGroup, false);
             textSource.style.display = 'none';
             sourceContent.removeAttribute('required');
-            // إخفاء TinyMCE عند اختيار lesson_content
+            classSelect.setAttribute('required', 'required');
+            subjectSelect.setAttribute('required', 'required');
+            lessonIdSelect.setAttribute('required', 'required');
             if (tinymce.get('source_content')) {
                 tinymce.get('source_content').hide();
             }
         } else {
-            lessonSource.style.display = 'none';
-            subjectWrap.style.display = 'none';
-            lessonSelect.style.display = 'none';
+            lessonCurriculumGroup.style.display = 'none';
+            optionalCurriculumGroup.style.display = 'block';
+            setGroupFieldsEnabled(lessonCurriculumGroup, false);
+            setGroupFieldsEnabled(optionalCurriculumGroup, true);
             textSource.style.display = 'block';
             sourceContent.setAttribute('required', 'required');
-            // إظهار TinyMCE عند اختيار text_content
+            classSelect.removeAttribute('required');
+            subjectSelect.removeAttribute('required');
+            lessonIdSelect.removeAttribute('required');
             if (tinymce.get('source_content')) {
                 tinymce.get('source_content').show();
             }
@@ -314,6 +342,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     sourceType.addEventListener('change', toggleSourceFields);
     toggleSourceFields();
+
+    if (typeof window.initOptionalCurriculumCascade === 'function') {
+        window.initOptionalCurriculumCascade({
+            classSelectId: 'opt_class_id',
+            subjectSelectId: 'opt_subject_id',
+            unitSelectId: 'opt_unit_id',
+            prefillSubjectId: @json(old('subject_id', $prefillSubjectId ?? '')),
+            prefillUnitId: @json(old('unit_id', $prefillUnitId ?? '')),
+        });
+    }
 
     function resetLessonsPlaceholder() {
         lessonIdSelect.disabled = true;
