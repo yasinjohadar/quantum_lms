@@ -30,8 +30,8 @@ class ShareStudentPendingPurchasesForLayout
 
         $pendingPurchases = Purchase::query()
             ->where('user_id', $user->id)
-            ->where('status', 'pending')
-            ->with('purchasable')
+            ->awaitingAdminReview()
+            ->with(['purchasable', 'payment'])
             ->orderByDesc('created_at')
             ->get();
 

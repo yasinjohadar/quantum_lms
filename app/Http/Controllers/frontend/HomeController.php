@@ -198,14 +198,14 @@ class HomeController extends Controller
                     $isEnrolled = true;
                     $purchaseStatus = 'completed';
                 } else {
-                    // التحقق من وجود Purchase pending
-                    $pendingPurchase = Purchase::with(['purchasable.defaultCurrency'])
+                    // شراء بانتظار مراجعة الإدارة (بعد رفع الإيصال فقط)
+                    $pendingPurchase = Purchase::with(['purchasable.defaultCurrency', 'payment'])
                         ->where('user_id', $user->id)
                         ->where('purchasable_type', SchoolClass::class)
                         ->where('purchasable_id', $class->id)
-                        ->where('status', 'pending')
+                        ->awaitingAdminReview()
                         ->first();
-                    
+
                     if ($pendingPurchase) {
                         $purchaseStatus = 'pending';
                     }
@@ -258,14 +258,14 @@ class HomeController extends Controller
                     ->with('info', 'لقد قمت بشراء هذا الصف مسبقاً');
             }
             
-            // التحقق من وجود Purchase pending
-            $pendingPurchase = Purchase::where('user_id', $user->id)
+            // طلب بانتظار مراجعة الإدارة (بعد رفع الإيصال) — مسودة الشراء قبل الدفع لا تمنع المتابعة
+            $awaitingReviewPurchase = Purchase::where('user_id', $user->id)
                 ->where('purchasable_type', SchoolClass::class)
                 ->where('purchasable_id', $class->id)
-                ->where('status', 'pending')
+                ->awaitingAdminReview()
                 ->first();
-            
-            if ($pendingPurchase) {
+
+            if ($awaitingReviewPurchase) {
                 return redirect()->route('frontend.class.show', $class->slug)
                     ->with('warning', 'لديك طلب شراء قيد المراجعة من قبل الإدارة');
             }
@@ -319,15 +319,15 @@ class HomeController extends Controller
                     continue; // تخطي إذا كان الصف مشترى
                 }
                 
-                // التحقق من وجود Purchase pending للمادة
-                $subjectPendingPurchase = Purchase::where('user_id', $user->id)
+                // تخطي المواد التي لديها دفع مرفوع بانتظار مراجعة الإدارة فقط
+                $subjectAwaitingReview = Purchase::where('user_id', $user->id)
                     ->where('purchasable_type', Subject::class)
                     ->where('purchasable_id', $subject->id)
-                    ->where('status', 'pending')
-                    ->first();
-                
-                if ($subjectPendingPurchase) {
-                    continue; // تخطي المواد التي لديها طلب pending
+                    ->awaitingAdminReview()
+                    ->exists();
+
+                if ($subjectAwaitingReview) {
+                    continue;
                 }
                 
                 $price = $subject->getPrice($defaultCurrency->id ?? null);

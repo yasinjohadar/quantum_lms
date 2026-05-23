@@ -11,12 +11,9 @@ use App\Models\Subject;
 use App\Models\User;
 use App\Services\PaymentService;
 use App\Services\PurchaseService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     if (DB::connection()->getDriverName() === 'sqlite') {
@@ -163,7 +160,7 @@ test('approving payment creates approved class enrollment', function () {
         ->exists())->toBeTrue();
 });
 
-test('prepare class payment fragment creates pending purchase', function () {
+test('prepare class payment fragment creates pending purchase not awaiting admin review', function () {
     $class = gatingCreateClass(['price' => 0]);
     gatingAttachClassPrice($class, 300);
     gatingCreateSubject($class);
@@ -176,8 +173,32 @@ test('prepare class payment fragment creates pending purchase', function () {
 
     $response->assertOk();
 
-    expect(Purchase::where('user_id', $this->user->id)
+    $purchase = Purchase::where('user_id', $this->user->id)
         ->where('purchasable_id', $class->id)
         ->where('status', 'pending')
-        ->exists())->toBeTrue();
+        ->first();
+
+    expect($purchase)->not->toBeNull();
+    expect($purchase->isAwaitingAdminReview())->toBeFalse();
+    expect(Purchase::where('user_id', $this->user->id)->awaitingAdminReview()->count())->toBe(0);
+});
+
+test('awaiting admin review scope includes purchase only after receipt submitted', function () {
+    Storage::fake('public');
+
+    $class = gatingCreateClass(['price' => 120]);
+    gatingCreateSubject($class);
+
+    $purchase = app(PurchaseService::class)->createPurchase($this->user, $class, 'class');
+
+    expect(Purchase::where('user_id', $this->user->id)->awaitingAdminReview()->count())->toBe(0);
+
+    $this->actingAs($this->user)
+        ->postJson(route('student.purchases.process-payment', $purchase->id), [
+            'payment_method' => 'iban',
+            'receipt_file' => UploadedFile::fake()->image('receipt.jpg'),
+        ])
+        ->assertOk();
+
+    expect(Purchase::where('user_id', $this->user->id)->awaitingAdminReview()->count())->toBe(1);
 });

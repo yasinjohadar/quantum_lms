@@ -64,6 +64,26 @@ class Purchase extends Model
         return $query->where('status', 'pending');
     }
 
+    /**
+     * شراء معلّق وتم رفع إيصال/دفع بانتظار مراجعة الإدارة (وليس مسودة قبل الدفع).
+     */
+    public function scopeAwaitingAdminReview($query)
+    {
+        return $query->where('status', 'pending')
+            ->whereHas('payment', fn ($q) => $q->where('status', 'pending'));
+    }
+
+    public function isAwaitingAdminReview(): bool
+    {
+        if ($this->status !== 'pending') {
+            return false;
+        }
+
+        $this->loadMissing('payment');
+
+        return $this->payment !== null && $this->payment->status === 'pending';
+    }
+
     public function scopeCompleted($query)
     {
         return $query->where('status', 'completed');
