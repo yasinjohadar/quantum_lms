@@ -148,7 +148,11 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('admin.dashboard');
         }
 
-        // افتراضي: student dashboard
+        // افتراضي: student dashboard (أو الصفحة المطلوبة قبل تسجيل الدخول، مثل الدفع)
+        if ($studentOnly) {
+            return redirect()->intended(route('student.dashboard'));
+        }
+
         return redirect()->route('student.dashboard');
     }
 
