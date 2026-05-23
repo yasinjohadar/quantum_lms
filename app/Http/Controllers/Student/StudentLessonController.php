@@ -251,9 +251,9 @@ class StudentLessonController extends Controller
                 'linkedQuizzes' => function ($query) {
                     $query->orderBy('order');
                 },
-                'questions' => function ($query) {
+                'questions' => function ($query) use ($subject) {
                     $query->where('is_active', true)
-                        ->forStudentUnitPractice()
+                        ->forStudentUnitPractice($subject)
                         ->orderBy('created_at', 'desc');
                 },
             ])

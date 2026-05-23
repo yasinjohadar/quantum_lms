@@ -333,10 +333,20 @@ class Question extends Model
 
     /**
      * أسئلة تُعرض للطالب تحت الدروس في صفحة الوحدة (ليست أسئلة بنك المادة).
+     * يستبعد ما يطابق forSubject: subject_id للمادة أو ربطاً بوحدة ضمنها.
      */
-    public function scopeForStudentUnitPractice($query)
+    public function scopeForStudentUnitPractice($query, Subject|int $subject)
     {
-        return $query->whereNull('subject_id');
+        $subjectId = $subject instanceof Subject ? $subject->id : (int) $subject;
+
+        return $query->where(function ($q) use ($subjectId) {
+            $q->where(function ($inner) use ($subjectId) {
+                $inner->whereNull('subject_id')
+                    ->orWhere('subject_id', '!=', $subjectId);
+            })->whereDoesntHave('units', function ($uq) use ($subjectId) {
+                $uq->whereHas('section', fn ($sq) => $sq->where('subject_id', $subjectId));
+            });
+        });
     }
 
     public function scopeSearch($query, $search)

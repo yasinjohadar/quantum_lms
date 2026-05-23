@@ -123,5 +123,6 @@ test('student unit page hides subject bank questions under lessons', function ()
     $response->assertOk();
     $response->assertSee($lesson->title, false);
     $response->assertDontSee($bankQuestion->title, false);
-    $response->assertSee($practiceQuestion->title, false);
+    $response->assertDontSee($practiceQuestion->title, false);
+    $response->assertDontSee('unitQuestionsAccordion', false);
 });
