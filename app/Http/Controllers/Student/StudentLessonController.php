@@ -180,10 +180,10 @@ class StudentLessonController extends Controller
             ])
             ->firstOrFail();
 
-        $section->load(['units.quizzes', 'units.linkedQuizzes', 'mirroredUnits.quizzes', 'mirroredUnits.linkedQuizzes']);
+        $section->loadMissing(['units.quizzes', 'units.linkedQuizzes', 'mirroredUnits.quizzes', 'mirroredUnits.linkedQuizzes']);
 
         $children = $section->children;
-        $units = $section->rootUnitsForDisplay();
+        $units = $section->rootUnitsForDisplay(onlyActive: true);
         $directLessons = Lesson::where('section_id', $section->id)
             ->whereNull('unit_id')
             ->where('is_active', true)
@@ -235,9 +235,13 @@ class StudentLessonController extends Controller
             ->where('is_active', true)
             ->firstOrFail();
 
-        $unit = Unit::where('section_id', $section->id)
+        $unit = Unit::query()
             ->where('id', $unitId)
             ->where('is_active', true)
+            ->where(function ($q) use ($section) {
+                $q->where('section_id', $section->id)
+                    ->orWhereHas('mirroredInSections', fn ($q) => $q->where('subject_sections.id', $section->id));
+            })
             ->with([
                 'lessons' => function ($query) {
                     $query->orderBy('order');
@@ -326,7 +330,10 @@ class StudentLessonController extends Controller
 
         $sections = $subject->sections()
             ->with([
-                'units.lessons' => function($query) {
+                'units' => function ($query) {
+                    $query->where('is_active', true)->orderBy('order');
+                },
+                'units.lessons' => function ($query) {
                     $query->where('is_active', true)->orderBy('order');
                 },
             ])

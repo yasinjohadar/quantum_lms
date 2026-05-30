@@ -24,22 +24,24 @@ class StudentProgressService
     protected function unitsForSectionProgressTree(SubjectSection $section): Collection
     {
         $collected = collect();
-        foreach ($section->rootUnitsForDisplay() as $root) {
+        foreach ($section->rootUnitsForDisplay(onlyActive: true) as $root) {
             if (!$root->relationLoaded('section')) {
                 $root->load([
+                    'section.units' => fn ($q) => $q->where('is_active', true),
                     'section.units.lessons',
                     'section.units.quizzes',
                     'section.units.questions',
                 ]);
             } else {
                 $root->section->loadMissing([
+                    'units' => fn ($q) => $q->where('is_active', true),
                     'units.lessons',
                     'units.quizzes',
                     'units.questions',
                 ]);
             }
 
-            $homeUnits = $root->section?->units;
+            $homeUnits = $root->section?->units?->where('is_active', true);
             if ($homeUnits === null || $homeUnits->isEmpty()) {
                 $collected->push($root);
                 continue;

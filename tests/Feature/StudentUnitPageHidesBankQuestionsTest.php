@@ -126,3 +126,37 @@ test('student unit page hides subject bank questions under lessons', function ()
     $response->assertDontSee($practiceQuestion->title, false);
     $response->assertDontSee('unitQuestionsAccordion', false);
 });
+
+test('inactive unit is hidden from student section folders and returns 404 on direct access', function () {
+    [
+        'student' => $student,
+        'subject' => $subject,
+        'section' => $section,
+        'unit' => $activeUnit,
+    ] = createStudentUnitPageFixture();
+
+    $inactiveUnit = Unit::create([
+        'section_id' => $section->id,
+        'title' => 'Inactive unit hidden '.uniqid(),
+        'order' => 2,
+        'is_active' => false,
+    ]);
+
+    $sectionResponse = $this->actingAs($student)
+        ->get(route('student.subjects.folders.section', [
+            'subject' => $subject->id,
+            'section' => $section->id,
+        ]));
+
+    $sectionResponse->assertOk();
+    $sectionResponse->assertSee($activeUnit->title, false);
+    $sectionResponse->assertDontSee($inactiveUnit->title, false);
+
+    $this->actingAs($student)
+        ->get(route('student.subjects.folders.unit', [
+            'subject' => $subject->id,
+            'section' => $section->id,
+            'unit' => $inactiveUnit->id,
+        ]))
+        ->assertNotFound();
+});

@@ -17,9 +17,9 @@
                         <p class="text-muted mb-3 small">{{ $section->description }}</p>
                     @endif
                     
-                    @if($section->rootUnitsForDisplay()->count() > 0)
+                    @if($section->rootUnitsForDisplay(onlyActive: true)->count() > 0)
                         <div class="accordion" id="section-{{ $section->id }}-{{ $suffix ?? 'sidebar' }}">
-                            @foreach($section->rootUnitsForDisplay() as $unitIndex => $unit)
+                            @foreach($section->rootUnitsForDisplay(onlyActive: true) as $unitIndex => $unit)
                                 @php
                                     $containsCurrentLesson = $unit->allLessons()->contains('id', $lesson->id);
                                 @endphp

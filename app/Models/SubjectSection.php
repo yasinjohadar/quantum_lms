@@ -123,15 +123,35 @@ class SubjectSection extends Model
      *
      * @return Collection<int, Unit>
      */
-    public function rootUnitsForDisplay(): Collection
+    public function rootUnitsForDisplay(bool $onlyActive = false): Collection
     {
-        $primary = $this->relationLoaded('units')
-            ? $this->units->whereNull('parent_id')->sortBy('order')->values()
-            : $this->units()->whereNull('parent_id')->orderBy('order')->orderBy('title')->get();
+        if ($this->relationLoaded('units')) {
+            $primary = $this->units
+                ->when($onlyActive, fn ($c) => $c->where('is_active', true))
+                ->whereNull('parent_id')
+                ->sortBy('order')
+                ->values();
+        } else {
+            $primary = $this->units()
+                ->when($onlyActive, fn ($q) => $q->active())
+                ->whereNull('parent_id')
+                ->orderBy('order')
+                ->orderBy('title')
+                ->get();
+        }
 
-        $mirrored = $this->relationLoaded('mirroredUnits')
-            ? $this->mirroredUnits->sortBy(fn ($u) => (int) ($u->pivot->order ?? 0))->values()
-            : $this->mirroredUnits()->orderBy('section_unit.order')->orderBy('units.title')->get();
+        if ($this->relationLoaded('mirroredUnits')) {
+            $mirrored = $this->mirroredUnits
+                ->when($onlyActive, fn ($c) => $c->where('is_active', true))
+                ->sortBy(fn ($u) => (int) ($u->pivot->order ?? 0))
+                ->values();
+        } else {
+            $mirrored = $this->mirroredUnits()
+                ->when($onlyActive, fn ($q) => $q->active())
+                ->orderBy('section_unit.order')
+                ->orderBy('units.title')
+                ->get();
+        }
 
         $primaryIds = $primary->pluck('id');
         $mirrored = $mirrored->reject(fn ($u) => $primaryIds->contains($u->id))->values();
