@@ -355,7 +355,8 @@ a:hover .folder-card .card-body i[class*="bi-"] {
 
 .question-card-curriculum thead th {
     font-size: 0.7rem;
-    border-bottom: 1px solid #eef1f4;
+    border-bottom: 1px solid var(--default-border);
+    color: var(--text-muted);
 }
 
 /* نص السؤال: عربي عادي + تمييز الرموز الرياضية فقط (KaTeX) */
@@ -388,6 +389,26 @@ a:hover .folder-card .card-body i[class*="bi-"] {
     background: #f5f7ff;
     border: 1px solid #dbeafe;
     border-radius: 0.5rem;
+}
+
+[data-theme-mode=dark] .question-text-body .question-inline-code,
+[data-theme-mode=dark] .question-stem .question-inline-code,
+[data-theme-mode=dark] #question-content .question-inline-code {
+    color: #90caf9;
+    background: rgba(144, 202, 249, 0.12);
+    border-color: rgba(144, 202, 249, 0.28);
+}
+
+[data-theme-mode=dark] .question-text-body .katex,
+[data-theme-mode=dark] .question-stem .katex,
+[data-theme-mode=dark] #question-content .katex {
+    background: rgba(144, 202, 249, 0.1);
+    border-color: rgba(144, 202, 249, 0.25);
+}
+
+[data-theme-mode=dark] .question-text-body .katex-display {
+    background: rgba(144, 202, 249, 0.08);
+    border-color: rgba(144, 202, 249, 0.2);
 }
 
 /* خيارات الإجابة: تنسيق عادي مع تمييز الإجابة الصحيحة فقط */

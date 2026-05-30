@@ -6,9 +6,9 @@
     بنك الأسئلة
 @stop
 
-@section('css')
+@push('styles')
 @include('admin.pages.questions.partials.index-styles')
-@stop
+@endpush
 
 @section('content')
     <!-- Start::app-content -->

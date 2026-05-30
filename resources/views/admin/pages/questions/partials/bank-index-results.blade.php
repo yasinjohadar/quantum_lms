@@ -60,11 +60,11 @@
 
                     <h6 class="fw-semibold mb-2">
                         @can('question-show')
-                            <a href="{{ route('admin.questions.show', $question->id) }}" class="text-decoration-none text-body question-text-body question-card-preview d-block">
+                            <a href="{{ route('admin.questions.show', $question->id) }}" class="text-decoration-none question-text-body question-card-preview d-block">
                                 {!! format_question_markup($question->title) !!}
                             </a>
                         @else
-                            <span class="text-body question-text-body question-card-preview d-block">{!! format_question_markup($question->title) !!}</span>
+                            <span class="question-text-body question-card-preview d-block">{!! format_question_markup($question->title) !!}</span>
                         @endcan
                     </h6>
 
@@ -73,7 +73,7 @@
                     @endif
 
                     <div class="d-flex flex-wrap gap-1 mb-2">
-                        <span class="badge bg-light text-dark">
+                        <span class="badge question-points-badge">
                             <i class="bi bi-star me-1"></i>{{ $question->default_points }} نقطة
                         </span>
                         <span class="badge bg-{{ $question->difficulty_color }}-transparent text-{{ $question->difficulty_color }}">
@@ -105,8 +105,8 @@
                                 <tbody>
                                     @foreach($curriculumRows->take(2) as $row)
                                         <tr>
-                                            <td class="ps-0 py-1"><span class="fw-semibold text-body">{{ $row['class'] ?: '—' }}</span></td>
-                                            <td class="py-1"><span class="fw-semibold text-body">{{ $row['subject'] ?: '—' }}</span></td>
+                                            <td class="ps-0 py-1"><span class="fw-semibold">{{ $row['class'] ?: '—' }}</span></td>
+                                            <td class="py-1"><span class="fw-semibold">{{ $row['subject'] ?: '—' }}</span></td>
                                             <td class="pe-0 py-1"><span class="text-primary fw-semibold">{{ $row['unit'] }}</span></td>
                                         </tr>
                                     @endforeach

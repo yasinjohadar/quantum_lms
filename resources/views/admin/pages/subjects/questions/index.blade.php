@@ -6,9 +6,9 @@
     بنك أسئلة — {{ $subject->name }}
 @stop
 
-@section('css')
+@push('styles')
 @include('admin.pages.questions.partials.index-styles')
-@stop
+@endpush
 
 @section('content')
     <div class="main-content app-content">
