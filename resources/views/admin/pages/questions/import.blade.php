@@ -4,268 +4,134 @@
     استيراد الأسئلة
 @stop
 
-@section('css')
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.css">
+@push('styles')
 <style>
-    .upload-area {
-        border: 2px dashed #cbd5e1;
+    .questions-import .upload-area {
+        border: 2px dashed var(--default-border);
         border-radius: 12px;
         padding: 60px 20px;
         text-align: center;
         transition: all 0.3s ease;
-        background: #f8fafc;
+        background: var(--default-background);
+        color: var(--default-text-color);
         cursor: pointer;
     }
-    .upload-area:hover, .upload-area.dragover {
-        border-color: #4f46e5;
-        background: #eef2ff;
+    .questions-import .upload-area h5 {
+        color: var(--default-text-color);
     }
-    .upload-area.has-file {
-        border-color: #10b981;
-        background: #ecfdf5;
+    .questions-import .upload-area:hover,
+    .questions-import .upload-area.dragover {
+        border-color: rgb(var(--primary-rgb));
+        background: var(--primary005);
     }
-    .preview-table {
+    .questions-import .upload-area.has-file {
+        border-color: rgb(var(--success-rgb));
+        background: rgba(var(--success-rgb), 0.08);
+    }
+    .questions-import .preview-table {
         max-height: 400px;
         overflow-y: auto;
     }
-    .column-mapping {
-        border: 1px solid #e5e7eb;
+    .questions-import .column-mapping {
+        border: 1px solid var(--default-border);
         border-radius: 8px;
         padding: 16px;
-        background: #f9fafb;
+        background: var(--default-background);
     }
-    .mapping-item {
+    .questions-import .mapping-item {
         display: flex;
         align-items: center;
         gap: 12px;
         padding: 12px;
-        background: white;
+        background: var(--custom-white);
         border-radius: 6px;
         margin-bottom: 8px;
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--default-border);
     }
-    .mapping-item:hover {
-        border-color: #4f46e5;
-        box-shadow: 0 2px 4px rgba(79, 70, 229, 0.1);
+    .questions-import .mapping-item:hover {
+        border-color: rgb(var(--primary-rgb));
+        box-shadow: 0 2px 4px rgba(var(--primary-rgb), 0.12);
     }
-    .file-info {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+    .questions-import .file-info {
+        background: linear-gradient(135deg, rgb(var(--primary-rgb)) 0%, rgba(var(--primary-rgb), 0.75) 100%);
+        color: #fff;
         border-radius: 8px;
         padding: 16px;
     }
-    .steps-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 24px;
-        margin-bottom: 40px;
+    .questions-import .required-field {
+        color: rgb(var(--danger-rgb));
     }
-    
-    @media (max-width: 768px) {
-        .steps-container {
-            grid-template-columns: 1fr;
-        }
+    .questions-import .import-steps-bar {
+        width: 100%;
+        border-bottom: 0;
     }
-    .step-card {
-        background: white;
-        border: 2px solid #e5e7eb;
-        border-radius: 16px;
-        padding: 28px 24px;
-        text-align: center;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        cursor: default;
-        position: relative;
-        overflow: hidden;
-        min-height: 200px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
+    .questions-import .import-steps-bar .nav-item {
+        flex: 1 1 0;
+        min-width: 0;
+        margin-inline-end: 0.5rem;
     }
-    .step-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 4px;
-        height: 100%;
-        background: transparent;
-        transition: all 0.3s ease;
+    .questions-import .import-steps-bar .nav-item:last-child {
+        margin-inline-end: 0;
     }
-    .step-card:hover:not(.active):not(.completed) {
-        border-color: #cbd5e1;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        transform: translateY(-2px);
-    }
-    .step-card.active {
-        border-color: #4f46e5;
-        background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
-        box-shadow: 0 8px 24px rgba(79, 70, 229, 0.15);
-        transform: translateY(-4px);
-    }
-    .step-card.active::before {
-        background: linear-gradient(180deg, #4f46e5 0%, #6366f1 100%);
-        width: 5px;
-    }
-    .step-card.completed {
-        border-color: #10b981;
-        background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
-        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.1);
-    }
-    .step-card.completed::before {
-        background: linear-gradient(180deg, #10b981 0%, #22c55e 100%);
-        width: 5px;
-    }
-    .step-icon-wrapper {
-        width: 72px;
-        height: 72px;
-        border-radius: 18px;
-        display: flex;
-        align-items: center;
+    .questions-import .import-steps-bar .nav-link {
         justify-content: center;
-        margin: 0 auto 20px;
-        background: #f1f5f9;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
+        width: 100%;
+        pointer-events: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 0.875rem;
+        padding: 0.5rem 0.75rem;
     }
-    .step-icon-wrapper::after {
-        content: '';
-        position: absolute;
-        inset: -4px;
-        border-radius: 22px;
-        background: transparent;
-        transition: all 0.3s ease;
+    .questions-import .import-steps-bar .nav-item.completed .nav-link {
+        color: rgb(var(--success-rgb));
+        border-color: rgb(var(--success-rgb)) !important;
     }
-    .step-card.active .step-icon-wrapper {
-        background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
-        box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
-        transform: scale(1.05);
+    .questions-import .import-steps-bar .nav-item.completed .nav-link i {
+        border-color: rgb(var(--success-rgb));
+        color: rgb(var(--success-rgb));
     }
-    .step-card.active .step-icon-wrapper::after {
-        background: rgba(79, 70, 229, 0.1);
-    }
-    .step-card.completed .step-icon-wrapper {
-        background: linear-gradient(135deg, #10b981 0%, #22c55e 100%);
-        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.35);
-    }
-    .step-card.completed .step-icon-wrapper::after {
-        background: rgba(16, 185, 129, 0.1);
-    }
-    .step-icon {
-        font-size: 32px;
-        color: #64748b;
-        transition: all 0.3s ease;
-        position: relative;
+    .questions-import-sidebar {
+        top: 5rem;
         z-index: 1;
     }
-    .step-card.active .step-icon {
-        color: white;
-        transform: scale(1.1);
-    }
-    .step-card.completed .step-icon {
-        color: white;
-    }
-    .step-number {
-        position: absolute;
-        top: 16px;
-        left: 16px;
-        width: 32px;
-        height: 32px;
-        border-radius: 10px;
-        background: #e5e7eb;
-        color: #64748b;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 14px;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    .step-card.active .step-number {
-        background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
-        color: white;
-        box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
-        transform: scale(1.1);
-    }
-    .step-card.completed .step-number {
-        background: linear-gradient(135deg, #10b981 0%, #22c55e 100%);
-        color: white;
-        box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
-    }
-    .step-title {
-        font-size: 18px;
-        font-weight: 700;
-        color: #1f2937;
-        margin-bottom: 10px;
-        transition: all 0.3s ease;
-    }
-    .step-card.active .step-title {
-        color: #4f46e5;
-        font-size: 19px;
-    }
-    .step-card.completed .step-title {
-        color: #10b981;
-    }
-    .step-description {
-        font-size: 14px;
-        color: #6b7280;
-        line-height: 1.6;
-        margin-bottom: 16px;
-        min-height: 40px;
-    }
-    .step-card.active .step-description {
-        color: #4b5563;
-        font-weight: 500;
-    }
-    .step-status {
-        margin-top: auto;
-        font-size: 11px;
-        font-weight: 700;
-        padding: 6px 14px;
-        border-radius: 20px;
-        display: inline-block;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    .step-status.pending {
-        background: #f1f5f9;
-        color: #64748b;
-    }
-    .step-status.active {
-        background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
-        color: #4f46e5;
-        box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
-    }
-    .step-status.completed {
-        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-        color: #10b981;
-        box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
-    }
-    .required-field {
-        color: #ef4444;
+    @media (max-width: 991.98px) {
+        .questions-import .import-steps-bar {
+            overflow-x: auto;
+            flex-wrap: nowrap;
+        }
+        .questions-import .import-steps-bar .nav-item {
+            flex: 0 0 auto;
+            min-width: 130px;
+        }
     }
 </style>
-@stop
+@endpush
 
 @section('content')
-    <!-- Start::app-content -->
     <div class="main-content app-content">
-        <div class="container-fluid">
+        <div class="container-fluid questions-import">
 
-            <!-- Page Header -->
             <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
                 <div class="my-auto">
                     <h5 class="page-title fs-21 mb-1">استيراد الأسئلة</h5>
                     <nav>
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('admin.questions.index') }}">بنك الأسئلة</a></li>
+                            @if(!empty($lockedSubject))
+                                <li class="breadcrumb-item"><a href="{{ route('admin.subjects.index') }}">المواد</a></li>
+                                <li class="breadcrumb-item"><a href="{{ route('admin.subjects.questions.index', $lockedSubject->id) }}">{{ $lockedSubject->name }}</a></li>
+                            @else
+                                <li class="breadcrumb-item"><a href="{{ route('admin.questions.index') }}">بنك الأسئلة</a></li>
+                            @endif
                             <li class="breadcrumb-item active" aria-current="page">استيراد الأسئلة</li>
                         </ol>
                     </nav>
+                    @if(!empty($lockedSubject))
+                        <p class="text-muted small mb-0 mt-1">الأسئلة المستوردة ستُربط تلقائياً بمادة: <strong>{{ $lockedSubject->name }}</strong></p>
+                    @endif
                 </div>
             </div>
-            <!-- Page Header Close -->
 
             @if (session('success'))
                 <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -273,9 +139,9 @@
                     @if (session('import_summary'))
                         <div class="mt-2 small">
                             <strong>ملخص الاستيراد:</strong><br>
-                            ✅ نجح: {{ session('import_summary')['success'] }}<br>
-                            ❌ فشل: {{ session('import_summary')['errors'] }}<br>
-                            📊 الإجمالي: {{ session('import_summary')['total'] }}
+                            نجح: {{ session('import_summary')['success'] }}<br>
+                            فشل: {{ session('import_summary')['errors'] }}<br>
+                            الإجمالي: {{ session('import_summary')['total'] }}
                         </div>
                     @endif
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
@@ -289,223 +155,234 @@
                 </div>
             @endif
 
-            <!-- Steps Cards -->
-            <div class="steps-container">
-                <div class="step-card active" id="step1">
-                    <div class="step-number">1</div>
-                    <div class="step-icon-wrapper">
-                        <i class="bi bi-cloud-upload step-icon"></i>
-                    </div>
-                    <h6 class="step-title">رفع الملف</h6>
-                    <p class="step-description mb-0">قم برفع ملف Excel أو CSV</p>
-                    <span class="step-status active">نشط</span>
-                </div>
-                
-                <div class="step-card" id="step2">
-                    <div class="step-number">2</div>
-                    <div class="step-icon-wrapper">
-                        <i class="bi bi-columns step-icon"></i>
-                    </div>
-                    <h6 class="step-title">تحديد الأعمدة</h6>
-                    <p class="step-description mb-0">حدد الأعمدة المناسبة</p>
-                    <span class="step-status pending">قادم</span>
-                </div>
-                
-                <div class="step-card" id="step3">
-                    <div class="step-number">3</div>
-                    <div class="step-icon-wrapper">
-                        <i class="bi bi-eye step-icon"></i>
-                    </div>
-                    <h6 class="step-title">معاينة البيانات</h6>
-                    <p class="step-description mb-0">راجع البيانات قبل الاستيراد</p>
-                    <span class="step-status pending">قادم</span>
-                </div>
-                
-                <div class="step-card" id="step4">
-                    <div class="step-number">4</div>
-                    <div class="step-icon-wrapper">
-                        <i class="bi bi-check-circle step-icon"></i>
-                    </div>
-                    <h6 class="step-title">الاستيراد</h6>
-                    <p class="step-description mb-0">ابدأ عملية الاستيراد</p>
-                    <span class="step-status pending">قادم</span>
-                </div>
-            </div>
+            <div class="row g-4">
+                <div class="col-xl-8 col-lg-7">
 
-            <!-- Step 1: Upload File -->
-            <div class="card custom-card mb-3" id="uploadStep">
-                <div class="card-header">
-                    <div class="card-title">رفع ملف Excel/CSV</div>
-                </div>
-                <div class="card-body">
-                    <div class="upload-area" id="uploadArea">
-                        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display: none;">
-                        <div id="uploadContent">
-                            <i class="bi bi-cloud-upload display-4 text-muted mb-3"></i>
-                            <h5 class="mb-2">اسحب الملف هنا أو اضغط للاختيار</h5>
-                            <p class="text-muted mb-0">الصيغ المدعومة: Excel (.xlsx, .xls) أو CSV (.csv)</p>
-                            <p class="text-muted small">الحد الأقصى: 10 ميجابايت</p>
-                        </div>
-                        <div id="fileInfo" style="display: none;">
-                            <i class="bi bi-file-earmark-check display-4 text-success mb-3"></i>
-                            <h5 class="mb-2" id="fileName"></h5>
-                            <p class="text-muted mb-0" id="fileSize"></p>
-                            <button class="btn btn-sm btn-outline-danger mt-2" id="removeFile">
-                                <i class="bi bi-x-circle me-1"></i> إزالة الملف
-                            </button>
+                    <div class="card custom-card mb-3">
+                        <div class="card-body py-3">
+                            <ul class="nav nav-tabs form-wizard-1 import-steps-bar d-flex mb-0" role="list">
+                                <li class="nav-item active" id="step1" role="listitem">
+                                    <span class="nav-link active" aria-current="step">
+                                        <i class="bi bi-cloud-upload"></i>
+                                        <span class="ms-1 d-none d-sm-inline">رفع الملف</span>
+                                    </span>
+                                </li>
+                                <li class="nav-item" id="step2" role="listitem">
+                                    <span class="nav-link">
+                                        <i class="bi bi-columns"></i>
+                                        <span class="ms-1 d-none d-sm-inline">تحديد الأعمدة</span>
+                                    </span>
+                                </li>
+                                <li class="nav-item" id="step3" role="listitem">
+                                    <span class="nav-link">
+                                        <i class="bi bi-eye"></i>
+                                        <span class="ms-1 d-none d-sm-inline">معاينة البيانات</span>
+                                    </span>
+                                </li>
+                                <li class="nav-item" id="step4" role="listitem">
+                                    <span class="nav-link">
+                                        <i class="bi bi-check-circle"></i>
+                                        <span class="ms-1 d-none d-sm-inline">الاستيراد</span>
+                                    </span>
+                                </li>
+                            </ul>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- Step 2: Column Mapping -->
-            <div class="card custom-card mb-3" id="mappingStep" style="display: none;">
-                <div class="card-header">
-                    <div class="card-title">تحديد الأعمدة</div>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-info mb-4">
-                        <i class="bi bi-info-circle me-2"></i>
-                        قم بتحديد أي عمود في ملفك يطابق كل حقل في النظام. الحقول المميزة بعلامة <span class="required-field">*</span> إلزامية.
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6 class="fw-semibold mb-3">الحقول المطلوبة <span class="required-field">*</span></h6>
-                            <div class="column-mapping" id="requiredMappings"></div>
+                    <div class="card custom-card mb-3" id="uploadStep">
+                        <div class="card-header">
+                            <div class="card-title">رفع ملف Excel/CSV</div>
                         </div>
-                        <div class="col-md-6">
-                            <h6 class="fw-semibold mb-3">الحقول الاختيارية</h6>
-                            <div class="column-mapping" id="optionalMappings"></div>
+                        <div class="card-body">
+                            <div class="upload-area" id="uploadArea">
+                                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+                                <div id="uploadContent">
+                                    <i class="bi bi-cloud-upload display-4 text-muted mb-3"></i>
+                                    <h5 class="mb-2">اسحب الملف هنا أو اضغط للاختيار</h5>
+                                    <p class="text-muted mb-0">الصيغ المدعومة: Excel (.xlsx, .xls) أو CSV (.csv)</p>
+                                    <p class="text-muted small mb-0">الحد الأقصى: 10 ميجابايت</p>
+                                </div>
+                                <div id="fileInfo" style="display: none;">
+                                    <i class="bi bi-file-earmark-check display-4 text-success mb-3"></i>
+                                    <h5 class="mb-2" id="fileName"></h5>
+                                    <p class="text-muted mb-0" id="fileSize"></p>
+                                    <button type="button" class="btn btn-sm btn-outline-danger mt-2" id="removeFile">
+                                        <i class="bi bi-x-circle me-1"></i> إزالة الملف
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div class="d-flex gap-2 mt-4">
-                        <button type="button" class="btn btn-primary" id="nextToPreviewBtn" disabled>
-                            <i class="bi bi-arrow-left me-2"></i> التالي: معاينة البيانات
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="showStep(1)">
-                            <i class="bi bi-arrow-right me-2"></i> رجوع
-                        </button>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Step 3: Preview -->
-            <div class="card custom-card mb-3" id="previewStep" style="display: none;">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div class="card-title">معاينة البيانات</div>
-                    <div>
-                        <span class="badge bg-primary" id="previewCount">0</span> صف
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-warning mb-3">
-                        <i class="bi bi-info-circle me-2"></i>
-                        يتم عرض أول 10 صفوف فقط للمعاينة. سيتم استيراد جميع الصفوف عند الضغط على "بدء الاستيراد".
-                    </div>
-                    
-                    <div class="table-responsive preview-table">
-                        <table class="table table-bordered table-hover" id="previewTable">
-                            <thead class="table-light sticky-top">
-                                <tr id="previewHeader"></tr>
-                            </thead>
-                            <tbody id="previewBody"></tbody>
-                        </table>
-                    </div>
-                    
-                    <div class="d-flex gap-2 mt-4">
-                        <button type="button" class="btn btn-primary" id="nextToImportBtn">
-                            <i class="bi bi-arrow-left me-2"></i> التالي: الاستيراد
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="showStep(2)">
-                            <i class="bi bi-arrow-right me-2"></i> رجوع
-                        </button>
-                    </div>
-                </div>
-            </div>
+                    <div class="card custom-card mb-3" id="mappingStep" style="display: none;">
+                        <div class="card-header">
+                            <div class="card-title">تحديد الأعمدة</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info mb-4">
+                                <i class="bi bi-info-circle me-2"></i>
+                                قم بتحديد أي عمود في ملفك يطابق كل حقل في النظام. الحقول المميزة بعلامة <span class="required-field">*</span> إلزامية.
+                            </div>
 
-            <!-- Step 4: Import -->
-            <div class="card custom-card mb-3" id="importStep" style="display: none;">
-                <div class="card-header">
-                    <div class="card-title">جاهز للاستيراد</div>
-                </div>
-                <div class="card-body">
-                    <div class="file-info mb-4">
-                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="fw-semibold mb-3">الحقول المطلوبة <span class="required-field">*</span></h6>
+                                    <div class="column-mapping" id="requiredMappings"></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="fw-semibold mb-3">الحقول الاختيارية</h6>
+                                    <div class="column-mapping" id="optionalMappings"></div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex flex-wrap gap-2 mt-4">
+                                <button type="button" class="btn btn-primary" id="nextToPreviewBtn" disabled>
+                                    <i class="bi bi-arrow-left me-2"></i> التالي: معاينة البيانات
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="showStep(1)">
+                                    <i class="bi bi-arrow-right me-2"></i> رجوع
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card custom-card mb-3" id="previewStep" style="display: none;">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="card-title">معاينة البيانات</div>
                             <div>
-                                <h6 class="mb-1 text-white" id="finalFileName"></h6>
-                                <p class="mb-0 text-white-50 small" id="finalFileSize"></p>
+                                <span class="badge bg-primary" id="previewCount">0</span> صف
                             </div>
-                            <div class="text-end">
-                                <div class="text-white fw-bold fs-18" id="finalRowCount">0</div>
-                                <div class="text-white-50 small">صف</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-warning mb-3">
+                                <i class="bi bi-info-circle me-2"></i>
+                                يتم عرض أول 10 صفوف فقط للمعاينة. سيتم استيراد جميع الصفوف عند الضغط على «بدء الاستيراد».
+                            </div>
+
+                            <div class="table-responsive preview-table">
+                                <table class="table table-bordered table-hover" id="previewTable">
+                                    <thead class="table-light sticky-top">
+                                        <tr id="previewHeader"></tr>
+                                    </thead>
+                                    <tbody id="previewBody"></tbody>
+                                </table>
+                            </div>
+
+                            <div class="d-flex flex-wrap gap-2 mt-4">
+                                <button type="button" class="btn btn-primary" id="nextToImportBtn">
+                                    <i class="bi bi-arrow-left me-2"></i> التالي: الاستيراد
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="showStep(2)">
+                                    <i class="bi bi-arrow-right me-2"></i> رجوع
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <form action="{{ route('admin.questions.import') }}" method="POST" enctype="multipart/form-data" id="importForm">
-                        @csrf
-                        @if(!empty($lockedSubject))
-                            <input type="hidden" name="subject_id" value="{{ $lockedSubject->id }}">
-                        @endif
-                        <input type="file" name="file" id="hiddenFileInput" style="display: none;">
-                        <input type="hidden" name="column_mapping" id="columnMappingInput">
-                        
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg" id="importBtn">
-                                <i class="bi bi-upload me-2"></i> بدء الاستيراد
-                            </button>
-                            <button type="button" class="btn btn-secondary btn-lg" id="backBtn">
-                                <i class="bi bi-arrow-right me-2"></i> رجوع
-                            </button>
-                            <a href="{{ !empty($lockedSubject) ? route('admin.subjects.questions.index', $lockedSubject->id) : route('admin.questions.index') }}" class="btn btn-outline-secondary btn-lg">
-                                <i class="bi bi-x me-2"></i> إلغاء
-                            </a>
+                    <div class="card custom-card mb-3" id="importStep" style="display: none;">
+                        <div class="card-header">
+                            <div class="card-title">جاهز للاستيراد</div>
                         </div>
-                    </form>
-                </div>
-            </div>
+                        <div class="card-body">
+                            <div class="file-info mb-4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1 text-white" id="finalFileName"></h6>
+                                        <p class="mb-0 text-white-50 small" id="finalFileSize"></p>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="text-white fw-bold fs-18" id="finalRowCount">0</div>
+                                        <div class="text-white-50 small">صف</div>
+                                    </div>
+                                </div>
+                            </div>
 
-            <!-- Help Card -->
-            <div class="card custom-card">
-                <div class="card-header">
-                    <div class="card-title">تعليمات الاستيراد</div>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6 class="fw-semibold mb-3">الحقول المطلوبة:</h6>
-                            <ul class="small mb-0">
-                                <li><code>type</code> - نوع السؤال (single_choice, multiple_choice, etc.)</li>
-                                <li><code>title</code> - عنوان السؤال</li>
-                                <li><code>difficulty</code> - الصعوبة (easy, medium, hard)</li>
-                                <li><code>points</code> - الدرجة</li>
-                            </ul>
-                        </div>
-                        <div class="col-md-6">
-                            <h6 class="fw-semibold mb-3">أنواع الأسئلة المدعومة:</h6>
-                            <ul class="small mb-0">
-                                <li>single_choice (اختيار واحد)</li>
-                                <li>multiple_choice (اختيار متعدد)</li>
-                                <li>true_false (صح/خطأ)</li>
-                                <li>short_answer (إجابة قصيرة)</li>
-                                <li>essay (مقالي)</li>
-                                <li>numerical (رقمي)</li>
-                            </ul>
+                            <form action="{{ route('admin.questions.import') }}" method="POST" enctype="multipart/form-data" id="importForm">
+                                @csrf
+                                <input type="hidden" name="class_id" id="importClassId" value="{{ old('class_id', $prefillClassId ?? '') }}">
+                                <input type="hidden" name="subject_id" id="importSubjectId" value="{{ old('subject_id', $prefillSubjectId ?? '') }}">
+                                <input type="hidden" name="unit_id" id="importUnitId" value="{{ old('unit_id', $prefillUnitId ?? '') }}">
+                                <input type="file" name="file" id="hiddenFileInput" style="display: none;">
+                                <input type="hidden" name="column_mapping" id="columnMappingInput">
+
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="submit" class="btn btn-primary btn-lg" id="importBtn">
+                                        <i class="bi bi-upload me-2"></i> بدء الاستيراد
+                                    </button>
+                                    <button type="button" class="btn btn-secondary btn-lg" id="backBtn">
+                                        <i class="bi bi-arrow-right me-2"></i> رجوع
+                                    </button>
+                                    <a href="{{ !empty($lockedSubject) ? route('admin.subjects.questions.index', $lockedSubject->id) : route('admin.questions.index') }}" class="btn btn-outline-secondary btn-lg">
+                                        <i class="bi bi-x me-2"></i> إلغاء
+                                    </a>
+                                </div>
+                            </form>
                         </div>
                     </div>
-                    <div class="mt-3 text-center">
-                        <a href="{{ route('admin.questions.export.template') }}" class="btn btn-outline-primary">
-                            <i class="bi bi-download me-1"></i> تحميل ملف Template
-                        </a>
+
+                </div>
+
+                <div class="col-xl-4 col-lg-5">
+                    <div class="questions-import-sidebar sticky-lg-top">
+                        <div class="card custom-card mb-3">
+                            <div class="card-header">
+                                <div class="card-title">الربط بالمنهج</div>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small mb-3">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    حدّد الصف والمادة والوحدة لربط جميع الأسئلة المستوردة. الوحدة اختيارية — إن تركتها فارغة يبقى السؤال عاماً ما لم يُحدَّد عمود <code>units</code> في الملف.
+                                </p>
+                                @if(!empty($lockedSubject))
+                                    <input type="hidden" id="locked_class_id" value="{{ $lockedSubject->class_id }}">
+                                @endif
+                                @include('admin.pages.ai.question-generations.partials.optional-curriculum-fields', [
+                                    'fieldPrefix' => '',
+                                    'schoolClasses' => $schoolClasses,
+                                    'lockedSubject' => $lockedSubject ?? null,
+                                    'prefillClassId' => $prefillClassId ?? null,
+                                    'prefillSubjectId' => $prefillSubjectId ?? null,
+                                    'prefillUnitId' => $prefillUnitId ?? null,
+                                ])
+                            </div>
+                        </div>
+
+                        <div class="card custom-card">
+                            <div class="card-header">
+                                <div class="card-title">تعليمات الاستيراد</div>
+                            </div>
+                            <div class="card-body">
+                                <h6 class="fw-semibold mb-3">الحقول المطلوبة:</h6>
+                                <ul class="small mb-4">
+                                    <li><code>type</code> — نوع السؤال (single_choice, multiple_choice, …)</li>
+                                    <li><code>title</code> — عنوان السؤال</li>
+                                    <li><code>difficulty</code> — الصعوبة (easy, medium, hard)</li>
+                                    <li><code>points</code> — الدرجة</li>
+                                </ul>
+
+                                <h6 class="fw-semibold mb-3">أنواع الأسئلة المدعومة:</h6>
+                                <ul class="small mb-4">
+                                    <li>single_choice (اختيار واحد)</li>
+                                    <li>multiple_choice (اختيار متعدد)</li>
+                                    <li>true_false (صح/خطأ)</li>
+                                    <li>short_answer (إجابة قصيرة)</li>
+                                    <li>essay (مقالي)</li>
+                                    <li>numerical (رقمي)</li>
+                                </ul>
+
+                                <div class="d-grid">
+                                    <a href="{{ route('admin.questions.export.template') }}" class="btn btn-outline-primary">
+                                        <i class="bi bi-download me-1"></i> تحميل ملف Template
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
         </div>
     </div>
-    <!-- End::app-content -->
 @stop
 
 @section('js')
@@ -517,15 +394,14 @@ document.addEventListener('DOMContentLoaded', function() {
     let fileData = [];
     let fileColumns = [];
     let columnMapping = {};
-    
-    // Field definitions
+
     const requiredFields = [
         { key: 'type', label: 'نوع السؤال', icon: 'bi-tag' },
         { key: 'title', label: 'عنوان السؤال', icon: 'bi-heading' },
         { key: 'difficulty', label: 'الصعوبة', icon: 'bi-bar-chart' },
         { key: 'points', label: 'الدرجة', icon: 'bi-star' },
     ];
-    
+
     const optionalFields = [
         { key: 'content', label: 'محتوى السؤال', icon: 'bi-file-text' },
         { key: 'explanation', label: 'الشرح', icon: 'bi-lightbulb' },
@@ -542,7 +418,6 @@ document.addEventListener('DOMContentLoaded', function() {
         { key: 'units', label: 'الوحدات', icon: 'bi-book' },
     ];
 
-    // Upload area handlers
     const uploadArea = document.getElementById('uploadArea');
     const fileInput = document.getElementById('fileInput');
     const uploadContent = document.getElementById('uploadContent');
@@ -553,6 +428,11 @@ document.addEventListener('DOMContentLoaded', function() {
     uploadArea.addEventListener('dragleave', handleDragLeave);
     uploadArea.addEventListener('drop', handleDrop);
     fileInput.addEventListener('change', handleFileSelect);
+
+    document.getElementById('removeFile')?.addEventListener('click', function(e) {
+        e.stopPropagation();
+        resetUpload();
+    });
 
     function handleDragOver(e) {
         e.preventDefault();
@@ -596,9 +476,8 @@ document.addEventListener('DOMContentLoaded', function() {
         fileInfo.style.display = 'block';
         document.getElementById('fileName').textContent = file.name;
         document.getElementById('fileSize').textContent = formatFileSize(file.size);
-        
-        // Show loading
-        const loadingHtml = `
+
+        fileInfo.innerHTML = `
             <div class="text-center">
                 <div class="spinner-border text-primary mb-2" role="status">
                     <span class="visually-hidden">جاري المعالجة...</span>
@@ -606,9 +485,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <p class="text-muted mb-0">جاري قراءة الملف...</p>
             </div>
         `;
-        fileInfo.innerHTML = loadingHtml;
 
-        // Read file
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
@@ -622,19 +499,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 resetUpload();
             }
         };
-        
+
         reader.onerror = function() {
             alert('حدث خطأ أثناء قراءة الملف');
             resetUpload();
         };
-        
+
         if (file.name.endsWith('.csv')) {
             reader.readAsText(file);
         } else {
             reader.readAsArrayBuffer(file);
         }
     }
-    
+
     function resetUpload() {
         uploadedFile = null;
         fileData = [];
@@ -643,8 +520,36 @@ document.addEventListener('DOMContentLoaded', function() {
         uploadArea.classList.remove('has-file');
         uploadContent.style.display = 'block';
         fileInfo.style.display = 'none';
+        fileInfo.innerHTML = `
+            <i class="bi bi-file-earmark-check display-4 text-success mb-3"></i>
+            <h5 class="mb-2" id="fileName"></h5>
+            <p class="text-muted mb-0" id="fileSize"></p>
+            <button type="button" class="btn btn-sm btn-outline-danger mt-2" id="removeFile">
+                <i class="bi bi-x-circle me-1"></i> إزالة الملف
+            </button>
+        `;
+        document.getElementById('removeFile')?.addEventListener('click', function(e) {
+            e.stopPropagation();
+            resetUpload();
+        });
         fileInput.value = '';
         showStep(1);
+    }
+
+    function renderFileInfo() {
+        fileInfo.innerHTML = `
+            <i class="bi bi-file-earmark-check display-4 text-success mb-3"></i>
+            <h5 class="mb-2" id="fileName">${uploadedFile.name}</h5>
+            <p class="text-muted mb-0" id="fileSize">${formatFileSize(uploadedFile.size)}</p>
+            <p class="text-success small mt-2"><i class="bi bi-check-circle me-1"></i> تم قراءة ${fileData.length} صف</p>
+            <button type="button" class="btn btn-sm btn-outline-danger mt-2" id="removeFile">
+                <i class="bi bi-x-circle me-1"></i> إزالة الملف
+            </button>
+        `;
+        document.getElementById('removeFile')?.addEventListener('click', function(e) {
+            e.stopPropagation();
+            resetUpload();
+        });
     }
 
     function parseCSV(text) {
@@ -659,23 +564,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 fileData = results.data;
                 fileColumns = Object.keys(results.data[0]);
-                
-                // Update file info
-                fileInfo.innerHTML = `
-                    <i class="bi bi-file-earmark-check display-4 text-success mb-3"></i>
-                    <h5 class="mb-2" id="fileName">${uploadedFile.name}</h5>
-                    <p class="text-muted mb-0" id="fileSize">${formatFileSize(uploadedFile.size)}</p>
-                    <p class="text-success small mt-2"><i class="bi bi-check-circle me-1"></i> تم قراءة ${fileData.length} صف</p>
-                    <button class="btn btn-sm btn-outline-danger mt-2" id="removeFile">
-                        <i class="bi bi-x-circle me-1"></i> إزالة الملف
-                    </button>
-                `;
-                
-                // Re-attach remove button
-                document.getElementById('removeFile')?.addEventListener('click', function() {
-                    resetUpload();
-                });
-                
+                renderFileInfo();
                 setupColumnMapping();
                 showStep(2);
             },
@@ -694,32 +583,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 const workbook = XLSX.read(data, { type: 'array' });
                 const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                 const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-                
+
                 if (jsonData.length === 0) {
                     alert('الملف فارغ أو لا يحتوي على بيانات');
                     resetUpload();
                     return;
                 }
-                
+
                 fileData = jsonData;
                 fileColumns = Object.keys(jsonData[0]);
-                
-                // Update file info
-                fileInfo.innerHTML = `
-                    <i class="bi bi-file-earmark-check display-4 text-success mb-3"></i>
-                    <h5 class="mb-2" id="fileName">${uploadedFile.name}</h5>
-                    <p class="text-muted mb-0" id="fileSize">${formatFileSize(uploadedFile.size)}</p>
-                    <p class="text-success small mt-2"><i class="bi bi-check-circle me-1"></i> تم قراءة ${fileData.length} صف</p>
-                    <button class="btn btn-sm btn-outline-danger mt-2" id="removeFile">
-                        <i class="bi bi-x-circle me-1"></i> إزالة الملف
-                    </button>
-                `;
-                
-                // Re-attach remove button
-                document.getElementById('removeFile')?.addEventListener('click', function() {
-                    resetUpload();
-                });
-                
+                renderFileInfo();
                 setupColumnMapping();
                 showStep(2);
             } catch (error) {
@@ -735,50 +608,42 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function setupColumnMapping() {
-        // Auto-detect common column names
         const autoMapping = {};
         const columnLower = fileColumns.map(c => c.toLowerCase().trim());
-        
+
         requiredFields.forEach(field => {
             const fieldKey = field.key.toLowerCase();
             const fieldLabel = field.label.toLowerCase();
-            
-            // Try to find matching column
+
             const match = fileColumns.find((col, idx) => {
                 const colLower = columnLower[idx];
-                return colLower === fieldKey || 
+                return colLower === fieldKey ||
                        colLower === fieldLabel ||
                        colLower.includes(fieldKey) ||
                        colLower.includes(fieldLabel);
             });
-            
+
             if (match) {
                 autoMapping[field.key] = match;
             }
         });
 
-        // Setup required fields
         const requiredMappings = document.getElementById('requiredMappings');
         requiredMappings.innerHTML = '';
         requiredFields.forEach(field => {
-            const mappingItem = createMappingItem(field, true, autoMapping[field.key]);
-            requiredMappings.appendChild(mappingItem);
+            requiredMappings.appendChild(createMappingItem(field, true, autoMapping[field.key]));
         });
 
-        // Setup optional fields
         const optionalMappings = document.getElementById('optionalMappings');
         optionalMappings.innerHTML = '';
         optionalFields.forEach(field => {
-            const mappingItem = createMappingItem(field, false, autoMapping[field.key]);
-            optionalMappings.appendChild(mappingItem);
+            optionalMappings.appendChild(createMappingItem(field, false, autoMapping[field.key]));
         });
-        
-        // Update column mapping from auto-detection
+
         Object.keys(autoMapping).forEach(key => {
             columnMapping[key] = autoMapping[key];
         });
-        
-        // Check if all required fields are auto-mapped
+
         const allRequiredMapped = requiredFields.every(field => columnMapping[field.key]);
         const nextBtn = document.getElementById('nextToPreviewBtn');
         if (nextBtn) {
@@ -798,7 +663,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </label>
                 <select class="form-select form-select-sm field-mapping" data-field="${field.key}" ${required ? 'required' : ''}>
                     <option value="">-- اختر العمود --</option>
-                    ${fileColumns.map(col => 
+                    ${fileColumns.map(col =>
                         `<option value="${col}" ${col === autoSelected ? 'selected' : ''}>${col}</option>`
                     ).join('')}
                 </select>
@@ -807,7 +672,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return div;
     }
 
-    // Handle mapping changes
     document.addEventListener('change', function(e) {
         if (e.target.classList.contains('field-mapping')) {
             const field = e.target.dataset.field;
@@ -817,22 +681,19 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 delete columnMapping[field];
             }
-            
-            // Check if all required fields are mapped
+
             const allRequiredMapped = requiredFields.every(field => columnMapping[field.key]);
             const nextBtn = document.getElementById('nextToPreviewBtn');
             if (nextBtn) {
                 nextBtn.disabled = !allRequiredMapped;
             }
-            
-            // Update preview if all required fields are mapped
+
             if (allRequiredMapped) {
                 updatePreview();
             }
         }
     });
-    
-    // Next to preview button
+
     document.getElementById('nextToPreviewBtn')?.addEventListener('click', function() {
         const allRequiredMapped = requiredFields.every(field => columnMapping[field.key]);
         if (allRequiredMapped) {
@@ -842,8 +703,7 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('الرجاء تحديد جميع الحقول المطلوبة');
         }
     });
-    
-    // Next to import button
+
     document.getElementById('nextToImportBtn')?.addEventListener('click', function() {
         prepareImport();
         showStep(4);
@@ -856,20 +716,17 @@ document.addEventListener('DOMContentLoaded', function() {
     function showPreview() {
         const previewHeader = document.getElementById('previewHeader');
         const previewBody = document.getElementById('previewBody');
-        
-        // Clear previous
+
         previewHeader.innerHTML = '';
         previewBody.innerHTML = '';
-        
-        // Create header
+
         const mappedFields = [...requiredFields, ...optionalFields].filter(f => columnMapping[f.key]);
         mappedFields.forEach(field => {
             const th = document.createElement('th');
             th.textContent = field.label;
             previewHeader.appendChild(th);
         });
-        
-        // Show first 10 rows
+
         const previewRows = fileData.slice(0, 10);
         previewRows.forEach(row => {
             const tr = document.createElement('tr');
@@ -881,39 +738,33 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             previewBody.appendChild(tr);
         });
-        
+
         document.getElementById('previewCount').textContent = previewRows.length;
     }
 
     window.showStep = function(stepNumber) {
-        // Update step cards
         for (let i = 1; i <= 4; i++) {
-            const stepCard = document.getElementById(`step${i}`);
-            const statusBadge = stepCard.querySelector('.step-status');
-            
+            const stepItem = document.getElementById(`step${i}`);
+            const link = stepItem.querySelector('.nav-link');
+
+            stepItem.classList.remove('active', 'completed');
+            link.classList.remove('active');
+            link.removeAttribute('aria-current');
+
             if (i < stepNumber) {
-                stepCard.classList.remove('active');
-                stepCard.classList.add('completed');
-                statusBadge.textContent = 'مكتمل';
-                statusBadge.className = 'step-status completed';
+                stepItem.classList.add('completed');
             } else if (i === stepNumber) {
-                stepCard.classList.add('active');
-                stepCard.classList.remove('completed');
-                statusBadge.textContent = 'نشط';
-                statusBadge.className = 'step-status active';
-            } else {
-                stepCard.classList.remove('active', 'completed');
-                statusBadge.textContent = 'قادم';
-                statusBadge.className = 'step-status pending';
+                stepItem.classList.add('active');
+                link.classList.add('active');
+                link.setAttribute('aria-current', 'step');
             }
         }
-        
-        // Show/hide steps
+
         document.getElementById('uploadStep').style.display = stepNumber === 1 ? 'block' : 'none';
         document.getElementById('mappingStep').style.display = stepNumber === 2 ? 'block' : 'none';
         document.getElementById('previewStep').style.display = stepNumber === 3 ? 'block' : 'none';
         document.getElementById('importStep').style.display = stepNumber === 4 ? 'block' : 'none';
-        
+
         if (stepNumber === 4) {
             prepareImport();
         }
@@ -923,35 +774,53 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('finalFileName').textContent = uploadedFile.name;
         document.getElementById('finalFileSize').textContent = formatFileSize(uploadedFile.size);
         document.getElementById('finalRowCount').textContent = fileData.length;
-        
-        // Store mapping in hidden input
+
         document.getElementById('columnMappingInput').value = JSON.stringify(columnMapping);
-        
-        // Store file reference
+
+        syncCurriculumToForm();
+
         const dataTransfer = new DataTransfer();
         dataTransfer.items.add(uploadedFile);
         document.getElementById('hiddenFileInput').files = dataTransfer.files;
     }
 
+    function syncCurriculumToForm() {
+        const classSelect = document.getElementById('class_id');
+        const subjectSelect = document.getElementById('subject_id');
+        const unitSelect = document.getElementById('unit_id');
+        const importClassId = document.getElementById('importClassId');
+        const importSubjectId = document.getElementById('importSubjectId');
+        const importUnitId = document.getElementById('importUnitId');
 
-    // Back button
+        if (classSelect && classSelect.tagName === 'SELECT' && importClassId) {
+            importClassId.value = classSelect.value || '';
+        } else {
+            const lockedClass = document.getElementById('locked_class_id');
+            if (lockedClass && importClassId) {
+                importClassId.value = lockedClass.value || '';
+            }
+        }
+
+        if (subjectSelect && subjectSelect.tagName === 'SELECT' && importSubjectId) {
+            importSubjectId.value = subjectSelect.value || '';
+        }
+
+        if (unitSelect && importUnitId) {
+            importUnitId.value = unitSelect.value || '';
+        }
+    }
+
     document.getElementById('backBtn')?.addEventListener('click', function() {
         showStep(3);
     });
 
-    // Form submit
     document.getElementById('importForm')?.addEventListener('submit', function(e) {
         if (!uploadedFile) {
             e.preventDefault();
             alert('الرجاء رفع ملف أولاً');
             return;
         }
-        
-        // Create FormData with file
-        const formData = new FormData(this);
-        formData.append('file', uploadedFile);
-        
-        // Submit will be handled normally
+        syncCurriculumToForm();
     });
 
     function formatFileSize(bytes) {
@@ -960,6 +829,23 @@ document.addEventListener('DOMContentLoaded', function() {
         const sizes = ['Bytes', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
+});
+</script>
+@include('admin.pages.ai.question-generations.partials.optional-curriculum-scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof window.initOptionalCurriculumCascade === 'function') {
+        window.initOptionalCurriculumCascade({
+            classSelectId: 'class_id',
+            subjectSelectId: 'subject_id',
+            unitSelectId: 'unit_id',
+            ajaxSubjectsBase: @json(url('admin/questions/ajax/classes')),
+            ajaxUnitsBase: @json(url('admin/questions/ajax/subjects')),
+            prefillSubjectId: @json($prefillSubjectId ?? ''),
+            prefillUnitId: @json($prefillUnitId ?? ''),
+            lockedSubjectId: @json(!empty($lockedSubject) ? $lockedSubject->id : null),
+        });
     }
 });
 </script>

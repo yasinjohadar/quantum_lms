@@ -30,10 +30,13 @@ class QuestionsImport implements SkipsOnFailure, ToCollection, WithHeadingRow
 
     protected ?int $subjectId = null;
 
-    public function __construct(array $columnMapping = [], ?int $subjectId = null)
+    protected ?int $defaultUnitId = null;
+
+    public function __construct(array $columnMapping = [], ?int $subjectId = null, ?int $defaultUnitId = null)
     {
         $this->columnMapping = $columnMapping;
         $this->subjectId = $subjectId;
+        $this->defaultUnitId = $defaultUnitId;
     }
 
     /**
@@ -67,9 +70,12 @@ class QuestionsImport implements SkipsOnFailure, ToCollection, WithHeadingRow
 
                 $question = $this->createQuestion($data);
 
-                // ربط الوحدات
-                if (! empty($data['units'])) {
-                    $this->attachUnits($question, $data['units']);
+                $unitIds = $data['units'];
+                if ($unitIds === [] && $this->defaultUnitId) {
+                    $unitIds = [$this->defaultUnitId];
+                }
+                if ($unitIds !== []) {
+                    $this->attachUnits($question, $unitIds);
                 }
 
                 // إنشاء الخيارات

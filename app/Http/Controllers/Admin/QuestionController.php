@@ -29,7 +29,7 @@ class QuestionController extends Controller
     public function __construct()
     {
         $this->middleware(['permission:question-list'])->only('index');
-        $this->middleware(['permission:question-list|question-create|question-edit'])->only(['ajaxSubjectsByClass', 'ajaxUnitsBySubject']);
+        $this->middleware(['permission:question-list|question-create|question-edit|question-show-import|question-import'])->only(['ajaxSubjectsByClass', 'ajaxUnitsBySubject']);
         $this->middleware(['permission:question-create'])->only(['create', 'store']);
         $this->middleware(['permission:question-edit'])->only(['edit', 'update']);
         $this->middleware(['permission:question-delete'])->only('destroy');
@@ -769,7 +769,19 @@ class QuestionController extends Controller
     {
         $lockedSubject = $this->resolveLockedSubject($request);
 
-        return view('admin.pages.questions.import', compact('lockedSubject'));
+        $schoolClasses = SchoolClass::active()->ordered()->get();
+        $prefillSubjectId = $lockedSubject?->id ?? $request->query('subject_id');
+        $prefillClassId = $lockedSubject?->class_id
+            ?? ($prefillSubjectId ? Subject::whereKey($prefillSubjectId)->value('class_id') : null);
+        $prefillUnitId = $request->query('unit_id');
+
+        return view('admin.pages.questions.import', compact(
+            'lockedSubject',
+            'schoolClasses',
+            'prefillClassId',
+            'prefillSubjectId',
+            'prefillUnitId'
+        ));
     }
 
     /**
@@ -780,10 +792,24 @@ class QuestionController extends Controller
         $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
             'column_mapping' => ['nullable', 'string'],
+            'class_id' => ['nullable', 'exists:classes,id'],
             'subject_id' => ['nullable', 'exists:subjects,id'],
+            'unit_id' => ['nullable', 'exists:units,id'],
         ]);
 
         $lockedSubject = $this->resolveLockedSubject($request);
+
+        $curriculumError = $this->validateImportCurriculum(
+            $request->input('class_id'),
+            $request->input('subject_id'),
+            $request->input('unit_id')
+        );
+        if ($curriculumError) {
+            return redirect()
+                ->back()
+                ->withErrors(['subject_id' => $curriculumError])
+                ->withInput();
+        }
 
         try {
             $columnMapping = [];
@@ -791,7 +817,17 @@ class QuestionController extends Controller
                 $columnMapping = json_decode($request->column_mapping, true) ?? [];
             }
 
-            $import = new QuestionsImport($columnMapping, $lockedSubject?->id);
+            $subjectId = $lockedSubject?->id
+                ?? ($request->filled('subject_id') ? (int) $request->input('subject_id') : null);
+
+            if (! $subjectId && $request->filled('unit_id')) {
+                $unit = Unit::with('section')->find($request->input('unit_id'));
+                $subjectId = $unit?->section?->subject_id;
+            }
+
+            $defaultUnitId = $request->filled('unit_id') ? (int) $request->input('unit_id') : null;
+
+            $import = new QuestionsImport($columnMapping, $subjectId, $defaultUnitId);
 
             Excel::import($import, $request->file('file'));
 
@@ -844,6 +880,34 @@ class QuestionController extends Controller
         $this->authorizeManagedSubjectAccess(auth()->user(), $subject);
 
         return $subject;
+    }
+
+    protected function validateImportCurriculum(?string $classId, ?string $subjectId, ?string $unitId): ?string
+    {
+        if ($unitId && ! $subjectId) {
+            return 'يجب اختيار المادة عند تحديد الوحدة.';
+        }
+
+        if ($subjectId) {
+            $subject = Subject::find($subjectId);
+            if (! $subject) {
+                return 'المادة المحددة غير صالحة.';
+            }
+            if ($classId && (int) $subject->class_id !== (int) $classId) {
+                return 'المادة لا تنتمي للصف المحدد.';
+            }
+        }
+
+        if ($unitId) {
+            $belongsToSubject = Unit::whereKey($unitId)
+                ->whereHas('section', fn ($q) => $q->where('subject_id', $subjectId))
+                ->exists();
+            if (! $belongsToSubject) {
+                return 'الوحدة لا تنتمي للمادة المحددة.';
+            }
+        }
+
+        return null;
     }
 
     protected function applyQuestionSubjectId(Question $question, ?int $subjectId, array $unitIds): void
