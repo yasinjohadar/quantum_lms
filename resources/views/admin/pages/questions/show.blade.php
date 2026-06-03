@@ -6,10 +6,14 @@
 
 @include('partials.question-math-assets')
 
+@push('styles')
+    @include('admin.pages.questions.partials.show-styles')
+@endpush
+
 @section('content')
     <!-- Start::app-content -->
     <div class="main-content app-content">
-        <div class="container-fluid">
+        <div class="container-fluid question-show-page">
 
             <!-- Page Header -->
             <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
@@ -290,14 +294,14 @@
                 </div>
                 <div class="card-body p-0">
                     @if($question->units->isEmpty())
-                        <div class="text-center text-muted py-4 px-3">
+                        <div class="text-center question-curriculum-empty py-4 px-3">
                             <i class="bi bi-globe fs-3 d-block mb-2"></i>
                             سؤال عام (غير مرتبط بمنهج محدد)
                         </div>
                     @else
                         <div class="table-responsive">
-                            <table class="table table-bordered table-sm align-middle mb-0">
-                                <thead class="table-light">
+                            <table class="table table-bordered table-sm align-middle mb-0 question-curriculum-table">
+                                <thead>
                                     <tr>
                                         <th scope="col" class="text-muted small">الصف</th>
                                         <th scope="col" class="text-muted small">المادة</th>

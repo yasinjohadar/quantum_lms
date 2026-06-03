@@ -427,3 +427,14 @@ a:hover .folder-card .card-body i[class*="bi-"] {
     background: #f0fdf4;
     border-color: #86efac;
 }
+
+[data-theme-mode=dark] .question-option-row {
+    background: var(--custom-white);
+    border-color: var(--default-border);
+    color: var(--default-text-color);
+}
+
+[data-theme-mode=dark] .question-option-row.is-correct {
+    background: rgba(var(--success-rgb), 0.12);
+    border-color: rgba(var(--success-rgb), 0.35);
+}
