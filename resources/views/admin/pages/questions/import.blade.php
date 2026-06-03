@@ -214,6 +214,14 @@
                         </div>
                     </div>
 
+                    @include('admin.pages.questions.partials.nerve-test-import-module', [
+                        'lockedSubject' => $lockedSubject ?? null,
+                        'requireSubject' => empty($lockedSubject),
+                        'prefillClassId' => $prefillClassId ?? null,
+                        'prefillSubjectId' => $prefillSubjectId ?? null,
+                        'prefillUnitId' => $prefillUnitId ?? null,
+                    ])
+
                     <div class="card custom-card mb-3" id="mappingStep" style="display: none;">
                         <div class="card-header">
                             <div class="card-title">تحديد الأعمدة</div>
