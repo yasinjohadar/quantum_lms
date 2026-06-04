@@ -85,6 +85,7 @@ class StudentController extends Controller
         return view('student.dashboard', [
             'user' => $user,
             'overallAverage' => round($overallAverage, 1),
+            'subjectsCount' => $subjectsProgress->count(),
             'topSubjects' => $topSubjects,
             'upcomingEvents' => $upcomingEvents,
             'totalPoints' => $totalPoints,
