@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -97,7 +98,6 @@ class Quiz extends Model
 
     protected $casts = [
         'section_id' => 'integer',
-        'duration_minutes' => 'integer',
         'show_timer' => 'boolean',
         'auto_submit' => 'boolean',
         'max_attempts' => 'integer',
@@ -277,6 +277,19 @@ class Quiz extends Model
     public function getQuestionsCountAttribute(): int
     {
         return $this->questions()->count();
+    }
+
+    protected function durationMinutes(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => ($value === null || (int) $value <= 0) ? null : (int) $value,
+            set: fn ($value) => ($value === null || $value === '' || (int) $value <= 0) ? null : (int) $value,
+        );
+    }
+
+    public function hasTimeLimit(): bool
+    {
+        return $this->duration_minutes !== null;
     }
 
     public function getFormattedDurationAttribute(): ?string

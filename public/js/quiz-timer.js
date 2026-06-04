@@ -1,17 +1,19 @@
 /**
- * QuizTimer - عدّ تنازلي للاختبارات مع دعم التحديث من الخادم
+ * QuizTimer - عدّ تنازلي أو تصاعدي للاختبارات مع دعم التحديث من الخادم
  * يحدّث #timer-display، ويدعم updateUrl، onTimeout، onWarning
  */
 class QuizTimer {
     /**
      * @param {Object} options
-     * @param {number} options.remainingTime - الوقت المتبقي بالثواني
+     * @param {'countdown'|'elapsed'} [options.mode] - countdown (افتراضي) أو elapsed للمدة المفتوحة
+     * @param {number} [options.remainingTime] - الوقت المتبقي بالثواني (countdown)
+     * @param {number} [options.elapsedSeconds] - الوقت المنقضي بالثواني (elapsed)
      * @param {string|null} [options.updateUrl] - رابط AJAX لتحديث الوقت من الخادم
-     * @param {Function} [options.onTimeout] - يُستدعى عند انتهاء الوقت
-     * @param {Function} [options.onWarning] - يُستدعى عند وصول الوقت لمرحلة تحذير (seconds)
+     * @param {Function} [options.onTimeout] - يُستدعى عند انتهاء الوقت (countdown فقط)
+     * @param {Function} [options.onWarning] - يُستدعى عند وصول الوقت لمرحلة تحذير (countdown)
      */
     constructor(options = {}) {
-        this.remainingSeconds = Math.max(0, parseInt(options.remainingTime, 10) || 0);
+        this.mode = options.mode === 'elapsed' ? 'elapsed' : 'countdown';
         this.updateUrl = options.updateUrl || null;
         this.onTimeout = typeof options.onTimeout === 'function' ? options.onTimeout : null;
         this.onWarning = typeof options.onWarning === 'function' ? options.onWarning : null;
@@ -22,12 +24,27 @@ class QuizTimer {
         this.warningFired = {};
         this.timeoutFired = false;
         this.started = false;
+
+        if (this.mode === 'elapsed') {
+            this.elapsedSeconds = Math.max(0, parseInt(options.elapsedSeconds, 10) || 0);
+            this.remainingSeconds = 0;
+        } else {
+            const parsed = parseInt(options.remainingTime, 10);
+            this.remainingSeconds = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+            this.elapsedSeconds = 0;
+        }
     }
 
     formatSeconds(totalSeconds) {
         const seconds = Math.max(0, parseInt(totalSeconds, 10) || 0);
-        const m = Math.floor(seconds / 60);
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
         const s = seconds % 60;
+
+        if (h > 0) {
+            return h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+        }
+
         return m + ':' + (s < 10 ? '0' : '') + s;
     }
 
@@ -44,6 +61,15 @@ class QuizTimer {
         return token ? token.getAttribute('content') : '';
     }
 
+    updateElapsedDisplay() {
+        const displayEl = this.getDisplayElement();
+        if (!displayEl) {
+            return;
+        }
+        displayEl.textContent = this.formatSeconds(this.elapsedSeconds);
+        displayEl.setAttribute('data-elapsed-seconds', String(this.elapsedSeconds));
+    }
+
     handleSyncResponse(data) {
         if (!data) {
             return false;
@@ -57,16 +83,34 @@ class QuizTimer {
 
         if (data.timeout) {
             this.stop();
-            this.fireTimeout();
+            if (this.mode === 'countdown') {
+                this.fireTimeout();
+            }
             return true;
         }
 
+        if (data.unlimited) {
+            this.mode = 'elapsed';
+            if (typeof data.elapsed === 'number' && data.elapsed >= 0) {
+                this.elapsedSeconds = data.elapsed;
+            }
+            const displayEl = this.getDisplayElement();
+            if (displayEl) {
+                displayEl.textContent = data.formatted_elapsed || this.formatSeconds(this.elapsedSeconds);
+                displayEl.setAttribute('data-elapsed-seconds', String(this.elapsedSeconds));
+                displayEl.setAttribute('data-timer-mode', 'elapsed');
+            }
+            return false;
+        }
+
         if (typeof data.remaining === 'number' && data.remaining >= 0) {
+            this.mode = 'countdown';
             this.remainingSeconds = data.remaining;
             const displayEl = this.getDisplayElement();
             if (displayEl) {
-                displayEl.textContent = this.formatSeconds(this.remainingSeconds);
+                displayEl.textContent = data.formatted || this.formatSeconds(this.remainingSeconds);
                 displayEl.setAttribute('data-remaining-seconds', String(this.remainingSeconds));
+                displayEl.setAttribute('data-timer-mode', 'countdown');
             }
         }
 
@@ -128,7 +172,17 @@ class QuizTimer {
         }
     }
 
-    startTicking() {
+    startElapsedTicking() {
+        const tick = () => {
+            this.updateElapsedDisplay();
+            this.elapsedSeconds += 1;
+        };
+
+        tick();
+        this.tickIntervalId = window.setInterval(tick, 1000);
+    }
+
+    startCountdownTicking() {
         const tick = () => {
             const displayEl = this.getDisplayElement();
             const cardEl = this.getCardElement();
@@ -138,11 +192,14 @@ class QuizTimer {
                     displayEl.textContent = '0:00';
                 }
                 this.stopTickOnly();
-                this.syncFromServer({ immediate: true, onComplete: (handled) => {
-                    if (!handled && !this.timeoutFired) {
-                        this.fireTimeout();
-                    }
-                }});
+                this.syncFromServer({
+                    immediate: true,
+                    onComplete: (handled) => {
+                        if (!handled && !this.timeoutFired) {
+                            this.fireTimeout();
+                        }
+                    },
+                });
                 return;
             }
 
@@ -186,8 +243,21 @@ class QuizTimer {
         this.started = true;
         this.stop();
 
+        if (this.mode === 'elapsed') {
+            this.updateElapsedDisplay();
+            this.startElapsedTicking();
+
+            if (this.updateUrl) {
+                this.syncFromServer({ immediate: true });
+                this.syncIntervalId = window.setInterval(() => {
+                    this.syncFromServer();
+                }, this.updateIntervalMs);
+            }
+            return;
+        }
+
         const begin = () => {
-            this.startTicking();
+            this.startCountdownTicking();
 
             if (this.updateUrl) {
                 this.syncFromServer({ immediate: true });

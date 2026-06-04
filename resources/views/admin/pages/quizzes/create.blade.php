@@ -209,6 +209,7 @@
                                     <input class="form-check-input" type="checkbox" name="auto_submit" 
                                            id="autoSubmit" {{ old('auto_submit', true) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="autoSubmit">إرسال تلقائي عند انتهاء الوقت</label>
+                                    <small class="text-muted d-block">يُطبَّق فقط عند تحديد مدة بالدقائق.</small>
                                 </div>
                             </div>
                         </div>

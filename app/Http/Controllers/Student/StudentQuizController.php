@@ -431,6 +431,15 @@ class StudentQuizController extends Controller
             ]);
         }
 
+        if (! $attempt->quiz->hasTimeLimit()) {
+            return response()->json([
+                'success' => true,
+                'unlimited' => true,
+                'elapsed' => $attempt->elapsed_seconds,
+                'formatted_elapsed' => $attempt->formatted_elapsed_time,
+            ]);
+        }
+
         $remaining = $attempt->remaining_time;
 
         // التحقق من انتهاء الوقت
@@ -452,8 +461,9 @@ class StudentQuizController extends Controller
 
         return response()->json([
             'success' => true,
+            'unlimited' => false,
             'remaining' => $remaining,
-            'formatted' => $attempt->formatted_remaining_time
+            'formatted' => $attempt->formatted_remaining_time,
         ]);
     }
 

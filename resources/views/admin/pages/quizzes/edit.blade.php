@@ -112,7 +112,9 @@
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">المدة (بالدقائق)</label>
                                 <input type="number" name="duration_minutes" class="form-control" 
-                                       value="{{ old('duration_minutes', $quiz->duration_minutes) }}" min="1" max="600">
+                                       value="{{ old('duration_minutes', $quiz->duration_minutes) }}" min="1" max="600"
+                                       placeholder="اتركه فارغاً = مدة مفتوحة">
+                                <small class="text-muted">اترك الحقل فارغاً لجعل مدة الاختبار مفتوحة (غير محدودة).</small>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">تاريخ البدء</label>
@@ -138,6 +140,7 @@
                                     <input class="form-check-input" type="checkbox" name="auto_submit" 
                                            id="autoSubmit" {{ old('auto_submit', $quiz->auto_submit) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="autoSubmit">إرسال تلقائي عند انتهاء الوقت</label>
+                                    <small class="text-muted d-block">يُطبَّق فقط عند تحديد مدة بالدقائق.</small>
                                 </div>
                             </div>
                         </div>

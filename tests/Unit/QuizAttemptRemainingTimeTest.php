@@ -44,3 +44,30 @@ test('remaining time is null when quiz has no duration', function () {
 
     expect($attempt->remaining_time)->toBeNull();
 });
+
+test('remaining time is null when quiz duration is zero', function () {
+    $quiz = new Quiz;
+    $quiz->duration_minutes = 0;
+
+    $attempt = new QuizAttempt;
+    $attempt->status = 'in_progress';
+    $attempt->started_at = now();
+    $attempt->setRelation('quiz', $quiz);
+
+    expect($quiz->duration_minutes)->toBeNull()
+        ->and($attempt->remaining_time)->toBeNull();
+});
+
+test('elapsed seconds increases for in-progress open-duration attempt', function () {
+    $quiz = new Quiz;
+    $quiz->duration_minutes = null;
+
+    $attempt = new QuizAttempt;
+    $attempt->status = 'in_progress';
+    $attempt->started_at = now()->subSeconds(125);
+    $attempt->setRelation('quiz', $quiz);
+
+    expect($attempt->elapsed_seconds)->toBeGreaterThanOrEqual(120)
+        ->and($attempt->elapsed_seconds)->toBeLessThanOrEqual(130)
+        ->and($attempt->formatted_elapsed_time)->toMatch('/^\d+:\d{2}$/');
+});

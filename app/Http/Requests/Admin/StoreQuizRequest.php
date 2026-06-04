@@ -75,7 +75,13 @@ class StoreQuizRequest extends FormRequest
     {
         $this->prepareQuizCurriculumForValidation();
 
+        $duration = $this->input('duration_minutes');
+        if ($duration === '' || $duration === null || (int) $duration <= 0) {
+            $duration = null;
+        }
+
         $this->merge([
+            'duration_minutes' => $duration,
             'show_timer' => $this->boolean('show_timer'),
             'auto_submit' => $this->boolean('auto_submit'),
             'shuffle_questions' => $this->boolean('shuffle_questions'),

@@ -168,6 +168,36 @@ class QuizAttempt extends Model
         return in_array($this->status, ['completed', 'timed_out']);
     }
 
+    public function getElapsedSecondsAttribute(): int
+    {
+        if (!$this->started_at) {
+            return 0;
+        }
+
+        $end = $this->finished_at ?? now();
+
+        return max(0, (int) $this->started_at->diffInSeconds($end));
+    }
+
+    public function getFormattedElapsedTimeAttribute(): string
+    {
+        return self::formatDurationSeconds($this->elapsed_seconds);
+    }
+
+    public static function formatDurationSeconds(int $seconds): string
+    {
+        $seconds = max(0, $seconds);
+        $hours = intdiv($seconds, 3600);
+        $minutes = intdiv($seconds % 3600, 60);
+        $secs = $seconds % 60;
+
+        if ($hours > 0) {
+            return sprintf('%d:%02d:%02d', $hours, $minutes, $secs);
+        }
+
+        return sprintf('%d:%02d', $minutes, $secs);
+    }
+
     public function getRemainingTimeAttribute(): ?int
     {
         if (!$this->is_in_progress || !$this->quiz->duration_minutes) {
@@ -302,7 +332,9 @@ class QuizAttempt extends Model
     public function timeout(): void
     {
         $this->finished_at = now();
-        $this->time_spent = $this->quiz->duration_minutes * 60;
+        $this->time_spent = $this->quiz->duration_minutes
+            ? $this->quiz->duration_minutes * 60
+            : $this->started_at->diffInSeconds($this->finished_at);
         $this->status = 'timed_out';
         $this->save();
         $this->calculateScore();

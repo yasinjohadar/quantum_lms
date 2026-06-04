@@ -55,16 +55,26 @@
             <!-- عداد الوقت -->
             @if($quiz->show_timer)
                 @php
-                    $initialRemaining = $attempt->remaining_time
-                        ?? ($quiz->duration_minutes ? $quiz->duration_minutes * 60 : null);
+                    $hasTimeLimit = $quiz->hasTimeLimit();
+                    $initialRemaining = $hasTimeLimit
+                        ? ($attempt->remaining_time ?? ($quiz->duration_minutes * 60))
+                        : null;
+                    $initialElapsed = $hasTimeLimit ? null : $attempt->elapsed_seconds;
                 @endphp
                 <div class="card mb-3" id="timer-card">
                     <div class="card-body text-center">
                         <div class="d-flex align-items-center justify-content-center gap-3">
                             <i class="bi bi-clock-history fs-4 text-primary"></i>
                             <div>
-                                <h5 class="mb-0" id="timer-display" data-remaining-seconds="{{ (int) ($initialRemaining ?? 0) }}">{{ $initialRemaining !== null ? ($attempt->formatted_remaining_time ?? '--:--') : '--:--' }}</h5>
-                                <small class="text-muted">الوقت المتبقي</small>
+                                <h5 class="mb-0" id="timer-display"
+                                    data-timer-mode="{{ $hasTimeLimit ? 'countdown' : 'elapsed' }}"
+                                    @if($hasTimeLimit)
+                                        data-remaining-seconds="{{ (int) $initialRemaining }}"
+                                    @else
+                                        data-elapsed-seconds="{{ (int) $initialElapsed }}"
+                                    @endif
+                                >{{ $hasTimeLimit ? ($attempt->formatted_remaining_time ?? '--:--') : $attempt->formatted_elapsed_time }}</h5>
+                                <small class="text-muted">{{ $hasTimeLimit ? 'الوقت المتبقي' : 'الوقت المنقضي' }}</small>
                             </div>
                         </div>
                     </div>
@@ -1491,16 +1501,15 @@
             return;
         }
 
-        const remainingFromData = parseInt(displayEl.getAttribute('data-remaining-seconds') || '0', 10);
-        const remainingTime = Number.isFinite(remainingFromData) && remainingFromData > 0
-            ? remainingFromData
-            : {{ (int) ($initialRemaining ?? 0) }};
+        const timerMode = displayEl.getAttribute('data-timer-mode') || 'countdown';
+        const hasTimeLimit = timerMode === 'countdown';
+        const updateUrl = '{{ route("student.quizzes.time", $attempt->id) }}';
 
-        const onTimeout = function() {
-            submitQuizAttempt({ reason: 'timeout' });
-        };
+        const onTimeout = hasTimeLimit && {{ $quiz->auto_submit ? 'true' : 'false' }}
+            ? function() { submitQuizAttempt({ reason: 'timeout' }); }
+            : null;
 
-        const onWarning = function(seconds) {
+        const onWarning = hasTimeLimit ? function(seconds) {
             const card = document.getElementById('timer-card');
             if (!card) {
                 return;
@@ -1512,21 +1521,41 @@
                 card.classList.add('warning');
                 card.classList.remove('danger');
             }
-        };
+        } : null;
+
+        let timerOptions;
+        if (hasTimeLimit) {
+            const remainingFromData = parseInt(displayEl.getAttribute('data-remaining-seconds') || '', 10);
+            const remainingTime = Number.isFinite(remainingFromData) && remainingFromData > 0
+                ? remainingFromData
+                : {{ (int) ($initialRemaining ?? 0) }};
+            timerOptions = {
+                mode: 'countdown',
+                remainingTime: remainingTime,
+                updateUrl: updateUrl,
+                onTimeout: onTimeout,
+                onWarning: onWarning,
+            };
+        } else {
+            const elapsedFromData = parseInt(displayEl.getAttribute('data-elapsed-seconds') || '', 10);
+            const elapsedSeconds = Number.isFinite(elapsedFromData) && elapsedFromData >= 0
+                ? elapsedFromData
+                : {{ (int) ($initialElapsed ?? 0) }};
+            timerOptions = {
+                mode: 'elapsed',
+                elapsedSeconds: elapsedSeconds,
+                updateUrl: updateUrl,
+            };
+        }
 
         if (typeof window.QuizTimer !== 'undefined') {
             if (window.__quizAttemptTimer && typeof window.__quizAttemptTimer.stop === 'function') {
                 window.__quizAttemptTimer.stop();
             }
-            window.__quizAttemptTimer = new window.QuizTimer({
-                remainingTime: remainingTime,
-                updateUrl: '{{ route("student.quizzes.time", $attempt->id) }}',
-                onTimeout: onTimeout,
-                onWarning: onWarning,
-            });
+            window.__quizAttemptTimer = new window.QuizTimer(timerOptions);
             window.__quizAttemptTimer.start();
-        } else {
-            let remaining = remainingTime;
+        } else if (hasTimeLimit && onTimeout) {
+            let remaining = timerOptions.remainingTime;
             const tick = function() {
                 if (remaining <= 0) {
                     displayEl.textContent = '0:00';
@@ -1541,6 +1570,16 @@
                 const s = remaining % 60;
                 displayEl.textContent = m + ':' + (s < 10 ? '0' : '') + s;
                 remaining -= 1;
+            };
+            tick();
+            window.__quizAttemptTimerInterval = setInterval(tick, 1000);
+        } else if (!hasTimeLimit) {
+            let elapsed = timerOptions.elapsedSeconds;
+            const tick = function() {
+                const m = Math.floor(elapsed / 60);
+                const s = elapsed % 60;
+                displayEl.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+                elapsed += 1;
             };
             tick();
             window.__quizAttemptTimerInterval = setInterval(tick, 1000);
