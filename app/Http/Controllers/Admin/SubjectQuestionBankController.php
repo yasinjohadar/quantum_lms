@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\Concerns\BuildsQuestionBankIndex;
 use App\Http\Controllers\Controller;
+use App\Models\Question;
 use App\Models\Quiz;
 use App\Models\QuizQuestion;
 use App\Models\Subject;
@@ -19,6 +20,7 @@ class SubjectQuestionBankController extends Controller
         $this->middleware(['permission:question-create'])->only(['create', 'aiCreate', 'aiCreateFromImage']);
         $this->middleware(['permission:question-show-import'])->only('import');
         $this->middleware(['permission:quiz-list|quiz-add-question'])->only('quizzesForAdd');
+        $this->middleware(['permission:question-delete'])->only('destroyMultiple');
     }
 
     public function index(Request $request, Subject $subject)
@@ -105,5 +107,43 @@ class SubjectQuestionBankController extends Controller
             'success' => true,
             'quizzes' => $quizzes,
         ]);
+    }
+
+    /**
+     * حذف عدة أسئلة من بنك أسئلة المادة.
+     */
+    public function destroyMultiple(Request $request, Subject $subject)
+    {
+        $this->authorizeManagedSubjectAccess(auth()->user(), $subject);
+
+        $validated = $request->validate([
+            'question_ids' => ['required', 'array', 'min:1'],
+            'question_ids.*' => ['integer', 'exists:questions,id'],
+        ], [
+            'question_ids.required' => 'يرجى تحديد سؤال واحد على الأقل.',
+            'question_ids.min' => 'يرجى تحديد سؤال واحد على الأقل.',
+        ]);
+
+        $ids = array_values(array_unique($validated['question_ids']));
+
+        $query = Question::with(['options'])
+            ->forSubject($subject)
+            ->whereIn('id', $ids);
+        $this->applyTeacherQuestionScope($query);
+        $questions = $query->get();
+
+        $counts = $this->bulkDeleteQuestions($questions);
+        $flash = $this->bulkDeleteFlashMessage(
+            $counts['deleted'],
+            $counts['skipped_quiz'],
+            $counts['failed']
+        );
+
+        $redirectUrl = route('admin.subjects.questions.index', $subject);
+        if ($request->query()) {
+            $redirectUrl .= '?'.http_build_query($request->query());
+        }
+
+        return redirect($redirectUrl)->with($flash['type'], $flash['message']);
     }
 }

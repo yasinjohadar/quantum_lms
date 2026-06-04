@@ -73,6 +73,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('subjects.questions.ai-create-from-image');
         Route::get('subjects/{subject}/quizzes-for-add', [SubjectQuestionBankController::class, 'quizzesForAdd'])
             ->name('subjects.quizzes.for-add');
+        Route::delete('subjects/{subject}/questions/destroy-multiple', [SubjectQuestionBankController::class, 'destroyMultiple'])
+            ->name('subjects.questions.destroy-multiple');
 
         // أقسام المواد (داخل كل مادة)
         Route::post('subjects/{subject}/sections', [SubjectSectionController::class, 'store'])
@@ -146,6 +148,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('questions.ajax.subjects-by-class');
         Route::get('questions/ajax/subjects/{subject}/units', [QuestionController::class, 'ajaxUnitsBySubject'])
             ->name('questions.ajax.units-by-subject');
+        Route::delete('questions/destroy-multiple', [QuestionController::class, 'destroyMultiple'])
+            ->name('questions.destroy-multiple');
         Route::resource('questions', QuestionController::class);
         Route::post('questions/upload-image', [QuestionController::class, 'uploadImage'])
             ->name('questions.upload-image');

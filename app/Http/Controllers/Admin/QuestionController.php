@@ -32,7 +32,7 @@ class QuestionController extends Controller
         $this->middleware(['permission:question-list|question-create|question-edit|question-show-import|question-import'])->only(['ajaxSubjectsByClass', 'ajaxUnitsBySubject']);
         $this->middleware(['permission:question-create'])->only(['create', 'store']);
         $this->middleware(['permission:question-edit'])->only(['edit', 'update']);
-        $this->middleware(['permission:question-delete'])->only('destroy');
+        $this->middleware(['permission:question-delete'])->only(['destroy', 'destroyMultiple']);
         $this->middleware(['permission:question-show'])->only('show');
         $this->middleware(['permission:question-duplicate'])->only('duplicate');
         $this->middleware(['permission:question-toggle-status'])->only('toggleStatus');
@@ -53,6 +53,10 @@ class QuestionController extends Controller
         $questions = $query->paginate(20)->withQueryString();
         $filterLists = $this->questionIndexFilterLists(null, $request);
 
+        $bulkDeleteUrl = auth()->user()->can('question-delete')
+            ? route('admin.questions.destroy-multiple', $request->query())
+            : null;
+
         $viewData = [
             'questions' => $questions,
             'units' => $filterLists['units'],
@@ -64,6 +68,7 @@ class QuestionController extends Controller
             'createRoute' => route('admin.questions.create'),
             'showGlobalTools' => true,
             'enableAjaxFilters' => true,
+            'bulkDeleteUrl' => $bulkDeleteUrl,
         ];
 
         if ($request->ajax() || $request->wantsJson()) {
@@ -422,28 +427,20 @@ class QuestionController extends Controller
     public function destroy(string $id)
     {
         try {
-            $question = Question::findOrFail($id);
+            $question = Question::with('options')->findOrFail($id);
+            $result = $this->deleteQuestionSafely($question);
 
-            // التحقق من عدم استخدام السؤال في اختبارات
-            if ($question->quizzes()->count() > 0) {
+            if ($result === 'used_in_quizzes') {
                 return redirect()
                     ->back()
                     ->with('error', 'لا يمكن حذف السؤال لأنه مستخدم في اختبارات');
             }
 
-            // حذف الصورة
-            if ($question->image) {
-                StorageHelper::delete('images', $question->image);
+            if ($result !== null) {
+                return redirect()
+                    ->back()
+                    ->with('error', 'حدث خطأ أثناء حذف السؤال');
             }
-
-            // حذف صور الخيارات
-            foreach ($question->options as $option) {
-                if ($option->image) {
-                    StorageHelper::delete('images', $option->image);
-                }
-            }
-
-            $question->delete();
 
             return redirect()
                 ->route('admin.questions.index')
@@ -456,6 +453,37 @@ class QuestionController extends Controller
                 ->back()
                 ->with('error', 'حدث خطأ أثناء حذف السؤال: '.$e->getMessage());
         }
+    }
+
+    /**
+     * حذف عدة أسئلة من البنك الرئيسي.
+     */
+    public function destroyMultiple(Request $request)
+    {
+        $validated = $request->validate([
+            'question_ids' => ['required', 'array', 'min:1'],
+            'question_ids.*' => ['integer', 'exists:questions,id'],
+        ], [
+            'question_ids.required' => 'يرجى تحديد سؤال واحد على الأقل.',
+            'question_ids.min' => 'يرجى تحديد سؤال واحد على الأقل.',
+        ]);
+
+        $ids = array_values(array_unique($validated['question_ids']));
+
+        $query = Question::with(['options'])->whereIn('id', $ids);
+        $this->applyTeacherQuestionScope($query);
+        $questions = $query->get();
+
+        $counts = $this->bulkDeleteQuestions($questions);
+        $flash = $this->bulkDeleteFlashMessage(
+            $counts['deleted'],
+            $counts['skipped_quiz'],
+            $counts['failed']
+        );
+
+        return redirect()
+            ->route('admin.questions.index', $request->query())
+            ->with($flash['type'], $flash['message']);
     }
 
     /**

@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 
 trait BuildsQuestionBankIndex
 {
+    use DeletesQuestions;
     protected function buildQuestionIndexQuery(Request $request, ?Subject $subject = null): Builder
     {
         $query = Question::with(['units.section.subject.schoolClass', 'creator', 'options', 'subject'])
@@ -20,30 +21,7 @@ trait BuildsQuestionBankIndex
             $query->forSubject($subject);
         }
 
-        $user = auth()->user();
-        if ($user->hasRole('teacher') && ! $user->hasAnyRole(['admin', 'supervisor'])) {
-            $classIds = $user->assignedClasses()->pluck('classes.id');
-            $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
-
-            $unitIds = Unit::whereHas('section', function ($q) use ($classIds, $subjectIds) {
-                $q->whereHas('subject', function ($sq) use ($classIds, $subjectIds) {
-                    if ($classIds->isNotEmpty()) {
-                        $sq->whereIn('class_id', $classIds);
-                    }
-                    if ($subjectIds->isNotEmpty()) {
-                        $sq->orWhereIn('id', $subjectIds);
-                    }
-                });
-            })->pluck('id');
-
-            $query->where(function ($q) use ($unitIds) {
-                if ($unitIds->isNotEmpty()) {
-                    $q->whereHas('units', function ($uq) use ($unitIds) {
-                        $uq->whereIn('units.id', $unitIds);
-                    });
-                }
-            });
-        }
+        $this->applyTeacherQuestionScope($query);
 
         if ($request->filled('search')) {
             $query->search($request->search);

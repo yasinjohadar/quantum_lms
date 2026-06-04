@@ -13,15 +13,52 @@
     </span>
 </div>
 
+@can('question-delete')
+    @if(!empty($bulkDeleteUrl) && $questions->count() > 0)
+        <div class="d-flex flex-wrap align-items-center gap-3 mb-3" id="questionBulkToolbar">
+            <div class="form-check mb-0">
+                <input type="checkbox" class="form-check-input" id="selectAllQuestionsOnPage" aria-label="تحديد الكل في الصفحة">
+                <label class="form-check-label small" for="selectAllQuestionsOnPage">تحديد الكل في الصفحة</label>
+            </div>
+            <div id="questionBulkActionsBar" class="d-none d-flex align-items-center flex-wrap gap-2">
+                <span class="fw-semibold small"><span id="questionSelectedCount">0</span> سؤال محدد</span>
+                <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#confirmBulkDeleteQuestionsModal">
+                    <i class="bi bi-trash me-1"></i> حذف المحدد
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="clearQuestionSelectionBtn">إلغاء التحديد</button>
+            </div>
+        </div>
+    @endif
+@endcan
+
 <div class="row" id="questionBankCards">
     @forelse($questions as $question)
         <div class="col-md-6 col-lg-4 mb-3">
-            <div class="card custom-card question-card question-type-{{ $question->type }} h-100">
+            <div class="card custom-card question-card question-type-{{ $question->type }} h-100" data-question-id="{{ $question->id }}">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start mb-2">
-                        <span class="badge bg-{{ $question->type_color }}-transparent text-{{ $question->type_color }}">
-                            {{ $question->type_label }}
-                        </span>
+                        <div class="d-flex align-items-start gap-2">
+                            @can('question-delete')
+                                @if(!empty($bulkDeleteUrl))
+                                    @if($question->quizzes_count > 0)
+                                        <input type="checkbox"
+                                            class="form-check-input question-bulk-checkbox mt-1 flex-shrink-0"
+                                            value="{{ $question->id }}"
+                                            disabled
+                                            title="مستخدم في اختبار"
+                                            aria-label="لا يمكن تحديد سؤال مستخدم في اختبار">
+                                    @else
+                                        <input type="checkbox"
+                                            class="form-check-input question-bulk-checkbox mt-1 flex-shrink-0"
+                                            value="{{ $question->id }}"
+                                            aria-label="تحديد السؤال للحذف">
+                                    @endif
+                                @endif
+                            @endcan
+                            <span class="badge bg-{{ $question->type_color }}-transparent text-{{ $question->type_color }}">
+                                {{ $question->type_label }}
+                            </span>
+                        </div>
                         <div class="dropdown">
                             <button class="btn btn-sm btn-icon btn-light" data-bs-toggle="dropdown">
                                 <i class="bi bi-three-dots-vertical"></i>

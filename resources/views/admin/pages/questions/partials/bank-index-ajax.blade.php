@@ -106,6 +106,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 resultsEl.innerHTML = data.html;
                 syncUrl(page);
                 refreshMath(resultsEl);
+                if (typeof window.initQuestionBulkDelete === 'function') {
+                    window.initQuestionBulkDelete(resultsEl);
+                }
             })
             .catch(function (err) {
                 console.error('questionBank fetch error:', err);

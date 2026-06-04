@@ -7,6 +7,20 @@
     .question-card:hover {
         box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.12);
     }
+    .question-card.question-card-selected {
+        box-shadow: 0 0 0 2px rgb(var(--primary-rgb));
+        background-color: rgba(var(--primary-rgb), 0.06);
+    }
+    [data-theme-mode=dark] .question-card.question-card-selected {
+        background-color: rgba(var(--primary-rgb), 0.12);
+    }
+    .question-bulk-checkbox {
+        cursor: pointer;
+    }
+    .question-bulk-checkbox:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+    }
     [data-theme-mode=dark] .question-card:hover {
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     }

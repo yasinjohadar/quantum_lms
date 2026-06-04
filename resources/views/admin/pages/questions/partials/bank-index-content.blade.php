@@ -12,6 +12,13 @@
     </div>
 @endif
 
+@if (session('warning'))
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>{{ session('warning') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+    </div>
+@endif
+
 @if ($errors->any())
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
         <ul class="mb-0">
@@ -111,14 +118,32 @@
     </div>
 </div>
 
+@php
+    $bulkDeleteUrl = null;
+    if (auth()->user()->can('question-delete')) {
+        if (isset($subject)) {
+            $bulkDeleteUrl = route('admin.subjects.questions.destroy-multiple', array_merge([$subject], request()->query()));
+        } else {
+            $bulkDeleteUrl = route('admin.questions.destroy-multiple', request()->query());
+        }
+    }
+@endphp
+
 <div id="questionBankResults">
     @include('admin.pages.questions.partials.bank-index-results', [
         'questions' => $questions,
         'subject' => $subject ?? null,
         'createRoute' => $createRoute,
         'showGlobalTools' => $showGlobalTools ?? false,
+        'bulkDeleteUrl' => $bulkDeleteUrl,
     ])
 </div>
+
+@can('question-delete')
+    @if($bulkDeleteUrl)
+        @include('admin.pages.questions.partials.bank-index-bulk-delete', ['bulkDeleteUrl' => $bulkDeleteUrl])
+    @endif
+@endcan
 
 @if(isset($subject))
     @can('quiz-add-question')
