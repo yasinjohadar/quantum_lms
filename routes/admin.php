@@ -816,3 +816,6 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::get('my-subjects/{subject}', [\App\Http\Controllers\Supervisor\SupervisorDashboardController::class, 'showSubject'])
             ->name('my-subjects.show');
     });
+
+// Chrome Extension API (NotebookLM) — يُحمَّل مع admin.php على السيرفر
+require __DIR__.'/extension-api.php';
