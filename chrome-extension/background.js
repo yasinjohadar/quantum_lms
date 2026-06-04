@@ -226,11 +226,22 @@ async function handleApiRequest({ method, path, body, auth = true }) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${apiBase}${path}`, {
-    method: method || 'GET',
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const url = `${apiBase}${path}`;
+
+  let response;
+  try {
+    response = await fetch(url, {
+      method: method || 'GET',
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (networkError) {
+    const hint =
+      apiBase.includes('example.com') || apiBase.includes('127.0.0.1')
+        ? ' عدّل عنوان الإنتاج في config/environments.json أو إعدادات الإضافة.'
+        : ' تحقق من HTTPS والنطاق ورفع ملفات API على السيرفر.';
+    throw new Error(`تعذر الاتصال: ${url}.${hint}`);
+  }
 
   const data = await response.json().catch(() => ({}));
 

@@ -13,7 +13,7 @@
     {
       "id": "production",
       "label": "إنتاج",
-      "apiBase": "https://lms.example.com/api/v1/extension"
+      "apiBase": "https://quantum-academy.online/api/v1/extension"
     }
   ]
 }

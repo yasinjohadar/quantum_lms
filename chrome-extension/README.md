@@ -5,7 +5,7 @@
 1. افتح `chrome://extensions/`
 2. فعّل **وضع المطوّر**
 3. **Load unpacked** → اختر مجلد `chrome-extension`
-4. حدّث `config/environments.json` أو صفحة الإعدادات بعنوان API الحقيقي
+4. بيئة **إنتاج** مضبوطة على: `https://quantum-academy.online/api/v1/extension`
 
 ## الاستخدام
 
