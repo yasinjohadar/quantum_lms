@@ -5,27 +5,8 @@
 @stop
 
 @push('styles')
-    @include('admin.pages.dashboard.partials.widget-styles')
+    @include('student.partials.dashboard-widget-styles')
     <style>
-        .dashboard-panel {
-            border-radius: 14px;
-            border: 1px solid var(--default-border);
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
-            transition: box-shadow 0.25s ease;
-        }
-        .dashboard-panel:hover {
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
-        }
-        [data-theme-mode="dark"] .dashboard-panel {
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
-        }
-        .dashboard-panel .card-header {
-            border-bottom: 1px solid var(--default-border);
-            background: transparent;
-        }
-        .dashboard-panel .progress {
-            border-radius: 6px;
-        }
         .dashboard-badge-item {
             transition: transform 0.2s ease, box-shadow 0.2s ease;
             min-width: 88px;

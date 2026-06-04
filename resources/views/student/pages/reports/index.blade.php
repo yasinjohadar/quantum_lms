@@ -4,6 +4,10 @@
     تقاريري الشاملة
 @stop
 
+@push('styles')
+    @include('student.partials.dashboard-widget-styles')
+@endpush
+
 @section('content')
 <!-- Start::app-content -->
 <div class="main-content app-content">
@@ -56,12 +60,13 @@
 
         <!-- Student Information -->
         @if($student)
-            <div class="card custom-card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        <i class="bi bi-person-circle me-2"></i>
+            <div class="card dashboard-panel custom-card mb-4">
+                <div class="card-header pb-2">
+                    <h5 class="card-title mb-0">
+                        <i class="fe fe-user me-2"></i>
                         معلومات الطالب
                     </h5>
+                    <p class="fs-12 text-muted mb-0">ملخص بياناتك لهذا التقرير</p>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -118,64 +123,74 @@
         @endif
 
         <!-- Statistics Cards -->
+        @php
+            $totalSubjects = count($progress);
+            $totalLessons = collect($progress)->sum(function ($item) {
+                return $item['progress']['lessons_total'] ?? 0;
+            });
+            $completedLessons = collect($progress)->sum(function ($item) {
+                return $item['progress']['lessons_completed'] ?? 0;
+            });
+            $lessonPercent = $totalLessons > 0 ? round(($completedLessons / $totalLessons) * 100, 1) : 0;
+            $totalQuizzes = $quizzes['statistics']['total'] ?? 0;
+            $averageGrade = $grades['average'] ?? 0;
+        @endphp
         <div class="row mb-4">
-            @php
-                $totalSubjects = count($progress);
-                $totalLessons = collect($progress)->sum(function($item) {
-                    return $item['progress']['lessons_total'] ?? 0;
-                });
-                $completedLessons = collect($progress)->sum(function($item) {
-                    return $item['progress']['lessons_completed'] ?? 0;
-                });
-                $totalQuizzes = $quizzes['statistics']['total'] ?? 0;
-                $averageGrade = $grades['average'] ?? 0;
-            @endphp
-
-            <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-                <div class="card border-primary h-100">
-                    <div class="card-body text-center">
-                        <i class="bi bi-book text-primary fs-1 mb-2"></i>
-                        <h3 class="mb-1 text-primary">{{ $totalSubjects }}</h3>
-                        <p class="mb-0 text-muted">المواد المسجلة</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-                <div class="card border-success h-100">
-                    <div class="card-body text-center">
-                        <i class="bi bi-check-circle text-success fs-1 mb-2"></i>
-                        <h3 class="mb-1 text-success">{{ $completedLessons }}/{{ $totalLessons }}</h3>
-                        <p class="mb-0 text-muted">الدروس المكتملة</p>
-                        <div class="progress mt-2" style="height: 8px;">
-                            <div class="progress-bar bg-success" 
-                                 style="width: {{ $totalLessons > 0 ? ($completedLessons / $totalLessons) * 100 : 0 }}%">
-                            </div>
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
+                <div class="dashboard-stat-card dashboard-stat-card--students h-100">
+                    <div class="dashboard-stat-card__body">
+                        <div class="dashboard-stat-card__content">
+                            <div class="dashboard-stat-card__label">المواد المسجلة</div>
+                            <div class="dashboard-stat-card__value">{{ number_format($totalSubjects) }}</div>
+                            <p class="dashboard-stat-card__meta">موادك النشطة</p>
+                        </div>
+                        <div class="dashboard-stat-card__icon">
+                            <i class="fas fa-book"></i>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-                <div class="card border-info h-100">
-                    <div class="card-body text-center">
-                        <i class="bi bi-clipboard-check text-info fs-1 mb-2"></i>
-                        <h3 class="mb-1 text-info">{{ $totalQuizzes }}</h3>
-                        <p class="mb-0 text-muted">الاختبارات المكتملة</p>
-                        @if($totalQuizzes > 0)
-                            <small class="text-muted">
-                                نجح: {{ $quizzes['statistics']['passed'] ?? 0 }} | 
-                                فشل: {{ $quizzes['statistics']['failed'] ?? 0 }}
-                            </small>
-                        @endif
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
+                <div class="dashboard-stat-card dashboard-stat-card--subjects h-100">
+                    <div class="dashboard-stat-card__body">
+                        <div class="dashboard-stat-card__content">
+                            <div class="dashboard-stat-card__label">الدروس المكتملة</div>
+                            <div class="dashboard-stat-card__value">{{ $completedLessons }}/{{ $totalLessons }}</div>
+                            <p class="dashboard-stat-card__meta">{{ $lessonPercent }}% من الدروس</p>
+                        </div>
+                        <div class="dashboard-stat-card__icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-                <div class="card border-warning h-100">
-                    <div class="card-body text-center">
-                        <i class="bi bi-trophy text-warning fs-1 mb-2"></i>
-                        <h3 class="mb-1 text-warning">{{ number_format($averageGrade, 1) }}%</h3>
-                        <p class="mb-0 text-muted">المتوسط العام</p>
-                        <small class="text-muted">{{ $grades['total_scores'] ?? 0 }} تقييم</small>
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
+                <div class="dashboard-stat-card dashboard-stat-card--quizzes h-100">
+                    <div class="dashboard-stat-card__body">
+                        <div class="dashboard-stat-card__content">
+                            <div class="dashboard-stat-card__label">الاختبارات المكتملة</div>
+                            <div class="dashboard-stat-card__value">{{ number_format($totalQuizzes) }}</div>
+                            <p class="dashboard-stat-card__meta">
+                                نجح {{ $quizzes['statistics']['passed'] ?? 0 }} | فشل {{ $quizzes['statistics']['failed'] ?? 0 }}
+                            </p>
+                        </div>
+                        <div class="dashboard-stat-card__icon">
+                            <i class="fas fa-clipboard-check"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
+                <div class="dashboard-stat-card dashboard-stat-card--enrollments h-100">
+                    <div class="dashboard-stat-card__body">
+                        <div class="dashboard-stat-card__content">
+                            <div class="dashboard-stat-card__label">المتوسط العام</div>
+                            <div class="dashboard-stat-card__value">{{ number_format($averageGrade, 1) }}%</div>
+                            <p class="dashboard-stat-card__meta">{{ $grades['total_scores'] ?? 0 }} تقييم</p>
+                        </div>
+                        <div class="dashboard-stat-card__icon">
+                            <i class="fas fa-trophy"></i>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -218,15 +233,15 @@
             @endphp
             @if($hasProgressChart || (isset($progressChartData) && !empty($progressChartData)))
                 <div class="col-xl-6 col-lg-12 mb-4">
-                    <div class="card custom-card">
-                        <div class="card-header">
-                            <h5 class="mb-0">
-                                <i class="bi bi-graph-up me-2"></i>
+                    <div class="card dashboard-panel custom-card h-100">
+                        <div class="card-header pb-2">
+                            <h5 class="card-title mb-0">
+                                <i class="fe fe-trending-up me-2"></i>
                                 تقدم الطالب في المواد
                             </h5>
                         </div>
                         <div class="card-body">
-                            <div id="progressChart" style="height: 350px;"></div>
+                            <div id="progressChart" class="reports-chart-wrap"></div>
                         </div>
                     </div>
                 </div>
@@ -238,15 +253,15 @@
             @endphp
             @if($hasGradesDistribution)
                 <div class="col-xl-6 col-lg-12 mb-4">
-                    <div class="card custom-card">
-                        <div class="card-header">
-                            <h5 class="mb-0">
-                                <i class="bi bi-pie-chart me-2"></i>
+                    <div class="card dashboard-panel custom-card h-100">
+                        <div class="card-header pb-2">
+                            <h5 class="card-title mb-0">
+                                <i class="fe fe-pie-chart me-2"></i>
                                 توزيع الدرجات
                             </h5>
                         </div>
                         <div class="card-body">
-                            <div id="gradesDistributionChart" style="height: 350px;"></div>
+                            <div id="gradesDistributionChart" class="reports-chart-wrap"></div>
                         </div>
                     </div>
                 </div>
@@ -257,15 +272,15 @@
         @if(count($quizzes['list']) > 0)
             <div class="row mb-4">
                 <div class="col-12">
-                    <div class="card custom-card">
-                        <div class="card-header">
-                            <h5 class="mb-0">
-                                <i class="bi bi-graph-up-arrow me-2"></i>
+                    <div class="card dashboard-panel custom-card">
+                        <div class="card-header pb-2">
+                            <h5 class="card-title mb-0">
+                                <i class="fe fe-bar-chart-2 me-2"></i>
                                 درجات الاختبارات
                             </h5>
                         </div>
                         <div class="card-body">
-                            <div id="quizzesScoresChart" style="height: 300px;"></div>
+                            <div id="quizzesScoresChart" class="reports-chart-wrap"></div>
                         </div>
                     </div>
                 </div>
@@ -274,12 +289,13 @@
 
         <!-- Progress by Subject -->
         @if(count($progress) > 0)
-            <div class="card custom-card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-book me-2"></i>
+            <div class="card dashboard-panel custom-card mb-4">
+                <div class="card-header pb-2">
+                    <h5 class="card-title mb-0">
+                        <i class="fe fe-book me-2"></i>
                         التقدم التفصيلي في المواد
                     </h5>
+                    <p class="fs-12 text-muted mb-0">نسبة الإنجاز في كل مادة</p>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -290,7 +306,7 @@
                                 $colorClass = $percentage >= 75 ? 'success' : ($percentage >= 50 ? 'warning' : 'danger');
                             @endphp
                             <div class="col-xl-4 col-lg-6 col-md-6 mb-4">
-                                <div class="card border h-100">
+                                <div class="card dashboard-subject-card h-100">
                                     <div class="card-body">
                                         <div class="d-flex justify-content-between align-items-start mb-3">
                                             <div>
@@ -342,10 +358,10 @@
 
         <!-- Recent Quizzes -->
         @if(count($quizzes['list']) > 0)
-            <div class="card custom-card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-clipboard-check me-2"></i>
+            <div class="card dashboard-panel custom-card mb-4">
+                <div class="card-header pb-2">
+                    <h5 class="card-title mb-0">
+                        <i class="fe fe-clipboard me-2"></i>
                         الاختبارات الأخيرة
                     </h5>
                 </div>
@@ -399,10 +415,10 @@
 
         <!-- Attendance (if available) -->
         @if(isset($attendance['total_sessions']) && $attendance['total_sessions'] > 0)
-            <div class="card custom-card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-calendar-check me-2"></i>
+            <div class="card dashboard-panel custom-card mb-4">
+                <div class="card-header pb-2">
+                    <h5 class="card-title mb-0">
+                        <i class="fe fe-calendar me-2"></i>
                         الحضور
                     </h5>
                 </div>
@@ -433,10 +449,10 @@
 
         <!-- Analytics Section -->
         @if(isset($analytics) && !empty($analytics))
-            <div class="card custom-card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-graph-up-arrow me-2"></i>
+            <div class="card dashboard-panel custom-card mb-4">
+                <div class="card-header pb-2">
+                    <h5 class="card-title mb-0">
+                        <i class="fe fe-activity me-2"></i>
                         التحليلات والنشاط
                     </h5>
                 </div>
@@ -475,7 +491,7 @@
                     @if(isset($analytics['activity_timeline']) && count($analytics['activity_timeline']) > 0)
                         <div class="mt-4">
                             <h6 class="mb-3">خط زمني للنشاط</h6>
-                            <div id="activityTimelineChart" style="height: 300px;"></div>
+                            <div id="activityTimelineChart" class="reports-chart-wrap"></div>
                         </div>
                     @endif
                 </div>
@@ -484,7 +500,7 @@
 
         <!-- Empty State -->
         @if($totalSubjects == 0 && count($quizzes['list']) == 0)
-            <div class="card custom-card">
+            <div class="card dashboard-panel custom-card">
                 <div class="card-body text-center py-5">
                     <i class="bi bi-file-text fs-1 text-muted mb-3 d-block"></i>
                     <h5 class="mb-2">لا توجد بيانات متاحة</h5>
@@ -503,29 +519,6 @@
 
 @push('scripts')
 <script src="{{ asset('assets/libs/apexcharts/apexcharts.min.js') }}"></script>
-<style>
-    /* تحسين CSS للمخططات */
-    #progressChart,
-    #gradesDistributionChart,
-    #quizzesScoresChart,
-    #activityTimelineChart {
-        min-height: 300px;
-        width: 100%;
-    }
-    
-    /* منع التكرار */
-    .card.custom-card {
-        position: relative;
-    }
-    
-    /* تحسين responsive */
-    @media (max-width: 768px) {
-        #progressChart,
-        #gradesDistributionChart {
-            height: 300px !important;
-        }
-    }
-</style>
 <script>
 (function() {
     'use strict';
