@@ -23,32 +23,7 @@
                                 {{ $question->difficulty_name }}
                             </span>
                         </div>
-                        <p class="mb-1 small">{{ Str::limit(strip_tags($question->title), 60) }}</p>
-                        @php
-                            $inlineImages = [];
-                            if (!empty($question->title)) {
-                                preg_match_all('/<img[^>]+src="([^"]+)"/i', $question->title, $matches);
-                                $inlineImages = $matches[1] ?? [];
-                            }
-                            if (!empty($question->image)) {
-                                $inlineImages[] = media_public_url($question->image);
-                            }
-                        @endphp
-                        @if(!empty($inlineImages))
-                        <div class="d-flex flex-wrap gap-2 mt-1">
-                            @foreach(array_slice($inlineImages, 0, 3) as $imgSrc)
-                            <img src="{{ $imgSrc }}"
-                                 alt="صورة السؤال"
-                                 class="question-image-thumb"
-                                 loading="lazy"
-                                 data-full-image="{{ $imgSrc }}"
-                                 onerror="this.style.display='none';">
-                            @endforeach
-                            @if(count($inlineImages) > 3)
-                            <span class="badge bg-secondary align-self-center">+{{ count($inlineImages) - 3 }}</span>
-                            @endif
-                        </div>
-                        @endif
+                        @include('admin.pages.questions.partials.list-preview', ['question' => $question, 'textLimit' => 60])
                         <small class="text-muted">{{ $question->default_points }} درجة</small>
                     </div>
                     @can('quiz-add-question')

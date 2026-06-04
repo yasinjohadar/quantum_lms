@@ -4,7 +4,7 @@
     إدارة أسئلة الاختبار
 @stop
 
-@section('css')
+@push('styles')
 <style>
     .question-item {
         cursor: grab;
@@ -17,87 +17,83 @@
         opacity: 0.5;
     }
 
-    /* Question Image Thumbnail */
-    .question-image-thumb {
-        display: inline-block;
-        max-width: 120px;
-        max-height: 80px;
-        border-radius: 8px;
-        object-fit: cover;
-        cursor: zoom-in;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        border: 2px solid rgba(var(--primary-rgb), 0.2);
-        margin: 6px 0;
+    /* معاينة مصغّرة — تُجبر الحجم رغم أنماط القالب العامة على img */
+    .question-list-preview-images {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        align-items: center;
+        max-width: 100%;
     }
-    .question-image-thumb:hover {
-        transform: scale(1.05);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        border-color: rgba(var(--primary-rgb), 0.5);
+    .question-image-thumb-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 64px;
+        height: 44px;
+        padding: 0;
+        border: 2px solid rgba(var(--primary-rgb, 13, 110, 253), 0.25);
+        border-radius: 8px;
+        background: var(--default-background, #f8f9fa);
+        overflow: hidden;
+        cursor: zoom-in;
+        flex-shrink: 0;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .question-image-thumb-btn:hover {
+        border-color: rgba(var(--primary-rgb, 13, 110, 253), 0.55);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+    }
+    .question-image-thumb-btn:focus-visible {
+        outline: 2px solid rgb(var(--primary-rgb, 13, 110, 253));
+        outline-offset: 2px;
+    }
+    .question-image-thumb,
+    .question-list-preview-images img.question-image-thumb {
+        display: block !important;
+        width: 64px !important;
+        height: 44px !important;
+        min-width: 0 !important;
+        max-width: 64px !important;
+        max-height: 44px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        border-radius: 0;
+        object-fit: cover;
+        object-position: center;
+        pointer-events: none;
     }
 
-    /* Question Image Lightbox */
-    .q-image-lightbox {
-        position: fixed;
-        inset: 0;
-        z-index: 999999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        visibility: hidden;
-        opacity: 0;
-        transition: visibility 0s 0.3s, opacity 0.3s ease;
+    #questionImagePreviewModal .modal-body {
+        background: #0f0f0f;
     }
-    .q-image-lightbox.active {
-        visibility: visible;
-        opacity: 1;
-        transition: visibility 0s 0s, opacity 0.3s ease;
-    }
-    .q-image-lightbox__backdrop {
-        position: absolute;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.88);
-        backdrop-filter: blur(4px);
-    }
-    .q-image-lightbox__inner {
-        position: relative;
-        z-index: 1;
-        max-width: min(96vw, 1200px);
-        max-height: 90vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-    }
-    .q-image-lightbox__inner img {
+    #questionImagePreviewModalImg {
         max-width: 100%;
-        max-height: 90vh;
+        max-height: min(78vh, 900px);
+        width: auto;
+        height: auto;
         object-fit: contain;
-        border-radius: 12px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-    }
-    .q-image-lightbox__close {
-        position: absolute;
-        top: -40px;
-        right: 0;
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        border: none;
-        background: rgba(255, 255, 255, 0.15);
-        color: #fff;
-        font-size: 1.5rem;
-        line-height: 1;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: background 0.2s ease;
-    }
-    .q-image-lightbox__close:hover {
-        background: rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
     }
 </style>
-@stop
+@endpush
+
+@push('body-end')
+<div class="modal fade" id="questionImagePreviewModal" tabindex="-1" aria-labelledby="questionImagePreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header py-2">
+                <h5 class="modal-title fs-14" id="questionImagePreviewModalLabel">معاينة صورة السؤال</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body text-center p-2 p-md-3" style="background:#0f0f0f;">
+                <img id="questionImagePreviewModalImg" src="" alt="صورة السؤال" class="d-inline-block">
+            </div>
+        </div>
+    </div>
+</div>
+@endpush
 
 @section('content')
     <!-- Start::app-content -->
@@ -178,32 +174,7 @@
                                                     <i class="bi {{ $question->type_icon }}"></i>
                                                     {{ $question->type_name }}
                                                 </span>
-                                                <p class="mb-1 small">{{ Str::limit(strip_tags($question->title), 80) }}</p>
-                                                @php
-                                                    $inlineImages = [];
-                                                    if (!empty($question->title)) {
-                                                        preg_match_all('/<img[^>]+src="([^"]+)"/i', $question->title, $matches);
-                                                        $inlineImages = $matches[1] ?? [];
-                                                    }
-                                                    if (!empty($question->image)) {
-                                                        $inlineImages[] = media_public_url($question->image);
-                                                    }
-                                                @endphp
-                                                @if(!empty($inlineImages))
-                                                <div class="d-flex flex-wrap gap-2 mt-1">
-                                                    @foreach(array_slice($inlineImages, 0, 3) as $imgSrc)
-                                                    <img src="{{ $imgSrc }}"
-                                                         alt="صورة السؤال"
-                                                         class="question-image-thumb"
-                                                         loading="lazy"
-                                                         data-full-image="{{ $imgSrc }}"
-                                                         onerror="this.style.display='none';">
-                                                    @endforeach
-                                                    @if(count($inlineImages) > 3)
-                                                    <span class="badge bg-secondary align-self-center">+{{ count($inlineImages) - 3 }}</span>
-                                                    @endif
-                                                </div>
-                                                @endif
+                                                @include('admin.pages.questions.partials.list-preview', ['question' => $question, 'textLimit' => 80])
                                                 <div class="d-flex align-items-center gap-2">
                                                     <div class="d-flex align-items-center gap-1">
                                                         @if($canQuizUpdatePoints)
@@ -375,32 +346,7 @@
                                                     {{ $question->difficulty_name }}
                                                 </span>
                                             </div>
-                                            <p class="mb-1 small">{{ Str::limit(strip_tags($question->title), 60) }}</p>
-                                            @php
-                                                $inlineImages = [];
-                                                if (!empty($question->title)) {
-                                                    preg_match_all('/<img[^>]+src="([^"]+)"/i', $question->title, $matches);
-                                                    $inlineImages = $matches[1] ?? [];
-                                                }
-                                                if (!empty($question->image)) {
-                                                    $inlineImages[] = media_public_url($question->image);
-                                                }
-                                            @endphp
-                                            @if(!empty($inlineImages))
-                                            <div class="d-flex flex-wrap gap-2 mt-1">
-                                                @foreach(array_slice($inlineImages, 0, 3) as $imgSrc)
-                                                <img src="{{ $imgSrc }}"
-                                                     alt="صورة السؤال"
-                                                     class="question-image-thumb"
-                                                     loading="lazy"
-                                                     data-full-image="{{ $imgSrc }}"
-                                                     onerror="this.style.display='none';">
-                                                @endforeach
-                                                @if(count($inlineImages) > 3)
-                                                <span class="badge bg-secondary align-self-center">+{{ count($inlineImages) - 3 }}</span>
-                                                @endif
-                                            </div>
-                                            @endif
+                                            @include('admin.pages.questions.partials.list-preview', ['question' => $question, 'textLimit' => 60])
                                             <small class="text-muted">{{ $question->default_points }} درجة</small>
                                         </div>
                                         @if($canQuizAddQuestion)
@@ -1056,6 +1002,34 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text == null ? '' : String(text);
+        return div.innerHTML;
+    }
+
+    function escapeAttr(text) {
+        return escapeHtml(text).replace(/"/g, '&quot;');
+    }
+
+    function buildQuestionImageThumbsHtml(imageUrls) {
+        if (!imageUrls || !imageUrls.length) {
+            return '';
+        }
+        const slice = imageUrls.slice(0, 3);
+        let html = '<div class="question-list-preview-images mt-1">';
+        slice.forEach(function (src) {
+            html += '<button type="button" class="question-image-thumb-btn" title="انقر لعرض الصورة بالحجم الكامل" aria-label="عرض صورة السؤال" data-full-image="' + escapeAttr(src) + '">'
+                + '<img src="' + escapeAttr(src) + '" alt="" class="question-image-thumb" loading="lazy" onerror="this.closest(\'.question-image-thumb-btn\')?.remove();">'
+                + '</button>';
+        });
+        if (imageUrls.length > 3) {
+            html += '<span class="badge bg-secondary align-self-center">+' + (imageUrls.length - 3) + '</span>';
+        }
+        html += '</div>';
+        return html;
+    }
+
     // دالة لإضافة سؤال إلى قائمة أسئلة الاختبار
     function addQuestionToQuizList(question, statistics) {
         const quizQuestionsList = document.getElementById('quizQuestions');
@@ -1120,7 +1094,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             <i class="bi ${question.type_icon}"></i>
                             ${question.type_name}
                         </span>
-                        <p class="mb-1 small">${question.title.length > 80 ? question.title.substring(0, 80) + '...' : question.title}</p>
+                        <p class="mb-1 small question-list-preview-text">${escapeHtml(question.title)}</p>
+                        ${buildQuestionImageThumbsHtml(question.image_urls)}
                         <div class="d-flex align-items-center gap-2">
                             <div class="d-flex align-items-center gap-1">
                                 ${pointsBlock}
@@ -1174,7 +1149,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             </span>
                             ${difficultyBadge}
                         </div>
-                        <p class="mb-1 small">${question.title.length > 60 ? question.title.substring(0, 60) + '...' : question.title}</p>
+                        <p class="mb-1 small question-list-preview-text">${escapeHtml(question.title)}</p>
+                        ${buildQuestionImageThumbsHtml(question.image_urls)}
                         <small class="text-muted">${question.default_points} درجة</small>
                     </div>
                 </div>
@@ -1378,63 +1354,43 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // تهيئة SortableJS عند تحميل الصفحة (بالفعل مُهيأة في بداية الكود)
 
-    // --- Question Image Lightbox ---
-    const lightbox = document.getElementById('questionImageLightbox');
-    const lightboxImg = document.getElementById('questionImageLightboxImg');
-    const lightboxBackdrop = lightbox ? lightbox.querySelector('.q-image-lightbox__backdrop') : null;
-    const lightboxCloseBtn = lightbox ? lightbox.querySelector('.q-image-lightbox__close') : null;
+    // --- معاينة الصورة في مودال Bootstrap (وسط الشاشة) ---
+    const previewModalEl = document.getElementById('questionImagePreviewModal');
+    const previewModalImg = document.getElementById('questionImagePreviewModalImg');
+    let previewModalInstance = null;
 
-    function openLightbox(src, alt) {
-        if (!lightbox || !lightboxImg) return;
-        lightboxImg.src = src;
-        lightboxImg.alt = alt || '';
-        lightbox.classList.add('active');
-        document.body.style.overflow = 'hidden';
+    if (previewModalEl && typeof bootstrap !== 'undefined') {
+        previewModalInstance = bootstrap.Modal.getOrCreateInstance(previewModalEl, {
+            backdrop: true,
+            keyboard: true,
+            focus: true,
+        });
+        previewModalEl.addEventListener('hidden.bs.modal', function () {
+            if (previewModalImg) {
+                previewModalImg.removeAttribute('src');
+            }
+        });
     }
 
-    function closeLightbox() {
-        if (!lightbox) return;
-        lightbox.classList.remove('active');
-        document.body.style.overflow = '';
-        setTimeout(() => { if (lightboxImg) lightboxImg.src = ''; }, 300);
-    }
-
-    // Bind click on all question image thumbnails
-    document.addEventListener('click', function(e) {
-        const thumb = e.target.closest('.question-image-thumb');
-        if (thumb && thumb.dataset.fullImage) {
-            e.preventDefault();
-            openLightbox(thumb.dataset.fullImage, thumb.alt);
+    function openQuestionImagePreview(src) {
+        if (!previewModalImg || !previewModalInstance) {
+            return;
         }
-    });
-
-    // Close on backdrop click
-    if (lightboxBackdrop) {
-        lightboxBackdrop.addEventListener('click', closeLightbox);
+        previewModalImg.src = src;
+        previewModalInstance.show();
     }
 
-    // Close on close button click
-    if (lightboxCloseBtn) {
-        lightboxCloseBtn.addEventListener('click', closeLightbox);
-    }
-
-    // Close on ESC key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && lightbox && lightbox.classList.contains('active')) {
-            closeLightbox();
+    document.addEventListener('click', function (e) {
+        const thumbBtn = e.target.closest('.question-image-thumb-btn');
+        if (!thumbBtn || !thumbBtn.dataset.fullImage) {
+            return;
         }
+        e.preventDefault();
+        e.stopPropagation();
+        openQuestionImagePreview(thumbBtn.dataset.fullImage);
     });
 });
 </script>
-
-<!-- Question Image Lightbox -->
-<div id="questionImageLightbox" class="q-image-lightbox" role="dialog" aria-modal="true" aria-label="عرض صورة السؤال">
-    <div class="q-image-lightbox__backdrop"></div>
-    <div class="q-image-lightbox__inner">
-        <button type="button" class="q-image-lightbox__close" aria-label="إغلاق">&times;</button>
-        <img id="questionImageLightboxImg" src="" alt="">
-    </div>
-</div>
 
 <style>
 .question-points-input.updating {

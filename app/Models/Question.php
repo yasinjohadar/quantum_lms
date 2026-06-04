@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class Question extends Model
 {
@@ -158,6 +159,104 @@ class Question extends Model
         }
 
         return url('/storage/'.$relative);
+    }
+
+    /**
+     * استخراج روابط src من وسم img (علامات اقتباس مفردة/مزدوجة).
+     *
+     * @return list<string>
+     */
+    public static function parseImgSrcFromHtml(?string $html): array
+    {
+        if ($html === null || trim($html) === '') {
+            return [];
+        }
+
+        $sources = [];
+        if (preg_match_all('/<img\b[^>]*\bsrc\s*=\s*(["\'])([^"\']+)\1/is', $html, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $match) {
+                $src = trim(html_entity_decode($match[2], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                if ($src !== '') {
+                    $sources[] = $src;
+                }
+            }
+        }
+
+        return $sources;
+    }
+
+    /**
+     * روابط صور مُطبّعة للعرض في قوائم الأسئلة (محرر TinyMCE + حقل image).
+     *
+     * @return list<string>
+     */
+    public function embeddedImageUrlsForList(): array
+    {
+        $urls = [];
+
+        foreach (['title', 'content'] as $field) {
+            $html = $this->{$field};
+            if ($html === null || trim((string) $html) === '') {
+                continue;
+            }
+            foreach (self::parseImgSrcFromHtml((string) $html) as $src) {
+                $normalized = self::absoluteImageUrlForDisplay($src);
+                if ($normalized !== '') {
+                    $urls[] = $normalized;
+                }
+            }
+        }
+
+        if (! empty($this->image)) {
+            $fromField = tinymce_public_image_url((string) $this->image);
+            if ($fromField !== '') {
+                $urls[] = self::absoluteImageUrlForDisplay($fromField);
+            }
+        }
+
+        return array_values(array_unique($urls));
+    }
+
+    /**
+     * نص مختصر لقوائم الأسئلة (يتجنّب عرض &nbsp; عند سؤال صورة فقط).
+     */
+    public function listPreviewText(int $limit = 80): string
+    {
+        $plain = trim(html_entity_decode(strip_tags((string) ($this->title ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $plain = preg_replace('/\s+/u', ' ', $plain) ?? '';
+        $plain = str_replace("\xc2\xa0", ' ', $plain);
+        $plain = trim($plain);
+
+        if ($plain !== '' && strcasecmp($plain, 'nbsp') !== 0) {
+            return Str::limit($plain, $limit);
+        }
+
+        if ($this->embeddedImageUrlsForList() !== []) {
+            return 'سؤال بصورة';
+        }
+
+        return $plain !== '' ? Str::limit($plain, $limit) : '—';
+    }
+
+    /**
+     * بيانات السؤال لقوائم الاختبار (Blade + Ajax).
+     *
+     * @return array<string, mixed>
+     */
+    public function toQuizListPayload(int $titleLimit = 80): array
+    {
+        return [
+            'id' => $this->id,
+            'title' => $this->listPreviewText($titleLimit),
+            'image_urls' => $this->embeddedImageUrlsForList(),
+            'type' => $this->type,
+            'type_name' => $this->type_name,
+            'type_color' => $this->type_color,
+            'type_icon' => $this->type_icon,
+            'difficulty' => $this->difficulty,
+            'difficulty_name' => $this->difficulty_name,
+            'default_points' => $this->default_points,
+        ];
     }
 
     /**

@@ -66,6 +66,7 @@
     </div>
     @include('admin.layouts.footer-scripts')
     @stack('scripts')
+    @stack('body-end')
 
 </body>
 

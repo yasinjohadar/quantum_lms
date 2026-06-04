@@ -793,16 +793,10 @@ class QuizController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => 'تم إضافة السؤال للاختبار بنجاح',
-                    'question' => [
-                        'id' => $question->id,
-                        'title' => $question->title,
-                        'type' => $question->type,
-                        'type_name' => $question->type_name,
-                        'type_color' => $question->type_color,
-                        'type_icon' => $question->type_icon,
+                    'question' => array_merge($question->toQuizListPayload(80), [
                         'points' => $quizQuestion->points,
                         'order' => $quizQuestion->order,
-                    ],
+                    ]),
                     'statistics' => [
                         'total_questions' => $quiz->questions->count(),
                         'total_points' => $quiz->total_points,
@@ -901,17 +895,7 @@ class QuizController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => 'تم إزالة السؤال من الاختبار',
-                    'question' => [
-                        'id' => $question->id,
-                        'title' => $question->title,
-                        'type' => $question->type,
-                        'type_name' => $question->type_name,
-                        'type_color' => $question->type_color,
-                        'type_icon' => $question->type_icon,
-                        'difficulty' => $question->difficulty,
-                        'difficulty_name' => $question->difficulty_name,
-                        'default_points' => $question->default_points,
-                    ],
+                    'question' => $question->toQuizListPayload(60),
                     'statistics' => [
                         'total_questions' => $quiz->questions->count(),
                         'total_points' => $quiz->total_points,
