@@ -45,7 +45,18 @@ class ExtensionQuestionImportController extends Controller
         }
 
         try {
-            $mapped = $mapper->normalizeMany($validated['questions']);
+            $rawQuestions = $this->filterRawQuestions($validated['questions']);
+
+            if ($rawQuestions === []) {
+                return response()->json([
+                    'message' => 'لا توجد أسئلة صالحة (كل سؤال يحتاج نصاً وخيارين على الأقل).',
+                    'imported' => 0,
+                    'skipped' => count($validated['questions']),
+                    'errors' => [],
+                ], 422);
+            }
+
+            $mapped = $mapper->normalizeMany($rawQuestions);
             $result = $persister->persistMany(
                 $mapped['questions'],
                 $subject->id,
@@ -67,6 +78,55 @@ class ExtensionQuestionImportController extends Controller
         } catch (ExtensionImportException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $questions
+     * @return array<int, array<string, mixed>>
+     */
+    protected function filterRawQuestions(array $questions): array
+    {
+        $filtered = [];
+
+        foreach ($questions as $raw) {
+            if (! is_array($raw)) {
+                continue;
+            }
+
+            $title = trim((string) ($raw['title'] ?? $raw['question'] ?? $raw['text'] ?? ''));
+            if (mb_strlen($title) < 3) {
+                continue;
+            }
+
+            $options = $raw['options'] ?? $raw['answerOptions'] ?? $raw['choices'] ?? [];
+            if (! is_array($options)) {
+                continue;
+            }
+
+            $validOptions = 0;
+            foreach ($options as $option) {
+                if (is_string($option) && trim($option) !== '') {
+                    $validOptions++;
+
+                    continue;
+                }
+                if (! is_array($option)) {
+                    continue;
+                }
+                $text = trim(strip_tags((string) (
+                    $option['text'] ?? $option['content'] ?? $option['label'] ?? $option['answer'] ?? $option['value'] ?? ''
+                )));
+                if ($text !== '') {
+                    $validOptions++;
+                }
+            }
+
+            if ($validOptions >= 2) {
+                $filtered[] = $raw;
+            }
+        }
+
+        return $filtered;
     }
 
     /**

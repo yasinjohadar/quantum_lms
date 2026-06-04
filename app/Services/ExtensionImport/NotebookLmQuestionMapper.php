@@ -133,7 +133,7 @@ class NotebookLmQuestionMapper
 
             $normalized[] = [
                 'text' => $text,
-                'is_correct' => (bool) ($option['is_correct'] ?? $option['correct'] ?? false),
+                'is_correct' => (bool) ($option['is_correct'] ?? $option['isCorrect'] ?? $option['correct'] ?? false),
             ];
         }
 

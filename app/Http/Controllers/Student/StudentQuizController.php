@@ -52,31 +52,28 @@ class StudentQuizController extends Controller
                 ->with('error', $canAttempt['reason']);
         }
 
-        // التحقق من وجود محاولة جارية
-        $inProgressAttempt = QuizAttempt::where('user_id', $user->id)
-            ->where('quiz_id', $quiz->id)
-            ->where('status', 'in_progress')
-            ->first();
-
-        if ($inProgressAttempt) {
+        $resumeAttempt = $this->findResumableQuizAttempt($user->id, $quiz->id);
+        if ($resumeAttempt) {
             return redirect()->route('student.quizzes.show', [
                 'quiz' => $quiz,
-                'attempt' => $inProgressAttempt->id
+                'attempt' => $resumeAttempt->id,
             ]);
         }
 
         try {
             DB::beginTransaction();
 
-            // الحصول على آخر رقم محاولة
-            $lastAttempt = QuizAttempt::where('user_id', $user->id)
+            QuizAttempt::query()
+                ->where('user_id', $user->id)
                 ->where('quiz_id', $quiz->id)
-                ->orderBy('attempt_number', 'desc')
-                ->first();
+                ->lockForUpdate()
+                ->get();
 
-            $attemptNumber = $lastAttempt ? $lastAttempt->attempt_number + 1 : 1;
+            $attemptNumber = ((int) (QuizAttempt::withTrashed()
+                ->where('user_id', $user->id)
+                ->where('quiz_id', $quiz->id)
+                ->max('attempt_number') ?? 0)) + 1;
 
-            // إنشاء محاولة جديدة
             $attempt = QuizAttempt::create([
                 'user_id' => $user->id,
                 'quiz_id' => $quiz->id,
@@ -124,13 +121,73 @@ class StudentQuizController extends Controller
                 'quiz' => $quiz,
                 'attempt' => $attempt->id
             ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollBack();
+
+            if ($this->isDuplicateQuizAttemptException($e)) {
+                $existing = $this->findResumableQuizAttempt($user->id, $quiz->id)
+                    ?? QuizAttempt::where('user_id', $user->id)
+                        ->where('quiz_id', $quiz->id)
+                        ->latest('id')
+                        ->first();
+
+                if ($existing) {
+                    return redirect()->route('student.quizzes.show', [
+                        'quiz' => $quiz,
+                        'attempt' => $existing->id,
+                    ]);
+                }
+            }
+
+            Log::error('Error starting quiz: '.$e->getMessage());
+
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء بدء الاختبار. جرّب مرة أخرى أو تواصل مع الدعم.');
         } catch (\Exception $e) {
             DB::rollBack();
 
-            Log::error('Error starting quiz: ' . $e->getMessage());
+            Log::error('Error starting quiz: '.$e->getMessage());
+
             return redirect()->back()
-                ->with('error', 'حدث خطأ أثناء بدء الاختبار: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء بدء الاختبار. جرّب مرة أخرى أو تواصل مع الدعم.');
         }
+    }
+
+    protected function findResumableQuizAttempt(int $userId, int $quizId): ?QuizAttempt
+    {
+        $inProgress = QuizAttempt::where('user_id', $userId)
+            ->where('quiz_id', $quizId)
+            ->where('status', 'in_progress')
+            ->latest('id')
+            ->first();
+
+        if ($inProgress) {
+            return $inProgress;
+        }
+
+        $trashedInProgress = QuizAttempt::onlyTrashed()
+            ->where('user_id', $userId)
+            ->where('quiz_id', $quizId)
+            ->where('status', 'in_progress')
+            ->latest('id')
+            ->first();
+
+        if ($trashedInProgress) {
+            $trashedInProgress->restore();
+
+            return $trashedInProgress->fresh();
+        }
+
+        return null;
+    }
+
+    protected function isDuplicateQuizAttemptException(\Illuminate\Database\QueryException $e): bool
+    {
+        $errorInfo = $e->errorInfo ?? [];
+
+        return ($errorInfo[1] ?? null) === 1062
+            || str_contains($e->getMessage(), 'quiz_attempts_quiz_id_user_id_attempt_number_unique')
+            || str_contains($e->getMessage(), 'Duplicate entry');
     }
 
     /**

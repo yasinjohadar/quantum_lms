@@ -30,7 +30,14 @@ const els = {
 
 document.addEventListener('DOMContentLoaded', init);
 
+const EXT_VERSION = '1.2.3';
+
 async function init() {
+  const verEl = document.getElementById('ext-version');
+  if (verEl) {
+    verEl.textContent = `(v${EXT_VERSION})`;
+  }
+
   await loadEnvironments();
   const stored = await storageGet(['qlms_token', 'qlms_environment_id', 'qlms_email']);
   if (stored.qlms_environment_id) {
@@ -357,17 +364,16 @@ async function onImport() {
     return;
   }
 
-  els.btnImport.disabled = true;
-  setStatus(els.importStatus, 'جاري الحفظ...');
-
   const questionsToSend = sanitizeQuestions(state.questions);
   if (questionsToSend.length === 0) {
     setStatus(els.importStatus, 'لا توجد أسئلة صالحة للحفظ (كل سؤال يحتاج عنواناً وخيارين على الأقل).', true);
-    els.btnImport.disabled = false;
     return;
   }
 
   const dropped = state.questions.length - questionsToSend.length;
+
+  els.btnImport.disabled = true;
+  setStatus(els.importStatus, `جاري حفظ ${questionsToSend.length} سؤال (v${EXT_VERSION})...`);
 
   try {
     const body = {
