@@ -248,12 +248,66 @@ function onParseJson() {
   }
 }
 
+function cleanImportText(value) {
+  return String(value || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeOptionForImport(opt) {
+  if (typeof opt === 'string') {
+    const text = cleanImportText(opt);
+    return text ? { text, is_correct: false } : null;
+  }
+  if (!opt || typeof opt !== 'object') {
+    return null;
+  }
+  const raw = opt.text ?? opt.content ?? opt.label ?? opt.answer ?? opt.value ?? '';
+  const text = cleanImportText(raw);
+  if (!text) {
+    return null;
+  }
+  return {
+    text,
+    is_correct: Boolean(opt.is_correct ?? opt.isCorrect ?? opt.correct),
+  };
+}
+
 function sanitizeQuestions(questions) {
-  return (questions || []).filter((q) => {
-    const title = (q.title || q.question || '').trim();
-    const opts = (q.options || []).filter((o) => (o.text || o).toString().trim());
-    return title.length > 0 && opts.length >= 2;
-  });
+  return (questions || [])
+    .map((q) => {
+      const title = cleanImportText(q.title || q.question || q.text || '');
+      const rawOpts = q.options || q.answerOptions || q.choices || [];
+      const options = rawOpts.map(normalizeOptionForImport).filter(Boolean);
+
+      if (title.length < 3 || options.length < 2) {
+        return null;
+      }
+
+      const correctCount = options.filter((o) => o.is_correct).length;
+      let type = q.type || 'single_choice';
+      if (options.length === 2 && options.every((o) => /^(صح|خطأ|true|false)$/i.test(o.text))) {
+        type = 'true_false';
+      } else if (correctCount > 1) {
+        type = 'multiple_choice';
+      }
+
+      if ((type === 'single_choice' || type === 'true_false') && correctCount === 0) {
+        options[0].is_correct = true;
+      }
+
+      return {
+        title,
+        type,
+        content: cleanImportText(q.content) || title,
+        explanation: cleanImportText(q.explanation || q.rationale || ''),
+        difficulty: q.difficulty || 'medium',
+        default_points: q.default_points || 1,
+        options,
+      };
+    })
+    .filter(Boolean);
 }
 
 function setQuestions(questions) {
@@ -306,12 +360,21 @@ async function onImport() {
   els.btnImport.disabled = true;
   setStatus(els.importStatus, 'جاري الحفظ...');
 
+  const questionsToSend = sanitizeQuestions(state.questions);
+  if (questionsToSend.length === 0) {
+    setStatus(els.importStatus, 'لا توجد أسئلة صالحة للحفظ (كل سؤال يحتاج عنواناً وخيارين على الأقل).', true);
+    els.btnImport.disabled = false;
+    return;
+  }
+
+  const dropped = state.questions.length - questionsToSend.length;
+
   try {
     const body = {
       subject_id: Number(subjectId),
       class_id: els.classSelect.value ? Number(els.classSelect.value) : null,
       unit_id: els.unitSelect.value ? Number(els.unitSelect.value) : null,
-      questions: state.questions,
+      questions: questionsToSend,
     };
 
     const result = await api({
@@ -321,8 +384,11 @@ async function onImport() {
     });
 
     let msg = result.message || `تم حفظ ${result.imported} سؤال`;
+    if (dropped > 0) {
+      msg += ` (تجاهل ${dropped} قبل الإرسال)`;
+    }
     if (result.skipped > 0) {
-      msg += ` (تخطي ${result.skipped})`;
+      msg += ` (تخطي ${result.skipped} على السيرفر)`;
     }
     const isError = result.imported === 0;
     setStatus(els.importStatus, msg, isError, result.imported > 0);

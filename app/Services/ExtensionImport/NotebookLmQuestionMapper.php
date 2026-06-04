@@ -8,10 +8,6 @@ class NotebookLmQuestionMapper
 {
     /**
      * @param  array<int, array<string, mixed>>  $rawQuestions
-     * @return array<int, array<string, mixed>>
-     */
-    /**
-     * @param  array<int, array<string, mixed>>  $rawQuestions
      * @return array{questions: array<int, array<string, mixed>>, errors: array<int, array{index: int, message: string}>}
      */
     public function normalizeMany(array $rawQuestions): array
