@@ -68,6 +68,7 @@
                             <div>
                                 <h5 class="mb-0" id="timer-display"
                                     data-timer-mode="{{ $hasTimeLimit ? 'countdown' : 'elapsed' }}"
+                                    data-started-at-ms="{{ $attempt->started_at ? $attempt->started_at->getTimestamp() * 1000 : '' }}"
                                     @if($hasTimeLimit)
                                         data-remaining-seconds="{{ (int) $initialRemaining }}"
                                     @else
@@ -355,7 +356,7 @@
 @endpush
 
 @push('scripts')
-<script src="{{ asset('js/quiz-timer.js') }}?v=4"></script>
+<script src="{{ asset('js/quiz-timer.js') }}?v=5"></script>
 <script src="{{ asset('js/auto-save-answer.js') }}?v=2"></script>
 <script src="{{ asset('js/question-types.js') }}"></script>
 <script>
@@ -1490,9 +1491,27 @@
         });
     }
     
+    function isQuizTimerTicking() {
+        if (window.__quizAttemptTimer && window.__quizAttemptTimer.tickIntervalId !== null) {
+            return true;
+        }
+        return !!window.__quizAttemptTimerInterval;
+    }
+
+    function formatElapsedSeconds(totalSeconds) {
+        const seconds = Math.max(0, parseInt(totalSeconds, 10) || 0);
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+        if (h > 0) {
+            return h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+        }
+        return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
     function startQuizCountdown() {
         @if($quiz->show_timer)
-        if (window.__quizAttemptTimerStarted) {
+        if (window.__quizAttemptTimerStarted && isQuizTimerTicking()) {
             return;
         }
 
@@ -1503,6 +1522,7 @@
 
         const timerMode = displayEl.getAttribute('data-timer-mode') || 'countdown';
         const hasTimeLimit = timerMode === 'countdown';
+        const startedAtMs = parseInt(displayEl.getAttribute('data-started-at-ms') || '', 10);
         const updateUrl = '{{ route("student.quizzes.time", $attempt->id) }}';
 
         const onTimeout = hasTimeLimit && {{ $quiz->auto_submit ? 'true' : 'false' }}
@@ -1544,8 +1564,14 @@
             timerOptions = {
                 mode: 'elapsed',
                 elapsedSeconds: elapsedSeconds,
+                startedAtMs: Number.isFinite(startedAtMs) ? startedAtMs : undefined,
                 updateUrl: updateUrl,
             };
+        }
+
+        if (window.__quizAttemptTimerInterval) {
+            clearInterval(window.__quizAttemptTimerInterval);
+            window.__quizAttemptTimerInterval = null;
         }
 
         if (typeof window.QuizTimer !== 'undefined') {
@@ -1574,12 +1600,13 @@
             tick();
             window.__quizAttemptTimerInterval = setInterval(tick, 1000);
         } else if (!hasTimeLimit) {
-            let elapsed = timerOptions.elapsedSeconds;
+            const anchorMs = Number.isFinite(startedAtMs)
+                ? startedAtMs
+                : Date.now() - (timerOptions.elapsedSeconds * 1000);
             const tick = function() {
-                const m = Math.floor(elapsed / 60);
-                const s = elapsed % 60;
-                displayEl.textContent = m + ':' + (s < 10 ? '0' : '') + s;
-                elapsed += 1;
+                const elapsed = Math.max(0, Math.floor((Date.now() - anchorMs) / 1000));
+                displayEl.textContent = formatElapsedSeconds(elapsed);
+                displayEl.setAttribute('data-elapsed-seconds', String(elapsed));
             };
             tick();
             window.__quizAttemptTimerInterval = setInterval(tick, 1000);
@@ -1670,6 +1697,13 @@
             loadQuestion(0);
         }
         startQuizCountdown();
+    });
+
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            window.__quizAttemptTimerStarted = false;
+            startQuizCountdown();
+        }
     });
 </script>
 @endpush

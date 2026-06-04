@@ -8,6 +8,7 @@ class QuizTimer {
      * @param {'countdown'|'elapsed'} [options.mode] - countdown (افتراضي) أو elapsed للمدة المفتوحة
      * @param {number} [options.remainingTime] - الوقت المتبقي بالثواني (countdown)
      * @param {number} [options.elapsedSeconds] - الوقت المنقضي بالثواني (elapsed)
+     * @param {number} [options.startedAtMs] - وقت بدء المحاولة (ms) لحساب المنقضي من الساعة
      * @param {string|null} [options.updateUrl] - رابط AJAX لتحديث الوقت من الخادم
      * @param {Function} [options.onTimeout] - يُستدعى عند انتهاء الوقت (countdown فقط)
      * @param {Function} [options.onWarning] - يُستدعى عند وصول الوقت لمرحلة تحذير (countdown)
@@ -27,6 +28,13 @@ class QuizTimer {
 
         if (this.mode === 'elapsed') {
             this.elapsedSeconds = Math.max(0, parseInt(options.elapsedSeconds, 10) || 0);
+            this.startedAtMs = parseInt(options.startedAtMs, 10) || null;
+            if (!this.startedAtMs && this.elapsedSeconds > 0) {
+                this.startedAtMs = Date.now() - (this.elapsedSeconds * 1000);
+            }
+            if (!this.startedAtMs) {
+                this.startedAtMs = Date.now();
+            }
             this.remainingSeconds = 0;
         } else {
             const parsed = parseInt(options.remainingTime, 10);
@@ -93,6 +101,7 @@ class QuizTimer {
             this.mode = 'elapsed';
             if (typeof data.elapsed === 'number' && data.elapsed >= 0) {
                 this.elapsedSeconds = data.elapsed;
+                this.startedAtMs = Date.now() - (this.elapsedSeconds * 1000);
             }
             const displayEl = this.getDisplayElement();
             if (displayEl) {
@@ -100,6 +109,7 @@ class QuizTimer {
                 displayEl.setAttribute('data-elapsed-seconds', String(this.elapsedSeconds));
                 displayEl.setAttribute('data-timer-mode', 'elapsed');
             }
+            this.ensureElapsedTicking();
             return false;
         }
 
@@ -172,14 +182,37 @@ class QuizTimer {
         }
     }
 
-    startElapsedTicking() {
-        const tick = () => {
-            this.updateElapsedDisplay();
-            this.elapsedSeconds += 1;
-        };
+    refreshElapsedFromClock() {
+        if (this.startedAtMs) {
+            this.elapsedSeconds = Math.max(0, Math.floor((Date.now() - this.startedAtMs) / 1000));
+        }
+        this.updateElapsedDisplay();
+    }
 
-        tick();
-        this.tickIntervalId = window.setInterval(tick, 1000);
+    tickElapsed() {
+        this.refreshElapsedFromClock();
+    }
+
+    ensureElapsedTicking() {
+        if (this.mode !== 'elapsed') {
+            return;
+        }
+        if (this.tickIntervalId !== null) {
+            return;
+        }
+        this.refreshElapsedFromClock();
+        this.tickIntervalId = window.setInterval(() => this.tickElapsed(), 1000);
+    }
+
+    stopSyncOnly() {
+        if (this.syncIntervalId !== null) {
+            window.clearInterval(this.syncIntervalId);
+            this.syncIntervalId = null;
+        }
+    }
+
+    startElapsedTicking() {
+        this.ensureElapsedTicking();
     }
 
     startCountdownTicking() {
@@ -237,14 +270,14 @@ class QuizTimer {
     }
 
     start() {
-        if (this.started) {
+        if (this.started && this.tickIntervalId !== null) {
             return;
         }
         this.started = true;
-        this.stop();
 
         if (this.mode === 'elapsed') {
-            this.updateElapsedDisplay();
+            this.stopTickOnly();
+            this.stopSyncOnly();
             this.startElapsedTicking();
 
             if (this.updateUrl) {
@@ -255,6 +288,8 @@ class QuizTimer {
             }
             return;
         }
+
+        this.stop();
 
         const begin = () => {
             this.startCountdownTicking();
@@ -293,10 +328,8 @@ class QuizTimer {
 
     stop() {
         this.stopTickOnly();
-        if (this.syncIntervalId !== null) {
-            window.clearInterval(this.syncIntervalId);
-            this.syncIntervalId = null;
-        }
+        this.stopSyncOnly();
+        this.started = false;
     }
 }
 
