@@ -165,6 +165,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('questions.nerve-test.parse');
         Route::post('questions-import/nerve-test/import', [\App\Http\Controllers\Admin\NerveTestQuestionImportController::class, 'import'])
             ->name('questions.nerve-test.import');
+        Route::post('questions-import/question-pack/parse', [\App\Http\Controllers\Admin\QuestionPackImportController::class, 'parse'])
+            ->name('questions.question-pack.parse');
+        Route::post('questions-import/question-pack/import', [\App\Http\Controllers\Admin\QuestionPackImportController::class, 'import'])
+            ->name('questions.question-pack.import');
 
         // ===============================================
         // المكتبة الرقمية
