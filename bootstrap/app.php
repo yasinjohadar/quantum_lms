@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         channels: __DIR__.'/../routes/channels.php',
         health: '/up',
@@ -34,6 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'check.user.active' => \App\Http\Middleware\CheckUserActive::class,
             'share.student.pending.purchases' => \App\Http\Middleware\ShareStudentPendingPurchasesForLayout::class,
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'extension.api' => \App\Http\Middleware\EnsureExtensionApiAccess::class,
         ]);
     })
     ->withProviders([

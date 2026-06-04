@@ -1,0 +1,19 @@
+{
+  "environments": [
+    {
+      "id": "local",
+      "label": "محلي",
+      "apiBase": "http://127.0.0.1:8000/api/v1/extension"
+    },
+    {
+      "id": "staging",
+      "label": "تجريبي",
+      "apiBase": "https://staging.example.com/api/v1/extension"
+    },
+    {
+      "id": "production",
+      "label": "إنتاج",
+      "apiBase": "https://lms.example.com/api/v1/extension"
+    }
+  ]
+}

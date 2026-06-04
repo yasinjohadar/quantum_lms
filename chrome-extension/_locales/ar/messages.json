@@ -1,0 +1,11 @@
+{
+  "extensionName": {
+    "message": "Quantum LMS — NotebookLM Quiz Import"
+  },
+  "extensionDescription": {
+    "message": "استيراد أسئلة NotebookLM إلى بنك أسئلة أكاديمية كوانتم"
+  },
+  "actionTitle": {
+    "message": "كوانتم — استيراد أسئلة"
+  }
+}

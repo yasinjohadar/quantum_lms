@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>إعدادات إضافة كوانتم</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 520px; margin: 24px auto; padding: 0 16px; }
+    label { display: block; margin-top: 12px; font-weight: 600; }
+    input, textarea { width: 100%; padding: 8px; margin-top: 4px; }
+    button { margin-top: 16px; padding: 10px 16px; }
+    p.hint { color: #555; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>بيئات API مخصصة</h1>
+  <p class="hint">أضف بيئة بصيغة JSON (مصفوفة). مثال: <code>[{"id":"prod","label":"إنتاج","apiBase":"https://lms.example.com/api/v1/extension"}]</code></p>
+
+  <label for="custom-envs">JSON للبيئات الإضافية</label>
+  <textarea id="custom-envs" rows="8"></textarea>
+
+  <button id="save" type="button">حفظ</button>
+  <p id="status"></p>
+
+  <script src="options.js"></script>
+</body>
+</html>

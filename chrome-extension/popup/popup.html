@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="popup.css" />
+  <title>كوانتم — استيراد أسئلة</title>
+</head>
+<body>
+  <header>
+    <h1>كوانتم LMS</h1>
+    <p class="subtitle">NotebookLM → بنك الأسئلة</p>
+  </header>
+
+  <section id="login-section">
+    <label for="env-select">البيئة</label>
+    <select id="env-select"></select>
+
+    <label for="email">البريد</label>
+    <input id="email" type="email" autocomplete="username" />
+
+    <label for="password">كلمة المرور</label>
+    <input id="password" type="password" autocomplete="current-password" />
+
+    <button id="btn-login" type="button">تسجيل الدخول</button>
+    <p id="login-status" class="status" role="status"></p>
+  </section>
+
+  <section id="app-section" class="hidden">
+    <p id="user-label" class="user-label"></p>
+    <button id="btn-logout" type="button" class="link-btn">تسجيل الخروج</button>
+
+    <div class="row">
+      <button id="btn-extract" type="button">استخراج من الصفحة</button>
+      <button id="btn-json" type="button" class="secondary">لصق JSON</button>
+    </div>
+
+    <div id="json-panel" class="hidden">
+      <textarea id="json-input" rows="6" placeholder='{"questions":[...]}'></textarea>
+      <button id="btn-parse-json" type="button">تحميل من JSON</button>
+    </div>
+
+    <label for="class-select">الصف (اختياري)</label>
+    <select id="class-select"><option value="">— الكل —</option></select>
+
+    <label for="subject-select">المادة</label>
+    <select id="subject-select" required></select>
+
+    <label for="unit-select">الوحدة (اختياري)</label>
+    <select id="unit-select"><option value="">— عام —</option></select>
+
+    <div id="preview" class="preview"></div>
+
+    <button id="btn-import" type="button" class="primary" disabled>حفظ في بنك الأسئلة</button>
+    <p id="import-status" class="status" role="status"></p>
+  </section>
+
+  <script src="popup.js"></script>
+</body>
+</html>
