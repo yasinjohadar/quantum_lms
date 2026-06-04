@@ -438,3 +438,109 @@ a:hover .folder-card .card-body i[class*="bi-"] {
     background: rgba(var(--success-rgb), 0.12);
     border-color: rgba(var(--success-rgb), 0.35);
 }
+
+/* ── شعار القائمة الجانبية: نص موسّع + لوغو عند التصغير ── */
+.app-sidebar .main-sidebar-header .header-logo.sidebar-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    width: 100%;
+}
+
+.app-sidebar .sidebar-brand-text {
+    display: block;
+    font-family: "Cairo", sans-serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    line-height: 1.35;
+    white-space: nowrap;
+    letter-spacing: -0.02em;
+    text-align: center;
+}
+
+.app-sidebar .sidebar-brand-logo {
+    display: none;
+    height: 2.25rem;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+/* الوضع النهاري: خلفية سوداء للوغو لظهوره على رأس القائمة الفاتح */
+[data-menu-styles="light"] .app-sidebar .sidebar-brand-logo {
+    background-color: #000;
+    border-radius: 10px;
+    padding: 0.35rem 0.5rem;
+    box-sizing: content-box;
+}
+
+[data-menu-styles="dark"] .app-sidebar .sidebar-brand-logo {
+    background-color: transparent;
+    border-radius: 0;
+    padding: 0;
+}
+
+[data-menu-styles="light"] .app-sidebar .sidebar-brand-text {
+    color: rgb(var(--primary-rgb, 13, 110, 253));
+}
+
+[data-menu-styles="dark"] .app-sidebar .sidebar-brand-text {
+    color: #fff;
+}
+
+[data-theme-mode="dark"][data-menu-styles="light"] .app-sidebar .sidebar-brand-text {
+    color: rgb(var(--primary-rgb, 13, 110, 253));
+}
+
+/* overlay مطوي */
+@media (min-width: 992px) {
+    [data-vertical-style="overlay"][data-toggled="icon-overlay-close"]:not([data-icon-overlay="open"]) .app-sidebar .sidebar-brand-text {
+        display: none !important;
+    }
+    [data-vertical-style="overlay"][data-toggled="icon-overlay-close"]:not([data-icon-overlay="open"]) .app-sidebar .sidebar-brand-logo {
+        display: block !important;
+    }
+
+    [data-vertical-style="overlay"][data-icon-overlay="open"] .app-sidebar .sidebar-brand-text {
+        display: block !important;
+    }
+    [data-vertical-style="overlay"][data-icon-overlay="open"] .app-sidebar .sidebar-brand-logo {
+        display: none !important;
+    }
+
+    /* icontext مطوي */
+    [data-vertical-style="icontext"][data-toggled="icon-text-close"] .app-sidebar .sidebar-brand-text {
+        display: none !important;
+    }
+    [data-vertical-style="icontext"][data-toggled="icon-text-close"] .app-sidebar .sidebar-brand-logo {
+        display: block !important;
+    }
+
+    /* menu-click / menu-hover مطوي */
+    [data-nav-style="menu-click"][data-toggled="menu-click-closed"] .app-sidebar .sidebar-brand-text,
+    [data-nav-style="menu-hover"][data-toggled="menu-hover-closed"] .app-sidebar .sidebar-brand-text {
+        display: none !important;
+    }
+    [data-nav-style="menu-click"][data-toggled="menu-click-closed"] .app-sidebar .sidebar-brand-logo,
+    [data-nav-style="menu-hover"][data-toggled="menu-hover-closed"] .app-sidebar .sidebar-brand-logo {
+        display: block !important;
+    }
+
+    [data-nav-style="icon-click"][data-toggled="icon-click-closed"] .app-sidebar .sidebar-brand-text,
+    [data-nav-style="icon-hover"][data-toggled="icon-hover-closed"] .app-sidebar .sidebar-brand-text {
+        display: none !important;
+    }
+    [data-nav-style="icon-click"][data-toggled="icon-click-closed"] .app-sidebar .sidebar-brand-logo,
+    [data-nav-style="icon-hover"][data-toggled="icon-hover-closed"] .app-sidebar .sidebar-brand-logo {
+        display: block !important;
+    }
+}
+
+/* تجاوز قواعد الثيم القديمة لصور الشعار */
+.app-sidebar .main-sidebar-header .header-logo .desktop-logo,
+.app-sidebar .main-sidebar-header .header-logo .toggle-logo,
+.app-sidebar .main-sidebar-header .header-logo .desktop-white,
+.app-sidebar .main-sidebar-header .header-logo .toggle-white {
+    display: none !important;
+}

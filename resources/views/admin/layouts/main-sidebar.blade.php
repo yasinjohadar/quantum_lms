@@ -3,11 +3,11 @@
 
             <!-- Start::main-sidebar-header -->
             <div class="main-sidebar-header">
-                <a href="{{ route('admin.dashboard') }}" class="header-logo">
-                    <img src="{{ asset('assets/images/brand-logos/desktop-logo.png') }}" alt="logo" class="desktop-logo">
-                    <img src="{{ asset('assets/images/brand-logos/toggle-logo.png') }}" alt="logo" class="toggle-logo">
-                    <img src="{{ asset('assets/images/brand-logos/desktop-white.png') }}" alt="logo" class="desktop-white">
-                    <img src="{{ asset('assets/images/brand-logos/toggle-white.png') }}" alt="logo" class="toggle-white">
+                <a href="{{ route('admin.dashboard') }}" class="header-logo sidebar-brand">
+                    <span class="sidebar-brand-text">أكاديمية كوانتم</span>
+                    <img src="{{ asset('frontend/images/logo.png') }}"
+                         alt="أكاديمية كوانتم"
+                         class="sidebar-brand-logo">
                 </a>
             </div>
             <!-- End::main-sidebar-header -->
