@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="{{ asset('assets/libs/choices.js/public/assets/styles/choices.min.css') }}">
 
 <!-- Custom Css -->
-<link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}{{ file_exists(public_path('assets/css/custom.css')) ? '?v=' . filemtime(public_path('assets/css/custom.css')) : '' }}">
 
 <!-- إخفاء أيقونة إعدادات العرض (المسنن) وأيقونة الرسائل في واجهة الطالب -->
 <style>

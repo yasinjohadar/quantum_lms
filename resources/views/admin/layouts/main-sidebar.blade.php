@@ -5,9 +5,11 @@
             <div class="main-sidebar-header">
                 <a href="{{ route('admin.dashboard') }}" class="header-logo sidebar-brand">
                     <span class="sidebar-brand-text">أكاديمية كوانتم</span>
-                    <img src="{{ asset('frontend/images/logo.png') }}"
-                         alt="أكاديمية كوانتم"
-                         class="sidebar-brand-logo">
+                    <span class="sidebar-brand-logo-wrap" aria-hidden="true">
+                        <img src="{{ asset('frontend/images/logo.png') }}"
+                             alt=""
+                             class="sidebar-brand-logo">
+                    </span>
                 </a>
             </div>
             <!-- End::main-sidebar-header -->

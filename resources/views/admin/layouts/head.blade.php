@@ -42,4 +42,4 @@
 <link rel="stylesheet" href="{{ asset('assets/libs/jsvectormap/css/jsvectormap.min.css') }}">
 
 <!-- Custom Css -->
-<link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}{{ file_exists(public_path('assets/css/custom.css')) ? '?v=' . filemtime(public_path('assets/css/custom.css')) : '' }}">
