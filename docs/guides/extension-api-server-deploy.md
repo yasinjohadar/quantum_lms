@@ -6,10 +6,13 @@
 
 يعني أن Laravel على السيرفر **لا يملك** مسارات الإضافة (كود قديم أو كاش مسارات قديم).
 
-## الملفات الواجب رفعها
+**الحل:** المسارات تُسجَّل الآن عبر `routes/web.php` → `routes/extension-api.php` (لا يعتمد على تفعيل `api.php` في bootstrap).
 
-- `bootstrap/app.php` (يجب أن يحتوي `api: __DIR__.'/../routes/api.php'`)
-- `routes/api.php`
+## الملفات الواجب رفعها (الحد الأدنى)
+
+- `routes/extension-api.php` **جديد**
+- `routes/web.php` (سطر `require extension-api.php` في النهاية)
+- `bootstrap/app.php` (استثناء CSRF لـ `api/v1/extension/*`)
 - `config/cors.php`
 - `config/extension.php`
 - `composer.json` + `composer.lock` (لـ `laravel/sanctum`)
