@@ -140,19 +140,24 @@ class Question extends Model
             return url($src);
         }
 
-        $fromMedia = media_public_url(ltrim($src, '/'));
-        if ($fromMedia !== '') {
-            if (preg_match('#^https?://#i', $fromMedia)) {
-                return $fromMedia;
-            }
-            if (str_starts_with($fromMedia, '/')) {
-                return url($fromMedia);
-            }
-
-            return url('/'.ltrim($fromMedia, '/'));
+        $relative = ltrim($src, '/');
+        if (preg_match('#^storage/(.+)$#i', $relative, $storageMatch)) {
+            $relative = $storageMatch[1];
         }
 
-        return url('/storage/'.ltrim($src, '/'));
+        $fromTinymce = tinymce_public_image_url($relative);
+        if ($fromTinymce !== '') {
+            if (preg_match('#^https?://#i', $fromTinymce)) {
+                return $fromTinymce;
+            }
+            if (str_starts_with($fromTinymce, '/')) {
+                return url($fromTinymce);
+            }
+
+            return url('/'.ltrim($fromTinymce, '/'));
+        }
+
+        return url('/storage/'.$relative);
     }
 
     /**

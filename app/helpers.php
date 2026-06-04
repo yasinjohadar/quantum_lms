@@ -55,6 +55,42 @@ if (! function_exists('media_public_url')) {
     }
 }
 
+if (! function_exists('tinymce_public_image_url')) {
+    /**
+     * رابط صورة للمحرر والعرض: يفضّل /storage/ على نفس الموقع إن وُجد الملف محلياً،
+     * وإلا رابط السحابة (بما في ذلك presigned عند الحاجة).
+     */
+    function tinymce_public_image_url(?string $path): string
+    {
+        if ($path === null || $path === '') {
+            return '';
+        }
+
+        $path = trim((string) $path);
+        if (preg_match('#^https?://[^/]+/storage/(.+)$#i', $path, $m)) {
+            $path = $m[1];
+        }
+
+        $normalized = ltrim(str_replace('\\', '/', $path), '/');
+        if ($normalized === '') {
+            return '';
+        }
+
+        try {
+            $localDisk = \Illuminate\Support\Facades\Storage::disk(
+                config('storage.fallback_disk', 'public')
+            );
+            if ($localDisk->exists($normalized)) {
+                return url('/storage/'.$normalized);
+            }
+        } catch (\Throwable) {
+            //
+        }
+
+        return media_public_url($normalized);
+    }
+}
+
 if (! function_exists('linkify_plain_text')) {
     /**
      * نص عادي آمن مع أسطر جديدة وروابط http/https قابلة للنقر.

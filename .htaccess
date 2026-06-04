@@ -1,6 +1,11 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     
+    # When DocumentRoot is project root (cPanel): serve /storage/* from public/storage/
+    RewriteCond %{REQUEST_URI} ^/storage/(.+)$
+    RewriteCond %{DOCUMENT_ROOT}/public/storage/%1 -f
+    RewriteRule ^storage/(.+)$ public/storage/$1 [L]
+
     # Allow access to storage (for uploaded files) - works with both /storage/ and /public/storage/
     RewriteCond %{REQUEST_URI} ^/storage/
     RewriteCond %{REQUEST_FILENAME} -f

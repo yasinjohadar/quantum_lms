@@ -663,11 +663,11 @@ class QuestionController extends Controller
             return response()->json(['error' => 'لم يتم رفع الملف'], 400);
         }
 
-        $url = '';
+        $path = '';
 
         try {
             $uploadResult = MediaStorageService::uploadImage($request->file('file'), 'questions/images');
-            $url = $uploadResult['url'] ?? media_public_url($uploadResult['path'] ?? '');
+            $path = (string) ($uploadResult['path'] ?? '');
         } catch (\Throwable $e) {
             Log::warning('TinyMCE question image: MediaStorageService failed, using public disk fallback', [
                 'message' => $e->getMessage(),
@@ -679,7 +679,6 @@ class QuestionController extends Controller
                 $ext = preg_replace('/[^a-z0-9]/', '', $ext) ?: 'png';
                 $imageName = time().'_'.uniqid('', true).'.'.$ext;
                 $path = $image->storeAs('questions/images', $imageName, 'public');
-                $url = media_public_url($path);
             } catch (\Throwable $inner) {
                 Log::error('TinyMCE question image: fallback upload failed', [
                     'message' => $inner->getMessage(),
@@ -691,11 +690,30 @@ class QuestionController extends Controller
             }
         }
 
+        $path = ltrim(str_replace('\\', '/', trim($path)), '/');
+        if ($path === '') {
+            return response()->json(['error' => 'تعذّر تحديد مسار الصورة بعد الرفع'], 500);
+        }
+
+        if (! MediaStorageService::exists($path)) {
+            Log::error('TinyMCE question image: file missing after upload', ['path' => $path]);
+
+            return response()->json([
+                'error' => 'الملف غير موجود بعد الرفع. تحقق من إعدادات التخزين أو صلاحيات المجلد storage.',
+            ], 500);
+        }
+
+        $url = tinymce_public_image_url($path);
         if ($url === '' || $url === '/') {
             return response()->json(['error' => 'تعذّر إنشاء رابط للصورة بعد الرفع'], 500);
         }
 
         $url = Question::absoluteImageUrlForDisplay($url);
+
+        Log::info('TinyMCE question image uploaded', [
+            'path' => $path,
+            'location' => $url,
+        ]);
 
         return response()->json(['location' => $url]);
     }
