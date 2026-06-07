@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Exports\QuestionsTemplateExport;
 use App\Helpers\StorageHelper;
 use App\Http\Controllers\Admin\Concerns\BuildsQuestionBankIndex;
+use App\Http\Controllers\Admin\Concerns\HandlesQuestionWordExport;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ExportQuestionsWordRequest;
 use App\Http\Requests\Admin\StoreQuestionRequest;
 use App\Http\Requests\Admin\UpdateQuestionRequest;
 use App\Imports\QuestionsImport;
@@ -25,6 +27,7 @@ use Maatwebsite\Excel\Facades\Excel;
 class QuestionController extends Controller
 {
     use BuildsQuestionBankIndex;
+    use HandlesQuestionWordExport;
 
     public function __construct()
     {
@@ -38,7 +41,8 @@ class QuestionController extends Controller
         $this->middleware(['permission:question-toggle-status'])->only('toggleStatus');
         // رفع صور المحرّك: من لديه تعديل/إنشاء أسئلة يكفي (مع الاحتفاظ بصلاحية الرفع الصريحة)
         $this->middleware(['permission:question-upload-image|question-edit|question-create'])->only('uploadImage');
-        $this->middleware(['permission:question-export'])->only('export');
+        $this->middleware(['permission:question-export'])->only(['export', 'exportWord']);
+        $this->middleware(['permission:question-export|question-delete'])->only('bulkSelectableIds');
         $this->middleware(['permission:question-export-template'])->only('exportTemplate');
         $this->middleware(['permission:question-import'])->only('import');
         $this->middleware(['permission:question-show-import'])->only('showImport');
@@ -57,6 +61,8 @@ class QuestionController extends Controller
             ? route('admin.questions.destroy-multiple', $request->query())
             : null;
 
+        $canBulkSelect = auth()->user()->can('question-export') || auth()->user()->can('question-delete');
+
         $viewData = [
             'questions' => $questions,
             'units' => $filterLists['units'],
@@ -69,6 +75,7 @@ class QuestionController extends Controller
             'showGlobalTools' => true,
             'enableAjaxFilters' => true,
             'bulkDeleteUrl' => $bulkDeleteUrl,
+            'bulkIdsUrl' => $canBulkSelect ? route('admin.questions.bulk-ids') : null,
         ];
 
         if ($request->ajax() || $request->wantsJson()) {
@@ -719,12 +726,21 @@ class QuestionController extends Controller
     }
 
     /**
-     * تصدير الأسئلة
+     * تصدير الأسئلة (Excel — قيد التطوير)
      */
     public function export(Request $request)
     {
-        // يمكن إضافة وظيفة التصدير لاحقاً
-        return redirect()->back()->with('info', 'ميزة التصدير قيد التطوير');
+        return redirect()->back()->with('info', 'تصدير Excel قيد التطوير. استخدم تصدير Word من بنك الأسئلة.');
+    }
+
+    public function exportWord(ExportQuestionsWordRequest $request)
+    {
+        return $this->downloadQuestionsWord($request);
+    }
+
+    public function bulkSelectableIds(Request $request)
+    {
+        return $this->bulkSelectableIdsResponse($request);
     }
 
     /**

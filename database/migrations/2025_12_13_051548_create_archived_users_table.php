@@ -37,7 +37,7 @@ return new class extends Migration
             $table->softDeletes();
             
             // Archive-specific fields
-            $table->timestamp('archived_at');
+            $table->timestamp('archived_at')->useCurrent();
             $table->foreignId('archived_by')->constrained('users')->onDelete('cascade');
             $table->text('archive_reason')->nullable();
             $table->timestamp('restored_at')->nullable();

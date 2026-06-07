@@ -10,6 +10,7 @@ use App\Models\LessonAttachment;
 use App\Models\LessonCompletion;
 use App\Models\SubjectSection;
 use App\Models\Unit;
+use App\Services\Curriculum\LessonCloneService;
 use App\Services\VimeoService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -22,6 +23,17 @@ use App\Services\StudentContentNotificationService;
 
 class LessonController extends Controller
 {
+    public function __construct(
+        protected LessonCloneService $cloneService
+    ) {
+        $this->middleware(['permission:lesson-create'])->only('store');
+        $this->middleware(['permission:lesson-edit'])->only(['edit', 'update', 'reorder', 'getLinkedUnits', 'linkUnits']);
+        $this->middleware(['permission:lesson-delete'])->only('destroy');
+        $this->middleware(['permission:lesson-show'])->only('show');
+        $this->middleware(['permission:lesson-approve-review'])->only('approveReview');
+        $this->middleware(['permission:lesson-reject-review'])->only('rejectReview');
+    }
+
     private function resolveAttachmentTitle(?string $inputTitle, ?\Illuminate\Http\UploadedFile $file, ?string $attachmentType): string
     {
         $title = trim((string) $inputTitle);
@@ -42,16 +54,6 @@ class LessonController extends Controller
         }
 
         return 'مرفق';
-    }
-
-    public function __construct()
-    {
-        $this->middleware(['permission:lesson-create'])->only('store');
-        $this->middleware(['permission:lesson-edit'])->only(['edit', 'update', 'reorder']);
-        $this->middleware(['permission:lesson-delete'])->only('destroy');
-        $this->middleware(['permission:lesson-show'])->only('show');
-        $this->middleware(['permission:lesson-approve-review'])->only('approveReview');
-        $this->middleware(['permission:lesson-reject-review'])->only('rejectReview');
     }
 
     /**
@@ -340,14 +342,6 @@ class LessonController extends Controller
             $data['is_free'] = $request->has('is_free');
             $data['is_preview'] = $request->has('is_preview');
 
-            unset($data['linked_unit_ids']);
-            $preserveLinkedUnits = $request->boolean('preserve_linked_units');
-            // مودال المادة يرسل sync_linked_units ليعني «طابق الجدول مع القائمة المرسلة» حتى لو كانت فارغة (لا يعتمد على has('linked_unit_ids')).
-            $shouldSyncLinkedUnits = ! $preserveLinkedUnits && $request->boolean('sync_linked_units');
-            $linkedUnitIds = $shouldSyncLinkedUnits
-                ? array_values(array_filter((array) $request->input('linked_unit_ids', [])))
-                : null;
-
             $oldReviewStatus = $lesson->review_status;
             $isTeacher = $user->shouldSubmitContentForReview();
 
@@ -428,36 +422,6 @@ class LessonController extends Controller
                 }, 'lesson_review_submitted', $lesson->id);
             }
 
-            if ($shouldSyncLinkedUnits && is_array($linkedUnitIds)) {
-                // مزامنة الوحدات الإضافية (ربط الدرس بوحدات أخرى): استبعاد الوحدة الأصلية
-                $linkedUnitIds = array_values(array_unique(array_filter($linkedUnitIds)));
-                $primaryUnitId = $lesson->unit_id;
-                $linkedUnitIds = array_values(array_diff($linkedUnitIds, [$primaryUnitId]));
-
-                // للمعلم: السماح فقط بوحدات من مواد/صفوف مخصصة له
-                if ($user->usesTeacherAssignmentScope()) {
-                    $classIds = $user->assignedClasses()->pluck('classes.id');
-                    $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
-                    $allowedUnitIds = \App\Models\Unit::whereHas('section.subject', function ($q) use ($classIds, $subjectIds) {
-                        if ($classIds->isNotEmpty() || $subjectIds->isNotEmpty()) {
-                            $q->where(function ($sq) use ($classIds, $subjectIds) {
-                                if ($classIds->isNotEmpty()) {
-                                    $sq->whereIn('class_id', $classIds);
-                                }
-                                if ($subjectIds->isNotEmpty()) {
-                                    $sq->orWhereIn('id', $subjectIds);
-                                }
-                            });
-                        } else {
-                            $q->whereRaw('1 = 0');
-                        }
-                    })->pluck('id')->toArray();
-                    $linkedUnitIds = array_values(array_intersect($linkedUnitIds, $allowedUnitIds));
-                }
-
-                $lesson->linkedUnits()->sync($linkedUnitIds);
-            }
-
             $subjectId = $subject->id;
 
             $this->dispatchNotificationSafely(function () use ($lessonBeforeUpdate, $lesson, $user) {
@@ -505,6 +469,199 @@ class LessonController extends Controller
     }
 
     /**
+     * الوحدات المرتبطة بنسخ متزامنة من هذا الدرس (JSON).
+     */
+    public function getLinkedUnits(Lesson $lesson)
+    {
+        if ($lesson->isSyncMirror()) {
+            return response()->json([]);
+        }
+
+        $mirrors = Lesson::query()
+            ->where('cloned_from_lesson_id', $lesson->id)
+            ->whereNotNull('unit_id')
+            ->with('unit.section.subject.schoolClass.stage')
+            ->get();
+
+        $data = $mirrors->map(function (Lesson $mirror) {
+            $unit = $mirror->unit;
+            $section = $unit?->section;
+            $subject = $section?->subject;
+
+            return [
+                'id' => $unit?->id,
+                'title' => $unit?->title ?? '',
+                'section_id' => $section?->id,
+                'section_title' => $section?->path_title ?? $section?->title ?? '',
+                'subject_id' => $subject?->id,
+                'subject_name' => $subject?->name ?? '',
+                'class_name' => optional($subject?->schoolClass)->name ?? '',
+                'stage_name' => optional(optional($subject?->schoolClass)->stage)->name ?? '',
+                'label' => $this->formatLinkedUnitBadgeText($unit),
+            ];
+        })->filter(fn ($row) => $row['id'])->values();
+
+        return response()->json($data);
+    }
+
+    /**
+     * ربط الدرس بوحدات إضافية (نسخ متزامنة).
+     */
+    public function linkUnits(Request $request, Lesson $lesson)
+    {
+        if ($lesson->isSyncMirror()) {
+            return redirect()
+                ->back()
+                ->with('error', 'لا يمكن ربط نسخة مرتبطة بوحدات أخرى.');
+        }
+
+        $request->validate([
+            'linked_targets' => ['nullable', 'array'],
+            'linked_targets.*.unit_id' => ['required', 'integer', 'exists:units,id'],
+            'linked_unit_ids' => ['nullable', 'array'],
+            'linked_unit_ids.*' => ['integer', 'exists:units,id'],
+        ]);
+
+        $primaryUnitId = $lesson->unit_id ? (int) $lesson->unit_id : null;
+        $desiredUnitIds = $this->normalizeLinkedUnitTargets($request, $primaryUnitId);
+
+        $user = auth()->user();
+        if ($user->usesTeacherAssignmentScope()) {
+            $allowedUnitIds = $this->allowedUnitIdsForTeacher($user);
+            $desiredUnitIds = array_values(array_intersect($desiredUnitIds, $allowedUnitIds));
+        }
+
+        $currentUnitIds = $lesson->linkedUnitIdsViaSync();
+
+        $toAdd = array_values(array_diff($desiredUnitIds, $currentUnitIds));
+        $toRemove = array_values(array_diff($currentUnitIds, $desiredUnitIds));
+
+        try {
+            foreach ($toAdd as $unitId) {
+                $targetUnit = Unit::find($unitId);
+                if ($targetUnit) {
+                    $this->cloneService->cloneLessonToUnit($lesson, $targetUnit);
+                }
+            }
+
+            foreach ($toRemove as $unitId) {
+                $targetUnit = Unit::find($unitId);
+                if ($targetUnit) {
+                    $this->cloneService->removeMirrorForUnit($lesson, $targetUnit);
+                }
+            }
+        } catch (\InvalidArgumentException $e) {
+            return redirect()
+                ->back()
+                ->with('error', $e->getMessage());
+        }
+
+        $linkedUnits = Unit::with('section.subject.schoolClass.stage')
+            ->whereIn('id', $desiredUnitIds)
+            ->get();
+
+        $count = $linkedUnits->count();
+        $labels = $linkedUnits->map(fn ($u) => $this->formatLinkedUnitBadgeText($u))->filter()->values()->toArray();
+
+        $message = 'تم تحديث ربط الدرس بالوحدات بنجاح.';
+        if ($count > 0) {
+            $message .= ' تم إنشاء نسخة متزامنة في '.$count.' وحدة';
+            if (! empty($labels)) {
+                $message .= ': '.implode('، ', array_slice($labels, 0, 5));
+                if (count($labels) > 5) {
+                    $message .= '...';
+                }
+            } else {
+                $message .= '.';
+            }
+        } else {
+            $message .= ' لا يوجد ربط لوحدات إضافية حالياً.';
+        }
+
+        return redirect()
+            ->back()
+            ->with('success', $message);
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function normalizeLinkedUnitTargets(Request $request, ?int $primaryUnitId): array
+    {
+        $unitIds = [];
+
+        if ($request->has('linked_targets')) {
+            foreach ((array) $request->input('linked_targets', []) as $row) {
+                $unitId = (int) ($row['unit_id'] ?? 0);
+                if ($unitId <= 0 || ($primaryUnitId !== null && $unitId === $primaryUnitId)) {
+                    continue;
+                }
+                $unitIds[$unitId] = $unitId;
+            }
+        } else {
+            foreach ((array) $request->input('linked_unit_ids', []) as $unitId) {
+                $unitId = (int) $unitId;
+                if ($unitId <= 0 || ($primaryUnitId !== null && $unitId === $primaryUnitId)) {
+                    continue;
+                }
+                $unitIds[$unitId] = $unitId;
+            }
+        }
+
+        return array_values($unitIds);
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function allowedUnitIdsForTeacher($user): array
+    {
+        $classIds = $user->assignedClasses()->pluck('classes.id');
+        $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
+
+        return Unit::whereHas('section.subject', function ($q) use ($classIds, $subjectIds) {
+            if ($classIds->isNotEmpty() || $subjectIds->isNotEmpty()) {
+                $q->where(function ($sq) use ($classIds, $subjectIds) {
+                    if ($classIds->isNotEmpty()) {
+                        $sq->whereIn('class_id', $classIds);
+                    }
+                    if ($subjectIds->isNotEmpty()) {
+                        $sq->orWhereIn('id', $subjectIds);
+                    }
+                });
+            } else {
+                $q->whereRaw('1 = 0');
+            }
+        })->pluck('id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    private function formatLinkedUnitBadgeText(?Unit $unit): string
+    {
+        if (! $unit) {
+            return '';
+        }
+
+        $subject = $unit->relationLoaded('section') ? $unit->section?->subject : $unit->section()->with('subject.schoolClass.stage')->first()?->subject;
+        $stage = (string) (data_get($subject, 'schoolClass.stage.name') ?? '');
+        $class = (string) (data_get($subject, 'schoolClass.name') ?? '');
+        $subjectName = (string) ($subject->name ?? '');
+        $sectionTitle = (string) (data_get($unit, 'section.path_title') ?? data_get($unit, 'section.title') ?? '');
+        $unitTitle = (string) ($unit->title ?? '');
+
+        $prefix = $stage !== ''
+            ? $stage.($class !== '' ? ' / '.$class : '')
+            : $class;
+
+        $parts = array_filter([
+            $prefix !== '' ? $prefix.' — '.$subjectName : $subjectName,
+            $sectionTitle,
+            $unitTitle,
+        ]);
+
+        return implode(' — ', $parts);
+    }
+
+    /**
      * حذف درس.
      */
     public function destroy(Request $request, Lesson $lesson)
@@ -545,7 +702,11 @@ class LessonController extends Controller
                 }
             }
 
-            $lesson->delete();
+            if ($lesson->isSyncMirror()) {
+                $this->cloneService->deleteMirrorRecord($lesson);
+            } else {
+                $this->cloneService->deleteCanonicalRecord($lesson);
+            }
 
             if ($this->wantsJsonResponse($request)) {
                 return response()->json([

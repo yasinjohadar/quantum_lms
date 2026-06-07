@@ -152,3 +152,85 @@ test('wraps numeric intervals and mcq numeric options', function () {
     expect(QuestionMarkupFormatter::format('2'))
         ->toBe('<code class="question-inline-code">2</code>');
 });
+
+test('normalizes famous limit pseudo latex in arabic question stem', function () {
+    $input = 'ما هي قيمة النهاية الشهيرة (1)/(x^n) lim_x \to +\infty حيث n عدد طبيعي غير معدوم؟';
+
+    $result = QuestionMarkupFormatter::format($input);
+
+    expect($result)
+        ->toContain('question-math-fragment')
+        ->toContain('\lim_{x \to +\infty}')
+        ->toContain('\frac{1}{x^n}')
+        ->toContain('\(n\)')
+        ->toContain('ما هي قيمة النهاية الشهيرة');
+});
+
+test('wraps single dollar inline math segments', function () {
+    $input = 'ما هي قيمة النهاية $\lim_{x \to +\infty} \frac{1}{x^n}$ حيث $n$ عدد طبيعي؟';
+
+    $result = QuestionMarkupFormatter::format($input);
+
+    expect($result)
+        ->toContain('question-math-fragment')
+        ->toContain('\(\lim_{x \to +\infty} \frac{1}{x^n}\)')
+        ->toContain('\(n\)');
+});
+
+test('wraps infinity unicode mcq options as math', function () {
+    expect(QuestionMarkupFormatter::format('+∞'))
+        ->toContain('question-math-fragment')
+        ->toContain('\(+\infty\)');
+
+    expect(QuestionMarkupFormatter::format('-∞'))
+        ->toContain('question-math-fragment')
+        ->toContain('\(-\infty\)');
+});
+
+test('normalizes lim frac storage format in arabic stem', function () {
+    $input = 'ما هي قيمة النهاية الشهيرة lim_x \to \infty \frac{1}{x^n} حيث n عدد طبيعي غير معدوم؟';
+
+    $result = QuestionMarkupFormatter::format($input);
+
+    expect($result)
+        ->toContain('question-math-fragment')
+        ->toContain('\lim_{x \to \infty}')
+        ->toContain('\frac{1}{x^n}')
+        ->toContain('ما هي قيمة النهاية الشهيرة');
+});
+
+test('normalizes split infinity option variants to single fragment', function () {
+    foreach (['+$\infty$', '$+∞$', '+\infty'] as $option) {
+        $result = QuestionMarkupFormatter::format($option);
+
+        expect($result)
+            ->toContain('question-math-fragment')
+            ->toContain('\(+\infty\)')
+            ->not->toContain('$+\infty$$');
+    }
+});
+
+test('looks like bare latex returns false for arabic mixed text', function () {
+    $input = 'ما هي قيمة النهاية lim_x \to \infty \frac{1}{x^n}';
+
+    expect(QuestionMarkupFormatter::format($input))
+        ->toContain('ما هي قيمة النهاية');
+});
+
+test('same plain text treats title and content duplicates as equal', function () {
+    $title = "باستخدام البرهان بالتدريج لإثبات صحة العلاقة\r\n&nbsp;`sum_{k=1 to n} k*k! = (n+1)! - 1` لكل `n &gt;= 1`.";
+    $content = 'باستخدام البرهان بالتدريج لإثبات صحة العلاقة `sum_{k=1 to n} k*k! = (n+1)! - 1` لكل `n >= 1`.';
+
+    expect(QuestionMarkupFormatter::samePlainText($title, $content))->toBeTrue();
+});
+
+test('plain heading strips normalized limit latex', function () {
+    $input = 'ما هي قيمة النهاية الشهيرة (1)/(x^n) lim_x \to +\infty حيث n عدد طبيعي غير معدوم؟';
+
+    $heading = QuestionMarkupFormatter::plainHeading($input);
+
+    expect($heading)
+        ->toContain('ما هي قيمة النهاية الشهيرة')
+        ->not->toContain('\lim')
+        ->not->toContain('\frac');
+});

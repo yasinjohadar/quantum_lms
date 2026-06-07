@@ -1,5 +1,7 @@
 @extends('admin.layouts.master')
 
+@include('partials.question-math-assets')
+
 @section('page-title')
     تصحيح المحاولة
 @stop
@@ -88,10 +90,10 @@
                     <span class="text-muted">الحد الأقصى: {{ $answer->max_points }} درجة</span>
                 </div>
                 <div class="card-body">
-                    <div class="question-stem mb-3 fs-5">{!! $answer->question->title !!}</div>
+                    <div class="question-stem question-text-body mb-3 fs-5">{!! format_question_markup($answer->question->title) !!}</div>
                     
                     @if($answer->question->content)
-                        <div class="text-muted mb-3">{!! $answer->question->content !!}</div>
+                        <div class="text-muted mb-3 question-text-body">{!! format_question_markup($answer->question->content) !!}</div>
                     @endif
 
                     <div class="p-3 bg-light rounded mb-3">
@@ -216,10 +218,11 @@
 
                     @if($answer->question->explanation)
                         <div class="mt-3 p-2 bg-success-transparent rounded">
-                            <small class="text-success">
+                            <div class="text-success small">
                                 <i class="bi bi-lightbulb me-1"></i>
-                                <strong>الإجابة النموذجية:</strong> {{ $answer->question->explanation }}
-                            </small>
+                                <strong>الإجابة النموذجية:</strong>
+                            </div>
+                            <div class="question-text-body mt-1 mb-0">{!! format_question_markup($answer->question->explanation) !!}</div>
                         </div>
                     @endif
                 </div>
@@ -246,5 +249,6 @@
 @stop
 
 @section('js')
+    @include('partials.question-math-scripts')
 @stop
 

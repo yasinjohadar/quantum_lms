@@ -133,6 +133,18 @@
                         <div class="min-w-0">
                             <h6 class="mb-0 fw-semibold small">
                                 <span class="sortable-index">{{ $loop->iteration }}</span> - {{ $lesson->title }}
+                                @if($lesson->isSyncMirror())
+                                    <span class="badge bg-info-transparent text-info ms-1" style="font-size:0.65rem;"
+                                          @if($lesson->relationLoaded('clonedFromLesson') && $lesson->clonedFromLesson)
+                                          title="{{ e('نسخة مرتبطة من: '.trim(implode(' — ', array_filter([
+                                              optional(optional(optional($lesson->clonedFromLesson->unit)->section)->subject)->name,
+                                              optional(optional($lesson->clonedFromLesson->section)->subject)->name,
+                                              optional($lesson->clonedFromLesson->section)->title,
+                                              optional($lesson->clonedFromLesson->unit)->title,
+                                              $lesson->clonedFromLesson->title,
+                                          ])))) }}"
+                                          @endif>نسخة مرتبطة</span>
+                                @endif
                                 @if(!$lesson->is_active)
                                     <span class="badge bg-secondary-transparent text-secondary ms-1">مخفي</span>
                                 @endif
@@ -182,25 +194,53 @@
                         @endcan
                         @php
                             $isMirroredInThisUnit = $lesson->unit_id !== null && (int) $lesson->unit_id !== (int) $unit->id;
-                            $hasExtraUnitLinks = $lesson->linkedUnits->isNotEmpty();
-                            $showLessonLinkIndicator = $isMirroredInThisUnit || $hasExtraUnitLinks;
+                            $hasLegacyPivotLinks = $lesson->linkedUnits->isNotEmpty();
+                            $linkedUnitsPresenceLines = [];
+                            $linkedUnitsPresenceCount = 0;
+                            if (! $lesson->isSyncMirror()) {
+                                $syncLinkedUnits = $lesson->linkedUnitsViaSync();
+                                if ($syncLinkedUnits->isNotEmpty()) {
+                                    $linkedUnitsPresenceCount = $syncLinkedUnits->count();
+                                    foreach ($syncLinkedUnits as $lu) {
+                                        $row = trim(implode(' — ', array_filter([
+                                            optional(optional(optional($lu->section)->subject)->schoolClass)->name,
+                                            optional(optional($lu->section)->subject)->name,
+                                            optional($lu->section)->title,
+                                            $lu->title,
+                                        ])));
+                                        if ($row !== '') {
+                                            $linkedUnitsPresenceLines[] = $row;
+                                        }
+                                    }
+                                }
+                            }
+                            $linkedUnitsPresenceTitle = $linkedUnitsPresenceCount > 0
+                                ? 'نسخة متزامنة من هذا الدرس في: '.implode(' | ', $linkedUnitsPresenceLines)
+                                : '';
                             $lessonLinkTooltipParts = [];
                             if ($isMirroredInThisUnit) {
                                 $pu = $lesson->unit;
                                 $orig = $pu ? trim(implode(' — ', array_filter([optional(optional($pu->section)->subject)->name, optional($pu->section)->title, $pu->title]))) : '';
-                                $lessonLinkTooltipParts[] = 'يظهر في هذه الوحدة عبر الربط الإضافي.' . ($orig !== '' ? ' المنشأ: ' . $orig : '');
+                                $lessonLinkTooltipParts[] = 'يظهر في هذه الوحدة عبر الربط القديم (pivot).' . ($orig !== '' ? ' المنشأ: ' . $orig : '');
                             }
-                            if ($hasExtraUnitLinks) {
+                            if ($hasLegacyPivotLinks) {
                                 foreach ($lesson->linkedUnits as $lu) {
                                     $row = trim(implode(' — ', array_filter([optional(optional($lu->section)->subject)->name, optional($lu->section)->title, $lu->title])));
                                     if ($row !== '') {
-                                        $lessonLinkTooltipParts[] = 'يظهر أيضاً في: ' . $row;
+                                        $lessonLinkTooltipParts[] = 'يظهر أيضاً في (ربط قديم): ' . $row;
                                     }
                                 }
                             }
                             $lessonLinkTooltip = implode(' ', array_filter($lessonLinkTooltipParts));
                         @endphp
-                        @if($showLessonLinkIndicator)
+                        @if(! $lesson->isSyncMirror() && $linkedUnitsPresenceCount > 0)
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-info py-0 px-2 lesson-linked-presence-btn"
+                                    title="{{ e($linkedUnitsPresenceTitle) }}">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>تواجد {{ $linkedUnitsPresenceCount }}
+                            </button>
+                        @endif
+                        @if($isMirroredInThisUnit || $hasLegacyPivotLinks)
                             <span class="btn btn-sm btn-icon btn-outline-secondary border-secondary-subtle text-secondary lesson-cross-links-indicator"
                                   role="img"
                                   tabindex="0"
@@ -210,6 +250,18 @@
                             </span>
                         @endif
                         @can('lesson-edit')
+                            @if(!$lesson->isSyncMirror())
+                            <button type="button"
+                                    class="btn btn-sm btn-icon btn-info-transparent link-lesson-units-btn"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#linkLessonUnitsModal"
+                                    data-lesson-id="{{ $lesson->id }}"
+                                    data-lesson-title="{{ e($lesson->title) }}"
+                                    data-lesson-primary-unit-id="{{ $lesson->unit_id ?? '' }}"
+                                    title="نسخ الدرس في وحدات أخرى (متزامن)">
+                                <i class="bi bi-link-45deg"></i>
+                            </button>
+                            @endif
                             <button type="button" class="btn btn-sm btn-icon btn-primary-transparent" data-bs-toggle="modal" data-bs-target="#editLesson{{ $lesson->id }}" title="تعديل"><i class="bi bi-pencil"></i></button>
                         @endcan
                         @can('lesson-delete')

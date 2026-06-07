@@ -4,10 +4,10 @@ namespace App\Support;
 
 class QuestionMarkupFormatter
 {
-    private const MATH_SEGMENT_PATTERN = '/(\$\$[\s\S]*?\$\$|\\\\\[[\s\S]*?\\\\\]|\\\\\([\s\S]*?\\\\\))/u';
+    private const MATH_SEGMENT_PATTERN = '/(\$\$[\s\S]*?\$\$|(?<!\$)\$(?!\$)[^\$\n]+?\$(?!\$)|\\\\\[[\s\S]*?\\\\\]|\\\\\([\s\S]*?\\\\\))/u';
 
     /** أوامر LaTeX شائعة في خيارات الإجابة (بدون delimiters) */
-    private const BARE_LATEX_PATTERN = '/\\\\(?:frac|int|sum|sqrt|sin|cos|tan|cot|sec|csc|ln|log|arctan|arcsin|arccos|pi|theta|alpha|beta|gamma|delta|cdot|times|left|right|text|quad|,)|\^{|_{}/u';
+    private const BARE_LATEX_PATTERN = '/\\\\(?:frac|int|sum|sqrt|sin|cos|tan|cot|sec|csc|ln|log|arctan|arcsin|arccos|lim|infty|to|pm|pi|theta|alpha|beta|gamma|delta|cdot|times|left|right|text|quad|,)|\^{|_{}/u';
 
     /** متباينات القيمة المطلقة: |x| ≤ 3 (بدون محددات regex) */
     private const ABS_INEQUALITY_PATTERN = '\|[^|\n]+\|\s*(?:≤|≥|<|>|<=|>=|≠|!=)\s*[-−+]?[\d]+(?:[.,][\d]+)?';
@@ -51,11 +51,7 @@ class QuestionMarkupFormatter
             return '';
         }
 
-        $text = self::normalizeStoredText($text);
-        $plain = trim(strip_tags($text));
-        $plain = preg_replace(self::MATH_SEGMENT_PATTERN, ' ', $plain) ?? $plain;
-        $plain = preg_replace('/`[^`\n]+`/u', ' ', $plain) ?? $plain;
-        $plain = preg_replace('/\s+/u', ' ', trim($plain)) ?? '';
+        $plain = self::normalizedPlainText($text);
         $plain = preg_replace('/\s*[:،]\s*[.\s]*$/u', '', $plain) ?? $plain;
         $plain = trim($plain);
 
@@ -64,6 +60,29 @@ class QuestionMarkupFormatter
         }
 
         return \Illuminate\Support\Str::limit($plain, $limit);
+    }
+
+    /**
+     * نص عادي موحّد للمقارنة بين title و content (كيانات HTML، مسافات، backticks).
+     */
+    public static function normalizedPlainText(?string $text): string
+    {
+        if ($text === null || trim($text) === '') {
+            return '';
+        }
+
+        $text = self::normalizePseudoMath(self::normalizeStoredText($text));
+        $plain = trim(strip_tags($text));
+        $plain = preg_replace(self::MATH_SEGMENT_PATTERN, ' ', $plain) ?? $plain;
+        $plain = preg_replace('/`[^`\n]+`/u', ' ', $plain) ?? $plain;
+        $plain = preg_replace('/\s+/u', ' ', $plain) ?? '';
+
+        return trim(str_replace("\xc2\xa0", ' ', $plain));
+    }
+
+    public static function samePlainText(?string $a, ?string $b): bool
+    {
+        return self::normalizedPlainText($a) === self::normalizedPlainText($b);
     }
 
     public static function looksLikeBareLatex(string $text): bool
@@ -86,6 +105,11 @@ class QuestionMarkupFormatter
             return false;
         }
 
+        // نص عربي مختلط — لا نلفّ الجملة كاملة كـ LaTeX
+        if (preg_match('/[\x{0600}-\x{06FF}]/u', $text)) {
+            return false;
+        }
+
         return (bool) preg_match(self::BARE_LATEX_PATTERN, $text);
     }
 
@@ -95,7 +119,18 @@ class QuestionMarkupFormatter
         $text = preg_replace('/\\\\-+$/u', '', $text) ?? $text;
         $text = rtrim($text, " \t\\");
 
-        return '<span class="question-math-fragment">\('.$text.'\)</span>';
+        return self::wrapMathSegment('\\('.$text.'\\)');
+    }
+
+    private static function wrapMathSegment(string $segment): string
+    {
+        $segment = trim($segment);
+
+        if (preg_match('/^\$(.+)\$$/us', $segment, $matches)) {
+            $segment = '\\('.$matches[1].'\\)';
+        }
+
+        return '<span class="question-math-fragment">'.$segment.'</span>';
     }
 
     public static function format(?string $text): string
@@ -104,7 +139,7 @@ class QuestionMarkupFormatter
             return '';
         }
 
-        $text = trim(self::normalizeStoredText($text));
+        $text = self::normalizePseudoMath(trim(self::normalizeStoredText($text)));
 
         if (str_contains($text, 'question-inline-code')) {
             return $text;
@@ -131,7 +166,7 @@ class QuestionMarkupFormatter
                 continue;
             }
             if (preg_match(self::MATH_SEGMENT_PATTERN, $segment)) {
-                $output .= '<span class="question-math-fragment">'.$segment.'</span>';
+                $output .= self::wrapMathSegment($segment);
             } else {
                 $output .= self::formatWithoutMath($segment);
             }
@@ -296,5 +331,163 @@ class QuestionMarkupFormatter
     private static function escapePlainSegment(string $text): string
     {
         return e(self::normalizeStoredText($text));
+    }
+
+    /**
+     * تحويل صيغ pseudo-LaTeX الشائعة في ملفات الاستيراد إلى LaTeX بمحددات $...$.
+     */
+    public static function normalizePseudoMath(string $text): string
+    {
+        if ($text === '') {
+            return '';
+        }
+
+        $trimmed = trim($text);
+
+        $infinityOption = self::normalizeInfinityOptionValue($trimmed);
+        if ($infinityOption !== null) {
+            return $infinityOption;
+        }
+
+        $text = preg_replace_callback(
+            '/lim_(?:\{([^}]+)\}|([a-zA-Z]))\s*\\\\to\s*(\+\\\\infty|\+∞|-\\\\infty|-∞|\\\\infty|∞)\s*\\\\frac\{([^}]+)\}\{([^}]+)\}/u',
+            static function (array $matches): string {
+                $variable = $matches[1] !== '' ? $matches[1] : $matches[2];
+                $infinity = self::normalizeInfinityTarget($matches[3]);
+
+                return '$\lim_{'.$variable.' \to '.$infinity.'} \frac{'.$matches[4].'}{'.$matches[5].'}$';
+            },
+            $text
+        ) ?? $text;
+
+        $text = preg_replace_callback(
+            '/\(([^()]+)\)\/\(([^()]+)\)\s*lim_(?:\{([^}]+)\}|([a-zA-Z]))\s*\\\\to\s*(\+\\\\infty|\+∞|-\\\\infty|-∞|\\\\infty|∞)/u',
+            static function (array $matches): string {
+                $numerator = $matches[1];
+                $denominator = $matches[2];
+                $variable = $matches[3] !== '' ? $matches[3] : $matches[4];
+                $infinity = self::normalizeInfinityTarget($matches[5]);
+
+                return '$\lim_{'.$variable.' \to '.$infinity.'} \frac{'.$numerator.'}{'.$denominator.'}$';
+            },
+            $text
+        ) ?? $text;
+
+        $text = preg_replace_callback(
+            '/lim_(?:\{([^}]+)\}|([a-zA-Z]))\s*\\\\to\s*(\+\\\\infty|\+∞|-\\\\infty|-∞|\\\\infty|∞)/u',
+            static function (array $matches): string {
+                $variable = $matches[1] !== '' ? $matches[1] : $matches[2];
+                $infinity = self::normalizeInfinityTarget($matches[3]);
+
+                return '$\lim_{'.$variable.' \to '.$infinity.'}$';
+            },
+            $text
+        ) ?? $text;
+
+        $text = preg_replace_callback(
+            '/\(([^()]+)\)\/\(([^()]+)\)/u',
+            static function (array $matches): string {
+                if (
+                    preg_match('/[a-zA-Z0-9^\\\\]/u', $matches[1])
+                    && preg_match('/[a-zA-Z0-9^\\\\]/u', $matches[2])
+                ) {
+                    return '$\frac{'.$matches[1].'}{'.$matches[2].'}$';
+                }
+
+                return $matches[0];
+            },
+            $text
+        ) ?? $text;
+
+        $text = self::replaceBareFracOutsideMath($text);
+
+        $text = preg_replace_callback(
+            '/(?<!\$)\$(?!\$)([^\$\n]+?)(?<!\$)\$(?!\$)/u',
+            static function (array $matches): string {
+                $content = str_replace('∞', '\\infty', $matches[1]);
+
+                return '$'.$content.'$';
+            },
+            $text
+        ) ?? $text;
+
+        $text = preg_replace_callback(
+            '/(?<=حيث\s)([a-zA-Z])(?=\s+عدد)/u',
+            static fn (array $matches): string => '$'.$matches[1].'$',
+            $text
+        ) ?? $text;
+
+        return $text;
+    }
+
+    private static function replaceBareFracOutsideMath(string $text): string
+    {
+        $parts = preg_split(
+            self::MATH_SEGMENT_PATTERN,
+            $text,
+            -1,
+            PREG_SPLIT_DELIM_CAPTURE
+        );
+
+        if ($parts === false) {
+            return $text;
+        }
+
+        $output = '';
+        foreach ($parts as $part) {
+            if ($part === '') {
+                continue;
+            }
+
+            if (preg_match(self::MATH_SEGMENT_PATTERN, $part)) {
+                $output .= $part;
+            } else {
+                $output .= preg_replace(
+                    '/\\\\frac\{([^}]+)\}\{([^}]+)\}/u',
+                    '$\\frac{$1}{$2}$',
+                    $part
+                ) ?? $part;
+            }
+        }
+
+        return $output;
+    }
+
+    private static function normalizeInfinityOptionValue(string $trimmed): ?string
+    {
+        $compact = preg_replace('/\s+/u', '', $trimmed) ?? $trimmed;
+
+        if (preg_match('/^(?:\+∞|\+\\\\infty|\+?\$\+?(?:∞|\\\\infty)\$|\$\+(?:∞|\\\\infty)\$)$/u', $compact)) {
+            return '$+\infty$';
+        }
+
+        if (preg_match('/^(?:-∞|-\\\\infty|-?\$-?(?:∞|\\\\infty)\$|\$-?(?:∞|\\\\infty)\$)$/u', $compact)) {
+            return '$-\infty$';
+        }
+
+        if (preg_match('/^(?:∞|\\\\infty|\$(?:∞|\\\\infty)\$)$/u', $compact)) {
+            return '$\infty$';
+        }
+
+        return null;
+    }
+
+    private static function normalizeInfinityTarget(string $target): string
+    {
+        $target = trim($target);
+
+        if (preg_match('/^(?:\+\\\\infty|\+∞)$/u', $target)) {
+            return '+\infty';
+        }
+
+        if (preg_match('/^(?:-\\\\infty|-∞)$/u', $target)) {
+            return '-\infty';
+        }
+
+        if (preg_match('/^(?:\\\\infty|∞)$/u', $target)) {
+            return '\infty';
+        }
+
+        return $target;
     }
 }

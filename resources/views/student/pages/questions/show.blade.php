@@ -1,5 +1,7 @@
 @extends('student.layouts.master')
 
+@include('partials.question-math-assets')
+
 @section('page-title', 'الإجابة على السؤال')
 
 @section('content')
@@ -25,9 +27,9 @@
             <div class="card" id="student-question-card">
                 <div class="card-header bg-primary text-white">
                     <div class="d-flex justify-content-between align-items-center">
-                        <div class="mb-0 flex-grow-1 question-stem text-white">
+                        <div class="mb-0 flex-grow-1 question-stem question-text-body text-white">
                             <i class="bi bi-question-circle me-2"></i>
-                            {!! $question->title !!}
+                            {!! format_question_markup($question->title) !!}
                         </div>
                         <div>
                             <span class="badge bg-light text-dark">
@@ -40,8 +42,8 @@
                 <div class="card-body">
                     <!-- محتوى السؤال -->
                     @if($question->content)
-                        <div class="mb-4 question-content-html">
-                            {!! $question->content !!}
+                        <div class="mb-4 question-content-html question-text-body">
+                            {!! format_question_markup($question->content) !!}
                         </div>
                     @endif
 
@@ -353,5 +355,6 @@
         }
     })();
 </script>
+@include('partials.question-math-scripts')
 @endpush
 

@@ -18,6 +18,9 @@ class Lesson extends Model
     protected $fillable = [
         'unit_id',
         'section_id',
+        'sync_group_id',
+        'is_sync_canonical',
+        'cloned_from_lesson_id',
         'title',
         'description',
         'video_type',
@@ -41,6 +44,8 @@ class Lesson extends Model
     protected $casts = [
         'unit_id' => 'integer',
         'section_id' => 'integer',
+        'is_sync_canonical' => 'boolean',
+        'cloned_from_lesson_id' => 'integer',
         'duration' => 'integer',
         'book_page_from' => 'integer',
         'book_page_to' => 'integer',
@@ -95,8 +100,46 @@ class Lesson extends Model
         return $this->belongsTo(SubjectSection::class, 'section_id');
     }
 
+    public function clonedFromLesson()
+    {
+        return $this->belongsTo(Lesson::class, 'cloned_from_lesson_id');
+    }
+
+    public function isSyncMirror(): bool
+    {
+        return $this->cloned_from_lesson_id !== null;
+    }
+
     /**
-     * الوحدات الإضافية المرتبطة بالدرس عبر lesson_units (ظهور الدرس في وحدات أخرى).
+     * معرفات الوحدات التي تحتوي نسخة مرتبطة من هذا الدرس (anchor).
+     */
+    public function linkedUnitIdsViaSync(): array
+    {
+        return static::query()
+            ->where('cloned_from_lesson_id', $this->id)
+            ->whereNotNull('unit_id')
+            ->pluck('unit_id')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * الوحدات التي تحتوي نسخة مرتبطة من هذا الدرس (anchor).
+     */
+    public function linkedUnitsViaSync()
+    {
+        $unitIds = $this->linkedUnitIdsViaSync();
+
+        if ($unitIds === []) {
+            return collect();
+        }
+
+        return Unit::with('section.subject.schoolClass.stage')->whereIn('id', $unitIds)->get();
+    }
+
+    /**
+     * الوحدات الإضافية المرتبطة بالدرس عبر lesson_units (legacy — ظهور الدرس في وحدات أخرى).
      */
     public function linkedUnits(): BelongsToMany
     {

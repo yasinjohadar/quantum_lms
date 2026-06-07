@@ -19,6 +19,7 @@
         "league/flysystem-sftp-v3": "^3.30",
         "maatwebsite/excel": "^3.1",
         "masbug/flysystem-google-drive-ext": "^2.4",
+        "phpoffice/phpword": "^1.4",
         "smalot/pdfparser": "^2.12",
         "spatie/flysystem-dropbox": "^3.0",
         "spatie/laravel-permission": "^6.19",

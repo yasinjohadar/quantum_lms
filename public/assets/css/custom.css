@@ -365,11 +365,19 @@ a:hover .folder-card .card-body i[class*="bi-"] {
     font-size: 1.05rem;
 }
 
+.question-text-body img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.35rem;
+}
+
 .question-text-body .question-math-fragment {
     display: inline;
 }
 
-.question-text-body .katex {
+.question-text-body .katex,
+.question-page-heading .katex,
+.page-header-breadcrumb .question-text-body .katex {
     font-size: 1.12em;
     direction: ltr;
     unicode-bidi: embed;
@@ -400,6 +408,8 @@ a:hover .folder-card .card-body i[class*="bi-"] {
 }
 
 [data-theme-mode=dark] .question-text-body .katex,
+[data-theme-mode=dark] .question-page-heading .katex,
+[data-theme-mode=dark] .page-header-breadcrumb .question-text-body .katex,
 [data-theme-mode=dark] .question-stem .katex,
 [data-theme-mode=dark] #question-content .katex {
     background: rgba(144, 202, 249, 0.1);

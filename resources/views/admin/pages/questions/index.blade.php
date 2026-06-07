@@ -27,6 +27,11 @@
                     </nav>
                 </div>
                 <div class="d-flex gap-2">
+                    @can('question-export')
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#exportQuestionsWordModal">
+                            <i class="bi bi-file-earmark-word me-1"></i> تصدير Word
+                        </button>
+                    @endcan
                     @can('question-show-import')
                         <a href="{{ route('admin.questions.import.show') }}" class="btn btn-success btn-sm">
                             <i class="bi bi-upload me-1"></i> استيراد أسئلة

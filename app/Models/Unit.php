@@ -15,6 +15,9 @@ class Unit extends Model
 
     protected $fillable = [
         'section_id',
+        'sync_group_id',
+        'is_sync_canonical',
+        'cloned_from_unit_id',
         'parent_id',
         'title',
         'description',
@@ -27,6 +30,8 @@ class Unit extends Model
         'parent_id' => 'integer',
         'order' => 'integer',
         'is_active' => 'boolean',
+        'is_sync_canonical' => 'boolean',
+        'cloned_from_unit_id' => 'integer',
     ];
 
     /**
@@ -37,8 +42,57 @@ class Unit extends Model
         return $this->belongsTo(SubjectSection::class, 'section_id');
     }
 
+    public function clonedFromUnit()
+    {
+        return $this->belongsTo(Unit::class, 'cloned_from_unit_id');
+    }
+
+    public function isSyncMirror(): bool
+    {
+        return $this->cloned_from_unit_id !== null;
+    }
+
+    public function linkedSectionIdsViaSync(): array
+    {
+        return static::query()
+            ->where('cloned_from_unit_id', $this->id)
+            ->whereNull('parent_id')
+            ->pluck('section_id')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    public function linkedSectionsViaSync()
+    {
+        $sectionIds = $this->linkedSectionIdsViaSync();
+
+        if ($sectionIds === []) {
+            return collect();
+        }
+
+        return SubjectSection::with('subject.schoolClass.stage')->whereIn('id', $sectionIds)->get();
+    }
+
     /**
-     * أقسام إضافية تظهر فيها هذه الوحدة (محتوى مشترك) عبر جدول section_unit.
+     * جمع الوحدة وجميع أحفادها.
+     *
+     * @return \Illuminate\Support\Collection<int, Unit>
+     */
+    public function collectSubtree(): \Illuminate\Support\Collection
+    {
+        $this->loadMissing('children');
+
+        $units = collect([$this]);
+        foreach ($this->children as $child) {
+            $units = $units->merge($child->collectSubtree());
+        }
+
+        return $units;
+    }
+
+    /**
+     * أقسام إضافية تظهر فيها هذه الوحدة (legacy pivot section_unit).
      */
     public function mirroredInSections(): BelongsToMany
     {

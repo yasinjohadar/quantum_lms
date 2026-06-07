@@ -6,7 +6,9 @@ use App\Models\Question;
 use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\Unit;
+use App\Services\Exports\QuestionWordExportService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 trait BuildsQuestionBankIndex
@@ -73,6 +75,30 @@ trait BuildsQuestionBankIndex
         }
 
         return $query;
+    }
+
+    protected function bulkSelectableIdsResponse(Request $request, ?Subject $subject = null): JsonResponse
+    {
+        if ($subject !== null) {
+            $this->authorizeManagedSubjectAccess($request->user(), $subject);
+        }
+
+        $query = $this->buildQuestionIndexQuery($request, $subject);
+        $total = (clone $query)->count();
+        $max = QuestionWordExportService::MAX_QUESTIONS;
+
+        $ids = (clone $query)
+            ->limit($max)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values();
+
+        return response()->json([
+            'ids' => $ids,
+            'total' => $total,
+            'returned' => $ids->count(),
+            'capped' => $total > $max,
+        ]);
     }
 
     /**

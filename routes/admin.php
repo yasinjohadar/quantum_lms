@@ -75,6 +75,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('subjects.quizzes.for-add');
         Route::delete('subjects/{subject}/questions/destroy-multiple', [SubjectQuestionBankController::class, 'destroyMultiple'])
             ->name('subjects.questions.destroy-multiple');
+        Route::post('subjects/{subject}/questions/export-word', [SubjectQuestionBankController::class, 'exportWord'])
+            ->name('subjects.questions.export-word');
+        Route::get('subjects/{subject}/questions/bulk-ids', [SubjectQuestionBankController::class, 'bulkSelectableIds'])
+            ->name('subjects.questions.bulk-ids');
 
         // أقسام المواد (داخل كل مادة)
         Route::post('subjects/{subject}/sections', [SubjectSectionController::class, 'store'])
@@ -113,6 +117,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('lessons.edit');
         Route::put('lessons/{lesson}', [LessonController::class, 'update'])
             ->name('lessons.update');
+        Route::get('lessons/{lesson}/linked-units', [LessonController::class, 'getLinkedUnits'])
+            ->name('lessons.linked-units');
+        Route::post('lessons/{lesson}/link-units', [LessonController::class, 'linkUnits'])
+            ->name('lessons.link-units');
         Route::delete('lessons/{lesson}', [LessonController::class, 'destroy'])
             ->name('lessons.destroy');
         // مراجعة الدروس
@@ -159,6 +167,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('questions.toggle-status');
         Route::get('questions-export', [QuestionController::class, 'export'])
             ->name('questions.export');
+        Route::post('questions-export-word', [QuestionController::class, 'exportWord'])
+            ->name('questions.export-word');
+        Route::get('questions/bulk-ids', [QuestionController::class, 'bulkSelectableIds'])
+            ->name('questions.bulk-ids');
         Route::get('questions-export-template', [QuestionController::class, 'exportTemplate'])
             ->name('questions.export.template');
         Route::get('questions-import', [QuestionController::class, 'showImport'])

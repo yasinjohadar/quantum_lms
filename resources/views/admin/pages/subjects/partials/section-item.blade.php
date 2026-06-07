@@ -3,11 +3,12 @@
         ->where('section_id', $section->id)
         ->whereNull('unit_id')
         ->orderBy('order')
-        ->with(['attachments', 'quizzes', 'linkedUnits.section.subject'])
+        ->with(['attachments', 'quizzes', 'linkedUnits.section.subject', 'clonedFromLesson.unit.section.subject', 'clonedFromLesson.section.subject'])
         ->get();
     $childSections = $allSections->where('parent_id', $section->id)->sortBy('order');
     $isChildSection = $section->parent_id !== null;
     $isLinkedSection = $section->subject_id != $subject->id;
+    $isSyncMirror = $section->isSyncMirror();
     $level = (int) ($sectionLevel ?? 0);
     $levelIcons = ['bi-folder-fill', 'bi-folder2', 'bi-folder-symlink-fill', 'bi-journal-bookmark', 'bi-collection-fill', 'bi-journal-text'];
     $levelIcon = $levelIcons[min($level, 5)] ?? 'bi-folder-fill';
@@ -22,21 +23,42 @@
     $levelIconStyle = 'color: rgb(' . ($levelIconRgb[min($level, 5)] ?? $levelIconRgb[0]) . ')';
     $linkedSubjectsPresenceLines = [];
     $linkedSubjectsPresenceCount = 0;
-    if (!$isLinkedSection && $section->relationLoaded('linkedSubjects')) {
-        $linkedSubjectsPresenceCount = $section->linkedSubjects->count();
-        foreach ($section->linkedSubjects as $ls) {
-            $lst = optional(optional($ls->schoolClass)->stage)->name ?? '';
-            $lcl = $ls->schoolClass->name ?? '';
-            $ln = $ls->name ?? '';
-            $lprefix = $lst !== '' ? $lst.($lcl !== '' ? ' / '.$lcl : '') : $lcl;
-            $linkedSubjectsPresenceLines[] = $lprefix !== '' ? $lprefix.' — '.$ln : $ln;
+    if (! $isLinkedSection && ! $isSyncMirror) {
+        $syncLinkedSubjects = $section->linkedSubjectsViaSync();
+        if ($syncLinkedSubjects->isNotEmpty()) {
+            $linkedSubjectsPresenceCount = $syncLinkedSubjects->count();
+            foreach ($syncLinkedSubjects as $ls) {
+                $lst = optional(optional($ls->schoolClass)->stage)->name ?? '';
+                $lcl = $ls->schoolClass->name ?? '';
+                $ln = $ls->name ?? '';
+                $lprefix = $lst !== '' ? $lst.($lcl !== '' ? ' / '.$lcl : '') : $lcl;
+                $linkedSubjectsPresenceLines[] = $lprefix !== '' ? $lprefix.' — '.$ln : $ln;
+            }
+        } elseif ($section->relationLoaded('linkedSubjects')) {
+            $linkedSubjectsPresenceCount = $section->linkedSubjects->count();
+            foreach ($section->linkedSubjects as $ls) {
+                $lst = optional(optional($ls->schoolClass)->stage)->name ?? '';
+                $lcl = $ls->schoolClass->name ?? '';
+                $ln = $ls->name ?? '';
+                $lprefix = $lst !== '' ? $lst.($lcl !== '' ? ' / '.$lcl : '') : $lcl;
+                $linkedSubjectsPresenceLines[] = $lprefix !== '' ? $lprefix.' — '.$ln : $ln;
+            }
         }
     }
     $linkedSubjectsPresenceTitle = $linkedSubjectsPresenceCount > 0
-        ? 'يظهر هذا القسم أيضاً في: '.implode(' | ', $linkedSubjectsPresenceLines)
+        ? 'نسخة متزامنة من هذا القسم في: '.implode(' | ', $linkedSubjectsPresenceLines)
         : '';
     $sectionHomeOriginTitle = '';
-    if ($isLinkedSection && $section->relationLoaded('subject') && $section->subject) {
+    if ($isSyncMirror && $section->relationLoaded('clonedFromSection') && $section->clonedFromSection) {
+        $originSection = $section->clonedFromSection;
+        $os = $originSection->relationLoaded('subject') ? $originSection->subject : $originSection->subject()->with('schoolClass.stage')->first();
+        if ($os) {
+            $ost = optional(optional($os->schoolClass)->stage)->name ?? '';
+            $ocl = $os->schoolClass->name ?? '';
+            $oprefix = $ost !== '' ? $ost.($ocl !== '' ? ' / '.$ocl : '') : $ocl;
+            $sectionHomeOriginTitle = 'نسخة مرتبطة من: '.($oprefix !== '' ? $oprefix.' — ' : '').($os->name ?? '').' — '.($originSection->path_title ?? $originSection->title);
+        }
+    } elseif ($isLinkedSection && $section->relationLoaded('subject') && $section->subject) {
         $os = $section->subject;
         $ost = optional(optional($os->schoolClass)->stage)->name ?? '';
         $ocl = $os->schoolClass->name ?? '';
@@ -44,9 +66,9 @@
         $sectionHomeOriginTitle = 'أصل القسم: '.($oprefix !== '' ? $oprefix.' — ' : '').($os->name ?? '').' — مسار القسم: '.($section->path_title ?? $section->title);
     }
 @endphp
-<div class="accordion-item mb-3 rounded overflow-hidden section-level-{{ $level }}{{ $isLinkedSection ? ' section-item-linked' : '' }}" data-id="{{ $section->id }}" data-section-id="{{ $section->id }}">
+<div class="accordion-item mb-3 rounded overflow-hidden section-level-{{ $level }}{{ ($isLinkedSection || $isSyncMirror) ? ' section-item-linked' : '' }}" data-id="{{ $section->id }}" data-section-id="{{ $section->id }}">
     <h2 class="accordion-header d-flex" id="sectionHeading{{ $section->id }}">
-        @if(!$isLinkedSection)
+        @if(!$isLinkedSection && !$isSyncMirror)
         <span class="sortable-handle d-flex align-items-center px-2 cursor-grab text-muted" title="اسحب لإعادة الترتيب"><i class="bi bi-grip-vertical"></i></span>
         @else
         <span class="d-flex align-items-center px-2 text-muted" style="width: 28px;"><i class="bi bi-link-45deg"></i></span>
@@ -60,11 +82,15 @@
             <div class="d-flex align-items-center justify-content-between w-100 me-3">
                 <div class="d-flex align-items-center">
                     <i class="bi {{ $levelIcon }} me-2" style="{{ $levelIconStyle }}"></i>
-                    @if($isLinkedSection)
+                    @if($isSyncMirror)
+                        <span class="badge bg-info-transparent text-info me-2" style="font-size:0.7rem;" @if($sectionHomeOriginTitle !== '') title="{{ e($sectionHomeOriginTitle) }}" @endif>نسخة مرتبطة</span>
+                    @elseif($isLinkedSection)
                         <span class="badge bg-info-transparent text-info me-2" style="font-size:0.7rem;" @if($sectionHomeOriginTitle !== '') title="{{ e($sectionHomeOriginTitle) }}" @endif>مرتبط بمادة أخرى</span>
                     @endif
                     @if($isChildSection)
                         <span class="badge bg-primary-transparent text-primary me-2" style="font-size:0.7rem;">قسم فرعي</span>
+                    @elseif(!$isLinkedSection && !$isSyncMirror && $section->parent_id === null)
+                        <span class="badge bg-secondary-transparent text-secondary me-2" style="font-size:0.7rem;">قسم رئيسي</span>
                     @endif
                     <span class="fw-semibold"><span class="sortable-index">{{ (int)($section->order ?? 0) + 1 }}</span> - {{ $section->title }}</span>
                     @if($section->is_active)
@@ -79,7 +105,7 @@
             </div>
         </button>
         <div class="d-flex align-items-center gap-1 pe-2 flex-shrink-0" onclick="event.stopPropagation()">
-            @if(!$isLinkedSection && $linkedSubjectsPresenceCount > 0)
+            @if(!$isLinkedSection && !$isSyncMirror && $linkedSubjectsPresenceCount > 0)
             <button type="button"
                     class="btn btn-sm btn-outline-info py-0 px-2 section-linked-presence-btn"
                     title="{{ e($linkedSubjectsPresenceTitle) }}">
@@ -87,6 +113,7 @@
             </button>
             @endif
             @can('subject-section-edit')
+            @if(!$isSyncMirror && !$isLinkedSection)
             <button type="button"
                     class="btn btn-sm btn-icon btn-info-transparent link-section-subjects-btn"
                     data-bs-toggle="modal"
@@ -94,9 +121,10 @@
                     data-section-id="{{ $section->id }}"
                     data-section-title="{{ e($section->title) }}"
                     data-section-primary-subject-id="{{ $section->subject_id }}"
-                    title="ربط القسم بمواد أخرى">
+                    title="نسخ القسم في مواد أخرى (متزامن)">
                 <i class="bi bi-link-45deg"></i>
             </button>
+            @endif
             @endcan
             @if(!$isLinkedSection)
             @can('subject-section-edit')
@@ -164,6 +192,9 @@
                                         <div class="min-w-0">
                                             <h6 class="mb-0 fw-semibold small">
                                                 <span class="sortable-index">{{ $loop->iteration }}</span> - {{ $lesson->title }}
+                                                @if($lesson->isSyncMirror())
+                                                    <span class="badge bg-info-transparent text-info ms-1" style="font-size:0.65rem;">نسخة مرتبطة</span>
+                                                @endif
                                                 @if(!$lesson->is_active)
                                                     <span class="badge bg-secondary-transparent text-secondary ms-1">مخفي</span>
                                                 @endif
@@ -199,17 +230,48 @@
                                         @can('lesson-attachment-create')
                                             <button type="button" class="btn btn-sm btn-icon btn-info-transparent" data-bs-toggle="modal" data-bs-target="#addLessonAttachment{{ $lesson->id }}" title="إضافة مرفقات"><i class="bi bi-paperclip"></i></button>
                                         @endcan
-                                        @if($lesson->linkedUnits->isNotEmpty())
-                                            @php
+                                        @php
+                                            $sectionLessonLinkedUnitsCount = 0;
+                                            $sectionLessonLinkedUnitsTitle = '';
+                                            if (! $lesson->isSyncMirror()) {
+                                                $syncLinkedUnits = $lesson->linkedUnitsViaSync();
+                                                if ($syncLinkedUnits->isNotEmpty()) {
+                                                    $sectionLessonLinkedUnitsCount = $syncLinkedUnits->count();
+                                                    $lines = [];
+                                                    foreach ($syncLinkedUnits as $lu) {
+                                                        $row = trim(implode(' — ', array_filter([
+                                                            optional(optional(optional($lu->section)->subject)->schoolClass)->name,
+                                                            optional(optional($lu->section)->subject)->name,
+                                                            optional($lu->section)->title,
+                                                            $lu->title,
+                                                        ])));
+                                                        if ($row !== '') {
+                                                            $lines[] = $row;
+                                                        }
+                                                    }
+                                                    $sectionLessonLinkedUnitsTitle = 'نسخة متزامنة من هذا الدرس في: '.implode(' | ', $lines);
+                                                }
+                                            }
+                                            $sectionLessonLinkTooltip = '';
+                                            if ($lesson->linkedUnits->isNotEmpty()) {
                                                 $sectionLessonLinkParts = [];
                                                 foreach ($lesson->linkedUnits as $lu) {
                                                     $row = trim(implode(' — ', array_filter([optional(optional($lu->section)->subject)->name, optional($lu->section)->title, $lu->title])));
                                                     if ($row !== '') {
-                                                        $sectionLessonLinkParts[] = 'يظهر أيضاً في: ' . $row;
+                                                        $sectionLessonLinkParts[] = 'يظهر أيضاً في (ربط قديم): ' . $row;
                                                     }
                                                 }
                                                 $sectionLessonLinkTooltip = implode(' ', array_filter($sectionLessonLinkParts));
-                                            @endphp
+                                            }
+                                        @endphp
+                                        @if(! $lesson->isSyncMirror() && $sectionLessonLinkedUnitsCount > 0)
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-info py-0 px-2 lesson-linked-presence-btn"
+                                                    title="{{ e($sectionLessonLinkedUnitsTitle) }}">
+                                                <i class="bi bi-box-arrow-up-right me-1"></i>تواجد {{ $sectionLessonLinkedUnitsCount }}
+                                            </button>
+                                        @endif
+                                        @if($lesson->linkedUnits->isNotEmpty())
                                             <span class="btn btn-sm btn-icon btn-outline-secondary border-secondary-subtle text-secondary lesson-cross-links-indicator"
                                                   role="img"
                                                   tabindex="0"
@@ -219,6 +281,18 @@
                                             </span>
                                         @endif
                                         @can('lesson-edit')
+                                            @if(!$lesson->isSyncMirror())
+                                            <button type="button"
+                                                    class="btn btn-sm btn-icon btn-info-transparent link-lesson-units-btn"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#linkLessonUnitsModal"
+                                                    data-lesson-id="{{ $lesson->id }}"
+                                                    data-lesson-title="{{ e($lesson->title) }}"
+                                                    data-lesson-primary-unit-id="{{ $lesson->unit_id ?? '' }}"
+                                                    title="نسخ الدرس في وحدات أخرى (متزامن)">
+                                                <i class="bi bi-link-45deg"></i>
+                                            </button>
+                                            @endif
                                             <button type="button" class="btn btn-sm btn-icon btn-primary-transparent" data-bs-toggle="modal" data-bs-target="#editLesson{{ $lesson->id }}" title="تعديل"><i class="bi bi-pencil"></i></button>
                                         @endcan
                                         @can('lesson-delete')
@@ -295,8 +369,9 @@
                                 data-bs-toggle="modal"
                                 data-bs-target="#createSectionModal"
                                 data-parent-id="{{ $section->id }}"
-                                title="اضافة قسم تنظيمي">
-                            <i class="bi bi-folder-plus me-1"></i> اضافة قسم تنظيمي
+                                data-parent-title="{{ e($section->title) }}"
+                                title="إضافة قسم فرعي داخل هذا القسم">
+                            <i class="bi bi-folder-plus me-1"></i> إضافة قسم فرعي
                         </button>
                         @endcan
                     </div>
@@ -356,7 +431,24 @@
                             <i class="bi bi-folder2 me-1"></i> الأقسام الفرعية
                         </span>
                     </div>
-                    <div class="text-center py-3 text-muted small">لا أقسام فرعية</div>
+                    <div class="text-center py-3 text-muted small">
+                        لا أقسام فرعية
+                        @can('subject-section-create')
+                        @if(!$isLinkedSection)
+                        <div class="mt-2">
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-secondary add-child-section-btn"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#createSectionModal"
+                                    data-parent-id="{{ $section->id }}"
+                                    data-parent-title="{{ e($section->title) }}"
+                                    title="إضافة قسم فرعي داخل هذا القسم">
+                                <i class="bi bi-folder-plus me-1"></i> إضافة قسم فرعي
+                            </button>
+                        </div>
+                        @endif
+                        @endcan
+                    </div>
                 </div>
             @endif
         </div>

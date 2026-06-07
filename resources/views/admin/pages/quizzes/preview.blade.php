@@ -1,5 +1,7 @@
 @extends('admin.layouts.master')
 
+@include('partials.question-math-assets')
+
 @section('page-title')
     معاينة الاختبار
 @stop
@@ -24,6 +26,11 @@
     .option-preview.correct {
         background-color: rgba(40, 167, 69, 0.1);
         border-color: #28a745;
+    }
+    .question-text-body img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 0.35rem;
     }
 </style>
 @stop
@@ -121,10 +128,10 @@
                         </div>
                     @endif
                     
-                    <div class="question-stem mb-3 fs-5">{!! $question->title !!}</div>
+                    <div class="question-stem question-text-body mb-3 fs-5">{!! format_question_markup($question->title) !!}</div>
                     
                     @if($question->content)
-                        <div class="text-muted mb-3">{!! $question->content !!}</div>
+                        <div class="text-muted mb-3 question-text-body">{!! format_question_markup($question->content) !!}</div>
                     @endif
 
                     {{-- عرض الخيارات حسب نوع السؤال --}}
@@ -132,19 +139,19 @@
                         <div class="options-list">
                             @foreach($question->options as $option)
                                 <div class="option-preview {{ $option->is_correct ? 'correct' : '' }}">
-                                    <div class="d-flex align-items-center">
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
                                         @if($question->type === 'single_choice' || $question->type === 'true_false')
-                                            <i class="bi bi-circle me-2"></i>
+                                            <i class="bi bi-circle flex-shrink-0"></i>
                                         @else
-                                            <i class="bi bi-square me-2"></i>
+                                            <i class="bi bi-square flex-shrink-0"></i>
                                         @endif
                                         @if($option->image)
                                             <img src="{{ media_public_url($option->image) }}" 
-                                                 class="me-2 rounded" style="height: 30px;">
+                                                 class="rounded flex-shrink-0" style="height: 30px;">
                                         @endif
                                         <span class="question-text-body">{!! format_question_markup($option->content) !!}</span>
                                         @if($option->is_correct)
-                                            <span class="badge bg-success ms-auto">
+                                            <span class="badge bg-success flex-shrink-0">
                                                 <i class="bi bi-check"></i> صحيح
                                             </span>
                                         @endif
@@ -222,7 +229,7 @@
                                 <i class="bi bi-lightbulb me-1"></i>
                                 شرح الإجابة:
                             </strong>
-                            <p class="mb-0 mt-1">{{ $question->explanation }}</p>
+                            <div class="question-text-body mb-0 mt-1">{!! format_question_markup($question->explanation) !!}</div>
                         </div>
                     @endif
                 </div>
@@ -247,5 +254,6 @@
 @stop
 
 @section('js')
+    @include('partials.question-math-scripts')
 @stop
 

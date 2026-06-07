@@ -1,5 +1,7 @@
 @extends('student.layouts.master')
 
+@include('partials.question-math-assets')
+
 @section('page-title', $quiz->title)
 
 @section('content')
@@ -356,6 +358,7 @@
 @endpush
 
 @push('scripts')
+@include('partials.question-math-scripts')
 <script src="{{ asset('js/quiz-timer.js') }}?v=5"></script>
 <script src="{{ asset('js/auto-save-answer.js') }}?v=2"></script>
 <script src="{{ asset('js/question-types.js') }}"></script>
@@ -552,6 +555,13 @@
         
         html += '</div>';
         contentDiv.innerHTML = html;
+
+        if (typeof window.renderQuestionMath === 'function') {
+            contentDiv.querySelectorAll('[data-math-rendered="1"]').forEach(function (el) {
+                delete el.dataset.mathRendered;
+            });
+            window.renderQuestionMath(contentDiv);
+        }
         
         // إضافة event listeners للإجابات
         setupAnswerListeners(question);

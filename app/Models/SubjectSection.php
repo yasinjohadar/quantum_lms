@@ -24,6 +24,9 @@ class SubjectSection extends Model
 
     protected $fillable = [
         'subject_id',
+        'sync_group_id',
+        'is_sync_canonical',
+        'cloned_from_section_id',
         'parent_id',
         'title',
         'description',
@@ -37,6 +40,8 @@ class SubjectSection extends Model
         'parent_id' => 'integer',
         'order' => 'integer',
         'is_active' => 'boolean',
+        'is_sync_canonical' => 'boolean',
+        'cloned_from_section_id' => 'integer',
     ];
 
     /**
@@ -48,11 +53,76 @@ class SubjectSection extends Model
     }
 
     /**
-     * المواد الإضافية المرتبطة بهذا القسم عبر section_subjects (ظهور القسم في مواد أخرى).
+     * المواد الإضافية المرتبطة بهذا القسم عبر section_subjects (legacy).
      */
     public function linkedSubjects(): BelongsToMany
     {
         return $this->belongsToMany(Subject::class, 'section_subjects', 'section_id', 'subject_id')->withTimestamps();
+    }
+
+    public function clonedFromSection()
+    {
+        return $this->belongsTo(SubjectSection::class, 'cloned_from_section_id');
+    }
+
+    public function syncMirrors()
+    {
+        if (! $this->sync_group_id) {
+            return collect();
+        }
+
+        return static::query()
+            ->where('sync_group_id', $this->sync_group_id)
+            ->where('id', '!=', $this->id)
+            ->get();
+    }
+
+    public function isSyncMirror(): bool
+    {
+        return $this->cloned_from_section_id !== null;
+    }
+
+    /**
+     * المواد التي تحتوي نسخة مرتبطة من هذا القسم (anchor).
+     */
+    public function linkedSubjectsViaSync(): \Illuminate\Support\Collection
+    {
+        $subjectIds = static::query()
+            ->where('cloned_from_section_id', $this->id)
+            ->pluck('subject_id')
+            ->unique()
+            ->values();
+
+        if ($subjectIds->isEmpty()) {
+            return collect();
+        }
+
+        return Subject::with('schoolClass.stage')->whereIn('id', $subjectIds)->get();
+    }
+
+    public function linkedSubjectIdsViaSync(): array
+    {
+        return static::query()
+            ->where('cloned_from_section_id', $this->id)
+            ->pluck('subject_id')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * جمع القسم وجميع أحفاده.
+     *
+     * @return Collection<int, SubjectSection>
+     */
+    public function collectSubtree(): Collection
+    {
+        $sections = collect([$this]);
+        foreach ($this->children()->with('children')->get() as $child) {
+            $sections = $sections->merge($child->collectSubtree());
+        }
+
+        return $sections;
     }
 
     /**

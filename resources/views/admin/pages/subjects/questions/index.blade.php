@@ -38,6 +38,11 @@
                     <a href="{{ route('admin.questions.index') }}" class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-collection me-1"></i> البنك الرئيسي
                     </a>
+                    @can('question-export')
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#exportQuestionsWordModal">
+                            <i class="bi bi-file-earmark-word me-1"></i> تصدير Word
+                        </button>
+                    @endcan
                     @can('question-show-import')
                         <a href="{{ route('admin.subjects.questions.import', $subject->id) }}" class="btn btn-success btn-sm">
                             <i class="bi bi-upload me-1"></i> استيراد

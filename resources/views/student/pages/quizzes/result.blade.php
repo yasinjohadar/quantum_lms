@@ -1,5 +1,7 @@
 @extends('student.layouts.master')
 
+@include('partials.question-math-assets')
+
 @section('page-title')
     نتيجة الاختبار - {{ $quiz->title }}
 @stop
@@ -147,7 +149,7 @@
                                         <span class="badge {{ $isCorrect ? 'bg-success' : 'bg-danger' }} me-2">
                                             {{ $index + 1 }}
                                         </span>
-                                        <span class="fw-semibold question-stem">{!! format_question_markup($question->title ?? 'سؤال ' . ($index + 1)) !!}</span>
+                                        <span class="fw-semibold question-stem question-text-body">{!! format_question_markup($question->title ?? 'سؤال ' . ($index + 1)) !!}</span>
                                     </div>
                                     <div>
                                         @if($isCorrect)
@@ -421,3 +423,7 @@
     </div>
 </div>
 @stop
+
+@push('scripts')
+    @include('partials.question-math-scripts')
+@endpush

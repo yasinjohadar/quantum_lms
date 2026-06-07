@@ -1,5 +1,7 @@
 @extends('student.layouts.master')
 
+@include('partials.question-math-assets')
+
 @section('page-title')
     تقرير الأسئلة - {{ $lesson->title }}
 @stop
@@ -179,9 +181,9 @@
                                 <div class="flex-grow-1">
                                     <div class="d-flex justify-content-between align-items-start mb-2">
                                         <div>
-                                            <div class="mb-1 question-stem">
+                                            <div class="mb-1 question-stem question-text-body">
                                                 <span class="badge bg-secondary me-2">#{{ $index + 1 }}</span>
-                                                {!! $question->title !!}
+                                                {!! format_question_markup($question->title) !!}
                                             </div>
                                             @if($question->content)
                                                 <p class="text-muted small mb-0 question-text-body">{!! format_question_markup(\Illuminate\Support\Str::limit(strip_tags($question->content), 150)) !!}</p>
@@ -345,10 +347,11 @@
 
                                     @if($question->explanation)
                                         <div class="mt-2">
-                                            <small class="text-muted">
+                                            <div class="text-muted small">
                                                 <i class="bi bi-info-circle me-1"></i>
-                                                <strong>شرح:</strong> {{ $question->explanation }}
-                                            </small>
+                                                <strong>شرح:</strong>
+                                            </div>
+                                            <div class="question-text-body mt-1">{!! format_question_markup($question->explanation) !!}</div>
                                         </div>
                                     @endif
                                 </div>
@@ -380,4 +383,7 @@
 <!-- main-content closed -->
 @stop
 
+@push('scripts')
+    @include('partials.question-math-scripts')
+@endpush
 

@@ -1,5 +1,7 @@
 @extends('admin.layouts.master')
 
+@include('partials.question-math-assets')
+
 @section('page-title')
     تفاصيل المحاولة
 @stop
@@ -145,7 +147,7 @@
                                 </div>
                             </div>
                             
-                            <div class="question-stem mb-3">{!! $answer->question->title !!}</div>
+                            <div class="question-stem question-text-body mb-3">{!! format_question_markup($answer->question->title) !!}</div>
                             
                             {{-- عرض الإجابة حسب نوع السؤال --}}
                             @if(in_array($answer->question->type, ['single_choice', 'multiple_choice', 'true_false']))
@@ -202,10 +204,11 @@
 
                             @if($answer->question->explanation && $answer->is_graded)
                                 <div class="mt-2 p-2 bg-success-transparent rounded">
-                                    <small class="text-success">
+                                    <div class="text-success small">
                                         <i class="bi bi-lightbulb me-1"></i>
-                                        الشرح: {{ $answer->question->explanation }}
-                                    </small>
+                                        الشرح:
+                                    </div>
+                                    <div class="question-text-body mt-1 mb-0">{!! format_question_markup($answer->question->explanation) !!}</div>
                                 </div>
                             @endif
                         </div>
@@ -221,5 +224,6 @@
 @stop
 
 @section('js')
+    @include('partials.question-math-scripts')
 @stop
 

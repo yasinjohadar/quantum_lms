@@ -331,7 +331,7 @@
                                             data-bs-toggle="modal"
                                             data-bs-target="#createSectionModal">
                                         <i class="bi bi-plus-lg me-1"></i>
-                                        إضافة قسم جديد
+                                        إضافة قسم رئيسي
                                     </button>
                                 @endcan
                             </div>
@@ -449,18 +449,24 @@
                 <form id="linkSectionSubjectsForm" method="POST" action="">
                     @csrf
                     <div class="modal-body">
+                        <div class="alert alert-info small mb-3" role="note">
+                            <i class="bi bi-info-circle me-1"></i>
+                            هذا الربط لنسخ القسم في <strong>مواد أخرى</strong>، وليس لوضع قسم داخل قسم في نفس المادة.
+                            لكل مادة هدف يمكنك اختيار: <strong>قسم رئيسي</strong> فيها أو <strong>تحت قسم محدد</strong>.
+                            لقسم فرعي داخل نفس المادة استخدم زر <strong>إضافة قسم فرعي</strong>.
+                        </div>
                         <div class="mb-3">
                             <p class="small fw-semibold mb-1">القسم مربوط حالياً بـ:</p>
                             <div id="currentLinkedSubjectsSection" class="small text-muted">
                                 {{-- يُملأ عبر JS من API --}}
                             </div>
                         </div>
-                        <p class="text-muted small mb-3">اختر الصف ثم المادة ثم اضغط إضافة. يمكنك ربط القسم بعدة مواد. (المادة الأصلية للقسم لا تُضاف تلقائياً.)</p>
+                        <p class="text-muted small mb-3">اختر الصف ثم المادة ثم مكان النسخة في المادة الهدف، ثم اضغط <strong>إضافة</strong> أو مباشرة <strong>حفظ الربط</strong>. سيتم إنشاء <strong>نسخة كاملة متزامنة</strong> من القسم (وحدات، دروس، اختبارات).</p>
                         <div id="linkedSubjectsListSection" class="mb-3">
-                            {{-- تُضاف المواد المختارة هنا via JS --}}
+                            <p id="linkedSubjectsListEmptyHint" class="small text-muted mb-0">لم تُضف مواد للربط بعد.</p>
                         </div>
                         <div class="row g-2 align-items-end mb-2">
-                            <div class="col-md-5">
+                            <div class="col-md-3">
                                 <label class="form-label small">الصف</label>
                                 <select class="form-select form-select-sm section-link-class-select" id="sectionLinkClassSelect">
                                     <option value="">-- اختر الصف --</option>
@@ -471,15 +477,103 @@
                                     @endif
                                 </select>
                             </div>
-                            <div class="col-md-5">
+                            <div class="col-md-3">
                                 <label class="form-label small">المادة</label>
                                 <select class="form-select form-select-sm section-link-subject-select" id="sectionLinkSubjectSelect" disabled>
                                     <option value="">-- اختر المادة --</option>
                                 </select>
                             </div>
+                            <div class="col-md-4" id="sectionLinkPlacementWrap" style="display: none;">
+                                <label class="form-label small d-block">مكان النسخة في المادة</label>
+                                <div class="form-check form-check-inline mb-1">
+                                    <input class="form-check-input" type="radio" name="section_link_placement" id="sectionLinkPlacementRoot" value="root" checked>
+                                    <label class="form-check-label small" for="sectionLinkPlacementRoot">قسم رئيسي</label>
+                                </div>
+                                <div class="form-check form-check-inline mb-1">
+                                    <input class="form-check-input" type="radio" name="section_link_placement" id="sectionLinkPlacementChild" value="child">
+                                    <label class="form-check-label small" for="sectionLinkPlacementChild">تحت قسم</label>
+                                </div>
+                                <select class="form-select form-select-sm mt-1 d-none" id="sectionLinkParentSelect" disabled>
+                                    <option value="">-- اختر القسم الأب --</option>
+                                </select>
+                            </div>
                             <div class="col-md-2">
-                                <button type="button" class="btn btn-sm btn-success w-100" id="addSectionLinkedSubjectBtn" title="إضافة مادة">
+                                <button type="button" class="btn btn-sm btn-success w-100" id="addSectionLinkedSubjectBtn" title="إضافة مادة" disabled>
                                     <i class="bi bi-plus-lg"></i> إضافة
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i> حفظ الربط
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endcan
+
+    {{-- مودال ربط الدرس بوحدات إضافية --}}
+    @can('lesson-edit')
+    <div class="modal fade" id="linkLessonUnitsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 rounded-4">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold" id="linkLessonUnitsModalTitle">ربط الدرس بوحدات إضافية</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                </div>
+                <form id="linkLessonUnitsForm" method="POST" action="">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="alert alert-info small mb-3" role="note">
+                            <i class="bi bi-info-circle me-1"></i>
+                            هذا الربط لنسخ الدرس في <strong>وحدات أخرى</strong> (نسخة كاملة متزامنة مع المرفقات واختبارات الدرس).
+                            التعديل على الأصل أو النسخة يُحدَّث في الطرفين. حذف الأصل يُبقي النسخة دون تغيير.
+                        </div>
+                        <div class="mb-3">
+                            <p class="small fw-semibold mb-1">الدرس مربوط حالياً بـ:</p>
+                            <div id="currentLinkedUnitsLesson" class="small text-muted"></div>
+                        </div>
+                        <p class="text-muted small mb-3">اختر الصف ثم المادة ثم القسم ثم الوحدة الهدف، ثم اضغط <strong>إضافة</strong> أو مباشرة <strong>حفظ الربط</strong>.</p>
+                        <div id="linkedUnitsListLesson" class="mb-3">
+                            <p id="linkedUnitsListLessonEmptyHint" class="small text-muted mb-0">لم تُضف وحدات للربط بعد.</p>
+                        </div>
+                        <div class="row g-2 align-items-end mb-2">
+                            <div class="col-md-3">
+                                <label class="form-label small">الصف</label>
+                                <select class="form-select form-select-sm" id="lessonLinkClassSelect">
+                                    <option value="">-- اختر الصف --</option>
+                                    @if(isset($linkableClasses))
+                                        @foreach($linkableClasses as $cls)
+                                            <option value="{{ $cls['id'] }}">{{ !empty($cls['stage_name'] ?? null) ? $cls['stage_name'].' / ' : '' }}{{ $cls['name'] }}</option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small">المادة</label>
+                                <select class="form-select form-select-sm" id="lessonLinkSubjectSelect" disabled>
+                                    <option value="">-- اختر المادة --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small">القسم</label>
+                                <select class="form-select form-select-sm" id="lessonLinkSectionSelect" disabled>
+                                    <option value="">-- اختر القسم --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small">الوحدة</label>
+                                <select class="form-select form-select-sm" id="lessonLinkUnitSelect" disabled>
+                                    <option value="">-- اختر الوحدة --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-1">
+                                <button type="button" class="btn btn-sm btn-success w-100" id="addLessonLinkedUnitBtn" title="إضافة وحدة" disabled>
+                                    <i class="bi bi-plus-lg"></i>
                                 </button>
                             </div>
                         </div>
@@ -502,16 +596,27 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 rounded-4">
                 <div class="modal-header border-0">
-                    <h5 class="modal-title fw-bold">إضافة قسم جديد للمادة</h5>
+                    <h5 class="modal-title fw-bold" id="createSectionModalTitle">إضافة قسم رئيسي للمادة</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
                 </div>
-                <form action="{{ route('admin.subjects.sections.store', $subject->id) }}" method="POST">
+                <form action="{{ route('admin.subjects.sections.store', $subject->id) }}" method="POST" id="createSectionForm">
                     @csrf
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label">القسم الأب (اختياري)</label>
-                            <select name="parent_id" id="createSectionParentId" class="form-select">
-                                <option value="">— قسم رئيسي (بدون أب) —</option>
+                            <label class="form-label fw-semibold">مكان القسم في المادة</label>
+                            <div class="form-check">
+                                <input class="form-check-input section-placement-radio" type="radio" name="create_section_placement" id="createSectionModeRoot" value="root" checked data-modal-id="create">
+                                <label class="form-check-label" for="createSectionModeRoot">قسم رئيسي (بدون أب)</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input section-placement-radio" type="radio" name="create_section_placement" id="createSectionModeChild" value="child" data-modal-id="create">
+                                <label class="form-check-label" for="createSectionModeChild">قسم فرعي تحت قسم آخر</label>
+                            </div>
+                        </div>
+                        <div class="mb-3 d-none" id="createSectionParentWrap">
+                            <label class="form-label">القسم الأب</label>
+                            <select name="parent_id" id="createSectionParentId" class="form-select" disabled>
+                                <option value="">— اختر القسم الأب —</option>
                                 @php
                                     $buildSectionOptions = function ($allSections, $parentId = null, $prefix = '') use (&$buildSectionOptions) {
                                         $out = collect();
@@ -530,8 +635,9 @@
                                     <option value="{{ $opt['id'] }}">{{ $opt['title'] }}</option>
                                 @endforeach
                             </select>
-                            <small class="text-muted">اتركه فارغاً لإنشاء قسم رئيسي، أو اختر قسماً لإنشاء قسم فرعي تحته.</small>
+                            <small class="text-muted">يظهر القسم الجديد ضمن «الأقسام الفرعية» للقسم المختار.</small>
                         </div>
+                        <input type="hidden" name="parent_id" id="createSectionParentIdHidden" value="">
                         <div class="mb-3">
                             <label class="form-label">نوع القسم</label>
                             <select name="type" id="createSectionType" class="form-select" required>
@@ -587,9 +693,20 @@
                         @method('PUT')
                         <div class="modal-body">
                             <div class="mb-3">
-                                <label class="form-label">القسم الأب (اختياري)</label>
-                                <select name="parent_id" class="form-select">
-                                    <option value="" {{ $section->parent_id === null ? 'selected' : '' }}>— قسم رئيسي (بدون أب) —</option>
+                                <label class="form-label fw-semibold">مكان القسم في المادة</label>
+                                <div class="form-check">
+                                    <input class="form-check-input section-placement-radio" type="radio" name="edit_section_placement_{{ $section->id }}" id="editSectionModeRoot{{ $section->id }}" value="root" {{ $section->parent_id === null ? 'checked' : '' }} data-modal-id="edit-{{ $section->id }}">
+                                    <label class="form-check-label" for="editSectionModeRoot{{ $section->id }}">قسم رئيسي (بدون أب)</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input section-placement-radio" type="radio" name="edit_section_placement_{{ $section->id }}" id="editSectionModeChild{{ $section->id }}" value="child" {{ $section->parent_id !== null ? 'checked' : '' }} data-modal-id="edit-{{ $section->id }}">
+                                    <label class="form-check-label" for="editSectionModeChild{{ $section->id }}">قسم فرعي تحت قسم آخر</label>
+                                </div>
+                            </div>
+                            <div class="mb-3 {{ $section->parent_id === null ? 'd-none' : '' }}" id="editSectionParentWrap{{ $section->id }}">
+                                <label class="form-label">القسم الأب</label>
+                                <select name="parent_id" id="editSectionParentId{{ $section->id }}" class="form-select edit-section-parent-select" {{ $section->parent_id === null ? 'disabled' : '' }}>
+                                    <option value="">— اختر القسم الأب —</option>
                                     @php
                                         $excludeIds = collect([$section->id]);
                                         $queue = [$section->id];
@@ -621,6 +738,7 @@
                                 </select>
                                 <small class="text-muted">لا يمكن جعل القسم أباً لنفسه أو لأحد أحفاده.</small>
                             </div>
+                            <input type="hidden" name="parent_id" id="editSectionParentIdHidden{{ $section->id }}" value="" {{ $section->parent_id !== null ? 'disabled' : '' }}>
                             <div class="mb-3">
                                 <label class="form-label">نوع القسم</label>
                                 <select name="type" class="form-select" required>
@@ -1040,15 +1158,26 @@
                                     </div>
                                 </div>
                                 @php
-                                    $showUnitMirrorLinks = (isset($linkableSubjects) && $linkableSubjects->isNotEmpty()) || $unit->mirroredInSections->isNotEmpty();
+                                    $isUnitSyncMirror = $unit->isSyncMirror();
+                                    $unitLinkedSections = collect();
+                                    if (! $isUnitSyncMirror) {
+                                        $unitLinkedSections = $unit->linkedSectionsViaSync();
+                                        foreach ($unit->mirroredInSections as $mirSec) {
+                                            if (! $unitLinkedSections->contains('id', $mirSec->id)) {
+                                                $unitLinkedSections->push($mirSec);
+                                            }
+                                        }
+                                    }
+                                    $showUnitMirrorLinks = ! $isUnitSyncMirror && ((isset($linkableSubjects) && $linkableSubjects->isNotEmpty()) || $unitLinkedSections->isNotEmpty());
                                 @endphp
                                 @if($showUnitMirrorLinks)
                                 <hr class="my-3">
                                 <div class="mb-3">
                                     <label class="form-label fw-semibold"><i class="bi bi-link-45deg me-1"></i> ظهور الوحدة في أقسام إضافية</label>
+                                    <p class="small text-muted mb-2">سيتم إنشاء <strong>نسخة كاملة متزامنة</strong> من الوحدة (وحدات فرعية، دروس، اختبارات) في كل قسم تختاره. التعديلات تُزامَن ثنائياً بين النسخ.</p>
                                     <p class="small text-muted mb-2">القسم المنزل للوحدة: {{ $unit->section->title ?? $section->title }} — المادة: {{ $subject->name }}</p>
                                     <div id="linkedSectionsListUnit{{ $unit->id }}" class="mb-2">
-                                        @foreach($unit->mirroredInSections as $mirSec)
+                                        @foreach($unitLinkedSections as $mirSec)
                                         @php
                                             $mirSub = $mirSec->subject;
                                             $mirStage = optional(optional($mirSub?->schoolClass)->stage)->name ?? '';
@@ -1357,7 +1486,6 @@
                             <form action="{{ route('admin.lessons.update', $lesson->id) }}" method="POST" enctype="multipart/form-data" class="js-lesson-ajax-form" data-lesson-action="update" data-unit-id="{{ $lesson->unit_id }}" data-lesson-id="{{ $lesson->id }}">
                                 @csrf
                                 @method('PUT')
-                                <input type="hidden" name="sync_linked_units" value="1">
                                 <div class="modal-body">
                                     <div class="row">
                                         <div class="col-md-8">
@@ -1488,70 +1616,11 @@
                                         </div>
                                     </div>
 
-                                    @php
-                                        $showLessonUnitLinks = (isset($linkableSubjects) && $linkableSubjects->isNotEmpty()) || $lesson->linkedUnits->isNotEmpty();
-                                    @endphp
-                                    @if($showLessonUnitLinks)
-                                    <hr class="my-3">
-                                    <div class="mb-3">
-                                        <label class="form-label fw-semibold">
-                                            <i class="bi bi-link-45deg me-1"></i> ربط الدرس بمواد وأقسام إضافية
-                                        </label>
-                                        @if($lesson->unit)
-                                            <p class="small text-muted mb-2">الوحدة الأصلية: {{ $lesson->unit->section->subject->name ?? '' }} — {{ $lesson->unit->section->title ?? '' }} — {{ $lesson->unit->title ?? '' }}</p>
-                                        @else
-                                            <p class="small text-muted mb-2">لا توجد وحدة أصلية لهذا الدرس في هذا السياق؛ يمكنك إدارة الروابط الإضافية فقط.</p>
-                                        @endif
-                                        <div id="linkedUnitsList{{ $lesson->id }}_{{ $unit->id }}" class="mb-2">
-                                            @foreach($lesson->linkedUnits as $linkedUnit)
-                                            <div class="d-flex align-items-center gap-2 mb-1 linked-unit-row" data-lesson-id="{{ $lesson->id }}">
-                                                <span class="badge bg-secondary">{{ $linkedUnit->section->subject->name ?? '' }} — {{ $linkedUnit->section->title ?? '' }} — {{ $linkedUnit->title }}</span>
-                                                <input type="hidden" name="linked_unit_ids[]" value="{{ $linkedUnit->id }}">
-                                                <button type="button" class="btn btn-sm btn-outline-danger py-0 remove-linked-unit" title="إزالة"><i class="bi bi-x"></i></button>
-                                            </div>
-                                            @endforeach
-                                        </div>
-                                        @if(isset($linkableSubjects) && $linkableSubjects->isNotEmpty())
-                                        <div class="row g-2 align-items-end mb-2" data-lesson-id="{{ $lesson->id }}" data-current-subject-id="{{ $subject->id }}" data-current-class-id="{{ $subject->class_id ?? '' }}">
-                                            <div class="col-md-3">
-                                                <label class="form-label small">الصف</label>
-                                                <select class="form-select form-select-sm link-class-select" data-lesson-id="{{ $lesson->id }}">
-                                                    <option value="">-- اختر الصف --</option>
-                                                    @if(isset($linkableClasses))
-                                                    @foreach($linkableClasses as $cls)
-                                                    <option value="{{ $cls['id'] }}">{{ !empty($cls['stage_name'] ?? null) ? $cls['stage_name'].' / ' : '' }}{{ $cls['name'] }}</option>
-                                                    @endforeach
-                                                    @endif
-                                                </select>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <label class="form-label small">مادة</label>
-                                                <select class="form-select form-select-sm link-subject-select" data-lesson-id="{{ $lesson->id }}" disabled>
-                                                    <option value="">-- اختر المادة --</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <label class="form-label small">القسم</label>
-                                                <select class="form-select form-select-sm link-section-select" data-lesson-id="{{ $lesson->id }}" disabled>
-                                                    <option value="">-- اختر القسم --</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <label class="form-label small">الوحدة</label>
-                                                <select class="form-select form-select-sm link-unit-select" data-lesson-id="{{ $lesson->id }}" data-primary-unit-id="{{ $lesson->unit_id }}" disabled>
-                                                    <option value="">-- اختر الوحدة --</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-1">
-                                                <button type="button" class="btn btn-sm btn-success add-linked-unit" data-lesson-id="{{ $lesson->id }}" data-list-id="linkedUnitsList{{ $lesson->id }}_{{ $unit->id }}" title="إضافة وحدة">
-                                                    <i class="bi bi-plus-lg"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        @else
-                                        <p class="small text-muted mb-0">لا تتوفر مواد أخرى للربط من حسابك؛ يمكنك إزالة الروابط الحالية فقط.</p>
-                                        @endif
-                                    </div>
+                                    @if(!$lesson->isSyncMirror() && isset($linkableSubjects) && $linkableSubjects->isNotEmpty())
+                                    <p class="small text-muted mb-0 mt-2">
+                                        <i class="bi bi-link-45deg me-1"></i>
+                                        لنسخ الدرس في وحدات أخرى استخدم زر <strong>ربط</strong> بجانب الدرس في القائمة.
+                                    </p>
                                     @endif
                                 </div>
                                 <div class="modal-footer border-0">
@@ -1772,12 +1841,6 @@
                         <form action="{{ route('admin.lessons.update', $lesson->id) }}" method="POST" enctype="multipart/form-data" class="js-lesson-ajax-form" data-lesson-action="update" data-section-id="{{ $lesson->section_id }}" data-lesson-id="{{ $lesson->id }}">
                             @csrf
                             @method('PUT')
-                            @php
-                                $showLessonSectionLinks = (isset($linkableSubjects) && $linkableSubjects->isNotEmpty()) || $lesson->linkedUnits->isNotEmpty();
-                            @endphp
-                            @if($showLessonSectionLinks)
-                            <input type="hidden" name="sync_linked_units" value="1">
-                            @endif
                             <div class="modal-body">
                                 <div class="row">
                                     <div class="col-md-8">
@@ -1862,63 +1925,11 @@
                                         </div>
                                     </div>
                                 </div>
-                                @if($showLessonSectionLinks)
-                                <hr class="my-3">
-                                <div class="mb-3">
-                                    <label class="form-label fw-semibold">
-                                        <i class="bi bi-link-45deg me-1"></i> ربط الدرس بمواد وأقسام إضافية
-                                    </label>
-                                    <p class="small text-muted mb-2">الدرس ضمن القسم مباشرة: {{ $section->title ?? '' }} — المادة: {{ $subject->name ?? '' }}</p>
-                                    <div id="linkedUnitsListSection{{ $lesson->id }}" class="mb-2">
-                                        @foreach($lesson->linkedUnits as $linkedUnit)
-                                        <div class="d-flex align-items-center gap-2 mb-1 linked-unit-row" data-lesson-id="{{ $lesson->id }}">
-                                            <span class="badge bg-secondary">{{ $linkedUnit->section->subject->name ?? '' }} — {{ $linkedUnit->section->title ?? '' }} — {{ $linkedUnit->title }}</span>
-                                            <input type="hidden" name="linked_unit_ids[]" value="{{ $linkedUnit->id }}">
-                                            <button type="button" class="btn btn-sm btn-outline-danger py-0 remove-linked-unit" title="إزالة"><i class="bi bi-x"></i></button>
-                                        </div>
-                                        @endforeach
-                                    </div>
-                                    @if(isset($linkableSubjects) && $linkableSubjects->isNotEmpty())
-                                    <div class="row g-2 align-items-end mb-2" data-lesson-id="{{ $lesson->id }}" data-current-subject-id="{{ $subject->id }}" data-current-class-id="{{ $subject->class_id ?? '' }}">
-                                        <div class="col-md-3">
-                                            <label class="form-label small">الصف</label>
-                                            <select class="form-select form-select-sm link-class-select" data-lesson-id="{{ $lesson->id }}">
-                                                <option value="">-- اختر الصف --</option>
-                                                @if(isset($linkableClasses))
-                                                @foreach($linkableClasses as $cls)
-                                                <option value="{{ $cls['id'] }}">{{ !empty($cls['stage_name'] ?? null) ? $cls['stage_name'].' / ' : '' }}{{ $cls['name'] }}</option>
-                                                @endforeach
-                                                @endif
-                                            </select>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <label class="form-label small">مادة</label>
-                                            <select class="form-select form-select-sm link-subject-select" data-lesson-id="{{ $lesson->id }}" disabled>
-                                                <option value="">-- اختر المادة --</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <label class="form-label small">القسم</label>
-                                            <select class="form-select form-select-sm link-section-select" data-lesson-id="{{ $lesson->id }}" disabled>
-                                                <option value="">-- اختر القسم --</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-2">
-                                            <label class="form-label small">الوحدة</label>
-                                            <select class="form-select form-select-sm link-unit-select" data-lesson-id="{{ $lesson->id }}" data-primary-unit-id="" disabled>
-                                                <option value="">-- اختر الوحدة --</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-1">
-                                            <button type="button" class="btn btn-sm btn-success add-linked-unit" data-lesson-id="{{ $lesson->id }}" data-list-id="linkedUnitsListSection{{ $lesson->id }}" title="إضافة وحدة">
-                                                <i class="bi bi-plus-lg"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    @else
-                                    <p class="small text-muted mb-0">لا تتوفر مواد أخرى للربط من حسابك؛ يمكنك إزالة الروابط الحالية فقط.</p>
-                                    @endif
-                                </div>
+                                @if(!$lesson->isSyncMirror() && isset($linkableSubjects) && $linkableSubjects->isNotEmpty())
+                                <p class="small text-muted mb-0 mt-2">
+                                    <i class="bi bi-link-45deg me-1"></i>
+                                    لنسخ الدرس في وحدات أخرى استخدم زر <strong>ربط</strong> بجانب الدرس في القائمة.
+                                </p>
                                 @endif
                             </div>
                             <div class="modal-footer border-0">
@@ -2220,6 +2231,13 @@
 window.linkableStructure = @json($linkableStructure ?? []);
 window.adminQuizzesLinkUnitsBase = "{{ url('admin/quizzes') }}";
 window.adminSectionsLinkSubjectsBase = "{{ url('admin/sections') }}";
+window.adminLessonsLinkUnitsBase = "{{ url('admin/lessons') }}";
+window.formatLinkedUnitBadge = function(u) {
+    if (!u) return '';
+    if (u.label) return String(u.label);
+    var parts = [u.stage_name, u.class_name, u.subject_name, u.section_title, u.title].filter(Boolean);
+    return parts.join(' — ');
+};
 window.formatLinkedSubjectBadge = function(s) {
     if (!s) return '';
     if (s.label) return String(s.label);
@@ -2244,17 +2262,69 @@ document.addEventListener('DOMContentLoaded', function() {
             if (row) row.remove();
         }
     });
-    // تعيين القسم الأب عند فتح مودال إنشاء قسم من "اضافة قسم تنظيمي"
+    function syncSectionPlacement(modalId, mode) {
+        var isCreate = modalId === 'create';
+        var rootRadio = document.getElementById(isCreate ? 'createSectionModeRoot' : 'editSectionModeRoot' + modalId.replace('edit-', ''));
+        var childRadio = document.getElementById(isCreate ? 'createSectionModeChild' : 'editSectionModeChild' + modalId.replace('edit-', ''));
+        var parentWrap = document.getElementById(isCreate ? 'createSectionParentWrap' : 'editSectionParentWrap' + modalId.replace('edit-', ''));
+        var parentSelect = document.getElementById(isCreate ? 'createSectionParentId' : 'editSectionParentId' + modalId.replace('edit-', ''));
+        var parentHidden = document.getElementById(isCreate ? 'createSectionParentIdHidden' : 'editSectionParentIdHidden' + modalId.replace('edit-', ''));
+        if (!rootRadio || !childRadio || !parentWrap || !parentSelect || !parentHidden) return;
+
+        var isChild = mode === 'child';
+        childRadio.checked = isChild;
+        rootRadio.checked = !isChild;
+        parentWrap.classList.toggle('d-none', !isChild);
+        parentSelect.disabled = !isChild;
+        parentSelect.required = isChild;
+        parentHidden.disabled = isChild;
+        if (!isChild) {
+            parentSelect.value = '';
+            parentHidden.value = '';
+        }
+    }
+
+    document.querySelectorAll('.section-placement-radio').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            syncSectionPlacement(radio.getAttribute('data-modal-id'), radio.value);
+        });
+    });
+
+    var createSectionForm = document.getElementById('createSectionForm');
+    if (createSectionForm) {
+        createSectionForm.addEventListener('submit', function() {
+            syncSectionPlacement('create', document.getElementById('createSectionModeChild').checked ? 'child' : 'root');
+        });
+    }
+
+    document.querySelectorAll('.modal[id^="editSection"]').forEach(function(modal) {
+        var form = modal.querySelector('form');
+        if (!form || !form.action || form.action.indexOf('subject-sections') === -1) return;
+        form.addEventListener('submit', function() {
+            var sectionId = modal.id.replace('editSection', '');
+            var childRadio = document.getElementById('editSectionModeChild' + sectionId);
+            syncSectionPlacement('edit-' + sectionId, childRadio && childRadio.checked ? 'child' : 'root');
+        });
+    });
+
     var createSectionModalEl = document.getElementById('createSectionModal');
     if (createSectionModalEl) {
         createSectionModalEl.addEventListener('show.bs.modal', function(e) {
-            var parentSelect = document.getElementById('createSectionParentId');
-            if (!parentSelect) return;
+            var titleEl = document.getElementById('createSectionModalTitle');
             var trigger = e.relatedTarget;
             if (trigger && trigger.classList && trigger.classList.contains('add-child-section-btn') && trigger.getAttribute('data-parent-id')) {
-                parentSelect.value = trigger.getAttribute('data-parent-id');
+                syncSectionPlacement('create', 'child');
+                var parentSelect = document.getElementById('createSectionParentId');
+                if (parentSelect) parentSelect.value = trigger.getAttribute('data-parent-id');
+                var parentTitle = trigger.getAttribute('data-parent-title') || '';
+                if (titleEl) {
+                    titleEl.textContent = parentTitle !== ''
+                        ? 'إضافة قسم فرعي تحت: ' + parentTitle
+                        : 'إضافة قسم فرعي';
+                }
             } else {
-                parentSelect.value = '';
+                syncSectionPlacement('create', 'root');
+                if (titleEl) titleEl.textContent = 'إضافة قسم رئيسي للمادة';
             }
         });
     }
@@ -2363,6 +2433,147 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function formatSectionLinkTargetBadge(subjectMeta, parentSectionId, parentSectionLabel) {
+        var base = (typeof window.formatLinkedSubjectBadge === 'function')
+            ? window.formatLinkedSubjectBadge(subjectMeta || {})
+            : (subjectMeta && subjectMeta.name ? subjectMeta.name : '');
+        if (!parentSectionId) {
+            return (base || '') + ' — قسم رئيسي';
+        }
+        return (base || '') + ' — تحت: ' + (parentSectionLabel || ('#' + parentSectionId));
+    }
+
+    function syncSectionLinkedTargetsEmptyHint() {
+        var listEl = document.getElementById('linkedSubjectsListSection');
+        var hint = document.getElementById('linkedSubjectsListEmptyHint');
+        if (!listEl || !hint) return;
+        var hasRows = listEl.querySelectorAll('.linked-subject-row').length > 0;
+        hint.classList.toggle('d-none', hasRows);
+    }
+
+    function appendSectionLinkedTargetRow(listEl, index, subjectMeta, parentSectionId, parentSectionLabel) {
+        if (!listEl) return;
+        var subjectId = subjectMeta && subjectMeta.id ? subjectMeta.id : '';
+        var badgeText = formatSectionLinkTargetBadge(subjectMeta, parentSectionId, parentSectionLabel);
+        var row = document.createElement('div');
+        row.className = 'd-flex align-items-center gap-2 mb-1 linked-subject-row';
+        row.setAttribute('data-subject-id', String(subjectId));
+        row.innerHTML = '<span class="badge bg-secondary text-wrap text-start" style="max-width: 100%; white-space: normal;">' + esc(badgeText) + '</span>' +
+            '<input type="hidden" name="linked_targets[' + index + '][subject_id]" value="' + esc(String(subjectId)) + '">' +
+            '<input type="hidden" name="linked_targets[' + index + '][parent_section_id]" value="' + esc(parentSectionId ? String(parentSectionId) : '') + '">' +
+            '<button type="button" class="btn btn-sm btn-outline-danger py-0 remove-linked-subject" title="إزالة"><i class="bi bi-x"></i></button>';
+        listEl.appendChild(row);
+        syncSectionLinkedTargetsEmptyHint();
+    }
+
+    function reindexSectionLinkedTargetRows(listEl) {
+        if (!listEl) return;
+        listEl.querySelectorAll('.linked-subject-row').forEach(function(row, index) {
+            row.querySelectorAll('input[type="hidden"]').forEach(function(input) {
+                var field = input.name.indexOf('[subject_id]') !== -1 ? 'subject_id' : 'parent_section_id';
+                input.name = 'linked_targets[' + index + '][' + field + ']';
+            });
+        });
+        syncSectionLinkedTargetsEmptyHint();
+    }
+
+    function tryAddPendingSectionLinkTarget() {
+        var form = document.getElementById('linkSectionSubjectsForm');
+        var listEl = document.getElementById('linkedSubjectsListSection');
+        var subjectSelect = document.getElementById('sectionLinkSubjectSelect');
+        var placementChild = document.getElementById('sectionLinkPlacementChild');
+        var parentSelect = document.getElementById('sectionLinkParentSelect');
+        if (!listEl || !subjectSelect || !form) return false;
+        var primarySubjectId = form.getAttribute('data-primary-subject-id') || '';
+        var subjectId = subjectSelect.value;
+        if (!subjectId || String(subjectId) === String(primarySubjectId)) return false;
+
+        var parentSectionId = null;
+        var parentSectionLabel = null;
+        if (placementChild && placementChild.checked) {
+            parentSectionId = parentSelect ? parentSelect.value : '';
+            if (!parentSectionId) {
+                alert('يرجى اختيار القسم الأب في المادة الهدف');
+                return false;
+            }
+            parentSectionLabel = parentSelect && parentSelect.selectedOptions.length
+                ? parentSelect.selectedOptions[0].textContent
+                : null;
+        }
+
+        var existingRows = listEl.querySelectorAll('.linked-subject-row');
+        for (var i = 0; i < existingRows.length; i++) {
+            if (String(existingRows[i].getAttribute('data-subject-id')) === String(subjectId)) {
+                existingRows[i].remove();
+                break;
+            }
+        }
+        var s = (typeof window.linkableStructure !== 'undefined')
+            ? window.linkableStructure.find(function(x) { return String(x.id) === String(subjectId); })
+            : null;
+        var nextIndex = listEl.querySelectorAll('.linked-subject-row').length;
+        appendSectionLinkedTargetRow(listEl, nextIndex, s || { id: subjectId }, parentSectionId, parentSectionLabel);
+        reindexSectionLinkedTargetRows(listEl);
+        resetSectionLinkSubjectPicker();
+        return true;
+    }
+
+    function resetSectionLinkSubjectPicker() {
+        var sectionLinkSubjectSelect = document.getElementById('sectionLinkSubjectSelect');
+        var placementWrap = document.getElementById('sectionLinkPlacementWrap');
+        var parentSelect = document.getElementById('sectionLinkParentSelect');
+        var addBtn = document.getElementById('addSectionLinkedSubjectBtn');
+        var placementRoot = document.getElementById('sectionLinkPlacementRoot');
+        var placementChild = document.getElementById('sectionLinkPlacementChild');
+        if (sectionLinkSubjectSelect) {
+            sectionLinkSubjectSelect.value = '';
+        }
+        if (placementWrap) placementWrap.style.display = 'none';
+        if (parentSelect) {
+            parentSelect.innerHTML = '<option value="">-- اختر القسم الأب --</option>';
+            parentSelect.classList.add('d-none');
+            parentSelect.disabled = true;
+        }
+        if (placementRoot) placementRoot.checked = true;
+        if (placementChild) placementChild.checked = false;
+        if (addBtn) addBtn.disabled = true;
+    }
+
+    function resetSectionLinkPicker() {
+        var sectionLinkClassSelect = document.getElementById('sectionLinkClassSelect');
+        var sectionLinkSubjectSelect = document.getElementById('sectionLinkSubjectSelect');
+        if (sectionLinkClassSelect) sectionLinkClassSelect.value = '';
+        if (sectionLinkSubjectSelect) {
+            sectionLinkSubjectSelect.innerHTML = '<option value="">-- اختر المادة --</option>';
+            sectionLinkSubjectSelect.disabled = true;
+        }
+        resetSectionLinkSubjectPicker();
+    }
+
+    function syncSectionLinkPlacementUI() {
+        var placementChild = document.getElementById('sectionLinkPlacementChild');
+        var parentSelect = document.getElementById('sectionLinkParentSelect');
+        if (!parentSelect) return;
+        var isChild = placementChild && placementChild.checked;
+        parentSelect.classList.toggle('d-none', !isChild);
+        parentSelect.disabled = !isChild;
+        if (!isChild) parentSelect.value = '';
+    }
+
+    function populateSectionLinkParentSelect(subjectId) {
+        var parentSelect = document.getElementById('sectionLinkParentSelect');
+        if (!parentSelect || typeof window.linkableStructure === 'undefined') return;
+        parentSelect.innerHTML = '<option value="">-- اختر القسم الأب --</option>';
+        var subject = window.linkableStructure.find(function(x) { return String(x.id) === String(subjectId); });
+        if (!subject || !subject.sections) return;
+        subject.sections.forEach(function(sec) {
+            var opt = document.createElement('option');
+            opt.value = sec.id;
+            opt.textContent = sec.path_title || sec.title || ('#' + sec.id);
+            parentSelect.appendChild(opt);
+        });
+    }
+
     // مودال ربط القسم بمواد إضافية: تعيين العنوان والـ action وجلب المواد المرتبطة عند الفتح
     var linkSectionSubjectsModalEl = document.getElementById('linkSectionSubjectsModal');
     if (linkSectionSubjectsModalEl && window.adminSectionsLinkSubjectsBase) {
@@ -2372,7 +2583,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var currentLinkedEl = document.getElementById('currentLinkedSubjectsSection');
             var listEl = document.getElementById('linkedSubjectsListSection');
             var trigger = e.relatedTarget;
-            if (!form || !titleEl) return;
+            if (!form || !titleEl || !listEl) return;
             var sectionId = trigger && trigger.getAttribute('data-section-id');
             var sectionTitle = trigger && trigger.getAttribute('data-section-title') || '';
             var primarySubjectId = trigger && trigger.getAttribute('data-section-primary-subject-id') || '';
@@ -2381,65 +2592,51 @@ document.addEventListener('DOMContentLoaded', function() {
                 form.setAttribute('data-primary-subject-id', primarySubjectId);
                 titleEl.textContent = 'ربط القسم بمواد إضافية' + (sectionTitle ? ': ' + sectionTitle : '');
             }
-            function fillLinkedSubjectsUI(linkedSubjects, selectedIds) {
-                selectedIds = selectedIds || [];
+            function fillLinkedSubjectsUI(linkedSubjects) {
+                linkedSubjects = Array.isArray(linkedSubjects) ? linkedSubjects : [];
                 if (currentLinkedEl) {
-                    if (!linkedSubjects || linkedSubjects.length === 0) {
+                    if (linkedSubjects.length === 0) {
                         currentLinkedEl.innerHTML = '<span class="text-muted">لا يوجد ربط لمواد إضافية</span>';
                     } else {
                         var parts = linkedSubjects.map(function(s) {
-                            var label = (typeof window.formatLinkedSubjectBadge === 'function')
-                                ? window.formatLinkedSubjectBadge(s)
-                                : '';
-                            return '<span class="badge bg-secondary me-1 mb-1">' + esc(label || s.name || '#' + s.id) + '</span>';
+                            var badge = formatSectionLinkTargetBadge(s, s.parent_section_id, s.parent_section_label);
+                            return '<span class="badge bg-secondary me-1 mb-1">' + esc(badge || s.name || '#' + s.id) + '</span>';
                         });
                         currentLinkedEl.innerHTML = parts.join('');
                     }
                 }
-                listEl.innerHTML = '';
-                (selectedIds || []).forEach(function(sid) {
-                    if (String(sid) === String(primarySubjectId)) return;
-                    var s = (linkedSubjects || []).find(function(x) { return String(x.id) === String(sid); });
-                    var label = (typeof window.formatLinkedSubjectBadge === 'function')
-                        ? window.formatLinkedSubjectBadge(s || { id: sid, name: '#' + sid })
-                        : ('#' + sid);
-                    var row = document.createElement('div');
-                    row.className = 'd-flex align-items-center gap-2 mb-1 linked-subject-row';
-                    row.innerHTML = '<span class="badge bg-secondary">' + esc(label) + '</span>' +
-                        '<input type="hidden" name="linked_subject_ids[]" value="' + esc(String(sid)) + '">' +
-                        '<button type="button" class="btn btn-sm btn-outline-danger py-0 remove-linked-subject" title="إزالة"><i class="bi bi-x"></i></button>';
-                    listEl.appendChild(row);
+                listEl.querySelectorAll('.linked-subject-row').forEach(function(row) { row.remove(); });
+                linkedSubjects.forEach(function(s, index) {
+                    if (String(s.id) === String(primarySubjectId)) return;
+                    appendSectionLinkedTargetRow(listEl, index, s, s.parent_section_id || null, s.parent_section_label || null);
                 });
+                reindexSectionLinkedTargetRows(listEl);
+                window.sectionLinkInitialRowCount = listEl.querySelectorAll('.linked-subject-row').length;
             }
             if (currentLinkedEl) currentLinkedEl.innerHTML = '<span class="text-muted">جاري التحميل...</span>';
-            listEl.innerHTML = '';
+            listEl.querySelectorAll('.linked-subject-row').forEach(function(row) { row.remove(); });
+            syncSectionLinkedTargetsEmptyHint();
+            resetSectionLinkPicker();
             var linkedUrl = window.adminSectionsLinkSubjectsBase + '/' + sectionId + '/linked-subjects';
             fetch(linkedUrl, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(function(res) { return res.json(); })
                 .then(function(linkedSubjects) {
-                    linkedSubjects = Array.isArray(linkedSubjects) ? linkedSubjects : [];
-                    var selectedIds = linkedSubjects.map(function(s) { return s.id; });
-                    fillLinkedSubjectsUI(linkedSubjects, selectedIds);
+                    fillLinkedSubjectsUI(linkedSubjects);
                 })
                 .catch(function() {
-                    fillLinkedSubjectsUI([], []);
+                    fillLinkedSubjectsUI([]);
                 });
-            var sectionLinkClassSelect = document.getElementById('sectionLinkClassSelect');
-            var sectionLinkSubjectSelect = document.getElementById('sectionLinkSubjectSelect');
-            if (sectionLinkClassSelect) sectionLinkClassSelect.value = '';
-            if (sectionLinkSubjectSelect) {
-                sectionLinkSubjectSelect.innerHTML = '<option value="">-- اختر المادة --</option>';
-                sectionLinkSubjectSelect.disabled = true;
-            }
         });
     }
     document.addEventListener('click', function(e) {
         if (e.target.closest('.remove-linked-subject')) {
             var row = e.target.closest('.linked-subject-row');
+            var listEl = document.getElementById('linkedSubjectsListSection');
             if (row) row.remove();
+            reindexSectionLinkedTargetRows(listEl);
         }
     });
-    // الصف -> المادة لمودال ربط القسم
+    // الصف -> المادة -> مكان النسخة لمودال ربط القسم
     if (typeof window.linkableStructure !== 'undefined') {
         var sectionLinkClassSelect = document.getElementById('sectionLinkClassSelect');
         if (sectionLinkClassSelect) {
@@ -2451,6 +2648,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 var primarySubjectId = form.getAttribute('data-primary-subject-id') || '';
                 subjectSelect.innerHTML = '<option value="">-- اختر المادة --</option>';
                 subjectSelect.disabled = !classId;
+                resetSectionLinkSubjectPicker();
                 if (!classId) return;
                 var filtered = window.linkableStructure.filter(function(s) { return String(s.class_id) === String(classId); });
                 filtered.forEach(function(s) {
@@ -2462,43 +2660,363 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
         }
+        var sectionLinkSubjectSelect = document.getElementById('sectionLinkSubjectSelect');
+        if (sectionLinkSubjectSelect) {
+            sectionLinkSubjectSelect.addEventListener('change', function() {
+                var placementWrap = document.getElementById('sectionLinkPlacementWrap');
+                var addBtn = document.getElementById('addSectionLinkedSubjectBtn');
+                var subjectId = this.value;
+                if (!subjectId) {
+                    if (placementWrap) placementWrap.style.display = 'none';
+                    if (addBtn) addBtn.disabled = true;
+                    return;
+                }
+                if (placementWrap) placementWrap.style.display = '';
+                if (addBtn) addBtn.disabled = false;
+                document.getElementById('sectionLinkPlacementRoot').checked = true;
+                document.getElementById('sectionLinkPlacementChild').checked = false;
+                syncSectionLinkPlacementUI();
+                populateSectionLinkParentSelect(subjectId);
+            });
+        }
+        document.querySelectorAll('input[name="section_link_placement"]').forEach(function(radio) {
+            radio.addEventListener('change', syncSectionLinkPlacementUI);
+        });
         var addSectionLinkedSubjectBtn = document.getElementById('addSectionLinkedSubjectBtn');
         if (addSectionLinkedSubjectBtn) {
             addSectionLinkedSubjectBtn.addEventListener('click', function() {
-                var form = document.getElementById('linkSectionSubjectsForm');
+                if (!tryAddPendingSectionLinkTarget()) {
+                    var subjectSelect = document.getElementById('sectionLinkSubjectSelect');
+                    if (!subjectSelect || !subjectSelect.value) {
+                        alert('يرجى اختيار الصف ثم المادة قبل الإضافة');
+                    }
+                }
+            });
+        }
+        var linkSectionSubjectsForm = document.getElementById('linkSectionSubjectsForm');
+        if (linkSectionSubjectsForm) {
+            linkSectionSubjectsForm.addEventListener('submit', function(e) {
                 var listEl = document.getElementById('linkedSubjectsListSection');
                 var subjectSelect = document.getElementById('sectionLinkSubjectSelect');
-                if (!listEl || !subjectSelect || !form) return;
-                var primarySubjectId = form.getAttribute('data-primary-subject-id') || '';
-                var subjectId = subjectSelect.value;
-                if (!subjectId) {
-                    alert('يرجى اختيار الصف ثم المادة قبل الإضافة');
+                var hadPendingSelection = !!(subjectSelect && subjectSelect.value);
+                if (hadPendingSelection) {
+                    if (!tryAddPendingSectionLinkTarget()) {
+                        e.preventDefault();
+                        return;
+                    }
+                }
+                var rowCount = listEl ? listEl.querySelectorAll('.linked-subject-row').length : 0;
+                var initialCount = window.sectionLinkInitialRowCount || 0;
+                if (rowCount === 0 && initialCount === 0) {
+                    e.preventDefault();
+                    alert('لم تُضف أي مادة للربط. اختر الصف والمادة الهدف (وقسم رئيسي أو تحت قسم) ثم اضغط حفظ الربط.');
                     return;
                 }
-                if (String(subjectId) === String(primarySubjectId)) {
-                    alert('المادة الأصلية للقسم لا تُضاف إلى الربط');
-                    return;
+                if (rowCount === 0 && initialCount > 0) {
+                    if (!confirm('سيتم إزالة كل الروابط الحالية لهذا القسم من المواد الأخرى. متابعة؟')) {
+                        e.preventDefault();
+                    }
                 }
-                var existing = listEl.querySelectorAll('input[name="linked_subject_ids[]"]');
-                for (var i = 0; i < existing.length; i++) {
-                    if (existing[i].value === subjectId) return;
-                }
-                var s = window.linkableStructure.find(function(x) { return String(x.id) === String(subjectId); });
-                var label = (typeof window.formatLinkedSubjectBadge === 'function')
-                    ? window.formatLinkedSubjectBadge(s || { id: subjectId })
-                    : ('#' + subjectId);
-                var row = document.createElement('div');
-                row.className = 'd-flex align-items-center gap-2 mb-1 linked-subject-row';
-                row.innerHTML = '<span class="badge bg-secondary">' + esc(label) + '</span>' +
-                    '<input type="hidden" name="linked_subject_ids[]" value="' + esc(String(subjectId)) + '">' +
-                    '<button type="button" class="btn btn-sm btn-outline-danger py-0 remove-linked-subject" title="إزالة"><i class="bi bi-x"></i></button>';
-                listEl.appendChild(row);
-                subjectSelect.value = '';
             });
         }
     }
 
-    // ربط الدرس بوحدات إضافية (صف / مادة / قسم / وحدة)
+    function syncLessonLinkedTargetsEmptyHint() {
+        var listEl = document.getElementById('linkedUnitsListLesson');
+        var hint = document.getElementById('linkedUnitsListLessonEmptyHint');
+        if (!listEl || !hint) return;
+        var hasRows = listEl.querySelectorAll('.linked-unit-target-row').length > 0;
+        hint.classList.toggle('d-none', hasRows);
+    }
+
+    function appendLessonLinkedTargetRow(listEl, index, unitMeta) {
+        if (!listEl || !unitMeta || !unitMeta.id) return;
+        var badgeText = (typeof window.formatLinkedUnitBadge === 'function')
+            ? window.formatLinkedUnitBadge(unitMeta)
+            : (unitMeta.title || '#' + unitMeta.id);
+        var row = document.createElement('div');
+        row.className = 'd-flex align-items-center gap-2 mb-1 linked-unit-target-row';
+        row.setAttribute('data-unit-id', String(unitMeta.id));
+        row.innerHTML = '<span class="badge bg-secondary text-wrap text-start" style="max-width: 100%; white-space: normal;">' + esc(badgeText) + '</span>' +
+            '<input type="hidden" name="linked_targets[' + index + '][unit_id]" value="' + esc(String(unitMeta.id)) + '">' +
+            '<button type="button" class="btn btn-sm btn-outline-danger py-0 remove-lesson-linked-unit" title="إزالة"><i class="bi bi-x"></i></button>';
+        listEl.appendChild(row);
+        syncLessonLinkedTargetsEmptyHint();
+    }
+
+    function reindexLessonLinkedTargetRows(listEl) {
+        if (!listEl) return;
+        listEl.querySelectorAll('.linked-unit-target-row').forEach(function(row, index) {
+            row.querySelectorAll('input[type="hidden"]').forEach(function(input) {
+                input.name = 'linked_targets[' + index + '][unit_id]';
+            });
+        });
+        syncLessonLinkedTargetsEmptyHint();
+    }
+
+    function resetLessonLinkUnitPicker() {
+        var unitSelect = document.getElementById('lessonLinkUnitSelect');
+        var sectionSelect = document.getElementById('lessonLinkSectionSelect');
+        var subjectSelect = document.getElementById('lessonLinkSubjectSelect');
+        var addBtn = document.getElementById('addLessonLinkedUnitBtn');
+        if (unitSelect) {
+            unitSelect.innerHTML = '<option value="">-- اختر الوحدة --</option>';
+            unitSelect.disabled = true;
+        }
+        if (sectionSelect) {
+            sectionSelect.innerHTML = '<option value="">-- اختر القسم --</option>';
+            sectionSelect.disabled = true;
+        }
+        if (subjectSelect) {
+            subjectSelect.value = '';
+            subjectSelect.disabled = true;
+        }
+        if (addBtn) addBtn.disabled = true;
+    }
+
+    function resetLessonLinkPicker() {
+        var classSelect = document.getElementById('lessonLinkClassSelect');
+        if (classSelect) classSelect.value = '';
+        resetLessonLinkUnitPicker();
+    }
+
+    function tryAddPendingLessonLinkTarget() {
+        var form = document.getElementById('linkLessonUnitsForm');
+        var listEl = document.getElementById('linkedUnitsListLesson');
+        var unitSelect = document.getElementById('lessonLinkUnitSelect');
+        if (!listEl || !unitSelect || !form) return false;
+        var primaryUnitId = form.getAttribute('data-primary-unit-id') || '';
+        var unitId = unitSelect.value;
+        if (!unitId || String(unitId) === String(primaryUnitId)) return false;
+
+        var sectionSelect = document.getElementById('lessonLinkSectionSelect');
+        var subjectSelect = document.getElementById('lessonLinkSubjectSelect');
+        var subject = (typeof window.linkableStructure !== 'undefined' && subjectSelect && subjectSelect.value)
+            ? window.linkableStructure.find(function(x) { return String(x.id) === String(subjectSelect.value); })
+            : null;
+        var section = subject && subject.sections && sectionSelect
+            ? subject.sections.find(function(x) { return String(x.id) === String(sectionSelect.value); })
+            : null;
+        var unit = section && section.units
+            ? section.units.find(function(x) { return String(x.id) === String(unitId); })
+            : null;
+
+        var existingRows = listEl.querySelectorAll('.linked-unit-target-row');
+        for (var i = 0; i < existingRows.length; i++) {
+            if (String(existingRows[i].getAttribute('data-unit-id')) === String(unitId)) {
+                existingRows[i].remove();
+                break;
+            }
+        }
+
+        var meta = {
+            id: unitId,
+            title: unit ? (unit.title || '') : '',
+            section_title: section ? (section.path_title || section.title || '') : '',
+            subject_name: subject ? (subject.name || '') : '',
+            class_name: subject ? (subject.class_name || '') : '',
+            stage_name: subject ? (subject.stage_name || '') : '',
+            label: (typeof window.formatLinkedUnitBadge === 'function')
+                ? window.formatLinkedUnitBadge({
+                    id: unitId,
+                    title: unit ? unit.title : '',
+                    section_title: section ? (section.path_title || section.title) : '',
+                    subject_name: subject ? subject.name : '',
+                    class_name: subject ? subject.class_name : '',
+                    stage_name: subject ? subject.stage_name : ''
+                })
+                : ''
+        };
+
+        var nextIndex = listEl.querySelectorAll('.linked-unit-target-row').length;
+        appendLessonLinkedTargetRow(listEl, nextIndex, meta);
+        reindexLessonLinkedTargetRows(listEl);
+        resetLessonLinkUnitPicker();
+        return true;
+    }
+
+    var linkLessonUnitsModalEl = document.getElementById('linkLessonUnitsModal');
+    if (linkLessonUnitsModalEl && window.adminLessonsLinkUnitsBase) {
+        linkLessonUnitsModalEl.addEventListener('show.bs.modal', function(e) {
+            var form = document.getElementById('linkLessonUnitsForm');
+            var titleEl = document.getElementById('linkLessonUnitsModalTitle');
+            var currentLinkedEl = document.getElementById('currentLinkedUnitsLesson');
+            var listEl = document.getElementById('linkedUnitsListLesson');
+            var trigger = e.relatedTarget;
+            if (!form || !titleEl || !listEl) return;
+            var lessonId = trigger && trigger.getAttribute('data-lesson-id');
+            var lessonTitle = trigger && trigger.getAttribute('data-lesson-title') || '';
+            var primaryUnitId = trigger && trigger.getAttribute('data-lesson-primary-unit-id') || '';
+            if (lessonId) {
+                form.action = window.adminLessonsLinkUnitsBase + '/' + lessonId + '/link-units';
+                form.setAttribute('data-primary-unit-id', primaryUnitId);
+                titleEl.textContent = 'ربط الدرس بوحدات إضافية' + (lessonTitle ? ': ' + lessonTitle : '');
+            }
+            function fillLinkedUnitsUI(linkedUnits) {
+                linkedUnits = Array.isArray(linkedUnits) ? linkedUnits : [];
+                if (currentLinkedEl) {
+                    if (linkedUnits.length === 0) {
+                        currentLinkedEl.innerHTML = '<span class="text-muted">لا يوجد ربط لوحدات إضافية</span>';
+                    } else {
+                        var parts = linkedUnits.map(function(u) {
+                            var badge = (typeof window.formatLinkedUnitBadge === 'function') ? window.formatLinkedUnitBadge(u) : (u.title || '#' + u.id);
+                            return '<span class="badge bg-secondary me-1 mb-1">' + esc(badge || u.title || '#' + u.id) + '</span>';
+                        });
+                        currentLinkedEl.innerHTML = parts.join('');
+                    }
+                }
+                listEl.querySelectorAll('.linked-unit-target-row').forEach(function(row) { row.remove(); });
+                linkedUnits.forEach(function(u, index) {
+                    if (primaryUnitId && String(u.id) === String(primaryUnitId)) return;
+                    appendLessonLinkedTargetRow(listEl, index, u);
+                });
+                reindexLessonLinkedTargetRows(listEl);
+                window.lessonLinkInitialRowCount = listEl.querySelectorAll('.linked-unit-target-row').length;
+            }
+            if (currentLinkedEl) currentLinkedEl.innerHTML = '<span class="text-muted">جاري التحميل...</span>';
+            listEl.querySelectorAll('.linked-unit-target-row').forEach(function(row) { row.remove(); });
+            syncLessonLinkedTargetsEmptyHint();
+            resetLessonLinkPicker();
+            var linkedUrl = window.adminLessonsLinkUnitsBase + '/' + lessonId + '/linked-units';
+            fetch(linkedUrl, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function(res) { return res.json(); })
+                .then(function(linkedUnits) { fillLinkedUnitsUI(linkedUnits); })
+                .catch(function() { fillLinkedUnitsUI([]); });
+        });
+    }
+
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-lesson-linked-unit')) {
+            var row = e.target.closest('.linked-unit-target-row');
+            var listEl = document.getElementById('linkedUnitsListLesson');
+            if (row) row.remove();
+            reindexLessonLinkedTargetRows(listEl);
+        }
+    });
+
+    if (typeof window.linkableStructure !== 'undefined') {
+        var lessonLinkClassSelect = document.getElementById('lessonLinkClassSelect');
+        if (lessonLinkClassSelect) {
+            lessonLinkClassSelect.addEventListener('change', function() {
+                var subjectSelect = document.getElementById('lessonLinkSubjectSelect');
+                if (!subjectSelect) return;
+                var classId = this.value;
+                subjectSelect.innerHTML = '<option value="">-- اختر المادة --</option>';
+                subjectSelect.disabled = !classId;
+                resetLessonLinkUnitPicker();
+                if (!classId) return;
+                window.linkableStructure.filter(function(s) { return String(s.class_id) === String(classId); }).forEach(function(s) {
+                    var opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = (s.stage_name ? s.stage_name + ' / ' : '') + (s.class_name ? s.class_name + ' — ' : '') + s.name + ' (#' + s.id + ')';
+                    subjectSelect.appendChild(opt);
+                });
+                subjectSelect.disabled = false;
+            });
+        }
+        var lessonLinkSubjectSelect = document.getElementById('lessonLinkSubjectSelect');
+        if (lessonLinkSubjectSelect) {
+            lessonLinkSubjectSelect.addEventListener('change', function() {
+                var sectionSelect = document.getElementById('lessonLinkSectionSelect');
+                var unitSelect = document.getElementById('lessonLinkUnitSelect');
+                var addBtn = document.getElementById('addLessonLinkedUnitBtn');
+                if (!sectionSelect || !unitSelect) return;
+                var subjectId = this.value;
+                sectionSelect.innerHTML = '<option value="">-- اختر القسم --</option>';
+                unitSelect.innerHTML = '<option value="">-- اختر الوحدة --</option>';
+                unitSelect.disabled = true;
+                sectionSelect.disabled = !subjectId;
+                if (addBtn) addBtn.disabled = true;
+                if (!subjectId) return;
+                var subject = window.linkableStructure.find(function(x) { return String(x.id) === String(subjectId); });
+                if (subject && subject.sections) {
+                    subject.sections.forEach(function(sec) {
+                        var opt = document.createElement('option');
+                        opt.value = sec.id;
+                        opt.textContent = sec.path_title || sec.title || ('#' + sec.id);
+                        sectionSelect.appendChild(opt);
+                    });
+                }
+                sectionSelect.disabled = false;
+            });
+        }
+        var lessonLinkSectionSelect = document.getElementById('lessonLinkSectionSelect');
+        if (lessonLinkSectionSelect) {
+            lessonLinkSectionSelect.addEventListener('change', function() {
+                var subjectSelect = document.getElementById('lessonLinkSubjectSelect');
+                var unitSelect = document.getElementById('lessonLinkUnitSelect');
+                var addBtn = document.getElementById('addLessonLinkedUnitBtn');
+                var form = document.getElementById('linkLessonUnitsForm');
+                if (!unitSelect || !subjectSelect) return;
+                var sectionId = this.value;
+                var primaryUnitId = form ? (form.getAttribute('data-primary-unit-id') || '') : '';
+                unitSelect.innerHTML = '<option value="">-- اختر الوحدة --</option>';
+                unitSelect.disabled = !sectionId;
+                if (addBtn) addBtn.disabled = true;
+                if (!sectionId) return;
+                var subject = window.linkableStructure.find(function(x) { return String(x.id) === String(subjectSelect.value); });
+                var section = subject && subject.sections
+                    ? subject.sections.find(function(x) { return String(x.id) === String(sectionId); })
+                    : null;
+                if (section && section.units) {
+                    section.units.forEach(function(u) {
+                        if (primaryUnitId && String(u.id) === String(primaryUnitId)) return;
+                        var opt = document.createElement('option');
+                        opt.value = u.id;
+                        opt.textContent = u.title || ('#' + u.id);
+                        unitSelect.appendChild(opt);
+                    });
+                }
+                unitSelect.disabled = false;
+            });
+        }
+        var lessonLinkUnitSelect = document.getElementById('lessonLinkUnitSelect');
+        if (lessonLinkUnitSelect) {
+            lessonLinkUnitSelect.addEventListener('change', function() {
+                var addBtn = document.getElementById('addLessonLinkedUnitBtn');
+                if (addBtn) addBtn.disabled = !this.value;
+            });
+        }
+        var addLessonLinkedUnitBtn = document.getElementById('addLessonLinkedUnitBtn');
+        if (addLessonLinkedUnitBtn) {
+            addLessonLinkedUnitBtn.addEventListener('click', function() {
+                if (!tryAddPendingLessonLinkTarget()) {
+                    var unitSelect = document.getElementById('lessonLinkUnitSelect');
+                    if (!unitSelect || !unitSelect.value) {
+                        alert('يرجى اختيار الصف والمادة والقسم والوحدة قبل الإضافة');
+                    }
+                }
+            });
+        }
+        var linkLessonUnitsForm = document.getElementById('linkLessonUnitsForm');
+        if (linkLessonUnitsForm) {
+            linkLessonUnitsForm.addEventListener('submit', function(e) {
+                var listEl = document.getElementById('linkedUnitsListLesson');
+                var unitSelect = document.getElementById('lessonLinkUnitSelect');
+                var hadPendingSelection = !!(unitSelect && unitSelect.value);
+                if (hadPendingSelection) {
+                    if (!tryAddPendingLessonLinkTarget()) {
+                        e.preventDefault();
+                        return;
+                    }
+                }
+                var rowCount = listEl ? listEl.querySelectorAll('.linked-unit-target-row').length : 0;
+                var initialCount = window.lessonLinkInitialRowCount || 0;
+                if (rowCount === 0 && initialCount === 0) {
+                    e.preventDefault();
+                    alert('لم تُضف أي وحدة للربط. اختر الصف والمادة والقسم والوحدة الهدف ثم اضغط حفظ الربط.');
+                    return;
+                }
+                if (rowCount === 0 && initialCount > 0) {
+                    if (!confirm('سيتم إزالة كل الروابط الحالية لهذا الدرس من الوحدات الأخرى. متابعة؟')) {
+                        e.preventDefault();
+                    }
+                }
+            });
+        }
+    }
+
+    // ربط الدرس بوحدات إضافية (legacy pivot في مودالات أخرى)
     if (typeof window.linkableStructure !== 'undefined') {
         const structure = window.linkableStructure;
         document.querySelectorAll('.link-class-select').forEach(function(classSelect) {

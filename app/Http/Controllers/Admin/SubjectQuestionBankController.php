@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\Concerns\BuildsQuestionBankIndex;
+use App\Http\Controllers\Admin\Concerns\HandlesQuestionWordExport;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ExportQuestionsWordRequest;
 use App\Models\Question;
 use App\Models\Quiz;
 use App\Models\QuizQuestion;
@@ -13,10 +15,13 @@ use Illuminate\Http\Request;
 class SubjectQuestionBankController extends Controller
 {
     use BuildsQuestionBankIndex;
+    use HandlesQuestionWordExport;
 
     public function __construct()
     {
         $this->middleware(['permission:question-list'])->only('index');
+        $this->middleware(['permission:question-export'])->only('exportWord');
+        $this->middleware(['permission:question-export|question-delete'])->only('bulkSelectableIds');
         $this->middleware(['permission:question-create'])->only(['create', 'aiCreate', 'aiCreateFromImage']);
         $this->middleware(['permission:question-show-import'])->only('import');
         $this->middleware(['permission:quiz-list|quiz-add-question'])->only('quizzesForAdd');
@@ -70,6 +75,16 @@ class SubjectQuestionBankController extends Controller
         $this->authorizeManagedSubjectAccess(auth()->user(), $subject);
 
         return redirect()->route('admin.ai.question-generations.create-from-image', ['subject_id' => $subject->id]);
+    }
+
+    public function exportWord(ExportQuestionsWordRequest $request, Subject $subject)
+    {
+        return $this->downloadQuestionsWord($request, $subject);
+    }
+
+    public function bulkSelectableIds(Request $request, Subject $subject)
+    {
+        return $this->bulkSelectableIdsResponse($request, $subject);
     }
 
     public function quizzesForAdd(Request $request, Subject $subject)

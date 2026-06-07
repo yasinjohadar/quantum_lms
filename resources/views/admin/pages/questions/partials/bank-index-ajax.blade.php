@@ -109,6 +109,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (typeof window.initQuestionBulkDelete === 'function') {
                     window.initQuestionBulkDelete(resultsEl);
                 }
+                if (typeof window.bindQuestionBankExportWord === 'function') {
+                    window.bindQuestionBankExportWord(resultsEl);
+                }
             })
             .catch(function (err) {
                 console.error('questionBank fetch error:', err);
@@ -121,6 +124,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     form.addEventListener('submit', function (e) {
         e.preventDefault();
+        if (typeof window.clearQuestionBulkSelection === 'function') {
+            window.clearQuestionBulkSelection();
+        }
         fetchQuestions(1);
     });
 

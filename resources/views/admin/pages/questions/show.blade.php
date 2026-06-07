@@ -66,7 +66,7 @@
                         {!! format_question_markup($question->title) !!}
                     </div>
                     
-                    @if($question->content && trim(strip_tags($question->content)) !== trim(strip_tags($question->title)))
+                    @if(question_content_differs_from_title($question->title, $question->content))
                         <div class="question-text-body text-muted mb-3">
                             {!! format_question_markup($question->content) !!}
                         </div>

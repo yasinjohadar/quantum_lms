@@ -7,14 +7,16 @@ use App\Http\Requests\Admin\StoreSubjectSectionRequest;
 use App\Http\Requests\Admin\UpdateSubjectSectionRequest;
 use App\Models\Subject;
 use App\Models\SubjectSection;
+use App\Services\Curriculum\SectionCloneService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class SubjectSectionController extends Controller
 {
-    public function __construct()
-    {
+    public function __construct(
+        protected SectionCloneService $cloneService
+    ) {
         $this->middleware(['permission:subject-section-create'])->only('store');
         $this->middleware(['permission:subject-section-edit'])->only(['update', 'reorder', 'getLinkedSubjects', 'linkSubjects']);
         $this->middleware(['permission:subject-section-delete'])->only('destroy');
@@ -155,21 +157,44 @@ class SubjectSectionController extends Controller
      */
     public function getLinkedSubjects(SubjectSection $section)
     {
-        $linkedSubjectIds = DB::table('section_subjects')
+        $syncSubjectIds = $section->linkedSubjectIdsViaSync();
+        $legacySubjectIds = DB::table('section_subjects')
             ->where('section_id', $section->id)
-            ->pluck('subject_id');
+            ->pluck('subject_id')
+            ->all();
+
+        $linkedSubjectIds = collect($syncSubjectIds)
+            ->merge($legacySubjectIds)
+            ->unique()
+            ->values();
+
         $subjects = Subject::with('schoolClass.stage')
             ->whereIn('id', $linkedSubjectIds)
             ->get();
-        $data = $subjects->map(function ($s) {
+
+        $data = $subjects->map(function ($s) use ($section) {
+            $mirrorRoot = SubjectSection::query()
+                ->where('cloned_from_section_id', $section->id)
+                ->where('subject_id', $s->id)
+                ->first();
+
+            $parentSection = $mirrorRoot?->parent_id
+                ? SubjectSection::find($mirrorRoot->parent_id)
+                : null;
+
             return [
                 'id' => $s->id,
                 'name' => $s->name ?? '',
                 'class_name' => optional($s->schoolClass)->name ?? '',
                 'stage_name' => optional(optional($s->schoolClass)->stage)->name ?? '',
                 'label' => $this->formatLinkedSubjectBadgeText($s),
+                'parent_section_id' => $mirrorRoot?->parent_id,
+                'parent_section_label' => $parentSection
+                    ? ($parentSection->path_title ?? $parentSection->title)
+                    : null,
             ];
         })->values();
+
         return response()->json($data);
     }
 
@@ -189,34 +214,143 @@ class SubjectSectionController extends Controller
     }
 
     /**
+     * @return array<int, array{subject_id: int, parent_section_id: int|null}>
+     */
+    private function normalizeLinkedTargets(Request $request, int $primarySubjectId): array
+    {
+        $targets = [];
+
+        if ($request->has('linked_targets')) {
+            foreach ((array) $request->input('linked_targets', []) as $row) {
+                $subjectId = (int) ($row['subject_id'] ?? 0);
+                if ($subjectId <= 0 || $subjectId === $primarySubjectId) {
+                    continue;
+                }
+
+                $parentSectionId = isset($row['parent_section_id']) && $row['parent_section_id'] !== ''
+                    ? (int) $row['parent_section_id']
+                    : null;
+
+                $targets[$subjectId] = [
+                    'subject_id' => $subjectId,
+                    'parent_section_id' => $parentSectionId > 0 ? $parentSectionId : null,
+                ];
+            }
+        } else {
+            foreach ((array) $request->input('linked_subject_ids', []) as $subjectId) {
+                $subjectId = (int) $subjectId;
+                if ($subjectId <= 0 || $subjectId === $primarySubjectId) {
+                    continue;
+                }
+
+                $targets[$subjectId] = [
+                    'subject_id' => $subjectId,
+                    'parent_section_id' => null,
+                ];
+            }
+        }
+
+        return array_values($targets);
+    }
+
+    /**
      * ربط القسم بمواد إضافية (ظهوره في مواد أخرى).
      */
     public function linkSubjects(Request $request, SubjectSection $section)
     {
         $request->validate([
+            'linked_targets' => ['nullable', 'array'],
+            'linked_targets.*.subject_id' => ['required', 'integer', 'exists:subjects,id'],
+            'linked_targets.*.parent_section_id' => ['nullable', 'integer', 'exists:subject_sections,id'],
             'linked_subject_ids' => ['nullable', 'array'],
             'linked_subject_ids.*' => ['integer', 'exists:subjects,id'],
         ]);
 
-        $linkedSubjectIds = $request->input('linked_subject_ids', []);
-        $primarySubjectId = $section->subject_id;
-        $linkedSubjectIds = array_values(array_unique(array_filter(
-            array_map('intval', $linkedSubjectIds),
-            fn ($id) => $id > 0
-        )));
-        $linkedSubjectIds = array_values(array_diff($linkedSubjectIds, [$primarySubjectId]));
+        $primarySubjectId = (int) $section->subject_id;
+        $desiredTargets = $this->normalizeLinkedTargets($request, $primarySubjectId);
 
-        $section->linkedSubjects()->sync($linkedSubjectIds);
+        $currentTargets = [];
+        $mirrorRoots = SubjectSection::query()
+            ->where('cloned_from_section_id', $section->id)
+            ->get();
 
-        $linkedSubjects = $section->linkedSubjects()->with('schoolClass.stage')->get();
+        foreach ($mirrorRoots as $mirrorRoot) {
+            $currentTargets[(int) $mirrorRoot->subject_id] = [
+                'subject_id' => (int) $mirrorRoot->subject_id,
+                'parent_section_id' => $mirrorRoot->parent_id ? (int) $mirrorRoot->parent_id : null,
+            ];
+        }
+
+        $legacySubjectIds = DB::table('section_subjects')
+            ->where('section_id', $section->id)
+            ->pluck('subject_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        foreach ($legacySubjectIds as $legacySubjectId) {
+            if (! isset($currentTargets[$legacySubjectId])) {
+                $currentTargets[$legacySubjectId] = [
+                    'subject_id' => $legacySubjectId,
+                    'parent_section_id' => null,
+                ];
+            }
+        }
+
+        $desiredBySubject = collect($desiredTargets)->keyBy('subject_id');
+        $currentBySubject = collect($currentTargets);
+
+        foreach ($currentBySubject as $subjectId => $current) {
+            if (! $desiredBySubject->has($subjectId)) {
+                $targetSubject = Subject::find($subjectId);
+                if ($targetSubject) {
+                    $this->cloneService->removeMirrorForSubject($section, $targetSubject);
+                }
+            }
+        }
+
+        try {
+            foreach ($desiredBySubject as $subjectId => $desired) {
+                $targetSubject = Subject::find($subjectId);
+                if (! $targetSubject) {
+                    continue;
+                }
+
+                $current = $currentBySubject->get($subjectId);
+                $desiredParentId = $desired['parent_section_id'] ?? null;
+                $currentParentId = $current['parent_section_id'] ?? null;
+
+                if ($current === null) {
+                    $this->cloneService->cloneSectionTreeToSubject($section, $targetSubject, $desiredParentId);
+
+                    continue;
+                }
+
+                if ((int) ($currentParentId ?? 0) !== (int) ($desiredParentId ?? 0)) {
+                    $this->cloneService->removeMirrorForSubject($section, $targetSubject);
+                    $this->cloneService->cloneSectionTreeToSubject($section, $targetSubject, $desiredParentId);
+                }
+            }
+        } catch (\InvalidArgumentException $e) {
+            return redirect()
+                ->back()
+                ->with('error', $e->getMessage());
+        }
+
+        DB::table('section_subjects')->where('section_id', $section->id)->delete();
+
+        $linkedSubjectIds = $desiredBySubject->keys()->all();
+        $linkedSubjects = Subject::with('schoolClass.stage')
+            ->whereIn('id', $linkedSubjectIds)
+            ->get();
+
         $count = $linkedSubjects->count();
         $labels = $linkedSubjects->map(fn ($s) => $this->formatLinkedSubjectBadgeText($s))->filter()->values()->toArray();
 
         $message = 'تم تحديث ربط القسم بالمواد بنجاح.';
         if ($count > 0) {
-            $message .= ' القسم مربوط بـ ' . $count . ' مادة';
-            if (!empty($labels)) {
-                $message .= ': ' . implode('، ', array_slice($labels, 0, 5));
+            $message .= ' تم إنشاء نسخة متزامنة في '.$count.' مادة';
+            if (! empty($labels)) {
+                $message .= ': '.implode('، ', array_slice($labels, 0, 5));
                 if (count($labels) > 5) {
                     $message .= '...';
                 }
@@ -240,7 +374,11 @@ class SubjectSectionController extends Controller
         $subjectId = $section->subject_id;
 
         try {
-            $section->delete();
+            if ($section->isSyncMirror()) {
+                $this->cloneService->deleteMirrorSubtree($section);
+            } else {
+                $this->cloneService->deleteCanonicalSubtree($section);
+            }
 
             return redirect()
                 ->route('admin.subjects.show', $subjectId)

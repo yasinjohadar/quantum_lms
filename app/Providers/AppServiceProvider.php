@@ -23,8 +23,13 @@ use App\Events\LibraryItemCreated;
 use App\Events\EventReminderSent;
 use App\Listeners\SendRealTimeNotification;
 use App\Listeners\SendLibraryItemNotification;
+use App\Models\Lesson;
+use App\Models\Quiz;
 use App\Models\SchoolClass;
+use App\Models\SubjectSection;
 use App\Models\SystemSetting;
+use App\Models\Unit;
+use App\Observers\CurriculumEntitySyncObserver;
 use Illuminate\Pagination\Paginator;
 
 class AppServiceProvider extends ServiceProvider
@@ -162,5 +167,10 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(\App\Events\WhatsAppMessageReceived::class, \App\Listeners\AutoReplyWhatsAppListener::class);
 
         Paginator::useBootstrap();
+
+        SubjectSection::observe(CurriculumEntitySyncObserver::class);
+        Unit::observe(CurriculumEntitySyncObserver::class);
+        Lesson::observe(CurriculumEntitySyncObserver::class);
+        Quiz::observe(CurriculumEntitySyncObserver::class);
     }
 }

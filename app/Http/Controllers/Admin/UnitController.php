@@ -8,13 +8,16 @@ use App\Http\Requests\Admin\UpdateUnitRequest;
 use App\Models\SubjectSection;
 use App\Models\Unit;
 use App\Models\Question;
+use App\Services\Curriculum\UnitCloneService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class UnitController extends Controller
 {
-    public function __construct()
-    {
+    public function __construct(
+        protected UnitCloneService $cloneService
+    ) {
         $this->middleware(['permission:unit-create'])->only('store');
         $this->middleware(['permission:unit-edit'])->only(['update', 'reorder']);
         $this->middleware(['permission:unit-delete'])->only('destroy');
@@ -121,7 +124,7 @@ class UnitController extends Controller
 
             $unit->update($data);
 
-            if ($request->boolean('sync_mirrored_sections')) {
+            if ($request->boolean('sync_mirrored_sections') && ! $unit->isSyncMirror()) {
                 $sectionIds = array_values(array_unique(array_filter(array_map('intval', (array) $request->input('linked_section_ids', [])))));
                 $sectionIds = array_values(array_diff($sectionIds, [(int) $unit->section_id]));
 
@@ -134,11 +137,34 @@ class UnitController extends Controller
                     $sectionIds = array_values(array_intersect($sectionIds, $allowed->all()));
                 }
 
-                $syncPayload = [];
-                foreach ($sectionIds as $index => $sid) {
-                    $syncPayload[$sid] = ['order' => $index];
+                $currentLinkedIds = collect($unit->linkedSectionIdsViaSync())
+                    ->merge(
+                        DB::table('section_unit')
+                            ->where('unit_id', $unit->id)
+                            ->pluck('subject_section_id')
+                    )
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                $toAdd = array_values(array_diff($sectionIds, $currentLinkedIds));
+                $toRemove = array_values(array_diff($currentLinkedIds, $sectionIds));
+
+                foreach ($toAdd as $sectionId) {
+                    $targetSection = SubjectSection::find($sectionId);
+                    if ($targetSection) {
+                        $this->cloneService->cloneUnitTreeToSection($unit, $targetSection);
+                    }
                 }
-                $unit->mirroredInSections()->sync($syncPayload);
+
+                foreach ($toRemove as $sectionId) {
+                    $targetSection = SubjectSection::find($sectionId);
+                    if ($targetSection) {
+                        $this->cloneService->removeMirrorForSection($unit, $targetSection);
+                    }
+                }
+
+                DB::table('section_unit')->where('unit_id', $unit->id)->delete();
             }
 
             return redirect()
@@ -202,7 +228,11 @@ class UnitController extends Controller
         $unitTitle = $unit->title;
 
         try {
-            $unit->delete();
+            if ($unit->isSyncMirror()) {
+                $this->cloneService->deleteMirrorSubtree($unit);
+            } else {
+                $this->cloneService->deleteCanonicalSubtree($unit);
+            }
 
             return redirect()
                 ->route('admin.subjects.show', $subjectId)

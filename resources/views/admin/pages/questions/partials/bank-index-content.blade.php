@@ -127,6 +127,13 @@
             $bulkDeleteUrl = route('admin.questions.destroy-multiple', request()->query());
         }
     }
+
+    $bulkIdsUrl = null;
+    if (auth()->user()->can('question-export') || auth()->user()->can('question-delete')) {
+        $bulkIdsUrl = isset($subject)
+            ? route('admin.subjects.questions.bulk-ids', $subject)
+            : route('admin.questions.bulk-ids');
+    }
 @endphp
 
 <div id="questionBankResults">
@@ -136,8 +143,27 @@
         'createRoute' => $createRoute,
         'showGlobalTools' => $showGlobalTools ?? false,
         'bulkDeleteUrl' => $bulkDeleteUrl,
+        'bulkIdsUrl' => $bulkIdsUrl,
     ])
 </div>
+
+@php
+    $exportWordUrl = isset($subject)
+        ? route('admin.subjects.questions.export-word', $subject)
+        : route('admin.questions.export-word');
+@endphp
+
+@can('question-export')
+    @include('admin.pages.questions.partials.bank-index-export-word', [
+        'exportWordUrl' => $exportWordUrl,
+        'subject' => $subject ?? null,
+        'filteredQuestionCount' => $questions->total(),
+    ])
+@endcan
+
+@if(auth()->user()->can('question-export') || (auth()->user()->can('question-delete') && !empty($bulkDeleteUrl)))
+    @include('admin.pages.questions.partials.bank-index-bulk-selection')
+@endif
 
 @can('question-delete')
     @if($bulkDeleteUrl)

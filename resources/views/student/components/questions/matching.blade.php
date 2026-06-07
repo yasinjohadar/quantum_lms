@@ -20,7 +20,7 @@
                              draggable="true"
                              ondragstart="return handleDragStart(event)"
                              style="cursor: move !important; user-select: none !important; -webkit-user-drag: element !important; touch-action: none !important; pointer-events: auto !important; -moz-user-select: none !important;">
-                            <strong>{{ $option->content }}</strong>
+                            <strong class="question-text-body">{!! format_question_markup($option->content) !!}</strong>
                         </div>
                     @endforeach
                 </div>

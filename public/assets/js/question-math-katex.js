@@ -6,6 +6,7 @@
             { left: '$$', right: '$$', display: true },
             { left: '\\[', right: '\\]', display: true },
             { left: '\\(', right: '\\)', display: false },
+            { left: '$', right: '$', display: false },
         ],
         throwOnError: false,
         strict: false,
@@ -21,7 +22,7 @@
         var targets = root
             ? [root]
             : Array.prototype.slice.call(
-                document.querySelectorAll('.question-text-body:not(.page-header-breadcrumb .question-text-body)')
+                document.querySelectorAll('.question-text-body, .question-page-heading')
             );
 
         targets.forEach(function (el) {

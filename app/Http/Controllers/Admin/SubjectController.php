@@ -278,6 +278,7 @@ class SubjectController extends Controller
                 'sections.linkedSubjects' => function ($q) {
                     $q->with('schoolClass.stage');
                 },
+                'sections.clonedFromSection.subject.schoolClass.stage',
                 'sections.units' => function ($q) {
                     $q->orderBy('order')->orderBy('title');
                 },
@@ -285,7 +286,7 @@ class SubjectController extends Controller
                     $q->orderBy('order')->with('unit.section.subject');
                 },
                 'sections.units.linkedLessons' => function ($q) {
-                    $q->orderBy('lessons.order')->with(['linkedUnits.section.subject', 'unit.section.subject']);
+                    $q->orderBy('lessons.order')->with(['linkedUnits.section.subject', 'unit.section.subject', 'clonedFromLesson.unit.section.subject', 'clonedFromLesson.section.subject']);
                 },
                 'sections.units.lessons.linkedUnits' => function ($q) {
                     $q->orderBy('order')->with('section.subject');
@@ -310,6 +311,7 @@ class SubjectController extends Controller
                 'sections.units.mirroredInSections' => function ($q) {
                     $q->with('subject.schoolClass.stage');
                 },
+                'sections.units.clonedFromUnit.section.subject.schoolClass.stage',
                 'sections.mirroredUnits' => function ($q) {
                     $q->orderByPivot('order')->orderBy('title');
                 },
@@ -317,7 +319,7 @@ class SubjectController extends Controller
                     $q->orderBy('order')->with('unit.section.subject');
                 },
                 'sections.mirroredUnits.linkedLessons' => function ($q) {
-                    $q->orderBy('lessons.order')->with(['linkedUnits.section.subject', 'unit.section.subject']);
+                    $q->orderBy('lessons.order')->with(['linkedUnits.section.subject', 'unit.section.subject', 'clonedFromLesson.unit.section.subject', 'clonedFromLesson.section.subject']);
                 },
                 'sections.mirroredUnits.lessons.linkedUnits' => function ($q) {
                     $q->orderBy('order')->with('section.subject');
@@ -346,7 +348,7 @@ class SubjectController extends Controller
                     $q->orderBy('order')->orderBy('title');
                 },
                 'linkedSections.units.lessons' => function ($q) {
-                    $q->orderBy('order')->with(['unit.section.subject', 'linkedUnits.section.subject']);
+                    $q->orderBy('order')->with(['unit.section.subject', 'linkedUnits.section.subject', 'clonedFromLesson.unit.section.subject', 'clonedFromLesson.section.subject']);
                 },
                 'linkedSections.units.lessons.attachments' => function ($q) {
                     $q->orderBy('order');
@@ -360,6 +362,7 @@ class SubjectController extends Controller
                 'linkedSections.units.mirroredInSections' => function ($q) {
                     $q->with('subject.schoolClass.stage');
                 },
+                'linkedSections.units.clonedFromUnit.section.subject.schoolClass.stage',
                 'linkedSections.mirroredUnits' => function ($q) {
                     $q->orderByPivot('order')->orderBy('title');
                 },
@@ -367,7 +370,7 @@ class SubjectController extends Controller
                     $q->orderBy('order')->with('unit.section.subject');
                 },
                 'linkedSections.mirroredUnits.linkedLessons' => function ($q) {
-                    $q->orderBy('lessons.order')->with(['linkedUnits.section.subject', 'unit.section.subject']);
+                    $q->orderBy('lessons.order')->with(['linkedUnits.section.subject', 'unit.section.subject', 'clonedFromLesson.unit.section.subject', 'clonedFromLesson.section.subject']);
                 },
                 'linkedSections.mirroredUnits.lessons.linkedUnits' => function ($q) {
                     $q->orderBy('order')->with('section.subject');

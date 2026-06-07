@@ -13,23 +13,40 @@
     </span>
 </div>
 
-@can('question-delete')
-    @if(!empty($bulkDeleteUrl) && $questions->count() > 0)
-        <div class="d-flex flex-wrap align-items-center gap-3 mb-3" id="questionBulkToolbar">
-            <div class="form-check mb-0">
-                <input type="checkbox" class="form-check-input" id="selectAllQuestionsOnPage" aria-label="تحديد الكل في الصفحة">
-                <label class="form-check-label small" for="selectAllQuestionsOnPage">تحديد الكل في الصفحة</label>
-            </div>
-            <div id="questionBulkActionsBar" class="d-none d-flex align-items-center flex-wrap gap-2">
-                <span class="fw-semibold small"><span id="questionSelectedCount">0</span> سؤال محدد</span>
+@php
+    $canExportWord = auth()->user()->can('question-export');
+    $canBulkDelete = auth()->user()->can('question-delete') && !empty($bulkDeleteUrl);
+    $showBulkSelection = ($canExportWord || $canBulkDelete) && $questions->count() > 0;
+@endphp
+
+@if($showBulkSelection)
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="questionBulkToolbar"
+        @if(!empty($bulkIdsUrl)) data-bulk-ids-url="{{ $bulkIdsUrl }}" @endif
+        data-filtered-total="{{ $questions->total() }}">
+        <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllQuestionsOnPageBtn">
+            <i class="bi bi-check2-square me-1"></i> تحديد الكل في الصفحة
+        </button>
+        @if($questions->total() > $questions->count())
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="selectAllQuestionsFilteredBtn">
+                <i class="bi bi-check2-all me-1"></i> تحديد كل النتائج المفلترة ({{ $questions->total() }})
+            </button>
+        @endif
+        <div id="questionBulkActionsBar" class="d-none d-flex align-items-center flex-wrap gap-2 ms-auto">
+            <span class="fw-semibold small"><span id="questionSelectedCount">0</span> سؤال محدد</span>
+            @can('question-export')
+                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#exportQuestionsWordModal" data-export-scope="selected">
+                    <i class="bi bi-file-earmark-word me-1"></i> تصدير المحدد
+                </button>
+            @endcan
+            @if($canBulkDelete)
                 <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#confirmBulkDeleteQuestionsModal">
                     <i class="bi bi-trash me-1"></i> حذف المحدد
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="clearQuestionSelectionBtn">إلغاء التحديد</button>
-            </div>
+            @endif
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="clearQuestionSelectionBtn">إلغاء التحديد</button>
         </div>
-    @endif
-@endcan
+    </div>
+@endif
 
 <div class="row" id="questionBankCards">
     @forelse($questions as $question)
@@ -38,23 +55,15 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <div class="d-flex align-items-start gap-2">
-                            @can('question-delete')
-                                @if(!empty($bulkDeleteUrl))
-                                    @if($question->quizzes_count > 0)
-                                        <input type="checkbox"
-                                            class="form-check-input question-bulk-checkbox mt-1 flex-shrink-0"
-                                            value="{{ $question->id }}"
-                                            disabled
-                                            title="مستخدم في اختبار"
-                                            aria-label="لا يمكن تحديد سؤال مستخدم في اختبار">
-                                    @else
-                                        <input type="checkbox"
-                                            class="form-check-input question-bulk-checkbox mt-1 flex-shrink-0"
-                                            value="{{ $question->id }}"
-                                            aria-label="تحديد السؤال للحذف">
-                                    @endif
-                                @endif
-                            @endcan
+                            @if($showBulkSelection)
+                                @php
+                                    $disableSelection = $canBulkDelete && ! $canExportWord && $question->quizzes_count > 0;
+                                @endphp
+                                <input type="checkbox"
+                                    class="form-check-input question-bulk-checkbox mt-1 flex-shrink-0"
+                                    value="{{ $question->id }}"
+                                    @if($disableSelection) disabled title="مستخدم في اختبار" aria-label="لا يمكن تحديد سؤال مستخدم في اختبار" @else aria-label="تحديد السؤال" @endif>
+                            @endif
                             <span class="badge bg-{{ $question->type_color }}-transparent text-{{ $question->type_color }}">
                                 {{ $question->type_label }}
                             </span>
@@ -105,7 +114,7 @@
                         @endcan
                     </h6>
 
-                    @if($question->content && trim(strip_tags($question->content)) !== trim(strip_tags($question->title)))
+                    @if(question_content_differs_from_title($question->title, $question->content))
                         <p class="text-muted small mb-2 question-text-body question-card-preview">{!! format_question_markup($question->content) !!}</p>
                     @endif
 
