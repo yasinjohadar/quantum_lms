@@ -50,7 +50,7 @@
             </button>
         </td>
 
-        <td>
+        <td class="users-classes-col">
             @if ($user->classEnrollments->isNotEmpty())
                 <div class="d-flex flex-wrap gap-2 align-items-center">
                     @foreach ($user->classEnrollments as $enrollment)

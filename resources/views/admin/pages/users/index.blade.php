@@ -44,6 +44,9 @@
         #quickAddStudentModal .quick-add-subjects-select {
             max-height: 11rem;
         }
+        .users-table.hide-classes-col .users-classes-col {
+            display: none;
+        }
     </style>
 @endpush
 
@@ -173,12 +176,19 @@
                                             id="detachAllByScopeBtn">
                                         <i class="fas fa-user-slash me-1"></i> فصل الكل حسب الصف/المادة
                                     </button>
+                                    <button type="button"
+                                            class="btn btn-outline-secondary btn-sm ms-2"
+                                            id="toggleUsersClassesColBtn"
+                                            title="إظهار أو إخفاء عمود الصفوف">
+                                        <i class="bi bi-building me-1"></i>
+                                        <span id="toggleUsersClassesColLabel">إظهار الصفوف</span>
+                                    </button>
                                 </div>
 
                             <p class="text-muted">
                             <div class="">
                                 <div class="table-responsive">
-                                    <table class="table table-striped table-hover align-middle table-nowrap mb-0">
+                                    <table class="table table-striped table-hover align-middle table-nowrap mb-0 users-table hide-classes-col" id="usersTable">
                                         <thead class="table-light">
                                             <tr>
                                                 <th scope="col" style="width: 40px;">
@@ -188,7 +198,7 @@
                                                 <th scope="col" style="min-width: 150px;">اسم المستخدم</th>
                                                 <th scope="col" style="min-width: 120px;">الهاتف</th>
                                                 <th scope="col" style="min-width: 140px;">حالة الحساب</th>
-                                                <th scope="col" style="min-width: 180px;">الصفوف</th>
+                                                <th scope="col" class="users-classes-col" style="min-width: 180px;">الصفوف</th>
                                                 <th scope="col" style="min-width: 200px;">العمليات</th>
                                             </tr>
                                         </thead>
@@ -1719,6 +1729,37 @@
         }
 
         syncCustomPerPageUi();
+
+        // إظهار/إخفاء عمود الصفوف
+        const usersTableEl = document.getElementById('usersTable');
+        const toggleUsersClassesColBtn = document.getElementById('toggleUsersClassesColBtn');
+        const toggleUsersClassesColLabel = document.getElementById('toggleUsersClassesColLabel');
+        const usersClassesColStorageKey = 'usersListShowClassesColumn';
+
+        function syncUsersClassesColUi(show) {
+            if (!usersTableEl) {
+                return;
+            }
+            usersTableEl.classList.toggle('hide-classes-col', !show);
+            if (toggleUsersClassesColLabel) {
+                toggleUsersClassesColLabel.textContent = show ? 'إخفاء الصفوف' : 'إظهار الصفوف';
+            }
+            if (toggleUsersClassesColBtn) {
+                toggleUsersClassesColBtn.classList.toggle('btn-outline-secondary', !show);
+                toggleUsersClassesColBtn.classList.toggle('btn-secondary', show);
+            }
+        }
+
+        const savedShowClassesCol = localStorage.getItem(usersClassesColStorageKey) === '1';
+        syncUsersClassesColUi(savedShowClassesCol);
+
+        if (toggleUsersClassesColBtn) {
+            toggleUsersClassesColBtn.addEventListener('click', function () {
+                const willShow = usersTableEl && usersTableEl.classList.contains('hide-classes-col');
+                syncUsersClassesColUi(willShow);
+                localStorage.setItem(usersClassesColStorageKey, willShow ? '1' : '0');
+            });
+        }
     });
 </script>
 
