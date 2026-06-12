@@ -235,6 +235,15 @@
 @endpush
 
 @section('content')
+    @php
+        $lessonMandatoryReview = \App\Models\SystemSetting::lessonMandatoryReviewEnabled();
+        $lessonSaveButtonLabel = (!auth()->user()->canReviewContent() && $lessonMandatoryReview)
+            ? 'حفظ وإرسال للمراجعة'
+            : 'حفظ الدرس';
+        $lessonUpdateButtonLabel = (!auth()->user()->canReviewContent() && $lessonMandatoryReview)
+            ? 'حفظ وإرسال للمراجعة'
+            : 'حفظ التعديلات';
+    @endphp
     <div class="main-content app-content">
         <div class="container-fluid">
 
@@ -905,18 +914,10 @@
 
                             <div class="row">
                                 <div class="col-md-4">
-                                    @if(auth()->user()->canReviewContent())
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" name="is_active" id="lessonActive{{ $section->id }}" checked>
-                                            <label class="form-check-label" for="lessonActive{{ $section->id }}">الدرس نشط</label>
-                                        </div>
-                                    @else
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" name="is_active" id="lessonActive{{ $section->id }}">
-                                            <label class="form-check-label" for="lessonActive{{ $section->id }}">إرسال للمراجعة</label>
-                                        </div>
-                                        <small class="text-muted d-block mt-1">سيتم إرسال الدرس للمشرف للمراجعة والموافقة</small>
-                                    @endif
+                                    @include('admin.pages.subjects.partials.lesson-review-teacher-fields', [
+                                        'mandatoryReview' => $lessonMandatoryReview,
+                                        'fieldId' => 'lessonActive'.$section->id,
+                                    ])
                                 </div>
                                 <div class="col-md-4">
                                     <div class="form-check form-switch">
@@ -986,7 +987,7 @@
                         <div class="modal-footer border-0">
                             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
                             <button type="submit" class="btn btn-success">
-                                <i class="bi bi-check-lg me-1"></i> حفظ الدرس
+                                <i class="bi bi-check-lg me-1"></i> {{ $lessonSaveButtonLabel }}
                             </button>
                         </div>
                     </form>
@@ -1377,20 +1378,10 @@
 
                                 <div class="row">
                                     <div class="col-md-4">
-                                        @if(auth()->user()->canReviewContent())
-                                            {{-- المشرف والمدير يمكنهم التفعيل مباشرة --}}
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" name="is_active" id="lessonActive{{ $unit->id }}" checked>
-                                                <label class="form-check-label" for="lessonActive{{ $unit->id }}">الدرس نشط</label>
-                                            </div>
-                                        @else
-                                            {{-- المعلم: إرسال للمراجعة --}}
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" name="is_active" id="lessonActive{{ $unit->id }}">
-                                                <label class="form-check-label" for="lessonActive{{ $unit->id }}">إرسال للمراجعة</label>
-                                            </div>
-                                            <small class="text-muted d-block mt-1">سيتم إرسال الدرس للمشرف للمراجعة والموافقة</small>
-                                        @endif
+                                        @include('admin.pages.subjects.partials.lesson-review-teacher-fields', [
+                                            'mandatoryReview' => $lessonMandatoryReview,
+                                            'fieldId' => 'lessonActive'.$unit->id,
+                                        ])
                                     </div>
                                     <div class="col-md-4">
                                         <div class="form-check form-switch">
@@ -1460,7 +1451,7 @@
                             <div class="modal-footer border-0">
                                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
                                 <button type="submit" class="btn btn-success">
-                                    <i class="bi bi-check-lg me-1"></i> حفظ الدرس
+                                    <i class="bi bi-check-lg me-1"></i> {{ $lessonSaveButtonLabel }}
                                 </button>
                             </div>
                         </form>
@@ -1557,50 +1548,12 @@
 
                                     <div class="row">
                                         <div class="col-md-4">
-                                            @if(auth()->user()->canReviewContent())
-                                                {{-- المشرف والمدير يمكنهم التفعيل مباشرة --}}
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" name="is_active" 
-                                                           id="lessonActive{{ $lesson->id }}" 
-                                                           {{ $lesson->is_active ? 'checked' : '' }}>
-                                                    <label class="form-check-label" for="lessonActive{{ $lesson->id }}">الدرس نشط</label>
-                                                </div>
-                                            @else
-                                                {{-- المعلم: يعرض حالة المراجعة --}}
-                                                <div class="mb-2">
-                                                    <label class="form-label small">حالة المراجعة:</label>
-                                                    @if($lesson->review_status === 'pending_review')
-                                                        <span class="badge bg-warning text-dark">
-                                                            <i class="bi bi-clock-history me-1"></i> قيد المراجعة
-                                                        </span>
-                                                    @elseif($lesson->review_status === 'approved')
-                                                        <span class="badge bg-success">
-                                                            <i class="bi bi-check-circle me-1"></i> تمت الموافقة
-                                                        </span>
-                                                    @elseif($lesson->review_status === 'rejected')
-                                                        <span class="badge bg-danger">
-                                                            <i class="bi bi-x-circle me-1"></i> مرفوض
-                                                        </span>
-                                                    @else
-                                                        <span class="badge bg-secondary">مسودة</span>
-                                                    @endif
-                                                </div>
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" name="is_active" 
-                                                           id="lessonActive{{ $lesson->id }}" 
-                                                           {{ $lesson->is_active ? 'checked' : '' }}
-                                                           {{ $lesson->review_status === 'pending_review' ? 'disabled' : '' }}>
-                                                    <label class="form-check-label" for="lessonActive{{ $lesson->id }}">
-                                                        {{ $lesson->review_status === 'pending_review' ? 'قيد المراجعة (غير قابل للتعديل)' : 'إرسال للمراجعة' }}
-                                                    </label>
-                                                </div>
-                                                @if($lesson->review_notes)
-                                                    <div class="alert alert-info mt-2 small">
-                                                        <strong>ملاحظات المشرف:</strong><br>
-                                                        {{ $lesson->review_notes }}
-                                                    </div>
-                                                @endif
-                                            @endif
+                                            @include('admin.pages.subjects.partials.lesson-review-teacher-fields', [
+                                                'mandatoryReview' => $lessonMandatoryReview,
+                                                'fieldId' => 'lessonActive'.$lesson->id,
+                                                'isEdit' => true,
+                                                'lesson' => $lesson,
+                                            ])
                                         </div>
                                         <div class="col-md-4">
                                             <div class="form-check form-switch">
@@ -1626,7 +1579,7 @@
                                 <div class="modal-footer border-0">
                                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
                                     <button type="submit" class="btn btn-primary">
-                                        <i class="bi bi-check-lg me-1"></i> حفظ التعديلات
+                                        <i class="bi bi-check-lg me-1"></i> {{ $lessonUpdateButtonLabel }}
                                     </button>
                                 </div>
                             </form>
@@ -1907,10 +1860,12 @@
                                 </div>
                                 <div class="row">
                                     <div class="col-md-4">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" name="is_active" id="lessonActiveSection{{ $lesson->id }}" {{ $lesson->is_active ? 'checked' : '' }}>
-                                            <label class="form-check-label" for="lessonActiveSection{{ $lesson->id }}">الدرس نشط</label>
-                                        </div>
+                                        @include('admin.pages.subjects.partials.lesson-review-teacher-fields', [
+                                            'mandatoryReview' => $lessonMandatoryReview,
+                                            'fieldId' => 'lessonActiveSection'.$lesson->id,
+                                            'isEdit' => true,
+                                            'lesson' => $lesson,
+                                        ])
                                     </div>
                                     <div class="col-md-4">
                                         <div class="form-check form-switch">
@@ -1935,7 +1890,7 @@
                             <div class="modal-footer border-0">
                                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
                                 <button type="submit" class="btn btn-primary">
-                                    <i class="bi bi-check-lg me-1"></i> حفظ التعديلات
+                                    <i class="bi bi-check-lg me-1"></i> {{ $lessonUpdateButtonLabel }}
                                 </button>
                             </div>
                         </form>
@@ -3837,7 +3792,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             closeFormModal(form);
-            showAjaxLessonAlert('success', payload.message || 'تم حفظ الدرس بنجاح.');
+            showAjaxLessonAlert('success', payload.message || (payload.submitted_for_review ? 'تم حفظ الدرس وإرساله للمراجعة.' : 'تم حفظ الدرس بنجاح.'));
 
             try {
                 var updatedUnitId = payload.unit_id || form.dataset.unitId;

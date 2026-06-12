@@ -36,20 +36,23 @@ class TeacherProgressController extends Controller
     /**
      * تفاصيل الدروس المعتمدة وصفحات الكتاب لكل مادة (لمعلم محدد — للإدارة).
      */
-    public function approvedLessonsDetail(User $teacher)
+    public function approvedLessonsDetail(Request $request, User $teacher)
     {
         if (! $teacher->matchesAdminTeacherListingCriteria()) {
             return redirect()->back()->with('error', 'المستخدم المحدد ليس معلم');
         }
 
-        $bySubject = TeacherProgressService::getTeacherApprovedLessonsDetailBySubject($teacher);
-        $grandTotalPages = (int) array_sum(array_column($bySubject, 'total_pages'));
-        $grandLessonsCount = (int) array_sum(array_column($bySubject, 'lessons_count'));
+        $subjectId = $request->filled('subject_id') ? (int) $request->input('subject_id') : null;
+        $grandTotals = TeacherProgressService::getTeacherApprovedLessonsGrandTotals($teacher);
+        $subjectSummaries = TeacherProgressService::getTeacherApprovedLessonsSubjectSummaries($teacher);
+        $lessons = TeacherProgressService::paginateTeacherApprovedLessons($teacher, $subjectId, 50);
 
         return view('admin.pages.teachers.my-approved-lessons', [
-            'bySubject' => $bySubject,
-            'grandTotalPages' => $grandTotalPages,
-            'grandLessonsCount' => $grandLessonsCount,
+            'subjectSummaries' => $subjectSummaries,
+            'lessons' => $lessons,
+            'selectedSubjectId' => $subjectId,
+            'grandTotalPages' => $grandTotals['total_pages'],
+            'grandLessonsCount' => $grandTotals['lessons_count'],
             'viewedTeacher' => $teacher,
         ]);
     }

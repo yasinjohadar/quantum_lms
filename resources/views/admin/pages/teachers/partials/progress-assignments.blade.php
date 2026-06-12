@@ -5,26 +5,26 @@
     $subjectCols = 4 + ($showSubjectActions ? 1 : 0);
 @endphp
 {{-- الصفوف والمواد المخصصة للمعلم (عرض + إضافة/فصل عند توفر الصلاحيات) --}}
-<div class="card shadow-sm border-0 mb-4" id="teacher-progress-assignments">
-    <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
-        <h6 class="mb-0 fw-bold">
-            <i class="bi bi-person-badge me-2"></i>
+<div class="tp-card mb-4" id="teacher-progress-assignments">
+    <div class="tp-card__header">
+        <div>
+            <span class="tp-card__header-icon"><i class="bi bi-person-badge"></i></span>
             الصفوف والمواد المخصصة لهذا المعلم
-        </h6>
+        </div>
         @can('teacher-assignment-show')
             <a href="{{ route('admin.teachers.assignments', $teacher) }}" class="btn btn-sm btn-outline-secondary">
                 <i class="fas fa-user-tie me-1"></i> فتح صفحة التخصيص الكاملة
             </a>
         @endcan
     </div>
-    <div class="card-body">
+    <div class="tp-card__body">
         <div class="row g-4">
             {{-- الصفوف --}}
             <div class="col-lg-6">
                 <h6 class="text-muted small fw-bold mb-2"><i class="bi bi-building me-1"></i> الصفوف</h6>
-                <div class="table-responsive">
-                    <table class="table table-sm table-bordered align-middle mb-0">
-                        <thead class="table-light">
+                <div class="tp-table-wrap">
+                    <table class="table tp-table align-middle mb-0">
+                        <thead>
                             <tr>
                                 <th>الصف</th>
                                 <th>المرحلة</th>
@@ -86,9 +86,9 @@
             {{-- المواد --}}
             <div class="col-lg-6">
                 <h6 class="text-muted small fw-bold mb-2"><i class="bi bi-book me-1"></i> المواد</h6>
-                <div class="table-responsive">
-                    <table class="table table-sm table-bordered align-middle mb-0">
-                        <thead class="table-light">
+                <div class="tp-table-wrap">
+                    <table class="table tp-table align-middle mb-0">
+                        <thead>
                             <tr>
                                 <th>المادة</th>
                                 <th>الصف</th>

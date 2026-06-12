@@ -4,111 +4,182 @@
     تفاصيل الصف الدراسي
 @stop
 
-@section('css')
-@stop
+@push('styles')
+    @include('admin.pages.classes.partials.show-styles')
+@endpush
 
 @section('content')
-    <div class="main-content app-content">
+    @php
+        $subjects = $class->subjects->sortBy('order')->values();
+        $activeSubjectsCount = $subjects->where('is_active', true)->count();
+        $classImage = $class->image ? media_public_url($class->image) : null;
+    @endphp
+
+    <div class="main-content app-content class-show-page">
         <div class="container-fluid">
+
             @if (session('success'))
                 <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
-                    <i class="bi bi-check-circle-fill me-2"></i>
-                    {{ session('success') }}
+                    <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
                 </div>
             @endif
 
             @if (session('error'))
                 <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                    {{ session('error') }}
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ session('error') }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
                 </div>
             @endif
 
-            {{-- شريط علوي: صورة صغيرة + اسم الصف + أزرار (مثل صفحة تفاصيل المادة) --}}
-            <div class="d-flex align-items-center justify-content-between gap-3 py-3 mb-3 border-bottom">
-                <div class="d-flex align-items-center gap-3">
-                    <img src="{{ $class->image ? media_public_url($class->image) : asset('assets/images/media/media-22.jpg') }}"
-                         alt="{{ $class->name }}"
-                         class="rounded flex-shrink-0"
-                         style="width: 56px; height: 56px; object-fit: cover;">
-                    <div>
-                        <h5 class="page-title mb-0">تفاصيل الصف: {{ $class->name }}</h5>
-                        <div class="d-flex align-items-center gap-2 flex-wrap mt-1">
-                            @if ($class->stage)
-                                <span class="text-muted small">{{ $class->stage->name }}</span>
-                            @endif
-                            @if ($class->is_active)
-                                <span class="badge bg-success">صف نشط</span>
-                            @else
-                                <span class="badge bg-danger">غير نشط</span>
-                            @endif
-                            <span class="text-muted small">ترتيب العرض: {{ $class->order }}</span>
+            <div class="class-show-hero my-4">
+                @if ($classImage)
+                    <img src="{{ $classImage }}" alt="{{ $class->name }}" class="class-show-hero__cover">
+                @else
+                    <div class="class-show-hero__cover d-flex align-items-center justify-content-center"
+                         style="background: var(--cs-soft); border-style: dashed;">
+                        <i class="bi bi-mortarboard-fill fs-2" style="color: var(--cs-accent); opacity: 0.6;"></i>
+                    </div>
+                @endif
+
+                <div class="class-show-hero__content">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-2 small">
+                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                            <li class="breadcrumb-item"><a href="{{ route('admin.classes.index') }}">الصفوف الدراسية</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">{{ $class->name }}</li>
+                        </ol>
+                    </nav>
+
+                    <h4 class="class-show-hero__title">تفاصيل الصف: {{ $class->name }}</h4>
+
+                    <div class="class-show-hero__meta">
+                        @if ($class->stage)
+                            <span class="class-show-hero__meta-item">
+                                <i class="bi bi-layers"></i>{{ $class->stage->name }}
+                            </span>
+                        @endif
+                        @if ($class->is_active)
+                            <span class="class-show-badge class-show-badge--active">
+                                <i class="bi bi-check-circle-fill"></i> صف نشط
+                            </span>
+                        @else
+                            <span class="class-show-badge class-show-badge--inactive">
+                                <i class="bi bi-x-circle-fill"></i> غير نشط
+                            </span>
+                        @endif
+                        @if ($class->is_free)
+                            <span class="class-show-badge class-show-badge--free">
+                                <i class="bi bi-gift"></i> مجاني
+                            </span>
+                        @elseif ($class->show_price && $class->price > 0)
+                            <span class="class-show-badge class-show-badge--free">
+                                <i class="bi bi-tag"></i> {{ number_format($class->price, 2) }}
+                            </span>
+                        @endif
+                    </div>
+
+                    <div class="class-show-stats">
+                        <div class="class-show-stat">
+                            <span class="class-show-stat__value">{{ $subjects->count() }}</span>
+                            <span class="class-show-stat__label">مادة</span>
+                        </div>
+                        <div class="class-show-stat">
+                            <span class="class-show-stat__value">{{ $activeSubjectsCount }}</span>
+                            <span class="class-show-stat__label">نشطة</span>
+                        </div>
+                        <div class="class-show-stat">
+                            <span class="class-show-stat__value">{{ $class->order }}</span>
+                            <span class="class-show-stat__label">ترتيب العرض</span>
                         </div>
                     </div>
                 </div>
-                <div class="d-flex gap-2 flex-shrink-0">
-                    <a href="{{ route('admin.classes.edit', $class->id) }}" class="btn btn-warning btn-sm text-white">
-                        <i class="fas fa-edit me-1"></i> تعديل
-                    </a>
-                    <a href="{{ route('admin.classes.index') }}" class="btn btn-secondary btn-sm">
-                        <i class="fas fa-arrow-right me-1"></i> رجوع للقائمة
+
+                <div class="class-show-hero__actions">
+                    @can('class-edit')
+                        <a href="{{ route('admin.classes.edit', $class->id) }}" class="btn btn-warning btn-sm text-white">
+                            <i class="bi bi-pencil me-1"></i> تعديل
+                        </a>
+                    @endcan
+                    @can('class-enrolled-students')
+                        <a href="{{ route('admin.classes.enrolled-students', $class->id) }}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-people me-1"></i> الطلاب المنضمون
+                        </a>
+                    @endcan
+                    <a href="{{ route('admin.classes.index') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-right me-1"></i> رجوع للقائمة
                     </a>
                 </div>
             </div>
 
-            {{-- قسم المواد بعرض كامل --}}
-            <div class="row">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0">المواد المرتبطة بهذا الصف</h6>
-                            <a href="{{ route('admin.subjects.create') }}?class_id={{ $class->id }}"
-                               class="btn btn-primary btn-sm">
-                                <i class="fas fa-plus me-1"></i> إضافة مادة جديدة
-                            </a>
-                        </div>
-                        <div class="card-body">
-                            @if ($class->subjects && $class->subjects->count())
-                                <div class="row g-3">
-                                    @foreach ($class->subjects as $subject)
-                                        <div class="col-6 col-md-4 col-lg-3">
-                                            <div class="card h-100 border">
-                                                <div class="card-body text-center">
-                                                    <div class="ratio ratio-4x3 mb-3 rounded overflow-hidden bg-light mx-auto" style="max-width: 100%;">
-                                                        <img src="{{ $subject->image ? media_public_url($subject->image) : asset('assets/images/media/media-22.jpg') }}"
-                                                             alt="{{ $subject->name }}"
-                                                             class="rounded"
-                                                             style="object-fit: contain; width: 100%; height: 100%;">
-                                                    </div>
-                                                    <h6 class="fw-semibold mb-1">{{ $subject->name }}</h6>
-                                                    <p class="mb-1 text-muted small">
-                                                        ترتيب: {{ $subject->order ?? 0 }}
-                                                    </p>
-                                                    @if ($subject->is_active)
-                                                        <span class="badge bg-success">نشطة</span>
-                                                    @else
-                                                        <span class="badge bg-danger">غير نشطة</span>
-                                                    @endif
-                                                </div>
-                                                <div class="card-footer text-center">
-                                                    <a href="{{ route('admin.subjects.show', $subject->id) }}?return_to_class_id={{ $class->id }}"
-                                                       class="btn btn-sm btn-outline-primary">
-                                                        عرض المادة
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @else
-                                <p class="text-center text-muted mb-0">
-                                    لا توجد مواد مرتبطة بهذا الصف حالياً.
-                                </p>
-                            @endif
+            <div class="class-show-section">
+                <div class="class-show-section__header">
+                    <div class="class-show-section__title-wrap">
+                        <span class="class-show-section__icon"><i class="bi bi-journal-bookmark"></i></span>
+                        <div>
+                            <h6 class="class-show-section__title">المواد المرتبطة بهذا الصف</h6>
+                            <span class="class-show-section__count">{{ $subjects->count() }} مادة مرتبطة</span>
                         </div>
                     </div>
+                    @can('subject-create')
+                        <a href="{{ route('admin.subjects.create') }}?class_id={{ $class->id }}"
+                           class="btn btn-primary btn-sm">
+                            <i class="bi bi-plus-lg me-1"></i> إضافة مادة جديدة
+                        </a>
+                    @endcan
+                </div>
+
+                <div class="class-show-section__body">
+                    @if ($subjects->count())
+                        <div class="class-subject-grid">
+                            @foreach ($subjects as $subject)
+                                @php $subjectImage = $subject->image ? media_public_url($subject->image) : null; @endphp
+                                <article class="class-subject-card">
+                                    <div class="class-subject-card__media">
+                                        @if ($subjectImage)
+                                            <img src="{{ $subjectImage }}" alt="{{ $subject->name }}" loading="lazy">
+                                        @else
+                                            <div class="class-subject-card__placeholder">
+                                                <i class="bi bi-book"></i>
+                                                <span>لا توجد صورة</span>
+                                            </div>
+                                        @endif
+                                        <span class="class-subject-card__order">ترتيب {{ $subject->order ?? 0 }}</span>
+                                    </div>
+
+                                    <div class="class-subject-card__body">
+                                        <h6 class="class-subject-card__name">{{ $subject->name }}</h6>
+                                    </div>
+
+                                    <div class="class-subject-card__footer">
+                                        @if ($subject->is_active)
+                                            <span class="class-subject-card__status class-subject-card__status--active">نشطة</span>
+                                        @else
+                                            <span class="class-subject-card__status class-subject-card__status--inactive">غير نشطة</span>
+                                        @endif
+                                        <a href="{{ route('admin.subjects.show', $subject->id) }}?return_to_class_id={{ $class->id }}"
+                                           class="class-subject-card__link">
+                                            عرض المادة <i class="bi bi-arrow-left-short"></i>
+                                        </a>
+                                    </div>
+                                </article>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="class-show-empty">
+                            <div class="class-show-empty__icon">
+                                <i class="bi bi-journal-x"></i>
+                            </div>
+                            <h6 class="class-show-empty__title">لا توجد مواد مرتبطة بعد</h6>
+                            <p class="class-show-empty__text">ابدأ بإضافة أول مادة دراسية لهذا الصف لعرضها هنا.</p>
+                            @can('subject-create')
+                                <a href="{{ route('admin.subjects.create') }}?class_id={{ $class->id }}"
+                                   class="btn btn-primary btn-sm">
+                                    <i class="bi bi-plus-lg me-1"></i> إضافة مادة جديدة
+                                </a>
+                            @endcan
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>

@@ -5,161 +5,188 @@
 @stop
 
 @push('styles')
-<style>
-    .subject-form-block {
-        border-bottom: 1px solid var(--bs-border-color-translucent, rgba(0,0,0,.1));
-        padding-bottom: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-</style>
+    @include('admin.pages.subjects.partials.subject-form-styles')
 @endpush
 
 @section('content')
-    @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }}
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-        </div>
-    @endif
-
-    @if (session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            {{ session('error') }}
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-        </div>
-    @endif
-
-    @if ($errors->any())
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <ul class="mb-0">
-                @foreach ($errors->all() as $error)
-                    <li class="small">{{ $error }}</li>
-                @endforeach
-            </ul>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-        </div>
-    @endif
-
-    <div class="main-content app-content">
+    <div class="main-content app-content subject-form-page">
         <div class="container-fluid">
-            <div class="page-header d-flex justify-content-between align-items-center my-4">
-                <h5 class="page-title mb-0">إضافة مادة دراسية جديدة</h5>
-                <a href="{{ route('admin.subjects.index') }}" class="btn btn-secondary btn-sm">
-                    <i class="fas fa-arrow-right me-1"></i> رجوع للقائمة
-                </a>
+
+            <div class="subject-form-hero my-4">
+                <div class="subject-form-hero__icon">
+                    <i class="bi bi-journal-plus"></i>
+                </div>
+                <div class="subject-form-hero__content">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-2 small">
+                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                            <li class="breadcrumb-item"><a href="{{ route('admin.subjects.index') }}">المواد الدراسية</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">إضافة مادة</li>
+                        </ol>
+                    </nav>
+                    <h4 class="subject-form-hero__title">إضافة مادة دراسية جديدة</h4>
+                    <p class="subject-form-hero__subtitle">أدخل بيانات المادة، التسعير، وخيارات الظهور للطلاب</p>
+                </div>
+                <div class="subject-form-hero__actions">
+                    @if($selectedClassId ?? request('class_id'))
+                        <a href="{{ route('admin.classes.show', $selectedClassId ?? request('class_id')) }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-arrow-right me-1"></i> رجوع للصف
+                        </a>
+                    @else
+                        <a href="{{ route('admin.subjects.index') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-arrow-right me-1"></i> رجوع للقائمة
+                        </a>
+                    @endif
+                </div>
             </div>
 
-            <div class="card">
-                <div class="card-body">
-                    <form method="POST" action="{{ route('admin.subjects.store') }}" enctype="multipart/form-data">
-                        @csrf
-                        @if($selectedClassId || request('class_id'))
-                            <input type="hidden" name="return_to_class_id" value="{{ $selectedClassId ?? request('class_id') }}">
-                        @endif
+            @if (session('success'))
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
 
-                        <div class="subject-form-block">
-                            <div class="row g-3 align-items-start">
-                                <div class="col-12">
-                                    <h6 class="text-primary mb-1">البيانات الأساسية</h6>
+            @if (session('error'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
+
+            @if ($errors->any())
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <ul class="mb-0 small">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('admin.subjects.store') }}" enctype="multipart/form-data">
+                @csrf
+                @if($selectedClassId || request('class_id'))
+                    <input type="hidden" name="return_to_class_id" value="{{ $selectedClassId ?? request('class_id') }}">
+                @endif
+
+                {{-- البيانات الأساسية --}}
+                <div class="subject-form-card">
+                    <div class="subject-form-card__header">
+                        <span class="subject-form-card__header-icon"><i class="bi bi-info-circle"></i></span>
+                        <div class="subject-form-card__header-text">
+                            <div class="subject-form-card__title">البيانات الأساسية</div>
+                            <p class="subject-form-card__desc">الاسم، الصف الدراسي، الرابط الدائم، وترتيب الظهور</p>
+                        </div>
+                    </div>
+                    <div class="subject-form-card__body">
+                        <div class="row g-4">
+                            <div class="col-lg-6">
+                                <div class="subject-form-field">
+                                    <label class="form-label">اسم المادة <span class="text-danger">*</span></label>
+                                    <input type="text" name="name"
+                                           class="form-control @error('name') is-invalid @enderror"
+                                           placeholder="مثال: الرياضيات"
+                                           value="{{ old('name') }}" required>
+                                    @error('name')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <div class="subject-form-hint">
+                                        <i class="bi bi-lightbulb"></i>
+                                        <span>الاسم الظاهر في قوائم المواد وبطاقة المادة للطلاب.</span>
+                                    </div>
                                 </div>
+                            </div>
 
-                                <div class="col-lg-4">
-                                    <div class="form-floating">
-                                        <input type="text" name="name"
-                                               class="form-control @error('name') is-invalid @enderror"
-                                               placeholder="اسم المادة"
-                                               value="{{ old('name') }}" required>
-                                        <label>اسم المادة <span class="text-danger">*</span></label>
-                                        @error('name')
+                            <div class="col-lg-6">
+                                <div class="subject-form-field">
+                                    <label class="form-label">الصف الدراسي <span class="text-danger">*</span></label>
+                                    @if($selectedClassId && $selectedClass)
+                                        <input type="text"
+                                               class="form-control"
+                                               value="{{ $selectedClass->name }} — {{ $selectedClass->stage?->name }}"
+                                               readonly>
+                                        <input type="hidden" name="class_id" value="{{ $selectedClassId }}">
+                                        <div class="subject-form-hint">
+                                            <i class="bi bi-lock"></i>
+                                            <span>الصف والمرحلة محددة مسبقاً ولا يمكن تغييرها.</span>
+                                        </div>
+                                    @else
+                                        <select name="class_id"
+                                                class="form-select @error('class_id') is-invalid @enderror"
+                                                aria-label="الصف الدراسي" required>
+                                            <option value="">اختر الصف</option>
+                                            @foreach($classes as $class)
+                                                <option value="{{ $class->id }}"
+                                                    {{ old('class_id', request('class_id')) == $class->id ? 'selected' : '' }}>
+                                                    {{ $class->name }} — {{ $class->stage?->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('class_id')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
-                                    </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        الاسم الذي يراه الطلاب والزوار في قوائم المواد وبطاقة المادة؛ يُفضّل أن يكون واضحاً ومختصراً ومطابقاً لما تقدّمه المادة فعلياً.
-                                    </small>
-                                </div>
-
-                                <div class="col-lg-4">
-                                    @if($selectedClassId && $selectedClass)
-                                        <div class="form-floating">
-                                            <input type="text"
-                                                   class="form-control bg-light"
-                                                   value="{{ $selectedClass->name }} - {{ $selectedClass->stage?->name }}"
-                                                   readonly
-                                                   style="cursor: not-allowed;">
-                                            <label>الصف الدراسي <span class="text-danger">*</span></label>
+                                        <div class="subject-form-hint">
+                                            <i class="bi bi-mortarboard"></i>
+                                            <span>تربط المادة بهذا الصف وتحدد ظهورها ضمن برنامجه.</span>
                                         </div>
-                                        <input type="hidden" name="class_id" value="{{ $selectedClassId }}">
-                                        <small class="text-muted d-block mt-1">
-                                            <i class="fas fa-info-circle me-1"></i>الصف والمرحلة محددة مسبقاً ولا يمكن تغييرها.
-                                        </small>
-                                    @else
-                                        <div class="form-floating">
-                                            <select name="class_id"
-                                                    class="form-select @error('class_id') is-invalid @enderror"
-                                                    aria-label="الصف الدراسي" required>
-                                                <option value="">اختر الصف</option>
-                                                @foreach($classes as $class)
-                                                    <option value="{{ $class->id }}"
-                                                        {{ old('class_id', request('class_id')) == $class->id ? 'selected' : '' }}>
-                                                        {{ $class->name }} - {{ $class->stage?->name }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                            <label>الصف الدراسي <span class="text-danger">*</span></label>
-                                            @error('class_id')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                        <small class="form-text text-muted d-block mt-1">
-                                            تربط المادة بهذا الصف الدراسي؛ يحدد ذلك ظهورها ضمن برنامج الصف، وارتباطها بتسعير الصف أو مزامنة الانضمامات عند قبول طلبات الصف.
-                                        </small>
                                     @endif
                                 </div>
+                            </div>
 
-                                <div class="col-lg-4">
-                                    <div class="form-floating">
-                                        <input type="text" name="slug"
-                                               class="form-control @error('slug') is-invalid @enderror"
-                                               placeholder="الرابط الدائم"
-                                               value="{{ old('slug') }}">
-                                        <label>الرابط الدائم (اختياري)</label>
-                                        @error('slug')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
+                            <div class="col-lg-6">
+                                <div class="subject-form-field">
+                                    <label class="form-label">الرابط الدائم <span class="text-muted fw-normal">(اختياري)</span></label>
+                                    <input type="text" name="slug"
+                                           class="form-control @error('slug') is-invalid @enderror"
+                                           placeholder="subject-slug"
+                                           value="{{ old('slug') }}">
+                                    @error('slug')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <div class="subject-form-hint">
+                                        <i class="bi bi-link-45deg"></i>
+                                        <span>جزء الرابط في URL؛ يُنشأ تلقائياً إن تُرك فارغاً.</span>
                                     </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        جزء من عنوان URL للمادة (باللاتينية أو الأرقام عادةً، بدون مسافات). إن تركت الحقل فارغاً قد يُولَّد تلقائياً من الاسم؛ يجب أن يبقى فريداً بين المواد.
-                                    </small>
                                 </div>
+                            </div>
 
-                                <div class="col-lg-4">
-                                    <div class="form-floating">
-                                        <input type="number" name="order"
-                                               class="form-control @error('order') is-invalid @enderror"
-                                               placeholder="الترتيب"
-                                               value="{{ old('order', 0) }}">
-                                        <label>ترتيب العرض</label>
-                                        @error('order')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
+                            <div class="col-lg-6">
+                                <div class="subject-form-field">
+                                    <label class="form-label">ترتيب العرض</label>
+                                    <input type="number" name="order"
+                                           class="form-control @error('order') is-invalid @enderror"
+                                           placeholder="0"
+                                           value="{{ old('order', 0) }}">
+                                    @error('order')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <div class="subject-form-hint">
+                                        <i class="bi bi-sort-numeric-down"></i>
+                                        <span>الرقم الأصغر يظهر أولاً ضمن مواد نفس الصف.</span>
                                     </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        رقم صحيح: الأصغر يظهر أولاً ضمن قائمة مواد نفس الصف. استخدم 0 للاحتفاظ بالترتيب الافتراضي النسبي.
-                                    </small>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <div class="subject-form-block">
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <h6 class="text-primary mb-1">التسعير</h6>
-                                </div>
-
-                                <div class="col-lg-4">
-                                    <label for="default_currency_id" class="form-label mb-1">العملة الافتراضية</label>
-                                    <select name="default_currency_id" id="default_currency_id" class="form-select">
+                {{-- التسعير --}}
+                <div class="subject-form-card">
+                    <div class="subject-form-card__header">
+                        <span class="subject-form-card__header-icon"><i class="bi bi-currency-exchange"></i></span>
+                        <div class="subject-form-card__header-text">
+                            <div class="subject-form-card__title">التسعير</div>
+                            <p class="subject-form-card__desc">العملة الافتراضية وأسعار المادة بعدة عملات</p>
+                        </div>
+                    </div>
+                    <div class="subject-form-card__body">
+                        <div class="row g-4">
+                            <div class="col-lg-5">
+                                <div class="subject-form-field">
+                                    <label for="default_currency_id" class="form-label">العملة الافتراضية</label>
+                                    <select name="default_currency_id" id="default_currency_id" class="form-select @error('default_currency_id') is-invalid @enderror">
                                         <option value="">اختر العملة الافتراضية</option>
                                         @foreach(\App\Models\Currency::active()->ordered()->get() as $currency)
                                             <option value="{{ $currency->id }}" {{ old('default_currency_id') == $currency->id ? 'selected' : '' }}>
@@ -170,183 +197,228 @@
                                     @error('default_currency_id')
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                     @enderror
-                                    <small class="form-text text-muted d-block mt-1">
-                                        العملة المرجعية عند عرض السعر أو عند إتمام الدفع إن لم يختر المستخدم عملة أخرى؛ تتناسق مع جدول الأسعار أدناه.
-                                    </small>
+                                    <div class="subject-form-hint">
+                                        <i class="bi bi-currency-dollar"></i>
+                                        <span>العملة المعتمدة عند عرض السعر أو إتمام الدفع.</span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="row g-3 mt-1">
-                                <div class="col-12">
-                                    <h6 class="text-secondary small mb-2">الأسعار بعدة عملات</h6>
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered">
-                                            <thead>
+                            <div class="col-12">
+                                <div class="table-responsive border rounded">
+                                    <table class="table subject-form-currency-table mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>العملة</th>
+                                                <th style="width: 200px;">السعر</th>
+                                                <th style="width: 100px;">الحالة</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach(\App\Models\Currency::active()->ordered()->get() as $currency)
                                                 <tr>
-                                                    <th>العملة</th>
-                                                    <th>السعر</th>
-                                                    <th>الحالة</th>
+                                                    <td>
+                                                        <strong>{{ $currency->code }}</strong>
+                                                        <span class="text-muted small">({{ $currency->name }})</span>
+                                                    </td>
+                                                    <td>
+                                                        <input type="number"
+                                                               class="form-control form-control-sm"
+                                                               name="prices[{{ $currency->id }}][price]"
+                                                               value="{{ old('prices.' . $currency->id . '.price', 0) }}"
+                                                               step="0.01"
+                                                               min="0">
+                                                        <input type="hidden" name="prices[{{ $currency->id }}][currency_id]" value="{{ $currency->id }}">
+                                                    </td>
+                                                    <td>
+                                                        <div class="form-check form-switch mb-0">
+                                                            <input class="form-check-input"
+                                                                   type="checkbox"
+                                                                   name="prices[{{ $currency->id }}][is_active]"
+                                                                   value="1"
+                                                                   {{ old('prices.' . $currency->id . '.is_active', true) ? 'checked' : '' }}>
+                                                        </div>
+                                                    </td>
                                                 </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach(\App\Models\Currency::active()->ordered()->get() as $currency)
-                                                    <tr>
-                                                        <td><strong>{{ $currency->code }}</strong> ({{ $currency->name }})</td>
-                                                        <td>
-                                                            <input type="number"
-                                                                   class="form-control"
-                                                                   name="prices[{{ $currency->id }}][price]"
-                                                                   value="{{ old('prices.' . $currency->id . '.price', 0) }}"
-                                                                   step="0.01"
-                                                                   min="0">
-                                                            <input type="hidden" name="prices[{{ $currency->id }}][currency_id]" value="{{ $currency->id }}">
-                                                        </td>
-                                                        <td>
-                                                            <div class="form-check form-switch">
-                                                                <input class="form-check-input"
-                                                                       type="checkbox"
-                                                                       name="prices[{{ $currency->id }}][is_active]"
-                                                                       value="1"
-                                                                       {{ old('prices.' . $currency->id . '.is_active', true) ? 'checked' : '' }}>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        <strong>السعر:</strong> المبلغ بهذه العملة. <strong>الحالة:</strong> تفعيل أو إيقاف استخدام هذا السطر للعملة. السعر 0 قد يعني مجاناً ضمن هذه العملة مع مراعاة خيار «المجاني دائماً» ونوع تسعير الصف.
-                                    </small>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="subject-form-hint mt-2">
+                                    <i class="bi bi-table"></i>
+                                    <span><strong>السعر:</strong> المبلغ بهذه العملة. <strong>الحالة:</strong> تفعيل أو إيقاف بيع المادة بهذه العملة.</span>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <div class="subject-form-block">
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <div class="form-floating">
-                                        <textarea name="description" class="form-control @error('description') is-invalid @enderror"
-                                                  placeholder="وصف المادة" style="height: 120px">{{ old('description') }}</textarea>
-                                        <label>وصف المادة (اختياري)</label>
-                                        @error('description')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
+                {{-- الوصف والوسائط --}}
+                <div class="subject-form-card">
+                    <div class="subject-form-card__header">
+                        <span class="subject-form-card__header-icon"><i class="bi bi-text-paragraph"></i></span>
+                        <div class="subject-form-card__header-text">
+                            <div class="subject-form-card__title">الوصف والوسائط</div>
+                            <p class="subject-form-card__desc">نص تسويقي وصورة الغلاف للمادة</p>
+                        </div>
+                    </div>
+                    <div class="subject-form-card__body">
+                        <div class="row g-4">
+                            <div class="col-12">
+                                <div class="subject-form-field">
+                                    <label class="form-label">وصف المادة <span class="text-muted fw-normal">(اختياري)</span></label>
+                                    <textarea name="description" class="form-control @error('description') is-invalid @enderror"
+                                              placeholder="شرح مختصر لمحتوى المادة أو المتطلبات"
+                                              rows="4">{{ old('description') }}</textarea>
+                                    @error('description')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <div class="subject-form-hint">
+                                        <i class="bi bi-card-text"></i>
+                                        <span>يظهر في صفحة المادة للطلاب إن كان القالب يعرضه.</span>
                                     </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        نص يظهر في صفحة المادة للطلاب إن كان القالب يعرضه؛ استخدمه لشرح المحتوى أو المتطلبات (لا يؤثر على محتوى الدروس داخل النظام).
-                                    </small>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="subject-form-block">
-                            <div class="row g-3">
-                                <div class="col-lg-4">
-                                    <label class="form-label">صورة المادة (اختياري)</label>
+                            <div class="col-lg-5">
+                                <div class="subject-form-field">
+                                    <label class="form-label">صورة المادة <span class="text-muted fw-normal">(اختياري)</span></label>
                                     <input type="file" name="image"
                                            class="form-control @error('image') is-invalid @enderror"
                                            accept="image/*">
                                     @error('image')
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                     @enderror
-                                    <small class="form-text text-muted d-block mt-1">
-                                        صورة مصغّرة للمادة في القوائم والبطاقات؛ يُفضّل صورة مربّعة وواضحة وحجم ملف معقول (حد الرفع عادة 2 ميغابايت).
-                                    </small>
+                                    <div class="subject-form-hint">
+                                        <i class="bi bi-file-image"></i>
+                                        <span>صورة مصغّرة في القوائم والبطاقات؛ يُفضّل صورة مربّعة وواضحة.</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <div class="subject-form-block">
-                            <div class="row g-3 align-items-start">
-                                <div class="col-12">
-                                    <h6 class="text-primary mb-1">الظهور والحالة</h6>
-                                </div>
-                                <div class="col-lg-4">
-                                    <div class="form-check form-switch">
+                {{-- الظهور والحالة --}}
+                <div class="subject-form-card">
+                    <div class="subject-form-card__header">
+                        <span class="subject-form-card__header-icon"><i class="bi bi-eye"></i></span>
+                        <div class="subject-form-card__header-text">
+                            <div class="subject-form-card__title">الظهور والحالة</div>
+                            <p class="subject-form-card__desc">تفعيل المادة وإظهارها في صفحة الصف</p>
+                        </div>
+                    </div>
+                    <div class="subject-form-card__body">
+                        <div class="row g-4">
+                            <div class="col-lg-6">
+                                <div class="subject-form-switch-box">
+                                    <div class="form-check form-switch mb-0">
                                         <input class="form-check-input" type="checkbox" name="is_active"
                                                id="is_active" value="1"
                                                {{ old('is_active', true) ? 'checked' : '' }}>
                                         <label class="form-check-label" for="is_active">المادة نشطة</label>
                                     </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        عند الإيقاف لا تُعرض المادة للتسجيل أو التصفح العام حسب منطق الموقع، دون حذف المحتوى لاحقاً إن أردت إعادة التفعيل.
-                                    </small>
+                                    <div class="subject-form-hint mb-0 mt-2">
+                                        <i class="bi bi-toggle-on"></i>
+                                        <span>عند الإيقاف لا تُعرض المادة للتسجيل أو التصفح العام.</span>
+                                    </div>
                                 </div>
-                                <div class="col-lg-4">
-                                    <div class="form-check form-switch">
+                            </div>
+
+                            <div class="col-lg-6">
+                                <div class="subject-form-switch-box">
+                                    <div class="form-check form-switch mb-0">
                                         <input class="form-check-input" type="checkbox" name="display_in_class"
                                                id="display_in_class" value="1"
                                                {{ old('display_in_class', true) ? 'checked' : '' }}>
                                         <label class="form-check-label" for="display_in_class">عرض في صفحة الصف</label>
                                     </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        يضبط إدراج المادة في واجهة صفحة الصف الدراسي. عطّله إن أردت أن تبقى المادة مخفية من قائمة مواد الصف ومتاحة عبر مسارات أخرى فقط.
-                                    </small>
+                                    <div class="subject-form-hint mb-0 mt-2">
+                                        <i class="bi bi-grid"></i>
+                                        <span>يضبط إدراج المادة في قائمة مواد الصف الدراسي.</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <div class="subject-form-block">
-                            <div class="row g-3 align-items-start">
-                                <div class="col-12">
-                                    <h6 class="text-primary mb-1">خيارات التسعير المتقدمة</h6>
-                                    <p class="text-muted small mb-0">تتحكم بعلاقة المادة بتسعير الصف وطريقة الشراء والعرض في الواجهة.</p>
-                                </div>
-
-                                <div class="col-lg-4">
-                                    <div class="form-check form-switch">
+                {{-- خيارات التسعير المتقدمة --}}
+                <div class="subject-form-card">
+                    <div class="subject-form-card__header">
+                        <span class="subject-form-card__header-icon"><i class="bi bi-sliders"></i></span>
+                        <div class="subject-form-card__header-text">
+                            <div class="subject-form-card__title">خيارات التسعير المتقدمة</div>
+                            <p class="subject-form-card__desc">علاقة المادة بتسعير الصف وطريقة الشراء والعرض</p>
+                        </div>
+                    </div>
+                    <div class="subject-form-card__body">
+                        <div class="row g-4">
+                            <div class="col-lg-4">
+                                <div class="subject-form-switch-box">
+                                    <div class="form-check form-switch mb-0">
                                         <input class="form-check-input" type="checkbox" name="is_free_override"
                                                id="is_free_override" value="1"
                                                {{ old('is_free_override', false) ? 'checked' : '' }}
                                                onchange="toggleSubjectPricingOptions()">
                                         <label class="form-check-label" for="is_free_override">مجانية دائماً</label>
                                     </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        يفرض أن المادة مجانية لجميع المستخدمين حتى لو كان الصف مدفوعاً؛ عند التفعيل قد يعطّل «شراء منفصل» ويُثبت «إظهار السعر» آلياً وفق السكربت لتجنّب تعارض المنطق.
-                                    </small>
+                                    <div class="subject-form-hint mb-0 mt-2">
+                                        <i class="bi bi-gift"></i>
+                                        <span>تجعل المادة مجانية حتى لو كان الصف مدفوعاً.</span>
+                                    </div>
                                 </div>
+                            </div>
 
-                                @include('admin.pages.subjects.partials.free_join_auto_approve', [
-                                    'freeJoinDefault' => true,
-                                    'isFreeOverrideDefault' => false,
-                                ])
+                            @include('admin.pages.subjects.partials.free_join_auto_approve', [
+                                'freeJoinDefault' => true,
+                                'isFreeOverrideDefault' => false,
+                            ])
 
-                                <div class="col-lg-4">
-                                    <div class="form-check form-switch">
+                            <div class="col-lg-4">
+                                <div class="subject-form-switch-box">
+                                    <div class="form-check form-switch mb-0">
                                         <input class="form-check-input" type="checkbox" name="can_purchase_separately"
                                                id="can_purchase_separately" value="1"
                                                {{ old('can_purchase_separately', true) ? 'checked' : '' }}>
                                         <label class="form-check-label" for="can_purchase_separately">شراء منفصل</label>
                                     </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        يسمح بشراء هذه المادة وحدها دون شراء كامل مواد الصف؛ عطّله إن أردت أن تكون المادة ضمن باقة الصف فقط.
-                                    </small>
+                                    <div class="subject-form-hint mb-0 mt-2">
+                                        <i class="bi bi-basket"></i>
+                                        <span>يسمح بشراء المادة وحدها دون شراء كامل مواد الصف.</span>
+                                    </div>
                                 </div>
+                            </div>
 
-                                <div class="col-lg-4">
-                                    <div class="form-check form-switch">
+                            <div class="col-lg-4">
+                                <div class="subject-form-switch-box">
+                                    <div class="form-check form-switch mb-0">
                                         <input class="form-check-input" type="checkbox" name="show_price"
                                                id="show_price" value="1"
                                                {{ old('show_price', true) ? 'checked' : '' }}>
                                         <label class="form-check-label" for="show_price">إظهار السعر</label>
                                     </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        يتحكم في إظهار أو إخفاء رقم السعر في الواجهة؛ قد يُخفى السعر مع بقاء إمكانية الدفع وفق تصميم الموقع.
-                                    </small>
+                                    <div class="subject-form-hint mb-0 mt-2">
+                                        <i class="bi bi-tag"></i>
+                                        <span>يتحكم في إظهار أو إخفاء رقم السعر في الواجهة.</span>
+                                    </div>
                                 </div>
                             </div>
+                        </div>
 
-                            <div class="row g-3 mt-2" id="custom_price_label_wrapper_subject">
-                                <div class="col-lg-4">
-                                    <div class="form-check form-switch">
+                        <div class="row g-4 mt-1" id="custom_price_label_wrapper_subject">
+                            <div class="col-lg-4">
+                                <div class="subject-form-switch-box">
+                                    <div class="form-check form-switch mb-0">
                                         <input class="form-check-input" type="checkbox" name="use_custom_price_label"
                                                id="use_custom_price_label_subject" value="1"
                                                {{ old('use_custom_price_label') ? 'checked' : '' }}>
                                         <label class="form-check-label" for="use_custom_price_label_subject">عرض كلمة بدل السعر</label>
                                     </div>
                                 </div>
-                                <div class="col-lg-4">
+                            </div>
+                            <div class="col-lg-4">
+                                <div class="subject-form-field">
                                     <label for="custom_price_label_input_subject" class="form-label">الكلمة المعروضة</label>
                                     <input type="text" class="form-control" name="custom_price_label"
                                            id="custom_price_label_input_subject" maxlength="100"
@@ -355,18 +427,20 @@
                                 </div>
                             </div>
                         </div>
-
-                        <div class="text-end mt-4">
-                            <a href="{{ route('admin.subjects.index') }}" class="btn btn-secondary px-4 me-2">
-                                إلغاء
-                            </a>
-                            <button type="submit" class="btn btn-primary px-4">
-                                <i class="fas fa-save me-1"></i> حفظ المادة
-                            </button>
-                        </div>
-                    </form>
+                    </div>
                 </div>
-            </div>
+
+                <div class="subject-form-footer">
+                    @if($selectedClassId ?? request('class_id'))
+                        <a href="{{ route('admin.classes.show', $selectedClassId ?? request('class_id')) }}" class="btn btn-outline-secondary">إلغاء</a>
+                    @else
+                        <a href="{{ route('admin.subjects.index') }}" class="btn btn-outline-secondary">إلغاء</a>
+                    @endif
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> حفظ المادة
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 @stop
@@ -399,7 +473,6 @@ function toggleSubjectPricingOptions() {
     var isFreeOverride = document.getElementById('is_free_override').checked;
     var canPurchaseSeparately = document.getElementById('can_purchase_separately');
     var showPrice = document.getElementById('show_price');
-
     var freeJoinBlock = document.getElementById('subject_free_join_block');
 
     if (isFreeOverride) {

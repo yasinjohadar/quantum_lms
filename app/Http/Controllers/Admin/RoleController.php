@@ -29,7 +29,7 @@ class RoleController extends Controller
     public function index()
     {
         $permissions = Permission::all();
-        $roles = Role::all();
+        $roles = Role::withCount('permissions')->orderBy('name')->get();
 
         return view('admin.pages.roles.index', compact('roles', 'permissions'));
     }

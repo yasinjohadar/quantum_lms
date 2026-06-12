@@ -1,169 +1,202 @@
 @foreach($teachers as $teacher)
+    @php
+        $initial = mb_strtoupper(mb_substr(trim($teacher->name), 0, 1));
+        $assignedClasses = $teacher->assignedClasses;
+        $assignedSubjects = $teacher->assignedSubjects;
+        $lastLogin = $lastLogins[$teacher->id] ?? $teacher->last_login_at;
+        $isOnline = $onlineUserIds->contains($teacher->id);
+        $prog = $teachersProgress[$teacher->id] ?? null;
+    @endphp
     <tr>
-        <td>{{ $loop->iteration + ($teachers->currentPage() - 1) * $teachers->perPage() }}</td>
+        <td class="text-muted small">{{ $loop->iteration + ($teachers->currentPage() - 1) * $teachers->perPage() }}</td>
         <td>
-            <div class="d-flex align-items-center">
-                @if($teacher->photo)
-                    <img src="{{ media_public_url($teacher->photo) }}"
-                         alt="{{ $teacher->name }}"
-                         class="rounded-circle me-2"
-                         style="width: 40px; height: 40px; object-fit: cover;">
-                @else
-                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2"
-                         style="width: 40px; height: 40px;">
-                        {{ substr($teacher->name, 0, 1) }}
-                    </div>
-                @endif
-                <a href="{{ route('admin.teachers.progress.show', $teacher->id) }}" class="fw-semibold text-decoration-none">{{ $teacher->name }}</a>
+            <div class="tv-user-cell">
+                <span class="tv-user-avatar">
+                    @if($teacher->photo)
+                        <img src="{{ media_public_url($teacher->photo) }}" alt="">
+                    @else
+                        {{ $initial }}
+                    @endif
+                </span>
+                <a href="{{ route('admin.teachers.progress.show', $teacher->id) }}" class="tv-user-name">
+                    {{ $teacher->name }}
+                </a>
             </div>
         </td>
-        <td>{{ $teacher->email }}</td>
+        <td>
+            <a href="mailto:{{ $teacher->email }}" class="text-decoration-none small">{{ $teacher->email }}</a>
+        </td>
         <td>
             @if($teacher->roles->count() > 0)
-                <div class="d-flex flex-wrap gap-1">
-                    @foreach($teacher->roles as $role)
-                        <span class="badge bg-secondary">{{ $role->name }}</span>
-                    @endforeach
-                </div>
+                @foreach($teacher->roles as $role)
+                    <span class="tv-role-pill">{{ $role->name }}</span>
+                @endforeach
             @else
-                <span class="text-muted">لا يوجد</span>
+                <span class="text-muted small">—</span>
             @endif
         </td>
         <td>
-            @php $assignedClasses = $teacher->assignedClasses; @endphp
             @if($assignedClasses->count() > 0)
-                <span class="badge bg-primary">{{ $assignedClasses->count() }} صف</span>
-                <div class="mt-1">
+                <span class="tv-count-badge tv-count-badge--class">{{ $assignedClasses->count() }} صف</span>
+                <div class="tv-meta-list">
                     @foreach($assignedClasses->take(2) as $class)
-                        <small class="d-block text-muted">{{ $class->name }}</small>
+                        <span class="d-block">{{ $class->name }}</span>
                     @endforeach
                     @if($assignedClasses->count() > 2)
-                        <small class="text-muted">+ {{ $assignedClasses->count() - 2 }} أخرى</small>
+                        <span>+ {{ $assignedClasses->count() - 2 }} أخرى</span>
                     @endif
                 </div>
             @else
-                <span class="text-muted">لا يوجد</span>
+                <span class="text-muted small">—</span>
             @endif
         </td>
         <td>
-            @php $assignedSubjects = $teacher->assignedSubjects; @endphp
             @if($assignedSubjects->count() > 0)
-                <span class="badge bg-info">{{ $assignedSubjects->count() }} مادة</span>
-                <div class="mt-1">
+                <span class="tv-count-badge tv-count-badge--subject">{{ $assignedSubjects->count() }} مادة</span>
+                <div class="tv-meta-list">
                     @foreach($assignedSubjects->take(2) as $subject)
-                        <small class="d-block text-muted">{{ $subject->name }}</small>
+                        <span class="d-block">{{ $subject->name }}</span>
                     @endforeach
                     @if($assignedSubjects->count() > 2)
-                        <small class="text-muted">+ {{ $assignedSubjects->count() - 2 }} أخرى</small>
+                        <span>+ {{ $assignedSubjects->count() - 2 }} أخرى</span>
                     @endif
                 </div>
             @else
-                <span class="text-muted">لا يوجد</span>
+                <span class="text-muted small">—</span>
             @endif
         </td>
         <td>
             @can('user-toggle-status')
-            <button type="button"
-                    class="btn btn-sm d-inline-flex align-items-center {{ $teacher->is_active ? 'btn-success' : 'btn-outline-danger' }}"
-                    data-bs-toggle="modal"
-                    data-bs-target="#toggleStatus{{ $teacher->id }}">
-                @if($teacher->is_active)
-                    <i class="fa-solid fa-check-circle me-1"></i><span>مفعل</span>
-                @else
-                    <i class="fa-solid fa-ban me-1"></i><span>معطل</span>
-                @endif
-            </button>
+                <button type="button"
+                        class="tv-status-badge {{ $teacher->is_active ? 'tv-status-badge--active' : 'tv-status-badge--inactive' }}"
+                        data-bs-toggle="modal"
+                        data-bs-target="#toggleStatus{{ $teacher->id }}"
+                        title="تغيير حالة الحساب">
+                    <i class="bi {{ $teacher->is_active ? 'bi-check-circle' : 'bi-x-circle' }} me-1"></i>
+                    {{ $teacher->is_active ? 'مفعل' : 'معطل' }}
+                </button>
             @else
-                <span class="badge {{ $teacher->is_active ? 'bg-success' : 'bg-secondary' }}">{{ $teacher->is_active ? 'مفعل' : 'معطل' }}</span>
+                <span class="tv-status-badge {{ $teacher->is_active ? 'tv-status-badge--active' : 'tv-status-badge--inactive' }}">
+                    {{ $teacher->is_active ? 'مفعل' : 'معطل' }}
+                </span>
             @endcan
         </td>
         <td>
-            @php $lastLogin = $lastLogins[$teacher->id] ?? $teacher->last_login_at; @endphp
             @if($lastLogin)
-                {{ \Carbon\Carbon::parse($lastLogin)->format('Y-m-d H:i') }}
+                <span class="small">{{ \Carbon\Carbon::parse($lastLogin)->format('Y-m-d H:i') }}</span>
             @else
-                <span class="text-muted">—</span>
+                <span class="text-muted small">—</span>
             @endif
         </td>
         <td>
-            @if($onlineUserIds->contains($teacher->id))
-                <span class="badge bg-success"><i class="fa-solid fa-circle fa-fw" style="font-size: 0.5em; vertical-align: middle;"></i> متصل الآن</span>
-            @else
-                <span class="badge bg-secondary">غير متصل</span>
-            @endif
+            <span class="tv-online-badge {{ $isOnline ? 'tv-online-badge--on' : 'tv-online-badge--off' }}">
+                <i class="bi {{ $isOnline ? 'bi-circle-fill' : 'bi-circle' }} me-1" style="font-size: 0.5rem;"></i>
+                {{ $isOnline ? 'متصل' : 'غير متصل' }}
+            </span>
         </td>
-        <td class="text-nowrap">
-            @php $prog = $teachersProgress[$teacher->id] ?? null; @endphp
+        <td>
             @if($prog)
-                <div class="d-flex flex-column gap-1 small">
-                    <div>
-                        <span class="text-muted">الصفحات:</span>
+                <div class="tv-progress-box">
+                    <div class="tv-progress-row">
+                        <span class="tv-progress-label">الصفحات:</span>
                         @if($prog['pages_required'] > 0)
-                            {{ $prog['pages_completed'] }} / {{ $prog['pages_required'] }}
+                            <span>{{ $prog['pages_completed'] }}/{{ $prog['pages_required'] }}</span>
                             @if($prog['pages_percentage'] !== null)
-                                <span class="badge {{ $prog['pages_percentage'] >= 100 ? 'bg-success' : ($prog['pages_percentage'] >= 50 ? 'bg-info' : 'bg-warning text-dark') }} ms-1">{{ number_format($prog['pages_percentage'], 1) }}%</span>
+                                @php
+                                    $pp = $prog['pages_percentage'];
+                                    $ppClass = $pp >= 100 ? 'tv-progress-pill--high' : ($pp >= 50 ? 'tv-progress-pill--mid' : 'tv-progress-pill--low');
+                                @endphp
+                                <span class="tv-progress-pill {{ $ppClass }}">{{ number_format($pp, 1) }}%</span>
                             @endif
                         @else
                             <span class="text-muted">—</span>
                         @endif
                     </div>
-                    <div>
-                        <span class="text-muted">الأسبوع:</span>
-                        @if(isset($prog['current_week']) && $prog['current_week'])
-                            <span class="small text-muted" title="{{ $prog['current_week']->start_date->format('Y-m-d') }} - {{ $prog['current_week']->end_date->format('Y-m-d') }}">({{ $prog['current_week']->title ?? 'أسبوع ' . $prog['current_week']->week_number }})</span>
-                        @endif
+                    <div class="tv-progress-row">
+                        <span class="tv-progress-label">الأسبوع:</span>
                         @if($prog['weekly_target'] > 0)
-                            {{ $prog['weekly_completed'] }}/{{ $prog['weekly_target'] }}
+                            <span>{{ $prog['weekly_completed'] }}/{{ $prog['weekly_target'] }}</span>
                             @if($prog['weekly_percentage'] !== null)
-                                <span class="badge {{ $prog['weekly_percentage'] >= 100 ? 'bg-success' : ($prog['weekly_percentage'] >= 50 ? 'bg-info' : 'bg-warning text-dark') }} ms-1">{{ number_format($prog['weekly_percentage'], 1) }}%</span>
+                                @php
+                                    $wp = $prog['weekly_percentage'];
+                                    $wpClass = $wp >= 100 ? 'tv-progress-pill--high' : ($wp >= 50 ? 'tv-progress-pill--mid' : 'tv-progress-pill--low');
+                                @endphp
+                                <span class="tv-progress-pill {{ $wpClass }}">{{ number_format($wp, 1) }}%</span>
                             @endif
                         @else
                             <span class="text-muted">—</span>
                         @endif
                     </div>
-                    <div><span class="text-muted">دروس مسجلة:</span> {{ $prog['total_approved_lessons'] }}</div>
-                    <a href="{{ route('admin.teachers.progress.show', $teacher->id) }}" class="small">تفاصيل</a>
+                    <div class="tv-progress-row">
+                        <span class="tv-progress-label">دروس:</span>
+                        <span>{{ $prog['total_approved_lessons'] }}</span>
+                    </div>
+                    <a href="{{ route('admin.teachers.progress.show', $teacher->id) }}" class="tv-progress-link">تفاصيل ←</a>
                 </div>
             @else
-                <span class="text-muted">—</span>
+                <span class="text-muted small">—</span>
             @endif
         </td>
-        <td class="text-center">
+        <td>
             @canany(['user-impersonate', 'teacher-assignment-show', 'teacher-progress-view', 'user-edit', 'user-delete'])
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-icon btn-light" type="button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false" title="الإجراءات" aria-label="الإجراءات">
-                        <i class="bi bi-three-dots-vertical"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        @can('user-impersonate')
-                            <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#impersonateModal{{ $teacher->id }}"><i class="fas fa-user-secret me-2 text-info"></i> تسجيل الدخول كالمستخدم</button></li>
-                        @endcan
-                        @can('teacher-assignment-show')
-                            <li><a class="dropdown-item" href="{{ route('admin.teachers.assignments', $teacher->id) }}"><i class="fas fa-user-tie me-2 text-primary"></i> تخصيص</a></li>
-                        @endcan
-                        @can('teacher-progress-view')
-                            <li><a class="dropdown-item" href="{{ route('admin.teachers.progress.history', $teacher->id) }}"><i class="bi bi-clock-history me-2 text-secondary"></i> إحصائيات سابقة</a></li>
-                        @endcan
-                        @can('user-edit')
-                            <li><a class="dropdown-item" href="{{ route('users.edit', ['user' => $teacher->id, 'role' => 'teacher']) }}"><i class="fa-solid fa-pen-to-square me-2 text-info"></i> تعديل</a></li>
-                        @endcan
-                        @can('user-delete')
-                            @if(auth()->user()->can('user-impersonate') || auth()->user()->can('teacher-assignment-show') || auth()->user()->can('teacher-progress-view') || auth()->user()->can('user-edit'))
-                                <li><hr class="dropdown-divider"></li>
-                            @endif
-                            <li><button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#delete{{ $teacher->id }}"><i class="fa-solid fa-trash-can me-2"></i> حذف</button></li>
-                        @endcan
-                    </ul>
+                <div class="row-action-bar">
+                    @can('user-impersonate')
+                        <button type="button" class="row-action-btn row-action-btn--info"
+                                data-bs-toggle="modal"
+                                data-bs-target="#impersonateModal{{ $teacher->id }}"
+                                title="تسجيل الدخول كمستخدم">
+                            <i class="bi bi-incognito"></i>
+                        </button>
+                    @endcan
+
+                    @can('teacher-assignment-show')
+                        <a class="row-action-btn row-action-btn--primary"
+                           href="{{ route('admin.teachers.assignments', $teacher->id) }}"
+                           title="تخصيص">
+                            <i class="bi bi-sliders"></i>
+                        </a>
+                    @endcan
+
+                    @can('teacher-progress-view')
+                        <a class="row-action-btn row-action-btn--secondary"
+                           href="{{ route('admin.teachers.progress.history', $teacher->id) }}"
+                           title="إحصائيات سابقة">
+                            <i class="bi bi-clock-history"></i>
+                        </a>
+                        <a class="row-action-btn row-action-btn--success"
+                           href="{{ route('admin.teachers.progress.show', $teacher->id) }}"
+                           title="تقدم المعلم">
+                            <i class="bi bi-graph-up"></i>
+                        </a>
+                    @endcan
+
+                    @can('user-edit')
+                        <a class="row-action-btn row-action-btn--primary"
+                           href="{{ route('users.edit', ['user' => $teacher->id, 'role' => 'teacher']) }}"
+                           title="تعديل">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                    @endcan
+
+                    @can('user-delete')
+                        <span class="row-action-divider" aria-hidden="true"></span>
+                        <button type="button" class="row-action-btn row-action-btn--danger"
+                                data-bs-toggle="modal"
+                                data-bs-target="#delete{{ $teacher->id }}"
+                                title="حذف">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    @endcan
                 </div>
             @else
-                <span class="text-muted">—</span>
+                <span class="text-muted small">—</span>
             @endcanany
         </td>
     </tr>
     @can('user-toggle-status')
-    @include('admin.pages.users.toggle_status', ['user' => $teacher])
+        @include('admin.pages.users.toggle_status', ['user' => $teacher])
     @endcan
     @can('user-delete')
-    @include('admin.pages.users.delete', ['user' => $teacher])
+        @include('admin.pages.users.delete', ['user' => $teacher])
     @endcan
 @endforeach

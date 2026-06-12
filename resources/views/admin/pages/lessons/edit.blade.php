@@ -8,6 +8,10 @@
     @php
         $user = auth()->user();
         $isTeacherReviewer = $user->shouldSubmitContentForReview();
+        $lessonMandatoryReview = \App\Models\SystemSetting::lessonMandatoryReviewEnabled();
+        $lessonUpdateButtonLabel = (! $user->canReviewContent() && $lessonMandatoryReview)
+            ? 'حفظ وإرسال للمراجعة'
+            : 'حفظ التعديلات';
     @endphp
     <div class="main-content app-content">
         <div class="container-fluid">
@@ -37,9 +41,15 @@
                     <a href="{{ route('admin.lessons.show', $lesson) }}" class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-eye me-1"></i> معاينة الدرس
                     </a>
-                    <a href="{{ route('admin.subjects.show', $subject) }}" class="btn btn-light btn-sm border">
-                        <i class="bi bi-journal-bookmark me-1"></i> صفحة المادة
-                    </a>
+                    @if($subject)
+                        <a href="{{ route('admin.subjects.show', $subject) }}" class="btn btn-light btn-sm border">
+                            <i class="bi bi-journal-bookmark me-1"></i> صفحة المادة
+                        </a>
+                    @else
+                        <a href="{{ route('admin.review-queue.index') }}" class="btn btn-light btn-sm border">
+                            <i class="bi bi-clipboard-check me-1"></i> قائمة المراجعة
+                        </a>
+                    @endif
                 </div>
             </div>
 
@@ -138,42 +148,14 @@
                         </div>
 
                         <div class="row align-items-end">
-                            @if($user->canReviewContent())
+                            @if($user->canReviewContent() || $isTeacherReviewer)
                                 <div class="col-md-4 mb-3">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" name="is_active" id="lessonActiveEdit" {{ old('is_active', $lesson->is_active) ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="lessonActiveEdit">الدرس نشط</label>
-                                    </div>
-                                </div>
-                            @elseif($isTeacherReviewer)
-                                <div class="col-md-4 mb-3">
-                                    <div class="mb-2">
-                                        <label class="form-label small">حالة المراجعة:</label>
-                                        @if($lesson->review_status === \App\Models\Lesson::REVIEW_STATUS_PENDING)
-                                            <span class="badge bg-warning text-dark"><i class="bi bi-clock-history me-1"></i> قيد المراجعة</span>
-                                        @elseif($lesson->review_status === \App\Models\Lesson::REVIEW_STATUS_APPROVED)
-                                            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> معتمد</span>
-                                        @elseif($lesson->review_status === \App\Models\Lesson::REVIEW_STATUS_REJECTED)
-                                            <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i> مرفوض</span>
-                                        @else
-                                            <span class="badge bg-secondary">مسودة</span>
-                                        @endif
-                                    </div>
-                                    @if($lesson->review_status === \App\Models\Lesson::REVIEW_STATUS_PENDING)
-                                        <input type="hidden" name="is_active" value="0">
-                                        <p class="small text-muted mb-0">لا يمكن تغيير خيار النشر أثناء قيد المراجعة.</p>
-                                    @else
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" name="is_active" id="lessonActiveEditTeacher"
-                                                {{ old('is_active', $lesson->is_active) ? 'checked' : '' }}>
-                                            <label class="form-check-label" for="lessonActiveEditTeacher">إرسال للمراجعة / التفعيل حسب الحالة</label>
-                                        </div>
-                                    @endif
-                                    @if($lesson->review_notes)
-                                        <div class="alert alert-info mt-2 small mb-0">
-                                            <strong>ملاحظات المراجعة:</strong><br>{{ $lesson->review_notes }}
-                                        </div>
-                                    @endif
+                                    @include('admin.pages.subjects.partials.lesson-review-teacher-fields', [
+                                        'mandatoryReview' => $lessonMandatoryReview,
+                                        'fieldId' => 'lessonActiveEdit',
+                                        'isEdit' => true,
+                                        'lesson' => $lesson,
+                                    ])
                                 </div>
                             @else
                                 <div class="col-md-4 mb-3">
@@ -201,14 +183,16 @@
                             <p class="small text-muted mb-3">
                                 <i class="bi bi-link-45deg me-1"></i>
                                 يوجد {{ $lesson->linkedUnits->count() }} ربط إضافي بوحدات أخرى؛ لم يُغيّر من هنا.
-                                لإدارة الربط استخدم <a href="{{ route('admin.subjects.show', $subject) }}">صفحة المادة</a>.
+                                @if($subject)
+                                    لإدارة الربط استخدم <a href="{{ route('admin.subjects.show', $subject) }}">صفحة المادة</a>.
+                                @endif
                             </p>
                         @endif
 
                         <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center pt-3 border-top">
                             <a href="{{ route('admin.lessons.show', $lesson) }}" class="btn btn-outline-secondary">إلغاء</a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-lg me-1"></i> حفظ التعديلات
+                                <i class="bi bi-check-lg me-1"></i> {{ $lessonUpdateButtonLabel }}
                             </button>
                         </div>
                     </form>

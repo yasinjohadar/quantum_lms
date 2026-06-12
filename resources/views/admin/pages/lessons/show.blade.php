@@ -4,15 +4,32 @@
     معاينة الدرس - {{ $lesson->title }}
 @stop
 
+@push('styles')
+    @include('admin.pages.lessons.partials.show-styles')
+@endpush
+
 @section('content')
     @php
         $lessonSubject = $lesson->unit?->section?->subject ?? $lesson->section?->subject;
         $lessonSection = $lesson->unit?->section ?? $lesson->section;
+        $user = auth()->user();
+        $isTeacher = $user->shouldSubmitContentForReview();
+        $statusChipClass = match ($lesson->review_status) {
+            \App\Models\Lesson::REVIEW_STATUS_PENDING => 'ls-chip--status-pending',
+            \App\Models\Lesson::REVIEW_STATUS_APPROVED => 'ls-chip--status-approved',
+            \App\Models\Lesson::REVIEW_STATUS_REJECTED => 'ls-chip--status-rejected',
+            default => 'ls-chip--status-draft',
+        };
+        $reviewBadgeClass = match ($lesson->review_status) {
+            \App\Models\Lesson::REVIEW_STATUS_PENDING => 'ls-review-badge--warning',
+            \App\Models\Lesson::REVIEW_STATUS_APPROVED => 'ls-review-badge--success',
+            \App\Models\Lesson::REVIEW_STATUS_REJECTED => 'ls-review-badge--danger',
+            default => 'ls-review-badge--secondary',
+        };
     @endphp
-    <div class="main-content app-content">
+    <div class="main-content app-content lesson-show-page">
         <div class="container-fluid">
 
-            {{-- رسائل النجاح --}}
             @if (session('success'))
                 <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
                     <i class="bi bi-check-circle-fill me-2"></i>
@@ -21,7 +38,6 @@
                 </div>
             @endif
 
-            {{-- رسائل الأخطاء العامة --}}
             @if (session('error'))
                 <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
                     <i class="bi bi-exclamation-triangle-fill me-2"></i>
@@ -30,50 +46,102 @@
                 </div>
             @endif
 
-            <div class="page-header d-flex justify-content-between align-items-center my-4">
-                <div>
-                    <h5 class="page-title mb-1">
-                        <i class="bi bi-play-circle text-success me-2"></i>
-                        {{ $lesson->title }}
-                    </h5>
-                    <ol class="breadcrumb mb-0 small">
-                        <li class="breadcrumb-item">
-                            <a href="{{ route('admin.subjects.index') }}">المواد الدراسية</a>
-                        </li>
-                        @if($lessonSubject)
-                        <li class="breadcrumb-item">
-                            <a href="{{ route('admin.subjects.show', $lessonSubject->id) }}">
-                                {{ $lessonSubject->name }}
-                            </a>
-                        </li>
-                        @endif
-                        <li class="breadcrumb-item active" aria-current="page">معاينة الدرس</li>
-                    </ol>
+            @if(!$lessonSubject)
+                <div class="alert alert-warning alert-dismissible fade show mt-3" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    تعذّر ربط هذا الدرس بمادة حالية (القسم أو المادة المرتبطة قد تكون محذوفة). يمكنك معاينته والموافقة عليه، لكن يُفضّل إعادة ربطه من صفحة المادة.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
                 </div>
-                <div class="d-flex gap-2">
+            @endif
+
+            <div class="ls-hero my-4">
+                <div class="ls-hero__icon">
+                    <i class="bi bi-play-circle-fill"></i>
+                </div>
+                <div class="ls-hero__content">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-2 small">
+                            <li class="breadcrumb-item"><a href="{{ route('admin.subjects.index') }}">المواد الدراسية</a></li>
+                            @if($lessonSubject)
+                                <li class="breadcrumb-item"><a href="{{ route('admin.subjects.show', $lessonSubject->id) }}">{{ $lessonSubject->name }}</a></li>
+                            @endif
+                            <li class="breadcrumb-item active" aria-current="page">معاينة الدرس</li>
+                        </ol>
+                    </nav>
+                    <h1 class="ls-hero__title">{{ $lesson->title }}</h1>
+                    <div class="ls-hero__chips">
+                        <span class="ls-chip {{ $statusChipClass }}">
+                            <i class="bi bi-clipboard-check"></i> {{ $lesson->review_status_name }}
+                        </span>
+                        @if($lesson->formatted_duration)
+                            <span class="ls-chip"><i class="bi bi-clock"></i> {{ $lesson->formatted_duration }}</span>
+                        @endif
+                        @if($lesson->book_page_from !== null || $lesson->book_page_to !== null)
+                            <span class="ls-chip"><i class="bi bi-book"></i>
+                                @if($lesson->book_page_from !== null && $lesson->book_page_to !== null)
+                                    ص {{ $lesson->book_page_from }}–{{ $lesson->book_page_to }}
+                                @elseif($lesson->book_page_from !== null)
+                                    من ص {{ $lesson->book_page_from }}
+                                @else
+                                    إلى ص {{ $lesson->book_page_to }}
+                                @endif
+                            </span>
+                        @endif
+                        <span class="ls-chip">
+                            <i class="bi bi-camera-video"></i>
+                            {{ \App\Models\Lesson::VIDEO_TYPES[$lesson->video_type] ?? $lesson->video_type }}
+                        </span>
+                        @if($lesson->is_active)
+                            <span class="ls-chip" style="color:#059669;border-color:rgba(5,150,105,.3);"><i class="bi bi-eye"></i> نشط</span>
+                        @else
+                            <span class="ls-chip"><i class="bi bi-eye-slash"></i> مخفي</span>
+                        @endif
+                    </div>
+                </div>
+                <div class="ls-hero__actions">
                     @can('lesson-edit')
-                    <a href="{{ route('admin.lessons.edit', $lesson) }}" class="btn btn-primary btn-sm">
-                        <i class="bi bi-pencil-square me-1"></i> تعديل الدرس
-                    </a>
+                        <a href="{{ route('admin.lessons.edit', $lesson) }}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-pencil-square me-1"></i> تعديل الدرس
+                        </a>
                     @endcan
                     @if($lessonSubject)
-                    <a href="{{ route('admin.subjects.show', $lessonSubject->id) }}" class="btn btn-secondary btn-sm">
-                        <i class="fas fa-arrow-right me-1"></i> رجوع للمادة
-                    </a>
+                        <a href="{{ route('admin.subjects.show', $lessonSubject->id) }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-arrow-right me-1"></i> رجوع للمادة
+                        </a>
+                    @else
+                        <a href="{{ route('admin.review-queue.index') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-clipboard2-check me-1"></i> قائمة المراجعة
+                        </a>
                     @endif
                 </div>
             </div>
 
-            <div class="row g-3">
-                {{-- مشغل الفيديو --}}
+            @if(!$isTeacher && $lesson->review_status === \App\Models\Lesson::REVIEW_STATUS_PENDING)
+                <div class="ls-review-bar">
+                    <div class="ls-review-bar__text">
+                        <i class="bi bi-hourglass-split me-1"></i>
+                        هذا الدرس بانتظار مراجعتك — شاهد المحتوى ثم اتخذ قرار النشر
+                    </div>
+                    <div class="ls-review-bar__actions">
+                        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#lessonApproveModal">
+                            <i class="bi bi-check-circle me-1"></i> الموافقة على النشر
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#lessonRejectModal">
+                            <i class="bi bi-x-circle me-1"></i> رفض النشر
+                        </button>
+                    </div>
+                </div>
+            @endif
+
+            <div class="row g-4">
                 <div class="col-xl-8">
-                    <div class="card custom-card">
-                        <div class="card-body">
+                    <div class="ls-card">
+                        <div class="ls-card__body">
                             @if ($lesson->embed_url)
                                 @php
                                     $actualType = $lesson->actual_video_type;
                                 @endphp
-                                <div class="ratio ratio-16x9 mb-3 bg-dark rounded overflow-hidden">
+                                <div class="ls-player ratio ratio-16x9">
                                     @if($actualType === 'youtube')
                                         <iframe
                                             src="{{ $lesson->embed_url }}?rel=0&modestbranding=1"
@@ -118,181 +186,149 @@
                                     <br><small class="text-muted">الرابط المدخل: {{ $lesson->video_url }}</small>
                                 </div>
                             @else
-                                <div class="text-center py-5 text-muted bg-light rounded">
-                                    <i class="bi bi-collection-play display-5 d-block mb-2"></i>
-                                    <p class="mb-1">لم يتم ضبط فيديو لهذا الدرس بعد.</p>
+                                <div class="ls-empty-video">
+                                    <i class="bi bi-collection-play"></i>
+                                    <p class="mb-1 fw-semibold">لم يتم ضبط فيديو لهذا الدرس بعد</p>
                                     <p class="small mb-0">يمكنك إضافة رابط أو رفع فيديو من نموذج تعديل الدرس.</p>
                                 </div>
                             @endif
 
                             @if($lesson->description)
-                                <h6 class="mt-3 mb-2">وصف الدرس</h6>
-                                <p class="text-muted mb-0">{{ $lesson->description }}</p>
+                                <div class="ls-desc mt-3">
+                                    <div class="ls-desc__title">وصف الدرس</div>
+                                    <p class="mb-0 text-muted">{{ $lesson->description }}</p>
+                                </div>
                             @endif
                         </div>
                     </div>
                 </div>
 
-                {{-- معلومات الدرس والمرفقات --}}
-                <div class="col-xl-4">
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h6 class="mb-0">معلومات الدرس</h6>
+                <div class="col-xl-4 d-flex flex-column gap-4">
+                    <div class="ls-card">
+                        <div class="ls-card__header">
+                            <span><span class="ls-card__header-icon"><i class="bi bi-info-circle"></i></span>معلومات الدرس</span>
                         </div>
-                        <div class="card-body p-0">
-                            <div class="table-responsive">
-                                <table class="table table-sm table-bordered mb-0 align-middle lesson-meta-table">
-                                    <tbody>
-                                        <tr>
-                                            <th class="text-muted bg-light text-nowrap" scope="row" style="width: 38%;">المادة</th>
-                                            <td>{{ $lessonSubject?->name ?? '—' }}</td>
-                                        </tr>
-                                        <tr>
-                                            <th class="text-muted bg-light text-nowrap" scope="row">الوحدة</th>
-                                            <td class="text-muted">{{ $lesson->unit->title ?? '— (درس مباشر داخل القسم)' }}</td>
-                                        </tr>
-                                        <tr>
-                                            <th class="text-muted bg-light text-nowrap" scope="row">القسم</th>
-                                            <td class="text-muted">{{ $lessonSection?->title ?? '—' }}</td>
-                                        </tr>
-                                        <tr>
-                                            <th class="text-muted bg-light text-nowrap" scope="row">صفحات الكتاب</th>
-                                            <td class="text-muted">
-                                                @if($lesson->book_page_from !== null && $lesson->book_page_to !== null)
-                                                    من {{ $lesson->book_page_from }} إلى {{ $lesson->book_page_to }}
-                                                @elseif($lesson->book_page_from !== null)
-                                                    من صفحة {{ $lesson->book_page_from }}
-                                                @elseif($lesson->book_page_to !== null)
-                                                    إلى صفحة {{ $lesson->book_page_to }}
-                                                @else
-                                                    لم يُحدد نطاق (يُحسب كصفحة واحدة في إحصائيات التقدم)
-                                                @endif
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th class="text-muted bg-light text-nowrap" scope="row">عدد الصفحات في الإحصائيات</th>
-                                            <td>
-                                                <span class="badge bg-secondary-transparent text-secondary">{{ \App\Services\TeacherProgressService::lessonPageCount($lesson) }}</span>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th class="text-muted bg-light text-nowrap" scope="row">ترتيب العرض</th>
-                                            <td class="text-muted">{{ (int) ($lesson->order ?? 0) }}</td>
-                                        </tr>
-                                        <tr>
-                                            <th class="text-muted bg-light text-nowrap" scope="row">معرّف الدرس</th>
-                                            <td><code class="small">{{ $lesson->id }}</code></td>
-                                        </tr>
-                                        <tr>
-                                            <th class="text-muted bg-light text-nowrap" scope="row">نوع الفيديو</th>
-                                            <td>
-                                                <span class="badge bg-primary-transparent text-primary">
-                                                    {{ \App\Models\Lesson::VIDEO_TYPES[$lesson->video_type] ?? $lesson->video_type }}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                        @if($lesson->video_url)
-                                            <tr>
-                                                <th class="text-muted bg-light text-nowrap align-top" scope="row">رابط الفيديو</th>
-                                                <td class="small">
-                                                    <a href="{{ $lesson->video_url }}" target="_blank" rel="noopener noreferrer" class="text-break d-inline-block">
-                                                        {{ \Illuminate\Support\Str::limit($lesson->video_url, 120) }}
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                        @endif
-                                        @if($lesson->formatted_duration)
-                                            <tr>
-                                                <th class="text-muted bg-light text-nowrap" scope="row">المدة</th>
-                                                <td class="text-muted"><i class="bi bi-clock me-1"></i>{{ $lesson->formatted_duration }}</td>
-                                            </tr>
-                                        @endif
-                                        <tr>
-                                            <th class="text-muted bg-light text-nowrap" scope="row">الظهور</th>
-                                            <td>
-                                                @if($lesson->is_active)
-                                                    <span class="badge bg-success">نشط</span>
-                                                @else
-                                                    <span class="badge bg-secondary">مخفي</span>
-                                                @endif
-                                                @if($lesson->is_free)
-                                                    <span class="badge bg-success-transparent text-success ms-1"><i class="bi bi-unlock me-1"></i>مجاني</span>
-                                                @endif
-                                                @if($lesson->is_preview)
-                                                    <span class="badge bg-info-transparent text-info ms-1"><i class="bi bi-eye me-1"></i>معاينة</span>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                        <div class="ls-card__body">
+                            <div class="ls-meta-list">
+                                <div class="ls-meta-item">
+                                    <span class="ls-meta-item__icon"><i class="bi bi-book"></i></span>
+                                    <div>
+                                        <div class="ls-meta-item__label">المادة</div>
+                                        <div class="ls-meta-item__value">{{ $lessonSubject?->name ?? '—' }}</div>
+                                    </div>
+                                </div>
+                                <div class="ls-meta-item">
+                                    <span class="ls-meta-item__icon"><i class="bi bi-layers"></i></span>
+                                    <div>
+                                        <div class="ls-meta-item__label">الوحدة</div>
+                                        <div class="ls-meta-item__value text-muted">{{ $lesson->unit->title ?? '— (مباشر في القسم)' }}</div>
+                                    </div>
+                                </div>
+                                <div class="ls-meta-item">
+                                    <span class="ls-meta-item__icon"><i class="bi bi-folder2"></i></span>
+                                    <div>
+                                        <div class="ls-meta-item__label">القسم</div>
+                                        <div class="ls-meta-item__value text-muted">{{ $lessonSection?->title ?? '—' }}</div>
+                                    </div>
+                                </div>
+                                <div class="ls-meta-item">
+                                    <span class="ls-meta-item__icon"><i class="bi bi-journal-text"></i></span>
+                                    <div>
+                                        <div class="ls-meta-item__label">صفحات الكتاب</div>
+                                        <div class="ls-meta-item__value text-muted">
+                                            @if($lesson->book_page_from !== null && $lesson->book_page_to !== null)
+                                                من {{ $lesson->book_page_from }} إلى {{ $lesson->book_page_to }}
+                                            @elseif($lesson->book_page_from !== null)
+                                                من صفحة {{ $lesson->book_page_from }}
+                                            @elseif($lesson->book_page_to !== null)
+                                                إلى صفحة {{ $lesson->book_page_to }}
+                                            @else
+                                                لم يُحدد نطاق
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="ls-meta-item">
+                                    <span class="ls-meta-item__icon"><i class="bi bi-calculator"></i></span>
+                                    <div>
+                                        <div class="ls-meta-item__label">صفحات الإحصائيات</div>
+                                        <div class="ls-meta-item__value">{{ \App\Services\TeacherProgressService::lessonPageCount($lesson) }}</div>
+                                    </div>
+                                </div>
+                                <div class="ls-meta-item">
+                                    <span class="ls-meta-item__icon"><i class="bi bi-sort-numeric-down"></i></span>
+                                    <div>
+                                        <div class="ls-meta-item__label">ترتيب العرض · المعرّف</div>
+                                        <div class="ls-meta-item__value text-muted">{{ (int) ($lesson->order ?? 0) }} · #{{ $lesson->id }}</div>
+                                    </div>
+                                </div>
+                                @if($lesson->video_url)
+                                    <div class="ls-meta-item">
+                                        <span class="ls-meta-item__icon"><i class="bi bi-link-45deg"></i></span>
+                                        <div>
+                                            <div class="ls-meta-item__label">رابط الفيديو</div>
+                                            <div class="ls-meta-item__value">
+                                                <a href="{{ $lesson->video_url }}" target="_blank" rel="noopener noreferrer" class="small">
+                                                    {{ \Illuminate\Support\Str::limit($lesson->video_url, 80) }}
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                                <div class="ls-meta-item">
+                                    <span class="ls-meta-item__icon"><i class="bi bi-sliders"></i></span>
+                                    <div>
+                                        <div class="ls-meta-item__label">الظهور</div>
+                                        <div class="ls-meta-item__value">
+                                            @if($lesson->is_free)<span class="ls-chip me-1"><i class="bi bi-unlock"></i> مجاني</span>@endif
+                                            @if($lesson->is_preview)<span class="ls-chip me-1"><i class="bi bi-eye"></i> معاينة</span>@endif
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {{-- حالة المراجعة --}}
-                    @php
-                        $user = auth()->user();
-                        $isTeacher = $user->shouldSubmitContentForReview();
-                    @endphp
-                    <div class="card custom-card mb-3">
-                        <div class="card-header">
-                            <h6 class="mb-0"><i class="bi bi-clipboard-check me-2"></i> حالة المراجعة</h6>
+                    <div class="ls-card">
+                        <div class="ls-card__header">
+                            <span><span class="ls-card__header-icon"><i class="bi bi-clipboard-check"></i></span>حالة المراجعة</span>
                         </div>
-                        <div class="card-body p-0">
-                            <div class="table-responsive">
-                                <table class="table table-sm table-bordered mb-0 align-middle lesson-meta-table">
-                                    <tbody>
-                                        <tr>
-                                            <th class="text-muted bg-light text-nowrap" scope="row" style="width: 38%;">الحالة</th>
-                                            <td>
-                                                <span class="badge bg-{{ $lesson->review_status_color }} fs-6">
-                                                    {{ $lesson->review_status_name }}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th class="text-muted bg-light text-nowrap" scope="row">مراجع من</th>
-                                            <td>
-                                                @if($lesson->reviewed_at)
-                                                    {{ $lesson->reviewer->name ?? 'غير معروف' }}
-                                                @else
-                                                    <span class="text-muted">—</span>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th class="text-muted bg-light text-nowrap" scope="row">تاريخ الاعتماد</th>
-                                            <td class="text-muted small">
-                                                {{ $lesson->reviewed_at ? $lesson->reviewed_at->format('Y-m-d H:i') : '—' }}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th class="text-muted bg-light text-nowrap" scope="row">تاريخ الإرسال للمراجعة</th>
-                                            <td class="text-muted small">
-                                                {{ $lesson->submitted_for_review_at?->format('Y-m-d H:i') ?? '—' }}
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                        <div class="ls-card__body">
+                            <div class="ls-review-status">
+                                <span class="ls-review-badge {{ $reviewBadgeClass }}">
+                                    <i class="bi bi-shield-check"></i>
+                                    {{ $lesson->review_status_name }}
+                                </span>
+                            </div>
+                            <div class="ls-timeline">
+                                <div class="ls-timeline__item">
+                                    <span class="ls-timeline__dot"></span>
+                                    <span class="ls-timeline__label">الإرسال للمراجعة</span>
+                                    <span class="ls-timeline__value">{{ $lesson->submitted_for_review_at?->format('Y-m-d H:i') ?? '—' }}</span>
+                                </div>
+                                <div class="ls-timeline__item">
+                                    <span class="ls-timeline__dot" style="background:var(--ls-accent-2);"></span>
+                                    <span class="ls-timeline__label">تاريخ الاعتماد</span>
+                                    <span class="ls-timeline__value">{{ $lesson->reviewed_at?->format('Y-m-d H:i') ?? '—' }}</span>
+                                </div>
+                                <div class="ls-timeline__item">
+                                    <span class="ls-timeline__dot" style="background:#94a3b8;"></span>
+                                    <span class="ls-timeline__label">مراجع من</span>
+                                    <span class="ls-timeline__value">{{ $lesson->reviewed_at ? ($lesson->reviewer->name ?? 'غير معروف') : '—' }}</span>
+                                </div>
                             </div>
                             @if($lesson->review_notes)
-                                <div class="p-3 border-top">
-                                    <div class="small fw-semibold text-muted mb-1">ملاحظات المراجعة</div>
-                                    <div class="alert alert-{{ $lesson->review_status === \App\Models\Lesson::REVIEW_STATUS_REJECTED ? 'danger' : 'info' }} mb-0 py-2 small">
-                                        {{ $lesson->review_notes }}
-                                    </div>
+                                <div class="alert alert-{{ $lesson->review_status === \App\Models\Lesson::REVIEW_STATUS_REJECTED ? 'danger' : 'info' }} mt-3 mb-0 py-2 small">
+                                    <strong class="d-block mb-1">ملاحظات المراجعة</strong>
+                                    {{ $lesson->review_notes }}
                                 </div>
                             @endif
-
-                            {{-- أزرار المراجعة للمشرف/الأدمن --}}
                             @if(!$isTeacher && $lesson->review_status === \App\Models\Lesson::REVIEW_STATUS_PENDING)
-                                <div class="p-3 border-top d-flex gap-2 flex-wrap">
-                                    <button type="button" class="btn btn-success btn-sm"
-                                            data-bs-toggle="modal" data-bs-target="#lessonApproveModal">
+                                <div class="ls-review-actions d-xl-none">
+                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#lessonApproveModal">
                                         <i class="bi bi-check-circle me-1"></i> الموافقة على النشر
                                     </button>
-                                    <button type="button" class="btn btn-danger btn-sm"
-                                            data-bs-toggle="modal" data-bs-target="#lessonRejectModal">
+                                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#lessonRejectModal">
                                         <i class="bi bi-x-circle me-1"></i> رفض النشر
                                     </button>
                                 </div>
@@ -300,101 +336,70 @@
                         </div>
                     </div>
 
-                    <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0">
-                                <i class="bi bi-paperclip me-2"></i>
-                                مرفقات الدرس ({{ $lesson->attachments->count() }})
-                            </h6>
+                    <div class="ls-card">
+                        <div class="ls-card__header">
+                            <span><span class="ls-card__header-icon"><i class="bi bi-paperclip"></i></span>مرفقات ({{ $lesson->attachments->count() }})</span>
                             @can('lesson-attachment-create')
-                            <button type="button" class="btn btn-sm btn-primary"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#addAttachmentModal">
-                                <i class="bi bi-plus-lg me-1"></i> إضافة مرفق
-                            </button>
+                                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addAttachmentModal">
+                                    <i class="bi bi-plus-lg me-1"></i> إضافة
+                                </button>
                             @endcan
                         </div>
-                        <div class="card-body p-0">
+                        <div class="ls-card__body">
                             @if($lesson->attachments->count() === 0)
-                                <div class="text-center text-muted py-4">
-                                    <i class="bi bi-folder2-open display-6 d-block mb-2"></i>
-                                    <p class="mb-1">لا توجد مرفقات لهذا الدرس حالياً</p>
-                                    @can('lesson-attachment-create')
-                                    <small>اضغط على "إضافة مرفق" لإضافة ملفات أو روابط</small>
-                                    @endcan
+                                <div class="ls-empty py-3">
+                                    <i class="bi bi-folder2-open"></i>
+                                    <p class="mb-0 small">لا توجد مرفقات حالياً</p>
                                 </div>
                             @else
-                                <ul class="list-group list-group-flush">
-                                    @foreach($lesson->attachments as $attachment)
-                                        <li class="list-group-item d-flex align-items-center justify-content-between py-3">
-                                            <div class="d-flex align-items-center">
-                                                <span class="avatar avatar-md bg-{{ $attachment->type === 'link' ? 'info' : 'primary' }}-transparent text-{{ $attachment->type === 'link' ? 'info' : 'primary' }} rounded me-3">
-                                                    <i class="bi {{ $attachment->type_icon }} fs-5"></i>
-                                                </span>
-                                                <div>
-                                                    <div class="fw-semibold">{{ $attachment->title }}</div>
-                                                    <div class="text-muted small">
-                                                        <span class="badge bg-light text-muted border me-1">
-                                                            {{ \App\Models\LessonAttachment::TYPES[$attachment->type] ?? $attachment->type }}
-                                                        </span>
-                                                        @if($attachment->formatted_file_size)
-                                                            <span class="me-1">{{ $attachment->formatted_file_size }}</span>
-                                                        @endif
-                                                        @if($attachment->is_downloadable)
-                                                            <i class="bi bi-download text-success" title="قابل للتحميل"></i>
-                                                        @endif
-                                                    </div>
-                                                    @if($attachment->description)
-                                                        <small class="text-muted d-block mt-1">{{ Str::limit($attachment->description, 50) }}</small>
-                                                    @endif
+                                @foreach($lesson->attachments as $attachment)
+                                    <div class="ls-attachment">
+                                        <div class="d-flex align-items-center gap-3 flex-grow-1 min-width-0">
+                                            <span class="ls-attachment__icon {{ $attachment->type === 'link' ? 'ls-attachment__icon--link' : 'ls-attachment__icon--file' }}">
+                                                <i class="bi {{ $attachment->type_icon }}"></i>
+                                            </span>
+                                            <div class="min-width-0">
+                                                <div class="fw-semibold text-truncate">{{ $attachment->title }}</div>
+                                                <div class="text-muted small">
+                                                    {{ \App\Models\LessonAttachment::TYPES[$attachment->type] ?? $attachment->type }}
+                                                    @if($attachment->formatted_file_size) · {{ $attachment->formatted_file_size }} @endif
                                                 </div>
                                             </div>
-                                            <div class="d-flex align-items-center gap-1">
-                                                @if($attachment->access_url)
-                                                    <a href="{{ $attachment->access_url }}"
-                                                       target="_blank"
-                                                       class="btn btn-sm btn-outline-success"
-                                                       title="{{ $attachment->type === 'link' ? 'فتح الرابط' : 'تحميل الملف' }}">
-                                                        <i class="bi bi-{{ $attachment->type === 'link' ? 'box-arrow-up-right' : 'download' }}"></i>
-                                                    </a>
-                                                @endif
-                                                @can('lesson-attachment-edit')
-                                                <button type="button"
-                                                        class="btn btn-sm btn-outline-primary"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#editAttachment{{ $attachment->id }}"
-                                                        title="تعديل">
+                                        </div>
+                                        <div class="d-flex gap-1 flex-shrink-0">
+                                            @if($attachment->access_url)
+                                                <a href="{{ $attachment->access_url }}" target="_blank" class="btn btn-sm btn-outline-success" title="فتح">
+                                                    <i class="bi bi-{{ $attachment->type === 'link' ? 'box-arrow-up-right' : 'download' }}"></i>
+                                                </a>
+                                            @endif
+                                            @can('lesson-attachment-edit')
+                                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editAttachment{{ $attachment->id }}">
                                                     <i class="bi bi-pencil"></i>
                                                 </button>
-                                                @endcan
-                                                @can('lesson-attachment-delete')
-                                                <button type="button"
-                                                        class="btn btn-sm btn-outline-danger"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#deleteAttachment{{ $attachment->id }}"
-                                                        title="حذف">
+                                            @endcan
+                                            @can('lesson-attachment-delete')
+                                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteAttachment{{ $attachment->id }}">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
-                                                @endcan
-                                            </div>
-                                        </li>
-                                    @endforeach
-                                </ul>
+                                            @endcan
+                                        </div>
+                                    </div>
+                                @endforeach
                             @endif
                         </div>
                     </div>
                 </div>
             </div>
 
-            {{-- متابعة مشاهدات الطلاب --}}
-            <div class="card custom-card mt-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-people me-2"></i> متابعة مشاهدات الطلاب (تقدم مشاهدة الفيديو)</h5>
+            <div class="ls-card mt-4">
+                <div class="ls-card__header">
+                    <span><span class="ls-card__header-icon"><i class="bi bi-people"></i></span>متابعة مشاهدات الطلاب</span>
                 </div>
-                <div class="card-body">
+                <div class="ls-card__body p-0">
                     @if(isset($lessonCompletions) && $lessonCompletions->isNotEmpty())
-                        <div class="table-responsive">
-                            <table class="table table-hover table-bordered mb-0">
+                        <div class="ls-table-wrap border-0 rounded-0">
+                            <div class="table-responsive">
+                                <table class="table ls-table mb-0">
                                 <thead>
                                     <tr>
                                         <th>الطالب</th>
@@ -455,8 +460,8 @@
                             </table>
                         </div>
                     @else
-                        <div class="text-center py-4 text-muted">
-                            <i class="bi bi-person-video3 fs-1 d-block mb-2"></i>
+                        <div class="ls-empty py-4">
+                            <i class="bi bi-person-video3"></i>
                             <p class="mb-0">لا توجد مشاهدات مسجلة لهذا الدرس بعد.</p>
                         </div>
                     @endif

@@ -126,6 +126,12 @@ class SystemSetting extends Model
         );
     }
 
+    /** هل مراجعة الدروس إلزامية للمعلمين قبل النشر؟ */
+    public static function lessonMandatoryReviewEnabled(): bool
+    {
+        return (bool) self::get('content_lesson_mandatory_review', false);
+    }
+
     /** هل يُطلب رفع وصل التحويل البنكي (IBAN) من الطالب؟ */
     public static function ibanReceiptRequired(): bool
     {

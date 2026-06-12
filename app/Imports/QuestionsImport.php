@@ -5,6 +5,7 @@ namespace App\Imports;
 use App\Models\Question;
 use App\Models\QuestionOption;
 use App\Models\Unit;
+use App\Support\QuestionMarkupFormatter;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -223,9 +224,9 @@ class QuestionsImport implements SkipsOnFailure, ToCollection, WithHeadingRow
     {
         $questionData = [
             'type' => $data['type'],
-            'title' => $data['title'],
-            'content' => $data['content'],
-            'explanation' => $data['explanation'],
+            'title' => QuestionMarkupFormatter::normalizeForStorage($data['title']),
+            'content' => QuestionMarkupFormatter::normalizeForStorage($data['content']),
+            'explanation' => QuestionMarkupFormatter::normalizeForStorage($data['explanation']),
             'difficulty' => $data['difficulty'],
             'default_points' => $data['default_points'],
             'category' => $data['category'] ?: null,
@@ -276,11 +277,13 @@ class QuestionsImport implements SkipsOnFailure, ToCollection, WithHeadingRow
         foreach ($options as $index => $optionData) {
             QuestionOption::create([
                 'question_id' => $question->id,
-                'content' => $optionData['content'],
+                'content' => QuestionMarkupFormatter::normalizeForStorage($optionData['content'] ?? null),
                 'is_correct' => $optionData['is_correct'] ?? false,
-                'match_target' => $optionData['match_target'] ?? null,
+                'match_target' => QuestionMarkupFormatter::normalizeForStorage($optionData['match_target'] ?? null),
                 'correct_order' => $optionData['correct_order'] ?? null,
-                'feedback' => $optionData['feedback'] ?? null,
+                'feedback' => isset($optionData['feedback']) && is_string($optionData['feedback'])
+                    ? QuestionMarkupFormatter::normalizeForStorage($optionData['feedback'])
+                    : ($optionData['feedback'] ?? null),
                 'order' => $index + 1,
             ]);
         }

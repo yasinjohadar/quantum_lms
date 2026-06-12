@@ -8,10 +8,13 @@ use App\Http\Requests\Admin\UpdateLessonRequest;
 use App\Models\Lesson;
 use App\Models\LessonAttachment;
 use App\Models\LessonCompletion;
+use App\Models\Subject;
 use App\Models\SubjectSection;
+use App\Models\SystemSetting;
 use App\Models\Unit;
 use App\Services\Curriculum\LessonCloneService;
 use App\Services\VimeoService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
@@ -54,6 +57,55 @@ class LessonController extends Controller
         }
 
         return 'مرفق';
+    }
+
+    private function applyTeacherLessonReviewOnCreate(array &$data): void
+    {
+        if (SystemSetting::lessonMandatoryReviewEnabled()) {
+            $data['review_status'] = Lesson::REVIEW_STATUS_PENDING;
+            $data['is_active'] = false;
+            $data['submitted_for_review_at'] = now();
+
+            return;
+        }
+
+        if (request()->has('is_active')) {
+            $data['review_status'] = Lesson::REVIEW_STATUS_PENDING;
+            $data['submitted_for_review_at'] = now();
+            $data['is_active'] = false;
+        } else {
+            $data['review_status'] = Lesson::REVIEW_STATUS_DRAFT;
+            $data['is_active'] = false;
+        }
+    }
+
+    private function applyTeacherLessonReviewOnUpdate(array &$data, UpdateLessonRequest $request, Lesson $lesson): void
+    {
+        if (SystemSetting::lessonMandatoryReviewEnabled()) {
+            $wasPending = $lesson->review_status === Lesson::REVIEW_STATUS_PENDING;
+            $data['review_status'] = Lesson::REVIEW_STATUS_PENDING;
+            $data['is_active'] = false;
+            $data['submitted_for_review_at'] = now();
+            if (! $wasPending) {
+                $data['review_notes'] = null;
+            }
+
+            return;
+        }
+
+        if ($request->has('is_active') && in_array($lesson->review_status, [Lesson::REVIEW_STATUS_PENDING, Lesson::REVIEW_STATUS_REJECTED])) {
+            $data['review_status'] = Lesson::REVIEW_STATUS_PENDING;
+            $data['submitted_for_review_at'] = now();
+            $data['review_notes'] = null;
+            $data['is_active'] = false;
+        } elseif ($request->has('is_active')) {
+            $data['review_status'] = Lesson::REVIEW_STATUS_PENDING;
+            $data['submitted_for_review_at'] = now();
+            $data['is_active'] = false;
+        } else {
+            $data['review_status'] = Lesson::REVIEW_STATUS_DRAFT;
+            $data['is_active'] = false;
+        }
     }
 
     /**
@@ -138,14 +190,7 @@ class LessonController extends Controller
 
             $isTeacher = $user->shouldSubmitContentForReview();
             if ($isTeacher) {
-                if ($request->has('is_active')) {
-                    $data['review_status'] = Lesson::REVIEW_STATUS_PENDING;
-                    $data['submitted_for_review_at'] = now();
-                    $data['is_active'] = false;
-                } else {
-                    $data['review_status'] = Lesson::REVIEW_STATUS_DRAFT;
-                    $data['is_active'] = false;
-                }
+                $this->applyTeacherLessonReviewOnCreate($data);
             } else {
                 $data['is_active'] = $request->has('is_active');
                 $data['review_status'] = $data['is_active']
@@ -233,20 +278,26 @@ class LessonController extends Controller
                 app(StudentContentNotificationService::class)->notifyIfLessonBecameVisible(null, $lesson->fresh(), $user);
             }, 'student_lesson_visible', $lesson->id);
 
+            $submittedForReview = $lesson->review_status === Lesson::REVIEW_STATUS_PENDING && $isTeacher;
+            $successMessage = $submittedForReview
+                ? 'تم حفظ الدرس «' . $lesson->title . '» وإرساله للمراجعة.'
+                : 'تم إنشاء الدرس «' . $lesson->title . '» بنجاح.';
+
             if ($this->wantsJsonResponse($request)) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'تم إنشاء الدرس "' . $lesson->title . '" بنجاح.',
+                    'message' => $successMessage,
                     'lesson_id' => $lesson->id,
                     'unit_id' => $lesson->unit_id,
                     'section_id' => $lesson->section_id,
                     'subject_id' => $subject->id,
+                    'submitted_for_review' => $submittedForReview,
                 ]);
             }
 
             return redirect()
                 ->route('admin.subjects.show', $subject->id)
-                ->with('success', 'تم إنشاء الدرس "' . $lesson->title . '" بنجاح.');
+                ->with('success', $successMessage);
         } catch (ValidationException $e) {
             if ($this->wantsJsonResponse($request)) {
                 return response()->json([
@@ -278,13 +329,11 @@ class LessonController extends Controller
         // التحقق من التخصيص
         $user = auth()->user();
         $subject = $this->resolveSubjectFromLesson($lesson);
-        if ($user->usesTeacherAssignmentScope()) {
-            if (!$user->isAssignedToSubject($subject->id) && 
-                !$user->isAssignedToClass($subject->class_id)) {
-                abort(403, 'غير مصرح لك بالوصول إلى هذا الدرس');
-            }
-        }
-        $enrolledUserIds = $subject->students()->wherePivot('status', 'active')->pluck('users.id')->toArray();
+        $this->assertTeacherCanAccessLesson($user, $subject);
+
+        $enrolledUserIds = $subject
+            ? $subject->students()->wherePivot('status', 'active')->pluck('users.id')->toArray()
+            : [];
         $lessonCompletions = empty($enrolledUserIds)
             ? collect()
             : LessonCompletion::where('lesson_id', $lesson->id)
@@ -310,12 +359,7 @@ class LessonController extends Controller
 
         $user = auth()->user();
         $subject = $this->resolveSubjectFromLesson($lesson);
-        if ($user->usesTeacherAssignmentScope()) {
-            if (! $user->isAssignedToSubject($subject->id) &&
-                ! $user->isAssignedToClass($subject->class_id)) {
-                abort(403, 'غير مصرح لك بالوصول إلى هذا الدرس');
-            }
-        }
+        $this->assertTeacherCanAccessLesson($user, $subject);
 
         return view('admin.pages.lessons.edit', compact('lesson', 'subject'));
     }
@@ -329,12 +373,7 @@ class LessonController extends Controller
             // التحقق من التخصيص
             $user = auth()->user();
             $subject = $this->resolveSubjectFromLesson($lesson);
-            if ($user->usesTeacherAssignmentScope()) {
-                if (!$user->isAssignedToSubject($subject->id) && 
-                    !$user->isAssignedToClass($subject->class_id)) {
-                    abort(403, 'غير مصرح لك بالوصول إلى هذا الدرس');
-                }
-            }
+            $this->assertTeacherCanAccessLesson($user, $subject);
 
             $lessonBeforeUpdate = clone $lesson;
             
@@ -346,22 +385,7 @@ class LessonController extends Controller
             $isTeacher = $user->shouldSubmitContentForReview();
 
             if ($isTeacher) {
-                // إذا كان الدرس في حالة pending أو rejected وكان المعلم يحاول تفعيله
-                if ($request->has('is_active') && in_array($lesson->review_status, [Lesson::REVIEW_STATUS_PENDING, Lesson::REVIEW_STATUS_REJECTED])) {
-                    $data['review_status'] = Lesson::REVIEW_STATUS_PENDING;
-                    $data['submitted_for_review_at'] = now();
-                    $data['review_notes'] = null; // مسح الملاحظات القديمة
-                    $data['is_active'] = false;
-                } elseif ($request->has('is_active')) {
-                    // إذا كان draft ويحاول تفعيله
-                    $data['review_status'] = Lesson::REVIEW_STATUS_PENDING;
-                    $data['submitted_for_review_at'] = now();
-                    $data['is_active'] = false;
-                } else {
-                    // إذا لم يحاول تفعيله، يبقى draft
-                    $data['review_status'] = Lesson::REVIEW_STATUS_DRAFT;
-                    $data['is_active'] = false;
-                }
+                $this->applyTeacherLessonReviewOnUpdate($data, $request, $lesson);
             } else {
                 // المشرف والمدير
                 $data['is_active'] = $request->has('is_active');
@@ -422,7 +446,7 @@ class LessonController extends Controller
                 }, 'lesson_review_submitted', $lesson->id);
             }
 
-            $subjectId = $subject->id;
+            $subjectId = $subject?->id;
 
             $this->dispatchNotificationSafely(function () use ($lessonBeforeUpdate, $lesson, $user) {
                 app(StudentContentNotificationService::class)->notifyIfLessonBecameVisible(
@@ -432,26 +456,42 @@ class LessonController extends Controller
                 );
             }, 'student_lesson_visible', $lesson->id);
 
+            $submittedForReview = $lesson->review_status === Lesson::REVIEW_STATUS_PENDING
+                && $isTeacher
+                && $oldReviewStatus !== Lesson::REVIEW_STATUS_PENDING;
+            $updateSuccessMessage = ($isTeacher && SystemSetting::lessonMandatoryReviewEnabled())
+                ? 'تم حفظ الدرس وإرساله للمراجعة.'
+                : ($submittedForReview
+                    ? 'تم حفظ الدرس وإرساله للمراجعة.'
+                    : 'تم تحديث الدرس بنجاح.');
+
             if ($this->wantsJsonResponse($request)) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'تم تحديث الدرس بنجاح.',
+                    'message' => $updateSuccessMessage,
                     'lesson_id' => $lesson->id,
                     'unit_id' => $lesson->unit_id,
                     'section_id' => $lesson->section_id,
                     'subject_id' => $subjectId,
+                    'submitted_for_review' => $submittedForReview || ($isTeacher && SystemSetting::lessonMandatoryReviewEnabled()),
                 ]);
             }
 
             if ($request->boolean('redirect_to_lesson')) {
                 return redirect()
                     ->route('admin.lessons.show', $lesson)
-                    ->with('success', 'تم تحديث الدرس بنجاح.');
+                    ->with('success', $updateSuccessMessage);
+            }
+
+            if ($subject) {
+                return redirect()
+                    ->route('admin.subjects.show', $subject->id)
+                    ->with('success', $updateSuccessMessage);
             }
 
             return redirect()
-                ->route('admin.subjects.show', $subjectId)
-                ->with('success', 'تم تحديث الدرس بنجاح.');
+                ->route('admin.review-queue.index')
+                ->with('success', $updateSuccessMessage);
         } catch (\Exception $e) {
             Log::error('خطأ في تحديث درس: ' . $e->getMessage());
 
@@ -669,21 +709,20 @@ class LessonController extends Controller
         // التحقق من التخصيص
         $user = auth()->user();
         $subject = $this->resolveSubjectFromLesson($lesson);
-        if ($user->usesTeacherAssignmentScope()) {
-            if (!$user->isAssignedToSubject($subject->id) && 
-                !$user->isAssignedToClass($subject->class_id)) {
-                if ($this->wantsJsonResponse($request)) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'غير مصرح لك بالوصول إلى هذا الدرس.',
-                    ], 403);
-                }
-
-                abort(403, 'غير مصرح لك بالوصول إلى هذا الدرس');
+        try {
+            $this->assertTeacherCanAccessLesson($user, $subject);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            if ($this->wantsJsonResponse($request)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'غير مصرح لك بالوصول إلى هذا الدرس.',
+                ], 403);
             }
+
+            throw $e;
         }
-        
-        $subjectId = $subject->id;
+
+        $subjectId = $subject?->id;
         $lessonTitle = $lesson->title;
 
         try {
@@ -719,9 +758,7 @@ class LessonController extends Controller
                 ]);
             }
 
-            return redirect()
-                ->route('admin.subjects.show', $subjectId)
-                ->with('success', 'تم حذف الدرس "' . $lessonTitle . '" بنجاح.');
+            return $this->redirectAfterLessonAction($lesson, 'تم حذف الدرس "' . $lessonTitle . '" بنجاح.');
         } catch (\Exception $e) {
             Log::error('خطأ في حذف درس: ' . $e->getMessage());
 
@@ -732,8 +769,14 @@ class LessonController extends Controller
                 ], 500);
             }
 
+            if ($subjectId) {
+                return redirect()
+                    ->route('admin.subjects.show', $subjectId)
+                    ->with('error', 'حدث خطأ أثناء حذف الدرس: ' . $e->getMessage());
+            }
+
             return redirect()
-                ->route('admin.subjects.show', $subjectId)
+                ->route('admin.review-queue.index')
                 ->with('error', 'حدث خطأ أثناء حذف الدرس: ' . $e->getMessage());
         }
     }
@@ -801,11 +844,7 @@ class LessonController extends Controller
             auth()->user()
         );
 
-        $subjectId = $this->resolveSubjectFromLesson($lesson)->id;
-
-        return redirect()
-            ->route('admin.subjects.show', $subjectId)
-            ->with('success', 'تم الموافقة على تفعيل الدرس بنجاح.');
+        return $this->redirectAfterLessonAction($lesson, 'تم الموافقة على تفعيل الدرس بنجاح.');
     }
 
     /**
@@ -829,28 +868,80 @@ class LessonController extends Controller
             app(StaffNotificationService::class)->notifyLessonReviewOutcome($lesson->fresh(), auth()->user(), false);
         }, 'lesson_review_rejected', $lesson->id);
 
-        $subjectId = $this->resolveSubjectFromLesson($lesson)->id;
-
-        return redirect()
-            ->route('admin.subjects.show', $subjectId)
-            ->with('success', 'تم رفض تفعيل الدرس وتم إرسال الملاحظات للمعلم.');
+        return $this->redirectAfterLessonAction($lesson, 'تم رفض تفعيل الدرس وتم إرسال الملاحظات للمعلم.');
     }
 
-    private function resolveSubjectFromLesson(Lesson $lesson)
+    private function resolveSubjectFromLesson(Lesson $lesson): ?Subject
     {
-        if ($lesson->relationLoaded('unit') && $lesson->unit && $lesson->unit->relationLoaded('section') && $lesson->unit->section) {
-            return $lesson->unit->section->subject;
+        $lesson->loadMissing([
+            'unit.section.subject',
+            'section.subject',
+        ]);
+
+        $subject = $lesson->unit?->section?->subject
+            ?? $lesson->section?->subject;
+
+        if ($subject) {
+            return $subject;
         }
 
-        if ($lesson->unit && $lesson->unit->section) {
-            return $lesson->unit->section->subject;
+        if ($lesson->section_id) {
+            $subject = SubjectSection::with('subject')
+                ->find($lesson->section_id)
+                ?->subject;
+            if ($subject) {
+                return $subject;
+            }
         }
 
-        if ($lesson->relationLoaded('section') && $lesson->section) {
-            return $lesson->section->subject;
+        if ($lesson->unit_id) {
+            $unitSectionId = Unit::where('id', $lesson->unit_id)->value('section_id');
+            if ($unitSectionId) {
+                $subject = SubjectSection::with('subject')
+                    ->find($unitSectionId)
+                    ?->subject;
+                if ($subject) {
+                    return $subject;
+                }
+            }
         }
 
-        return optional($lesson->section)->subject;
+        return null;
+    }
+
+    private function assertTeacherCanAccessLesson($user, ?Subject $subject): void
+    {
+        if (! $user->usesTeacherAssignmentScope()) {
+            return;
+        }
+
+        if ($subject) {
+            if (! $user->isAssignedToSubject($subject->id) &&
+                ! $user->isAssignedToClass($subject->class_id)) {
+                abort(403, 'غير مصرح لك بالوصول إلى هذا الدرس');
+            }
+
+            return;
+        }
+
+        if (! $user->canReviewContent()) {
+            abort(403, 'لا يمكن التحقق من صلاحية الوصول لهذا الدرس.');
+        }
+    }
+
+    private function redirectAfterLessonAction(Lesson $lesson, string $message): RedirectResponse
+    {
+        $subject = $this->resolveSubjectFromLesson($lesson);
+
+        if ($subject) {
+            return redirect()
+                ->route('admin.subjects.show', $subject->id)
+                ->with('success', $message);
+        }
+
+        return redirect()
+            ->route('admin.review-queue.index')
+            ->with('success', $message);
     }
 
     private function wantsJsonResponse(Request $request): bool

@@ -38,6 +38,28 @@
                         </li>
                         @endcan
 
+                        @can('review-queue-list')
+                        @if(!auth()->user()->usesSupervisorAssignmentScope())
+                        <li class="slide {{ request()->is('admin/review-queue*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.review-queue.index') }}" class="side-menu__item {{ request()->is('admin/review-queue*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                </svg>
+                                <span class="side-menu__label">قائمة المراجعة</span>
+                                @php
+                                    $reviewQueueUser = auth()->user();
+                                    $reviewQueuePendingCount = \App\Models\Lesson::pendingReview()->count()
+                                        + \App\Models\Quiz::pendingReview()->count();
+                                @endphp
+                                @if($reviewQueuePendingCount > 0)
+                                    <span class="badge bg-danger text-white rounded-pill ms-auto">{{ $reviewQueuePendingCount }}</span>
+                                @endif
+                            </a>
+                        </li>
+                        @endif
+                        @endcan
+
                         @if(auth()->user()->usesTeacherAssignmentScope())
                         <li class="slide has-sub {{ request()->is('admin/classes*') || request()->is('admin/subjects*') || request()->routeIs('admin.my-approved-lessons') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">

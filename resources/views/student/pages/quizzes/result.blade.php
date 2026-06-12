@@ -2,6 +2,10 @@
 
 @include('partials.question-math-assets')
 
+@push('styles')
+    @include('partials.questions.mcq-options-styles')
+@endpush
+
 @section('page-title')
     نتيجة الاختبار - {{ $quiz->title }}
 @stop
@@ -171,9 +175,19 @@
                                         {!! format_question_markup($question->content) !!}
                                     </div>
                                 @endif
+
+                                @if(in_array($question->type, ['single_choice', 'multiple_choice', 'true_false'], true))
+                                    @include('partials.questions.mcq-options-review', [
+                                        'options' => $question->options,
+                                        'questionType' => $question->type,
+                                        'selectedOptionIds' => is_array($answer->selected_options) ? $answer->selected_options : [],
+                                        'reviewMode' => true,
+                                        'highlightCorrect' => (bool) $quiz->show_correct_answers,
+                                    ])
+                                @endif
                                 
                                 <!-- Student Answer -->
-                                <div class="mb-2">
+                                <div class="mb-2 {{ in_array($question->type, ['single_choice', 'multiple_choice', 'true_false'], true) ? 'd-none' : '' }}">
                                     <strong class="text-dark">إجابتك:</strong>
                                     @if($question->type == 'multiple_choice' || $question->type == 'single_choice')
                                         @php
@@ -314,7 +328,7 @@
                                 @endif
                                 
                                 <!-- Correct Answer (if wrong) -->
-                                @if(!$isCorrect && $quiz->show_correct_answers)
+                                @if(!$isCorrect && $quiz->show_correct_answers && !in_array($question->type, ['single_choice', 'multiple_choice', 'true_false'], true))
                                     <div class="mt-2">
                                         <strong class="text-success">الإجابة الصحيحة:</strong>
                                         @if($question->type == 'multiple_choice' || $question->type == 'single_choice')

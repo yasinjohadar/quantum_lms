@@ -1,90 +1,83 @@
 @forelse($subjects as $subject)
     <tr data-id="{{ $subject->id }}">
-        <td class="sortable-handle d-flex align-items-center justify-content-center cursor-grab text-muted py-2" style="width: 36px; min-width: 36px;" title="اسحب لإعادة الترتيب">
-            <i class="bi bi-grip-vertical"></i>
+        <td class="text-center" style="width: 32px;">
+            <span class="sortable-handle sb-sort-handle" title="اسحب لإعادة الترتيب">
+                <i class="bi bi-grip-vertical"></i>
+            </span>
         </td>
-        <td>{{ $loop->iteration + ($subjects->currentPage() - 1) * $subjects->perPage() }}</td>
+        <td class="text-muted small">{{ $loop->iteration + ($subjects->currentPage() - 1) * $subjects->perPage() }}</td>
         <td>
-            <div class="d-flex justify-content-center">
+            <div class="sb-subject-cell">
                 <img src="{{ $subject->image ? media_public_url($subject->image) : asset('assets/images/media/media-22.jpg') }}"
                      alt="{{ $subject->name }}"
-                     class="rounded"
-                     style="width: 60px; height: 60px; object-fit: cover;">
+                     class="sb-subject-thumb">
+                <div>
+                    <a href="{{ route('admin.subjects.show', $subject->id) }}" class="sb-subject-name d-block">
+                        {{ $subject->name }}
+                    </a>
+                </div>
             </div>
         </td>
         <td>
-            <a href="{{ route('admin.subjects.show', $subject->id) }}" class="text-decoration-none fw-semibold">
-                {{ $subject->name }}
-            </a>
-        </td>
-        <td>
-            {{ $subject->schoolClass?->name ?? '-' }}
+            <span class="fw-medium small">{{ $subject->schoolClass?->name ?? '—' }}</span>
             @if($subject->schoolClass && $subject->schoolClass->stage)
-                <span class="text-muted small d-block">
-                    ({{ $subject->schoolClass->stage->name }})
-                </span>
+                <span class="sb-class-meta d-block">{{ $subject->schoolClass->stage->name }}</span>
             @endif
         </td>
         <td>
             @can('subject-toggle-status')
                 <button type="button"
-                        class="btn btn-sm d-inline-flex align-items-center {{ $subject->is_active ? 'btn-success' : 'btn-outline-danger' }}"
+                        class="sb-status-badge {{ $subject->is_active ? 'sb-status-badge--active' : 'sb-status-badge--inactive' }}"
                         data-bs-toggle="modal"
-                        data-bs-target="#toggleSubjectStatus{{ $subject->id }}">
-                    @if($subject->is_active)
-                        <i class="fas fa-check-circle me-1"></i>
-                        <span>نشطة</span>
-                    @else
-                        <i class="fas fa-ban me-1"></i>
-                        <span>غير نشطة</span>
-                    @endif
+                        data-bs-target="#toggleSubjectStatus{{ $subject->id }}"
+                        title="تغيير الحالة">
+                    <i class="bi {{ $subject->is_active ? 'bi-check-circle' : 'bi-x-circle' }} me-1"></i>
+                    {{ $subject->is_active ? 'نشطة' : 'غير نشطة' }}
                 </button>
             @else
-                @if ($subject->is_active)
-                    <span class="badge bg-success">نشطة</span>
-                @else
-                    <span class="badge bg-danger">غير نشطة</span>
-                @endif
+                <span class="sb-status-badge {{ $subject->is_active ? 'sb-status-badge--active' : 'sb-status-badge--inactive' }}">
+                    {{ $subject->is_active ? 'نشطة' : 'غير نشطة' }}
+                </span>
             @endcan
         </td>
-        <td>{{ $subject->created_at?->format('Y-m-d H:i') }}</td>
         <td>
-            <div class="d-flex gap-1 flex-wrap justify-content-center">
+            <div class="row-action-bar">
                 @can('question-list')
                     <a href="{{ route('admin.subjects.questions.index', $subject->id) }}"
-                       class="btn btn-sm btn-secondary text-white"
-                       title="بنك أسئلة المادة">
-                        <i class="bi bi-journal-text"></i> بنك الأسئلة
+                       class="row-action-btn row-action-btn--secondary"
+                       title="بنك الأسئلة">
+                        <i class="bi bi-journal-text"></i>
                     </a>
                 @endcan
                 @can('subject-show')
                     <a href="{{ route('admin.subjects.show', $subject->id) }}"
-                       class="btn btn-sm btn-info text-white"
-                       title="عرض تفاصيل المادة">
-                        <i class="fas fa-eye"></i> عرض
+                       class="row-action-btn row-action-btn--info"
+                       title="عرض">
+                        <i class="bi bi-eye"></i>
                     </a>
                 @endcan
                 @can('subject-enrolled-students')
                     <a href="{{ route('admin.subjects.enrolled-students', $subject->id) }}"
-                       class="btn btn-sm btn-primary text-white"
-                       title="عرض الطلاب المنضمين">
-                        <i class="fas fa-users"></i> الطلاب
+                       class="row-action-btn row-action-btn--primary"
+                       title="الطلاب">
+                        <i class="bi bi-people"></i>
                     </a>
                 @endcan
                 @can('subject-edit')
                     <a href="{{ route('admin.subjects.edit', $subject->id) }}"
-                       class="btn btn-sm btn-warning text-white"
-                       title="تعديل المادة">
-                        <i class="fas fa-edit"></i> تعديل
+                       class="row-action-btn row-action-btn--warning"
+                       title="تعديل">
+                        <i class="bi bi-pencil"></i>
                     </a>
                 @endcan
                 @can('subject-delete')
+                    <span class="row-action-divider" aria-hidden="true"></span>
                     <button type="button"
-                            class="btn btn-sm btn-danger"
+                            class="row-action-btn row-action-btn--danger"
                             data-bs-toggle="modal"
                             data-bs-target="#deleteSubject{{ $subject->id }}"
-                            title="حذف المادة">
-                        <i class="fas fa-trash-alt"></i> حذف
+                            title="حذف">
+                        <i class="bi bi-trash"></i>
                     </button>
                 @endcan
             </div>
@@ -99,8 +92,11 @@
     </tr>
 @empty
     <tr>
-        <td colspan="8" class="text-center text-danger fw-bold">
-            لا توجد مواد مسجلة حالياً
+        <td colspan="6">
+            <div class="subjects-empty">
+                <i class="bi bi-journal-bookmark"></i>
+                <p class="mb-0 fw-semibold">لا توجد مواد مطابقة للفلاتر</p>
+            </div>
         </td>
     </tr>
 @endforelse

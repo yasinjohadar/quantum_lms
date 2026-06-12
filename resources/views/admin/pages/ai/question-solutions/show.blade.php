@@ -1,5 +1,11 @@
 @extends('admin.layouts.master')
 
+@include('partials.question-math-assets')
+
+@push('styles')
+    @include('partials.questions.mcq-options-styles')
+@endpush
+
 @section('page-title')
     عرض حل AI
 @stop
@@ -28,16 +34,33 @@
                         <p><strong>نوع السؤال:</strong> {{ \App\Models\Question::TYPES[$solution->question->type] ?? $solution->question->type }}</p>
                         <div class="mb-3">
                             <strong class="d-block mb-1">السؤال:</strong>
-                            <div class="question-stem">{!! $solution->question->title ?? $solution->question->content ?? '' !!}</div>
+                            <div class="question-stem question-text-body">{!! format_question_markup($solution->question->title ?? $solution->question->content ?? '') !!}</div>
                         </div>
-                                        @if($solution->question->options && $solution->question->options->count() > 0)
-                                            <p><strong>الخيارات:</strong></p>
-                                            <ul>
-                                                @foreach($solution->question->options as $option)
-                                                    <li>{{ $option->content }} @if($option->is_correct) <span class="badge bg-success">صحيح</span> @endif</li>
-                                                @endforeach
-                                            </ul>
-                                        @endif
+                        @if(question_content_differs_from_title($solution->question->title, $solution->question->content))
+                            <div class="mb-3 question-text-body text-muted">
+                                {!! format_question_markup($solution->question->content) !!}
+                            </div>
+                        @endif
+                        @if($solution->question->options && $solution->question->options->count() > 0)
+                            <p class="mb-2"><strong>الخيارات:</strong></p>
+                            @if(in_array($solution->question->type, ['single_choice', 'multiple_choice', 'true_false'], true))
+                                @include('partials.questions.mcq-options-review', [
+                                    'options' => $solution->question->options,
+                                    'questionType' => $solution->question->type,
+                                    'reviewMode' => false,
+                                    'highlightCorrect' => true,
+                                ])
+                            @else
+                                <ul class="mb-0">
+                                    @foreach($solution->question->options as $option)
+                                        <li class="question-text-body">
+                                            {!! format_question_markup($option->content) !!}
+                                            @if($option->is_correct) <span class="badge bg-success">صحيح</span> @endif
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        @endif
                     </div>
                 </div>
 
@@ -55,7 +78,7 @@
                     </div>
                     <div class="card-body">
                         <p><strong>الموديل:</strong> {{ $solution->model->name ?? '-' }}</p>
-                        <p><strong>درجة الثقة:</strong> 
+                        <p><strong>درجة الثقة:</strong>
                             @if($solution->confidence_score)
                                 <span class="badge bg-{{ $solution->confidence_score >= 0.8 ? 'success' : ($solution->confidence_score >= 0.5 ? 'warning' : 'danger') }}">
                                     {{ number_format($solution->confidence_score * 100, 1) }}%
@@ -67,20 +90,20 @@
                         <p><strong>الدقة:</strong> {{ number_format($accuracy * 100, 1) }}%</p>
                         <hr>
                         <h6>الحل:</h6>
-                        <div class="p-3 bg-light rounded">
-                            {!! nl2br(e($solution->solution)) !!}
+                        <div class="p-3 bg-light rounded question-text-body">
+                            {!! format_question_markup($solution->solution) !!}
                         </div>
                         @if($solution->explanation)
                             <hr>
                             <h6>الشرح:</h6>
-                            <div class="p-3 bg-light rounded">
-                                {!! nl2br(e($solution->explanation)) !!}
+                            <div class="p-3 bg-light rounded question-text-body">
+                                {!! format_question_markup($solution->explanation) !!}
                             </div>
                         @endif
                         @if($solution->is_verified)
-                            <hr>
-                            <p><strong>تم التحقق بواسطة:</strong> {{ $solution->verifier->name ?? '-' }}</p>
-                            <p><strong>تاريخ التحقق:</strong> {{ $solution->verified_at?->format('Y-m-d H:i') }}</p>
+                            <div class="alert alert-success mt-3 mb-0">
+                                <i class="fas fa-check-circle me-1"></i> تم التحقق من هذا الحل
+                            </div>
                         @endif
                     </div>
                 </div>
@@ -90,3 +113,6 @@
 </div>
 @stop
 
+@section('js')
+    @include('partials.question-math-scripts')
+@stop

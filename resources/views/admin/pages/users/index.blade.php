@@ -7,85 +7,67 @@
 
 
 @push('styles')
-    <style>
-        /* مودال إضافة طالب: حد أقصى لارتفاع النافذة وتمرير المحتوى مع بقاء الأزرار أسفل الظاهرة */
-        #quickAddStudentModal .modal-dialog.quick-add-student-dialog {
-            max-height: calc(100vh - 2rem);
-            margin: 1rem auto;
-        }
-        #quickAddStudentModal .modal-content {
-            max-height: calc(100vh - 2rem);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        /* الهيدر/الجسم/التذييل داخل <form>؛ يجب أن يكون النموذج عمود flex ليعمل التمرير على الجسم */
-        #quickAddStudentModal .modal-content > form {
-            display: flex;
-            flex-direction: column;
-            flex: 1 1 auto;
-            min-height: 0;
-            max-height: 100%;
-            overflow: hidden;
-        }
-        #quickAddStudentModal.modal {
-            overflow-y: auto;
-        }
-        #quickAddStudentModal .modal-header,
-        #quickAddStudentModal .modal-footer {
-            flex-shrink: 0;
-        }
-        #quickAddStudentModal .modal-body {
-            overflow-y: auto !important;
-            -webkit-overflow-scrolling: touch;
-            flex: 1 1 auto;
-            min-height: 0;
-        }
-        #quickAddStudentModal .quick-add-subjects-select {
-            max-height: 11rem;
-        }
-        .users-table.hide-classes-col .users-classes-col {
-            display: none;
-        }
-    </style>
+    @include('admin.pages.users.partials.users-index-styles')
 @endpush
 
 @section('content')
-    <!-- Start::app-content -->
-    <div class="main-content app-content">
+    <div class="main-content app-content users-index-page">
         <div class="container-fluid">
 
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto d-flex flex-wrap align-items-center gap-3">
-                    <h5 class="page-title fs-21 mb-1">كافة الطلاب</h5>
-                    @include('admin.partials.per-page-toolbar', ['paginator' => $users])
+            <div class="users-index-hero my-4">
+                <div class="users-index-hero__icon">
+                    <i class="bi bi-mortarboard-fill"></i>
+                </div>
+                <div class="users-index-hero__content">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-2 small">
+                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">كافة الطلاب</li>
+                        </ol>
+                    </nav>
+                    <h4 class="users-index-hero__title">كافة الطلاب</h4>
+                    <p class="users-index-hero__subtitle">إدارة حسابات الطلاب، الصفوف، والانضمامات</p>
+                </div>
+                <div class="users-index-stat-mini">
+                    <span class="users-index-stat-mini__value">{{ number_format($users->total()) }}</span>
+                    <span class="users-index-stat-mini__label">طالب مطابق</span>
+                </div>
+                <div class="users-index-hero__actions">
+                    @can('user-create')
+                        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal"
+                                data-bs-target="#quickAddStudentModal">
+                            <i class="bi bi-person-plus me-1"></i> إضافة طالب
+                        </button>
+                    @endcan
+                    <a href="{{ route('users.create') }}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-person-plus-fill me-1"></i> مستخدم جديد
+                    </a>
+                    <a href="{{ route('admin.archived-users.index') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-archive me-1"></i> الأرشيف
+                    </a>
+                    <a href="{{ route('admin.users.manage') }}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-people me-1"></i> كل المستخدمين
+                    </a>
                 </div>
             </div>
-            <!-- End Page Header -->
 
-            <!-- Success/Error Messages -->
             @if (session('success'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert" style="margin-top: 20px; display: block !important; visibility: visible !important; opacity: 1 !important;">
-                    <i class="bi bi-check-circle me-2"></i>
-                    <strong>نجح!</strong> {!! session('success') !!}
+                <div class="alert alert-success alert-dismissible fade show">
+                    <i class="bi bi-check-circle me-2"></i>{!! session('success') !!}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
                 </div>
             @endif
 
             @if (session('error'))
-                <div class="alert alert-danger alert-dismissible fade show" role="alert" style="margin-top: 20px; display: block !important; visibility: visible !important; opacity: 1 !important;">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    <strong>خطأ!</strong> {!! session('error') !!}
+                <div class="alert alert-danger alert-dismissible fade show">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{!! session('error') !!}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
                 </div>
             @endif
 
             @if ($errors->any())
-                <div class="alert alert-danger alert-dismissible fade show" role="alert" style="margin-top: 20px; display: block !important; visibility: visible !important; opacity: 1 !important;">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    <strong>خطأ في البيانات!</strong>
-                    <ul class="mb-0 mt-2">
+                <div class="alert alert-danger alert-dismissible fade show">
+                    <ul class="mb-0 small">
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
                         @endforeach
@@ -94,140 +76,134 @@
                 </div>
             @endif
 
-            <!-- Start Content -->
-
-
-            </div>
-            <!-- Page Header Close -->
-
-
-
-            <!-- Start::row-1 -->
-            <div class="row">
-                <div class="col-xl-12">
-                    <div class="card">
-                        <div class="card-header align-items-center d-flex gap-3">
-                            <div class="d-flex gap-2">
-                                @can('user-create')
-                                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal"
-                                        data-bs-target="#quickAddStudentModal">
-                                        <i class="bi bi-person-plus me-1"></i> إضافة طالب
-                                    </button>
-                                @endcan
-                                <a href="{{ route('users.create') }}" class="btn btn-primary btn-sm">إنشاء مستخدم جديد</a>
-                                <a href="{{ route('admin.archived-users.index') }}" class="btn btn-outline-secondary btn-sm">
-                                    <i class="fas fa-archive me-1"></i> الأرشيف
-                                </a>
-                            </div>
-
-                            <div class="flex-shrink-0">
-                                <div class="form-check form-switch form-switch-right form-switch-md">
-                                    <form action="{{ route('users.index') }}" method="GET"
-                                        class="d-flex align-items-center gap-2">
-                                        {{-- حقل البحث --}}
-                                        <input style="width: 300px" type="text" name="query" class="form-control"
-                                            placeholder="بحث بالاسم أو الهاتف" value="{{ request('query') }}">
-
-                                        {{-- فلتر الحالة النشطة --}}
-                                        <select name="is_active" class="form-select">
-                                            <option value="">كل الحالات</option>
-                                            <option value="1" {{ request('is_active', '1') == '1' ? 'selected' : '' }}>مفعل</option>
-                                            <option value="0" {{ request('is_active', '1') == '0' ? 'selected' : '' }}>معطل</option>
-                                        </select>
-
-                                        {{-- فلتر الصف --}}
-                                        <select name="class_id" id="classFilter" class="form-select">
-                                            <option value="">كل الصفوف</option>
-                                            @foreach ($classes as $class)
-                                                <option value="{{ $class->id }}" {{ request('class_id') == (string)$class->id ? 'selected' : '' }}>
-                                                    {{ $class->name }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-
-
-                                        <button type="submit" class="btn btn-secondary">بحث</button>
-                                        <a href="{{ route('users.index') }}" class="btn btn-danger">مسح </a>
-                                    </form>
+            <div class="users-index-card">
+                <div class="users-index-card__header">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="users-index-card__header-icon"><i class="bi bi-funnel"></i></span>
+                        تصفية وبحث
+                    </div>
+                </div>
+                <div class="users-index-card__body">
+                    <form id="usersFiltersForm" action="{{ route('users.index') }}" method="GET" class="users-index-filters">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-6 col-lg-4">
+                                <label class="form-label">بحث</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                    <input type="text" name="query" class="form-control border-start-0"
+                                           placeholder="الاسم أو الهاتف" value="{{ request('query') }}">
                                 </div>
+                            </div>
+                            <div class="col-md-6 col-lg-2">
+                                <label class="form-label">حالة الحساب</label>
+                                <select name="is_active" class="form-select">
+                                    <option value="">كل الحالات</option>
+                                    <option value="1" {{ request('is_active', '1') == '1' ? 'selected' : '' }}>مفعل</option>
+                                    <option value="0" {{ request('is_active', '1') == '0' ? 'selected' : '' }}>معطل</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 col-lg-3">
+                                <label class="form-label">الصف الدراسي</label>
+                                <select name="class_id" id="classFilter" class="form-select">
+                                    <option value="">كل الصفوف</option>
+                                    @foreach ($classes as $class)
+                                        <option value="{{ $class->id }}" {{ request('class_id') == (string)$class->id ? 'selected' : '' }}>
+                                            {{ $class->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-6 col-lg-3 d-flex flex-wrap gap-2 align-items-end">
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-search me-1"></i> بحث
+                                </button>
+                                @if(request()->hasAny(['query','class_id','is_active']) && (request('query') || request('class_id') || request('is_active') !== null))
+                                    <a href="{{ route('users.index') }}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="bi bi-x-lg me-1"></i> مسح
+                                    </a>
+                                @endif
+                                @include('admin.partials.per-page-toolbar', ['paginator' => $users])
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="users-index-card">
+                <div class="users-index-card__header">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="users-index-card__header-icon"><i class="bi bi-table"></i></span>
+                        قائمة الطلاب
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <button type="button"
+                                class="btn btn-outline-danger btn-sm"
+                                id="detachAllByScopeBtn">
+                            <i class="bi bi-person-x me-1"></i> فصل الكل حسب الصف/المادة
+                        </button>
+                        <button type="button"
+                                class="btn btn-outline-secondary btn-sm"
+                                id="toggleUsersClassesColBtn"
+                                title="إظهار أو إخفاء عمود الصفوف">
+                            <i class="bi bi-building me-1"></i>
+                            <span id="toggleUsersClassesColLabel">إظهار الصفوف</span>
+                        </button>
+                        <span class="badge bg-primary-transparent text-primary">
+                            صفحة {{ $users->currentPage() }} من {{ $users->lastPage() }}
+                        </span>
+                    </div>
+                </div>
+                <div class="users-index-card__body p-0">
+                    <form id="bulk-archive-form" action="{{ route('admin.users.bulk-archive') }}" method="POST">
+                        @csrf
+                        <input type="hidden" name="user_ids" id="user_ids_input">
+                        <input type="hidden" name="reason" id="archive_reason_input">
+
+                        <div class="px-3 pt-3">
+                            <div class="users-bulk-toolbar" id="usersBulkToolbar" style="display: none;">
+                                <span class="small text-muted me-2"><i class="bi bi-check2-square me-1"></i> إجراءات جماعية:</span>
+                                <button type="button" class="btn btn-warning btn-sm" id="bulk-archive-btn">
+                                    <i class="bi bi-archive me-1"></i> أرشفة المحدد
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm" id="bulk-detach-class-btn">
+                                    <i class="bi bi-person-x me-1"></i> فصل المحدد عن الصف
+                                    <span class="badge bg-light text-dark ms-1" id="bulkDetachSelectedCount">0</span>
+                                </button>
                             </div>
                         </div>
 
-
-                        <div class="card-body">
-                            <form id="bulk-archive-form" action="{{ route('admin.users.bulk-archive') }}" method="POST">
-                                @csrf
-                                <input type="hidden" name="user_ids" id="user_ids_input">
-                                <input type="hidden" name="reason" id="archive_reason_input">
-
-                                <div class="mb-3">
-                                    <button type="button" class="btn btn-warning btn-sm" id="bulk-archive-btn" style="display: none;">
-                                        <i class="fas fa-archive me-1"></i> أرشفة المحدد
-                                    </button>
-                                    <button type="button"
-                                            class="btn btn-danger btn-sm"
-                                            id="bulk-detach-class-btn"
-                                            style="display: none;">
-                                        <i class="fas fa-user-slash me-1"></i> فصل المحدد عن الصف
-                                        <span class="badge bg-light text-dark ms-1" id="bulkDetachSelectedCount">0</span>
-                                    </button>
-                                    <button type="button"
-                                            class="btn btn-outline-danger btn-sm ms-2"
-                                            id="detachAllByScopeBtn">
-                                        <i class="fas fa-user-slash me-1"></i> فصل الكل حسب الصف/المادة
-                                    </button>
-                                    <button type="button"
-                                            class="btn btn-outline-secondary btn-sm ms-2"
-                                            id="toggleUsersClassesColBtn"
-                                            title="إظهار أو إخفاء عمود الصفوف">
-                                        <i class="bi bi-building me-1"></i>
-                                        <span id="toggleUsersClassesColLabel">إظهار الصفوف</span>
-                                    </button>
-                                </div>
-
-                            <p class="text-muted">
-                            <div class="">
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover align-middle table-nowrap mb-0 users-table hide-classes-col" id="usersTable">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th scope="col" style="width: 40px;">
-                                                    <input type="checkbox" id="select-all-users" class="form-check-input">
-                                                </th>
-                                                <th scope="col" style="width: 40px;">#</th>
-                                                <th scope="col" style="min-width: 150px;">اسم المستخدم</th>
-                                                <th scope="col" style="min-width: 120px;">الهاتف</th>
-                                                <th scope="col" style="min-width: 140px;">حالة الحساب</th>
-                                                <th scope="col" class="users-classes-col" style="min-width: 180px;">الصفوف</th>
-                                                <th scope="col" style="min-width: 200px;">العمليات</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="usersTableBody">
-                                            @include('admin.pages.users.partials.users-tbody', ['users' => $users, 'classesForAssign' => $classesForAssign])
-                                        </tbody>
-                                    </table>
-
-                                    <div class="mt-3">
-                                        <div id="usersPaginationContainer">
-                                            {{ $users->withQueryString()->links() }}
-                                        </div>
-                                    </div>
-                                </div>
+                        <div class="users-index-table-wrap mx-3 mb-0">
+                            <div class="table-responsive">
+                                <table class="table users-index-table align-middle mb-0 users-table hide-classes-col" id="usersTable">
+                                    <thead>
+                                    <tr>
+                                        <th scope="col" style="width: 40px;">
+                                            <input type="checkbox" id="select-all-users" class="form-check-input">
+                                        </th>
+                                        <th scope="col" style="width: 48px;">#</th>
+                                        <th scope="col">اسم الطالب</th>
+                                        <th scope="col">الهاتف</th>
+                                        <th scope="col">الحالة</th>
+                                        <th scope="col" class="users-classes-col">الصفوف</th>
+                                        <th scope="col" style="min-width: 220px;">العمليات</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody id="usersTableBody">
+                                    @include('admin.pages.users.partials.users-tbody', ['users' => $users, 'classesForAssign' => $classesForAssign])
+                                    </tbody>
+                                </table>
                             </div>
-                            </form>
+                        </div>
 
-
-
-                        </div><!-- end card-body -->
-                    </div><!-- end card -->
+                        <div class="px-3 pb-3 users-index-pagination" id="usersPaginationContainer">
+                            {{ $users->withQueryString()->links() }}
+                        </div>
+                    </form>
                 </div>
             </div>
-            <!--End::row-1 -->
-
 
         </div>
     </div>
-    <!-- End::app-content -->
 
 <!-- Modal أرشفة المستخدم -->
 <div class="modal fade" id="archiveModal" tabindex="-1" aria-labelledby="archiveModalLabel" aria-hidden="true">
@@ -890,16 +866,16 @@
             });
         });
 
+        const usersBulkToolbar = document.getElementById('usersBulkToolbar');
+
         function toggleBulkArchiveBtn() {
             const checked = document.querySelectorAll('.user-checkbox:checked');
-            if (bulkArchiveBtn) {
-                bulkArchiveBtn.style.display = checked.length > 0 ? 'inline-block' : 'none';
+            const hasChecked = checked.length > 0;
+            if (usersBulkToolbar) {
+                usersBulkToolbar.style.display = hasChecked ? 'flex' : 'none';
             }
-            if (bulkDetachBtn) {
-                bulkDetachBtn.style.display = checked.length > 0 ? 'inline-block' : 'none';
-                if (bulkDetachSelectedCountEl) {
-                    bulkDetachSelectedCountEl.textContent = checked.length;
-                }
+            if (bulkDetachSelectedCountEl) {
+                bulkDetachSelectedCountEl.textContent = checked.length;
             }
         }
 

@@ -4,115 +4,87 @@
     الاختبارات قيد المراجعة
 @stop
 
+@push('styles')
+    @include('admin.pages.review-queue.partials.index-styles')
+@endpush
+
 @section('content')
-    <div class="main-content app-content">
+    <div class="main-content app-content review-queue-page">
         <div class="container-fluid">
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">الاختبارات قيد المراجعة</h5>
-                    <p class="text-muted mb-0">مراجعة الاختبارات المقدمة من المعلمين</p>
+
+            <div class="rq-hero my-4">
+                <div class="rq-hero__icon">
+                    <i class="bi bi-clipboard-check-fill"></i>
                 </div>
-                <div>
-                    <a href="{{ route('admin.review-queue.index') }}" class="btn btn-secondary btn-sm">
-                        <i class="fas fa-arrow-right me-1"></i> رجوع
+                <div class="rq-hero__content">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-2 small">
+                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                            <li class="breadcrumb-item"><a href="{{ route('admin.review-queue.index') }}">قائمة المراجعة</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">الاختبارات</li>
+                        </ol>
+                    </nav>
+                    <h4 class="rq-hero__title">الاختبارات قيد المراجعة</h4>
+                    <p class="rq-hero__subtitle">مراجعة الاختبارات المقدمة من المعلمين والموافقة على نشرها</p>
+                </div>
+                <div class="rq-hero__actions">
+                    <a href="{{ route('admin.review-queue.index') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-arrow-right me-1"></i> العودة
                     </a>
                 </div>
             </div>
 
             @if (session('success'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('success') }}
+                <div class="alert alert-success alert-dismissible fade show">
+                    <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
                 </div>
             @endif
 
-            <!-- فلترة -->
-            <div class="card shadow-sm border-0 mb-3">
-                <div class="card-body">
-                    <form method="GET" class="row g-3">
-                        <div class="col-md-3">
-                            <input type="text" name="search" class="form-control" 
-                                   placeholder="بحث..." value="{{ request('search') }}">
-                        </div>
-                        <div class="col-md-3">
-                            <select name="class_id" class="form-select">
-                                <option value="">كل الصفوف</option>
-                                @foreach($classes as $class)
-                                    <option value="{{ $class->id }}" {{ request('class_id') == $class->id ? 'selected' : '' }}>
-                                        {{ $class->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <select name="subject_id" class="form-select">
-                                <option value="">كل المواد</option>
-                                @foreach($subjects as $subject)
-                                    <option value="{{ $subject->id }}" {{ request('subject_id') == $subject->id ? 'selected' : '' }}>
-                                        {{ $subject->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <button type="submit" class="btn btn-primary w-100">بحث</button>
-                        </div>
-                        <div class="col-md-1">
-                            <a href="{{ route('admin.review-queue.quizzes') }}" class="btn btn-secondary w-100">إعادة</a>
-                        </div>
-                    </form>
+            @if(isset($stats))
+                @include('admin.pages.review-queue.partials.stats-cards', ['stats' => $stats])
+            @endif
+
+            <div class="rq-card mb-4">
+                <div class="rq-card__header">
+                    <span><span class="rq-card__header-icon"><i class="bi bi-grid-3x3-gap"></i></span> التنقل</span>
+                </div>
+                <div class="rq-card__body pb-2">
+                    @include('admin.pages.review-queue.partials.nav-tabs', [
+                        'stats' => $stats ?? ['lessons' => ['pending' => 0], 'quizzes' => ['pending' => $quizzes->total()]],
+                        'active' => 'quizzes',
+                    ])
                 </div>
             </div>
 
-            <!-- الجدول -->
+            @include('admin.pages.review-queue.partials.filters', [
+                'filterAction' => route('admin.review-queue.quizzes'),
+                'resetRoute' => route('admin.review-queue.quizzes'),
+            ])
+
             @if($quizzes->count() > 0)
-                <div class="card">
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>عنوان الاختبار</th>
-                                        <th>المادة</th>
-                                        <th>المعلم</th>
-                                        <th>تاريخ الإرسال</th>
-                                        <th>الحالة</th>
-                                        <th>الإجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($quizzes as $quiz)
-                                        <tr>
-                                            <td>{{ $loop->iteration + ($quizzes->currentPage() - 1) * $quizzes->perPage() }}</td>
-                                            <td>{{ $quiz->title }}</td>
-                                            <td>{{ $quiz->subject->name ?? '-' }}</td>
-                                            <td>{{ $quiz->creator->name ?? '-' }}</td>
-                                            <td>{{ $quiz->submitted_for_review_at ? \Carbon\Carbon::parse($quiz->submitted_for_review_at)->format('Y-m-d H:i') : '-' }}</td>
-                                            <td>
-                                                <span class="badge bg-warning">قيد المراجعة</span>
-                                            </td>
-                                            <td>
-                                                <a href="{{ route('admin.quizzes.show', $quiz->id) }}" 
-                                                   class="btn btn-sm btn-primary">
-                                                    <i class="fas fa-eye me-1"></i> عرض
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="d-flex justify-content-center mt-3">
+                <div class="rq-card">
+                    <div class="rq-card__header">
+                        <span><span class="rq-card__header-icon"><i class="bi bi-clipboard-check"></i></span> النتائج</span>
+                        <span class="badge rounded-pill text-bg-light border">{{ $quizzes->total() }} اختبار</span>
+                    </div>
+                    <div class="rq-card__body">
+                        @include('admin.pages.review-queue.partials.quizzes-table', [
+                            'quizzes' => $quizzes,
+                            'showStatus' => true,
+                        ])
+                        <div class="rq-pagination d-flex justify-content-center">
                             {{ $quizzes->links() }}
                         </div>
                     </div>
                 </div>
             @else
-                <div class="card">
-                    <div class="card-body text-center py-5">
-                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-                        <p class="text-muted">لا توجد اختبارات قيد المراجعة حالياً</p>
+                <div class="rq-card">
+                    <div class="rq-card__body">
+                        <div class="rq-empty">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <p class="mb-0 fw-semibold">لا توجد اختبارات قيد المراجعة حالياً</p>
+                        </div>
                     </div>
                 </div>
             @endif

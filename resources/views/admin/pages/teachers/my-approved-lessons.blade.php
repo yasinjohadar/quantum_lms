@@ -8,45 +8,60 @@
     @endisset
 @stop
 
+@push('styles')
+    @include('admin.pages.teachers.partials.progress-styles')
+@endpush
+
 @section('content')
-    <div class="main-content app-content">
+    @php
+        $listRoute = isset($viewedTeacher)
+            ? route('admin.teachers.approved-lessons', $viewedTeacher)
+            : route('admin.my-approved-lessons');
+    @endphp
+    <div class="main-content app-content teachers-progress-page">
         <div class="container-fluid">
 
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    @isset($viewedTeacher)
-                        <div class="d-flex flex-wrap gap-2 mb-2">
-                            <a href="{{ route('admin.teachers.progress.index') }}" class="btn btn-light btn-sm border">
-                                <i class="bi bi-arrow-right me-1"></i> تقدم المعلمين
-                            </a>
-                            <a href="{{ route('admin.teachers.progress.show', $viewedTeacher) }}" class="btn btn-light btn-sm border">
-                                <i class="bi bi-person-badge me-1"></i> صفحة تقدم {{ $viewedTeacher->name }}
-                            </a>
-                        </div>
-                    @endisset
-                    <h5 class="page-title fs-21 mb-1">
+            <div class="tp-hero my-4">
+                <div class="tp-hero__icon">
+                    <i class="bi bi-journal-check"></i>
+                </div>
+                <div class="tp-hero__content">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-2 small">
+                            @isset($viewedTeacher)
+                                <li class="breadcrumb-item"><a href="{{ route('admin.teachers.progress.index') }}">تقدم المعلمين</a></li>
+                                <li class="breadcrumb-item"><a href="{{ route('admin.teachers.progress.show', $viewedTeacher) }}">{{ $viewedTeacher->name }}</a></li>
+                            @else
+                                <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                            @endisset
+                            <li class="breadcrumb-item active" aria-current="page">الدروس المعتمدة</li>
+                        </ol>
+                    </nav>
+                    <h4 class="tp-hero__title">
                         @isset($viewedTeacher)
-                            تفاصيل الدروس المعتمدة وصفحات الكتاب — {{ $viewedTeacher->name }}
+                            الدروس المعتمدة — {{ $viewedTeacher->name }}
                         @else
-                            تفاصيل الدروس المعتمدة وصفحات الكتاب
+                            تفاصيل دروسي المعتمدة
                         @endisset
-                    </h5>
-                    <p class="text-muted small mb-0">
-                        @isset($viewedTeacher)
-                            الدروس التي حالتها «معتمد» ضمن المواد المخصّصة لهذا المعلم، مع نطاق الصفحات كما في نموذج الدرس.
-                        @else
-                            تُعرض هنا الدروس التي حالتها «معتمد» ضمن المواد المخصّصة لك، مع نطاق الصفحات كما في نموذج الدرس
-                            (من الصفحة / إلى الصفحة). يُطابق مجموع «عدد الصفحات» ما يُحسب في عمود المنجز في إحصائيات التقدم عندما يكون الدرس مرتبطاً بالمادة عبر الوحدة أو القسم.
-                        @endisset
+                    </h4>
+                    <p class="tp-hero__subtitle">
+                        الدروس المعتمدة ضمن المواد المخصّصة، مع نطاق الصفحات كما في نموذج الدرس
                     </p>
                 </div>
+                @isset($viewedTeacher)
+                    <div class="tp-hero__actions">
+                        <a href="{{ route('admin.teachers.progress.show', $viewedTeacher) }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-arrow-right me-1"></i> صفحة التقدم
+                        </a>
+                    </div>
+                @endisset
             </div>
 
-            @if(empty($bySubject))
-                <div class="card shadow-sm border-0">
-                    <div class="card-body text-center py-5">
-                        <i class="bi bi-journal-x fs-1 text-muted d-block mb-3"></i>
-                        <p class="text-muted mb-0">
+            @if(($grandLessonsCount ?? 0) === 0)
+                <div class="tp-card">
+                    <div class="tp-empty">
+                        <i class="bi bi-journal-x"></i>
+                        <p class="mb-0">
                             @isset($viewedTeacher)
                                 لا توجد مواد مخصّصة لهذا المعلم، أو لا توجد دروس معتمدة بعد ضمن مواده.
                             @else
@@ -56,106 +71,137 @@
                     </div>
                 </div>
             @else
-                <div class="card shadow-sm border mb-3">
-                    <div class="card-body py-3 d-flex flex-wrap gap-4 justify-content-between align-items-center bg-light bg-opacity-50 rounded-top">
-                        <div>
-                            <span class="text-muted small d-block mb-1">إجمالي الدروس المعتمدة</span>
-                            <span class="fs-5 fw-bold text-primary">{{ $grandLessonsCount }}</span>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="tp-metric tp-metric--info">
+                            <div class="tp-metric__head">
+                                <div class="tp-metric__title">إجمالي الدروس المعتمدة</div>
+                                <span class="tp-metric__icon"><i class="bi bi-check2-circle"></i></span>
+                            </div>
+                            <div class="tp-metric__value" style="color: var(--tp-accent-2);">{{ $grandLessonsCount }}</div>
                         </div>
-                        <div>
-                            <span class="text-muted small d-block mb-1">إجمالي الصفحات المحسوبة</span>
-                            <span class="fs-5 fw-bold text-primary">{{ $grandTotalPages }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="tp-metric tp-metric--primary">
+                            <div class="tp-metric__head">
+                                <div class="tp-metric__title">إجمالي الصفحات المحسوبة</div>
+                                <span class="tp-metric__icon"><i class="bi bi-journal-text"></i></span>
+                            </div>
+                            <div class="tp-metric__value">{{ $grandTotalPages }}</div>
                         </div>
                     </div>
                 </div>
 
-                @foreach($bySubject as $block)
-                    @php
-                        /** @var \App\Models\Subject $subject */
-                        $subject = $block['subject'];
-                        $className = $subject->schoolClass?->name;
-                    @endphp
-                    <div class="card shadow-sm border mb-4 overflow-hidden">
-                        <div class="card-header bg-light border-bottom py-3">
-                            <div>
-                                <h6 class="mb-1 fw-bold">
-                                    <a href="{{ route('admin.subjects.show', $subject) }}" class="text-decoration-none">{{ $subject->name }}</a>
-                                    @if($className)
-                                        <span class="text-muted fw-normal small"> — {{ $className }}</span>
-                                    @endif
-                                </h6>
-                                <span class="badge bg-white text-dark border">
-                                    {{ $block['lessons_count'] }} درسًا معتمدًا
-                                </span>
-                                <span class="badge bg-primary-transparent text-primary border border-primary border-opacity-25 ms-1">
-                                    {{ $block['total_pages'] }} صفحة محسوبة
-                                </span>
+                <div class="tp-card mb-4">
+                    <div class="tp-card__header">
+                        <span class="tp-card__header-icon"><i class="bi bi-funnel"></i></span>
+                        تصفية حسب المادة
+                    </div>
+                    <div class="tp-card__body">
+                        <form method="GET" action="{{ $listRoute }}" class="row g-2 align-items-end">
+                            <div class="col-md-8">
+                                <label class="form-label small fw-semibold mb-1">المادة</label>
+                                <select name="subject_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                                    <option value="">كل المواد ({{ $grandLessonsCount }} درس)</option>
+                                    @foreach($subjectSummaries as $block)
+                                        @php $subj = $block['subject']; @endphp
+                                        <option value="{{ $subj->id }}" {{ (int) ($selectedSubjectId ?? 0) === (int) $subj->id ? 'selected' : '' }}>
+                                            {{ $subj->name }}
+                                            @if($subj->schoolClass) — {{ $subj->schoolClass->name }} @endif
+                                            ({{ $block['lessons_count'] }} درس، {{ $block['total_pages'] }} صفحة)
+                                        </option>
+                                    @endforeach
+                                </select>
                             </div>
+                            <div class="col-md-4">
+                                @if($selectedSubjectId)
+                                    <a href="{{ $listRoute }}" class="btn btn-outline-secondary btn-sm w-100">إلغاء التصفية</a>
+                                @endif
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="tp-card">
+                    <div class="tp-card__header">
+                        <div>
+                            <span class="tp-card__header-icon"><i class="bi bi-list-ul"></i></span>
+                            قائمة الدروس
+                            <span class="text-muted fw-normal small ms-1">({{ $lessons->total() }} درس)</span>
                         </div>
-                        <div class="card-body p-0">
-                            @if(empty($block['lessons']))
-                                <p class="text-muted small mb-0 px-3 py-4 text-center">لا توجد دروس معتمدة في هذه المادة بعد.</p>
-                            @else
+                    </div>
+                    <div class="tp-card__body p-0">
+                        @if($lessons->isEmpty())
+                            <div class="tp-empty py-4">
+                                <p class="mb-0 text-muted">لا توجد دروس في هذا التصفية.</p>
+                            </div>
+                        @else
+                            <div class="tp-table-wrap border-0 rounded-0">
                                 <div class="table-responsive">
-                                    <table class="table table-hover table-bordered table-striped mb-0 align-middle">
-                                        <thead class="table-light">
-                                            <tr class="text-nowrap">
-                                                <th class="text-center" scope="col" style="width: 3rem;">#</th>
-                                                <th class="text-center" scope="col" style="width: 5.5rem;">عرض</th>
-                                                <th scope="col">عنوان الدرس</th>
-                                                <th scope="col">القسم</th>
-                                                <th scope="col">الوحدة</th>
-                                                <th scope="col">نطاق الصفحات</th>
-                                                <th class="text-center" scope="col" style="width: 6rem;">الصفحات</th>
-                                                <th class="text-center" scope="col" style="width: 9rem;">تاريخ الاعتماد</th>
+                                    <table class="table tp-table align-middle mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th class="text-center" style="width: 3rem;">#</th>
+                                                <th class="text-center" style="width: 5.5rem;">عرض</th>
+                                                @if(empty($selectedSubjectId))
+                                                    <th>المادة</th>
+                                                @endif
+                                                <th>عنوان الدرس</th>
+                                                <th>القسم</th>
+                                                <th>الوحدة</th>
+                                                <th>نطاق الصفحات</th>
+                                                <th class="text-center" style="width: 6rem;">الصفحات</th>
+                                                <th class="text-center" style="width: 9rem;">تاريخ الاعتماد</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @foreach($block['lessons'] as $idx => $row)
-                                                @php
-                                                    $lesson = $row['lesson'];
-                                                @endphp
+                                            @foreach($lessons as $idx => $row)
+                                                @php $lesson = $row['lesson']; @endphp
                                                 <tr>
-                                                    <td class="text-center text-secondary small" style="font-variant-numeric: tabular-nums;">{{ $idx + 1 }}</td>
+                                                    <td class="text-center text-secondary small">{{ $lessons->firstItem() + $idx }}</td>
                                                     <td class="text-center">
                                                         @canany(['lesson-show', 'lesson-edit'])
-                                                            <div class="btn-group btn-group-sm" role="group" aria-label="إجراءات الدرس">
+                                                            <div class="btn-group btn-group-sm">
                                                                 @can('lesson-show')
-                                                                    <a href="{{ route('admin.lessons.show', $lesson) }}" class="btn btn-outline-primary" title="معاينة الدرس">
-                                                                        <i class="bi bi-eye"></i>
-                                                                    </a>
+                                                                    <a href="{{ route('admin.lessons.show', $lesson) }}" class="btn btn-outline-primary" title="معاينة"><i class="bi bi-eye"></i></a>
                                                                 @endcan
                                                                 @can('lesson-edit')
-                                                                    <a href="{{ route('admin.lessons.edit', $lesson) }}" class="btn btn-outline-secondary" title="تعديل الدرس">
-                                                                        <i class="bi bi-pencil"></i>
-                                                                    </a>
+                                                                    <a href="{{ route('admin.lessons.edit', $lesson) }}" class="btn btn-outline-secondary" title="تعديل"><i class="bi bi-pencil"></i></a>
                                                                 @endcan
                                                             </div>
                                                         @else
                                                             <span class="text-muted small">—</span>
                                                         @endcanany
                                                     </td>
+                                                    @if(empty($selectedSubjectId))
+                                                        <td>
+                                                            @if($row['subject'])
+                                                                <span class="fw-semibold small">{{ $row['subject']->name }}</span>
+                                                                @if($row['subject']->schoolClass)
+                                                                    <div class="tp-chip tp-chip--class mt-1">{{ $row['subject']->schoolClass->name }}</div>
+                                                                @endif
+                                                            @else
+                                                                <span class="text-muted">—</span>
+                                                            @endif
+                                                        </td>
+                                                    @endif
                                                     <td>
                                                         @can('lesson-show')
                                                             <a href="{{ route('admin.lessons.show', $lesson) }}" class="fw-semibold text-decoration-none text-body">{{ $lesson->title }}</a>
                                                         @else
-                                                            @can('lesson-edit')
-                                                                <a href="{{ route('admin.lessons.edit', $lesson) }}" class="fw-semibold text-decoration-none text-body">{{ $lesson->title }}</a>
-                                                            @else
-                                                                <span class="fw-semibold">{{ $lesson->title }}</span>
-                                                            @endcan
+                                                            <span class="fw-semibold">{{ $lesson->title }}</span>
                                                         @endcan
                                                     </td>
                                                     <td class="small text-muted">{{ $row['section_title'] ?? '—' }}</td>
                                                     <td class="small text-muted">{{ $row['unit_title'] ?? '—' }}</td>
-                                                    <td class="small"><span class="text-muted">{{ $row['pages_label'] }}</span></td>
+                                                    <td class="small text-muted">{{ $row['pages_label'] }}</td>
                                                     <td class="text-center">
-                                                        <span class="badge rounded-pill bg-light text-dark border fw-normal" style="font-variant-numeric: tabular-nums;">{{ $row['pages_count'] }}</span>
+                                                        <span class="tp-pct tp-pct--muted">{{ $row['pages_count'] }}</span>
                                                     </td>
-                                                    <td class="text-center small text-muted" style="font-variant-numeric: tabular-nums;">
+                                                    <td class="text-center small text-muted">
                                                         @if($lesson->reviewed_at)
                                                             <span class="d-block">{{ $lesson->reviewed_at->format('Y-m-d') }}</span>
-                                                            <span class="d-block text-secondary" style="font-size: 0.8rem;">{{ $lesson->reviewed_at->format('H:i') }}</span>
+                                                            <span class="d-block" style="font-size: 0.8rem;">{{ $lesson->reviewed_at->format('H:i') }}</span>
                                                         @else
                                                             —
                                                         @endif
@@ -165,10 +211,15 @@
                                         </tbody>
                                     </table>
                                 </div>
+                            </div>
+                            @if($lessons->hasPages())
+                                <div class="p-3 border-top">
+                                    {{ $lessons->links() }}
+                                </div>
                             @endif
-                        </div>
+                        @endif
                     </div>
-                @endforeach
+                </div>
             @endif
 
         </div>

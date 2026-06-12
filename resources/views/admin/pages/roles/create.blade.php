@@ -4,124 +4,98 @@
     إنشاء دور جديد
 @stop
 
-@section('css')
-@stop
+@push('styles')
+    @include('admin.pages.roles.partials.role-form-styles')
+@endpush
 
 @section('content')
-    @if (\Session::has('success'))
-        <div class="alert alert-success">
-            <ul>
-                <li>{!! \Session::get('success') !!}</li>
-            </ul>
-        </div>
-    @endif
-
-    @if (\Session::has('error'))
-        <div class="alert alert-danger">
-            <ul>
-                <li>{!! \Session::get('error') !!}</li>
-            </ul>
-        </div>
-    @endif
-
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul>
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
-    <!-- Start::app-content -->
-    <div class="main-content app-content">
+    <div class="main-content app-content role-form-page">
         <div class="container-fluid">
 
-            <!-- Page Header -->
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">إنشاء دور جديد</h5>
+            <div class="role-form-hero my-4">
+                <div class="role-form-hero__icon">
+                    <i class="bi bi-shield-plus"></i>
+                </div>
+                <div class="role-form-hero__content">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-2 small">
+                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                            <li class="breadcrumb-item"><a href="{{ route('roles.index') }}">الأدوار</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">إنشاء دور</li>
+                        </ol>
+                    </nav>
+                    <h4 class="role-form-hero__title">إنشاء دور جديد</h4>
+                    <p class="role-form-hero__subtitle">حدّد بيانات الدور واختر الصلاحيات المناسبة</p>
+                </div>
+                <div class="role-form-hero__stat">
+                    <span class="role-form-hero__stat-value" id="role-form-selected-count">0</span>
+                    <span class="role-form-hero__stat-label">صلاحية محددة</span>
                 </div>
             </div>
-            <!-- Page Header Close -->
 
-            <!-- Start::row -->
-            <div class="row">
-                <div class="col-xl-12">
-                    <div class="card shadow-sm border-0 ">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0 fw-bold">بيانات الدور</h6>
-                        </div>
-                        <div class="card-body">
+            @if (\Session::has('success'))
+                <div class="alert alert-success alert-dismissible fade show">
+                    <i class="bi bi-check-circle me-2"></i>{!! \Session::get('success') !!}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
 
-                            <form id="role-create-form" method="POST" action="{{ route('roles.store') }}" data-role-permissions-form>
-                                @csrf
+            @if (\Session::has('error'))
+                <div class="alert alert-danger alert-dismissible fade show">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{!! \Session::get('error') !!}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
 
-                                <div class="row mb-3 g-3 align-items-start">
-                                    <div class="col-12 col-lg-4">
-                                        <label class="form-label fw-bold">اسم الدور</label>
-                                        <input type="text" class="form-control @error('name') is-invalid @enderror" name="name" value="{{ old('name') }}" placeholder="مثال: مشرف عام">
-                                        @error('name')
-                                            <div class="invalid-feedback d-block">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                    <div class="col-12 col-lg-4">
-                                        <label class="form-label fw-bold">نوع الواجهة</label>
-                                        <select class="form-select @error('dashboard_type') is-invalid @enderror" name="dashboard_type" required>
-                                            <option value="admin" @selected(old('dashboard_type', 'admin') === 'admin')>لوحة تحكم الأدمن</option>
-                                            <option value="student" @selected(old('dashboard_type', 'admin') === 'student')>لوحة تحكم الطالب</option>
-                                        </select>
-                                        @error('dashboard_type')
-                                            <div class="invalid-feedback d-block">{{ $message }}</div>
-                                        @enderror
-                                        <small class="text-muted">حدد نوع الواجهة التي يجب أن يصل إليها المستخدمون بهذا الدور</small>
-                                    </div>
-                                    @php
-                                        $rolesTable = config('permission.table_names.roles', 'roles');
-                                    @endphp
-                                    @if(\Illuminate\Support\Facades\Schema::hasColumn($rolesTable, 'staff_profile'))
-                                        <div class="col-12 col-lg-4">
-                                            <label class="form-label fw-bold">تصنيف المشرف / المعلم</label>
-                                            <select class="form-select @error('staff_profile') is-invalid @enderror" name="staff_profile" required>
-                                                <option value="none" @selected(old('staff_profile', 'none') === 'none')>لا شيء (طالب، أدمن، دور عام)</option>
-                                                <option value="supervisor" @selected(old('staff_profile', 'none') === 'supervisor')>مشرف</option>
-                                                <option value="teacher" @selected(old('staff_profile', 'none') === 'teacher')>معلم</option>
-                                            </select>
-                                            @error('staff_profile')
-                                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                                            @enderror
-                                            <small class="text-muted">يحدد ظهور حاملي هذا الدور في صفحات تخصيص المشرفين والمعلمين.</small>
-                                        </div>
-                                    @endif
-                                </div>
+            @if ($errors->any())
+                <div class="alert alert-danger alert-dismissible fade show">
+                    <ul class="mb-0 small">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
 
-                                <div class="mb-4">
-                                    <label class="form-label fw-bold d-block mb-3">الصلاحيات:</label>
+            <form id="role-create-form" method="POST" action="{{ route('roles.store') }}" data-role-permissions-form>
+                @csrf
 
-                                    <div class="mb-3">
-                                        <input type="text"
-                                               id="permissionSearch"
-                                               class="form-control"
-                                               placeholder="بحث في الصلاحيات (بالاسم أو الوصف)...">
-                                    </div>
-
-                                    @include('admin.pages.roles.partials.permission-selection-summary')
-
-                                    @include('admin.pages.roles.partials.permission-categories-tabs', ['permissionTabs' => $permissionTabs])
-                                </div>
-
-                            </form>
-
-                        </div>
+                <div class="role-form-card">
+                    <div class="role-form-card__header">
+                        <span class="role-form-card__header-icon"><i class="bi bi-person-badge"></i></span>
+                        بيانات الدور
+                    </div>
+                    <div class="role-form-card__body">
+                        @include('admin.pages.roles.partials.role-form-fields')
                     </div>
                 </div>
-            </div>
-            <!--End::row-->
+
+                <div class="role-form-card">
+                    <div class="role-form-card__header">
+                        <span class="role-form-card__header-icon"><i class="bi bi-key"></i></span>
+                        الصلاحيات
+                    </div>
+                    <div class="role-form-card__body">
+                        <div class="role-perm-search-wrap mb-3">
+                            <i class="bi bi-search"></i>
+                            <input type="text"
+                                   id="permissionSearch"
+                                   class="form-control"
+                                   placeholder="بحث في الصلاحيات (بالاسم أو الوصف)...">
+                        </div>
+
+                        @include('admin.pages.roles.partials.permission-selection-summary')
+
+                        @include('admin.pages.roles.partials.permission-categories-tabs', [
+                            'permissionTabs' => $permissionTabs,
+                        ])
+                    </div>
+                </div>
+            </form>
 
         </div>
     </div>
-    <!-- End::app-content -->
 @stop
 
 @section('js')
@@ -131,11 +105,11 @@
 @push('header-actions')
 <div class="header-element">
     <div class="d-flex gap-2">
-        <button type="button" class="btn btn-sm btn-danger" onclick="window.history.back()">
-            <i class="fe fe-x me-1"></i> إغلاق
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.history.back()">
+            <i class="bi bi-x-lg me-1"></i> إغلاق
         </button>
         <button type="submit" form="role-create-form" class="btn btn-sm btn-primary">
-            <i class="fe fe-save me-1"></i> حفظ الدور
+            <i class="bi bi-check-lg me-1"></i> حفظ الدور
         </button>
     </div>
 </div>

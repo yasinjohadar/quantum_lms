@@ -378,25 +378,42 @@ a:hover .folder-card .card-body i[class*="bi-"] {
 .question-text-body .katex,
 .question-page-heading .katex,
 .page-header-breadcrumb .question-text-body .katex {
-    font-size: 1.12em;
+    font-size: 1.14em;
     direction: ltr;
     unicode-bidi: embed;
-    background: #eef2ff;
-    border: 1px solid #c7d2fe;
-    border-radius: 0.35rem;
-    padding: 0.08em 0.4em;
-    margin: 0 0.12em;
-    box-shadow: 0 1px 2px rgba(79, 70, 229, 0.08);
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0 0.1em;
+    margin: 0 0.08em;
+    box-shadow: none;
 }
 
 .question-text-body .katex-display {
     display: block;
-    margin: 0.65rem 0;
-    padding: 0.5rem 0.75rem;
+    margin: 0.75rem 0;
+    padding: 0.35rem 0;
     overflow-x: auto;
-    background: #f5f7ff;
-    border: 1px solid #dbeafe;
-    border-radius: 0.5rem;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+}
+
+.question-explanation-text-line {
+    margin: 0.65rem 0;
+    line-height: 1.75;
+}
+
+.question-explanation-math-line {
+    margin: 0.5rem 0;
+    padding: 0.35rem 0.5rem;
+    direction: ltr;
+    text-align: center;
+    overflow-x: auto;
+}
+
+.question-explanation-math-line .katex {
+    font-size: 1.12em;
 }
 
 [data-theme-mode=dark] .question-text-body .question-inline-code,
@@ -412,13 +429,13 @@ a:hover .folder-card .card-body i[class*="bi-"] {
 [data-theme-mode=dark] .page-header-breadcrumb .question-text-body .katex,
 [data-theme-mode=dark] .question-stem .katex,
 [data-theme-mode=dark] #question-content .katex {
-    background: rgba(144, 202, 249, 0.1);
-    border-color: rgba(144, 202, 249, 0.25);
+    background: transparent;
+    border: none;
 }
 
 [data-theme-mode=dark] .question-text-body .katex-display {
-    background: rgba(144, 202, 249, 0.08);
-    border-color: rgba(144, 202, 249, 0.2);
+    background: transparent;
+    border: none;
 }
 
 /* خيارات الإجابة: تنسيق عادي مع تمييز الإجابة الصحيحة فقط */

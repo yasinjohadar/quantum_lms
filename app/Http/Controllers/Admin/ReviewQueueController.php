@@ -18,6 +18,50 @@ class ReviewQueueController extends Controller
         $this->middleware(['permission:review-queue-quizzes'])->only('quizzes');
     }
 
+    private function lessonReviewRelations(): array
+    {
+        return [
+            'unit.section.subject.schoolClass.stage',
+            'unit.section.subject.assignedTeachers',
+            'section.subject.schoolClass.stage',
+            'section.subject.assignedTeachers',
+            'reviewer',
+            'reviewComments',
+        ];
+    }
+
+    private function applyLessonSubjectScope($query, callable $subjectConstraint): void
+    {
+        $query->where(function ($q) use ($subjectConstraint) {
+            $q->whereHas('unit.section.subject', $subjectConstraint)
+                ->orWhereHas('section.subject', $subjectConstraint);
+        });
+    }
+
+    private function buildReviewStats($user, bool $isSupervisor): array
+    {
+        $lessonsQuery = Lesson::query();
+        $quizzesQuery = Quiz::query();
+
+        if ($isSupervisor) {
+            $lessonsQuery->forSupervisor($user->id);
+            $quizzesQuery->forSupervisor($user->id);
+        }
+
+        return [
+            'lessons' => [
+                'pending' => (clone $lessonsQuery)->pendingReview()->count(),
+                'approved' => (clone $lessonsQuery)->approved()->count(),
+                'rejected' => (clone $lessonsQuery)->rejected()->count(),
+            ],
+            'quizzes' => [
+                'pending' => (clone $quizzesQuery)->pendingReview()->count(),
+                'approved' => (clone $quizzesQuery)->approved()->count(),
+                'rejected' => (clone $quizzesQuery)->rejected()->count(),
+            ],
+        ];
+    }
+
     /**
      * عرض جميع العناصر قيد المراجعة
      */
@@ -27,7 +71,7 @@ class ReviewQueueController extends Controller
         $isSupervisor = $user->usesSupervisorAssignmentScope();
 
         // إحصائيات
-        $lessonsQuery = Lesson::with(['unit.section.subject.schoolClass.stage', 'unit.section.subject.assignedTeachers', 'reviewer', 'reviewComments']);
+        $lessonsQuery = Lesson::with($this->lessonReviewRelations());
         $quizzesQuery = Quiz::with(['subject.schoolClass.stage', 'creator', 'reviewer', 'reviewComments']);
 
         // فلترة للمشرف
@@ -66,10 +110,10 @@ class ReviewQueueController extends Controller
         // فلترة حسب الصف
         if ($request->filled('class_id')) {
             $classId = $request->input('class_id');
-            $lessonsQuery->whereHas('unit.section.subject', function($q) use ($classId) {
+            $this->applyLessonSubjectScope($lessonsQuery, function ($q) use ($classId) {
                 $q->where('class_id', $classId);
             });
-            $quizzesQuery->whereHas('subject', function($q) use ($classId) {
+            $quizzesQuery->whereHas('subject', function ($q) use ($classId) {
                 $q->where('class_id', $classId);
             });
         }
@@ -77,7 +121,7 @@ class ReviewQueueController extends Controller
         // فلترة حسب المادة
         if ($request->filled('subject_id')) {
             $subjectId = $request->input('subject_id');
-            $lessonsQuery->whereHas('unit.section.subject', function($q) use ($subjectId) {
+            $this->applyLessonSubjectScope($lessonsQuery, function ($q) use ($subjectId) {
                 $q->where('id', $subjectId);
             });
             $quizzesQuery->where('subject_id', $subjectId);
@@ -133,7 +177,7 @@ class ReviewQueueController extends Controller
         $user = auth()->user();
         $isSupervisor = $user->usesSupervisorAssignmentScope();
 
-        $query = Lesson::with(['unit.section.subject.schoolClass.stage', 'unit.section.subject.assignedTeachers', 'reviewer', 'reviewComments']);
+        $query = Lesson::with($this->lessonReviewRelations());
 
         // فلترة للمشرف
         if ($isSupervisor) {
@@ -155,19 +199,22 @@ class ReviewQueueController extends Controller
 
         // فلترة حسب الصف
         if ($request->filled('class_id')) {
-            $query->whereHas('unit.section.subject', function($q) use ($request) {
-                $q->where('class_id', $request->input('class_id'));
+            $classId = $request->input('class_id');
+            $this->applyLessonSubjectScope($query, function ($q) use ($classId) {
+                $q->where('class_id', $classId);
             });
         }
 
         // فلترة حسب المادة
         if ($request->filled('subject_id')) {
-            $query->whereHas('unit.section.subject', function($q) use ($request) {
-                $q->where('id', $request->input('subject_id'));
+            $subjectId = $request->input('subject_id');
+            $this->applyLessonSubjectScope($query, function ($q) use ($subjectId) {
+                $q->where('id', $subjectId);
             });
         }
 
         $lessons = $query->orderBy('submitted_for_review_at', 'desc')->paginate(20);
+        $stats = $this->buildReviewStats($user, $isSupervisor);
 
         // البيانات للفلترة
         if ($isSupervisor) {
@@ -198,7 +245,7 @@ class ReviewQueueController extends Controller
             $subjects = Subject::with('schoolClass.stage')->active()->ordered()->get();
         }
 
-        return view('admin.pages.review-queue.lessons', compact('lessons', 'classes', 'subjects'));
+        return view('admin.pages.review-queue.lessons', compact('lessons', 'classes', 'subjects', 'stats'));
     }
 
     /**
@@ -242,6 +289,7 @@ class ReviewQueueController extends Controller
         }
 
         $quizzes = $query->orderBy('submitted_for_review_at', 'desc')->paginate(20);
+        $stats = $this->buildReviewStats($user, $isSupervisor);
 
         // البيانات للفلترة
         if ($isSupervisor) {
@@ -272,6 +320,6 @@ class ReviewQueueController extends Controller
             $subjects = Subject::with('schoolClass.stage')->active()->ordered()->get();
         }
 
-        return view('admin.pages.review-queue.quizzes', compact('quizzes', 'classes', 'subjects'));
+        return view('admin.pages.review-queue.quizzes', compact('quizzes', 'classes', 'subjects', 'stats'));
     }
 }

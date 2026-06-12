@@ -4,22 +4,37 @@
     الصفوف الدراسية
 @stop
 
-@section('css')
-@stop
+@push('styles')
+    @include('admin.pages.classes.partials.index-styles')
+@endpush
 
 @section('content')
-    <div class="main-content app-content">
+    <div class="main-content app-content classes-page">
         <div class="container-fluid">
 
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">الصفوف الدراسية</h5>
+            <div class="classes-hero my-4">
+                <div class="classes-hero__icon">
+                    <i class="bi bi-building-fill"></i>
                 </div>
-                <div class="d-flex gap-2">
+                <div class="classes-hero__content">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-2 small">
+                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">الصفوف الدراسية</li>
+                        </ol>
+                    </nav>
+                    <h4 class="classes-hero__title">الصفوف الدراسية</h4>
+                    <p class="classes-hero__subtitle">إدارة الصفوف وربطها بالمراحل والمواد</p>
+                </div>
+                <div class="classes-stat-mini">
+                    <span class="classes-stat-mini__value">{{ number_format($classes->total()) }}</span>
+                    <span class="classes-stat-mini__label">صف مطابق</span>
+                </div>
+                <div class="classes-hero__actions">
                     @can('class-create')
                         @if(!auth()->user()->usesTeacherAssignmentScope())
-                            <a href="{{ route('admin.classes.create') }}" class="btn btn-primary btn-sm">
-                                <i class="fas fa-plus me-1"></i> إضافة صف جديد
+                            <a href="{{ route('admin.classes.create') }}" class="btn btn-sm btn-primary">
+                                <i class="bi bi-plus-lg me-1"></i> صف جديد
                             </a>
                         @endif
                     @endcan
@@ -27,114 +42,125 @@
             </div>
 
             @if (session('success'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('success') }}
+                <div class="alert alert-success alert-dismissible fade show">
+                    <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
                 </div>
             @endif
 
             @if (session('error'))
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    {{ session('error') }}
+                <div class="alert alert-danger alert-dismissible fade show">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ session('error') }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
                 </div>
             @endif
 
             @if ($errors->any())
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <ul class="mb-0">
+                <div class="alert alert-danger alert-dismissible fade show">
+                    <ul class="mb-0 small">
                         @foreach ($errors->all() as $error)
-                            <li class="small">{{ $error }}</li>
+                            <li>{{ $error }}</li>
                         @endforeach
                     </ul>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
                 </div>
             @endif
 
-            <div class="row">
-                <div class="col-xl-12">
-                    <!-- Filters Card -->
-                    <div class="card shadow-sm border-0 mb-3">
-                        <div class="card-body">
-                            <form id="classesFilterForm" class="d-flex flex-wrap align-items-end gap-2 w-100">
-                                <input type="hidden" name="per_page" id="classesPerPageHidden" value="{{ $classes->perPage() }}">
-                                <div class="d-flex flex-column">
-                                    <label class="form-label mb-1">البحث</label>
-                                    <input type="text" name="query" id="searchQuery" class="form-control form-control-sm"
-                                           style="min-width: 200px;"
-                                           placeholder="بحث باسم الصف أو الوصف"
-                                           value="{{ request('query') }}">
+            <div class="classes-card">
+                <div class="classes-card__header">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="classes-card__header-icon"><i class="bi bi-funnel"></i></span>
+                        تصفية وبحث
+                    </div>
+                </div>
+                <div class="classes-card__body">
+                    <form id="classesFilterForm" class="classes-filters">
+                        <input type="hidden" name="per_page" id="classesPerPageHidden" value="{{ $classes->perPage() }}">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-6 col-lg-4">
+                                <label class="form-label">بحث</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                    <input type="text" name="query" id="searchQuery" class="form-control border-start-0"
+                                           placeholder="اسم الصف أو الوصف" value="{{ request('query') }}">
                                 </div>
-
-                                <div class="d-flex flex-column">
-                                    <label class="form-label mb-1">المرحلة</label>
-                                    <select name="stage_id" id="stageFilter" class="form-select form-select-sm" style="min-width: 160px;">
-                                        <option value="">كل المراحل</option>
-                                        @foreach($stages as $stage)
-                                            <option value="{{ $stage->id }}" {{ request('stage_id') == $stage->id ? 'selected' : '' }}>
-                                                {{ $stage->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <div class="d-flex flex-column">
-                                    <label class="form-label mb-1">الحالة</label>
-                                    <select name="is_active" id="statusFilter" class="form-select form-select-sm" style="min-width: 140px;">
-                                        <option value="">كل الحالات</option>
-                                        <option value="1" {{ request('is_active') === '1' ? 'selected' : '' }}>نشط</option>
-                                        <option value="0" {{ request('is_active') === '0' ? 'selected' : '' }}>غير نشط</option>
-                                    </select>
-                                </div>
-
+                            </div>
+                            <div class="col-md-6 col-lg-3">
+                                <label class="form-label">المرحلة</label>
+                                <select name="stage_id" id="stageFilter" class="form-select">
+                                    <option value="">كل المراحل</option>
+                                    @foreach($stages as $stage)
+                                        <option value="{{ $stage->id }}" {{ request('stage_id') == $stage->id ? 'selected' : '' }}>
+                                            {{ $stage->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-6 col-lg-2">
+                                <label class="form-label">الحالة</label>
+                                <select name="is_active" id="statusFilter" class="form-select">
+                                    <option value="">كل الحالات</option>
+                                    <option value="1" {{ request('is_active') === '1' ? 'selected' : '' }}>نشط</option>
+                                    <option value="0" {{ request('is_active') === '0' ? 'selected' : '' }}>غير نشط</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 col-lg-3 d-flex flex-wrap gap-2 align-items-end">
                                 <button type="button" id="searchBtn" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-search me-1"></i> بحث
+                                    <i class="bi bi-search me-1"></i> بحث
                                 </button>
-                                <button type="button" id="clearFiltersBtn" class="btn btn-outline-danger btn-sm">
-                                    <i class="fas fa-times me-1"></i> مسح الفلاتر
+                                <button type="button" id="clearFiltersBtn" class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-x-lg me-1"></i> مسح
                                 </button>
                                 @include('admin.partials.per-page-toolbar', ['paginator' => $classes])
-                            </form>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="classes-card">
+                <div class="classes-card__header">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="classes-card__header-icon"><i class="bi bi-table"></i></span>
+                        قائمة الصفوف
+                        <span class="badge bg-light text-muted fw-normal ms-1" style="font-size: 0.7rem;">
+                            <i class="bi bi-grip-vertical me-1"></i> اسحب لإعادة الترتيب
+                        </span>
+                    </div>
+                    <span class="badge bg-primary-transparent text-primary">
+                        صفحة {{ $classes->currentPage() }} من {{ $classes->lastPage() }}
+                    </span>
+                </div>
+                <div class="classes-card__body p-0 position-relative">
+                    <div id="loadingIndicator" class="classes-loading-overlay" style="display: none;">
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="text-muted small mt-2 mb-0">جاري التحميل...</p>
                         </div>
                     </div>
 
-                    <!-- Classes List Card -->
-                    <div class="card shadow-sm border-0">
-                        <div class="card-header">
-                            <h5 class="mb-0 fw-bold">قائمة الصفوف الدراسية</h5>
+                    <div id="classesTableContainer">
+                        <div class="classes-table-wrap mx-3 mt-3 mb-0">
+                            <div class="table-responsive">
+                                <table class="table classes-table align-middle mb-0">
+                                    <thead>
+                                    <tr>
+                                        <th style="width: 32px;"></th>
+                                        <th style="width: 48px;">#</th>
+                                        <th>الصف</th>
+                                        <th>المرحلة</th>
+                                        <th>الحالة</th>
+                                        <th style="min-width: 160px;">العمليات</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody id="classesTableBody">
+                                    @include('admin.pages.classes.partials.table', ['classes' => $classes])
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-
-                        <div class="card-body">
-                            <div id="loadingIndicator" class="text-center py-4" style="display: none;">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">جاري التحميل...</span>
-                                </div>
-                                <p class="text-muted mt-2">جاري التحميل...</p>
-                            </div>
-                            <div id="classesTableContainer">
-                                <div class="table-responsive">
-                                    <table class="table table-striped align-middle table-hover table-bordered mb-0 text-center">
-                                        <thead class="table-light">
-                                        <tr>
-                                            <th style="width: 36px; min-width: 36px;"></th>
-                                            <th style="width: 50px;">#</th>
-                                            <th style="min-width: 140px;">الصورة</th>
-                                            <th style="min-width: 180px;">اسم الصف</th>
-                                            <th style="min-width: 180px;">المرحلة</th>
-                                            <th style="min-width: 100px;">الحالة</th>
-                                            <th style="min-width: 200px;">العمليات</th>
-                                        </tr>
-                                        </thead>
-                                        <tbody id="classesTableBody">
-                                        @include('admin.pages.classes.partials.table', ['classes' => $classes])
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <div id="paginationContainer" class="mt-3">
-                                    @include('admin.pages.classes.partials.pagination', ['classes' => $classes])
-                                </div>
-                            </div>
+                        <div id="paginationContainer" class="px-3 pb-3 classes-pagination">
+                            @include('admin.pages.classes.partials.pagination', ['classes' => $classes])
                         </div>
                     </div>
                 </div>
@@ -157,7 +183,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const classesTableBody = document.getElementById('classesTableBody');
     const paginationContainer = document.getElementById('paginationContainer');
     const loadingIndicator = document.getElementById('loadingIndicator');
-    const classesTableContainer = document.getElementById('classesTableContainer');
     const perPageToolbarContainer = document.getElementById('perPageToolbarContainer');
     const classesPerPageHidden = document.getElementById('classesPerPageHidden');
 
@@ -165,37 +190,23 @@ document.addEventListener('DOMContentLoaded', function() {
     const filterUrl = '{{ route("admin.classes.index") }}';
     const reorderUrl = '{{ route("admin.classes.reorder") }}';
 
-    function getPerPageSelect() {
-        return document.getElementById('perPageSelect');
-    }
-    function getPerPageCustomWrap() {
-        return document.getElementById('perPageCustomWrap');
-    }
+    function getPerPageSelect() { return document.getElementById('perPageSelect'); }
+    function getPerPageCustomWrap() { return document.getElementById('perPageCustomWrap'); }
     function getCurrentPerPage() {
         const sel = getPerPageSelect();
-        if (!sel) {
-            return classesPerPageHidden ? (parseInt(classesPerPageHidden.value, 10) || 25) : 25;
-        }
+        if (!sel) return classesPerPageHidden ? (parseInt(classesPerPageHidden.value, 10) || 25) : 25;
         if (sel.value === 'custom') {
             const input = document.getElementById('perPageCustom');
             const n = input ? parseInt(input.value, 10) : NaN;
-            if (!Number.isFinite(n)) {
-                return 25;
-            }
-            return Math.min(100, Math.max(1, n));
+            return Number.isFinite(n) ? Math.min(100, Math.max(1, n)) : 25;
         }
         const n = parseInt(sel.value, 10);
-        if (!Number.isFinite(n)) {
-            return 25;
-        }
-        return Math.min(100, Math.max(1, n));
+        return Number.isFinite(n) ? Math.min(100, Math.max(1, n)) : 25;
     }
     function syncCustomPerPageUi() {
         const sel = getPerPageSelect();
         const wrap = getPerPageCustomWrap();
-        if (!sel || !wrap) {
-            return;
-        }
+        if (!sel || !wrap) return;
         if (sel.value === 'custom') {
             wrap.classList.remove('d-none');
             wrap.classList.add('d-flex');
@@ -205,9 +216,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     function syncClassesPerPageHidden() {
-        if (classesPerPageHidden) {
-            classesPerPageHidden.value = String(getCurrentPerPage());
-        }
+        if (classesPerPageHidden) classesPerPageHidden.value = String(getCurrentPerPage());
     }
 
     let searchTimeout;
@@ -219,19 +228,19 @@ document.addEventListener('DOMContentLoaded', function() {
             sortableInstance.destroy();
             sortableInstance = null;
         }
-        var tbody = document.getElementById('classesTableBody');
-        var rows = tbody.querySelectorAll('tr[data-id]');
+        const tbody = document.getElementById('classesTableBody');
+        const rows = tbody.querySelectorAll('tr[data-id]');
         if (typeof Sortable === 'undefined' || rows.length === 0) return;
         sortableInstance = Sortable.create(tbody, {
             handle: '.sortable-handle',
             animation: 150,
-            onEnd: function(evt) {
-                var order = [];
+            onEnd: function() {
+                const order = [];
                 tbody.querySelectorAll('tr[data-id]').forEach(function(tr) {
-                    var id = tr.getAttribute('data-id');
+                    const id = tr.getAttribute('data-id');
                     if (id) order.push(parseInt(id, 10));
                 });
-                var payload = {
+                const payload = {
                     order: order,
                     page: currentPage,
                     per_page: getCurrentPerPage(),
@@ -240,7 +249,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (filterForm.querySelector('[name="query"]').value) payload.query = filterForm.querySelector('[name="query"]').value;
                 if (filterForm.querySelector('[name="stage_id"]').value) payload.stage_id = filterForm.querySelector('[name="stage_id"]').value;
                 if (filterForm.querySelector('[name="is_active"]').value) payload.is_active = filterForm.querySelector('[name="is_active"]').value;
-                var xhr = new XMLHttpRequest();
+                const xhr = new XMLHttpRequest();
                 xhr.open('POST', reorderUrl);
                 xhr.setRequestHeader('Content-Type', 'application/json');
                 xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken);
@@ -249,9 +258,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (xhr.status >= 200 && xhr.status < 300) {
                         fetchClasses(currentPage);
                     } else {
-                        var msg = 'فشل حفظ الترتيب.';
+                        let msg = 'فشل حفظ الترتيب.';
                         try {
-                            var res = JSON.parse(xhr.responseText);
+                            const res = JSON.parse(xhr.responseText);
                             if (res.message) msg = res.message;
                         } catch (e) {}
                         alert(msg);
@@ -267,102 +276,77 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // دالة لجلب البيانات عبر Ajax
     function fetchClasses(page = 1) {
         currentPage = page;
-        
-        // إظهار loading indicator
-        loadingIndicator.style.display = 'block';
-        classesTableContainer.style.opacity = '0.5';
-        
-        // جمع بيانات الفلاتر
+        loadingIndicator.style.display = 'flex';
         syncClassesPerPageHidden();
+
         const formData = new FormData(filterForm);
         formData.append('page', page);
-
         const params = new URLSearchParams();
         for (const [key, value] of formData.entries()) {
-            if (value) {
-                params.append(key, value);
-            }
+            if (value) params.append(key, value);
         }
         params.set('per_page', String(getCurrentPerPage()));
 
         fetch(`${filterUrl}?${params.toString()}`, {
             method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         })
         .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
+            if (!response.ok) throw new Error('Network response was not ok');
             return response.json();
         })
         .then(data => {
             if (data.success) {
-                // تحديث الجدول
                 classesTableBody.innerHTML = data.html;
-                
-                // تحديث pagination
                 paginationContainer.innerHTML = data.pagination || '';
-                
                 attachPaginationListeners();
-
                 initSortable();
                 syncCustomPerPageUi();
                 syncClassesPerPageHidden();
-                
-                // تحديث URL بدون إعادة تحميل الصفحة
-                const newUrl = `${filterUrl}?${params.toString()}`;
-                window.history.pushState({}, '', newUrl);
+                window.history.pushState({}, '', `${filterUrl}?${params.toString()}`);
             } else {
                 showError('حدث خطأ أثناء جلب البيانات');
             }
         })
-        .catch(error => {
-            console.error('Error fetching classes:', error);
-            showError('حدث خطأ أثناء جلب البيانات');
-        })
-        .finally(() => {
-            // إخفاء loading indicator
-            loadingIndicator.style.display = 'none';
-            classesTableContainer.style.opacity = '1';
-        });
+        .catch(() => showError('حدث خطأ أثناء جلب البيانات'))
+        .finally(() => { loadingIndicator.style.display = 'none'; });
     }
 
-    // دالة لإعادة ربط event listeners للـ pagination
     function attachPaginationListeners() {
-        const paginationLinks = paginationContainer.querySelectorAll('a[href*="page"]');
-        paginationLinks.forEach(link => {
+        paginationContainer.querySelectorAll('a[href*="page"]').forEach(link => {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
                 const url = new URL(this.href);
-                const page = url.searchParams.get('page') || 1;
-                fetchClasses(page);
+                fetchClasses(url.searchParams.get('page') || 1);
             });
         });
         syncCustomPerPageUi();
     }
 
+    function showError(message) {
+        if (sortableInstance) {
+            sortableInstance.destroy();
+            sortableInstance = null;
+        }
+        classesTableBody.innerHTML = `
+            <tr><td colspan="6" class="text-center py-4">
+                <div class="alert alert-danger mb-0">${message}</div>
+            </td></tr>`;
+        paginationContainer.innerHTML = '';
+    }
+
     if (perPageToolbarContainer) {
         perPageToolbarContainer.addEventListener('change', function(e) {
-            if (!e.target || e.target.id !== 'perPageSelect') {
-                return;
-            }
+            if (!e.target || e.target.id !== 'perPageSelect') return;
             syncCustomPerPageUi();
             syncClassesPerPageHidden();
-            if (e.target.value !== 'custom') {
-                fetchClasses(1);
-            }
+            if (e.target.value !== 'custom') fetchClasses(1);
         });
         perPageToolbarContainer.addEventListener('click', function(e) {
             const btn = e.target && e.target.closest ? e.target.closest('#applyCustomPerPage') : null;
-            if (!btn) {
-                return;
-            }
+            if (!btn) return;
             e.preventDefault();
             const sel = getPerPageSelect();
             const input = document.getElementById('perPageCustom');
@@ -378,54 +362,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // دالة لإظهار رسالة خطأ
-    function showError(message) {
-        if (sortableInstance) {
-            sortableInstance.destroy();
-            sortableInstance = null;
-        }
-        classesTableBody.innerHTML = `
-            <tr>
-                <td colspan="9" class="text-center text-danger fw-bold">
-                    ${message}
-                </td>
-            </tr>
-        `;
-        paginationContainer.innerHTML = '';
-    }
-
-    // Debounce للبحث النصي
     searchQuery.addEventListener('input', function() {
         clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            fetchClasses(1);
-        }, 500);
+        searchTimeout = setTimeout(() => fetchClasses(1), 500);
     });
-
-    // تحديث فوري عند تغيير المرحلة
-    stageFilter.addEventListener('change', function() {
-        fetchClasses(1);
-    });
-
-    // تحديث فوري عند تغيير الحالة
-    statusFilter.addEventListener('change', function() {
-        fetchClasses(1);
-    });
-
-    // زر البحث
-    searchBtn.addEventListener('click', function() {
-        fetchClasses(1);
-    });
-
-    // زر مسح الفلاتر
+    stageFilter.addEventListener('change', () => fetchClasses(1));
+    statusFilter.addEventListener('change', () => fetchClasses(1));
+    searchBtn.addEventListener('click', () => fetchClasses(1));
     clearFiltersBtn.addEventListener('click', function() {
         searchQuery.value = '';
         stageFilter.value = '';
         statusFilter.value = '';
         fetchClasses(1);
     });
-
-    // Enter في حقل البحث
     searchQuery.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -437,9 +386,7 @@ document.addEventListener('DOMContentLoaded', function() {
     syncCustomPerPageUi();
     syncClassesPerPageHidden();
     attachPaginationListeners();
-    // تهيئة السحب والإفلات لترتيب الصفوف
     initSortable();
 });
 </script>
 @stop
-

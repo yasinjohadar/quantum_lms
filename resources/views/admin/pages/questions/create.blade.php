@@ -1,5 +1,7 @@
 @extends('admin.layouts.master')
 
+@include('partials.questions.math-authoring-assets')
+
 @section('page-title')
     إضافة سؤال جديد
 @stop
@@ -133,6 +135,19 @@
                                    onchange="previewImage(this, 'questionImagePreview')">
                             <img id="questionImagePreview" src="#" alt="معاينة" 
                                  class="mt-2 rounded d-none" style="max-width: 200px;">
+                        </div>
+                    </div>
+                </div>
+
+                @include('partials.questions.math-authoring-guide')
+
+                <div class="card custom-card mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="bi bi-eye me-2"></i> معاينة حية</h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="question-live-preview" class="math-live-preview-body question-text-body p-3 border rounded bg-light" style="min-height: 4rem;">
+                            <span class="text-muted">ستظهر المعاينة هنا أثناء الكتابة...</span>
                         </div>
                     </div>
                 </div>
@@ -318,10 +333,26 @@ document.addEventListener('DOMContentLoaded', function() {
             'bold italic underline strikethrough | forecolor backcolor | ' +
             'alignleft aligncenter alignright alignjustify | ' +
             'bullist numlist outdent indent | ' +
-            'link image media | table charmap emoticons | ' +
+            'link image media | table charmap emoticons questionmath | ' +
             'code preview fullscreen | ' +
             'ltr rtl | searchreplace visualblocks visualchars | ' +
             'help',
+        setup: function (editor) {
+            if (window.__questionMathToolbarRegistered) {
+                return;
+            }
+            editor.ui.registry.addButton('questionmath', {
+                text: '∑',
+                tooltip: 'إدراج معادلة',
+                onAction: function () {
+                    var activeEditor = tinymce.activeEditor;
+                    if (activeEditor && typeof window.openQuestionMathEditor === 'function') {
+                        window.openQuestionMathEditor({ type: 'tinymce', editorId: activeEditor.id });
+                    }
+                },
+            });
+            window.__questionMathToolbarRegistered = true;
+        },
         content_style: 'body { font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; font-size: 14px; direction: rtl; text-align: right; }',
         image_advtab: true,
         file_picker_types: 'image',
@@ -607,8 +638,12 @@ function addOption() {
                                value="${index}" id="correct${index}" onchange="markCorrect(${index})">
                     </div>
                     <div class="flex-grow-1">
-                        <input type="text" name="options[${index}][content]" class="form-control mb-2" 
-                               placeholder="نص الخيار ${index + 1}" required>
+                        <div class="input-group mb-2">
+                            <input type="text" name="options[${index}][content]" class="form-control" 
+                                   placeholder="نص الخيار ${index + 1}" required>
+                            <button type="button" class="btn btn-outline-secondary" title="إدراج معادلة"
+                                    onclick="openQuestionMathEditor({element: this.closest('.input-group').querySelector('input')})">∑</button>
+                        </div>
                         <input type="hidden" name="options[${index}][is_correct]" id="isCorrect${index}" value="">
                         <input type="text" name="options[${index}][feedback]" class="form-control form-control-sm" 
                                placeholder="ملاحظة عند اختيار هذا الخيار (اختياري)">
@@ -629,8 +664,12 @@ function addOption() {
                                value="1" id="correct${index}" onchange="toggleCorrect(${index})">
                     </div>
                     <div class="flex-grow-1">
-                        <input type="text" name="options[${index}][content]" class="form-control mb-2" 
-                               placeholder="نص الخيار ${index + 1}" required>
+                        <div class="input-group mb-2">
+                            <input type="text" name="options[${index}][content]" class="form-control" 
+                                   placeholder="نص الخيار ${index + 1}" required>
+                            <button type="button" class="btn btn-outline-secondary" title="إدراج معادلة"
+                                    onclick="openQuestionMathEditor({element: this.closest('.input-group').querySelector('input')})">∑</button>
+                        </div>
                         <input type="text" name="options[${index}][feedback]" class="form-control form-control-sm" 
                                placeholder="ملاحظة عند اختيار هذا الخيار (اختياري)">
                     </div>
@@ -733,5 +772,10 @@ function previewImage(input, previewId) {
     }
 }
 </script>
+@include('partials.question-math-scripts')
+<script>
+    document.body.setAttribute('data-math-preview-url', @json(route('admin.questions.math-preview')));
+</script>
+<script src="{{ asset('assets/js/question-math-editor.js') }}?v=20260519"></script>
 @stop
 

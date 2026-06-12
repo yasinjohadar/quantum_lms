@@ -234,3 +234,69 @@ test('plain heading strips normalized limit latex', function () {
         ->not->toContain('\lim')
         ->not->toContain('\frac');
 });
+
+test('converts math backticks in induction proof to math fragments', function () {
+    $input = 'باستخدام البرهان بالتدريج لإثبات صحة العلاقة `sum_{k=1 to n} k*k! = (n+1)! - 1` لكل `n >= 1`.';
+
+    $result = QuestionMarkupFormatter::format($input);
+
+    expect($result)
+        ->toContain('question-math-fragment')
+        ->toContain('\sum_{k=1}^{n}')
+        ->toContain('\cdot')
+        ->toContain('\geq')
+        ->not->toContain('question-inline-code');
+});
+
+test('formats integral mcq stem with latex delimiters', function () {
+    $input = 'ما هو ناتج التكامل \(\int \frac{\ln(x)}{x} dx\)؟';
+
+    $result = QuestionMarkupFormatter::format($input);
+
+    expect($result)
+        ->toContain('question-math-fragment')
+        ->toContain('\int')
+        ->toContain('\frac');
+});
+
+test('normalize for storage converts pseudo math backticks', function () {
+    $stored = QuestionMarkupFormatter::normalizeForStorage('`sum_{k=1 to n} k*k!`');
+
+    expect($stored)
+        ->toContain('$')
+        ->toContain('\sum_{k=1}^{n}');
+});
+
+test('bare factorial mcq option renders as math', function () {
+    $input = '(m+1)! - 1 + (m+1)(m+1)!';
+
+    $result = QuestionMarkupFormatter::format($input);
+
+    expect($result)
+        ->toContain('question-math-fragment')
+        ->not->toContain('question-inline-code');
+});
+
+test('formats multiline sequence explanation with subscripts and equation steps', function () {
+    $input = <<<'TEXT'
+لدراسة رتابة المتتالية، نقوم بحساب الفرق `u_{n+1} - u_n`:
+`u_{n+1} = (2(n+1)-1)/((n+1)+4) = \frac{2n+1}{n+5}`
+`= [(2n+1)(n+4) - (2n-1)(n+5)] / [(n+5)(n+4)]`
+نفك الأقواس في البسط:
+TEXT;
+
+    $result = QuestionMarkupFormatter::format($input);
+
+    expect($result)
+        ->toContain('question-explanation-text-line')
+        ->toContain('question-explanation-math-line')
+        ->toContain('question-math-fragment')
+        ->toContain('u_{n+1}')
+        ->toContain('\frac')
+        ->not->toContain('question-inline-code');
+});
+
+test('looks like math expression detects subscript difference', function () {
+    expect(QuestionMarkupFormatter::looksLikeMathExpression('u_{n+1} - u_n'))->toBeTrue();
+    expect(QuestionMarkupFormatter::looksLikeMathExpression('= 9 / [(n+5)(n+4)]'))->toBeTrue();
+});

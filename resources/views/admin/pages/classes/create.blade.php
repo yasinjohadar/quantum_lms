@@ -5,245 +5,283 @@
 @stop
 
 @push('styles')
-<style>
-    .class-form-block {
-        border-bottom: 1px solid var(--bs-border-color-translucent, rgba(0,0,0,.1));
-        padding-bottom: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-</style>
+    @include('admin.pages.classes.partials.class-form-styles')
 @endpush
 
 @section('content')
-    <div class="main-content app-content">
+    <div class="main-content app-content class-form-page">
         <div class="container-fluid">
-            <div class="page-header d-flex justify-content-between align-items-center my-4">
-                <h5 class="page-title mb-0">إضافة صف دراسي جديد</h5>
-                <a href="{{ route('admin.classes.index') }}" class="btn btn-secondary btn-sm">
-                    <i class="fas fa-arrow-right me-1"></i> رجوع للقائمة
-                </a>
+
+            <div class="class-form-hero my-4">
+                <div class="class-form-hero__icon">
+                    <i class="bi bi-mortarboard-fill"></i>
+                </div>
+                <div class="class-form-hero__content">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-2 small">
+                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                            <li class="breadcrumb-item"><a href="{{ route('admin.classes.index') }}">الصفوف الدراسية</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">إضافة صف</li>
+                        </ol>
+                    </nav>
+                    <h4 class="class-form-hero__title">إضافة صف دراسي جديد</h4>
+                    <p class="class-form-hero__subtitle">أدخل بيانات الصف، التسعير، والخيارات الظاهرة للطلاب في الواجهة</p>
+                </div>
+                <div class="class-form-hero__actions">
+                    <a href="{{ route('admin.classes.index') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-right me-1"></i> رجوع للقائمة
+                    </a>
+                </div>
             </div>
 
-            <div class="card">
-                <div class="card-body">
-                    @if (session('success'))
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+            @if (session('success'))
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
+
+            @if (session('error'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i><strong>خطأ:</strong> {{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
+
+            @if ($errors->any())
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong>يرجى تصحيح الأخطاء التالية:</strong>
+                    <ul class="mb-0 mt-2 small">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('admin.classes.store') }}" enctype="multipart/form-data">
+                @csrf
+
+                {{-- البيانات الأساسية --}}
+                <div class="class-form-card">
+                    <div class="class-form-card__header">
+                        <span class="class-form-card__header-icon"><i class="bi bi-info-circle"></i></span>
+                        <div class="class-form-card__header-text">
+                            <div class="class-form-card__title">البيانات الأساسية</div>
+                            <p class="class-form-card__desc">الاسم، المرحلة، الرابط الدائم، وترتيب الظهور في القوائم</p>
                         </div>
-                    @endif
-
-                    @if (session('error'))
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="bi bi-exclamation-triangle me-2"></i><strong>خطأ:</strong> {{ session('error') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-                        </div>
-                    @endif
-
-                    @if ($errors->any())
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <strong>يرجى تصحيح الأخطاء التالية:</strong>
-                            <ul class="mb-0 mt-2 list-unstyled">
-                                @foreach ($errors->all() as $error)
-                                    <li><i class="bi bi-dot text-danger me-1"></i>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-                        </div>
-                    @endif
-
-                    <form method="POST" action="{{ route('admin.classes.store') }}" enctype="multipart/form-data">
-                        @csrf
-
-                        <div class="class-form-block">
-                            <div class="row g-3 align-items-start">
-                                <div class="col-12">
-                                    <h6 class="text-primary mb-1">البيانات الأساسية</h6>
-                                </div>
-
-                                <div class="col-lg-4">
-                                    <div class="form-floating">
-                                        <input type="text" name="name"
-                                               class="form-control @error('name') is-invalid @enderror"
-                                               placeholder="اسم الصف"
-                                               value="{{ old('name') }}" required>
-                                        <label>اسم الصف <span class="text-danger">*</span></label>
-                                        @error('name')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
+                    </div>
+                    <div class="class-form-card__body">
+                        <div class="row g-4">
+                            <div class="col-lg-6">
+                                <div class="class-form-field">
+                                    <label class="form-label">اسم الصف <span class="text-danger">*</span></label>
+                                    <input type="text" name="name"
+                                           class="form-control @error('name') is-invalid @enderror"
+                                           placeholder="مثال: الصف الثالث متوسط"
+                                           value="{{ old('name') }}" required>
+                                    @error('name')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <div class="class-form-hint">
+                                        <i class="bi bi-lightbulb"></i>
+                                        <span>الاسم الظاهر في قوائم المراحل وصفحة عرض الصف للطلاب.</span>
                                     </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        الاسم الظاهر في قوائم المراحل والصفوف وفي صفحة عرض الصف للطلاب؛ اختر اسماً يعبّر عن المستوى أو البرنامج (مثل «الصف الثالث متوسط»).
-                                    </small>
                                 </div>
+                            </div>
 
-                                <div class="col-lg-4">
-                                    <div class="form-floating">
-                                        <select name="stage_id"
-                                                class="form-select @error('stage_id') is-invalid @enderror"
-                                                aria-label="المرحلة الدراسية" required>
-                                            <option value="">اختر المرحلة</option>
-                                            @foreach($stages as $stage)
-                                                <option value="{{ $stage->id }}"
-                                                        {{ old('stage_id', request('stage_id')) == $stage->id ? 'selected' : '' }}>
-                                                    {{ $stage->name }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                        <label>المرحلة الدراسية <span class="text-danger">*</span></label>
-                                        @error('stage_id')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
+                            <div class="col-lg-6">
+                                <div class="class-form-field">
+                                    <label class="form-label">المرحلة الدراسية <span class="text-danger">*</span></label>
+                                    <select name="stage_id"
+                                            class="form-select @error('stage_id') is-invalid @enderror"
+                                            aria-label="المرحلة الدراسية" required>
+                                        <option value="">اختر المرحلة</option>
+                                        @foreach($stages as $stage)
+                                            <option value="{{ $stage->id }}"
+                                                    {{ old('stage_id', request('stage_id')) == $stage->id ? 'selected' : '' }}>
+                                                {{ $stage->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('stage_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <div class="class-form-hint">
+                                        <i class="bi bi-lightbulb"></i>
+                                        <span>تصنيف الصف ضمن مرحلة (ابتدائي، متوسط، ثانوي…) للتنقل وتجميع الصفوف.</span>
                                     </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        تصنيف الصف ضمن مرحلة (ابتدائي، متوسط، ثانوي، إلخ)؛ يُستخدم للتنقل في الموقع وتجميع الصفوف في القوائم.
-                                    </small>
                                 </div>
+                            </div>
 
-                                <div class="col-lg-4">
-                                    <div class="form-floating">
-                                        <input type="text" name="slug"
-                                               class="form-control @error('slug') is-invalid @enderror"
-                                               placeholder="الرابط الدائم"
-                                               value="{{ old('slug') }}">
-                                        <label>الرابط الدائم (اختياري)</label>
-                                        @error('slug')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
+                            <div class="col-lg-6">
+                                <div class="class-form-field">
+                                    <label class="form-label">الرابط الدائم <span class="text-muted fw-normal">(اختياري)</span></label>
+                                    <input type="text" name="slug"
+                                           class="form-control @error('slug') is-invalid @enderror"
+                                           placeholder="class-slug"
+                                           value="{{ old('slug') }}">
+                                    @error('slug')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <div class="class-form-hint">
+                                        <i class="bi bi-link-45deg"></i>
+                                        <span>جزء الرابط في URL (أحرف لاتينية أو أرقام). يُنشأ تلقائياً إن تُرك فارغاً.</span>
                                     </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        جزء الرابط في URL (أحرف لاتينية أو أرقام، بدون مسافات). يجب أن يكون فريداً بين الصفوف؛ إن تُرك فارغاً قد يُنشأ آلياً حسب إعدادات النظام.
-                                    </small>
                                 </div>
+                            </div>
 
-                                <div class="col-lg-4">
-                                    <div class="form-floating">
-                                        <input type="number" name="order"
-                                               class="form-control @error('order') is-invalid @enderror"
-                                               placeholder="الترتيب"
-                                               value="{{ old('order', 0) }}">
-                                        <label>ترتيب العرض</label>
-                                        @error('order')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
+                            <div class="col-lg-6">
+                                <div class="class-form-field">
+                                    <label class="form-label">ترتيب العرض</label>
+                                    <input type="number" name="order"
+                                           class="form-control @error('order') is-invalid @enderror"
+                                           placeholder="0"
+                                           value="{{ old('order', 0) }}">
+                                    @error('order')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <div class="class-form-hint">
+                                        <i class="bi bi-sort-numeric-down"></i>
+                                        <span>ترتيب ظهور الصف ضمن صفوف نفس المرحلة؛ الرقم الأصغر يظهر أولاً.</span>
                                     </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        ترتيب ظهور هذا الصف ضمن صفوف نفس المرحلة؛ الرقم الأصغر عادةً يظهر أولاً في القوائم المرتبة حسب هذا الحقل.
-                                    </small>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <div class="class-form-block">
-                            <div class="row g-3 align-items-start">
-                                <div class="col-12">
-                                    <h6 class="text-primary mb-1">التسعير الأساسي</h6>
-                                    <p class="text-muted small mb-0">الحقل والمفاتيح التالية تحدد ما إذا كان شراء «الصف كاملاً» مجانياً أو مدفوعاً، وما يظهر للزائر.</p>
-                                </div>
-
-                                <div class="col-lg-4">
-                                    <div class="form-floating">
-                                        <input type="number" name="price" id="price_input_create"
-                                               class="form-control @error('price') is-invalid @enderror"
-                                               placeholder="السعر"
-                                               value="{{ old('price', 0) }}"
-                                               step="0.01"
-                                               min="0">
-                                        <label>السعر (مرجعي) <span class="text-danger">*</span></label>
-                                        @error('price')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
+                {{-- التسعير الأساسي --}}
+                <div class="class-form-card">
+                    <div class="class-form-card__header">
+                        <span class="class-form-card__header-icon"><i class="bi bi-currency-exchange"></i></span>
+                        <div class="class-form-card__header-text">
+                            <div class="class-form-card__title">التسعير الأساسي</div>
+                            <p class="class-form-card__desc">تحديد ما إذا كان شراء الصف مجانياً أو مدفوعاً وما يظهر للزائر</p>
+                        </div>
+                    </div>
+                    <div class="class-form-card__body">
+                        <div class="row g-4">
+                            <div class="col-lg-4">
+                                <div class="class-form-field">
+                                    <label class="form-label" for="price_input_create">السعر (مرجعي) <span class="text-danger">*</span></label>
+                                    <input type="number" name="price" id="price_input_create"
+                                           class="form-control @error('price') is-invalid @enderror"
+                                           placeholder="0"
+                                           value="{{ old('price', 0) }}"
+                                           step="0.01"
+                                           min="0">
+                                    @error('price')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <div class="class-form-hint">
+                                        <i class="bi bi-cash-stack"></i>
+                                        <span>السعر المرجعي بعملة النظام؛ اضبطه على 0 لمسار مجاني.</span>
                                     </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        السعر المرجعي للصف بعملة النظام/السجل الأساسي؛ يُستخدم مع خيار «الصف مجاني» ومع منطق قبول الطلبات. اضبطه على 0 لمسار مجاني، أو أدخل سعراً عندما يكون الصف مدفوعاً. يكمّل جدول «أسعار متعددة العملات» أدناه للعوامل والعملات الأخرى.
-                                    </small>
                                 </div>
+                            </div>
 
-                                <div class="col-lg-4">
-                                    <div class="form-check form-switch mt-2 pt-1">
+                            <div class="col-lg-4">
+                                <div class="class-form-switch-box">
+                                    <div class="form-check form-switch mb-0">
                                         <input class="form-check-input" type="checkbox" name="is_free"
                                                id="is_free_create" value="1"
                                                {{ old('is_free', false) ? 'checked' : '' }}
                                                onchange="togglePriceFieldsCreate()">
                                         <label class="form-check-label" for="is_free_create">الصف مجاني</label>
                                     </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        عند التفعيل يُعامل الصف كمسار مجاني: يُصفَر حقل السعر ويُعطّل تعديله، ويُفترض إظهار السعر في الواجهة بحيث لا يُخفى رسم «مجاني». يستخدم مع قواعد انضمام المسارات المجانية أدناه.
-                                    </small>
+                                    <div class="class-form-hint mb-0 mt-2">
+                                        <i class="bi bi-gift"></i>
+                                        <span>يُصفَر السعر ويُعطّل تعديله عند التفعيل.</span>
+                                    </div>
                                 </div>
+                            </div>
 
-                                <div class="col-lg-4">
-                                    <div class="form-check form-switch mt-2 pt-1" id="show_price_wrapper_create">
+                            <div class="col-lg-4">
+                                <div class="class-form-switch-box" id="show_price_wrapper_create">
+                                    <div class="form-check form-switch mb-0">
                                         <input class="form-check-input" type="checkbox" name="show_price"
                                                id="show_price_create" value="1"
                                                {{ old('show_price', true) ? 'checked' : '' }}>
                                         <label class="form-check-label" for="show_price_create">إظهار السعر في الواجهة</label>
                                     </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        يتحكم في ظهور رقم السعر في الواجهة الأمامية (مثل صفحة الصف). عند الإيقاف قد يعرض القالب نصاً بديلاً مثل «تواصل لمعرفة السعر» بدل الرقم؛ يُعطّى تلقائياً عند تفعيل «الصف مجاني».
-                                    </small>
+                                    <div class="class-form-hint mb-0 mt-2">
+                                        <i class="bi bi-eye"></i>
+                                        <span>يتحكم في ظهور رقم السعر في الواجهة الأمامية.</span>
+                                    </div>
                                 </div>
                             </div>
+                        </div>
 
-                            <div class="row g-3 mt-2" id="custom_price_label_wrapper_create">
-                                <div class="col-lg-4">
-                                    <div class="form-check form-switch mt-2 pt-1">
+                        <div class="row g-4 mt-1" id="custom_price_label_wrapper_create">
+                            <div class="col-lg-4">
+                                <div class="class-form-switch-box">
+                                    <div class="form-check form-switch mb-0">
                                         <input class="form-check-input" type="checkbox" name="use_custom_price_label"
                                                id="use_custom_price_label_create" value="1"
                                                {{ old('use_custom_price_label') ? 'checked' : '' }}>
                                         <label class="form-check-label" for="use_custom_price_label_create">عرض كلمة بدل السعر</label>
                                     </div>
                                 </div>
-                                <div class="col-lg-4">
-                                    <label for="custom_price_label_input_create" class="form-label">الكلمة المعروضة</label>
+                            </div>
+                            <div class="col-lg-4">
+                                <div class="class-form-field">
+                                    <label class="form-label" for="custom_price_label_input_create">الكلمة المعروضة</label>
                                     <input type="text" class="form-control" name="custom_price_label"
                                            id="custom_price_label_input_create" maxlength="100"
                                            value="{{ old('custom_price_label', 'مدفوع') }}"
                                            placeholder="مدفوع">
                                 </div>
                             </div>
-
-                            @php
-                                $postPriceCreate = (float) old('price', 0);
-                                $oldIsFreeCreate = old('is_free');
-                                $isFreeEffectiveCreate = $oldIsFreeCreate !== null ? (bool) $oldIsFreeCreate : false;
-                                $joinRequiresPaymentCreate = ! $isFreeEffectiveCreate && $postPriceCreate > 0;
-                                $fjOldCreate = old('free_join_auto_approve');
-                                $freeJoinCheckedCreate = $fjOldCreate === null ? true : filter_var($fjOldCreate, FILTER_VALIDATE_BOOLEAN);
-                            @endphp
-                            <div class="row g-3 mt-2">
-                                <div class="col-12">
-                                    <div class="border rounded p-3 bg-light">
-                                        <input type="hidden" name="free_join_auto_approve" id="free_join_auto_approve_value_create"
-                                               value="{{ $joinRequiresPaymentCreate ? '1' : ($freeJoinCheckedCreate ? '1' : '0') }}">
-                                        <div class="form-check form-switch mb-0">
-                                            <input class="form-check-input" type="checkbox" id="free_join_auto_approve_cb_create"
-                                                   {{ $freeJoinCheckedCreate ? 'checked' : '' }}
-                                                   {{ $joinRequiresPaymentCreate ? 'disabled' : '' }}
-                                                   onchange="document.getElementById('free_join_auto_approve_value_create').value = this.checked ? '1' : '0'">
-                                            <label class="form-check-label" for="free_join_auto_approve_cb_create">
-                                                قبول الانضمام للمسار المجاني تلقائياً (بدون انتظار موافقة الإدارة)
-                                            </label>
-                                        </div>
-                                        <small id="free_join_hint_paid_create" class="form-text text-muted d-block mt-2 {{ $joinRequiresPaymentCreate ? '' : 'd-none' }}">
-                                            عندما يكون الدخول للصف يتطلّب دفعاً (سعر &gt; 0 وغير «مجاني»)، يُثبت النظام القبول التلقائي للانضمام في الخلفية؛ مربع الخيار يصبح للقراءة فقط لأن مسار «المراجعة اليدوية» لا ينطبق على الصف المدفوع بالمعنى نفسه.
-                                        </small>
-                                        <small id="free_join_hint_free_create" class="form-text text-muted d-block mt-2 {{ $joinRequiresPaymentCreate ? 'd-none' : '' }}">
-                                            عند التعطيل، يُنشأ طلب انضمام للصف (أو المسار المجاني) بحالة «قيد المراجعة» حتى تتم الموافقة من لوحة التحكم. عند التفعيل يُقبل الطالب مباشرة ضمن سياسات الطلبات المجانية.
-                                        </small>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
 
-                        <div class="class-form-block">
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <h6 class="text-primary mb-1">العملة الافتراضية والأسعار بعدة عملات</h6>
-                                </div>
+                        @php
+                            $postPriceCreate = (float) old('price', 0);
+                            $oldIsFreeCreate = old('is_free');
+                            $isFreeEffectiveCreate = $oldIsFreeCreate !== null ? (bool) $oldIsFreeCreate : false;
+                            $joinRequiresPaymentCreate = ! $isFreeEffectiveCreate && $postPriceCreate > 0;
+                            $fjOldCreate = old('free_join_auto_approve');
+                            $freeJoinCheckedCreate = $fjOldCreate === null ? true : filter_var($fjOldCreate, FILTER_VALIDATE_BOOLEAN);
+                        @endphp
+                        <div class="class-form-callout mt-4">
+                            <input type="hidden" name="free_join_auto_approve" id="free_join_auto_approve_value_create"
+                                   value="{{ $joinRequiresPaymentCreate ? '1' : ($freeJoinCheckedCreate ? '1' : '0') }}">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" id="free_join_auto_approve_cb_create"
+                                       {{ $freeJoinCheckedCreate ? 'checked' : '' }}
+                                       {{ $joinRequiresPaymentCreate ? 'disabled' : '' }}
+                                       onchange="document.getElementById('free_join_auto_approve_value_create').value = this.checked ? '1' : '0'">
+                                <label class="form-check-label" for="free_join_auto_approve_cb_create">
+                                    قبول الانضمام للمسار المجاني تلقائياً (بدون انتظار موافقة الإدارة)
+                                </label>
+                            </div>
+                            <div class="class-form-hint mb-0 mt-2" id="free_join_hint_paid_create" @unless($joinRequiresPaymentCreate) style="display:none" @endunless>
+                                <i class="bi bi-info-circle"></i>
+                                <span>عندما يتطلّب الدخول دفعاً، يُثبت النظام القبول التلقائي ويصبح الخيار للقراءة فقط.</span>
+                            </div>
+                            <div class="class-form-hint mb-0 mt-2" id="free_join_hint_free_create" @if($joinRequiresPaymentCreate) style="display:none" @endif>
+                                <i class="bi bi-info-circle"></i>
+                                <span>عند التعطيل يُنشأ طلب انضمام بحالة «قيد المراجعة» حتى الموافقة من لوحة التحكم.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-                                <div class="col-lg-4">
-                                    <label for="default_currency_id" class="form-label mb-1">العملة الافتراضية</label>
+                {{-- العملات --}}
+                <div class="class-form-card">
+                    <div class="class-form-card__header">
+                        <span class="class-form-card__header-icon"><i class="bi bi-globe2"></i></span>
+                        <div class="class-form-card__header-text">
+                            <div class="class-form-card__title">العملة الافتراضية والأسعار بعدة عملات</div>
+                            <p class="class-form-card__desc">تحديد العملة المعتمدة وأسعار الصف لكل عملة نشطة</p>
+                        </div>
+                    </div>
+                    <div class="class-form-card__body">
+                        <div class="row g-4">
+                            <div class="col-lg-5">
+                                <div class="class-form-field">
+                                    <label for="default_currency_id" class="form-label">العملة الافتراضية</label>
                                     <select name="default_currency_id" id="default_currency_id" class="form-select @error('default_currency_id') is-invalid @enderror">
                                         <option value="">اختر العملة الافتراضية</option>
                                         @foreach(\App\Models\Currency::active()->ordered()->get() as $currency)
@@ -255,170 +293,204 @@
                                     @error('default_currency_id')
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                     @enderror
-                                    <small class="form-text text-muted d-block mt-1">
-                                        العملة المعتمدة عند عرض السعر الافتراضي أو إتمام الدفع إن لم يختر المستخدم عملة أخرى؛ يجب أن تتسق مع أعمدة جدول الأسعار التالي.
-                                    </small>
+                                    <div class="class-form-hint">
+                                        <i class="bi bi-currency-dollar"></i>
+                                        <span>العملة المعتمدة عند عرض السعر الافتراضي أو إتمام الدفع.</span>
+                                    </div>
                                 </div>
+                            </div>
 
-                                <div class="col-12">
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered">
-                                            <thead>
+                            <div class="col-12">
+                                <div class="table-responsive border rounded">
+                                    <table class="table class-form-currency-table mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>العملة</th>
+                                                <th style="width: 200px;">السعر</th>
+                                                <th style="width: 100px;">الحالة</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach(\App\Models\Currency::active()->ordered()->get() as $currency)
                                                 <tr>
-                                                    <th>العملة</th>
-                                                    <th>السعر</th>
-                                                    <th>الحالة</th>
+                                                    <td>
+                                                        <strong>{{ $currency->code }}</strong>
+                                                        <span class="text-muted small">({{ $currency->name }})</span>
+                                                    </td>
+                                                    <td>
+                                                        <input type="number"
+                                                               class="form-control form-control-sm"
+                                                               name="prices[{{ $currency->id }}][price]"
+                                                               value="{{ old('prices.' . $currency->id . '.price', 0) }}"
+                                                               step="0.01"
+                                                               min="0">
+                                                        <input type="hidden" name="prices[{{ $currency->id }}][currency_id]" value="{{ $currency->id }}">
+                                                    </td>
+                                                    <td>
+                                                        <div class="form-check form-switch mb-0">
+                                                            <input class="form-check-input"
+                                                                   type="checkbox"
+                                                                   name="prices[{{ $currency->id }}][is_active]"
+                                                                   value="1"
+                                                                   {{ old('prices.' . $currency->id . '.is_active', true) ? 'checked' : '' }}>
+                                                        </div>
+                                                    </td>
                                                 </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach(\App\Models\Currency::active()->ordered()->get() as $currency)
-                                                    <tr>
-                                                        <td><strong>{{ $currency->code }}</strong> ({{ $currency->name }})</td>
-                                                        <td>
-                                                            <input type="number"
-                                                                   class="form-control"
-                                                                   name="prices[{{ $currency->id }}][price]"
-                                                                   value="{{ old('prices.' . $currency->id . '.price', 0) }}"
-                                                                   step="0.01"
-                                                                   min="0">
-                                                            <input type="hidden" name="prices[{{ $currency->id }}][currency_id]" value="{{ $currency->id }}">
-                                                        </td>
-                                                        <td>
-                                                            <div class="form-check form-switch">
-                                                                <input class="form-check-input"
-                                                                       type="checkbox"
-                                                                       name="prices[{{ $currency->id }}][is_active]"
-                                                                       value="1"
-                                                                       {{ old('prices.' . $currency->id . '.is_active', true) ? 'checked' : '' }}>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        <strong>السعر:</strong> قيمة اشتراك الصف بهذه العملة. <strong>الحالة:</strong> تفعيل أو إلغاء تفعيل هذا السطر (مثلاً إيقاف بيع الصف بالليرة دون حذف القيمة). الصفوف ذات السعر 0 تُفهم عادةً كمجانية في تلك العملة مع مراعاة «الصف مجاني» أعلاه.
-                                    </small>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="class-form-hint mt-2">
+                                    <i class="bi bi-table"></i>
+                                    <span><strong>السعر:</strong> قيمة اشتراك الصف بهذه العملة. <strong>الحالة:</strong> تفعيل أو إيقاف بيع الصف بهذه العملة.</span>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <div class="class-form-block">
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <h6 class="text-primary mb-1">خصائص الصف (اختياري — حتى 10)</h6>
+                {{-- خصائص الصف --}}
+                <div class="class-form-card">
+                    <div class="class-form-card__header">
+                        <span class="class-form-card__header-icon"><i class="bi bi-stars"></i></span>
+                        <div class="class-form-card__header-text">
+                            <div class="class-form-card__title">خصائص الصف <span class="text-muted fw-normal">(اختياري — حتى 10)</span></div>
+                            <p class="class-form-card__desc">نقاط سريعة تُعرض في بطاقة الصف (مدة البرنامج، عدد المواد، لغة الشرح…)</p>
+                        </div>
+                    </div>
+                    <div class="class-form-card__body">
+                        <div id="class-features-create">
+                            @foreach(range(0, 9) as $i)
+                                <div class="class-form-feature-row">
+                                    <span class="class-form-feature-num">{{ $i + 1 }}</span>
+                                    <input type="text" name="features[]" class="form-control @error('features.'.$i) is-invalid @enderror"
+                                           placeholder="نص الخاصية {{ $i + 1 }}"
+                                           value="{{ old('features.'.$i) }}">
+                                    @error('features.'.$i)
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
                                 </div>
-                                <div class="col-12">
-                                    <p class="text-muted small mb-2">
-                                        نقاط سريعة تُعرض في بطاقة الصف (مثل مدة البرنامج، عدد المواد، لغة الشرح…). اترَك الحقول الفارغة؛ يُخزّن فقط النصوص غير الفارغة وبترتيب الظهور.
-                                    </p>
-                                    <div id="class-features-create">
-                                        @foreach(range(0, 9) as $i)
-                                            <div class="input-group mb-2">
-                                                <span class="input-group-text">{{ $i + 1 }}</span>
-                                                <input type="text" name="features[]" class="form-control @error('features.'.$i) is-invalid @enderror"
-                                                       placeholder="نص الخاصية {{ $i + 1 }}"
-                                                       value="{{ old('features.'.$i) }}">
-                                                @error('features.'.$i)
-                                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                        @endforeach
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                {{-- الوصف والتواصل --}}
+                <div class="class-form-card">
+                    <div class="class-form-card__header">
+                        <span class="class-form-card__header-icon"><i class="bi bi-text-paragraph"></i></span>
+                        <div class="class-form-card__header-text">
+                            <div class="class-form-card__title">الوصف والتواصل</div>
+                            <p class="class-form-card__desc">نص تسويقي ورابط مجموعة واتساب للطلاب</p>
+                        </div>
+                    </div>
+                    <div class="class-form-card__body">
+                        <div class="row g-4">
+                            <div class="col-12">
+                                <div class="class-form-field">
+                                    <label class="form-label">وصف الصف <span class="text-muted fw-normal">(اختياري)</span></label>
+                                    <textarea name="description" class="form-control @error('description') is-invalid @enderror"
+                                              placeholder="نص تسويقي أو تعليمي يظهر في صفحة الصف"
+                                              rows="4">{{ old('description') }}</textarea>
+                                    @error('description')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <div class="class-form-hint">
+                                        <i class="bi bi-card-text"></i>
+                                        <span>يظهر في صفحة الصف إذا كان القالب يعرضه؛ لا يغيّر هيكل المواد داخل النظام.</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-8">
+                                <div class="class-form-field">
+                                    <label class="form-label">رابط مجموعة واتساب <span class="text-muted fw-normal">(اختياري)</span></label>
+                                    <input type="url" name="whatsapp_group_url"
+                                           class="form-control @error('whatsapp_group_url') is-invalid @enderror"
+                                           placeholder="https://chat.whatsapp.com/..."
+                                           value="{{ old('whatsapp_group_url') }}">
+                                    @error('whatsapp_group_url')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <div class="class-form-hint">
+                                        <i class="bi bi-whatsapp"></i>
+                                        <span>رابط دعوة المجموعة الرسمية؛ يُعرض للطالب بعد الشراء حسب التصميم.</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <div class="class-form-block">
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <div class="form-floating">
-                                        <textarea name="description" class="form-control @error('description') is-invalid @enderror"
-                                                  placeholder="وصف الصف" style="height: 120px">{{ old('description') }}</textarea>
-                                        <label>وصف الصف (اختياري)</label>
-                                        @error('description')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        نص تسويقي أو تعليمي يظهر في صفحة الصف إذا كان القالب يعرضه؛ لا يغيّر هيكل المواد أو الدروس داخل النظام.
-                                    </small>
-                                </div>
-
-                                <div class="col-12">
-                                    <div class="form-floating">
-                                        <input type="url" name="whatsapp_group_url"
-                                               class="form-control @error('whatsapp_group_url') is-invalid @enderror"
-                                               placeholder="https://chat.whatsapp.com/..."
-                                               value="{{ old('whatsapp_group_url') }}">
-                                        <label>رابط مجموعة واتساب (اختياري)</label>
-                                        @error('whatsapp_group_url')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        رابط دعوة المجموعة الرسمية من واتساب (يُنصح بلصق الرابط كاملاً من تطبيق واتساب). يُعرض للطالب بعد الشراء أو في صفحة الصف حسب التصميم.
-                                    </small>
-                                </div>
-                            </div>
+                {{-- وسائط وخيارات --}}
+                <div class="class-form-card">
+                    <div class="class-form-card__header">
+                        <span class="class-form-card__header-icon"><i class="bi bi-image"></i></span>
+                        <div class="class-form-card__header-text">
+                            <div class="class-form-card__title">وسائط وخيارات العرض</div>
+                            <p class="class-form-card__desc">صورة الغلاف، حالة النشر، وخيار شراء المواد المتفرقة</p>
                         </div>
-
-                        <div class="class-form-block">
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <h6 class="text-primary mb-1">وسائط وخيارات العرض</h6>
-                                </div>
-                                <div class="col-lg-4">
-                                    <label class="form-label">صورة الصف (اختياري)</label>
+                    </div>
+                    <div class="class-form-card__body">
+                        <div class="row g-4">
+                            <div class="col-lg-4">
+                                <div class="class-form-field">
+                                    <label class="form-label">صورة الصف <span class="text-muted fw-normal">(اختياري)</span></label>
                                     <input type="file" name="image"
                                            class="form-control @error('image') is-invalid @enderror"
                                            accept="image/*">
                                     @error('image')
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                     @enderror
-                                    <small class="form-text text-muted d-block mt-1">
-                                        صورة الغلاف أو الأيقونة المعروضة في بطاقات الصف؛ يُفضّل صورة أفقية أو مربعة ووضوح جيد وملف ضمن حد الرفع (عادة 2 ميغابايت).
-                                    </small>
+                                    <div class="class-form-hint">
+                                        <i class="bi bi-file-image"></i>
+                                        <span>صورة الغلاف في بطاقات الصف؛ يُفضّل صورة أفقية أو مربعة ووضوح جيد.</span>
+                                    </div>
                                 </div>
+                            </div>
 
-                                <div class="col-lg-4">
-                                    <div class="form-check form-switch mt-2 pt-1">
+                            <div class="col-lg-4">
+                                <div class="class-form-switch-box">
+                                    <div class="form-check form-switch mb-0">
                                         <input class="form-check-input" type="checkbox" name="is_active"
                                                id="is_active" value="1"
                                                {{ old('is_active', true) ? 'checked' : '' }}>
                                         <label class="form-check-label" for="is_active">الصف نشط</label>
                                     </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        عند الإيقاف يُخفى الصف عن القوائم العامة والتسجيل حسب منطق الموقع، دون حذف المواد أو الاشتراكات السابقة.
-                                    </small>
+                                    <div class="class-form-hint mb-0 mt-2">
+                                        <i class="bi bi-toggle-on"></i>
+                                        <span>عند الإيقاف يُخفى الصف عن القوائم العامة دون حذف البيانات.</span>
+                                    </div>
                                 </div>
+                            </div>
 
-                                <div class="col-lg-4">
-                                    <div class="form-check form-switch mt-2 pt-1">
+                            <div class="col-lg-4">
+                                <div class="class-form-switch-box">
+                                    <div class="form-check form-switch mb-0">
                                         <input class="form-check-input" type="checkbox" name="allow_subjects_purchase"
                                                id="allow_subjects_purchase" value="1"
                                                {{ old('allow_subjects_purchase', false) ? 'checked' : '' }}>
                                         <label class="form-check-label" for="allow_subjects_purchase">السماح بشراء المواد المتفرقة</label>
                                     </div>
-                                    <small class="form-text text-muted d-block mt-1">
-                                        إذا فُعّل، تظهر في صفحة الصف خيار «شراء مواد متفرقة» بجانب شراء الصف كاملاً؛ يسمح للطالب باختيار مواد محددة فقط (مع احترام إعداد «شراء منفصل» لكل مادة). عطّله لإجبار شراء البرنامج كاملاً فقط عندما ينطبق المنطق التجاري لديك.
-                                    </small>
+                                    <div class="class-form-hint mb-0 mt-2">
+                                        <i class="bi bi-basket"></i>
+                                        <span>يظهر خيار شراء مواد محددة بجانب شراء الصف كاملاً.</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="text-end mt-4">
-                            <a href="{{ route('admin.classes.index') }}" class="btn btn-secondary px-4 me-2">
-                                إلغاء
-                            </a>
-                            <button type="submit" class="btn btn-primary px-4">
-                                <i class="fas fa-save me-1"></i> حفظ الصف
-                            </button>
-                        </div>
-                    </form>
+                    </div>
                 </div>
-            </div>
+
+                <div class="class-form-footer">
+                    <a href="{{ route('admin.classes.index') }}" class="btn btn-outline-secondary">
+                        إلغاء
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> حفظ الصف
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 @stop
@@ -479,13 +551,13 @@ function syncFreeJoinAutoApproveCreate() {
     if (joinPaid) {
         cb.disabled = true;
         hidden.value = '1';
-        if (hintPaid) { hintPaid.classList.remove('d-none'); }
-        if (hintFree) { hintFree.classList.add('d-none'); }
+        if (hintPaid) { hintPaid.style.display = ''; }
+        if (hintFree) { hintFree.style.display = 'none'; }
     } else {
         cb.disabled = false;
         hidden.value = cb.checked ? '1' : '0';
-        if (hintPaid) { hintPaid.classList.add('d-none'); }
-        if (hintFree) { hintFree.classList.remove('d-none'); }
+        if (hintPaid) { hintPaid.style.display = 'none'; }
+        if (hintFree) { hintFree.style.display = ''; }
     }
 }
 

@@ -159,6 +159,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::delete('questions/destroy-multiple', [QuestionController::class, 'destroyMultiple'])
             ->name('questions.destroy-multiple');
         Route::resource('questions', QuestionController::class);
+        Route::post('questions/math-preview', [QuestionController::class, 'mathPreview'])
+            ->name('questions.math-preview');
         Route::post('questions/upload-image', [QuestionController::class, 'uploadImage'])
             ->name('questions.upload-image');
         Route::post('questions/{question}/duplicate', [QuestionController::class, 'duplicate'])

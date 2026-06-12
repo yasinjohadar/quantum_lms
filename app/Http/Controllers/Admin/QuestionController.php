@@ -18,6 +18,8 @@ use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\Unit;
 use App\Services\Storage\MediaStorageService;
+use App\Support\QuestionMarkupFormatter;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -150,6 +152,8 @@ class QuestionController extends Controller
                 $data['explanation'] = Question::normalizeHtmlEmbeddedImageUrls($data['explanation']);
             }
 
+            $this->normalizeQuestionTextFields($data);
+
             // رفع الصورة
             if ($request->hasFile('image')) {
                 $uploadResult = MediaStorageService::uploadImage($request->file('image'), 'questions/images');
@@ -189,7 +193,7 @@ class QuestionController extends Controller
             if ($question->type === 'numerical' && $request->filled('correct_answer')) {
                 QuestionOption::create([
                     'question_id' => $question->id,
-                    'content' => $request->correct_answer,
+                    'content' => $this->normalizeOptionContent($request->correct_answer),
                     'is_correct' => true,
                     'order' => 1,
                 ]);
@@ -351,6 +355,8 @@ class QuestionController extends Controller
                 $data['explanation'] = Question::normalizeHtmlEmbeddedImageUrls($data['explanation']);
             }
 
+            $this->normalizeQuestionTextFields($data);
+
             // رفع صورة جديدة
             if ($request->hasFile('image')) {
                 // حذف الصورة القديمة
@@ -397,7 +403,7 @@ class QuestionController extends Controller
                 $question->options()->delete();
                 QuestionOption::create([
                     'question_id' => $question->id,
-                    'content' => $request->correct_answer,
+                    'content' => $this->normalizeOptionContent($request->correct_answer),
                     'is_correct' => true,
                     'order' => 1,
                 ]);
@@ -561,16 +567,55 @@ class QuestionController extends Controller
     /**
      * حفظ خيارات السؤال
      */
+    public function mathPreview(Request $request): JsonResponse
+    {
+        $request->validate([
+            'text' => ['nullable', 'string'],
+        ]);
+
+        return response()->json([
+            'html' => format_question_markup($request->input('text', '')),
+        ]);
+    }
+
+    protected function normalizeQuestionTextFields(array &$data): void
+    {
+        foreach (['title', 'content', 'explanation'] as $field) {
+            if (isset($data[$field]) && is_string($data[$field])) {
+                $data[$field] = QuestionMarkupFormatter::normalizeForStorage($data[$field]);
+            }
+        }
+
+        if (isset($data['blank_answers']) && is_array($data['blank_answers'])) {
+            $data['blank_answers'] = array_map(function ($answer) {
+                return is_string($answer)
+                    ? QuestionMarkupFormatter::normalizeForStorage($answer)
+                    : $answer;
+            }, $data['blank_answers']);
+        }
+    }
+
+    protected function normalizeOptionContent(?string $content): ?string
+    {
+        if ($content === null) {
+            return null;
+        }
+
+        return QuestionMarkupFormatter::normalizeForStorage($content);
+    }
+
     protected function saveOptions(Question $question, array $options): void
     {
         foreach ($options as $index => $optionData) {
             $option = new QuestionOption([
                 'question_id' => $question->id,
-                'content' => $optionData['content'],
+                'content' => $this->normalizeOptionContent($optionData['content'] ?? null),
                 'is_correct' => isset($optionData['is_correct']),
-                'match_target' => $optionData['match_target'] ?? null,
+                'match_target' => $this->normalizeOptionContent($optionData['match_target'] ?? null),
                 'correct_order' => $optionData['correct_order'] ?? null,
-                'feedback' => $optionData['feedback'] ?? null,
+                'feedback' => isset($optionData['feedback']) && is_string($optionData['feedback'])
+                    ? QuestionMarkupFormatter::normalizeForStorage($optionData['feedback'])
+                    : ($optionData['feedback'] ?? null),
                 'order' => $index + 1,
             ]);
 
@@ -593,11 +638,13 @@ class QuestionController extends Controller
 
         foreach ($options as $index => $optionData) {
             $data = [
-                'content' => $optionData['content'],
+                'content' => $this->normalizeOptionContent($optionData['content'] ?? null),
                 'is_correct' => isset($optionData['is_correct']),
-                'match_target' => $optionData['match_target'] ?? null,
+                'match_target' => $this->normalizeOptionContent($optionData['match_target'] ?? null),
                 'correct_order' => $optionData['correct_order'] ?? null,
-                'feedback' => $optionData['feedback'] ?? null,
+                'feedback' => isset($optionData['feedback']) && is_string($optionData['feedback'])
+                    ? QuestionMarkupFormatter::normalizeForStorage($optionData['feedback'])
+                    : ($optionData['feedback'] ?? null),
                 'order' => $index + 1,
             ];
 

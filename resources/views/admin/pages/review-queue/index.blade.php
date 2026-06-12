@@ -4,175 +4,83 @@
     قائمة المراجعة
 @stop
 
+@push('styles')
+    @include('admin.pages.review-queue.partials.index-styles')
+@endpush
+
 @section('content')
-    <div class="main-content app-content">
+    <div class="main-content app-content review-queue-page">
         <div class="container-fluid">
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">قائمة المراجعة</h5>
-                    <p class="text-muted mb-0">مراجعة الدروس والاختبارات المقدمة من المعلمين</p>
+
+            <div class="rq-hero my-4">
+                <div class="rq-hero__icon">
+                    <i class="bi bi-clipboard2-check-fill"></i>
+                </div>
+                <div class="rq-hero__content">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-2 small">
+                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">قائمة المراجعة</li>
+                        </ol>
+                    </nav>
+                    <h4 class="rq-hero__title">قائمة المراجعة</h4>
+                    <p class="rq-hero__subtitle">مراجعة الدروس والاختبارات المقدمة من المعلمين والموافقة عليها</p>
                 </div>
             </div>
 
             @if (session('success'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('success') }}
+                <div class="alert alert-success alert-dismissible fade show">
+                    <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
                 </div>
             @endif
 
-            <!-- إحصائيات -->
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <div class="card bg-warning text-white">
-                        <div class="card-body">
-                            <h6 class="text-white-50 mb-2">الدروس قيد المراجعة</h6>
-                            <h3 class="mb-0">{{ $stats['lessons']['pending'] }}</h3>
-                            <small class="text-white-50">
-                                معتمدة: {{ $stats['lessons']['approved'] }} | 
-                                مرفوضة: {{ $stats['lessons']['rejected'] }}
-                            </small>
-                        </div>
-                    </div>
+            @include('admin.pages.review-queue.partials.stats-cards', ['stats' => $stats])
+
+            <div class="rq-card mb-4">
+                <div class="rq-card__header">
+                    <span><span class="rq-card__header-icon"><i class="bi bi-grid-3x3-gap"></i></span> التنقل</span>
                 </div>
-                <div class="col-md-6">
-                    <div class="card bg-info text-white">
-                        <div class="card-body">
-                            <h6 class="text-white-50 mb-2">الاختبارات قيد المراجعة</h6>
-                            <h3 class="mb-0">{{ $stats['quizzes']['pending'] }}</h3>
-                            <small class="text-white-50">
-                                معتمدة: {{ $stats['quizzes']['approved'] }} | 
-                                مرفوضة: {{ $stats['quizzes']['rejected'] }}
-                            </small>
-                        </div>
-                    </div>
+                <div class="rq-card__body pb-2">
+                    @include('admin.pages.review-queue.partials.nav-tabs', ['stats' => $stats, 'active' => 'all'])
                 </div>
             </div>
 
-            <!-- Tabs -->
-            <div class="card">
-                <div class="card-header">
-                    <ul class="nav nav-tabs card-header-tabs" role="tablist">
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->is('admin/review-queue') && !request()->has('tab') ? 'active' : '' }}" 
-                               href="{{ route('admin.review-queue.index') }}">
-                                <i class="fas fa-list me-1"></i> جميع العناصر
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->is('admin/review-queue/lessons*') ? 'active' : '' }}" 
-                               href="{{ route('admin.review-queue.lessons') }}">
-                                <i class="fas fa-book me-1"></i> الدروس
-                                @if($stats['lessons']['pending'] > 0)
-                                    <span class="badge bg-warning ms-1">{{ $stats['lessons']['pending'] }}</span>
-                                @endif
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->is('admin/review-queue/quizzes*') ? 'active' : '' }}" 
-                               href="{{ route('admin.review-queue.quizzes') }}">
-                                <i class="fas fa-clipboard-check me-1"></i> الاختبارات
-                                @if($stats['quizzes']['pending'] > 0)
-                                    <span class="badge bg-info ms-1">{{ $stats['quizzes']['pending'] }}</span>
-                                @endif
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-                <div class="card-body">
-                    <!-- الدروس -->
+            <div class="rq-card">
+                <div class="rq-card__body">
                     @if($lessons->count() > 0)
                         <div class="mb-4">
-                            <h6 class="mb-3"><i class="fas fa-book me-1"></i> الدروس قيد المراجعة</h6>
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>عنوان الدرس</th>
-                                            <th>المادة</th>
-                                            <th>الصف</th>
-                                            <th>المعلم</th>
-                                            <th>تاريخ الإرسال</th>
-                                            <th>الإجراءات</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($lessons as $lesson)
-                                            @php
-                                                $subject = $lesson->unit->section->subject ?? null;
-                                                $class = $subject->schoolClass ?? null;
-                                                $teachers = $subject->assignedTeachers ?? collect();
-                                            @endphp
-                                            <tr>
-                                                <td>{{ $loop->iteration }}</td>
-                                                <td>{{ $lesson->title }}</td>
-                                                <td>{{ $subject->name ?? '-' }}</td>
-                                                <td>{{ $class->name ?? '-' }}</td>
-                                                <td>{{ $teachers->isNotEmpty() ? $teachers->pluck('name')->join('، ') : '-' }}</td>
-                                                <td>{{ $lesson->submitted_for_review_at ? \Carbon\Carbon::parse($lesson->submitted_for_review_at)->format('Y-m-d') : '-' }}</td>
-                                                <td>
-                                                    <a href="{{ route('admin.lessons.show', $lesson->id) }}" 
-                                                       class="btn btn-sm btn-primary">
-                                                        <i class="fas fa-eye me-1"></i> عرض
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
+                            <div class="rq-section-title">
+                                <i class="bi bi-play-btn"></i>
+                                الدروس قيد المراجعة
+                                <span class="badge rounded-pill text-bg-warning">{{ $lessons->total() }}</span>
                             </div>
-                            <div class="d-flex justify-content-center">
+                            @include('admin.pages.review-queue.partials.lessons-table', ['lessons' => $lessons])
+                            <div class="rq-pagination d-flex justify-content-center">
                                 {{ $lessons->links() }}
                             </div>
                         </div>
                     @endif
 
-                    <!-- الاختبارات -->
                     @if($quizzes->count() > 0)
-                        <div class="mb-4">
-                            <h6 class="mb-3"><i class="fas fa-clipboard-check me-1"></i> الاختبارات قيد المراجعة</h6>
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>عنوان الاختبار</th>
-                                            <th>المادة</th>
-                                            <th>المعلم</th>
-                                            <th>تاريخ الإرسال</th>
-                                            <th>الإجراءات</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($quizzes as $quiz)
-                                            <tr>
-                                                <td>{{ $loop->iteration }}</td>
-                                                <td>{{ $quiz->title }}</td>
-                                                <td>{{ $quiz->subject->name ?? '-' }}</td>
-                                                <td>{{ $quiz->creator->name ?? 'N/A' }}</td>
-                                                <td>{{ $quiz->submitted_for_review_at ? \Carbon\Carbon::parse($quiz->submitted_for_review_at)->format('Y-m-d') : '-' }}</td>
-                                                <td>
-                                                    <a href="{{ route('admin.quizzes.show', $quiz->id) }}" 
-                                                       class="btn btn-sm btn-primary">
-                                                        <i class="fas fa-eye me-1"></i> عرض
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
+                        <div class="mb-2">
+                            <div class="rq-section-title">
+                                <i class="bi bi-clipboard-check"></i>
+                                الاختبارات قيد المراجعة
+                                <span class="badge rounded-pill text-bg-info">{{ $quizzes->total() }}</span>
                             </div>
-                            <div class="d-flex justify-content-center">
+                            @include('admin.pages.review-queue.partials.quizzes-table', ['quizzes' => $quizzes])
+                            <div class="rq-pagination d-flex justify-content-center">
                                 {{ $quizzes->links() }}
                             </div>
                         </div>
                     @endif
 
-                    @if($lessons->count() == 0 && $quizzes->count() == 0)
-                        <div class="text-center py-5">
-                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-                            <p class="text-muted">لا توجد عناصر قيد المراجعة حالياً</p>
+                    @if($lessons->count() === 0 && $quizzes->count() === 0)
+                        <div class="rq-empty">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <p class="mb-0 fw-semibold">لا توجد عناصر قيد المراجعة حالياً</p>
+                            <p class="small mb-0 mt-1">ستظهر هنا الدروس والاختبارات عند إرسالها من المعلمين.</p>
                         </div>
                     @endif
                 </div>

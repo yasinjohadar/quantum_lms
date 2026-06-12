@@ -10,6 +10,16 @@
         ],
         throwOnError: false,
         strict: false,
+        trust: function (context) {
+            return context.command === '\\ce' || context.command === '\\pu';
+        },
+        macros: {
+            '\\RR': '\\mathbb{R}',
+            '\\NN': '\\mathbb{N}',
+            '\\ZZ': '\\mathbb{Z}',
+            '\\QQ': '\\mathbb{Q}',
+            '\\CC': '\\mathbb{C}',
+        },
         ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
         ignoredClasses: ['question-inline-code', 'question-code-block', 'no-math'],
     };
@@ -22,12 +32,16 @@
         var targets = root
             ? [root]
             : Array.prototype.slice.call(
-                document.querySelectorAll('.question-text-body, .question-page-heading')
+                document.querySelectorAll('.question-text-body, .question-page-heading, .math-live-preview-body')
             );
 
         targets.forEach(function (el) {
-            if (!el || el.dataset.mathRendered === '1') {
+            if (!el) {
                 return;
+            }
+
+            if (el.dataset.mathRendered === '1') {
+                delete el.dataset.mathRendered;
             }
 
             renderMathInElement(el, renderOptions);
@@ -62,11 +76,12 @@
     }
 
     window.addEventListener('load', function () {
-        document.querySelectorAll('.question-text-body[data-math-rendered="1"]').forEach(function (el) {
+        document.querySelectorAll('.question-text-body[data-math-rendered="1"], .math-live-preview-body[data-math-rendered="1"]').forEach(function (el) {
             delete el.dataset.mathRendered;
         });
         boot(0);
     });
 
     window.renderQuestionMath = renderQuestionMath;
+    window.questionMathRenderOptions = renderOptions;
 })();

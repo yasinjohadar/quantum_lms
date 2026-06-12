@@ -2,6 +2,10 @@
 
 @include('partials.question-math-assets')
 
+@push('styles')
+    @include('partials.questions.mcq-options-styles')
+@endpush
+
 @section('page-title', $quiz->title)
 
 @section('content')
@@ -496,17 +500,15 @@
         if (question.content && question.type !== 'drag_drop' && question.type !== 'fill_blank' && question.type !== 'fill_blanks') {
             html += `<div class="mb-4 p-3 bg-light rounded question-content-html question-text-body">${question.content}</div>`;
         } else if (question.content && question.type === 'drag_drop') {
-            // Extract text content without drop-zones div for drag_drop
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = question.content;
             const dropZonesDiv = tempDiv.querySelector('.drop-zones');
             if (dropZonesDiv) {
-                const textContent = tempDiv.textContent.trim();
-                if (textContent) {
-                    html += `<div class="mb-4 p-3 bg-light rounded">${escapeHtml(textContent)}</div>`;
-                }
-            } else {
-                html += `<div class="mb-4 p-3 bg-light rounded question-content-html question-text-body">${question.content}</div>`;
+                dropZonesDiv.remove();
+            }
+            const introHtml = tempDiv.innerHTML.trim();
+            if (introHtml) {
+                html += `<div class="mb-4 p-3 bg-light rounded question-content-html question-text-body">${introHtml}</div>`;
             }
         }
         // Note: fill_blank/fill_blanks content is handled inside renderFillBlank
@@ -613,20 +615,18 @@
         // Convert all IDs to strings for comparison
         selectedOptions = selectedOptions.map(id => String(id));
         
-        let html = '<div class="options-list">';
+        let html = '<div class="mcq-options-list options-list">';
         
         question.options.forEach((opt, idx) => {
-            // Convert opt.id to string for comparison
             const optIdStr = String(opt.id);
             const isChecked = selectedOptions.includes(optIdStr) || selectedOptions.includes(opt.id) ? 'checked' : '';
+            const letter = String.fromCharCode(65 + idx);
             html += `
-                <div class="form-check p-3 mb-2 border rounded option-item ${isChecked ? 'border-primary bg-primary-transparent' : ''}">
-                    <input class="form-check-input" type="radio" name="answer_${question.id}" 
-                           id="opt_${opt.id}" value="${opt.id}" ${isChecked}>
-                    <label class="form-check-label question-text-body w-100 cursor-pointer" for="opt_${opt.id}">
-                        ${opt.content || ''}
-                    </label>
-                </div>
+                <label class="mcq-option-card is-interactive option-item ${isChecked ? 'is-selected' : ''}" for="opt_${opt.id}">
+                    <input type="radio" name="answer_${question.id}" id="opt_${opt.id}" value="${opt.id}" ${isChecked}>
+                    <span class="mcq-option-card__letter">${letter}</span>
+                    <span class="mcq-option-card__body question-text-body">${opt.content || ''}</span>
+                </label>
             `;
         });
         
@@ -646,20 +646,18 @@
         selectedOptions = selectedOptions.map(id => String(id));
         
         let html = '<p class="text-muted mb-3"><i class="bi bi-info-circle me-1"></i> يمكنك اختيار أكثر من إجابة</p>';
-        html += '<div class="options-list">';
+        html += '<div class="mcq-options-list options-list">';
         
         question.options.forEach((opt, idx) => {
-            // Convert opt.id to string for comparison
             const optIdStr = String(opt.id);
             const isChecked = selectedOptions.includes(optIdStr) || selectedOptions.includes(opt.id) ? 'checked' : '';
+            const letter = String.fromCharCode(65 + idx);
             html += `
-                <div class="form-check p-3 mb-2 border rounded option-item ${isChecked ? 'border-primary bg-primary-transparent' : ''}">
-                    <input class="form-check-input" type="checkbox" name="answer_${question.id}[]" 
-                           id="opt_${opt.id}" value="${opt.id}" ${isChecked}>
-                    <label class="form-check-label question-text-body w-100 cursor-pointer" for="opt_${opt.id}">
-                        ${opt.content || ''}
-                    </label>
-                </div>
+                <label class="mcq-option-card is-interactive option-item ${isChecked ? 'is-selected' : ''}" for="opt_${opt.id}">
+                    <input type="checkbox" name="answer_${question.id}[]" id="opt_${opt.id}" value="${opt.id}" ${isChecked}>
+                    <span class="mcq-option-card__letter">${letter}</span>
+                    <span class="mcq-option-card__body question-text-body">${opt.content || ''}</span>
+                </label>
             `;
         });
         
@@ -884,16 +882,10 @@
             blanks = blanksObj;
         }
         
-        let content = question.content || '';
+        let content = (question.content || '').trim();
         let blankIndex = 0;
         
-        // Extract text from HTML safely
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = content;
-        content = tempDiv.textContent || tempDiv.innerText || '';
-        content = content.trim();
-        
-        // Replace {n} pattern with input fields (e.g., {1}, {2}, {3})
+        // Replace {n} pattern with input fields (e.g., {1}, {2}, {3}) — preserve HTML/math markup
         content = content.replace(/\{(\d+)\}/g, function(match, num) {
             const idx = parseInt(num) - 1; // Convert to 0-based index (1->0, 2->1, 3->2)
             // Try both string and numeric key access
@@ -919,7 +911,7 @@
             return input;
         });
         
-        return '<div class="fill-blank-container p-4 border rounded bg-light fs-5 lh-lg">' + content + '</div>';
+        return '<div class="fill-blank-container p-4 border rounded bg-light fs-5 lh-lg question-text-body">' + content + '</div>';
     }
     
     function renderDragDrop(question, answer) {
@@ -960,7 +952,7 @@
         question.options.forEach((opt, idx) => {
             const zoneId = dragDropData[opt.id] || null;
             html += `
-                <div class="draggable-item badge bg-primary p-3 cursor-move" 
+                <div class="draggable-item badge bg-primary p-3 cursor-move question-text-body" 
                      draggable="true" 
                      data-item-id="${opt.id}"
                      data-zone-id="${zoneId || ''}"
@@ -994,7 +986,7 @@
                                 const opt = question.options.find(o => o.id == itemId);
                                 if (!opt) return '';
                                 return `
-                                    <div class="dropped-item badge bg-success p-2 mb-2 me-1" data-item-id="${itemId}">
+                                    <div class="dropped-item badge bg-success p-2 mb-2 me-1 question-text-body" data-item-id="${itemId}">
                                         ${opt.content || ''}
                                         <button type="button" class="btn-close btn-close-white ms-2" onclick="removeFromZone(${question.id}, ${itemId})"></button>
                                     </div>
@@ -1041,13 +1033,17 @@
             const droppedItemsEl = document.getElementById('dropped-items-' + questionId + '-' + zoneId);
             if (droppedItemsEl) {
                 const droppedItem = document.createElement('div');
-                droppedItem.className = 'dropped-item badge bg-success p-2 mb-2 me-1';
+                droppedItem.className = 'dropped-item badge bg-success p-2 mb-2 me-1 question-text-body';
                 droppedItem.dataset.itemId = itemId;
                 droppedItem.innerHTML = `
                     ${opt.content || ''}
                     <button type="button" class="btn-close btn-close-white ms-2" onclick="removeFromZone(${questionId}, ${itemId})"></button>
                 `;
                 droppedItemsEl.appendChild(droppedItem);
+                if (typeof window.renderQuestionMath === 'function') {
+                    delete droppedItem.dataset.mathRendered;
+                    window.renderQuestionMath(droppedItem);
+                }
             }
             
             itemEl.dataset.zoneId = zoneId;
@@ -1216,28 +1212,25 @@
             setupOrderingListeners(question);
         }
         
-        // Radio buttons and checkboxes highlighting
         document.querySelectorAll('.option-item input').forEach(input => {
             input.addEventListener('change', function() {
                 const parent = this.closest('.options-list');
                 if (this.type === 'radio') {
-                    // For radio buttons, remove highlight from all and add to selected
                     parent.querySelectorAll('.option-item').forEach(item => {
-                        item.classList.remove('border-primary', 'bg-primary-transparent');
+                        item.classList.remove('is-selected', 'border-primary', 'bg-primary-transparent');
                     });
                     if (this.checked) {
-                        this.closest('.option-item').classList.add('border-primary', 'bg-primary-transparent');
+                        this.closest('.option-item').classList.add('is-selected');
                     }
                 } else if (this.type === 'checkbox') {
-                    // For checkboxes, toggle highlight for each item
+                    const card = this.closest('.option-item');
                     if (this.checked) {
-                        this.closest('.option-item').classList.add('border-primary', 'bg-primary-transparent');
+                        card.classList.add('is-selected');
                     } else {
-                        this.closest('.option-item').classList.remove('border-primary', 'bg-primary-transparent');
+                        card.classList.remove('is-selected');
                     }
                 }
-                
-                // Save answer
+
                 saveCurrentAnswer(question);
             });
         });

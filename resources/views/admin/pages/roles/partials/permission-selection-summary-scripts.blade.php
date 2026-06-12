@@ -1,5 +1,18 @@
 <script>
 (function () {
+    function refreshCategoryBadges() {
+        document.querySelectorAll('.permission-category-card').forEach(function (card) {
+            var badge = card.querySelector('.permission-category-badge');
+            if (!badge) {
+                return;
+            }
+            var total = parseInt(badge.getAttribute('data-total') || '0', 10);
+            var boxes = card.querySelectorAll('input[type="checkbox"][name^="permissions"]');
+            var selected = Array.prototype.filter.call(boxes, function (cb) { return cb.checked; }).length;
+            badge.textContent = selected + ' / ' + total;
+        });
+    }
+
     function refreshRolePermissionSummary() {
         var form = document.querySelector('[data-role-permissions-form]');
         var countEl = document.getElementById('role-permissions-summary-count');
@@ -24,6 +37,11 @@
             });
 
         countEl.textContent = String(items.length);
+
+        var heroCountEl = document.getElementById('role-form-selected-count');
+        if (heroCountEl) {
+            heroCountEl.textContent = String(items.length);
+        }
 
         listEl.innerHTML = '';
         items.forEach(function (item, index) {
@@ -57,6 +75,36 @@
         if (emptyEl) {
             emptyEl.style.display = items.length ? 'none' : '';
         }
+
+        refreshCategoryBadges();
+    }
+
+    function getCategoryCard(el) {
+        return el ? el.closest('.permission-category-card') : null;
+    }
+
+    function expandCategoryCollapse(card) {
+        if (!card || typeof bootstrap === 'undefined') {
+            return;
+        }
+        var collapseEl = card.querySelector('.accordion-collapse');
+        if (!collapseEl) {
+            return;
+        }
+        var instance = bootstrap.Collapse.getOrCreateInstance(collapseEl, { toggle: false });
+        instance.show();
+    }
+
+    function collapseCategoryCollapse(card) {
+        if (!card || typeof bootstrap === 'undefined') {
+            return;
+        }
+        var collapseEl = card.querySelector('.accordion-collapse');
+        if (!collapseEl) {
+            return;
+        }
+        var instance = bootstrap.Collapse.getOrCreateInstance(collapseEl, { toggle: false });
+        instance.hide();
     }
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -73,12 +121,14 @@
         });
 
         document.querySelectorAll('.select-all-category').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var categoryCard = this.closest('.card');
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var categoryCard = getCategoryCard(this);
                 if (!categoryCard) {
                     return;
                 }
-                categoryCard.querySelectorAll('input[type="checkbox"]').forEach(function (checkbox) {
+                categoryCard.querySelectorAll('input[type="checkbox"][name^="permissions"]').forEach(function (checkbox) {
                     checkbox.checked = true;
                 });
                 refreshRolePermissionSummary();
@@ -86,66 +136,53 @@
         });
 
         document.querySelectorAll('.deselect-all-category').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var categoryCard = this.closest('.card');
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var categoryCard = getCategoryCard(this);
                 if (!categoryCard) {
                     return;
                 }
-                categoryCard.querySelectorAll('input[type="checkbox"]').forEach(function (checkbox) {
+                categoryCard.querySelectorAll('input[type="checkbox"][name^="permissions"]').forEach(function (checkbox) {
                     checkbox.checked = false;
                 });
                 refreshRolePermissionSummary();
             });
         });
 
+        document.querySelectorAll('.expand-all-categories').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var tabPane = this.closest('.tab-pane');
+                if (!tabPane) {
+                    return;
+                }
+                tabPane.querySelectorAll('.permission-category-card').forEach(function (card) {
+                    expandCategoryCollapse(card);
+                });
+            });
+        });
+
+        document.querySelectorAll('.collapse-all-categories').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var tabPane = this.closest('.tab-pane');
+                if (!tabPane) {
+                    return;
+                }
+                tabPane.querySelectorAll('.permission-category-card').forEach(function (card) {
+                    collapseCategoryCollapse(card);
+                });
+            });
+        });
+
         var deselectAllBtn = document.getElementById('role-permissions-deselect-all');
         if (deselectAllBtn) {
-            deselectAllBtn.addEventListener('click', function () {
+            deselectAllBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
                 form.querySelectorAll('input[type="checkbox"][name^="permissions"]').forEach(function (cb) {
                     cb.checked = false;
                 });
                 refreshRolePermissionSummary();
-            });
-        }
-
-        var pinStorageKey = 'rolePermissionsSummaryPinned';
-        var summaryPanel = document.getElementById('role-permissions-summary-panel');
-        var pinToggleBtn = document.getElementById('role-permissions-pin-toggle');
-        var pinToggleLabel = document.getElementById('role-permissions-pin-toggle-label');
-        var pinToggleIcon = document.getElementById('role-permissions-pin-toggle-icon');
-
-        function applySummaryPinState(isPinned) {
-            if (!summaryPanel) {
-                return;
-            }
-            summaryPanel.classList.toggle('is-pinned', isPinned);
-            if (pinToggleBtn) {
-                pinToggleBtn.setAttribute('aria-pressed', isPinned ? 'true' : 'false');
-                pinToggleBtn.setAttribute('title', isPinned
-                    ? 'إلغاء تثبيت الملخص أعلى الصفحة'
-                    : 'تثبيت الملخص أعلى الصفحة عند التمرير');
-            }
-            if (pinToggleLabel) {
-                pinToggleLabel.textContent = isPinned ? 'إلغاء التثبيت' : 'تثبيت الملخص';
-            }
-            if (pinToggleIcon) {
-                pinToggleIcon.className = isPinned ? 'bi bi-pin-angle-fill' : 'bi bi-pin-angle';
-            }
-        }
-
-        if (summaryPanel && pinToggleBtn) {
-            var storedPin = localStorage.getItem(pinStorageKey);
-            var isPinned = storedPin === null ? true : storedPin === '1';
-            applySummaryPinState(isPinned);
-
-            pinToggleBtn.addEventListener('click', function () {
-                var nextPinned = !summaryPanel.classList.contains('is-pinned');
-                applySummaryPinState(nextPinned);
-                try {
-                    localStorage.setItem(pinStorageKey, nextPinned ? '1' : '0');
-                } catch (e) {
-                    /* تجاهل إن كان التخزين غير متاح */
-                }
             });
         }
 
@@ -158,20 +195,28 @@
                 var categoryCards = document.querySelectorAll('.permission-category-card');
 
                 categoryCards.forEach(function (card) {
-                    var cardText = card.textContent.toLowerCase();
-                    var hasMatch = cardText.indexOf(searchTerm) !== -1;
+                    var permissionItems = card.querySelectorAll('.permission-item');
+                    var visibleCount = 0;
+
+                    permissionItems.forEach(function (item) {
+                        if (searchTerm === '') {
+                            item.style.display = '';
+                            visibleCount++;
+                            return;
+                        }
+                        var itemText = item.textContent.toLowerCase();
+                        var matches = itemText.indexOf(searchTerm) !== -1;
+                        item.style.display = matches ? '' : 'none';
+                        if (matches) {
+                            visibleCount++;
+                        }
+                    });
 
                     if (searchTerm === '') {
                         card.style.display = '';
-                        card.querySelectorAll('.col-md-6.col-lg-4.mb-3').forEach(function (item) {
-                            item.style.display = '';
-                        });
-                    } else if (hasMatch) {
+                    } else if (visibleCount > 0) {
                         card.style.display = '';
-                        card.querySelectorAll('.col-md-6.col-lg-4.mb-3').forEach(function (item) {
-                            var itemText = item.textContent.toLowerCase();
-                            item.style.display = itemText.indexOf(searchTerm) !== -1 ? '' : 'none';
-                        });
+                        expandCategoryCollapse(card);
                     } else {
                         card.style.display = 'none';
                     }

@@ -4,44 +4,61 @@
     كافة المدراء
 @stop
 
+@push('styles')
+    @include('admin.pages.admins.partials.index-styles')
+@endpush
+
 @section('content')
-    <div class="main-content app-content">
+    <div class="main-content app-content admins-page">
         <div class="container-fluid">
 
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">كافة المدراء</h5>
+            <div class="admins-hero my-4">
+                <div class="admins-hero__icon">
+                    <i class="bi bi-shield-lock-fill"></i>
                 </div>
-                <div class="d-flex gap-2">
+                <div class="admins-hero__content">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-2 small">
+                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">كافة المدراء</li>
+                        </ol>
+                    </nav>
+                    <h4 class="admins-hero__title">كافة المدراء</h4>
+                    <p class="admins-hero__subtitle">إدارة حسابات المدراء، الصلاحيات، وسجلات الدخول</p>
+                </div>
+                <div class="admins-hero__stat">
+                    <span class="admins-hero__stat-value">{{ number_format($admins->total()) }}</span>
+                    <span class="admins-hero__stat-label">مدير مطابق</span>
+                </div>
+                <div class="admins-hero__actions">
+                    <a href="{{ route('admin.users.manage') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-people me-1"></i> كل المستخدمين
+                    </a>
                     @can('user-create')
-                        <a href="{{ route('users.create', ['role' => 'admin']) }}" class="btn btn-primary btn-sm">
-                            <i class="fas fa-user-plus me-1"></i> إنشاء مدير جديد
+                        <a href="{{ route('users.create', ['role' => 'admin']) }}" class="btn btn-sm btn-primary">
+                            <i class="bi bi-person-plus me-1"></i> مدير جديد
                         </a>
                     @endcan
                 </div>
             </div>
 
             @if (session('success'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert" style="margin-top: 20px; display: block !important; visibility: visible !important; opacity: 1 !important;">
-                    <i class="bi bi-check-circle me-2"></i>
-                    <strong>نجح!</strong> {!! session('success') !!}
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="bi bi-check-circle me-2"></i>{!! session('success') !!}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
                 </div>
             @endif
 
             @if (session('error'))
-                <div class="alert alert-danger alert-dismissible fade show" role="alert" style="margin-top: 20px; display: block !important; visibility: visible !important; opacity: 1 !important;">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    <strong>خطأ!</strong> {!! session('error') !!}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{!! session('error') !!}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
                 </div>
             @endif
 
             @if ($errors->any())
-                <div class="alert alert-danger alert-dismissible fade show" role="alert" style="margin-top: 20px; display: block !important; visibility: visible !important; opacity: 1 !important;">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    <strong>خطأ في البيانات!</strong>
-                    <ul class="mb-0 mt-2">
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <ul class="mb-0 small">
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
                         @endforeach
@@ -50,64 +67,80 @@
                 </div>
             @endif
 
-            <div class="row">
-                <div class="col-xl-12">
-                    <div class="card">
-                        <div class="card-header align-items-center d-flex gap-3">
-                            <div class="flex-shrink-0 ms-auto w-100">
-                                <form action="{{ route('admin.admins.index') }}" method="GET"
-                                      id="adminsFiltersForm"
-                                      class="d-flex flex-wrap align-items-end gap-2">
-                                    <div class="d-flex flex-column">
-                                        <label class="form-label small mb-1">بحث</label>
-                                        <input style="min-width: 220px" type="text" name="query" class="form-control form-control-sm"
-                                               placeholder="بحث بالاسم أو البريد أو الهاتف" value="{{ request('query') }}">
-                                    </div>
-
-                                    <div class="d-flex flex-column">
-                                        <label class="form-label small mb-1">حالة الحساب</label>
-                                        <select name="is_active" id="adminsIsActiveFilter" class="form-select form-select-sm">
-                                            <option value="">كل الحالات</option>
-                                            <option value="1" {{ request('is_active', '1') === '1' ? 'selected' : '' }}>مفعل</option>
-                                            <option value="0" {{ request('is_active', '1') === '0' ? 'selected' : '' }}>معطل</option>
-                                        </select>
-                                    </div>
-
-                                    <button type="submit" class="btn btn-secondary btn-sm">
-                                        <i class="fas fa-search me-1"></i> بحث
-                                    </button>
-                                    @if(request()->has('query') || request()->has('is_active'))
-                                        <a href="{{ route('admin.admins.index') }}" class="btn btn-outline-secondary btn-sm">
-                                            مسح الفلاتر
-                                        </a>
-                                    @endif
-                                </form>
+            <div class="admins-card">
+                <div class="admins-card__header">
+                    <span class="admins-card__header-icon"><i class="bi bi-funnel"></i></span>
+                    تصفية وبحث
+                </div>
+                <div class="admins-card__body">
+                    <form action="{{ route('admin.admins.index') }}" method="GET"
+                          id="adminsFiltersForm"
+                          class="admins-filters">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-6 col-lg-5">
+                                <label class="form-label">بحث</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-search text-muted"></i></span>
+                                    <input type="text" name="query" class="form-control"
+                                           placeholder="بحث بالاسم أو البريد أو الهاتف" value="{{ request('query') }}">
+                                </div>
                             </div>
+                            <div class="col-md-4 col-lg-3">
+                                <label class="form-label" for="adminsIsActiveFilter">حالة الحساب</label>
+                                <select name="is_active" id="adminsIsActiveFilter" class="form-select">
+                                    <option value="">كل الحالات</option>
+                                    <option value="1" {{ request('is_active', '1') === '1' ? 'selected' : '' }}>مفعل</option>
+                                    <option value="0" {{ request('is_active', '1') === '0' ? 'selected' : '' }}>معطل</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 col-lg-2">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="bi bi-search me-1"></i> بحث
+                                </button>
+                            </div>
+                            @if(request()->has('query') || request()->has('is_active'))
+                                <div class="col-md-2 col-lg-2">
+                                    <a href="{{ route('admin.admins.index') }}" class="btn btn-outline-secondary w-100">
+                                        مسح
+                                    </a>
+                                </div>
+                            @endif
                         </div>
+                    </form>
+                </div>
+            </div>
 
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover align-middle table-nowrap mb-0">
-                                    <thead class="table-light">
-                                    <tr>
-                                        <th scope="col" style="width: 40px;">#</th>
-                                        <th scope="col" style="min-width: 170px;">اسم المدير</th>
-                                        <th scope="col" style="min-width: 150px;">البريد الإلكتروني</th>
-                                        <th scope="col" style="min-width: 120px;">الهاتف</th>
-                                        <th scope="col" style="min-width: 120px;">حالة الحساب</th>
-                                        <th scope="col" style="min-width: 180px;">العمليات</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody id="adminsTableBody">
-                                    @include('admin.pages.admins.partials.table-rows', ['admins' => $admins])
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <div class="mt-3 d-flex justify-content-center" id="adminsPaginationContainer">
-                                @include('admin.pages.admins.partials.pagination', ['admins' => $admins])
-                            </div>
+            <div class="admins-card">
+                <div class="admins-card__header">
+                    <span class="admins-card__header-icon"><i class="bi bi-table"></i></span>
+                    قائمة المدراء
+                </div>
+                <div class="admins-card__body">
+                    <div class="admins-table-wrap" id="adminsTableWrap">
+                        <div class="admins-loading-overlay" id="adminsLoadingOverlay">
+                            <div class="spinner-border text-danger spinner-border-sm" role="status"></div>
                         </div>
+                        <div class="table-responsive">
+                            <table class="table admins-table align-middle mb-0">
+                                <thead>
+                                <tr>
+                                    <th scope="col" style="width: 48px;">#</th>
+                                    <th scope="col">اسم المدير</th>
+                                    <th scope="col">البريد الإلكتروني</th>
+                                    <th scope="col">الهاتف</th>
+                                    <th scope="col">حالة الحساب</th>
+                                    <th scope="col" style="min-width: 140px;">العمليات</th>
+                                </tr>
+                                </thead>
+                                <tbody id="adminsTableBody">
+                                @include('admin.pages.admins.partials.table-rows', ['admins' => $admins])
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="admins-pagination" id="adminsPaginationContainer">
+                        @include('admin.pages.admins.partials.pagination', ['admins' => $admins])
                     </div>
                 </div>
             </div>
@@ -128,6 +161,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const tableBody = document.getElementById('adminsTableBody');
     const paginationContainer = document.getElementById('adminsPaginationContainer');
     const impersonateModalsWrapper = document.getElementById('adminsImpersonateModalsWrapper');
+    const loadingOverlay = document.getElementById('adminsLoadingOverlay');
     if (!form || !isActiveSelect || !tableBody || !paginationContainer) return;
 
     function buildParams(extraPage) {
@@ -154,6 +188,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function fetchAdmins(page) {
         const params = buildParams(page);
+        if (loadingOverlay) loadingOverlay.classList.add('is-active');
+
         fetch(`{{ route('admin.admins.index') }}?${params.toString()}`, {
             method: 'GET',
             headers: {
@@ -177,8 +213,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 const newUrl = `${window.location.pathname}?${params.toString()}`;
                 window.history.replaceState({}, '', newUrl);
             })
-            .catch(function () {
-                // في حال الفشل يمكن للصفحة أن تعمل بتحديث عادي
+            .catch(function () {})
+            .finally(function () {
+                if (loadingOverlay) loadingOverlay.classList.remove('is-active');
             });
     }
 
@@ -190,4 +227,3 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @stop
-

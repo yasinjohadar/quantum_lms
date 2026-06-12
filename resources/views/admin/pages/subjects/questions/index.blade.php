@@ -7,40 +7,49 @@
 @stop
 
 @push('styles')
-@include('admin.pages.questions.partials.index-styles')
+    @include('admin.pages.questions.partials.index-styles')
 @endpush
 
 @section('content')
-    <div class="main-content app-content">
+    <div class="main-content app-content qb-page">
         <div class="container-fluid">
 
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">بنك أسئلة — {{ $subject->name }}</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
+            <div class="qb-hero my-4">
+                <div class="qb-hero__icon">
+                    <i class="bi bi-journal-bookmark-fill"></i>
+                </div>
+                <div class="qb-hero__content">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-2 small">
                             <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
                             <li class="breadcrumb-item"><a href="{{ route('admin.subjects.index') }}">المواد</a></li>
                             <li class="breadcrumb-item"><a href="{{ route('admin.subjects.show', $subject->id) }}">{{ $subject->name }}</a></li>
                             <li class="breadcrumb-item active" aria-current="page">بنك الأسئلة</li>
                         </ol>
                     </nav>
-                    @if($subject->schoolClass)
-                        <p class="text-muted small mb-0 mt-1">
+                    <h4 class="qb-hero__title">بنك أسئلة — {{ $subject->name }}</h4>
+                    <p class="qb-hero__subtitle">
+                        @if($subject->schoolClass)
                             {{ $subject->schoolClass->name }}
                             @if($subject->schoolClass->stage)
-                                ({{ $subject->schoolClass->stage->name }})
+                                — {{ $subject->schoolClass->stage->name }}
                             @endif
-                        </p>
-                    @endif
+                        @else
+                            إدارة أسئلة هذه المادة
+                        @endif
+                    </p>
                 </div>
-                <div class="d-flex flex-wrap gap-2">
+                <div class="qb-hero__stat">
+                    <span class="qb-hero__stat-value">{{ number_format($questions->total()) }}</span>
+                    <span class="qb-hero__stat-label">سؤال</span>
+                </div>
+                <div class="qb-hero__actions">
                     <a href="{{ route('admin.questions.index') }}" class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-collection me-1"></i> البنك الرئيسي
                     </a>
                     @can('question-export')
                         <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#exportQuestionsWordModal">
-                            <i class="bi bi-file-earmark-word me-1"></i> تصدير Word
+                            <i class="bi bi-file-earmark-word me-1"></i> تصدير
                         </button>
                     @endcan
                     @can('question-show-import')
@@ -50,13 +59,10 @@
                     @endcan
                     @can('question-create')
                         <a href="{{ route('admin.subjects.questions.ai-create', $subject->id) }}" class="btn btn-info btn-sm text-white">
-                            <i class="bi bi-robot me-1"></i> توليد AI
-                        </a>
-                        <a href="{{ route('admin.subjects.questions.ai-create-from-image', $subject->id) }}" class="btn btn-outline-info btn-sm">
-                            <i class="bi bi-file-earmark-image me-1"></i> من صورة/PDF
+                            <i class="bi bi-robot me-1"></i> AI
                         </a>
                         <a href="{{ route('admin.subjects.questions.create', $subject->id) }}" class="btn btn-primary btn-sm">
-                            <i class="fas fa-plus me-1"></i> إضافة سؤال
+                            <i class="bi bi-plus-lg me-1"></i> سؤال جديد
                         </a>
                     @endcan
                 </div>
@@ -79,7 +85,7 @@
 
 @section('js')
     @include('partials.question-math-scripts')
-    @can('quiz-add-question')
-        @include('admin.pages.questions.partials.bank-add-to-quiz', ['subject' => $subject])
-    @endcan
+    @if($enableAjaxFilters ?? false)
+        @include('admin.pages.questions.partials.bank-index-ajax')
+    @endif
 @stop

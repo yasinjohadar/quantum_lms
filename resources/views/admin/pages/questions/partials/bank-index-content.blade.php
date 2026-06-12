@@ -21,21 +21,34 @@
 
 @if ($errors->any())
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <ul class="mb-0">
+        <ul class="mb-0 small">
             @foreach ($errors->all() as $error)
-                <li class="small">{{ $error }}</li>
+                <li>{{ $error }}</li>
             @endforeach
         </ul>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
     </div>
 @endif
 
-<div class="card custom-card mb-3">
-    <div class="card-body">
-        <form action="{{ $formAction }}" method="GET" id="questionBankFilters">
-            <div class="row g-3">
+<div class="qb-card-panel">
+    <div class="qb-card-panel__header">
+        <span class="qb-card-panel__header-icon"><i class="bi bi-funnel"></i></span>
+        تصفية وبحث
+    </div>
+    <div class="qb-card-panel__body">
+        <form action="{{ $formAction }}" method="GET" id="questionBankFilters" class="qb-filters">
+            <div class="row g-3 align-items-end">
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label" for="filter_search">بحث</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" name="search" id="filter_search" class="form-control"
+                               placeholder="ابحث بعنوان السؤال..." value="{{ request('search') }}">
+                    </div>
+                </div>
+
                 @if(!isset($subject) && ($schoolClasses ?? collect())->isNotEmpty())
-                    <div class="col-md-2">
+                    <div class="col-lg-2 col-md-4 col-6">
                         <label class="form-label" for="filter_class_id">الصف</label>
                         <select name="class_id" id="filter_class_id" class="form-select">
                             <option value="">الكل</option>
@@ -44,7 +57,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-lg-2 col-md-4 col-6">
                         <label class="form-label" for="filter_subject_id">المادة</label>
                         <select name="subject_id" id="filter_subject_id" class="form-select" @if(!request('class_id')) disabled @endif>
                             <option value="">{{ request('class_id') ? 'الكل' : 'اختر الصف أولاً' }}</option>
@@ -54,15 +67,9 @@
                         </select>
                     </div>
                 @endif
-                <div class="col-md-{{ !isset($subject) && ($schoolClasses ?? collect())->isNotEmpty() ? '2' : '3' }}">
-                    <label class="form-label">بحث</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" name="search" id="filter_search" class="form-control" placeholder="ابحث بعنوان السؤال..." value="{{ request('search') }}">
-                    </div>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">النوع</label>
+
+                <div class="col-lg-2 col-md-4 col-6">
+                    <label class="form-label" for="filter_type">النوع</label>
                     <select name="type" id="filter_type" class="form-select">
                         <option value="">الكل</option>
                         @foreach(\App\Models\Question::TYPES as $typeKey => $typeLabel)
@@ -70,8 +77,9 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">الصعوبة</label>
+
+                <div class="col-lg-2 col-md-4 col-6">
+                    <label class="form-label" for="filter_difficulty">الصعوبة</label>
                     <select name="difficulty" id="filter_difficulty" class="form-select">
                         <option value="">الكل</option>
                         <option value="easy" {{ request('difficulty') == 'easy' ? 'selected' : '' }}>سهل</option>
@@ -79,9 +87,10 @@
                         <option value="hard" {{ request('difficulty') == 'hard' ? 'selected' : '' }}>صعب</option>
                     </select>
                 </div>
+
                 @if(isset($subject) && $units->isNotEmpty())
-                    <div class="col-md-2">
-                        <label class="form-label">الوحدة</label>
+                    <div class="col-lg-2 col-md-4 col-6">
+                        <label class="form-label" for="filter_unit_id">الوحدة</label>
                         <select name="unit_id" id="filter_unit_id" class="form-select">
                             <option value="">الكل</option>
                             @foreach($units as $unit)
@@ -92,24 +101,27 @@
                         </select>
                     </div>
                 @endif
-                <div class="col-md-2">
-                    <label class="form-label">الحالة</label>
+
+                <div class="col-lg-2 col-md-4 col-6">
+                    <label class="form-label" for="filter_is_active">الحالة</label>
                     <select name="is_active" id="filter_is_active" class="form-select">
                         <option value="">الكل</option>
                         <option value="1" {{ request('is_active') === '1' ? 'selected' : '' }}>نشط</option>
                         <option value="0" {{ request('is_active') === '0' ? 'selected' : '' }}>غير نشط</option>
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">ترتيب</label>
+
+                <div class="col-lg-2 col-md-4 col-6">
+                    <label class="form-label" for="filter_sort">ترتيب</label>
                     <select name="sort" id="filter_sort" class="form-select">
                         <option value="latest" {{ request('sort', 'latest') == 'latest' ? 'selected' : '' }}>الأحدث</option>
                         <option value="oldest" {{ request('sort') == 'oldest' ? 'selected' : '' }}>الأقدم</option>
                         <option value="title" {{ request('sort') == 'title' ? 'selected' : '' }}>العنوان</option>
                     </select>
                 </div>
-                <div class="col-md-1 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100" id="questionBankFilterSubmit">
+
+                <div class="col-lg-1 col-md-2 col-6">
+                    <button type="submit" class="btn btn-primary w-100" id="questionBankFilterSubmit" title="بحث">
                         <i class="bi bi-search"></i>
                     </button>
                 </div>

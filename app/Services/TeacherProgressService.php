@@ -7,6 +7,8 @@ use App\Models\Lesson;
 use App\Models\Subject;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -162,27 +164,144 @@ class TeacherProgressService
     }
 
     /**
-     * الدروس المعتمدة في مواد المعلم المخصّصة، مع تفاصيل الصفحات، مرتّبة حسب الصف ثم المادة ثم المنهج.
+     * مواد المعلم المخصّصة مرتّبة للعرض.
      *
-     * @return array<int, array{subject: Subject, lessons: array<int, array<string, mixed>>, total_pages: int, lessons_count: int}>
+     * @return Collection<int, Subject>
      */
-    public static function getTeacherApprovedLessonsDetailBySubject(User $teacher): array
+    public static function getTeacherAssignedSubjectsOrdered(User $teacher): Collection
     {
         $teacher->unsetRelation('assignedSubjects');
-        $subjects = $teacher->assignedSubjects()->withTrashed()->with([
+
+        return $teacher->assignedSubjects()->withTrashed()->with([
             'schoolClass' => fn ($q) => $q->withTrashed(),
             'schoolClass.stage',
         ])->get()->sort(function (Subject $a, Subject $b) {
             return self::compareAssignedSubjectsForDisplayOrder($a, $b);
         })->values();
+    }
 
+    /**
+     * @return array<int, int>
+     */
+    public static function getTeacherAssignedSubjectIds(User $teacher): array
+    {
+        return self::getTeacherAssignedSubjectsOrdered($teacher)->pluck('id')->all();
+    }
+
+    /**
+     * @return array{lessons_count: int, total_pages: int}
+     */
+    public static function getTeacherApprovedLessonsGrandTotals(User $teacher): array
+    {
+        $subjectIds = self::getTeacherAssignedSubjectIds($teacher);
+        if ($subjectIds === []) {
+            return ['lessons_count' => 0, 'total_pages' => 0];
+        }
+
+        $pageSql = self::lessonPageCountSql('lessons');
+        $row = self::approvedLessonsForTeacherSubjectsQuery($subjectIds)
+            ->selectRaw("COUNT(*) as lessons_count, COALESCE(SUM({$pageSql}), 0) as total_pages")
+            ->first();
+
+        return [
+            'lessons_count' => (int) ($row->lessons_count ?? 0),
+            'total_pages' => (int) ($row->total_pages ?? 0),
+        ];
+    }
+
+    /**
+     * ملخص الدروس المعتمدة لكل مادة (بدون تحميل كل الدروس).
+     *
+     * @return array<int, array{subject: Subject, lessons_count: int, total_pages: int}>
+     */
+    public static function getTeacherApprovedLessonsSubjectSummaries(User $teacher): array
+    {
+        $subjects = self::getTeacherAssignedSubjectsOrdered($teacher);
         $subjectIds = $subjects->pluck('id')->all();
         if ($subjectIds === []) {
             return [];
         }
 
-        $lessons = Lesson::query()
-            ->where('review_status', Lesson::REVIEW_STATUS_APPROVED)
+        $countsBySubject = self::getTeacherApprovedLessonsCountsBySubject($subjectIds);
+        $out = [];
+        foreach ($subjects as $subject) {
+            $stats = $countsBySubject[$subject->id] ?? ['lessons_count' => 0, 'total_pages' => 0];
+            if ($stats['lessons_count'] === 0) {
+                continue;
+            }
+            $out[] = [
+                'subject' => $subject,
+                'lessons_count' => $stats['lessons_count'],
+                'total_pages' => $stats['total_pages'],
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * صفحة من الدروس المعتمدة (لتجنب استنفاد الذاكرة عند آلاف الدروس).
+     *
+     * @return LengthAwarePaginator<int, array<string, mixed>>
+     */
+    public static function paginateTeacherApprovedLessons(User $teacher, ?int $subjectId = null, int $perPage = 50): LengthAwarePaginator
+    {
+        $subjects = self::getTeacherAssignedSubjectsOrdered($teacher);
+        $subjectIds = $subjects->pluck('id')->all();
+        $subjectsById = $subjects->keyBy('id');
+
+        $query = self::approvedLessonsForTeacherSubjectsQuery($subjectIds, $subjectId)
+            ->select('lessons.*')
+            ->with([
+                'unit' => fn ($q) => $q->withTrashed()->with(['section' => fn ($q2) => $q2->withTrashed()]),
+                'section' => fn ($q) => $q->withTrashed(),
+            ]);
+
+        $query = self::applyApprovedLessonsDisplayOrder($query);
+
+        return $query->paginate($perPage)->withQueryString()->through(function (Lesson $lesson) use ($subjectsById) {
+            $sid = self::resolveLessonSubjectId($lesson);
+
+            return [
+                'lesson' => $lesson,
+                'subject' => $sid !== null ? $subjectsById->get($sid) : null,
+                'pages_count' => self::lessonPageCount($lesson),
+                'pages_label' => self::formatLessonPagesLabel($lesson),
+                'section_title' => ($lesson->unit?->section ?? $lesson->section)?->title,
+                'unit_title' => $lesson->unit?->title,
+            ];
+        });
+    }
+
+    /**
+     * @deprecated استخدم getTeacherApprovedLessonsSubjectSummaries + paginateTeacherApprovedLessons
+     *
+     * @return array<int, array{subject: Subject, lessons: array<int, array<string, mixed>>, total_pages: int, lessons_count: int}>
+     */
+    public static function getTeacherApprovedLessonsDetailBySubject(User $teacher): array
+    {
+        $summaries = self::getTeacherApprovedLessonsSubjectSummaries($teacher);
+
+        return array_map(function (array $row) {
+            return array_merge($row, ['lessons' => []]);
+        }, $summaries);
+    }
+
+    /**
+     * @param  array<int, int>  $subjectIds
+     */
+    public static function approvedLessonsForTeacherSubjectsQuery(array $subjectIds, ?int $filterSubjectId = null): Builder
+    {
+        if ($filterSubjectId !== null) {
+            $subjectIds = in_array($filterSubjectId, $subjectIds, true) ? [$filterSubjectId] : [];
+        }
+
+        if ($subjectIds === []) {
+            return Lesson::query()->whereRaw('1 = 0');
+        }
+
+        return Lesson::query()
+            ->where('lessons.review_status', Lesson::REVIEW_STATUS_APPROVED)
             ->where(function ($outer) use ($subjectIds) {
                 $outer->whereHas('unit', function ($q) use ($subjectIds) {
                     $q->whereHas('section', function ($q2) use ($subjectIds) {
@@ -191,46 +310,77 @@ class TeacherProgressService
                 })->orWhereHas('section', function ($q) use ($subjectIds) {
                     $q->whereIn('subject_id', $subjectIds);
                 });
-            })
-            ->with([
-                'unit' => fn ($q) => $q->withTrashed()->with(['section' => fn ($q2) => $q2->withTrashed()]),
-                'section' => fn ($q) => $q->withTrashed(),
-            ])
-            ->get();
+            });
+    }
 
-        $bySubjectId = [];
-        foreach ($lessons as $lesson) {
-            $sid = self::resolveLessonSubjectId($lesson);
-            if ($sid === null || ! in_array($sid, $subjectIds, true)) {
-                continue;
-            }
-            $section = $lesson->unit?->section ?? $lesson->section;
-            $unitTitle = $lesson->unit?->title;
-            $bySubjectId[$sid][] = [
-                'lesson' => $lesson,
-                'pages_count' => self::lessonPageCount($lesson),
-                'pages_label' => self::formatLessonPagesLabel($lesson),
-                'section_title' => $section?->title,
-                'unit_title' => $unitTitle,
-            ];
+    /**
+     * @param  array<int, int>  $subjectIds
+     * @return array<int, array{lessons_count: int, total_pages: int}>
+     */
+    protected static function getTeacherApprovedLessonsCountsBySubject(array $subjectIds): array
+    {
+        if ($subjectIds === []) {
+            return [];
         }
 
+        $pageSql = self::lessonPageCountSql('l');
+        $placeholders = implode(',', array_fill(0, count($subjectIds), '?'));
+
+        $rows = DB::table('lessons as l')
+            ->leftJoin('units as u', function ($join) {
+                $join->on('u.id', '=', 'l.unit_id')->whereNull('u.deleted_at');
+            })
+            ->leftJoin('subject_sections as ss_u', function ($join) {
+                $join->on('ss_u.id', '=', 'u.section_id')->whereNull('ss_u.deleted_at');
+            })
+            ->leftJoin('subject_sections as ss_d', function ($join) {
+                $join->on('ss_d.id', '=', 'l.section_id')->whereNull('ss_d.deleted_at');
+            })
+            ->where('l.review_status', Lesson::REVIEW_STATUS_APPROVED)
+            ->whereNull('l.deleted_at')
+            ->where(function ($q) use ($subjectIds) {
+                $q->whereIn('ss_u.subject_id', $subjectIds)
+                    ->orWhereIn('ss_d.subject_id', $subjectIds);
+            })
+            ->whereRaw('COALESCE(ss_u.subject_id, ss_d.subject_id) IN (' . $placeholders . ')', $subjectIds)
+            ->groupBy(DB::raw('COALESCE(ss_u.subject_id, ss_d.subject_id)'))
+            ->selectRaw("COALESCE(ss_u.subject_id, ss_d.subject_id) as subject_id, COUNT(*) as lessons_count, COALESCE(SUM({$pageSql}), 0) as total_pages")
+            ->get();
+
         $out = [];
-        foreach ($subjects as $subject) {
-            $rows = $bySubjectId[$subject->id] ?? [];
-            usort($rows, function (array $ra, array $rb) {
-                return self::compareApprovedLessonsForDisplay($ra['lesson'], $rb['lesson']);
-            });
-            $totalPages = (int) array_sum(array_column($rows, 'pages_count'));
-            $out[] = [
-                'subject' => $subject,
-                'lessons' => $rows,
-                'total_pages' => $totalPages,
-                'lessons_count' => count($rows),
+        foreach ($rows as $row) {
+            $out[(int) $row->subject_id] = [
+                'lessons_count' => (int) $row->lessons_count,
+                'total_pages' => (int) $row->total_pages,
             ];
         }
 
         return $out;
+    }
+
+    protected static function lessonPageCountSql(string $table = 'lessons'): string
+    {
+        return "(CASE WHEN {$table}.book_page_from IS NOT NULL AND {$table}.book_page_to IS NOT NULL "
+            . "THEN GREATEST(0, {$table}.book_page_to - {$table}.book_page_from + 1) "
+            . "WHEN {$table}.book_page_from IS NULL AND {$table}.book_page_to IS NULL THEN 0 ELSE 1 END)";
+    }
+
+    protected static function applyApprovedLessonsDisplayOrder(Builder $query): Builder
+    {
+        return $query
+            ->leftJoin('units as sort_u', function ($join) {
+                $join->on('sort_u.id', '=', 'lessons.unit_id')->whereNull('sort_u.deleted_at');
+            })
+            ->leftJoin('subject_sections as sort_ss_u', function ($join) {
+                $join->on('sort_ss_u.id', '=', 'sort_u.section_id')->whereNull('sort_ss_u.deleted_at');
+            })
+            ->leftJoin('subject_sections as sort_ss_d', function ($join) {
+                $join->on('sort_ss_d.id', '=', 'lessons.section_id')->whereNull('sort_ss_d.deleted_at');
+            })
+            ->orderByRaw('COALESCE(sort_ss_u.`order`, sort_ss_d.`order`, 99999)')
+            ->orderByRaw('COALESCE(sort_u.`order`, 99999)')
+            ->orderBy('lessons.order')
+            ->orderBy('lessons.id');
     }
 
     private static function resolveLessonSubjectId(Lesson $lesson): ?int

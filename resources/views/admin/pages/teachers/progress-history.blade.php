@@ -4,24 +4,35 @@
     إحصائيات سابقة للمعلم: {{ $teacher->name }}
 @stop
 
+@push('styles')
+    @include('admin.pages.teachers.partials.progress-styles')
+@endpush
+
 @section('content')
-    <div class="main-content app-content">
+    <div class="main-content app-content teachers-progress-page">
         <div class="container-fluid">
 
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">إحصائيات سابقة للمعلم: {{ $teacher->name }}</h5>
-                    <div class="small text-muted">عرض الأسابيع التي انتهت فقط ضمن السنة الدراسية النشطة.</div>
+            <div class="tp-hero my-4">
+                <div class="tp-hero__icon">
+                    <i class="bi bi-clock-history"></i>
                 </div>
-                <div class="d-flex gap-2">
-                    <a href="{{ route('admin.teachers.progress.show', $teacher) }}" class="btn btn-secondary btn-sm">
-                        <i class="bi bi-arrow-right me-1"></i> تفاصيل التقدم (الأسبوع الحالي)
+                <div class="tp-hero__content">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-2 small">
+                            <li class="breadcrumb-item"><a href="{{ route('admin.teachers.progress.index') }}">تقدم المعلمين</a></li>
+                            <li class="breadcrumb-item"><a href="{{ route('admin.teachers.progress.show', $teacher) }}">{{ $teacher->name }}</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">إحصائيات سابقة</li>
+                        </ol>
+                    </nav>
+                    <h4 class="tp-hero__title">إحصائيات سابقة — {{ $teacher->name }}</h4>
+                    <p class="tp-hero__subtitle">الأسابيع المنتهية ضمن السنة الدراسية النشطة</p>
+                </div>
+                <div class="tp-hero__actions">
+                    <a href="{{ route('admin.teachers.progress.show', $teacher) }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-right me-1"></i> التقدم الحالي
                     </a>
-                    <a href="{{ route('admin.teachers.assignments.index') }}" class="btn btn-outline-secondary btn-sm">
-                        <i class="bi bi-list me-1"></i> قائمة المعلمين
-                    </a>
-                    <a href="{{ route('admin.teachers.assignments', $teacher->id) }}" class="btn btn-primary btn-sm">
-                        <i class="fas fa-user-tie me-1"></i> تخصيص
+                    <a href="{{ route('admin.teachers.assignments', $teacher->id) }}" class="btn btn-success btn-sm">
+                        <i class="bi bi-sliders me-1"></i> تخصيص
                     </a>
                 </div>
             </div>
@@ -39,71 +50,88 @@
                 </div>
             @endif
 
-            {{-- بطاقات الملخص التراكمي --}}
-            <div class="row mb-4">
+            <div class="row g-3 mb-4">
                 <div class="col-md-4">
-                    <div class="card bg-primary text-white">
-                        <div class="card-body">
-                            <h6 class="text-white-50 mb-2">إجمالي الدروس المعتمدة</h6>
-                            <h3 class="mb-0">{{ $total_approved_lessons }}</h3>
+                    <div class="tp-metric tp-metric--info">
+                        <div class="tp-metric__head">
+                            <div class="tp-metric__title">إجمالي الدروس المعتمدة</div>
+                            <span class="tp-metric__icon"><i class="bi bi-check2-circle"></i></span>
                         </div>
+                        <div class="tp-metric__value">{{ $total_approved_lessons }}</div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card bg-info text-white">
-                        <div class="card-body">
-                            <h6 class="text-white-50 mb-2">نسبة تقدم الصفحات (تراكمي)</h6>
-                            @if($total_pages_required > 0)
-                                <h3 class="mb-1">{{ $total_pages_completed }} / {{ $total_pages_required }}</h3>
-                                <span class="badge bg-light text-dark">{{ number_format($total_pages_percentage, 1) }}%</span>
-                            @else
-                                <p class="mb-0 text-white-50">— لا يوجد هدف صفحات</p>
-                            @endif
+                    <div class="tp-metric tp-metric--primary">
+                        <div class="tp-metric__head">
+                            <div class="tp-metric__title">نسبة تقدم الصفحات (تراكمي)</div>
+                            <span class="tp-metric__icon"><i class="bi bi-journal-text"></i></span>
                         </div>
+                        @if($total_pages_required > 0)
+                            <div class="d-flex align-items-baseline gap-2 flex-wrap">
+                                <span class="tp-metric__value">{{ $total_pages_completed }}</span>
+                                <span class="text-muted small">/ {{ $total_pages_required }}</span>
+                            </div>
+                            <div class="tp-progress mt-2">
+                                <div class="tp-progress__bar tp-progress__bar--success" style="width: {{ min(100, $total_pages_percentage) }}%;"></div>
+                            </div>
+                            <div class="mt-2"><span class="tp-pct tp-pct--info">{{ number_format($total_pages_percentage, 1) }}%</span></div>
+                        @else
+                            <p class="mb-0 text-muted small">لا يوجد هدف صفحات</p>
+                        @endif
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card bg-warning text-dark">
-                        <div class="card-body">
-                            <h6 class="mb-2">الهدف الأسبوعي (الأسبوع الحالي فقط)</h6>
-                            @if(($weekly_progress['target'] ?? 0) > 0)
-                                <h3 class="mb-1">{{ $weekly_progress['completed'] ?? 0 }} / {{ $weekly_progress['target'] }}</h3>
-                                @if(($weekly_progress['percentage'] ?? null) !== null)
-                                    <span class="badge {{ $weekly_progress['percentage'] >= 100 ? 'bg-success' : ($weekly_progress['percentage'] >= 50 ? 'bg-info' : 'bg-secondary') }}">{{ number_format($weekly_progress['percentage'], 1) }}%</span>
-                                @endif
-                            @else
-                                <p class="mb-0">— لا يوجد هدف أسبوعي</p>
-                            @endif
+                    <div class="tp-metric tp-metric--warning">
+                        <div class="tp-metric__head">
+                            <div class="tp-metric__title">الهدف الأسبوعي (الحالي)</div>
+                            <span class="tp-metric__icon"><i class="bi bi-calendar-week"></i></span>
                         </div>
+                        @if(($weekly_progress['target'] ?? 0) > 0)
+                            <div class="d-flex align-items-baseline gap-2 flex-wrap">
+                                <span class="tp-metric__value">{{ $weekly_progress['completed'] ?? 0 }}</span>
+                                <span class="text-muted small">/ {{ $weekly_progress['target'] }}</span>
+                            </div>
+                            @if(($weekly_progress['percentage'] ?? null) !== null)
+                                @php $wp = $weekly_progress['percentage']; $wpc = $wp >= 100 ? 'success' : ($wp >= 50 ? 'info' : 'warning'); @endphp
+                                <div class="mt-2"><span class="tp-pct tp-pct--{{ $wpc }}">{{ number_format($wp, 1) }}%</span></div>
+                            @endif
+                        @else
+                            <p class="mb-0 text-muted small">لا يوجد هدف أسبوعي</p>
+                        @endif
                     </div>
                 </div>
             </div>
 
-            {{-- جدول الأسابيع الماضية فقط --}}
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
-                    <h6 class="mb-0 fw-bold">
-                        <i class="bi bi-calendar-week me-2"></i>
+            <div class="tp-card mb-4">
+                <div class="tp-card__header">
+                    <div>
+                        <span class="tp-card__header-icon"><i class="bi bi-calendar-week"></i></span>
                         الدروس الأسبوعية للأسابيع الماضية
-                    </h6>
-                    <span class="small text-muted">لا تظهر الأسابيع القادمة، ولا يمكن تعديل أهداف الأسابيع المنتهية.</span>
+                    </div>
+                    <span class="small text-muted fw-normal">لا تظهر الأسابيع القادمة</span>
                 </div>
-                <div class="card-body">
+                <div class="tp-card__body">
                     @if(!empty($pastWeeksProgress))
-                        <div class="table-responsive">
-                            <table class="table table-sm table-bordered align-middle mb-0">
-                                <thead class="table-light">
+                        <div class="tp-table-wrap">
+                            <table class="table tp-table align-middle mb-0">
+                                <thead>
                                     <tr>
                                         <th style="width: 90px;">الأسبوع</th>
                                         <th>الفترة</th>
-                                        <th style="width: 130px;">المنجز</th>
-                                        <th style="width: 130px;">الهدف</th>
-                                        <th style="width: 120px;">النسبة</th>
+                                        <th class="text-center">المنجز</th>
+                                        <th class="text-center">الهدف</th>
+                                        <th class="text-center">النسبة</th>
+                                        <th style="min-width: 120px;">التقدم</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($pastWeeksProgress as $row)
-                                        @php $w = $row['week']; @endphp
+                                        @php
+                                            $w = $row['week'];
+                                            $pct = $row['percentage'];
+                                            $pctClass = $pct === null ? 'muted' : ($pct >= 100 ? 'success' : ($pct >= 50 ? 'info' : 'warning'));
+                                            $barW = $pct !== null ? min(100, $pct) : 0;
+                                        @endphp
                                         <tr>
                                             <td class="fw-semibold">
                                                 {{ $w->week_number }}
@@ -114,15 +142,20 @@
                                             <td class="text-muted small">
                                                 {{ $w->start_date->format('Y-m-d') }} → {{ $w->end_date->format('Y-m-d') }}
                                             </td>
-                                            <td>{{ $row['completed'] }}</td>
-                                            <td>{{ $row['target'] }}</td>
-                                            <td>
-                                                @if($row['percentage'] !== null)
-                                                    <span class="badge {{ $row['percentage'] >= 100 ? 'bg-success' : ($row['percentage'] >= 50 ? 'bg-info' : 'bg-warning text-dark') }}">
-                                                        {{ number_format($row['percentage'], 1) }}%
-                                                    </span>
+                                            <td class="text-center fw-semibold text-success">{{ $row['completed'] }}</td>
+                                            <td class="text-center">{{ $row['target'] }}</td>
+                                            <td class="text-center">
+                                                @if($pct !== null)
+                                                    <span class="tp-pct tp-pct--{{ $pctClass }}">{{ number_format($pct, 1) }}%</span>
                                                 @else
                                                     <span class="text-muted">—</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if($pct !== null)
+                                                    <div class="tp-progress">
+                                                        <div class="tp-progress__bar tp-progress__bar--{{ $pctClass === 'success' ? 'success' : ($pctClass === 'info' ? 'info' : 'warning') }}" style="width: {{ $barW }}%;"></div>
+                                                    </div>
                                                 @endif
                                             </td>
                                         </tr>
@@ -131,64 +164,27 @@
                             </table>
                         </div>
                     @else
-                        <div class="text-muted">لا توجد أسابيع منتهية ضمن السنة الدراسية النشطة حتى الآن.</div>
+                        <div class="tp-empty py-4">
+                            <i class="bi bi-calendar-x"></i>
+                            <p class="mb-0">لا توجد أسابيع منتهية ضمن السنة الدراسية النشطة حتى الآن.</p>
+                        </div>
                     @endif
                 </div>
             </div>
 
-            {{-- جدول تقدم الصفحات حسب المادة (تراكمي) --}}
-            <div class="card shadow-sm border-0">
-                <div class="card-header">
-                    <h6 class="mb-0 fw-bold">
-                        <i class="bi bi-journal-bookmark me-2"></i>
-                        تقدم الصفحات حسب المادة (تراكمي)
-                    </h6>
+            <div class="tp-card">
+                <div class="tp-card__header">
+                    <span class="tp-card__header-icon"><i class="bi bi-journal-bookmark"></i></span>
+                    تقدم الصفحات حسب المادة (تراكمي)
                 </div>
-                <div class="card-body">
-                    @if(!empty($pages_progress))
-                        <div class="table-responsive">
-                            <table class="table table-sm table-bordered mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>المادة</th>
-                                        <th>الصف</th>
-                                        <th>عدد الدروس المعتمدة</th>
-                                        <th>الصفحات المطلوبة</th>
-                                        <th>المنجز</th>
-                                        <th>المتبقي</th>
-                                        <th>النسبة %</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($pages_progress as $row)
-                                        <tr>
-                                            <td class="fw-semibold">{{ $row['subject']->name }}</td>
-                                            <td class="small text-muted">{{ $row['subject']->schoolClass?->name ?? '—' }}</td>
-                                            <td>{{ $row['approved_lessons_count'] ?? 0 }}</td>
-                                            <td>{{ $row['required_pages'] }}</td>
-                                            <td>{{ $row['completed_pages'] }}</td>
-                                            <td>{{ $row['remaining_pages'] }}</td>
-                                            <td>
-                                                @if($row['percentage'] !== null)
-                                                    <span class="badge {{ $row['percentage'] >= 100 ? 'bg-success' : ($row['percentage'] >= 50 ? 'bg-info' : 'bg-warning text-dark') }}">
-                                                        {{ number_format($row['percentage'], 1) }}%
-                                                    </span>
-                                                @else
-                                                    <span class="text-muted">—</span>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @else
-                        <p class="text-muted mb-0">لا توجد مواد مخصصة لهذا المعلم.</p>
-                    @endif
+                <div class="tp-card__body">
+                    @include('admin.pages.teachers.partials.progress-pages-table', [
+                        'pagesProgress' => $pages_progress ?? [],
+                        'showApprovedCol' => true,
+                    ])
                 </div>
             </div>
 
         </div>
     </div>
 @stop
-

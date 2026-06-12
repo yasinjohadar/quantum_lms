@@ -7,6 +7,7 @@
 @stop
 
 @section('css')
+@include('partials.questions.mcq-options-styles')
 <style>
     .question-preview {
         border-right: 4px solid var(--primary-color);
@@ -136,29 +137,12 @@
 
                     {{-- عرض الخيارات حسب نوع السؤال --}}
                     @if(in_array($question->type, ['single_choice', 'multiple_choice', 'true_false']))
-                        <div class="options-list">
-                            @foreach($question->options as $option)
-                                <div class="option-preview {{ $option->is_correct ? 'correct' : '' }}">
-                                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                                        @if($question->type === 'single_choice' || $question->type === 'true_false')
-                                            <i class="bi bi-circle flex-shrink-0"></i>
-                                        @else
-                                            <i class="bi bi-square flex-shrink-0"></i>
-                                        @endif
-                                        @if($option->image)
-                                            <img src="{{ media_public_url($option->image) }}" 
-                                                 class="rounded flex-shrink-0" style="height: 30px;">
-                                        @endif
-                                        <span class="question-text-body">{!! format_question_markup($option->content) !!}</span>
-                                        @if($option->is_correct)
-                                            <span class="badge bg-success flex-shrink-0">
-                                                <i class="bi bi-check"></i> صحيح
-                                            </span>
-                                        @endif
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
+                        @include('partials.questions.mcq-options-review', [
+                            'options' => $question->options,
+                            'questionType' => $question->type,
+                            'reviewMode' => false,
+                            'highlightCorrect' => true,
+                        ])
                     @elseif($question->type === 'matching')
                         <div class="row">
                             <div class="col-md-5">

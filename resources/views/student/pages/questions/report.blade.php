@@ -2,6 +2,10 @@
 
 @include('partials.question-math-assets')
 
+@push('styles')
+    @include('partials.questions.mcq-options-styles')
+@endpush
+
 @section('page-title')
     تقرير الأسئلة - {{ $lesson->title }}
 @stop
@@ -213,8 +217,18 @@
                                         @endif
                                     </div>
 
+                                    @if(in_array($question->type, ['single_choice', 'multiple_choice', 'true_false'], true))
+                                        @include('partials.questions.mcq-options-review', [
+                                            'options' => $question->options,
+                                            'questionType' => $question->type,
+                                            'selectedOptionIds' => is_array($answer->selected_options ?? null) ? $answer->selected_options : [],
+                                            'reviewMode' => true,
+                                            'highlightCorrect' => true,
+                                        ])
+                                    @endif
+
                                     <!-- عرض الإجابة -->
-                                    <div class="card bg-light mb-2">
+                                    <div class="card bg-light mb-2 {{ in_array($question->type, ['single_choice', 'multiple_choice', 'true_false'], true) ? 'd-none' : '' }}">
                                         <div class="card-body">
                                             <h6 class="mb-2">
                                                 <i class="bi bi-pencil-square me-2"></i>
@@ -306,7 +320,7 @@
                                     </div>
 
                                     <!-- عرض الإجابة الصحيحة -->
-                                    <div class="card {{ $isCorrect ? 'bg-success-transparent' : 'bg-danger-transparent' }} border-{{ $isCorrect ? 'success' : 'danger' }}">
+                                    <div class="card {{ $isCorrect ? 'bg-success-transparent' : 'bg-danger-transparent' }} border-{{ $isCorrect ? 'success' : 'danger' }} {{ in_array($question->type, ['single_choice', 'multiple_choice', 'true_false'], true) ? 'd-none' : '' }}">
                                         <div class="card-body">
                                             <h6 class="mb-2">
                                                 <i class="bi bi-check-circle me-2"></i>

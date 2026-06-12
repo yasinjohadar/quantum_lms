@@ -7,6 +7,7 @@
 @stop
 
 @section('css')
+    @include('partials.questions.mcq-options-styles')
 @stop
 
 @section('content')
@@ -152,25 +153,13 @@
                             {{-- عرض الإجابة حسب نوع السؤال --}}
                             @if(in_array($answer->question->type, ['single_choice', 'multiple_choice', 'true_false']))
                                 <div class="mb-2">
-                                    <strong class="small text-muted">الخيارات:</strong>
-                                    @foreach($answer->question->options as $option)
-                                        <div class="d-flex align-items-center gap-2 mt-1 p-2 rounded {{ $option->is_correct ? 'bg-success-transparent' : '' }}">
-                                            @php
-                                                $selected = is_array($answer->selected_options) && in_array($option->id, $answer->selected_options);
-                                            @endphp
-                                            @if($selected)
-                                                <i class="bi bi-check-circle-fill {{ $option->is_correct ? 'text-success' : 'text-danger' }}"></i>
-                                            @else
-                                                <i class="bi bi-circle text-muted"></i>
-                                            @endif
-                                            <span class="{{ $selected && !$option->is_correct ? 'text-danger text-decoration-line-through' : '' }} question-text-body">
-                                                {!! format_question_markup($option->content) !!}
-                                            </span>
-                                            @if($option->is_correct)
-                                                <span class="badge bg-success small">صحيح</span>
-                                            @endif
-                                        </div>
-                                    @endforeach
+                                    @include('partials.questions.mcq-options-review', [
+                                        'options' => $answer->question->options,
+                                        'questionType' => $answer->question->type,
+                                        'selectedOptionIds' => is_array($answer->selected_options) ? $answer->selected_options : [],
+                                        'reviewMode' => true,
+                                        'highlightCorrect' => true,
+                                    ])
                                 </div>
                             @elseif($answer->question->type === 'essay' || $answer->question->type === 'short_answer')
                                 <div class="mb-2">

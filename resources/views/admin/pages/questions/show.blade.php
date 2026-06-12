@@ -8,6 +8,7 @@
 
 @push('styles')
     @include('admin.pages.questions.partials.show-styles')
+    @include('partials.questions.mcq-options-styles')
 @endpush
 
 @section('content')
@@ -104,6 +105,13 @@
                                     <li class="list-group-item question-text-body">{!! format_question_markup($option->content) !!}</li>
                                 @endforeach
                             </ol>
+                        @elseif(in_array($question->type, ['single_choice', 'multiple_choice', 'true_false'], true))
+                            @include('partials.questions.mcq-options-review', [
+                                'options' => $question->options,
+                                'questionType' => $question->type,
+                                'reviewMode' => false,
+                                'highlightCorrect' => true,
+                            ])
                         @else
                             @foreach($question->options as $optIndex => $option)
                                 <div class="question-option-row {{ $option->is_correct ? 'is-correct' : '' }}">
@@ -145,8 +153,8 @@
                         <div class="d-flex align-items-center gap-3">
                             <div>
                                 <span class="text-muted">الإجابة الصحيحة:</span>
-                                <span class="fs-4 fw-bold text-success ms-2">
-                                    {{ $question->options->first()->content ?? 'غير محدد' }}
+                                <span class="fs-4 fw-bold text-success ms-2 question-text-body">
+                                    {!! format_question_markup($question->options->first()->content ?? 'غير محدد') !!}
                                 </span>
                             </div>
                             @if($question->tolerance)
