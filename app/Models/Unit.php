@@ -163,6 +163,56 @@ class Unit extends Model
     }
 
     /**
+     * معرّفات الدروس المعروضة في هذه الوحدة بدون تكرار.
+     *
+     * @return \Illuminate\Support\Collection<int, int>
+     */
+    public function collectLessonIdsForDisplay(): \Illuminate\Support\Collection
+    {
+        if ($this->relationLoaded('lessons')) {
+            $primary = $this->lessons;
+        } else {
+            $primary = $this->lessons()->get();
+        }
+
+        $primaryIds = $primary->pluck('id');
+
+        if ($this->relationLoaded('linkedLessons')) {
+            $linkedIds = $this->linkedLessons->whereNotIn('id', $primaryIds)->pluck('id');
+        } else {
+            $linkedIds = $this->linkedLessons()
+                ->whereNotIn('lessons.id', $primaryIds->all())
+                ->pluck('lessons.id');
+        }
+
+        return $primaryIds->merge($linkedIds)->unique()->filter()->values();
+    }
+
+    /**
+     * مجموع مدة دروس الوحدة المعروضة بالثواني.
+     */
+    public function totalLessonsDurationSecondsForDisplay(): int
+    {
+        if ($this->relationLoaded('lessons')) {
+            $primary = $this->lessons;
+            $primaryIds = $primary->pluck('id');
+            $lessons = $primary;
+
+            if ($this->relationLoaded('linkedLessons')) {
+                $lessons = $lessons->concat(
+                    $this->linkedLessons->whereNotIn('id', $primaryIds)->values()
+                );
+            }
+
+            return \App\Support\LessonDurationFormatter::sumSecondsFromLessons($lessons);
+        }
+
+        return \App\Support\LessonDurationFormatter::sumDurationForLessonIds(
+            $this->collectLessonIdsForDisplay()
+        );
+    }
+
+    /**
      * العلاقة مع جميع الاختبارات المرتبطة بهذه الوحدة (قد تكون عامة أو تابعة لدروس).
      */
     public function quizzes()

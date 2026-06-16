@@ -4,42 +4,54 @@
     الانضمامات
 @stop
 
+@push('styles')
+    @include('admin.pages.enrollments.partials.enrollments-index-styles')
+@endpush
+
 @section('content')
-    <div class="main-content app-content">
+    <div class="main-content app-content enrollments-index-page">
         <div class="container-fluid">
 
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div class="my-auto">
-                    <h5 class="page-title fs-21 mb-1">الانضمامات</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
+            <div class="enrollments-index-hero my-4">
+                <div class="enrollments-index-hero__icon">
+                    <i class="bi bi-journal-check"></i>
+                </div>
+                <div class="enrollments-index-hero__content">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-2 small">
                             <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
                             <li class="breadcrumb-item active" aria-current="page">الانضمامات</li>
                         </ol>
                     </nav>
+                    <h4 class="enrollments-index-hero__title">الانضمامات</h4>
+                    <p class="enrollments-index-hero__subtitle">إدارة انضمامات الطلاب للمواد والصفوف</p>
                 </div>
-                <div class="d-flex gap-2">
+                <div class="enrollments-index-stat-mini">
+                    <span class="enrollments-index-stat-mini__value" id="enrollmentsTotalCount">{{ number_format($enrollments->total()) }}</span>
+                    <span class="enrollments-index-stat-mini__label">انضمام مطابق</span>
+                </div>
+                <div class="enrollments-index-hero__actions">
                     @if($pendingCount > 0)
-                        <a href="{{ route('admin.enrollments.pending') }}" class="btn btn-warning btn-sm position-relative">
-                            <i class="bi bi-clock me-1"></i> طلبات الانضمام المعلقة
+                        <a href="{{ route('admin.enrollments.pending') }}" class="btn btn-sm btn-warning position-relative">
+                            <i class="bi bi-clock me-1"></i> طلبات معلقة
                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
                                 {{ $pendingCount }}
                             </span>
                         </a>
                     @endif
                     @can('payment-list')
-                    <a href="{{ route('admin.payments.index') }}" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-credit-card me-1"></i> المدفوعات
-                    </a>
+                        <a href="{{ route('admin.payments.index') }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-credit-card me-1"></i> المدفوعات
+                        </a>
                     @endcan
-                    <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#unenrollByClassModal">
-                        <i class="bi bi-people me-1"></i> فصل انضمامات صف
+                    <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#unenrollByClassModal">
+                        <i class="bi bi-people me-1"></i> فصل صف
                     </button>
-                    <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#unenrollBySubjectModal">
-                        <i class="bi bi-journal-text me-1"></i> فصل انضمامات مادة
+                    <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#unenrollBySubjectModal">
+                        <i class="bi bi-journal-text me-1"></i> فصل مادة
                     </button>
-                    <a href="{{ route('admin.enrollments.create') }}" class="btn btn-primary btn-sm">
-                        <i class="bi bi-plus-circle me-1"></i> إضافة انضمامات جديدة
+                    <a href="{{ route('admin.enrollments.create') }}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i> إضافة انضمامات
                     </a>
                 </div>
             </div>
@@ -63,157 +75,163 @@
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
             </div>
 
-            <div class="row">
-                <div class="col-xl-12">
-                    <!-- قسم الفلاتر -->
-                    <div class="card custom-card mb-3">
-                        <div class="card-header">
-                            <h5 class="mb-0 fw-bold">
-                                <i class="bi bi-funnel me-2"></i> البحث والفلترة
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <form id="enrollmentsFilterForm">
-                                <div class="row g-3 align-items-end">
-                                    <div class="col-md-2">
-                                        <label class="form-label mb-1">بحث</label>
-                                        <input type="text" name="search" id="searchQuery" class="form-control form-control-sm"
-                                               placeholder="بحث بالاسم، البريد، أو المادة"
-                                               value="{{ request('search') }}">
-                                    </div>
-
-                                    <div class="col-md-2">
-                                        <label class="form-label mb-1">الطالب</label>
-                                        <select name="user_id" id="userFilter" class="form-select form-select-sm">
-                                            <option value="">كل الطلاب</option>
-                                            @foreach($users as $user)
-                                                <option value="{{ $user->id }}" {{ request('user_id') == $user->id ? 'selected' : '' }}>
-                                                    {{ $user->name }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-
-                                    <div class="col-md-2">
-                                        <label class="form-label mb-1">الصف</label>
-                                        <select name="class_id" id="classFilter" class="form-select form-select-sm">
-                                            <option value="">كل الصفوف</option>
-                                            @foreach($classes ?? [] as $class)
-                                                <option value="{{ $class->id }}" {{ request('class_id') == $class->id ? 'selected' : '' }}>
-                                                    {{ $class->name }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-
-                                    <div class="col-md-2">
-                                        <label class="form-label mb-1">المادة</label>
-                                        <select name="subject_id" id="subjectFilter" class="form-select form-select-sm">
-                                            <option value="">كل المواد</option>
-                                            @if(request('class_id'))
-                                                @foreach($subjects ?? [] as $subject)
-                                                    @if($subject->class_id == request('class_id'))
-                                                        <option value="{{ $subject->id }}" 
-                                                                data-class-id="{{ $subject->class_id }}"
-                                                                {{ request('subject_id') == $subject->id ? 'selected' : '' }}>
-                                                            {{ $subject->name }}
-                                                        </option>
-                                                    @endif
-                                                @endforeach
-                                            @else
-                                                @foreach($subjects ?? [] as $subject)
-                                                    <option value="{{ $subject->id }}" 
-                                                            data-class-id="{{ $subject->class_id }}"
-                                                            {{ request('subject_id') == $subject->id ? 'selected' : '' }}>
-                                                        {{ $subject->name }}
-                                                    </option>
-                                                @endforeach
-                                            @endif
-                                        </select>
-                                    </div>
-
-                                    <div class="col-md-2">
-                                        <label class="form-label mb-1">الحالة</label>
-                                        <select name="status" id="statusFilter" class="form-select form-select-sm">
-                                            <option value="">كل الحالات</option>
-                                            <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>معلق</option>
-                                            <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>نشط</option>
-                                            <option value="suspended" {{ request('status') === 'suspended' ? 'selected' : '' }}>معلق</option>
-                                            <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>مكتمل</option>
-                                        </select>
-                                    </div>
-
-                                    <div class="col-md-2">
-                                        <label class="form-label mb-1 d-block">&nbsp;</label>
-                                        <div class="d-flex gap-2">
-                                            <button type="button" id="searchBtn" class="btn btn-primary btn-sm flex-fill">
-                                                <i class="bi bi-search me-1"></i> بحث
-                                            </button>
-                                            <button type="button" id="clearFiltersBtn" class="btn btn-outline-danger btn-sm">
-                                                <i class="bi bi-x-circle me-1"></i> مسح
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
+            <div class="enrollments-index-card">
+                <div class="enrollments-index-card__header">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="enrollments-index-card__header-icon"><i class="bi bi-funnel"></i></span>
+                        تصفية وبحث
                     </div>
+                </div>
+                <div class="enrollments-index-card__body">
+                    <form id="enrollmentsFilterForm" class="enrollments-index-filters">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-12 col-md-6 col-lg-3">
+                                <label class="form-label">بحث</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                    <input type="text" name="search" id="searchQuery" class="form-control border-start-0"
+                                           placeholder="الاسم، البريد، أو المادة"
+                                           value="{{ request('search') }}">
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-6 col-lg-2">
+                                <label class="form-label">الطالب</label>
+                                <select name="user_id" id="userFilter" class="form-select">
+                                    <option value="">كل الطلاب</option>
+                                    @foreach($users as $user)
+                                        <option value="{{ $user->id }}" {{ request('user_id') == $user->id ? 'selected' : '' }}>
+                                            {{ $user->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6 col-lg-2">
+                                <label class="form-label">الصف</label>
+                                <select name="class_id" id="classFilter" class="form-select">
+                                    <option value="">كل الصفوف</option>
+                                    @foreach($classes ?? [] as $class)
+                                        <option value="{{ $class->id }}" {{ request('class_id') == $class->id ? 'selected' : '' }}>
+                                            {{ $class->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6 col-lg-2">
+                                <label class="form-label">المادة</label>
+                                <select name="subject_id" id="subjectFilter" class="form-select">
+                                    <option value="">كل المواد</option>
+                                    @if(request('class_id'))
+                                        @foreach($subjects ?? [] as $subject)
+                                            @if($subject->class_id == request('class_id'))
+                                                <option value="{{ $subject->id }}"
+                                                        data-class-id="{{ $subject->class_id }}"
+                                                        {{ request('subject_id') == $subject->id ? 'selected' : '' }}>
+                                                    {{ $subject->name }}
+                                                </option>
+                                            @endif
+                                        @endforeach
+                                    @else
+                                        @foreach($subjects ?? [] as $subject)
+                                            <option value="{{ $subject->id }}"
+                                                    data-class-id="{{ $subject->class_id }}"
+                                                    {{ request('subject_id') == $subject->id ? 'selected' : '' }}>
+                                                {{ $subject->name }}
+                                            </option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6 col-lg-1">
+                                <label class="form-label">الحالة</label>
+                                <select name="status" id="statusFilter" class="form-select">
+                                    <option value="">الكل</option>
+                                    <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>معلق</option>
+                                    <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>نشط</option>
+                                    <option value="suspended" {{ request('status') === 'suspended' ? 'selected' : '' }}>موقوف</option>
+                                    <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>مكتمل</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-lg-2 d-flex flex-wrap gap-2">
+                                <button type="button" id="searchBtn" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-search me-1"></i> بحث
+                                </button>
+                                <button type="button" id="clearFiltersBtn" class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-x-lg me-1"></i> مسح
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
 
-                    <!-- جدول الانضمامات -->
-                    <div class="card custom-card">
-                        <div class="card-header">
-                            <h5 class="mb-0 fw-bold">قائمة الانضمامات</h5>
+            <div class="enrollments-index-card">
+                <div class="enrollments-index-card__header">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="enrollments-index-card__header-icon"><i class="bi bi-table"></i></span>
+                        قائمة الانضمامات
+                    </div>
+                    @if($enrollments instanceof \Illuminate\Pagination\LengthAwarePaginator)
+                        <span class="badge bg-primary-transparent text-primary">
+                            صفحة {{ $enrollments->currentPage() }} من {{ $enrollments->lastPage() }}
+                        </span>
+                    @endif
+                </div>
+                <div class="enrollments-index-card__body p-0">
+                    <form id="bulkUnenrollForm" method="POST" action="{{ route('admin.enrollments.destroy-multiple') }}">
+                        @csrf
+                        <div class="px-3 pt-3">
+                            <div class="enrollments-bulk-toolbar" id="bulkActionsBar" style="display: none;">
+                                <span class="small fw-semibold">
+                                    <i class="bi bi-check2-square me-1"></i>
+                                    <span id="bulkSelectedCount">0</span> انضمام محدد
+                                </span>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="button" id="clearSelectionBtn" class="btn btn-sm btn-outline-secondary">إلغاء التحديد</button>
+                                    <button type="submit" id="bulkUnenrollSubmitBtn" class="btn btn-sm btn-danger">
+                                        <i class="bi bi-trash me-1"></i> فصل المحدد
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="card-body">
-                            <div id="loadingIndicator" class="text-center py-4" style="display: none;">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">جاري التحميل...</span>
-                                </div>
-                                <p class="text-muted mt-2">جاري التحميل...</p>
+                        <div id="loadingIndicator" class="enrollments-loading" style="display: none;">
+                            <div class="spinner-border text-primary spinner-border-sm" role="status">
+                                <span class="visually-hidden">جاري التحميل...</span>
                             </div>
-                            <form id="bulkUnenrollForm" method="POST" action="{{ route('admin.enrollments.destroy-multiple') }}">
-                                @csrf
-                                <div id="bulkActionsBar" class="alert alert-secondary d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3" style="display: none;">
-                                    <span class="fw-semibold"><span id="bulkSelectedCount">0</span> انضمام محدد</span>
-                                    <div class="d-flex gap-2">
-                                        <button type="button" id="clearSelectionBtn" class="btn btn-sm btn-outline-secondary">إلغاء التحديد</button>
-                                        <button type="submit" id="bulkUnenrollSubmitBtn" class="btn btn-sm btn-danger">
-                                            <i class="bi bi-trash me-1"></i> فصل الانضمامات المحددة
-                                        </button>
-                                    </div>
+                            <p class="text-muted mt-2 mb-0 small">جاري تحديث القائمة...</p>
+                        </div>
+
+                        <div id="enrollmentsTableContainer">
+                            <div class="enrollments-index-table-wrap mx-3 mb-0">
+                                <div class="table-responsive">
+                                    <table class="table enrollments-index-table align-middle mb-0">
+                                        <thead>
+                                        <tr>
+                                            <th scope="col" style="width: 40px;" class="text-center">
+                                                <input type="checkbox" id="selectAllEnrollments" class="form-check-input" aria-label="تحديد الكل" title="تحديد الكل">
+                                            </th>
+                                            <th scope="col" style="width: 48px;">#</th>
+                                            <th scope="col" style="min-width: 180px;">الطالب</th>
+                                            <th scope="col" style="min-width: 160px;">المادة</th>
+                                            <th scope="col" class="enrollments-col-class" style="min-width: 120px;">الصف</th>
+                                            <th scope="col" style="min-width: 100px;">الحالة</th>
+                                            <th scope="col" class="enrollments-col-date" style="min-width: 120px;">تاريخ الانضمام</th>
+                                            <th scope="col" class="enrollments-col-added-by" style="min-width: 130px;">أضيف بواسطة</th>
+                                            <th scope="col" style="min-width: 100px;">العمليات</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody id="enrollmentsTableBody">
+                                        @include('admin.pages.enrollments.partials.table', ['enrollments' => $enrollments])
+                                        </tbody>
+                                    </table>
                                 </div>
-                            <div id="enrollmentsTableContainer">
-                            <div class="table-responsive">
-                                <table class="table table-striped align-middle table-hover table-bordered mb-0">
-                                    <thead class="table-light">
-                                    <tr>
-                                        <th style="width: 44px;" class="text-center">
-                                            <input type="checkbox" id="selectAllEnrollments" class="form-check-input" aria-label="تحديد الكل" title="تحديد الكل">
-                                        </th>
-                                        <th style="width: 50px;">#</th>
-                                        <th style="min-width: 180px;">الطالب</th>
-                                        <th style="min-width: 200px;">المادة</th>
-                                        <th style="min-width: 120px;">الصف</th>
-                                        <th style="min-width: 100px;">الحالة</th>
-                                        <th style="min-width: 150px;">تاريخ الانضمام</th>
-                                        <th style="min-width: 150px;">أضيف بواسطة</th>
-                                        <th style="min-width: 200px;">العمليات</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody id="enrollmentsTableBody">
-                                    @include('admin.pages.enrollments.partials.table', ['enrollments' => $enrollments])
-                                    </tbody>
-                                </table>
                             </div>
 
-                            <div id="paginationContainer" class="mt-3">
+                            <div id="paginationContainer" class="enrollments-index-pagination">
                                 @include('admin.pages.enrollments.partials.pagination', ['enrollments' => $enrollments])
                             </div>
-                                </div>
-                            </form>
                         </div>
-                    </div>
+                    </form>
                 </div>
             </div>
 
@@ -353,7 +371,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // إظهار loading indicator
         loadingIndicator.style.display = 'block';
-        enrollmentsTableContainer.style.opacity = '0.5';
+        enrollmentsTableContainer.classList.add('is-loading');
         
         // جمع بيانات الفلاتر
         const formData = new FormData(filterForm);
@@ -394,6 +412,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 // إعادة تهيئة tooltips
                 initializeTooltips();
                 
+                // تحديث العدد الإجمالي
+                const totalCountEl = document.getElementById('enrollmentsTotalCount');
+                if (totalCountEl && typeof data.count !== 'undefined') {
+                    totalCountEl.textContent = new Intl.NumberFormat('ar').format(data.count);
+                }
+
                 document.getElementById('selectAllEnrollments').checked = false;
                 updateBulkBar();
                 
@@ -411,7 +435,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .finally(() => {
             // إخفاء loading indicator
             loadingIndicator.style.display = 'none';
-            enrollmentsTableContainer.style.opacity = '1';
+            enrollmentsTableContainer.classList.remove('is-loading');
         });
     }
 
@@ -440,8 +464,11 @@ document.addEventListener('DOMContentLoaded', function() {
     function showError(message) {
         enrollmentsTableBody.innerHTML = `
             <tr>
-                <td colspan="9" class="text-center text-danger fw-bold">
-                    ${message}
+                <td colspan="9">
+                    <div class="enrollments-index-empty text-danger">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <p class="mb-0 fw-semibold">${message}</p>
+                    </div>
                 </td>
             </tr>
         `;

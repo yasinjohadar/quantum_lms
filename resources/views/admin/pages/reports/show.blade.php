@@ -4,57 +4,55 @@
     {{ $template->name }}
 @stop
 
-@section('content')
-<div class="main-content app-content">
-    <div class="container-fluid">
-        <!-- Page Header -->
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div>
-                <h4 class="mb-0">{{ $template->name }}</h4>
-                <p class="mb-0 text-muted">تقرير شامل ومفصل</p>
-            </div>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('admin.reports.index') }}">التقارير</a></li>
-                    <li class="breadcrumb-item active">{{ $template->name }}</li>
-                </ol>
-            </nav>
-        </div>
-        <!-- End Page Header -->
+@push('styles')
+    @include('admin.pages.reports.partials.reports-index-styles')
+@endpush
 
-        <!-- Export Buttons -->
-        <div class="card custom-card mb-4">
-            <div class="card-body">
-                <div class="d-flex justify-content-end gap-2">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">
-                            <i class="bi bi-download me-1"></i>
-                            تصدير التقرير
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li>
-                                <a class="dropdown-item" href="{{ route('admin.reports.export', ['id' => $template->id, 'format' => 'pdf']) }}?{{ http_build_query(request()->except(['_token', '_method'])) }}">
-                                    <i class="bi bi-file-pdf me-2"></i> تصدير PDF
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="{{ route('admin.reports.export', ['id' => $template->id, 'format' => 'excel']) }}?{{ http_build_query(request()->except(['_token', '_method'])) }}">
-                                    <i class="bi bi-file-excel me-2"></i> تصدير Excel
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="{{ route('admin.reports.export', ['id' => $template->id, 'format' => 'print']) }}?{{ http_build_query(request()->except(['_token', '_method'])) }}" target="_blank">
-                                    <i class="bi bi-printer me-2"></i> طباعة
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                    <a href="{{ route('admin.reports.index') }}" class="btn btn-secondary">
-                        <i class="bi bi-arrow-right me-1"></i>
-                        العودة
-                    </a>
+@section('content')
+<div class="main-content app-content reports-index-page">
+    <div class="container-fluid">
+
+        <div class="reports-index-hero my-4">
+            <div class="reports-index-hero__icon">
+                <i class="bi bi-file-earmark-bar-graph"></i>
+            </div>
+            <div class="reports-index-hero__content">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-2 small">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('admin.reports.index') }}">التقارير</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">{{ $template->name }}</li>
+                    </ol>
+                </nav>
+                <h4 class="reports-index-hero__title">{{ $template->name }}</h4>
+                <p class="reports-index-hero__subtitle">تقرير شامل ومفصل — {{ now()->format('Y-m-d H:i') }}</p>
+            </div>
+            <div class="reports-index-hero__actions reports-export-toolbar">
+                <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="bi bi-download me-1"></i> تصدير
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item" href="{{ route('admin.reports.export', ['id' => $template->id, 'format' => 'pdf']) }}?{{ http_build_query(request()->except(['_token', '_method'])) }}">
+                                <i class="bi bi-file-pdf me-2"></i> تصدير PDF
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ route('admin.reports.export', ['id' => $template->id, 'format' => 'excel']) }}?{{ http_build_query(request()->except(['_token', '_method'])) }}">
+                                <i class="bi bi-file-excel me-2"></i> تصدير Excel
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ route('admin.reports.export', ['id' => $template->id, 'format' => 'print']) }}?{{ http_build_query(request()->except(['_token', '_method'])) }}" target="_blank">
+                                <i class="bi bi-printer me-2"></i> طباعة
+                            </a>
+                        </li>
+                    </ul>
                 </div>
+                <a href="{{ route('admin.reports.index') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-right me-1"></i> العودة
+                </a>
             </div>
         </div>
 
@@ -391,32 +389,28 @@
             @include('admin.pages.reports.partials.system-report', ['data' => $report['data']])
         @endif
 
-        <!-- Export Section at Bottom -->
-        <div class="card custom-card border-primary">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">
-                    <i class="bi bi-download me-2"></i>
-                    تصدير التقرير
-                </h5>
+        <div class="reports-index-card">
+            <div class="reports-index-card__header">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="reports-index-card__header-icon"><i class="bi bi-download"></i></span>
+                    <span>تصدير التقرير</span>
+                </div>
             </div>
-            <div class="card-body">
-                <p class="text-muted mb-4">يمكنك تصدير هذا التقرير بصيغ مختلفة للاحتفاظ به أو مشاركته</p>
-                <div class="d-flex flex-wrap gap-3 justify-content-center">
-                    <a href="{{ route('admin.reports.export', ['id' => $template->id, 'format' => 'pdf']) }}?{{ http_build_query(request()->except(['_token', '_method'])) }}" 
-                       class="btn btn-danger btn-lg">
-                        <i class="bi bi-file-pdf me-2"></i>
-                        تصدير PDF
+            <div class="reports-export-footer">
+                <p class="text-muted mb-0">يمكنك تصدير هذا التقرير بصيغ مختلفة للاحتفاظ به أو مشاركته</p>
+                <div class="reports-export-footer__actions">
+                    <a href="{{ route('admin.reports.export', ['id' => $template->id, 'format' => 'pdf']) }}?{{ http_build_query(request()->except(['_token', '_method'])) }}"
+                       class="btn btn-danger">
+                        <i class="bi bi-file-pdf me-1"></i> PDF
                     </a>
-                    <a href="{{ route('admin.reports.export', ['id' => $template->id, 'format' => 'excel']) }}?{{ http_build_query(request()->except(['_token', '_method'])) }}" 
-                       class="btn btn-success btn-lg">
-                        <i class="bi bi-file-excel me-2"></i>
-                        تصدير Excel
+                    <a href="{{ route('admin.reports.export', ['id' => $template->id, 'format' => 'excel']) }}?{{ http_build_query(request()->except(['_token', '_method'])) }}"
+                       class="btn btn-success">
+                        <i class="bi bi-file-excel me-1"></i> Excel
                     </a>
-                    <a href="{{ route('admin.reports.export', ['id' => $template->id, 'format' => 'print']) }}?{{ http_build_query(request()->except(['_token', '_method'])) }}" 
+                    <a href="{{ route('admin.reports.export', ['id' => $template->id, 'format' => 'print']) }}?{{ http_build_query(request()->except(['_token', '_method'])) }}"
                        target="_blank"
-                       class="btn btn-info btn-lg">
-                        <i class="bi bi-printer me-2"></i>
-                        طباعة
+                       class="btn btn-outline-primary">
+                        <i class="bi bi-printer me-1"></i> طباعة
                     </a>
                 </div>
             </div>

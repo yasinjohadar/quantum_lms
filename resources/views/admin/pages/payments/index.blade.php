@@ -4,28 +4,42 @@
     المدفوعات — الانضمامات
 @stop
 
+@push('styles')
+    @include('admin.pages.payments.partials.payments-index-styles')
+@endpush
+
 @section('content')
-<div class="main-content app-content">
+<div class="main-content app-content payments-index-page">
     <div class="container-fluid">
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div class="my-auto">
-                <h5 class="page-title fs-21 mb-1">المدفوعات</h5>
-                <nav>
-                    <ol class="breadcrumb mb-0">
+
+        @php
+            $needsReviewCount = \App\Models\Payment::needsReview()->count();
+        @endphp
+
+        <div class="payments-index-hero my-4">
+            <div class="payments-index-hero__icon">
+                <i class="bi bi-credit-card-fill"></i>
+            </div>
+            <div class="payments-index-hero__content">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-2 small">
                         <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
                         @can('enrollment-list')
-                        <li class="breadcrumb-item"><a href="{{ route('admin.enrollments.index') }}">الانضمامات</a></li>
+                            <li class="breadcrumb-item"><a href="{{ route('admin.enrollments.index') }}">الانضمامات</a></li>
                         @endcan
                         <li class="breadcrumb-item active" aria-current="page">المدفوعات</li>
                     </ol>
                 </nav>
+                <h4 class="payments-index-hero__title">المدفوعات</h4>
+                <p class="payments-index-hero__subtitle">متابعة مدفوعات الانضمامات ومراجعتها</p>
             </div>
-            <div class="d-flex gap-2">
-                @php
-                    $needsReviewCount = \App\Models\Payment::needsReview()->count();
-                @endphp
+            <div class="payments-index-stat-mini">
+                <span class="payments-index-stat-mini__value">{{ number_format($payments->total()) }}</span>
+                <span class="payments-index-stat-mini__label">دفعة مطابقة</span>
+            </div>
+            <div class="payments-index-hero__actions">
                 @if($needsReviewCount > 0)
-                    <a href="{{ route('admin.payments.index', ['needs_review' => 1]) }}" class="btn btn-warning btn-sm position-relative">
+                    <a href="{{ route('admin.payments.index', ['needs_review' => 1]) }}" class="btn btn-sm btn-warning position-relative">
                         <i class="bi bi-clock me-1"></i> تحتاج مراجعة
                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
                             {{ $needsReviewCount }}
@@ -38,23 +52,28 @@
         @if (session('success'))
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
             </div>
         @endif
 
         @if (session('error'))
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
                 <i class="bi bi-exclamation-triangle me-2"></i>{{ session('error') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
             </div>
         @endif
 
-        <!-- Filters -->
-        <div class="card custom-card mb-4">
-            <div class="card-body">
-                <form method="GET" action="{{ route('admin.payments.index') }}" id="paymentsFilterForm">
+        <div class="payments-index-card">
+            <div class="payments-index-card__header">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="payments-index-card__header-icon"><i class="bi bi-funnel"></i></span>
+                    تصفية وبحث
+                </div>
+            </div>
+            <div class="payments-index-card__body">
+                <form method="GET" action="{{ route('admin.payments.index') }}" id="paymentsFilterForm" class="payments-index-filters">
                     <div class="row g-3">
-                        <div class="col-md-2">
+                        <div class="col-12 col-sm-6 col-lg-2">
                             <label class="form-label">الحالة</label>
                             <select name="status" class="form-select" id="statusFilter">
                                 <option value="">الكل</option>
@@ -64,7 +83,7 @@
                                 <option value="refunded" {{ request('status') == 'refunded' ? 'selected' : '' }}>مسترد</option>
                             </select>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-12 col-sm-6 col-lg-2">
                             <label class="form-label">طريقة الدفع</label>
                             <select name="payment_method" class="form-select" id="paymentMethodFilter">
                                 <option value="">الكل</option>
@@ -75,7 +94,7 @@
                                 <option value="paypal" {{ request('payment_method') == 'paypal' ? 'selected' : '' }}>PayPal</option>
                             </select>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-12 col-sm-6 col-lg-2">
                             <label class="form-label">نوع الشراء</label>
                             <select name="purchase_type" class="form-select" id="purchaseTypeFilter">
                                 <option value="">الكل</option>
@@ -83,28 +102,32 @@
                                 <option value="subject" {{ request('purchase_type') == 'subject' ? 'selected' : '' }}>مادة</option>
                             </select>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-12 col-sm-6 col-lg-2">
                             <label class="form-label">من تاريخ</label>
                             <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}">
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-12 col-sm-6 col-lg-2">
                             <label class="form-label">إلى تاريخ</label>
                             <input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}">
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-12 col-sm-6 col-lg-2">
                             <label class="form-label">البحث</label>
-                            <input type="text" name="search" class="form-control" id="searchQuery" value="{{ request('search') }}" placeholder="اسم الطالب أو البريد">
+                            <div class="input-group">
+                                <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                <input type="text" name="search" class="form-control border-start-0" id="searchQuery"
+                                       value="{{ request('search') }}" placeholder="اسم الطالب أو البريد">
+                            </div>
                         </div>
                     </div>
                     <div class="row g-3 align-items-end mt-1">
-                        <div class="col-md-3">
+                        <div class="col-12 col-lg-4">
                             <div class="form-check mb-0">
                                 <input class="form-check-input" type="checkbox" name="needs_review" value="1" id="needsReviewFilter" {{ request()->boolean('needs_review') ? 'checked' : '' }}>
-                                <label class="form-check-label" for="needsReviewFilter">عرض المدفوعات التي تحتاج مراجعة فقط</label>
+                                <label class="form-check-label small" for="needsReviewFilter">عرض المدفوعات التي تحتاج مراجعة فقط</label>
                             </div>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label mb-1" for="purchaseStatusFilter">حالة الشراء</label>
+                        <div class="col-12 col-sm-6 col-lg-3">
+                            <label class="form-label" for="purchaseStatusFilter">حالة الشراء</label>
                             <select name="purchase_status" class="form-select" id="purchaseStatusFilter">
                                 <option value="">الكل</option>
                                 <option value="pending" {{ request('purchase_status') === 'pending' ? 'selected' : '' }}>شراء معلّق</option>
@@ -113,12 +136,12 @@
                                 <option value="refunded" {{ request('purchase_status') === 'refunded' ? 'selected' : '' }}>شراء مسترد</option>
                             </select>
                         </div>
-                        <div class="col-md-7 d-flex align-items-end justify-content-md-end gap-2 flex-wrap">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-search me-1"></i>تطبيق الفلاتر
+                        <div class="col-12 col-lg-5 d-flex flex-wrap gap-2 justify-content-lg-end">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-search me-1"></i> تطبيق الفلاتر
                             </button>
-                            <a href="{{ route('admin.payments.index') }}" class="btn btn-secondary">
-                                <i class="bi bi-arrow-clockwise me-1"></i>إعادة تعيين
+                            <a href="{{ route('admin.payments.index') }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-x-lg me-1"></i> مسح
                             </a>
                         </div>
                     </div>
@@ -126,121 +149,149 @@
             </div>
         </div>
 
-        <!-- Payments Table -->
-        <div class="card custom-card">
-            <div class="card-body">
+        <div class="payments-index-card">
+            <div class="payments-index-card__header">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="payments-index-card__header-icon"><i class="bi bi-table"></i></span>
+                    قائمة المدفوعات
+                </div>
+                @if($payments->hasPages())
+                    <span class="badge bg-primary-transparent text-primary">
+                        صفحة {{ $payments->currentPage() }} من {{ $payments->lastPage() }}
+                    </span>
+                @endif
+            </div>
+            <div class="payments-index-card__body p-0">
                 @if($payments->count() > 0)
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
+                    <div class="payments-index-table-wrap mx-3 mt-3 mb-0">
+                        <div class="table-responsive">
+                            <table class="table payments-index-table align-middle mb-0">
+                                <thead>
                                 <tr>
-                                    <th>#</th>
-                                    <th>الطالب</th>
-                                    <th>العنصر</th>
-                                    <th>المبلغ</th>
-                                    <th>طريقة الدفع</th>
-                                    <th>حالة الشراء</th>
-                                    <th>حالة الدفع</th>
-                                    <th>التاريخ</th>
-                                    <th>الإجراءات</th>
+                                    <th scope="col" style="width: 48px;">#</th>
+                                    <th scope="col">الطالب</th>
+                                    <th scope="col">العنصر</th>
+                                    <th scope="col">المبلغ</th>
+                                    <th scope="col" class="payments-col-method">طريقة الدفع</th>
+                                    <th scope="col" class="payments-col-purchase-status">حالة الشراء</th>
+                                    <th scope="col">حالة الدفع</th>
+                                    <th scope="col" class="payments-col-date">التاريخ</th>
+                                    <th scope="col" style="min-width: 100px;">الإجراءات</th>
                                 </tr>
-                            </thead>
-                            <tbody id="paymentsTableBody">
+                                </thead>
+                                <tbody id="paymentsTableBody">
                                 @foreach($payments as $payment)
+                                    @php
+                                        $user = $payment->purchase->user ?? null;
+                                        $initial = $user ? mb_strtoupper(mb_substr(trim($user->name), 0, 1)) : '—';
+                                        $pur = $payment->purchase;
+                                        $purchaseCancelled = $pur && $pur->status === 'cancelled';
+                                    @endphp
                                     <tr>
-                                        <td>{{ $payment->id }}</td>
+                                        <th scope="row" class="text-muted small">{{ $payment->id }}</th>
                                         <td>
-                                            <div>
-                                                <strong>{{ $payment->purchase->user->name ?? 'غير محدد' }}</strong>
-                                                <br>
-                                                <small class="text-muted">{{ $payment->purchase->user->email ?? '' }}</small>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            {{ $payment->purchase->purchasable->name ?? 'غير محدد' }}
-                                            <br>
-                                            <small class="text-muted">{{ $payment->purchase->purchase_type === 'class' ? 'صف' : 'مادة' }}</small>
-                                        </td>
-                                        <td>
-                                            <strong>{{ number_format($payment->amount, 2) }} ر.س</strong>
-                                        </td>
-                                        <td>
-                                            @if($payment->payment_method === 'wallet')
-                                                <span class="badge bg-info">محفظة إلكترونية</span>
-                                            @elseif($payment->payment_method === 'iban')
-                                                <span class="badge bg-primary">IBAN</span>
-                                            @elseif($payment->payment_method === 'custom')
-                                                <span class="badge bg-warning">{{ $payment->customPaymentMethod->name ?? 'مخصص' }}</span>
+                                            @if($user)
+                                                <div class="ui-user-cell">
+                                                    <span class="ui-user-avatar">{{ $initial }}</span>
+                                                    <div class="min-width-0">
+                                                        <div class="ui-user-name text-truncate">{{ $user->name }}</div>
+                                                        <small class="text-muted text-truncate d-block">{{ $user->email }}</small>
+                                                    </div>
+                                                </div>
                                             @else
-                                                <span class="badge bg-secondary">{{ $payment->payment_method }}</span>
+                                                <span class="text-muted">غير محدد</span>
                                             @endif
                                         </td>
                                         <td>
-                                            @php $pur = $payment->purchase; @endphp
+                                            <div class="ui-payment-item">{{ $payment->purchase->purchasable->name ?? 'غير محدد' }}</div>
+                                            <div class="ui-payment-item-meta payments-col-item-type">
+                                                {{ $payment->purchase->purchase_type === 'class' ? 'صف' : 'مادة' }}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="ui-payment-amount">{{ number_format($payment->amount, 2) }} ر.س</span>
+                                        </td>
+                                        <td class="payments-col-method">
+                                            @if($payment->payment_method === 'wallet')
+                                                <span class="ui-method-pill ui-method-pill--wallet"><i class="bi bi-wallet2"></i> محفظة</span>
+                                            @elseif($payment->payment_method === 'iban')
+                                                <span class="ui-method-pill ui-method-pill--iban"><i class="bi bi-bank"></i> IBAN</span>
+                                            @elseif($payment->payment_method === 'custom')
+                                                <span class="ui-method-pill ui-method-pill--custom"><i class="bi bi-sliders"></i> {{ $payment->customPaymentMethod->name ?? 'مخصص' }}</span>
+                                            @else
+                                                <span class="ui-method-pill ui-method-pill--other">{{ $payment->payment_method }}</span>
+                                            @endif
+                                        </td>
+                                        <td class="payments-col-purchase-status">
                                             @if(!$pur)
                                                 <span class="text-muted">—</span>
                                             @elseif($pur->status === 'cancelled')
-                                                @if($pur->cancelled_by === 'student')
-                                                    <span class="badge bg-dark">ملغى نهائي (الطالب)</span>
-                                                @elseif($pur->cancelled_by === 'admin')
-                                                    <span class="badge bg-secondary">ملغى نهائي (الإدارة)</span>
-                                                @else
-                                                    <span class="badge bg-secondary">ملغى نهائي</span>
-                                                @endif
+                                                <span class="ui-status-pill ui-status-pill--dark">
+                                                    ملغى
+                                                    @if($pur->cancelled_by === 'student') (الطالب) @elseif($pur->cancelled_by === 'admin') (الإدارة) @endif
+                                                </span>
                                             @elseif($pur->status === 'pending')
-                                                <span class="badge bg-warning">قيد المراجعة</span>
+                                                <span class="ui-status-pill ui-status-pill--warning">قيد المراجعة</span>
                                             @elseif($pur->status === 'completed')
-                                                <span class="badge bg-success">مكتمل</span>
+                                                <span class="ui-status-pill ui-status-pill--success">مكتمل</span>
                                             @elseif($pur->status === 'refunded')
-                                                <span class="badge bg-info">مسترد</span>
+                                                <span class="ui-status-pill ui-status-pill--info">مسترد</span>
                                             @else
-                                                <span class="badge bg-light text-dark">{{ $pur->status }}</span>
+                                                <span class="ui-status-pill ui-status-pill--secondary">{{ $pur->status }}</span>
                                             @endif
                                         </td>
                                         <td>
                                             @if($payment->status === 'completed')
-                                                <span class="badge bg-success">مكتمل</span>
+                                                <span class="ui-status-pill ui-status-pill--success">مكتمل</span>
                                             @elseif($payment->status === 'pending')
-                                                <span class="badge bg-warning">قيد الانتظار</span>
+                                                <span class="ui-status-pill ui-status-pill--warning">قيد الانتظار</span>
                                             @elseif($payment->status === 'failed')
-                                                <span class="badge bg-danger">فاشل</span>
+                                                <span class="ui-status-pill ui-status-pill--danger">فاشل</span>
                                             @else
-                                                <span class="badge bg-info">مسترد</span>
+                                                <span class="ui-status-pill ui-status-pill--info">مسترد</span>
                                             @endif
                                         </td>
-                                        <td>{{ $payment->created_at->format('Y-m-d H:i') }}</td>
+                                        <td class="payments-col-date">
+                                            <div class="ui-date-cell">
+                                                {{ $payment->created_at->format('Y-m-d') }}
+                                                <small>{{ $payment->created_at->format('H:i') }}</small>
+                                            </div>
+                                        </td>
                                         <td>
-                                            @php $purchaseCancelled = $payment->purchase && $payment->purchase->status === 'cancelled'; @endphp
-                                            <div class="btn-group">
-                                                <a href="{{ route('admin.payments.show', $payment->id) }}" class="btn btn-sm btn-info" title="عرض">
+                                            <div class="row-action-bar">
+                                                <a href="{{ route('admin.payments.show', $payment->id) }}"
+                                                   class="row-action-btn row-action-btn--info" title="عرض">
                                                     <i class="bi bi-eye"></i>
                                                 </a>
                                                 @if(!$purchaseCancelled && $payment->status === 'pending' && in_array($payment->payment_method, ['iban', 'custom']))
-                                                    <form action="{{ route('admin.payments.approve', $payment->id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من الموافقة على هذا الدفع؟');">
+                                                    <form action="{{ route('admin.payments.approve', $payment->id) }}" method="POST" class="row-action-form"
+                                                          onsubmit="return confirm('هل أنت متأكد من الموافقة على هذا الدفع؟');">
                                                         @csrf
-                                                        <button type="submit" class="btn btn-sm btn-success" title="موافقة">
-                                                            <i class="bi bi-check-circle"></i>
+                                                        <button type="submit" class="row-action-btn row-action-btn--success" title="موافقة">
+                                                            <i class="bi bi-check-lg"></i>
                                                         </button>
                                                     </form>
-                                                    <button class="btn btn-sm btn-danger" onclick="rejectPayment({{ $payment->id }})" title="رفض">
-                                                        <i class="bi bi-x-circle"></i>
+                                                    <button type="button" class="row-action-btn row-action-btn--danger"
+                                                            onclick="rejectPayment({{ $payment->id }})" title="رفض">
+                                                        <i class="bi bi-x-lg"></i>
                                                     </button>
                                                 @endif
                                             </div>
                                         </td>
                                     </tr>
                                 @endforeach
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                    <div class="d-flex justify-content-center mt-4" id="paginationContainer">
-                        {{ $payments->links() }}
+                    <div class="payments-index-pagination" id="paginationContainer">
+                        {{ $payments->withQueryString()->links() }}
                     </div>
                 @else
-                    <div class="text-center py-5">
-                        <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
-                        <h5 class="mt-3 mb-2">لا توجد مدفوعات</h5>
-                        <p class="text-muted">لم يتم العثور على أي مدفوعات</p>
+                    <div class="payments-index-empty py-5">
+                        <i class="bi bi-inbox"></i>
+                        <p class="mb-0 fw-semibold">لا توجد مدفوعات</p>
+                        <p class="small mb-0 mt-1">لم يتم العثور على أي مدفوعات مطابقة للفلاتر</p>
                     </div>
                 @endif
             </div>
@@ -248,9 +299,8 @@
     </div>
 </div>
 
-<!-- Modal رفض الدفع -->
 <div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalTitle" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="rejectModalTitle">رفض الدفع</h5>
@@ -280,12 +330,14 @@
     var rejectModalEl = document.getElementById('rejectModal');
     var rejectForm = document.getElementById('rejectForm');
 
-    rejectModalEl.addEventListener('hidden.bs.modal', function () {
-        if (rejectForm) {
-            rejectForm.reset();
-            document.getElementById('rejectPaymentId').value = '';
-        }
-    });
+    if (rejectModalEl) {
+        rejectModalEl.addEventListener('hidden.bs.modal', function () {
+            if (rejectForm) {
+                rejectForm.reset();
+                document.getElementById('rejectPaymentId').value = '';
+            }
+        });
+    }
 })();
 
 function rejectPayment(id) {
@@ -295,8 +347,7 @@ function rejectPayment(id) {
         rejectForm.reset();
         document.getElementById('rejectPaymentId').value = id;
     }
-    var modal = new bootstrap.Modal(document.getElementById('rejectModal'));
-    modal.show();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('rejectModal')).show();
 }
 
 document.getElementById('rejectForm').addEventListener('submit', function(e) {

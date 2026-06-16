@@ -4,32 +4,34 @@
     قواعد النقاط والأحداث — نظام التحفيز
 @stop
 
-@section('content')
-<div class="main-content app-content">
-    <div class="container-fluid">
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div class="my-auto">
-                <h5 class="page-title fs-21 mb-1">قواعد النقاط والأحداث</h5>
-                <nav>
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('admin.gamification.index') }}">نظام التحفيز</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">القواعد</li>
-                    </ol>
-                </nav>
-            </div>
-            <div class="d-flex gap-2">
-                <a href="{{ route('admin.gamification.settings') }}" class="btn btn-primary btn-sm">
-                    <i class="fe fe-settings"></i> تعديل القيم في الإعدادات
-                </a>
-            </div>
-        </div>
+@push('styles')
+    @include('admin.pages.gamification.partials.gamification-styles')
+@endpush
 
-        <div class="card custom-card mb-4">
-            <div class="card-header">
-                <div class="card-title">كيف يعمل النظام</div>
+@section('content')
+<div class="main-content app-content gami-page">
+    <div class="container-fluid">
+
+        @include('admin.pages.gamification.partials.hero', [
+            'gamiTitle' => 'قواعد النقاط والأحداث',
+            'gamiSubtitle' => 'مرجع أنواع الأحداث والقيم الافتراضية للنقاط',
+            'gamiIcon' => 'bi-journal-code',
+            'gamiBreadcrumbs' => [
+                ['label' => 'الرئيسية', 'url' => route('admin.dashboard')],
+                ['label' => 'نظام التحفيز', 'url' => route('admin.gamification.index')],
+                ['label' => 'القواعد', 'active' => true],
+            ],
+            'gamiHeroActions' => '<a href="' . route('admin.gamification.settings') . '" class="btn btn-sm btn-primary"><i class="bi bi-gear me-1"></i> تعديل القيم في الإعدادات</a>',
+        ])
+
+        <div class="gami-card mb-4">
+            <div class="gami-card__header">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="gami-card__header-icon"><i class="bi bi-info-circle"></i></span>
+                    <span>كيف يعمل النظام</span>
+                </div>
             </div>
-            <div class="card-body">
+            <div class="gami-card__body">
                 <p class="mb-2">
                     تُحسب النقاط من جدول <code>system_settings</code> (مفاتيح تبدأ بـ <code>gamification_points_</code>)، مع قيم افتراضية إذا لم تُضبط.
                     عند حدوث فعل (حضور، إكمال درس، اختبار، إجابة سؤال، نشاط مكتبة، إلخ) يستدعي التطبيق
@@ -41,13 +43,16 @@
             </div>
         </div>
 
-        <div class="card custom-card mb-4">
-            <div class="card-header">
-                <div class="card-title">أنواع الأحداث والقيم الافتراضية للنقاط</div>
+        <div class="gami-card gami-card--flush mb-4">
+            <div class="gami-card__header">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="gami-card__header-icon"><i class="bi bi-list-ul"></i></span>
+                    <span>أنواع الأحداث والقيم الافتراضية للنقاط</span>
+                </div>
             </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-striped mb-0">
+            <div class="gami-card__body">
+                <div class="gami-table-wrap">
+                    <table class="table gami-table align-middle mb-0">
                         <thead>
                             <tr>
                                 <th>نوع الحدث (في الكود)</th>
@@ -97,11 +102,14 @@
             </div>
         </div>
 
-        <div class="card custom-card">
-            <div class="card-header">
-                <div class="card-title">ملاحظات</div>
+        <div class="gami-card">
+            <div class="gami-card__header">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="gami-card__header-icon"><i class="bi bi-sticky"></i></span>
+                    <span>ملاحظات</span>
+                </div>
             </div>
-            <div class="card-body">
+            <div class="gami-card__body">
                 <ul class="mb-0">
                     <li>سجل النقاط: جدول <code>point_transactions</code> (نوع الحدث، المبلغ، بيانات إضافية).</li>
                     <li>الشارات والإنجازات والمستويات تُحدَّث بعد منح النقاط ضمن نفس مسار المعالجة.</li>
@@ -109,6 +117,7 @@
                 </ul>
             </div>
         </div>
+
     </div>
 </div>
 @stop

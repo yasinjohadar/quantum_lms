@@ -98,6 +98,26 @@ class Subject extends Model
     }
 
     /**
+     * مجموع مدة دروس المادة الأصلية (كل أقسامها) بالثواني — بدون أقسام مرتبطة من مواد أخرى.
+     */
+    public function totalLessonsDurationSecondsForDisplay(): int
+    {
+        $sections = $this->relationLoaded('sections')
+            ? $this->sections
+            : $this->sections()->get();
+
+        $ids = collect();
+
+        foreach ($sections as $section) {
+            $ids = $ids->merge($section->collectAllLessonIdsForDisplay($sections));
+        }
+
+        return \App\Support\LessonDurationFormatter::sumDurationForLessonIds(
+            $ids->unique()->filter()->values()
+        );
+    }
+
+    /**
      * أسئلة مرتبطة مباشرة بالمادة (بنك أسئلة المادة).
      */
     public function questions(): HasMany

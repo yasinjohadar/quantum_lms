@@ -1,10 +1,19 @@
 @php
-    $directLessons = \App\Models\Lesson::query()
-        ->where('section_id', $section->id)
-        ->whereNull('unit_id')
-        ->orderBy('order')
-        ->with(['attachments', 'quizzes', 'linkedUnits.section.subject', 'clonedFromLesson.unit.section.subject', 'clonedFromLesson.section.subject'])
-        ->get();
+    $sectionsPoolForCount = isset($subject) && $subject->relationLoaded('linkedSections')
+        ? $allSections->merge($subject->linkedSections)->unique('id')
+        : $allSections;
+    $sectionTotalLessonsCount = $section->countAllLessonsForDisplay($sectionsPoolForCount);
+    $sectionTotalDurationLabel = auth()->user()?->hasRole('admin')
+        ? \App\Support\LessonDurationFormatter::formatHoursMinutes($section->totalLessonsDurationSecondsForDisplay($sectionsPoolForCount))
+        : null;
+    $directLessons = $section->relationLoaded('directLessons')
+        ? $section->directLessons
+        : \App\Models\Lesson::query()
+            ->where('section_id', $section->id)
+            ->whereNull('unit_id')
+            ->orderBy('order')
+            ->with(['attachments', 'quizzes', 'linkedUnits.section.subject', 'clonedFromLesson.unit.section.subject', 'clonedFromLesson.section.subject'])
+            ->get();
     $childSections = $allSections->where('parent_id', $section->id)->sortBy('order');
     $isChildSection = $section->parent_id !== null;
     $isLinkedSection = $section->subject_id != $subject->id;
@@ -99,9 +108,21 @@
                         <span class="badge bg-secondary-transparent text-secondary ms-2">مخفي</span>
                     @endif
                 </div>
-                <span class="badge bg-primary-transparent text-primary me-2">
-                    ترتيب: {{ $section->order }}
-                </span>
+                <div class="d-flex align-items-center gap-2 flex-shrink-0 me-2">
+                    <span class="badge bg-primary-transparent text-primary">
+                        ترتيب: {{ $section->order }}
+                    </span>
+                    <span class="badge bg-info-transparent text-info" title="إجمالي الدروس المباشرة ودروس كل الوحدات في هذا القسم">
+                        الدروس: {{ $sectionTotalLessonsCount }}
+                    </span>
+                    @if($sectionTotalDurationLabel)
+                        @include('admin.pages.subjects.partials.admin-lesson-duration-badge', [
+                            'duration' => $sectionTotalDurationLabel,
+                            'size' => 'section',
+                            'title' => 'مجموع مدة دروس القسم',
+                        ])
+                    @endif
+                </div>
             </div>
         </button>
         <div class="d-flex align-items-center gap-1 pe-2 flex-shrink-0" onclick="event.stopPropagation()">

@@ -178,6 +178,178 @@ class SubjectSection extends Model
     }
 
     /**
+     * دروس القسم المباشرة (بدون وحدة).
+     */
+    public function directLessons()
+    {
+        return $this->hasMany(Lesson::class, 'section_id')
+            ->whereNull('unit_id')
+            ->orderBy('order');
+    }
+
+    /**
+     * إجمالي الدروس المعروضة في القسم (مباشرة + داخل كل الوحدات المعروضة) بدون تكرار.
+     *
+     * @param  Collection<int, SubjectSection>|null  $sectionsPool  أقسام المادة (لحل وحدات مرآة من أقسام أخرى) دون استعلامات إضافية
+     */
+    public function countAllLessonsForDisplay(?Collection $sectionsPool = null): int
+    {
+        return $this->collectAllLessonIdsForDisplay($sectionsPool)->count();
+    }
+
+    /**
+     * مجموع مدة الدروس المعروضة في القسم بالثواني.
+     *
+     * @param  Collection<int, SubjectSection>|null  $sectionsPool
+     */
+    public function totalLessonsDurationSecondsForDisplay(?Collection $sectionsPool = null): int
+    {
+        $ids = $this->collectAllLessonIdsForDisplay($sectionsPool);
+        $pool = $this->lessonsPoolForDurationSum($sectionsPool);
+
+        if ($pool !== null && $pool->count() >= $ids->count()) {
+            return \App\Support\LessonDurationFormatter::sumSecondsFromLessons(
+                $pool->whereIn('id', $ids)
+            );
+        }
+
+        return \App\Support\LessonDurationFormatter::sumDurationForLessonIds($ids);
+    }
+
+    /**
+     * معرّفات الدروس المعروضة في القسم بدون تكرار.
+     *
+     * @param  Collection<int, SubjectSection>|null  $sectionsPool
+     * @return Collection<int, int>
+     */
+    public function collectAllLessonIdsForDisplay(?Collection $sectionsPool = null): Collection
+    {
+        $ids = collect();
+
+        if ($this->relationLoaded('directLessons')) {
+            $ids = $ids->merge($this->directLessons->pluck('id'));
+        } else {
+            $ids = $ids->merge($this->directLessons()->pluck('id'));
+        }
+
+        foreach ($this->rootUnitsForDisplay() as $rootUnit) {
+            $unitsPool = $this->unitsPoolForRootUnit($rootUnit, $sectionsPool);
+
+            foreach ($this->flattenUnitTree($rootUnit, $unitsPool) as $unit) {
+                $ids = $ids->merge($this->lessonIdsFromUnit($unit));
+            }
+        }
+
+        return $ids->unique()->filter()->values();
+    }
+
+    /**
+     * @return Collection<int, Lesson>|null
+     */
+    protected function lessonsPoolForDurationSum(?Collection $sectionsPool): ?Collection
+    {
+        $pool = collect();
+
+        if ($this->relationLoaded('directLessons')) {
+            $pool = $pool->merge($this->directLessons);
+        }
+
+        foreach ($this->rootUnitsForDisplay() as $rootUnit) {
+            $unitsPool = $this->unitsPoolForRootUnit($rootUnit, $sectionsPool);
+
+            foreach ($this->flattenUnitTree($rootUnit, $unitsPool) as $unit) {
+                if (! $unit->relationLoaded('lessons')) {
+                    return null;
+                }
+
+                $pool = $pool->merge($unit->lessons);
+
+                if ($unit->relationLoaded('linkedLessons')) {
+                    $pool = $pool->merge($unit->linkedLessons);
+                }
+            }
+        }
+
+        return $pool->isNotEmpty() ? $pool->unique('id')->values() : null;
+    }
+
+    /**
+     * @return Collection<int, Unit>
+     */
+    protected function flattenUnitTree(Unit $root, Collection $unitsPool): Collection
+    {
+        $result = collect([$root]);
+
+        foreach ($unitsPool->where('parent_id', $root->id) as $child) {
+            $result = $result->merge($this->flattenUnitTree($child, $unitsPool));
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return Collection<int, Unit>
+     */
+    protected function unitsPoolForRootUnit(Unit $unit, ?Collection $sectionsPool): Collection
+    {
+        if ((int) $unit->section_id === (int) $this->id) {
+            if ($this->relationLoaded('units')) {
+                return $this->units;
+            }
+
+            return $this->units()->get();
+        }
+
+        $homeSection = null;
+
+        if ($sectionsPool) {
+            $homeSection = $sectionsPool->firstWhere('id', $unit->section_id);
+        }
+
+        if (! $homeSection && $unit->relationLoaded('section')) {
+            $homeSection = $unit->section;
+        }
+
+        if (! $homeSection) {
+            $homeSection = static::query()
+                ->with(['units.lessons', 'units.linkedLessons'])
+                ->find($unit->section_id);
+        }
+
+        if ($homeSection && $homeSection->relationLoaded('units')) {
+            return $homeSection->units;
+        }
+
+        return $homeSection
+            ? $homeSection->units()->with(['lessons', 'linkedLessons'])->get()
+            : collect();
+    }
+
+    /**
+     * @return Collection<int, int|string>
+     */
+    protected function lessonIdsFromUnit(Unit $unit): Collection
+    {
+        if ($unit->relationLoaded('lessons')) {
+            $primary = $unit->lessons;
+        } else {
+            $primary = $unit->lessons()->get();
+        }
+
+        $primaryIds = $primary->pluck('id');
+
+        if ($unit->relationLoaded('linkedLessons')) {
+            $linkedIds = $unit->linkedLessons->whereNotIn('id', $primaryIds)->pluck('id');
+        } else {
+            $linkedIds = $unit->linkedLessons()
+                ->whereNotIn('lessons.id', $primaryIds->all())
+                ->pluck('lessons.id');
+        }
+
+        return $primaryIds->merge($linkedIds);
+    }
+
+    /**
      * وحدات من أقسام أخرى تظهر في هذا القسم عبر section_unit.
      */
     public function mirroredUnits(): BelongsToMany

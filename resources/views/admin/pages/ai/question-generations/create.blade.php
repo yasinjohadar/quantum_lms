@@ -4,16 +4,35 @@
     توليد أسئلة تلقائياً
 @stop
 
+@push('styles')
+    @include('admin.pages.ai.question-generations.partials.question-generations-index-styles')
+@endpush
+
 @section('content')
-<div class="main-content app-content">
+<div class="main-content app-content ai-gen-index-page">
     <div class="container-fluid">
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div class="my-auto">
-                <h5 class="page-title fs-21 mb-1">توليد أسئلة تلقائياً</h5>
+
+        <div class="ai-gen-index-hero my-4">
+            <div class="ai-gen-index-hero__icon">
+                <i class="bi bi-magic"></i>
             </div>
-            <div>
-                <a href="{{ route('admin.ai.question-generations.index') }}" class="btn btn-secondary btn-sm">
-                    <i class="fas fa-arrow-right me-1"></i> رجوع
+            <div class="ai-gen-index-hero__content">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-2 small">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('admin.ai.question-generations.index') }}">طلبات التوليد</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">توليد جديد</li>
+                    </ol>
+                </nav>
+                <h4 class="ai-gen-index-hero__title">توليد أسئلة تلقائياً</h4>
+                <p class="ai-gen-index-hero__subtitle">اختر المصدر ونوع السؤال وعدد الأسئلة المطلوبة</p>
+            </div>
+            <div class="ai-gen-index-hero__actions">
+                <a href="{{ route('admin.ai.question-generations.create-advanced') }}" class="btn btn-sm btn-outline-success">
+                    <i class="bi bi-stars me-1"></i> توليد متقدم
+                </a>
+                <a href="{{ route('admin.ai.question-generations.index') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-right me-1"></i> رجوع
                 </a>
             </div>
         </div>
@@ -29,10 +48,16 @@
             </div>
         @endif
 
-        <div class="row">
-            <div class="col-lg-8">
-                <div class="card shadow-sm border-0">
-                    <div class="card-body">
+        <div class="row justify-content-center">
+            <div class="col-xl-8 col-lg-10">
+                <div class="ai-gen-index-card ai-gen-form-card">
+                    <div class="ai-gen-index-card__header">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="ai-gen-index-card__header-icon"><i class="bi bi-sliders"></i></span>
+                            <span>إعدادات التوليد</span>
+                        </div>
+                    </div>
+                    <div class="ai-gen-index-card__body">
                         <form action="{{ route('admin.ai.question-generations.store') }}" method="POST">
                             @csrf
 
@@ -104,11 +129,11 @@
                                 </div>
                             </div>
 
-                            <div class="d-flex gap-2">
+                            <div class="ai-gen-form-actions">
                                 <button type="submit" class="btn btn-primary" onclick="saveTinyMCE()">
-                                    <i class="fas fa-magic me-1"></i> توليد الأسئلة
+                                    <i class="bi bi-stars me-1"></i> توليد الأسئلة
                                 </button>
-                                <a href="{{ route('admin.ai.question-generations.index') }}" class="btn btn-secondary">
+                                <a href="{{ route('admin.ai.question-generations.index') }}" class="btn btn-outline-secondary">
                                     إلغاء
                                 </a>
                             </div>
@@ -117,6 +142,7 @@
                 </div>
             </div>
         </div>
+
     </div>
 </div>
 

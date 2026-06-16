@@ -1,9 +1,13 @@
         <!-- Start::app-sidebar -->
         <aside class="app-sidebar sticky" id="sidebar">
+        @php
+            $studentNeedsEnrollment = $studentNeedsEnrollment ?? false;
+            $studentSidebarHomeRoute = $studentNeedsEnrollment ? route('student.enrollments.index') : route('student.dashboard');
+        @endphp
 
             <!-- Start::main-sidebar-header -->
             <div class="main-sidebar-header">
-                <a href="{{ route('student.dashboard') }}" class="header-logo sidebar-brand">
+                <a href="{{ $studentSidebarHomeRoute }}" class="header-logo sidebar-brand">
                     <span class="sidebar-brand-text">أكاديمية كوانتم</span>
                     <span class="sidebar-brand-logo-wrap" aria-hidden="true">
                         <img src="{{ asset('frontend/images/logo.png') }}"
@@ -23,14 +27,15 @@
                         <svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191" width="24" height="24" viewBox="0 0 24 24"> <path d="M13.293 6.293 7.586 12l5.707 5.707 1.414-1.414L10.414 12l4.293-4.293z"></path> </svg>
                     </div>
                     <ul class="main-menu">
-                        <li class="slide">
+                        <li class="slide slide-icon slide-icon--slate">
                             <a href="{{ route('home') }}" class="side-menu__item" target="_blank" rel="noopener noreferrer">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
                                 <span class="side-menu__label">الواجهة الأمامية</span>
                             </a>
                         </li>
+                        @unless($studentNeedsEnrollment)
                         <!-- الصفحة الرئيسية -->
-                        <li class="slide {{ request()->is('student/dashboard') || request()->is('student') ? 'active' : '' }}">
+                        <li class="slide slide-icon slide-icon--primary {{ request()->is('student/dashboard') || request()->is('student') ? 'active' : '' }}">
                             <a href="{{ route('student.dashboard') }}" class="side-menu__item {{ request()->is('student/dashboard') || request()->is('student') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0V0z" fill="none"/>
@@ -42,7 +47,7 @@
                         </li>
 
                         <!-- صفوفي -->
-                        <li class="slide {{ request()->is('student/classes*') ? 'active' : '' }}">
+                        <li class="slide slide-icon slide-icon--cyan {{ request()->is('student/classes*') ? 'active' : '' }}">
                             <a href="{{ route('student.classes') }}" class="side-menu__item {{ request()->is('student/classes*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -51,20 +56,22 @@
                                 <span class="side-menu__label">صفوفي</span>
                             </a>
                         </li>
+                        @endunless
 
                         <!-- كافة الصفوف والمواد -->
-                        <li class="slide {{ request()->is('student/enrollments*') ? 'active' : '' }}">
+                        <li class="slide slide-icon slide-icon--fuchsia {{ request()->is('student/enrollments*') ? 'active' : '' }}">
                             <a href="{{ route('student.enrollments.index') }}" class="side-menu__item {{ request()->is('student/enrollments*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
                                     <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                                 </svg>
-                                <span class="side-menu__label">كافة الصفوف والمواد</span>
+                                <span class="side-menu__label">{{ $studentNeedsEnrollment ? 'طلب الانضمام' : 'كافة الصفوف والمواد' }}</span>
                             </a>
                         </li>
 
+                        @unless($studentNeedsEnrollment)
                         <!-- تقدمي الدراسي -->
-                        <li class="slide {{ request()->is('student/progress*') ? 'active' : '' }}">
+                        <li class="slide slide-icon slide-icon--emerald {{ request()->is('student/progress*') ? 'active' : '' }}">
                             <a href="{{ route('student.progress.index') }}" class="side-menu__item {{ request()->is('student/progress*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -75,7 +82,7 @@
                         </li>
 
                         <!-- تقاريري -->
-                        <li class="slide {{ request()->is('student/reports*') ? 'active' : '' }}">
+                        <li class="slide slide-icon slide-icon--sky {{ request()->is('student/reports*') ? 'active' : '' }}">
                             <a href="{{ route('student.reports.index') }}" class="side-menu__item {{ request()->is('student/reports*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -86,7 +93,7 @@
                         </li>
 
                         <!-- الاختبارات المتاحة -->
-                        <li class="slide {{ request()->is('student/quizzes') && !request()->is('student/quizzes/*') ? 'active' : '' }}">
+                        <li class="slide slide-icon slide-icon--indigo {{ request()->is('student/quizzes') && !request()->is('student/quizzes/*') ? 'active' : '' }}">
                             <a href="{{ route('student.quizzes.index') }}" class="side-menu__item {{ request()->is('student/quizzes') && !request()->is('student/quizzes/*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -97,7 +104,7 @@
                         </li>
 
                         <!-- نتائج الاختبارات -->
-                        <li class="slide {{ request()->is('student/quizzes/results') ? 'active' : '' }}">
+                        <li class="slide slide-icon slide-icon--purple {{ request()->is('student/quizzes/results') ? 'active' : '' }}">
                             <a href="{{ route('student.quizzes.results') }}" class="side-menu__item {{ request()->is('student/quizzes/results') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -108,7 +115,7 @@
                         </li>
 
                         <!-- التحفيز والإنجازات -->
-                        <li class="slide has-sub {{ request()->is('student/gamification*') || request()->is('student/tasks*') ? 'open' : '' }}">
+                        <li class="slide slide-icon slide-icon--orange has-sub {{ request()->is('student/gamification*') || request()->is('student/tasks*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -192,7 +199,7 @@
                         </li>
 
                         <!-- المكتبة الرقمية -->
-                        <li class="slide has-sub {{ request()->is('student/library*') ? 'open' : '' }}">
+                        <li class="slide slide-icon slide-icon--rose has-sub {{ request()->is('student/library*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -223,7 +230,7 @@
                         </li>
 
                         <!-- التقويم -->
-                        <li class="slide {{ request()->is('student/calendar*') ? 'active' : '' }}">
+                        <li class="slide slide-icon slide-icon--blue {{ request()->is('student/calendar*') ? 'active' : '' }}">
                             <a href="{{ route('student.calendar.index') }}" class="side-menu__item {{ request()->is('student/calendar*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -234,7 +241,7 @@
                         </li>
 
                         <!-- المساعد التعليمي -->
-                        <li class="slide {{ request()->is('student/ai/chatbot*') ? 'active' : '' }}">
+                        <li class="slide slide-icon slide-icon--violet {{ request()->is('student/ai/chatbot*') ? 'active' : '' }}">
                             <a href="{{ route('student.ai.chatbot.index') }}" class="side-menu__item {{ request()->is('student/ai/chatbot*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -245,7 +252,7 @@
                         </li>
 
                         <!-- الإشعارات -->
-                        <li class="slide {{ request()->is('student/notifications*') ? 'active' : '' }}">
+                        <li class="slide slide-icon slide-icon--amber {{ request()->is('student/notifications*') ? 'active' : '' }}">
                             <a href="{{ route('student.notifications.index') }}" class="side-menu__item {{ request()->is('student/notifications*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -268,7 +275,7 @@
                         --}}
 
                         <!-- الملف الشخصي -->
-                        <li class="slide {{ request()->is('student/profile') || request()->is('profile') ? 'active' : '' }}">
+                        <li class="slide slide-icon slide-icon--slate {{ request()->is('student/profile') || request()->is('profile') ? 'active' : '' }}">
                             <a href="{{ route('student.profile') }}" class="side-menu__item {{ request()->is('student/profile') || request()->is('profile') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -277,6 +284,7 @@
                                 <span class="side-menu__label">الملف الشخصي</span>
                             </a>
                         </li>
+                        @endunless
 
                     </ul>
                     <div class="slide-right" id="slide-right"><svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191" width="24" height="24" viewBox="0 0 24 24"> <path d="M10.707 17.707 16.414 12l-5.707-5.707-1.414 1.414L13.586 12l-4.293 4.293z"></path> </svg></div>
@@ -296,8 +304,11 @@
             }
             
             .app-sidebar .side-menu__item:not(.active) .side-menu__label,
-            .app-sidebar .side-menu__item:not(.active) .side-menu__icon,
             .app-sidebar .side-menu__item:not(.active) .side-menu__angle {
+                color: #6b7280 !important;
+            }
+
+            .app-sidebar .side-menu__item:not(.active) .side-menu__icon:not(.side-menu__icon--sub) {
                 color: #6b7280 !important;
                 fill: #6b7280 !important;
             }
@@ -308,10 +319,8 @@
             }
             
             .app-sidebar .side-menu__item.active .side-menu__label,
-            .app-sidebar .side-menu__item.active .side-menu__icon,
             .app-sidebar .side-menu__item.active .side-menu__angle {
                 color: #4f46e5 !important;
-                fill: #4f46e5 !important;
             }
             
             /* عند hover على الروابط غير النشطة */
@@ -320,14 +329,51 @@
             }
             
             .app-sidebar .side-menu__item:not(.active):hover .side-menu__label,
-            .app-sidebar .side-menu__item:not(.active):hover .side-menu__icon,
             .app-sidebar .side-menu__item:not(.active):hover .side-menu__angle {
                 color: #4f46e5 !important;
-                fill: #4f46e5 !important;
+            }
+
+            /* الإبقاء على ألوان الأيقونات الملونة */
+            .app-sidebar li.slide[class*="slide-icon--"] > .side-menu__item .side-menu__icon,
+            .app-sidebar .slide-menu li.slide[class*="slide-icon--"] > .side-menu__item .side-menu__icon {
+                color: var(--menu-icon-fg) !important;
+                fill: var(--menu-icon-fg) !important;
+                background-color: var(--menu-icon-bg) !important;
+            }
+
+            .app-sidebar li.slide[class*="slide-icon--"] > .side-menu__item .side-menu__icon[fill="none"],
+            .app-sidebar .slide-menu li.slide[class*="slide-icon--"] > .side-menu__item .side-menu__icon[fill="none"] {
+                fill: none !important;
+                stroke: var(--menu-icon-fg) !important;
             }
         </style>
 
         <script>
+            (function initSubmenuColoredIcons() {
+                const tones = [
+                    'primary', 'teal', 'pink', 'fuchsia', 'purple', 'violet', 'indigo',
+                    'cyan', 'sky', 'emerald', 'green', 'amber', 'orange', 'rose', 'blue', 'yellow', 'lime', 'slate'
+                ];
+
+                document.querySelectorAll('.main-menu > li.slide[class*="slide-icon--"]').forEach(function (parent) {
+                    parent.querySelectorAll('.slide-menu li.slide:not(.side-menu__label1)').forEach(function (li, index) {
+                        const tone = tones[index % tones.length];
+                        li.classList.add('slide-sub-icon', 'slide-icon--' + tone);
+
+                        const item = li.querySelector(':scope > .side-menu__item');
+                        if (!item || item.querySelector(':scope > .side-menu__icon')) {
+                            return;
+                        }
+
+                        const icon = document.createElement('span');
+                        icon.className = 'side-menu__icon side-menu__icon--sub';
+                        icon.setAttribute('aria-hidden', 'true');
+                        icon.innerHTML = '<i class="bi bi-circle-fill"></i>';
+                        item.insertBefore(icon, item.firstChild);
+                    });
+                });
+            })();
+
             // تحسين السكرول التلقائي للرابط النشط
             (function() {
                 function scrollToActiveMenuItem() {

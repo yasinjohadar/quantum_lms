@@ -282,12 +282,21 @@
 
             {{-- شريط علوي: صورة المادة + الاسم + أزرار --}}
             <div class="d-flex align-items-center justify-content-between gap-3 py-3 mb-3 border-bottom">
-                <div class="d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center gap-3 flex-wrap">
                     <img src="{{ $subject->image ? media_public_url($subject->image) : asset('assets/images/media/media-22.jpg') }}"
                          alt="{{ $subject->name }}"
                          class="rounded flex-shrink-0"
                          style="width: 56px; height: 56px; object-fit: cover;">
-                    <h5 class="page-title mb-0">تفاصيل المادة: {{ $subject->name }}</h5>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <h5 class="page-title mb-0">تفاصيل المادة: {{ $subject->name }}</h5>
+                        @if(auth()->user()?->hasRole('admin'))
+                            @include('admin.pages.subjects.partials.admin-lesson-duration-badge', [
+                                'duration' => \App\Support\LessonDurationFormatter::formatHoursMinutes($subject->totalLessonsDurationSecondsForDisplay()),
+                                'size' => 'subject',
+                                'title' => 'مجموع مدة دروس المادة بالكامل',
+                            ])
+                        @endif
+                    </div>
                 </div>
                 <div class="d-flex gap-2 flex-shrink-0">
                     @can('question-list')

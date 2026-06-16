@@ -5,23 +5,29 @@
 @stop
 
 @section('content')
+@include('student.pages.enrollments.partials.enrollment-page-styles')
 <!-- Start::app-content -->
-<div class="main-content app-content">
+<div class="main-content app-content enrollments-page">
     <div class="container-fluid">
         <!-- Page Header -->
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div>
-                <h4 class="mb-0">مواد {{ $class->name }}</h4>
-                <p class="mb-0 text-muted">
-                    @if($class->stage)
-                        {{ $class->stage->name }} - 
-                    @endif
-                    {{ $class->name }}
-                </p>
+        <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 my-4 page-header-breadcrumb">
+            <div class="d-flex align-items-start gap-3">
+                <div class="enrollments-page__header-icon" aria-hidden="true">
+                    <i class="bi bi-journal-bookmark-fill fs-5"></i>
+                </div>
+                <div>
+                    <h4 class="mb-1">مواد {{ $class->name }}</h4>
+                    <p class="mb-0 text-muted">
+                        @if($class->stage)
+                            {{ $class->stage->name }} —
+                        @endif
+                        {{ $class->name }}
+                    </p>
+                </div>
             </div>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
+                    <li class="breadcrumb-item"><a href="{{ ($studentNeedsEnrollment ?? false) ? route('student.enrollments.index') : route('student.dashboard') }}">الرئيسية</a></li>
                     <li class="breadcrumb-item"><a href="{{ route('student.enrollments.index') }}">طلب الانضمام</a></li>
                     <li class="breadcrumb-item active">{{ $class->name }}</li>
                 </ol>
@@ -29,47 +35,47 @@
         </div>
         <!-- End Page Header -->
 
+        @include('student.partials.enrollment-required-alert')
+
         @include('student.pages.enrollments.partials.stats-summary')
 
         <!-- معلومات الصف -->
-        <div class="card custom-card mb-4">
-            <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <h5 class="mb-1 d-flex align-items-center flex-wrap gap-2">
-                            <span>{{ $class->name }}</span>
-                            @if($class->classJoinRequiresPayment())
-                                <span class="badge rounded-pill bg-warning text-dark">
-                                    <i class="bi bi-star-fill me-1" aria-hidden="true"></i>مدفوع
-                                </span>
-                            @else
-                                <span class="badge rounded-pill bg-success">
-                                    <i class="bi bi-gift me-1" aria-hidden="true"></i>مجاني
-                                </span>
-                            @endif
-                        </h5>
-                        @if($class->description)
-                            <p class="text-muted mb-0">{{ $class->description }}</p>
-                        @endif
-                    </div>
-                    <div class="text-end d-flex gap-2">
-                        @if($hasFullClassAccess)
-                            <span class="btn btn-success btn-sm disabled">
-                                <i class="bi bi-check-circle me-1"></i>
-                                منضم لجميع المواد
+        <div class="enrollment-class-hero">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div>
+                    <h5 class="mb-2 d-flex align-items-center flex-wrap gap-2">
+                        <span>{{ $class->name }}</span>
+                        @if($class->classJoinRequiresPayment())
+                            <span class="enrollment-class-card__badge enrollment-class-card__badge--paid position-static">
+                                <i class="bi bi-star-fill" aria-hidden="true"></i>مدفوع
                             </span>
-                        @elseif($hasPendingClassEnrollment)
-                            <span class="btn btn-warning btn-sm disabled" title="طلب انضمام الصف قيد المراجعة">
-                                <i class="bi bi-clock me-1"></i>
-                                طلب الصف قيد المراجعة
+                        @else
+                            <span class="enrollment-class-card__badge enrollment-class-card__badge--free position-static">
+                                <i class="bi bi-gift-fill" aria-hidden="true"></i>مجاني
                             </span>
-                        @elseif($class->subjects->isNotEmpty())
-                            <button class="btn btn-primary btn-sm" onclick="requestClassEnrollment({{ $class->id }}, '{{ addslashes($class->name) }}', {{ $class->classJoinRequiresPayment() ? 'true' : 'false' }})" type="button">
-                                <i class="bi bi-plus-circle me-1"></i>
-                                انضمام للصف كامل
-                            </button>
                         @endif
-                    </div>
+                    </h5>
+                    @if($class->description)
+                        <p class="text-muted mb-0">{{ $class->description }}</p>
+                    @endif
+                </div>
+                <div class="text-end d-flex gap-2">
+                    @if($hasFullClassAccess)
+                        <span class="btn btn-success btn-sm disabled">
+                            <i class="bi bi-check-circle me-1"></i>
+                            منضم لجميع المواد
+                        </span>
+                    @elseif($hasPendingClassEnrollment)
+                        <span class="btn btn-warning btn-sm disabled" title="طلب انضمام الصف قيد المراجعة">
+                            <i class="bi bi-clock me-1"></i>
+                            طلب الصف قيد المراجعة
+                        </span>
+                    @elseif($class->subjects->isNotEmpty())
+                        <button class="btn btn-primary btn-sm enrollment-class-card__btn-join" onclick="requestClassEnrollment({{ $class->id }}, '{{ addslashes($class->name) }}', {{ $class->classJoinRequiresPayment() ? 'true' : 'false' }})" type="button">
+                            <i class="bi bi-plus-circle me-1"></i>
+                            انضمام للصف كامل
+                        </button>
+                    @endif
                 </div>
             </div>
         </div>
@@ -102,24 +108,26 @@
                         $isPending = in_array($subject->id, $pendingEnrollments);
                     @endphp
 
-                    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-4">
-                        <div class="card custom-card">
-                            @if($subject->image)
-                                <img src="{{ media_public_url($subject->image) }}" class="card-img-top" alt="{{ $subject->name }}">
-                            @else
-                                <div class="card-img-top bg-primary d-flex align-items-center justify-content-center" style="height: 150px;">
-                                    <i class="bi bi-book text-white" style="font-size: 3rem;"></i>
-                                </div>
-                            @endif
-                            <div class="card-body">
-                                <h6 class="card-title fw-semibold">{{ $subject->name }}</h6>
+                    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-3 mb-md-4">
+                        <article class="enrollment-subject-card">
+                            <div class="enrollment-subject-card__media">
+                                @if($subject->image)
+                                    <img src="{{ media_public_url($subject->image) }}" alt="{{ $subject->name }}">
+                                @else
+                                    <div class="enrollment-subject-card__media-placeholder">
+                                        <i class="bi bi-book"></i>
+                                    </div>
+                                @endif
+                            </div>
+                            <div class="enrollment-subject-card__body">
+                                <h6 class="fw-bold mb-2">{{ $subject->name }}</h6>
                                 @if($subject->description)
-                                    <p class="card-text text-muted">{{ \Illuminate\Support\Str::limit($subject->description, 80) }}</p>
+                                    <p class="text-muted small mb-3">{{ \Illuminate\Support\Str::limit($subject->description, 90) }}</p>
                                 @endif
 
                                 @if($isPending)
                                     <div class="d-flex gap-2" onclick="event.stopPropagation();">
-                                        <button class="btn btn-warning btn-sm flex-grow-1" disabled>
+                                        <button class="btn btn-warning btn-sm flex-grow-1 enrollment-class-card__btn-pending" disabled>
                                             <i class="bi bi-clock me-1"></i>
                                             قيد المراجعة
                                         </button>
@@ -153,7 +161,7 @@
                                                 شراء / طلب الانضمام
                                             </button>
                                         @elseif($access && ($access['pricing_mode'] ?? '') === 'free' && !($access['can_access'] ?? false))
-                                            <button class="btn btn-primary btn-sm w-100" onclick="requestEnrollment({{ $subject->id }}, '{{ addslashes($subject->name) }}')" type="button">
+                                            <button class="btn btn-primary btn-sm w-100 enrollment-class-card__btn-join" onclick="requestEnrollment({{ $subject->id }}, '{{ addslashes($subject->name) }}')" type="button">
                                                 <i class="bi bi-plus-circle me-1"></i>
                                                 طلب الانضمام
                                             </button>
@@ -163,7 +171,7 @@
                                                 عبر الصف فقط
                                             </button>
                                         @else
-                                            <button class="btn btn-primary btn-sm w-100" onclick="requestEnrollment({{ $subject->id }}, '{{ addslashes($subject->name) }}')" type="button">
+                                            <button class="btn btn-primary btn-sm w-100 enrollment-class-card__btn-join" onclick="requestEnrollment({{ $subject->id }}, '{{ addslashes($subject->name) }}')" type="button">
                                                 <i class="bi bi-plus-circle me-1"></i>
                                                 طلب الانضمام
                                             </button>
@@ -171,32 +179,30 @@
                                     </div>
                                 @endif
                             </div>
-                            <div class="card-footer">
-                                <small class="text-muted">
-                                    <i class="bi bi-building me-1"></i>
-                                    {{ $class->name }}
-                                </small>
+                            <div class="enrollment-subject-card__footer">
+                                <i class="bi bi-building me-1" aria-hidden="true"></i>
+                                {{ $class->name }}
                             </div>
-                        </div>
+                        </article>
                     </div>
                 @endforeach
             </div>
         @elseif($hasFullClassAccess)
-            <div class="card custom-card border-success">
-                <div class="card-body text-center py-5">
-                    <i class="bi bi-check-circle fs-1 text-success mb-3 d-block"></i>
-                    <h5 class="mb-2">أنت مسجل في جميع مواد هذا الصف</h5>
-                    <p class="text-muted mb-0">لا توجد مواد إضافية متاحة للانضمام من هذه الصفحة.</p>
-                    <a href="{{ route('student.enrollments.index') }}" class="btn btn-outline-primary mt-3">العودة إلى قائمة الصفوف</a>
+            <div class="enrollment-empty-state border-success">
+                <div class="enrollment-empty-state__icon bg-success-transparent text-success">
+                    <i class="bi bi-check-circle-fill"></i>
                 </div>
+                <h5 class="mb-2">أنت مسجل في جميع مواد هذا الصف</h5>
+                <p class="text-muted mb-3">لا توجد مواد إضافية متاحة للانضمام من هذه الصفحة.</p>
+                <a href="{{ route('student.enrollments.index') }}" class="btn btn-outline-primary">العودة إلى قائمة الصفوف</a>
             </div>
         @else
-            <div class="card custom-card">
-                <div class="card-body text-center py-5">
-                    <i class="bi bi-inbox fs-1 text-muted mb-3 d-block"></i>
-                    <h5 class="mb-2">لا توجد مواد دراسية</h5>
-                    <p class="text-muted mb-0">لا توجد مواد دراسية في هذا الصف</p>
+            <div class="enrollment-empty-state">
+                <div class="enrollment-empty-state__icon">
+                    <i class="bi bi-inbox"></i>
                 </div>
+                <h5 class="mb-2">لا توجد مواد دراسية</h5>
+                <p class="text-muted mb-0">لا توجد مواد دراسية في هذا الصف حالياً</p>
             </div>
         @endif
     </div>

@@ -4,102 +4,121 @@
     لوحة التحكم - نظام التحفيز
 @stop
 
-@section('content')
-<div class="main-content app-content">
-    <div class="container-fluid">
-        <!-- Page Header -->
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div class="my-auto">
-                <h5 class="page-title fs-21 mb-1">لوحة التحكم - نظام التحفيز</h5>
-                <nav>
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">نظام التحفيز</li>
-                    </ol>
-                </nav>
-            </div>
-        </div>
-        <!-- End Page Header -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">لوحة التحكم - نظام التحفيز</h3>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="card bg-primary text-white">
-                                <div class="card-body">
-                                    <h5>إجمالي النقاط</h5>
-                                    <h2>{{ number_format($stats['total_points']) }}</h2>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-success text-white">
-                                <div class="card-body">
-                                    <h5>الشارات النشطة</h5>
-                                    <h2>{{ $stats['total_badges'] }}</h2>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-info text-white">
-                                <div class="card-body">
-                                    <h5>الإنجازات النشطة</h5>
-                                    <h2>{{ $stats['total_achievements'] }}</h2>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-warning text-white">
-                                <div class="card-body">
-                                    <h5>المستويات</h5>
-                                    <h2>{{ $stats['total_levels'] }}</h2>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+@push('styles')
+    @include('admin.pages.gamification.partials.gamification-styles')
+@endpush
 
-                    <div class="row mt-4">
-                        <div class="col-md-12">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5>روابط سريعة</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-3 mb-3">
-                                            <a href="{{ route('admin.gamification.settings') }}" class="btn btn-primary btn-block">
-                                                <i class="fe fe-settings"></i> الإعدادات
-                                            </a>
-                                        </div>
-                                        <div class="col-md-3 mb-3">
-                                            <a href="{{ route('admin.badges.index') }}" class="btn btn-success btn-block">
-                                                <i class="fe fe-award"></i> إدارة الشارات
-                                            </a>
-                                        </div>
-                                        <div class="col-md-3 mb-3">
-                                            <a href="{{ route('admin.achievements.index') }}" class="btn btn-info btn-block">
-                                                <i class="fe fe-star"></i> إدارة الإنجازات
-                                            </a>
-                                        </div>
-                                        <div class="col-md-3 mb-3">
-                                            <a href="{{ route('admin.leaderboards.index') }}" class="btn btn-warning btn-block">
-                                                <i class="fe fe-trending-up"></i> لوحة المتصدرين
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+@section('content')
+<div class="main-content app-content gami-page">
+    <div class="container-fluid">
+
+        @include('admin.pages.gamification.partials.hero', [
+            'gamiTitle' => 'لوحة التحكم — نظام التحفيز',
+            'gamiSubtitle' => 'نظرة عامة على النقاط والشارات والإنجازات والمستويات',
+            'gamiIcon' => 'bi-trophy',
+            'gamiBreadcrumbs' => [
+                ['label' => 'الرئيسية', 'url' => route('admin.dashboard')],
+                ['label' => 'نظام التحفيز', 'active' => true],
+            ],
+            'gamiStatValue' => $stats['total_users_with_points'],
+            'gamiStatLabel' => 'طالب بنقاط',
+            'gamiHeroActions' => view('admin.pages.gamification.partials.dashboard-actions')->render(),
+        ])
+
+        <div class="gami-stat-grid">
+            <div class="gami-stat-card gami-stat-card--primary">
+                <span class="gami-stat-card__icon"><i class="bi bi-coin"></i></span>
+                <div class="gami-stat-card__label">إجمالي النقاط</div>
+                <div class="gami-stat-card__value">{{ number_format($stats['total_points']) }}</div>
+            </div>
+            <div class="gami-stat-card gami-stat-card--success">
+                <span class="gami-stat-card__icon"><i class="bi bi-award"></i></span>
+                <div class="gami-stat-card__label">الشارات النشطة</div>
+                <div class="gami-stat-card__value">{{ number_format($stats['total_badges']) }}</div>
+            </div>
+            <div class="gami-stat-card gami-stat-card--info">
+                <span class="gami-stat-card__icon"><i class="bi bi-star"></i></span>
+                <div class="gami-stat-card__label">الإنجازات النشطة</div>
+                <div class="gami-stat-card__value">{{ number_format($stats['total_achievements']) }}</div>
+            </div>
+            <div class="gami-stat-card gami-stat-card--warning">
+                <span class="gami-stat-card__icon"><i class="bi bi-bar-chart-steps"></i></span>
+                <div class="gami-stat-card__label">المستويات</div>
+                <div class="gami-stat-card__value">{{ number_format($stats['total_levels']) }}</div>
+            </div>
+        </div>
+
+        <div class="gami-card">
+            <div class="gami-card__header">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="gami-card__header-icon"><i class="bi bi-grid"></i></span>
+                    <span>روابط سريعة</span>
+                </div>
+            </div>
+            <div class="gami-card__body">
+                <div class="gami-quick-grid">
+                    @can('gamification-update')
+                        <a href="{{ route('admin.gamification.settings') }}" class="gami-quick-link">
+                            <span class="gami-quick-link__icon gami-quick-link__icon--primary"><i class="bi bi-gear"></i></span>
+                            <span>الإعدادات</span>
+                        </a>
+                        <a href="{{ route('admin.gamification.rules') }}" class="gami-quick-link">
+                            <span class="gami-quick-link__icon gami-quick-link__icon--info"><i class="bi bi-journal-code"></i></span>
+                            <span>قواعد النقاط</span>
+                        </a>
+                    @endcan
+                    @can('badge-list')
+                        <a href="{{ route('admin.badges.index') }}" class="gami-quick-link">
+                            <span class="gami-quick-link__icon gami-quick-link__icon--success"><i class="bi bi-award"></i></span>
+                            <span>إدارة الشارات</span>
+                        </a>
+                    @endcan
+                    @can('achievement-list')
+                        <a href="{{ route('admin.achievements.index') }}" class="gami-quick-link">
+                            <span class="gami-quick-link__icon gami-quick-link__icon--info"><i class="bi bi-star"></i></span>
+                            <span>إدارة الإنجازات</span>
+                        </a>
+                    @endcan
+                    @can('level-list')
+                        <a href="{{ route('admin.levels.index') }}" class="gami-quick-link">
+                            <span class="gami-quick-link__icon gami-quick-link__icon--warning"><i class="bi bi-bar-chart-steps"></i></span>
+                            <span>إدارة المستويات</span>
+                        </a>
+                    @endcan
+                    @can('challenge-list')
+                        <a href="{{ route('admin.challenges.index') }}" class="gami-quick-link">
+                            <span class="gami-quick-link__icon gami-quick-link__icon--purple"><i class="bi bi-lightning"></i></span>
+                            <span>التحديات</span>
+                        </a>
+                    @endcan
+                    @can('reward-list')
+                        <a href="{{ route('admin.rewards.index') }}" class="gami-quick-link">
+                            <span class="gami-quick-link__icon gami-quick-link__icon--rose"><i class="bi bi-gift"></i></span>
+                            <span>المكافآت</span>
+                        </a>
+                    @endcan
+                    @can('leaderboard-list')
+                        <a href="{{ route('admin.leaderboards.index') }}" class="gami-quick-link">
+                            <span class="gami-quick-link__icon gami-quick-link__icon--warning"><i class="bi bi-graph-up-arrow"></i></span>
+                            <span>لوحة المتصدرين</span>
+                        </a>
+                    @endcan
+                    @can('daily-task-list')
+                        <a href="{{ route('admin.daily-tasks.index') }}" class="gami-quick-link">
+                            <span class="gami-quick-link__icon gami-quick-link__icon--primary"><i class="bi bi-calendar-day"></i></span>
+                            <span>المهام اليومية</span>
+                        </a>
+                    @endcan
+                    @can('weekly-task-list')
+                        <a href="{{ route('admin.weekly-tasks.index') }}" class="gami-quick-link">
+                            <span class="gami-quick-link__icon gami-quick-link__icon--purple"><i class="bi bi-calendar-week"></i></span>
+                            <span>المهام الأسبوعية</span>
+                        </a>
+                    @endcan
                 </div>
             </div>
         </div>
+
     </div>
 </div>
-</div>
 @stop
-

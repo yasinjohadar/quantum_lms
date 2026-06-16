@@ -1,32 +1,26 @@
 <div class="report-content">
-    <h4 class="mb-4">تقرير الكورس: {{ $data['subject']->name }}</h4>
-    
-    <!-- Statistics Cards -->
+    <div class="reports-index-card mb-4">
+        <div class="reports-index-card__header">
+            <div class="d-flex align-items-center gap-2">
+                <span class="reports-index-card__header-icon"><i class="bi bi-book"></i></span>
+                <span>تقرير الكورس: {{ $data['subject']->name }}</span>
+            </div>
+        </div>
+    </div>
+
     @if(isset($data['statistics']))
-        <div class="row mb-4">
-            <div class="col-md-4 mb-3">
-                <div class="card border">
-                    <div class="card-body text-center">
-                        <h6 class="text-muted mb-2">إجمالي الطلاب</h6>
-                        <h3 class="mb-0 fw-bold text-primary">{{ $data['statistics']['total_students'] ?? 0 }}</h3>
-                    </div>
-                </div>
+        <div class="reports-stat-grid">
+            <div class="reports-stat-card reports-stat-card--primary">
+                <div class="reports-stat-card__label">إجمالي الطلاب</div>
+                <div class="reports-stat-card__value">{{ $data['statistics']['total_students'] ?? 0 }}</div>
             </div>
-            <div class="col-md-4 mb-3">
-                <div class="card border">
-                    <div class="card-body text-center">
-                        <h6 class="text-muted mb-2">إجمالي الدروس</h6>
-                        <h3 class="mb-0 fw-bold text-success">{{ $data['statistics']['total_lessons'] ?? 0 }}</h3>
-                    </div>
-                </div>
+            <div class="reports-stat-card reports-stat-card--success">
+                <div class="reports-stat-card__label">إجمالي الدروس</div>
+                <div class="reports-stat-card__value">{{ $data['statistics']['total_lessons'] ?? 0 }}</div>
             </div>
-            <div class="col-md-4 mb-3">
-                <div class="card border">
-                    <div class="card-body text-center">
-                        <h6 class="text-muted mb-2">إجمالي الاختبارات</h6>
-                        <h3 class="mb-0 fw-bold text-warning">{{ $data['statistics']['total_quizzes'] ?? 0 }}</h3>
-                    </div>
-                </div>
+            <div class="reports-stat-card reports-stat-card--warning">
+                <div class="reports-stat-card__label">إجمالي الاختبارات</div>
+                <div class="reports-stat-card__value">{{ $data['statistics']['total_quizzes'] ?? 0 }}</div>
             </div>
         </div>
     @endif
@@ -53,25 +47,27 @@
         </div>
     @endif
 
-    <!-- Analytics -->
     @if(isset($data['analytics']))
-        <div class="card border mb-4">
-            <div class="card-header">
-                <h6 class="mb-0">التحليلات</h6>
+        <div class="reports-index-card mb-4">
+            <div class="reports-index-card__header">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="reports-index-card__header-icon"><i class="bi bi-bar-chart"></i></span>
+                    <span>التحليلات</span>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3 text-center">
-                        <h4 class="mb-0">{{ $data['analytics']['total_events'] ?? 0 }}</h4>
-                        <small class="text-muted">إجمالي الأحداث</small>
+            <div class="reports-index-card__body">
+                <div class="reports-stat-grid">
+                    <div class="reports-stat-card reports-stat-card--info">
+                        <div class="reports-stat-card__label">إجمالي الأحداث</div>
+                        <div class="reports-stat-card__value">{{ $data['analytics']['total_events'] ?? 0 }}</div>
                     </div>
-                    <div class="col-md-3 text-center">
-                        <h4 class="mb-0">{{ $data['analytics']['lessons_viewed'] ?? 0 }}</h4>
-                        <small class="text-muted">دروس تم عرضها</small>
+                    <div class="reports-stat-card reports-stat-card--primary">
+                        <div class="reports-stat-card__label">دروس تم عرضها</div>
+                        <div class="reports-stat-card__value">{{ $data['analytics']['lessons_viewed'] ?? 0 }}</div>
                     </div>
-                    <div class="col-md-3 text-center">
-                        <h4 class="mb-0">{{ $data['analytics']['quizzes_completed'] ?? 0 }}</h4>
-                        <small class="text-muted">اختبارات مكتملة</small>
+                    <div class="reports-stat-card reports-stat-card--success">
+                        <div class="reports-stat-card__label">اختبارات مكتملة</div>
+                        <div class="reports-stat-card__value">{{ $data['analytics']['quizzes_completed'] ?? 0 }}</div>
                     </div>
                 </div>
             </div>

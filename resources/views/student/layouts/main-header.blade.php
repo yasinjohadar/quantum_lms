@@ -10,7 +10,7 @@
                     <!-- Start::header-element -->
                     <div class="header-element">
                         <div class="horizontal-logo">
-                            <a href="{{ route('student.dashboard') }}" class="header-logo" title="الرئيسية">
+                            <a href="{{ ($studentNeedsEnrollment ?? false) ? route('student.enrollments.index') : route('student.dashboard') }}" class="header-logo" title="الرئيسية">
                                 <img src="{{ asset('frontend/images/logo.png') }}" alt="logo" class="desktop-logo">
                                 <img src="{{ asset('frontend/images/logo.png') }}" alt="logo" class="toggle-logo">
                                 <img src="{{ asset('frontend/images/logo.png') }}" alt="logo" class="desktop-white">

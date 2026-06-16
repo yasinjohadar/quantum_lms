@@ -86,6 +86,18 @@ class User extends Authenticatable
     }
 
     /**
+     * هل لدى الطالب تسجيل نشط (مادة active أو انضمام صف معتمد).
+     */
+    public function hasActiveStudentEnrollment(): bool
+    {
+        if ($this->enrollments()->where('status', 'active')->exists()) {
+            return true;
+        }
+
+        return $this->classEnrollments()->approved()->exists();
+    }
+
+    /**
      * العلاقة مع الطلاب المتميزين (عروض الصفحة الرئيسية)
      */
     public function distinguishedStudents()

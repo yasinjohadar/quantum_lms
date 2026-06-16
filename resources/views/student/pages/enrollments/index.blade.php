@@ -5,107 +5,65 @@
 @stop
 
 @section('content')
+@include('student.pages.enrollments.partials.enrollment-page-styles')
 <!-- Start::app-content -->
-<div class="main-content app-content">
+<div class="main-content app-content enrollments-page">
     <div class="container-fluid">
         <!-- Page Header -->
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
+        <div class="d-flex align-items-start gap-3 my-4 page-header-breadcrumb">
+            <div class="enrollments-page__header-icon" aria-hidden="true">
+                <i class="bi bi-mortarboard-fill fs-5"></i>
+            </div>
             <div>
-                <h4 class="mb-0">طلب الانضمام للمواد الدراسية</h4>
-                <p class="mb-0 text-muted">تصفح الصفوف والمواد المتاحة واطلب الانضمام</p>
+                <h4 class="mb-1">طلب الانضمام للمواد الدراسية</h4>
+                <p class="mb-0 text-muted">تصفح الصفوف والمواد المتاحة واطلب الانضمام للبدء في رحلتك التعليمية</p>
             </div>
         </div>
         <!-- End Page Header -->
 
+        @include('student.partials.enrollment-required-alert')
+
         @include('student.pages.enrollments.partials.stats-summary')
 
-                        @if($stages->count() > 0)
+        @if($stages->count() > 0)
             @php
                 $pendingClassIdSet = isset($pendingClassEnrollmentIds) ? array_flip($pendingClassEnrollmentIds) : [];
             @endphp
-            @foreach($stages as $stage)
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">
-                            <i class="bi bi-mortarboard me-2"></i>
-                            {{ $stage->name }}
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        @if($stage->classes->count() > 0)
-                            <div class="row">
-                                @foreach($stage->classes as $class)
-                                    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-4">
-                                        <!-- كارد الصف -->
-                                        <div class="card custom-card h-100">
-                                            <div class="position-relative">
-                                                <a href="{{ route('student.enrollments.class.show', $class->id) }}" class="text-decoration-none">
-                                                    @if($class->image)
-                                                        <img src="{{ media_public_url($class->image) }}" class="card-img-top" alt="{{ $class->name }}" style="height: 180px; object-fit: cover;">
-                                                    @else
-                                                        <div class="card-img-top bg-primary d-flex align-items-center justify-content-center" style="height: 180px;">
-                                                            <i class="bi bi-building text-white" style="font-size: 4rem;"></i>
-                                                        </div>
-                                                    @endif
-                                                </a>
-                                                @if($class->classJoinRequiresPayment())
-                                                    <span class="position-absolute top-0 start-0 m-2 badge rounded-pill bg-warning text-dark shadow-sm" title="صف مدفوع">
-                                                        <i class="bi bi-star-fill me-1" aria-hidden="true"></i>مدفوع
-                                                    </span>
-                                                @else
-                                                    <span class="position-absolute top-0 start-0 m-2 badge rounded-pill bg-success shadow-sm" title="صف مجاني">
-                                                        <i class="bi bi-gift me-1" aria-hidden="true"></i>مجاني
-                                                    </span>
-                                                @endif
-                                            </div>
-                                            <div class="card-body">
-                                                <a href="{{ route('student.enrollments.class.show', $class->id) }}" class="text-decoration-none">
-                                                    <h6 class="card-title fw-semibold text-dark">{{ $class->name }}</h6>
-                                                    @if($class->description)
-                                                        <p class="card-text text-muted small">{{ \Illuminate\Support\Str::limit($class->description, 80) }}</p>
-                                                    @endif
-                                                </a>
-                                                <div class="d-flex align-items-center justify-content-between mt-3">
-                                                    <span class="text-muted small">
-                                                        <i class="bi bi-book me-1"></i>
-                                                        {{ $class->joinable_subjects_count ?? $class->subjects()->where('is_active', true)->count() }} مادة متاحة
-                                                    </span>
-                                                    @if(isset($pendingClassIdSet[$class->id]))
-                                                        <button class="btn btn-warning btn-sm" type="button" disabled title="طلب انضمام الصف قيد المراجعة">
-                                                            <i class="bi bi-clock me-1"></i>
-                                                            قيد المراجعة
-                                                        </button>
-                                                    @else
-                                                        <button class="btn btn-primary btn-sm" onclick="requestClassEnrollment({{ $class->id }}, '{{ addslashes($class->name) }}', {{ $class->classJoinRequiresPayment() ? 'true' : 'false' }})" type="button">
-                                                            <i class="bi bi-plus-circle me-1"></i>
-                                                            انضم للصف
-                                                        </button>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                            <div class="card-footer bg-light">
-                                                <a href="{{ route('student.enrollments.class.show', $class->id) }}" class="text-primary text-decoration-none d-flex align-items-center justify-content-center">
-                                                    <i class="bi bi-eye me-2"></i>
-                                                    عرض المواد والتفاصيل
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @else
-                            <p class="text-muted mb-0 text-center">لا توجد صفوف في هذه المرحلة</p>
-                        @endif
-                    </div>
-                </div>
-            @endforeach
+            <div id="enrollment-classes-list">
+                @foreach($stages as $stage)
+                    <section class="enrollment-stage-section">
+                        <div class="enrollment-stage-section__header">
+                            <span class="enrollment-stage-section__header-icon" aria-hidden="true">
+                                <i class="bi bi-layers-fill"></i>
+                            </span>
+                            <h5 class="enrollment-stage-section__title">{{ $stage->name }}</h5>
+                        </div>
+                        <div class="enrollment-stage-section__body">
+                            @if($stage->classes->count() > 0)
+                                <div class="row">
+                                    @foreach($stage->classes as $class)
+                                        @include('student.pages.enrollments.partials.class-card', [
+                                            'class' => $class,
+                                            'pendingClassIdSet' => $pendingClassIdSet,
+                                        ])
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="enrollment-empty-state py-4">
+                                    <p class="text-muted mb-0">لا توجد صفوف في هذه المرحلة حالياً</p>
+                                </div>
+                            @endif
+                        </div>
+                    </section>
+                @endforeach
+            </div>
         @else
-            <div class="card custom-card">
-                <div class="card-body text-center py-5">
-                    <i class="bi bi-book fs-1 text-muted mb-3 d-block"></i>
-                    <h5 class="mb-2">لا توجد مواد متاحة</h5>
-                    <p class="text-muted mb-0">لا توجد مواد دراسية متاحة للانضمام حالياً</p>
+            <div class="enrollment-empty-state">
+                <div class="enrollment-empty-state__icon">
+                    <i class="bi bi-book"></i>
                 </div>
+                <h5 class="mb-2">لا توجد مواد متاحة</h5>
+                <p class="text-muted mb-0">لا توجد مواد دراسية متاحة للانضمام حالياً. يرجى مراجعة الإدارة لاحقاً.</p>
             </div>
         @endif
     </div>

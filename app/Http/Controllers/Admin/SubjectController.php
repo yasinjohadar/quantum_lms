@@ -279,6 +279,16 @@ class SubjectController extends Controller
                     $q->with('schoolClass.stage');
                 },
                 'sections.clonedFromSection.subject.schoolClass.stage',
+                'sections.directLessons' => function ($q) {
+                    $q->orderBy('order')
+                        ->with([
+                            'attachments',
+                            'quizzes',
+                            'linkedUnits.section.subject',
+                            'clonedFromLesson.unit.section.subject',
+                            'clonedFromLesson.section.subject',
+                        ]);
+                },
                 'sections.units' => function ($q) {
                     $q->orderBy('order')->orderBy('title');
                 },
@@ -344,8 +354,26 @@ class SubjectController extends Controller
                 'linkedSections' => function ($q) {
                     $q->with('subject.schoolClass.stage')->orderBy('order')->orderBy('title');
                 },
+                'linkedSections.directLessons' => function ($q) {
+                    $q->orderBy('order')
+                        ->with([
+                            'attachments',
+                            'quizzes',
+                            'linkedUnits.section.subject',
+                            'clonedFromLesson.unit.section.subject',
+                            'clonedFromLesson.section.subject',
+                        ]);
+                },
                 'linkedSections.units' => function ($q) {
                     $q->orderBy('order')->orderBy('title');
+                },
+                'linkedSections.units.linkedLessons' => function ($q) {
+                    $q->orderBy('lessons.order')->with([
+                        'linkedUnits.section.subject',
+                        'unit.section.subject',
+                        'clonedFromLesson.unit.section.subject',
+                        'clonedFromLesson.section.subject',
+                    ]);
                 },
                 'linkedSections.units.lessons' => function ($q) {
                     $q->orderBy('order')->with(['unit.section.subject', 'linkedUnits.section.subject', 'clonedFromLesson.unit.section.subject', 'clonedFromLesson.section.subject']);

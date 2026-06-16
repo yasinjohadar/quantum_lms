@@ -41,6 +41,9 @@
     $unitLinkedSectionsTitle = $unitLinkedSectionsCount > 0
         ? 'نسخة متزامنة من هذه الوحدة في: '.implode(' | ', $unitLinkedSectionsLines)
         : '';
+    $unitTotalDurationLabel = auth()->user()?->hasRole('admin')
+        ? \App\Support\LessonDurationFormatter::formatHoursMinutes($unit->totalLessonsDurationSecondsForDisplay())
+        : null;
 @endphp
 <div class="accordion-item border rounded mb-2 shadow-sm unit-item {{ $isChildUnit ? 'unit-item-child' : 'unit-item-root' }}{{ ($isMirroredInThisSection || $isUnitSyncMirror) ? ' unit-item-linked' : '' }}" data-id="{{ $unit->id }}" data-home-section-id="{{ $homeSectionId }}">
     <h2 class="accordion-header d-flex" id="unitHeading{{ $unit->id }}">
@@ -86,10 +89,17 @@
                         <p class="text-muted small mb-0 mt-1">{{ Str::limit($unit->description, 60) }}</p>
                     @endif
                 </div>
-                <div class="me-3">
+                <div class="me-3 d-flex flex-column align-items-end gap-1">
                     <span class="badge bg-info-transparent text-info">
                         <i class="bi bi-play-circle me-1"></i> {{ $unit->allLessons()->count() }} درس
                     </span>
+                    @if($unitTotalDurationLabel)
+                        @include('admin.pages.subjects.partials.admin-lesson-duration-badge', [
+                            'duration' => $unitTotalDurationLabel,
+                            'size' => 'unit',
+                            'title' => 'مجموع مدة دروس الوحدة',
+                        ])
+                    @endif
                 </div>
             </div>
         </button>

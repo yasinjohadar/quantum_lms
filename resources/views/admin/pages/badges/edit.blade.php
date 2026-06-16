@@ -4,32 +4,35 @@
     تعديل شارة
 @stop
 
-@section('content')
-<!-- Start::app-content -->
-<div class="main-content app-content">
-    <div class="container-fluid">
-        <!-- Page Header -->
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div class="my-auto">
-                <h5 class="page-title fs-21 mb-1">تعديل شارة</h5>
-                <nav>
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('admin.badges.index') }}">الشارات</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">تعديل</li>
-                    </ol>
-                </nav>
-            </div>
-        </div>
-        <!-- End Page Header -->
+@push('styles')
+    @include('admin.pages.gamification.partials.gamification-styles')
+@endpush
 
-        <div class="row">
-            <div class="col-12">
-                <div class="card custom-card">
-                    <div class="card-header">
-                        <div class="card-title">معلومات الشارة</div>
+@section('content')
+<div class="main-content app-content gami-page">
+    <div class="container-fluid">
+
+        @include('admin.pages.gamification.partials.hero', [
+            'gamiTitle' => 'تعديل شارة',
+            'gamiIcon' => 'bi-award',
+            'gamiBreadcrumbs' => [
+                ['label' => 'الرئيسية', 'url' => route('admin.dashboard')],
+                ['label' => 'نظام التحفيز', 'url' => route('admin.gamification.index')],
+                ['label' => 'الشارات', 'url' => route('admin.badges.index')],
+                ['label' => 'تعديل', 'active' => true],
+            ],
+        ])
+
+        <div class="row justify-content-center">
+            <div class="col-xl-9 col-lg-10">
+                <div class="gami-card gami-form-card">
+                    <div class="gami-card__header">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="gami-card__header-icon"><i class="bi bi-pencil-square"></i></span>
+                            <span>معلومات الشارة</span>
+                        </div>
                     </div>
-                    <div class="card-body">
+                    <div class="gami-card__body">
                         <form action="{{ route('admin.badges.update', $badge) }}" method="POST">
                             @csrf
                             @method('PUT')
@@ -43,7 +46,7 @@
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">الأيقونة</label>
-                                    <input type="text" name="icon" class="form-control" value="{{ old('icon', $badge->icon) }}" placeholder="fe fe-award">
+                                    <input type="text" name="icon" class="form-control" value="{{ old('icon', $badge->icon) }}" placeholder="bi bi-award">
                                     @error('icon')
                                         <div class="text-danger">{{ $message }}</div>
                                     @enderror
@@ -89,7 +92,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="d-flex gap-2">
+                            <div class="gami-form-actions">
                                 <button type="submit" class="btn btn-primary">حفظ</button>
                                 <a href="{{ route('admin.badges.index') }}" class="btn btn-secondary">إلغاء</a>
                             </div>
@@ -98,8 +101,7 @@
                 </div>
             </div>
         </div>
+
     </div>
 </div>
-<!-- End::app-content -->
 @stop
-

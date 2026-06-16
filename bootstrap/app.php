@@ -38,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role-list' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'check.user.active' => \App\Http\Middleware\CheckUserActive::class,
             'share.student.pending.purchases' => \App\Http\Middleware\ShareStudentPendingPurchasesForLayout::class,
+            'ensure.student.enrollment' => \App\Http\Middleware\EnsureStudentEnrollment::class,
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'extension.api' => \App\Http\Middleware\EnsureExtensionApiAccess::class,
         ]);

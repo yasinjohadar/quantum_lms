@@ -119,7 +119,7 @@
             }
 
             var processUrl = form.getAttribute('data-process-url');
-            var successUrl = form.getAttribute('data-success-url') || '/student/classes';
+            var successUrl = form.getAttribute('data-success-url') || '/student/enrollments';
             var csrf = document.querySelector('meta[name="csrf-token"]');
             var csrfToken = csrf ? csrf.getAttribute('content') : '';
 

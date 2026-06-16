@@ -149,6 +149,16 @@ class AuthenticatedSessionController extends Controller
         }
 
         // افتراضي: student dashboard (أو الصفحة المطلوبة قبل تسجيل الدخول، مثل الدفع)
+        if (! $user->hasActiveStudentEnrollment()) {
+            $enrollmentsUrl = route('student.enrollments.index');
+
+            if ($studentOnly) {
+                return redirect()->intended($enrollmentsUrl)->with('enrollment_required_warning', true);
+            }
+
+            return redirect()->to($enrollmentsUrl)->with('enrollment_required_warning', true);
+        }
+
         if ($studentOnly) {
             return redirect()->intended(route('student.dashboard'));
         }

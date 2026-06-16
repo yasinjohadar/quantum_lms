@@ -182,7 +182,8 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect(route('student.dashboard', absolute: false));
+        return redirect(route('student.enrollments.index', absolute: false))
+            ->with('enrollment_required_warning', true);
     }
 
     /**

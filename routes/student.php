@@ -9,7 +9,7 @@ use App\Http\Controllers\Student\StudentQuizController;
 use App\Http\Controllers\Student\StudentProgressController;
 use App\Http\Controllers\Student\NotificationPreferenceController as StudentNotificationPreferenceController;
 
-Route::middleware(['auth', 'check.user.active'])->prefix('student')->as('student.')->group(function () {
+Route::middleware(['auth', 'check.user.active', 'ensure.student.enrollment'])->prefix('student')->as('student.')->group(function () {
     // لوحة تحكم الطالب
     Route::get('/dashboard', [StudentController::class, 'dashboard'])->name('dashboard');
     

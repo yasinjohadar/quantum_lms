@@ -4,16 +4,32 @@
     توليد أسئلة من صورة أو PDF
 @stop
 
+@push('styles')
+    @include('admin.pages.ai.question-generations.partials.question-generations-index-styles')
+@endpush
+
 @section('content')
-<div class="main-content app-content">
+<div class="main-content app-content ai-gen-index-page">
     <div class="container-fluid">
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div class="my-auto">
-                <h5 class="page-title fs-21 mb-1">توليد أسئلة من صورة أو PDF</h5>
+
+        <div class="ai-gen-index-hero my-4">
+            <div class="ai-gen-index-hero__icon">
+                <i class="bi bi-image"></i>
             </div>
-            <div>
-                <a href="{{ !empty($lockedSubject) ? route('admin.subjects.questions.index', $lockedSubject->id) : route('admin.ai.question-generations.index') }}" class="btn btn-secondary btn-sm">
-                    <i class="fas fa-arrow-right me-1"></i> رجوع
+            <div class="ai-gen-index-hero__content">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-2 small">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('admin.ai.question-generations.index') }}">طلبات التوليد</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">من صورة</li>
+                    </ol>
+                </nav>
+                <h4 class="ai-gen-index-hero__title">توليد أسئلة من صورة أو PDF</h4>
+                <p class="ai-gen-index-hero__subtitle">ارفع ملفاً وحدد أنواع الأسئلة لتحليله وتوليد الأسئلة</p>
+            </div>
+            <div class="ai-gen-index-hero__actions">
+                <a href="{{ !empty($lockedSubject) ? route('admin.subjects.questions.index', $lockedSubject->id) : route('admin.ai.question-generations.index') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-right me-1"></i> رجوع
                 </a>
             </div>
         </div>
@@ -30,16 +46,18 @@
         @endif
 
         @if(!empty($lockedSubject))
-            <div class="alert alert-primary">
-                <i class="fas fa-link me-1"></i>
-                الأسئلة المولدة ستُربط بمادة <strong>{{ $lockedSubject->name }}</strong>
-                @if($lockedSubject->schoolClass)
-                    — {{ $lockedSubject->schoolClass->name }}
-                @endif
+            <div class="ai-gen-linked-alert">
+                <i class="bi bi-link-45deg"></i>
+                <div>
+                    الأسئلة المولدة ستُربط بمادة <strong>{{ $lockedSubject->name }}</strong>
+                    @if($lockedSubject->schoolClass)
+                        — {{ $lockedSubject->schoolClass->name }}
+                    @endif
+                </div>
             </div>
         @endif
 
-        <div class="alert alert-info">
+        <div class="ai-gen-hint-box">
             <strong>الصور:</strong> يتطلب موديلاً يدعم <strong>الرؤية (Vision)</strong> (مثل gpt-4o، Claude، Gemini).
             <br>
             <strong>PDF نصي:</strong> يعمل مع أي موديل توليد أسئلة (يُستخرج النص تلقائياً).
@@ -47,10 +65,16 @@
             <strong>PDF ممسوح:</strong> يحتاج موديل رؤية + تفعيل <strong>Imagick</strong> و<strong>Ghostscript</strong> على الخادم.
         </div>
 
-        <div class="row">
-            <div class="col-lg-8">
-                <div class="card shadow-sm border-0">
-                    <div class="card-body">
+        <div class="row justify-content-center">
+            <div class="col-xl-9 col-lg-10">
+                <div class="ai-gen-index-card ai-gen-form-card">
+                    <div class="ai-gen-index-card__header">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="ai-gen-index-card__header-icon"><i class="bi bi-upload"></i></span>
+                            <span>رفع الملف وإعدادات التوليد</span>
+                        </div>
+                    </div>
+                    <div class="ai-gen-index-card__body">
                         <form action="{{ route('admin.ai.question-generations.store-from-image') }}" method="POST" enctype="multipart/form-data" id="imageGenForm">
                             @csrf
                             @if(!empty($lockedSubject))
@@ -62,11 +86,11 @@
                                 <label for="source_file" class="form-label">الملف (صورة أو PDF) <span class="text-danger">*</span></label>
                                 <input type="file" class="form-control" id="source_file" name="source_file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" required>
                                 <small class="text-muted">صور: JPEG, PNG, WebP, GIF (حتى 8 ميجابايت) — PDF: حتى 15 ميجابايت</small>
-                                <div class="mt-2 d-none" id="imagePreviewWrap">
-                                    <img src="" alt="" id="imagePreview" class="img-fluid rounded border" style="max-height: 280px;">
+                                <div class="mt-2 ai-gen-file-preview d-none" id="imagePreviewWrap">
+                                    <img src="" alt="" id="imagePreview" class="img-fluid rounded" style="max-height: 280px;">
                                 </div>
-                                <div class="mt-2 d-none alert alert-secondary py-2 mb-0" id="pdfPreviewWrap">
-                                    <i class="fas fa-file-pdf text-danger me-2"></i>
+                                <div class="mt-2 ai-gen-file-preview d-none" id="pdfPreviewWrap">
+                                    <i class="bi bi-file-earmark-pdf text-danger me-2"></i>
                                     <span id="pdfFileName"></span>
                                 </div>
                             </div>
@@ -94,17 +118,20 @@
                                 ])
                             @endif
 
-                            <div class="mb-3">
-                                <label class="form-label">أنواع الأسئلة المطلوبة <span class="text-danger">*</span></label>
-                                <div class="d-flex gap-2 mb-3">
+                            <div class="ai-gen-form-section">
+                                <div class="ai-gen-form-section__title">
+                                    <span class="ai-gen-form-section__title-icon"><i class="bi bi-ui-checks-grid"></i></span>
+                                    أنواع الأسئلة المطلوبة
+                                </div>
+                                <div class="ai-gen-type-select-toolbar">
                                     <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllTypes()">
-                                        <i class="fas fa-check-square me-1"></i> تحديد الكل
+                                        <i class="bi bi-check-all me-1"></i> تحديد الكل
                                     </button>
                                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAllTypes()">
-                                        <i class="fas fa-square me-1"></i> إلغاء التحديد
+                                        <i class="bi bi-x-lg me-1"></i> إلغاء التحديد
                                     </button>
                                 </div>
-                                <div class="row g-3" id="question-types-grid">
+                                <div class="ai-gen-question-types-grid" id="question-types-grid">
                                     @php
                                         $questionTypes = \App\Models\Question::TYPES;
                                         $typeIcons = \App\Models\Question::TYPE_ICONS;
@@ -117,9 +144,8 @@
                                             $icon = $typeIcons[$key] ?? 'bi-question-circle';
                                             $isChecked = in_array($key, $oldTypes);
                                         @endphp
-                                        <div class="col-md-4 col-sm-6">
-                                            <div class="card h-100 question-type-card {{ $isChecked ? 'border-primary' : '' }}" style="cursor: pointer; transition: all 0.3s;">
-                                                <div class="card-body p-3">
+                                        <div class="ai-gen-question-type-card card question-type-card {{ $isChecked ? 'ai-gen-question-type-card--selected' : '' }}">
+                                                <div class="card-body">
                                                     <div class="form-check">
                                                         <input class="form-check-input question-type-checkbox"
                                                                type="checkbox"
@@ -128,20 +154,27 @@
                                                                id="question_type_{{ $key }}"
                                                                {{ $isChecked ? 'checked' : '' }}
                                                                onchange="updateCardStyle(this)">
-                                                        <label class="form-check-label w-100" for="question_type_{{ $key }}" style="cursor: pointer;">
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="bi {{ $icon }} text-{{ $color }} me-2 fs-5"></i>
+                                                        <label class="form-check-label" for="question_type_{{ $key }}">
+                                                            <div class="d-flex align-items-center gap-2">
+                                                                <span class="ai-gen-question-type-card__icon">
+                                                                    <i class="bi {{ $icon }} text-{{ $color }}"></i>
+                                                                </span>
                                                                 <span class="fw-semibold">{{ $label }}</span>
                                                             </div>
                                                         </label>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
                                     @endforeach
                                 </div>
                                 <small class="text-danger d-none" id="question-types-error">يجب اختيار نوع واحد على الأقل</small>
                             </div>
+
+                            <div class="ai-gen-form-section">
+                                <div class="ai-gen-form-section__title">
+                                    <span class="ai-gen-form-section__title-icon"><i class="bi bi-toggles"></i></span>
+                                    خيارات التوليد
+                                </div>
 
                             <div class="row">
                                 <div class="col-md-6 mb-3">
@@ -167,18 +200,20 @@
                                     @endforeach
                                 </select>
                             </div>
+                            </div>
 
-                            <div class="d-flex gap-2">
+                            <div class="ai-gen-form-actions">
                                 <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-file-upload me-1"></i> تحليل الملف وتوليد الأسئلة
+                                    <i class="bi bi-upload me-1"></i> تحليل الملف وتوليد الأسئلة
                                 </button>
-                                <a href="{{ !empty($lockedSubject) ? route('admin.subjects.questions.index', $lockedSubject->id) : route('admin.ai.question-generations.index') }}" class="btn btn-secondary">إلغاء</a>
+                                <a href="{{ !empty($lockedSubject) ? route('admin.subjects.questions.index', $lockedSubject->id) : route('admin.ai.question-generations.index') }}" class="btn btn-outline-secondary">إلغاء</a>
                             </div>
                         </form>
                     </div>
                 </div>
             </div>
         </div>
+
     </div>
 </div>
 
@@ -248,11 +283,9 @@ function deselectAllTypes() {
 function updateCardStyle(checkbox) {
     var card = checkbox.closest('.question-type-card');
     if (checkbox.checked) {
-        card.classList.add('border-primary');
-        card.style.backgroundColor = 'rgba(13, 110, 253, 0.1)';
+        card.classList.add('ai-gen-question-type-card--selected');
     } else {
-        card.classList.remove('border-primary');
-        card.style.backgroundColor = '';
+        card.classList.remove('ai-gen-question-type-card--selected');
     }
 }
 </script>

@@ -23,14 +23,14 @@
                         <svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191" width="24" height="24" viewBox="0 0 24 24"> <path d="M13.293 6.293 7.586 12l5.707 5.707 1.414-1.414L10.414 12l4.293-4.293z"></path> </svg>
                     </div>
                     <ul class="main-menu">
-                        <li class="slide">
+                        <li class="slide slide-icon slide-icon--slate">
                             <a href="{{ route('home') }}" class="side-menu__item" target="_blank" rel="noopener noreferrer">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
                                 <span class="side-menu__label">الواجهة الأمامية</span>
                             </a>
                         </li>
                         @can('dashboard-view')
-                        <li class="slide {{ request()->routeIs('admin.dashboard') || request()->is('admin/dashboard*') ? 'active' : '' }}">
+                        <li class="slide slide-icon slide-icon--primary {{ request()->routeIs('admin.dashboard') || request()->is('admin/dashboard*') ? 'active' : '' }}">
                             <a href="{{ route('admin.dashboard') }}" class="side-menu__item {{ request()->routeIs('admin.dashboard') || request()->is('admin/dashboard*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M4 10v7h3v-4h6v4h3v-7l-6-5z" opacity=".3"/><path d="M12 3 2 12h3v8h6v-6h2v6h6v-8h3z"/></svg>
                                 <span class="side-menu__label">لوحة التحكم</span>
@@ -40,7 +40,7 @@
 
                         @can('review-queue-list')
                         @if(!auth()->user()->usesSupervisorAssignmentScope())
-                        <li class="slide {{ request()->is('admin/review-queue*') ? 'active' : '' }}">
+                        <li class="slide slide-icon slide-icon--teal {{ request()->is('admin/review-queue*') ? 'active' : '' }}">
                             <a href="{{ route('admin.review-queue.index') }}" class="side-menu__item {{ request()->is('admin/review-queue*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -61,7 +61,7 @@
                         @endcan
 
                         @if(auth()->user()->usesTeacherAssignmentScope())
-                        <li class="slide has-sub {{ request()->is('admin/classes*') || request()->is('admin/subjects*') || request()->routeIs('admin.my-approved-lessons') ? 'open' : '' }}">
+                        <li class="slide slide-icon slide-icon--pink has-sub {{ request()->is('admin/classes*') || request()->is('admin/subjects*') || request()->routeIs('admin.my-approved-lessons') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -106,7 +106,7 @@
                         @endif
 
                         @if(auth()->user()->usesSupervisorAssignmentScope())
-                        <li class="slide has-sub {{ request()->is('admin/my-classes*') || request()->is('admin/my-subjects*') ? 'open' : '' }}">
+                        <li class="slide slide-icon slide-icon--indigo has-sub {{ request()->is('admin/my-classes*') || request()->is('admin/my-subjects*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -165,7 +165,7 @@
                         @endif
 
                         @canany(['user-list', 'role-list', 'teacher-assignment-list', 'supervisor-assignment-list', 'teacher-progress-view', 'academic-year-list', 'academic-week-list'])
-                        <li class="slide has-sub {{ request()->is('users*') || request()->is('admin/users-management*') || request()->is('admin/admins*') || request()->is('admin/archived-users*') || request()->is('admin/teachers/assignments*') || request()->is('admin/supervisors/assignments*') || request()->is('roles*') ? 'open' : '' }}">
+                        <li class="slide slide-icon slide-icon--violet has-sub {{ request()->is('users*') || request()->is('admin/users-management*') || request()->is('admin/admins*') || request()->is('admin/archived-users*') || request()->is('admin/teachers/assignments*') || request()->is('admin/supervisors/assignments*') || request()->is('roles*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -246,7 +246,7 @@
                         @endcanany
 
                         @canany(['enrollment-list', 'enrollment-pending-requests', 'enrollment-class-pending-requests', 'payment-list'])
-                        <li class="slide has-sub {{ request()->is('admin/enrollments*') || request()->is('admin/payments*') || request()->is('admin/custom-payment-methods*') ? 'open' : '' }}">
+                        <li class="slide slide-icon slide-icon--purple has-sub {{ request()->is('admin/enrollments*') || request()->is('admin/payments*') || request()->is('admin/custom-payment-methods*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -347,7 +347,7 @@
                         @endcanany
 
                         @can('class-list')
-                        <li class="slide {{ request()->is('admin/classes*') ? 'active' : '' }}">
+                        <li class="slide slide-icon slide-icon--cyan {{ request()->is('admin/classes*') ? 'active' : '' }}">
                             <a href="{{ route('admin.classes.index') }}" class="side-menu__item {{ request()->is('admin/classes*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -359,7 +359,7 @@
                         @endcan
 
                         @can('subject-list')
-                        <li class="slide {{ request()->is('admin/subjects*') ? 'active' : '' }}">
+                        <li class="slide slide-icon slide-icon--fuchsia {{ request()->is('admin/subjects*') ? 'active' : '' }}">
                             <a href="{{ route('admin.subjects.index') }}" class="side-menu__item {{ request()->is('admin/subjects*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -371,7 +371,7 @@
                         @endcan
 
                         @canany(['report-view', 'enrollment-list'])
-                        <li class="slide has-sub {{ request()->is('admin/reports*') || request()->is('admin/report-templates*') || request()->is('admin/analytics-dashboard*') || request()->is('admin/student-progress*') ? 'open' : '' }}">
+                        <li class="slide slide-icon slide-icon--emerald has-sub {{ request()->is('admin/reports*') || request()->is('admin/report-templates*') || request()->is('admin/analytics-dashboard*') || request()->is('admin/student-progress*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -433,7 +433,7 @@
                         @endcanany
 
                         @canany(['question-list', 'quiz-list', 'question-create'])
-                        <li class="slide has-sub {{ request()->is('admin/questions*') || request()->is('admin/quizzes*') || request()->is('admin/ai/question-generations*') ? 'open' : '' }}">
+                        <li class="slide slide-icon slide-icon--indigo has-sub {{ request()->is('admin/questions*') || request()->is('admin/quizzes*') || request()->is('admin/ai/question-generations*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -485,7 +485,7 @@
                         @endcanany
 
                         @canany(['library-list'])
-                        <li class="slide has-sub {{ request()->is('admin/library*') ? 'open' : '' }}">
+                        <li class="slide slide-icon slide-icon--rose has-sub {{ request()->is('admin/library*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -524,7 +524,7 @@
                         @endcanany
 
                         @canany(['settings-manage'])
-                        <li class="slide has-sub {{ request()->is('admin/media*') ? 'open' : '' }}">
+                        <li class="slide slide-icon slide-icon--sky has-sub {{ request()->is('admin/media*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -597,7 +597,7 @@
                         @endcanany
 
                         @canany(['gamification-list', 'badge-list', 'achievement-list', 'level-list', 'challenge-list', 'reward-list', 'certificate-list', 'leaderboard-list', 'daily-task-list', 'weekly-task-list', 'gamification-update'])
-                        <li class="slide has-sub {{ request()->is('admin/gamification*') || request()->is('admin/badges*') || request()->is('admin/achievements*') || request()->is('admin/levels*') || request()->is('admin/challenges*') || request()->is('admin/rewards*') || request()->is('admin/certificates*') || request()->is('admin/leaderboards*') || request()->is('admin/daily-tasks*') || request()->is('admin/weekly-tasks*') ? 'open' : '' }}">
+                        <li class="slide slide-icon slide-icon--orange has-sub {{ request()->is('admin/gamification*') || request()->is('admin/badges*') || request()->is('admin/achievements*') || request()->is('admin/levels*') || request()->is('admin/challenges*') || request()->is('admin/rewards*') || request()->is('admin/certificates*') || request()->is('admin/leaderboards*') || request()->is('admin/daily-tasks*') || request()->is('admin/weekly-tasks*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -685,7 +685,7 @@
                         @endcanany
 
                         @canany(['calendar-list', 'reminder-list'])
-                        <li class="slide has-sub {{ request()->is('admin/calendar*') ? 'open' : '' }}">
+                        <li class="slide slide-icon slide-icon--blue has-sub {{ request()->is('admin/calendar*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -723,7 +723,7 @@
                         </li>
                         @endcanany
 
-                        <li class="slide {{ request()->is('admin/notifications/inbox') ? 'active' : '' }}">
+                        <li class="slide slide-icon slide-icon--amber {{ request()->is('admin/notifications/inbox') ? 'active' : '' }}">
                             <a href="{{ route('admin.notifications.inbox') }}" class="side-menu__item {{ request()->is('admin/notifications/inbox') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/>
@@ -732,7 +732,7 @@
                             </a>
                         </li>
                         @can('notification-create')
-                        <li class="slide {{ request()->is('admin/notifications/create') || request()->is('admin/notifications/target-users') || request()->is('admin/notifications/all-users') ? 'active' : '' }}">
+                        <li class="slide slide-icon slide-icon--yellow {{ request()->is('admin/notifications/create') || request()->is('admin/notifications/target-users') || request()->is('admin/notifications/all-users') ? 'active' : '' }}">
                             <a href="{{ route('admin.notifications.create') }}" class="side-menu__item {{ request()->is('admin/notifications/create') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/>
@@ -743,7 +743,7 @@
                         @endcan
 
                         @canany(['settings-manage', 'whats-app-template-list'])
-                        <li class="slide has-sub {{ request()->is('admin/whatsapp-settings*') || request()->is('admin/whatsapp-messages*') || request()->is('admin/whatsapp-templates*') ? 'open' : '' }}">
+                        <li class="slide slide-icon slide-icon--green has-sub {{ request()->is('admin/whatsapp-settings*') || request()->is('admin/whatsapp-messages*') || request()->is('admin/whatsapp-templates*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
@@ -781,7 +781,7 @@
                         @endcanany
 
                         @canany(['settings-manage', 'question-create', 'quiz-attempt-needs-grading', 'user-login-logs', 'class-list'])
-                        <li class="slide has-sub {{ request()->is('admin/settings*') || request()->is('admin/currencies*') || request()->is('admin/exchange-rates*') || request()->is('admin/sms-*') || request()->is('admin/email-*') || request()->is('admin/app-storage*') || request()->is('admin/storage-disk-mappings*') || request()->is('admin/storage-migration*') || request()->is('admin/backup*') || request()->is('admin/ai*') || request()->is('admin/quiz-attempts/needs-grading*') || request()->is('admin/login-logs*') || request()->is('admin/user-sessions*') || request()->is('admin/stages*') ? 'open' : '' }}">
+                        <li class="slide slide-icon slide-icon--slate has-sub {{ request()->is('admin/settings*') || request()->is('admin/currencies*') || request()->is('admin/exchange-rates*') || request()->is('admin/sms-*') || request()->is('admin/email-*') || request()->is('admin/app-storage*') || request()->is('admin/storage-disk-mappings*') || request()->is('admin/storage-migration*') || request()->is('admin/backup*') || request()->is('admin/ai*') || request()->is('admin/quiz-attempts/needs-grading*') || request()->is('admin/login-logs*') || request()->is('admin/user-sessions*') || request()->is('admin/stages*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -1123,11 +1123,47 @@
         .slide-menu.settings-sub .side-menu__item {
             padding-inline-start: 0.5rem;
         }
+
+        /* الإبقاء على ألوان أيقونات القائمة الرئيسية والفرعية عند التفعيل */
+        .main-menu > li.slide[class*="slide-icon--"] > .side-menu__item.active .side-menu__icon,
+        .main-menu > li.slide[class*="slide-icon--"].active > .side-menu__item .side-menu__icon,
+        .main-menu > li.slide[class*="slide-icon--"].open > .side-menu__item .side-menu__icon,
+        .main-menu > li.slide[class*="slide-icon--"] .slide-menu li.slide[class*="slide-icon--"].active > .side-menu__item .side-menu__icon,
+        .main-menu > li.slide[class*="slide-icon--"] .slide-menu li.slide[class*="slide-icon--"] > .side-menu__item.active .side-menu__icon {
+            color: var(--menu-icon-fg) !important;
+            fill: var(--menu-icon-fg) !important;
+            background-color: var(--menu-icon-bg) !important;
+        }
         </style>
         @endpush
 
         @push('scripts')
         <script>
+        (function initSubmenuColoredIcons() {
+            const tones = [
+                'primary', 'teal', 'pink', 'fuchsia', 'purple', 'violet', 'indigo',
+                'cyan', 'sky', 'emerald', 'green', 'amber', 'orange', 'rose', 'blue', 'yellow', 'lime', 'slate'
+            ];
+
+            document.querySelectorAll('.main-menu > li.slide[class*="slide-icon--"]').forEach(function (parent) {
+                parent.querySelectorAll('.slide-menu li.slide:not(.side-menu__label1)').forEach(function (li, index) {
+                    const tone = tones[index % tones.length];
+                    li.classList.add('slide-sub-icon', 'slide-icon--' + tone);
+
+                    const item = li.querySelector(':scope > .side-menu__item');
+                    if (!item || item.querySelector(':scope > .side-menu__icon')) {
+                        return;
+                    }
+
+                    const icon = document.createElement('span');
+                    icon.className = 'side-menu__icon side-menu__icon--sub';
+                    icon.setAttribute('aria-hidden', 'true');
+                    icon.innerHTML = '<i class="bi bi-circle-fill"></i>';
+                    item.insertBefore(icon, item.firstChild);
+                });
+            });
+        })();
+
         // السكرول التلقائي للرابط النشط - يظهر في الأعلى
         (function() {
             function scrollToActiveMenuItem() {
