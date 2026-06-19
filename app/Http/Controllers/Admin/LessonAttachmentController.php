@@ -5,36 +5,21 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Lesson;
 use App\Models\LessonAttachment;
+use App\Services\LessonAttachmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use App\Helpers\StorageHelper;
 use App\Services\Storage\MediaStorageService;
 
 class LessonAttachmentController extends Controller
 {
-    private function resolveAttachmentTitle(?string $inputTitle, ?\Illuminate\Http\UploadedFile $file, bool $isLink, ?string $existingFileName = null): string
-    {
-        $title = trim((string) $inputTitle);
-        if ($title !== '') {
-            return $title;
-        }
-
-        $fileName = $file?->getClientOriginalName() ?: $existingFileName;
-        if ($fileName) {
-            $base = pathinfo($fileName, PATHINFO_FILENAME);
-            $base = trim((string) $base);
-            if ($base !== '') {
-                return $base;
-            }
-        }
-
-        if ($isLink) {
-            return 'رابط مرفق';
-        }
-
-        return 'مرفق';
+    public function __construct(
+        private LessonAttachmentService $attachmentService
+    ) {
+        $this->middleware(['permission:lesson-attachment-create'])->only('store');
+        $this->middleware(['permission:lesson-attachment-edit'])->only('update');
+        $this->middleware(['permission:lesson-attachment-delete'])->only('destroy');
     }
 
     private function resolveReturnUrl(?string $returnTo, int $lessonId): string
@@ -59,13 +44,6 @@ class LessonAttachmentController extends Controller
         return $fallback;
     }
 
-    public function __construct()
-    {
-        $this->middleware(['permission:lesson-attachment-create'])->only('store');
-        $this->middleware(['permission:lesson-attachment-edit'])->only('update');
-        $this->middleware(['permission:lesson-attachment-delete'])->only('destroy');
-    }
-
     /**
      * تخزين مرفق جديد للدرس.
      */
@@ -73,76 +51,76 @@ class LessonAttachmentController extends Controller
     {
         $request->validate([
             'title' => 'nullable|string|max:255',
-            'type' => 'required|in:file,link,document,image,audio',
+            'type' => 'nullable|in:file,link,document,image,audio',
             'description' => 'nullable|string',
-            'file' => 'nullable|file|max:51200', // 50MB max
+            'file' => 'nullable|file|max:51200',
+            'files' => 'nullable|array|max:20',
+            'files.*' => 'file|max:51200',
             'url' => 'nullable|url|max:500',
         ], [
-            'type.required' => 'نوع المرفق مطلوب',
             'type.in' => 'نوع المرفق غير صالح',
             'file.file' => 'ملف المرفق غير صالح',
             'file.max' => 'حجم الملف يجب ألا يتجاوز 50 ميجابايت',
-            'url.required' => 'رابط المرفق مطلوب عندما يكون نوع المرفق رابطًا',
+            'files.max' => 'يمكن رفع 20 ملفاً كحد أقصى في المرة الواحدة',
+            'files.*.file' => 'أحد الملفات المرفوعة غير صالح',
+            'files.*.max' => 'حجم كل ملف يجب ألا يتجاوز 50 ميجابايت',
             'url.url' => 'الرابط يجب أن يكون صالحاً',
             'url.max' => 'الرابط يجب ألا يتجاوز 500 حرف',
         ]);
 
-        if ($request->input('type') === 'link' && !$request->filled('url')) {
-            throw ValidationException::withMessages([
-                'url' => 'رابط المرفق مطلوب عندما يكون نوع المرفق رابطًا.',
-            ]);
-        }
+        $type = $request->input('type');
+        $uploadedFiles = array_filter($request->file('files') ?? []);
+        $singleFile = $request->file('file');
 
-        if ($request->input('type') !== 'link' && !$request->hasFile('file')) {
+        if ($type === 'link') {
+            if (!$request->filled('url')) {
+                throw ValidationException::withMessages([
+                    'url' => 'رابط المرفق مطلوب عندما يكون نوع المرفق رابطًا.',
+                ]);
+            }
+        } elseif ($uploadedFiles === [] && !$singleFile) {
             throw ValidationException::withMessages([
-                'file' => 'ملف المرفق مطلوب عندما يكون نوع المرفق ملفًا.',
+                'files' => 'يجب اختيار ملف واحد على الأقل.',
             ]);
         }
 
         try {
-            $uploadedFile = $request->file('file');
-            $resolvedTitle = $this->resolveAttachmentTitle(
-                $request->input('title'),
-                $uploadedFile,
-                $request->input('type') === 'link'
-            );
-
-            $data = [
-                'lesson_id' => $lesson->id,
-                'title' => $resolvedTitle,
-                'type' => $request->type,
+            $createdCount = 0;
+            $commonOptions = [
                 'description' => $request->description,
                 'is_downloadable' => $request->has('is_downloadable'),
-                'is_active' => $request->has('is_active') || true,
+                'is_active' => true,
             ];
 
-            // رفع الملف
-            if ($uploadedFile) {
-                $file = $uploadedFile;
-                $fileName = time() . '_' . $file->getClientOriginalName();
-                $uploadResult = MediaStorageService::uploadDocument($file, 'lessons/attachments', $fileName);
-                $data['file_path'] = $uploadResult['path'];
-                $data['file_name'] = $file->getClientOriginalName();
-                $data['file_type'] = $file->getClientOriginalExtension();
-                $data['file_size'] = $file->getSize();
+            if ($type === 'link') {
+                $this->attachmentService->createFromLink($lesson, array_merge($commonOptions, [
+                    'title' => $request->input('title'),
+                    'url' => $request->url,
+                ]));
+                $createdCount = 1;
+            } elseif ($uploadedFiles !== []) {
+                foreach ($uploadedFiles as $file) {
+                    $this->attachmentService->createFromUploadedFile($lesson, $file, array_merge($commonOptions, [
+                        'title' => count($uploadedFiles) === 1 ? $request->input('title') : null,
+                    ]));
+                    $createdCount++;
+                }
+            } else {
+                $this->attachmentService->createFromUploadedFile($lesson, $singleFile, array_merge($commonOptions, [
+                    'title' => $request->input('title'),
+                    'type' => $type ?: $this->attachmentService->detectType($singleFile),
+                ]));
+                $createdCount = 1;
             }
-
-            // الرابط الخارجي
-            if ($request->type === 'link' && $request->url) {
-                $data['url'] = $request->url;
-            }
-
-            // الترتيب
-            $maxOrder = $lesson->attachments()->max('order') ?? 0;
-            $data['order'] = $maxOrder + 1;
-
-            LessonAttachment::create($data);
 
             $returnUrl = $this->resolveReturnUrl($request->input('return_to'), $lesson->id);
+            $message = $createdCount === 1
+                ? 'تم إضافة المرفق بنجاح.'
+                : "تم إضافة {$createdCount} مرفقات بنجاح.";
 
             return redirect()
                 ->to($returnUrl)
-                ->with('success', 'تم إضافة المرفق بنجاح.');
+                ->with('success', $message);
         } catch (\Exception $e) {
             Log::error('خطأ في إضافة مرفق: ' . $e->getMessage());
 
@@ -166,7 +144,7 @@ class LessonAttachmentController extends Controller
 
         try {
             $uploadedFile = $request->file('file');
-            $resolvedTitle = $this->resolveAttachmentTitle(
+            $resolvedTitle = $this->attachmentService->resolveTitle(
                 $request->input('title'),
                 $uploadedFile,
                 $attachment->type === 'link',
@@ -179,23 +157,21 @@ class LessonAttachmentController extends Controller
                 'is_downloadable' => $request->has('is_downloadable'),
             ];
 
-            // تحديث الملف إذا تم رفع ملف جديد
             if ($uploadedFile) {
-                // حذف الملف القديم
                 if ($attachment->file_path) {
                     MediaStorageService::delete($attachment->file_path);
                 }
 
-                $file = $uploadedFile;
-                $fileName = time() . '_' . $file->getClientOriginalName();
-                $uploadResult = MediaStorageService::uploadDocument($file, 'lessons/attachments', $fileName);
+                $uploadResult = $this->attachmentService->uploadAttachmentFile(
+                    $uploadedFile,
+                    $this->attachmentService->detectType($uploadedFile)
+                );
                 $data['file_path'] = $uploadResult['path'];
-                $data['file_name'] = $file->getClientOriginalName();
-                $data['file_type'] = $file->getClientOriginalExtension();
-                $data['file_size'] = $file->getSize();
+                $data['file_name'] = $uploadedFile->getClientOriginalName();
+                $data['file_type'] = $uploadedFile->getClientOriginalExtension();
+                $data['file_size'] = $uploadedFile->getSize();
             }
 
-            // تحديث الرابط
             if ($attachment->type === 'link' && $request->url) {
                 $data['url'] = $request->url;
             }
@@ -224,7 +200,6 @@ class LessonAttachmentController extends Controller
         $returnUrl = $this->resolveReturnUrl(request()->input('return_to'), $attachment->lesson_id);
 
         try {
-            // حذف الملف
             if ($attachment->file_path) {
                 StorageHelper::delete('attachments', $attachment->file_path);
             }
@@ -243,4 +218,3 @@ class LessonAttachmentController extends Controller
         }
     }
 }
-

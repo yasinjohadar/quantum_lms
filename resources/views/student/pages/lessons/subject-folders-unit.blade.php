@@ -244,12 +244,7 @@
                                             <i class="bi bi-clipboard-check fs-5"></i>
                                         </a>
                                     @endif
-                                    @if($lesson->attachments && $lesson->attachments->count() > 0)
-                                        @php $firstAtt = $lesson->attachments->first(); @endphp
-                                        <a href="{{ $firstAtt->access_url }}" target="_blank" rel="noopener noreferrer" @if($firstAtt->type !== 'link' && $firstAtt->is_downloadable) download @endif class="btn btn-sm btn-link p-1 text-success" title="تحميل/عرض الملحق" aria-label="الملحق">
-                                            <i class="bi bi-paperclip fs-5"></i>
-                                        </a>
-                                    @endif
+                                    @include('student.pages.lessons.partials.lesson-attachment-quick-link', ['lesson' => $lesson])
                                 </div>
                             </div>
                         </div>

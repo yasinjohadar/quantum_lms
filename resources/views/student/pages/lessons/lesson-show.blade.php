@@ -330,7 +330,12 @@
                 @if($lesson->attachments->count() > 0)
                     <div class="card mb-3">
                         <div class="card-header">
-                            <h6 class="mb-0">مرفقات الدرس</h6>
+                            <h6 class="mb-0">
+                                مرفقات الدرس
+                                @if($lesson->attachments->count() > 1)
+                                    <span class="badge bg-success-transparent text-success ms-1">{{ $lesson->attachments->count() }}</span>
+                                @endif
+                            </h6>
                         </div>
                         <div class="card-body">
                             <div class="list-group">

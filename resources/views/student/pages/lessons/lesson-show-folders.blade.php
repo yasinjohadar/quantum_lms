@@ -122,6 +122,9 @@
                     <h2 class="accordion-header" id="headingAttachments">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAttachments" aria-expanded="false">
                             <i class="bi bi-paperclip me-2"></i> مرفقات الدرس
+                            @if($lesson->attachments->count() > 1)
+                                <span class="badge bg-success-transparent text-success ms-2">{{ $lesson->attachments->count() }}</span>
+                            @endif
                         </button>
                     </h2>
                     <div id="collapseAttachments" class="accordion-collapse collapse" data-bs-parent="#lessonFoldersAccordion">
@@ -354,6 +357,16 @@
 @endif
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    if (window.location.hash === '#collapseAttachments') {
+        var attachmentsPanel = document.getElementById('collapseAttachments');
+        if (attachmentsPanel && typeof bootstrap !== 'undefined') {
+            bootstrap.Collapse.getOrCreateInstance(attachmentsPanel, { toggle: false }).show();
+            setTimeout(function() {
+                attachmentsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 150);
+        }
+    }
+
     const markCompletedBtn = document.getElementById('mark-completed-btn');
     if (!markCompletedBtn) return;
     const lessonId = {{ $lesson->id }};

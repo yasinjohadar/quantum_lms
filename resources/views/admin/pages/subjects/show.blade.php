@@ -5,234 +5,9 @@
 @stop
 
 @push('styles')
-<style>
-    .btn-purple {
-        background-color: #6259ca;
-        border-color: #6259ca;
-        color: #fff;
-    }
-    .btn-purple:hover {
-        background-color: #524abb;
-        border-color: #524abb;
-        color: #fff;
-    }
-    .btn-purple:focus, .btn-purple:active {
-        background-color: #4a42a7;
-        border-color: #4a42a7;
-        color: #fff;
-    }
-    .bg-purple-transparent {
-        background-color: rgba(98, 89, 202, 0.1);
-    }
-    .text-purple {
-        color: #6259ca !important;
-    }
-    .questions-list-container {
-        max-height: 400px;
-        overflow-y: auto;
-    }
-    .questions-list-container .list-group-item:hover {
-        background-color: rgba(98, 89, 202, 0.05);
-    }
-    .questions-list-container .form-check-input:checked + .flex-grow-1 {
-        background-color: rgba(98, 89, 202, 0.05);
-    }
-    /*
-     * تمييز المستوى: حد جانبي + لون شريط العنوان فقط (لا خلفية للبطاقة أو جسم الأكورديون)
-     * 0 أزرق، 1 تركواز، 2 وردي/مرجاني، 3 أخضر، 4 كهرماني، 5 بنفسجي
-     */
-    :root {
-        --section-level-0-rgb: 37, 99, 235;
-        --section-level-1-rgb: 8, 145, 178;
-        --section-level-2-rgb: 219, 39, 119;
-        --section-level-3-rgb: 22, 163, 74;
-        --section-level-4-rgb: 217, 119, 6;
-        --section-level-5-rgb: 124, 58, 237;
-        --unit-accent-rgb: 98, 89, 202;
-    }
-    .section-level-0 { border-start: 3px solid rgb(var(--section-level-0-rgb)); background-color: transparent; }
-    .section-level-1 { border-start: 3px solid rgb(var(--section-level-1-rgb)); background-color: transparent; }
-    .section-level-2 { border-start: 3px solid rgb(var(--section-level-2-rgb)); background-color: transparent; }
-    .section-level-3 { border-start: 3px solid rgb(var(--section-level-3-rgb)); background-color: transparent; }
-    .section-level-4 { border-start: 3px solid rgb(var(--section-level-4-rgb)); background-color: transparent; }
-    .section-level-5 { border-start: 3px solid rgb(var(--section-level-5-rgb)); background-color: transparent; }
-
-    .section-level-0 .accordion-button,
-    .section-level-0 .accordion-button.collapsed,
-    .section-level-0 .accordion-button:not(.collapsed) {
-        background-color: rgba(var(--section-level-0-rgb), 0.14);
-        box-shadow: none;
-    }
-    .section-level-0 .accordion-button:hover { background-color: rgba(var(--section-level-0-rgb), 0.2); }
-    .section-level-0 .accordion-button:focus { background-color: rgba(var(--section-level-0-rgb), 0.18); box-shadow: 0 0 0 0.2rem rgba(var(--section-level-0-rgb), 0.22); }
-
-    .section-level-1 .accordion-button,
-    .section-level-1 .accordion-button.collapsed,
-    .section-level-1 .accordion-button:not(.collapsed) {
-        background-color: rgba(var(--section-level-1-rgb), 0.14);
-        box-shadow: none;
-    }
-    .section-level-1 .accordion-button:hover { background-color: rgba(var(--section-level-1-rgb), 0.2); }
-    .section-level-1 .accordion-button:focus { background-color: rgba(var(--section-level-1-rgb), 0.18); box-shadow: 0 0 0 0.2rem rgba(var(--section-level-1-rgb), 0.22); }
-
-    .section-level-2 .accordion-button,
-    .section-level-2 .accordion-button.collapsed,
-    .section-level-2 .accordion-button:not(.collapsed) {
-        background-color: rgba(var(--section-level-2-rgb), 0.12);
-        box-shadow: none;
-    }
-    .section-level-2 .accordion-button:hover { background-color: rgba(var(--section-level-2-rgb), 0.18); }
-    .section-level-2 .accordion-button:focus { background-color: rgba(var(--section-level-2-rgb), 0.16); box-shadow: 0 0 0 0.2rem rgba(var(--section-level-2-rgb), 0.2); }
-
-    .section-level-3 .accordion-button,
-    .section-level-3 .accordion-button.collapsed,
-    .section-level-3 .accordion-button:not(.collapsed) {
-        background-color: rgba(var(--section-level-3-rgb), 0.12);
-        box-shadow: none;
-    }
-    .section-level-3 .accordion-button:hover { background-color: rgba(var(--section-level-3-rgb), 0.18); }
-    .section-level-3 .accordion-button:focus { background-color: rgba(var(--section-level-3-rgb), 0.16); box-shadow: 0 0 0 0.2rem rgba(var(--section-level-3-rgb), 0.2); }
-
-    .section-level-4 .accordion-button,
-    .section-level-4 .accordion-button.collapsed,
-    .section-level-4 .accordion-button:not(.collapsed) {
-        background-color: rgba(var(--section-level-4-rgb), 0.14);
-        box-shadow: none;
-    }
-    .section-level-4 .accordion-button:hover { background-color: rgba(var(--section-level-4-rgb), 0.2); }
-    .section-level-4 .accordion-button:focus { background-color: rgba(var(--section-level-4-rgb), 0.18); box-shadow: 0 0 0 0.2rem rgba(var(--section-level-4-rgb), 0.22); }
-
-    .section-level-5 .accordion-button,
-    .section-level-5 .accordion-button.collapsed,
-    .section-level-5 .accordion-button:not(.collapsed) {
-        background-color: rgba(var(--section-level-5-rgb), 0.14);
-        box-shadow: none;
-    }
-    .section-level-5 .accordion-button:hover { background-color: rgba(var(--section-level-5-rgb), 0.2); }
-    .section-level-5 .accordion-button:focus { background-color: rgba(var(--section-level-5-rgb), 0.18); box-shadow: 0 0 0 0.2rem rgba(var(--section-level-5-rgb), 0.22); }
-
-    /* الوحدات — لون بنفسجي المشروع، مختلف عن ألوان الأقسام */
-    .unit-item {
-        overflow: hidden;
-    }
-    .unit-item-root {
-        border-start: 3px solid #6259ca !important;
-        background-color: transparent;
-    }
-    .unit-item-root > .accordion-header .accordion-button,
-    .unit-item-root > .accordion-header .accordion-button.collapsed,
-    .unit-item-root > .accordion-header .accordion-button:not(.collapsed) {
-        background-color: rgba(var(--unit-accent-rgb), 0.12);
-        box-shadow: none;
-    }
-    .unit-item-root > .accordion-header .accordion-button:hover { background-color: rgba(var(--unit-accent-rgb), 0.18); }
-    .unit-item-root > .accordion-header .accordion-button:focus { background-color: rgba(var(--unit-accent-rgb), 0.16); box-shadow: 0 0 0 0.2rem rgba(var(--unit-accent-rgb), 0.22); }
-
-    .unit-item-child {
-        border-start: 3px solid var(--bs-info) !important;
-        background-color: transparent;
-    }
-    .unit-item-child > .accordion-header .accordion-button,
-    .unit-item-child > .accordion-header .accordion-button.collapsed,
-    .unit-item-child > .accordion-header .accordion-button:not(.collapsed) {
-        background-color: rgba(var(--bs-info-rgb), 0.11);
-        box-shadow: none;
-    }
-    .unit-item-child > .accordion-header .accordion-button:hover { background-color: rgba(var(--bs-info-rgb), 0.17); }
-    .unit-item-child > .accordion-header .accordion-button:focus { background-color: rgba(var(--bs-info-rgb), 0.15); box-shadow: 0 0 0 0.2rem rgba(var(--bs-info-rgb), 0.2); }
-
-    /* جسم الأكورديون بدون لون — فقط زر العنوان */
-    .accordion.accordion-primary .accordion-item[class*="section-level-"] > .accordion-collapse .accordion-body {
-        background-color: var(--custom-white, #fff) !important;
-    }
-    .accordion.accordion-secondary .accordion-item.unit-item > .accordion-collapse .accordion-body {
-        background-color: var(--custom-white, #fff) !important;
-    }
-
-    /*
-     * تجاوز styles.min.css: .accordion.accordion-primary .accordion-button (أعلى خصوصية من .section-level-N فقط)
-     */
-    .accordion.accordion-primary .accordion-item.section-level-0 .accordion-button,
-    .accordion.accordion-primary .accordion-item.section-level-0 .accordion-button.collapsed,
-    .accordion.accordion-primary .accordion-item.section-level-0 .accordion-button:not(.collapsed) {
-        background-color: rgba(var(--section-level-0-rgb), 0.14) !important;
-        color: inherit;
-        box-shadow: none;
-    }
-    .accordion.accordion-primary .accordion-item.section-level-0 .accordion-button:hover { background-color: rgba(var(--section-level-0-rgb), 0.2) !important; }
-    .accordion.accordion-primary .accordion-item.section-level-0 .accordion-button:focus { background-color: rgba(var(--section-level-0-rgb), 0.18) !important; box-shadow: 0 0 0 0.2rem rgba(var(--section-level-0-rgb), 0.22) !important; }
-
-    .accordion.accordion-primary .accordion-item.section-level-1 .accordion-button,
-    .accordion.accordion-primary .accordion-item.section-level-1 .accordion-button.collapsed,
-    .accordion.accordion-primary .accordion-item.section-level-1 .accordion-button:not(.collapsed) {
-        background-color: rgba(var(--section-level-1-rgb), 0.14) !important;
-        color: inherit;
-        box-shadow: none;
-    }
-    .accordion.accordion-primary .accordion-item.section-level-1 .accordion-button:hover { background-color: rgba(var(--section-level-1-rgb), 0.2) !important; }
-    .accordion.accordion-primary .accordion-item.section-level-1 .accordion-button:focus { background-color: rgba(var(--section-level-1-rgb), 0.18) !important; box-shadow: 0 0 0 0.2rem rgba(var(--section-level-1-rgb), 0.22) !important; }
-
-    .accordion.accordion-primary .accordion-item.section-level-2 .accordion-button,
-    .accordion.accordion-primary .accordion-item.section-level-2 .accordion-button.collapsed,
-    .accordion.accordion-primary .accordion-item.section-level-2 .accordion-button:not(.collapsed) {
-        background-color: rgba(var(--section-level-2-rgb), 0.12) !important;
-        color: inherit;
-        box-shadow: none;
-    }
-    .accordion.accordion-primary .accordion-item.section-level-2 .accordion-button:hover { background-color: rgba(var(--section-level-2-rgb), 0.18) !important; }
-    .accordion.accordion-primary .accordion-item.section-level-2 .accordion-button:focus { background-color: rgba(var(--section-level-2-rgb), 0.16) !important; box-shadow: 0 0 0 0.2rem rgba(var(--section-level-2-rgb), 0.2) !important; }
-
-    .accordion.accordion-primary .accordion-item.section-level-3 .accordion-button,
-    .accordion.accordion-primary .accordion-item.section-level-3 .accordion-button.collapsed,
-    .accordion.accordion-primary .accordion-item.section-level-3 .accordion-button:not(.collapsed) {
-        background-color: rgba(var(--section-level-3-rgb), 0.12) !important;
-        color: inherit;
-        box-shadow: none;
-    }
-    .accordion.accordion-primary .accordion-item.section-level-3 .accordion-button:hover { background-color: rgba(var(--section-level-3-rgb), 0.18) !important; }
-    .accordion.accordion-primary .accordion-item.section-level-3 .accordion-button:focus { background-color: rgba(var(--section-level-3-rgb), 0.16) !important; box-shadow: 0 0 0 0.2rem rgba(var(--section-level-3-rgb), 0.2) !important; }
-
-    .accordion.accordion-primary .accordion-item.section-level-4 .accordion-button,
-    .accordion.accordion-primary .accordion-item.section-level-4 .accordion-button.collapsed,
-    .accordion.accordion-primary .accordion-item.section-level-4 .accordion-button:not(.collapsed) {
-        background-color: rgba(var(--section-level-4-rgb), 0.14) !important;
-        color: inherit;
-        box-shadow: none;
-    }
-    .accordion.accordion-primary .accordion-item.section-level-4 .accordion-button:hover { background-color: rgba(var(--section-level-4-rgb), 0.2) !important; }
-    .accordion.accordion-primary .accordion-item.section-level-4 .accordion-button:focus { background-color: rgba(var(--section-level-4-rgb), 0.18) !important; box-shadow: 0 0 0 0.2rem rgba(var(--section-level-4-rgb), 0.22) !important; }
-
-    .accordion.accordion-primary .accordion-item.section-level-5 .accordion-button,
-    .accordion.accordion-primary .accordion-item.section-level-5 .accordion-button.collapsed,
-    .accordion.accordion-primary .accordion-item.section-level-5 .accordion-button:not(.collapsed) {
-        background-color: rgba(var(--section-level-5-rgb), 0.14) !important;
-        color: inherit;
-        box-shadow: none;
-    }
-    .accordion.accordion-primary .accordion-item.section-level-5 .accordion-button:hover { background-color: rgba(var(--section-level-5-rgb), 0.2) !important; }
-    .accordion.accordion-primary .accordion-item.section-level-5 .accordion-button:focus { background-color: rgba(var(--section-level-5-rgb), 0.18) !important; box-shadow: 0 0 0 0.2rem rgba(var(--section-level-5-rgb), 0.22) !important; }
-
-    .accordion.accordion-secondary .accordion-item.unit-item-root > .accordion-header .accordion-button,
-    .accordion.accordion-secondary .accordion-item.unit-item-root > .accordion-header .accordion-button.collapsed,
-    .accordion.accordion-secondary .accordion-item.unit-item-root > .accordion-header .accordion-button:not(.collapsed) {
-        background-color: rgba(var(--unit-accent-rgb), 0.12) !important;
-        color: inherit;
-        box-shadow: none;
-    }
-    .accordion.accordion-secondary .accordion-item.unit-item-root > .accordion-header .accordion-button:hover { background-color: rgba(var(--unit-accent-rgb), 0.18) !important; }
-    .accordion.accordion-secondary .accordion-item.unit-item-root > .accordion-header .accordion-button:focus { background-color: rgba(var(--unit-accent-rgb), 0.16) !important; box-shadow: 0 0 0 0.2rem rgba(var(--unit-accent-rgb), 0.22) !important; }
-
-    .accordion.accordion-secondary .accordion-item.unit-item-child > .accordion-header .accordion-button,
-    .accordion.accordion-secondary .accordion-item.unit-item-child > .accordion-header .accordion-button.collapsed,
-    .accordion.accordion-secondary .accordion-item.unit-item-child > .accordion-header .accordion-button:not(.collapsed) {
-        background-color: rgba(var(--bs-info-rgb), 0.11) !important;
-        color: inherit;
-        box-shadow: none;
-    }
-    .accordion.accordion-secondary .accordion-item.unit-item-child > .accordion-header .accordion-button:hover { background-color: rgba(var(--bs-info-rgb), 0.17) !important; }
-    .accordion.accordion-secondary .accordion-item.unit-item-child > .accordion-header .accordion-button:focus { background-color: rgba(var(--bs-info-rgb), 0.15) !important; box-shadow: 0 0 0 0.2rem rgba(var(--bs-info-rgb), 0.2) !important; }
-</style>
+    @include('admin.pages.subjects.partials.show-styles')
 @endpush
+
 
 @section('content')
     @php
@@ -243,8 +18,15 @@
         $lessonUpdateButtonLabel = (!auth()->user()->canReviewContent() && $lessonMandatoryReview)
             ? 'حفظ وإرسال للمراجعة'
             : 'حفظ التعديلات';
+        $primaryRoots = $subject->sections->whereNull('parent_id')->sortBy('order')->values();
+        $linkedRoots = $subject->linkedSections;
+        $rootSections = $primaryRoots->concat($linkedRoots)->unique('id')->values();
+        $subjectImage = $subject->image ? media_public_url($subject->image) : null;
+        $subjectDurationLabel = auth()->user()?->hasRole('admin')
+            ? \App\Support\LessonDurationFormatter::formatHoursMinutes($subject->totalLessonsDurationSecondsForDisplay())
+            : null;
     @endphp
-    <div class="main-content app-content">
+    <div class="main-content app-content subject-show-page">
         <div class="container-fluid">
 
             {{-- رسائل النجاح --}}
@@ -280,105 +62,152 @@
             @endif
             <div id="ajaxLessonAlerts" class="mt-3"></div>
 
-            {{-- شريط علوي: صورة المادة + الاسم + أزرار --}}
-            <div class="d-flex align-items-center justify-content-between gap-3 py-3 mb-3 border-bottom">
-                <div class="d-flex align-items-center gap-3 flex-wrap">
-                    <img src="{{ $subject->image ? media_public_url($subject->image) : asset('assets/images/media/media-22.jpg') }}"
-                         alt="{{ $subject->name }}"
-                         class="rounded flex-shrink-0"
-                         style="width: 56px; height: 56px; object-fit: cover;">
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <h5 class="page-title mb-0">تفاصيل المادة: {{ $subject->name }}</h5>
-                        @if(auth()->user()?->hasRole('admin'))
-                            @include('admin.pages.subjects.partials.admin-lesson-duration-badge', [
-                                'duration' => \App\Support\LessonDurationFormatter::formatHoursMinutes($subject->totalLessonsDurationSecondsForDisplay()),
-                                'size' => 'subject',
-                                'title' => 'مجموع مدة دروس المادة بالكامل',
-                            ])
+            <div class="subject-show-hero my-4">
+                @if($subjectImage)
+                    <img src="{{ $subjectImage }}" alt="{{ $subject->name }}" class="subject-show-hero__cover">
+                @else
+                    <div class="subject-show-hero__cover subject-show-hero__cover--placeholder">
+                        <i class="bi bi-journal-bookmark-fill"></i>
+                    </div>
+                @endif
+
+                <div class="subject-show-hero__content">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-2 small">
+                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                            <li class="breadcrumb-item"><a href="{{ route('admin.subjects.index') }}">المواد الدراسية</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">{{ $subject->name }}</li>
+                        </ol>
+                    </nav>
+
+                    <h4 class="subject-show-hero__title">{{ $subject->name }}</h4>
+
+                    <div class="subject-show-hero__meta">
+                        @if($subject->schoolClass)
+                            <a href="{{ route('admin.classes.show', $subject->schoolClass->id) }}" class="subject-show-class-chip" title="عرض الصف">
+                                <i class="bi bi-mortarboard-fill"></i>
+                                @if($subject->schoolClass->stage)
+                                    <span class="subject-show-class-chip__stage">{{ $subject->schoolClass->stage->name }}</span>
+                                    <span class="subject-show-class-chip__dot">·</span>
+                                @endif
+                                <span>{{ $subject->schoolClass->name }}</span>
+                            </a>
+                        @endif
+                        @if($subject->is_active)
+                            <span class="subject-show-badge subject-show-badge--active">
+                                <i class="bi bi-check-circle-fill"></i> مادة نشطة
+                            </span>
+                        @else
+                            <span class="subject-show-badge subject-show-badge--inactive">
+                                <i class="bi bi-x-circle-fill"></i> غير نشطة
+                            </span>
+                        @endif
+                    </div>
+
+                    <div class="subject-show-stats">
+                        <div class="subject-show-stat">
+                            <span class="subject-show-stat__value">{{ $rootSections->count() }}</span>
+                            <span class="subject-show-stat__label">قسم</span>
+                        </div>
+                        <div class="subject-show-stat">
+                            <span class="subject-show-stat__value">{{ $subject->total_lessons }}</span>
+                            <span class="subject-show-stat__label">درس</span>
+                        </div>
+                        <div class="subject-show-stat">
+                            <span class="subject-show-stat__value">{{ number_format($subject->total_questions) }}</span>
+                            <span class="subject-show-stat__label">سؤال</span>
+                        </div>
+                        @if($subjectDurationLabel)
+                            <div class="subject-show-stat">
+                                <span class="subject-show-stat__value">{{ $subjectDurationLabel }}</span>
+                                <span class="subject-show-stat__label">مدة الدروس</span>
+                            </div>
                         @endif
                     </div>
                 </div>
-                <div class="d-flex gap-2 flex-shrink-0">
+
+                <div class="subject-show-hero__actions">
                     @can('question-list')
-                    <a href="{{ route('admin.subjects.questions.index', $subject->id) }}" class="btn btn-primary btn-sm">
-                        <i class="bi bi-journal-text me-1"></i> بنك الأسئلة
-                        <span class="badge bg-light text-dark ms-1">{{ $subject->total_questions }}</span>
-                    </a>
+                        <a href="{{ route('admin.subjects.questions.index', $subject->id) }}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-journal-text me-1"></i> بنك الأسئلة
+                            <span class="badge bg-light text-dark ms-1">{{ $subject->total_questions }}</span>
+                        </a>
                     @endcan
                     @can('subject-edit')
-                    <a href="{{ route('admin.subjects.edit', $subject->id) }}{{ request('return_to_class_id') ? '?return_to_class_id=' . request('return_to_class_id') : '' }}" class="btn btn-warning btn-sm text-white">
-                        <i class="fas fa-edit me-1"></i> تعديل
-                    </a>
+                        <a href="{{ route('admin.subjects.edit', $subject->id) }}{{ request('return_to_class_id') ? '?return_to_class_id=' . request('return_to_class_id') : '' }}" class="btn btn-warning btn-sm text-white">
+                            <i class="bi bi-pencil me-1"></i> تعديل
+                        </a>
                     @endcan
                     @if(request('return_to_class_id'))
-                        <a href="{{ route('admin.classes.show', request('return_to_class_id')) }}" class="btn btn-secondary btn-sm">
-                            <i class="fas fa-arrow-right me-1"></i> رجوع للصف
+                        <a href="{{ route('admin.classes.show', request('return_to_class_id')) }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-arrow-right me-1"></i> رجوع للصف
                         </a>
                     @else
-                        <a href="{{ route('admin.subjects.index') }}" class="btn btn-secondary btn-sm">
-                            <i class="fas fa-arrow-right me-1"></i> رجوع للقائمة
+                        <a href="{{ route('admin.subjects.index') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-arrow-right me-1"></i> رجوع للقائمة
                         </a>
                     @endif
                 </div>
             </div>
 
-            @php
-                $primaryRoots = $subject->sections->whereNull('parent_id')->sortBy('order')->values();
-                $linkedRoots = $subject->linkedSections;
-                $rootSections = $primaryRoots->concat($linkedRoots)->unique('id')->values();
-            @endphp
-            <div class="row g-3">
-                <div class="col-12">
-                    {{-- محتويات المادة: أقسام المادة لبناء المحتوى --}}
-                    <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0">
-                                <i class="bi bi-collection me-2"></i>
-                                محتويات المادة
-                            </h6>
-                            <div class="d-flex align-items-center gap-2">
-                                <button type="button"
-                                        id="closeAllAccordionsBtn"
-                                        class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center">
-                                    <i class="bi bi-chevron-up me-1"></i>
-                                    إغلاق الكل
-                                </button>
-                                @can('subject-section-create')
-                                    <button type="button"
-                                            class="btn btn-sm btn-primary d-inline-flex align-items-center"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#createSectionModal">
-                                        <i class="bi bi-plus-lg me-1"></i>
-                                        إضافة قسم رئيسي
-                                    </button>
-                                @endcan
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            @if($rootSections->isEmpty())
-                                <div class="text-center py-5">
-                                    <div class="mb-3">
-                                        <i class="bi bi-folder2-open display-4 text-muted"></i>
-                                    </div>
-                                    <p class="text-muted mb-0">لا توجد أقسام لهذه المادة حالياً</p>
-                                    <p class="text-muted small">يمكنك إنشاء أول قسم من زر "إضافة قسم جديد"</p>
-                                </div>
-                            @else
-                                <div class="accordion accordion-primary accordions-items-seperate" id="subjectSectionsAccordion" data-sortable="sections" data-subject-id="{{ $subject->id }}" data-parent-id="" data-reorder-url="{{ route('admin.subjects.sections.reorder', $subject) }}">
-                                    @foreach($rootSections->values() as $index => $section)
-                                        @include('admin.pages.subjects.partials.section-item', [
-                                            'section' => $section,
-                                            'allSections' => $subject->sections,
-                                            'subject' => $subject,
-                                            'sectionIndex' => $index,
-                                            'parentAccordionId' => 'subjectSectionsAccordion',
-                                            'sectionLevel' => 0,
-                                        ])
-                                    @endforeach
-                                </div>
-                            @endif
+            <div class="subject-show-section">
+                <div class="subject-show-section__header">
+                    <div class="subject-show-section__title-wrap">
+                        <span class="subject-show-section__icon"><i class="bi bi-collection"></i></span>
+                        <div>
+                            <h6 class="subject-show-section__title">محتويات المادة</h6>
+                            <span class="subject-show-section__count">{{ $rootSections->count() }} قسم رئيسي</span>
                         </div>
                     </div>
+                    <div class="subject-show-section__actions">
+                        <button type="button"
+                                id="closeAllAccordionsBtn"
+                                class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center">
+                            <i class="bi bi-chevron-up me-1"></i>
+                            إغلاق الكل
+                        </button>
+                        @can('subject-section-create')
+                            <button type="button"
+                                    class="btn btn-sm btn-primary d-inline-flex align-items-center"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#createSectionModal">
+                                <i class="bi bi-plus-lg me-1"></i>
+                                إضافة قسم رئيسي
+                            </button>
+                        @endcan
+                    </div>
+                </div>
+                <div class="subject-show-section__body">
+                    @if($rootSections->isEmpty())
+                        <div class="subject-show-empty">
+                            <div class="subject-show-empty__icon">
+                                <i class="bi bi-folder2-open"></i>
+                            </div>
+                            <h6 class="subject-show-empty__title">لا توجد أقسام لهذه المادة</h6>
+                            <p class="subject-show-empty__text">ابدأ ببناء المنهج بإضافة أول قسم رئيسي للدروس أو الاختبارات.</p>
+                            @can('subject-section-create')
+                                <button type="button"
+                                        class="btn btn-primary btn-sm mt-3"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#createSectionModal">
+                                    <i class="bi bi-plus-lg me-1"></i> إضافة قسم رئيسي
+                                </button>
+                            @endcan
+                        </div>
+                    @else
+                        <div class="accordion accordion-primary accordions-items-seperate" id="subjectSectionsAccordion" data-sortable="sections" data-subject-id="{{ $subject->id }}" data-parent-id="" data-reorder-url="{{ route('admin.subjects.sections.reorder', $subject) }}">
+                            @foreach($rootSections->values() as $index => $section)
+                                @include('admin.pages.subjects.partials.section-item', [
+                                    'section' => $section,
+                                    'allSections' => $subject->sections,
+                                    'subject' => $subject,
+                                    'sectionIndex' => $index,
+                                    'parentAccordionId' => 'subjectSectionsAccordion',
+                                    'sectionLevel' => 0,
+                                ])
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -1639,74 +1468,10 @@
                 </div>
                 @endcan
 
-                {{-- مودال إضافة مرفقات للدرس --}}
-                @can('lesson-attachment-create')
-                <div class="modal fade" id="addLessonAttachment{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content border-0 rounded-4">
-                            <div class="modal-header border-0 bg-info-transparent">
-                                <h5 class="modal-title fw-bold">
-                                    <i class="bi bi-paperclip text-info me-2"></i>
-                                    إضافة مرفق للدرس
-                                </h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
-                            </div>
-                            <form action="{{ route('admin.lessons.attachments.store', $lesson->id) }}" method="POST" enctype="multipart/form-data">
-                                @csrf
-                                <div class="modal-body">
-                                    <div class="alert alert-light border mb-3">
-                                        <i class="bi bi-info-circle me-1"></i>
-                                        <strong>الدرس:</strong> {{ $lesson->title }}
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label class="form-label">عنوان المرفق (اختياري)</label>
-                                        <input type="text" name="title" class="form-control" placeholder="اختياري: سيُستخدم اسم الملف تلقائيًا">
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label class="form-label">نوع المرفق <span class="text-danger">*</span></label>
-                                        <select name="type" class="form-select attachment-type-select" data-lesson="{{ $lesson->id }}" required>
-                                            <option value="file">ملف (PDF, Word, ZIP...)</option>
-                                            <option value="document">مستند</option>
-                                            <option value="image">صورة</option>
-                                            <option value="audio">ملف صوتي</option>
-                                            <option value="link">رابط خارجي</option>
-                                        </select>
-                                    </div>
-
-                                    <div class="mb-3 file-field-{{ $lesson->id }}">
-                                        <label class="form-label">الملف</label>
-                                        <input type="file" name="file" class="form-control">
-                                        <small class="text-muted">الحد الأقصى: 50 ميجابايت</small>
-                                    </div>
-
-                                    <div class="mb-3 url-field-{{ $lesson->id }}" style="display: none;">
-                                        <label class="form-label">الرابط <span class="text-danger">*</span></label>
-                                        <input type="url" name="url" class="form-control" placeholder="https://example.com/resource">
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label class="form-label">وصف المرفق (اختياري)</label>
-                                        <textarea name="description" class="form-control" rows="2" placeholder="وصف مختصر للمرفق..."></textarea>
-                                    </div>
-
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" name="is_downloadable" checked>
-                                        <label class="form-check-label">السماح بالتحميل</label>
-                                    </div>
-                                </div>
-                                <div class="modal-footer border-0">
-                                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
-                                    <button type="submit" class="btn btn-info">
-                                        <i class="bi bi-check-lg me-1"></i> حفظ المرفق
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                @endcan
+                @include('admin.pages.lessons.partials.attachment-modals', [
+                    'lesson' => $lesson,
+                    'returnTo' => route('admin.subjects.show', $subject),
+                ])
 
                 {{-- مودال تشغيل الفيديو - معاينة سريعة --}}
                 @can('lesson-show')
@@ -1942,59 +1707,10 @@
             </div>
             @endcan
 
-            @can('lesson-attachment-create')
-            <div class="modal fade" id="addLessonAttachment{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content border-0 rounded-4">
-                        <div class="modal-header border-0 bg-info-transparent">
-                            <h5 class="modal-title fw-bold"><i class="bi bi-paperclip text-info me-2"></i> إضافة مرفق للدرس</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
-                        </div>
-                        <form action="{{ route('admin.lessons.attachments.store', $lesson->id) }}" method="POST" enctype="multipart/form-data">
-                            @csrf
-                            <div class="modal-body">
-                                <div class="alert alert-light border mb-3"><i class="bi bi-info-circle me-1"></i> <strong>الدرس:</strong> {{ $lesson->title }}</div>
-                                <div class="mb-3">
-                                    <label class="form-label">عنوان المرفق (اختياري)</label>
-                                    <input type="text" name="title" class="form-control" placeholder="اختياري: سيُستخدم اسم الملف تلقائيًا">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">نوع المرفق <span class="text-danger">*</span></label>
-                                    <select name="type" class="form-select attachment-type-select" data-lesson="{{ $lesson->id }}" required>
-                                        <option value="file">ملف (PDF, Word, ZIP...)</option>
-                                        <option value="document">مستند</option>
-                                        <option value="image">صورة</option>
-                                        <option value="audio">ملف صوتي</option>
-                                        <option value="link">رابط خارجي</option>
-                                    </select>
-                                </div>
-                                <div class="mb-3 file-field-{{ $lesson->id }}">
-                                    <label class="form-label">الملف</label>
-                                    <input type="file" name="file" class="form-control">
-                                    <small class="text-muted">الحد الأقصى: 50 ميجابايت</small>
-                                </div>
-                                <div class="mb-3 url-field-{{ $lesson->id }}" style="display: none;">
-                                    <label class="form-label">الرابط <span class="text-danger">*</span></label>
-                                    <input type="url" name="url" class="form-control" placeholder="https://example.com/resource">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">وصف المرفق (اختياري)</label>
-                                    <textarea name="description" class="form-control" rows="2" placeholder="وصف مختصر للمرفق..."></textarea>
-                                </div>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="is_downloadable" checked>
-                                    <label class="form-check-label">السماح بالتحميل</label>
-                                </div>
-                            </div>
-                            <div class="modal-footer border-0">
-                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
-                                <button type="submit" class="btn btn-info"><i class="bi bi-check-lg me-1"></i> حفظ المرفق</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            @endcan
+            @include('admin.pages.lessons.partials.attachment-modals', [
+                    'lesson' => $lesson,
+                    'returnTo' => route('admin.subjects.show', $subject),
+                ])
 
             @can('lesson-show')
             <div class="modal fade" id="playVideoModal{{ $lesson->id }}" tabindex="-1" aria-hidden="true">
@@ -3437,21 +3153,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     bindLessonAttachmentTypeToggle(document);
 
-    // التبديل بين حقل الملف وحقل الرابط في مودال المرفقات
-    document.querySelectorAll('.attachment-type-select').forEach(function(select) {
-        select.addEventListener('change', function() {
-            const lessonId = this.getAttribute('data-lesson');
-            const fileField = document.querySelector('.file-field-' + lessonId);
-            const urlField = document.querySelector('.url-field-' + lessonId);
-            
-            if (this.value === 'link') {
-                fileField.style.display = 'none';
-                urlField.style.display = 'block';
-            } else {
-                fileField.style.display = 'block';
-                urlField.style.display = 'none';
-            }
-        });
     });
 
     // التحقق من صحة حقول صفحات الكتاب
@@ -3859,5 +3560,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+@include('admin.pages.lessons.partials.attachment-modals-script')
 @stop
 
