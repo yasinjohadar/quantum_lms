@@ -22,6 +22,7 @@ use App\Services\StudentContentNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class QuizController extends Controller
 {
@@ -413,7 +414,7 @@ class QuizController extends Controller
      */
     public function edit(string $id)
     {
-        $quiz = Quiz::with('subject.schoolClass')->findOrFail($id);
+        $quiz = Quiz::with(['subject.schoolClass', 'copiedFromQuiz'])->findOrFail($id);
 
         $this->assertTeacherCanAccessQuiz($quiz);
 
@@ -422,6 +423,10 @@ class QuizController extends Controller
         $selectedClassId = $quiz->subject?->schoolClass?->id;
         $selectedSubjectId = $quiz->subject_id;
         $selectedUnitId = $quiz->unit_id;
+        $selectedSectionId = $quiz->section_id;
+        $selectedLessonId = $quiz->lesson_id;
+        $needsRelink = $quiz->needsRelink() || request()->boolean('relink');
+        $originalWasLessonQuiz = $quiz->copiedFromQuiz?->lesson_id !== null;
 
         $units = $quiz->subject_id
             ? Unit::whereHas('section', function ($q) use ($quiz) {
@@ -436,7 +441,11 @@ class QuizController extends Controller
             'selectedStageId',
             'selectedClassId',
             'selectedSubjectId',
-            'selectedUnitId'
+            'selectedUnitId',
+            'selectedSectionId',
+            'selectedLessonId',
+            'needsRelink',
+            'originalWasLessonQuiz',
         ));
     }
 
@@ -478,24 +487,14 @@ class QuizController extends Controller
                 }
             }
 
-            // الحفاظ على نوع التبعية (scope) وربط الدرس كما هو حالياً
-            // (يمكن توسيع ذلك لاحقاً إذا أردنا تغيير النوع من شاشة التعديل)
-            $data['lesson_id'] = $quiz->lesson_id;
-            $data['scope'] = $quiz->scope ?? ($quiz->lesson_id ? 'lesson' : 'unit');
-
-            if (! empty($data['unit_id']) && empty($data['section_id'])) {
-                $data['section_id'] = Unit::where('id', $data['unit_id'])->value('section_id');
-            }
-
-            if (! empty($data['lesson_id']) && empty($data['section_id'])) {
-                $lessonSectionId = Lesson::where('id', $data['lesson_id'])->value('section_id');
-                if (! $lessonSectionId) {
-                    $lessonSectionId = Lesson::query()
-                        ->where('id', $data['lesson_id'])
-                        ->join('units', 'units.id', '=', 'lessons.unit_id')
-                        ->value('units.section_id');
-                }
-                $data['section_id'] = $lessonSectionId;
+            // ربط المنهج: نسخة جديدة تحتاج ربطاً صريحاً؛ الاختبارات القائمة تحافظ على lesson_id
+            if ($quiz->needsRelink()) {
+                $this->applyQuizPlacementFromRequest($data, $request);
+                $data['copied_from_quiz_id'] = null;
+            } else {
+                $data['lesson_id'] = $quiz->lesson_id;
+                $data['scope'] = $quiz->scope ?? ($quiz->lesson_id ? 'lesson' : 'unit');
+                $this->syncQuizSectionFromPlacement($data);
             }
 
             if (! empty($data['unit_id']) && ! empty($data['section_id'])) {
@@ -1054,12 +1053,19 @@ class QuizController extends Controller
         try {
             DB::beginTransaction();
 
-            $original = Quiz::with('questions')->findOrFail($id);
+            $original = Quiz::with(['questions', 'quizQuestions'])->findOrFail($id);
 
-            // نسخ الاختبار
             $newQuiz = $original->replicate();
             $newQuiz->title = $original->title.' (نسخة)';
+            $newQuiz->subject_id = null;
+            $newQuiz->unit_id = null;
+            $newQuiz->section_id = null;
+            $newQuiz->lesson_id = null;
+            $newQuiz->scope = 'unit';
+            $newQuiz->copied_from_quiz_id = $original->id;
             $newQuiz->is_published = false;
+            $newQuiz->is_active = false;
+            $newQuiz->review_status = Quiz::REVIEW_STATUS_DRAFT;
             $newQuiz->created_by = auth()->id();
             $newQuiz->save();
 
@@ -1080,8 +1086,8 @@ class QuizController extends Controller
             DB::commit();
 
             return redirect()
-                ->route('admin.quizzes.edit', $newQuiz->id)
-                ->with('success', 'تم نسخ الاختبار بنجاح، يمكنك تعديله الآن');
+                ->route('admin.quizzes.edit', ['quiz' => $newQuiz->id, 'relink' => 1])
+                ->with('success', 'تم نسخ الاختبار. اختر مكان الربط ثم احفظ التعديلات.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -1175,13 +1181,69 @@ class QuizController extends Controller
     {
         $request->validate([
             'subject_id' => ['required', 'integer', 'exists:subjects,id'],
+            'section_id' => ['nullable', 'integer', 'exists:subject_sections,id'],
         ]);
 
-        $units = Unit::whereHas('section', function ($q) use ($request) {
-            $q->where('subject_id', $request->subject_id);
-        })->orderBy('title')->get(['id', 'title']);
+        $query = Unit::query()
+            ->with('section:id,title')
+            ->whereHas('section', function ($q) use ($request) {
+                $q->where('subject_id', $request->subject_id);
+            });
 
-        return response()->json($units);
+        if ($request->filled('section_id')) {
+            $query->where('section_id', $request->section_id);
+        }
+
+        $units = $query->orderBy('title')->get(['id', 'title', 'section_id']);
+
+        return response()->json($units->map(function (Unit $unit) {
+            $sectionTitle = $unit->section?->title;
+            $label = $sectionTitle ? $sectionTitle.' — '.$unit->title : $unit->title;
+
+            return [
+                'id' => $unit->id,
+                'title' => $unit->title,
+                'section_id' => $unit->section_id,
+                'section_title' => $sectionTitle,
+                'label' => $label,
+            ];
+        })->values());
+    }
+
+    /**
+     * الحصول على الأقسام حسب المادة (AJAX)
+     */
+    public function getSectionsBySubject(Request $request)
+    {
+        $request->validate([
+            'subject_id' => ['required', 'integer', 'exists:subjects,id'],
+        ]);
+
+        $sections = SubjectSection::query()
+            ->where('subject_id', $request->subject_id)
+            ->orderBy('order')
+            ->orderBy('title')
+            ->get(['id', 'title']);
+
+        return response()->json($sections);
+    }
+
+    /**
+     * الحصول على دروس الوحدة (AJAX)
+     */
+    public function getLessonsByUnit(Request $request)
+    {
+        $request->validate([
+            'unit_id' => ['required', 'integer', 'exists:units,id'],
+        ]);
+
+        $lessons = Lesson::query()
+            ->where('unit_id', $request->unit_id)
+            ->orderBy('order')
+            ->orderBy('title')
+            ->get(['id', 'title']);
+
+        return response()->json($lessons);
     }
 
     /**
@@ -1323,6 +1385,70 @@ class QuizController extends Controller
                 ->whereKey($data['unit_id'])
                 ->join('subject_sections', 'subject_sections.id', '=', 'units.section_id')
                 ->value('subject_sections.subject_id');
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function applyQuizPlacementFromRequest(array &$data, Request $request): void
+    {
+        if (! $request->filled('subject_id') || ! $request->filled('unit_id')) {
+            throw ValidationException::withMessages([
+                'unit_id' => 'اختر المادة والقسم والوحدة لربط الاختبار.',
+            ]);
+        }
+
+        $scope = $request->input('scope', 'unit');
+        if (! in_array($scope, ['unit', 'lesson'], true)) {
+            throw ValidationException::withMessages([
+                'scope' => 'اختر نوع الاختبار: وحدة أو درس.',
+            ]);
+        }
+
+        $data['scope'] = $scope;
+        $data['lesson_id'] = $scope === 'lesson' ? $request->input('lesson_id') : null;
+
+        if ($scope === 'lesson' && empty($data['lesson_id'])) {
+            throw ValidationException::withMessages([
+                'lesson_id' => 'اختر الدرس المرتبط بالاختبار.',
+            ]);
+        }
+
+        if ($scope === 'lesson' && ! empty($data['lesson_id'])) {
+            $lessonBelongs = Lesson::query()
+                ->whereKey($data['lesson_id'])
+                ->where('unit_id', $data['unit_id'])
+                ->exists();
+
+            if (! $lessonBelongs) {
+                throw ValidationException::withMessages([
+                    'lesson_id' => 'الدرس المحدد لا ينتمي للوحدة المختارة.',
+                ]);
+            }
+        }
+
+        $this->syncQuizSectionFromPlacement($data);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function syncQuizSectionFromPlacement(array &$data): void
+    {
+        if (! empty($data['unit_id']) && empty($data['section_id'])) {
+            $data['section_id'] = Unit::where('id', $data['unit_id'])->value('section_id');
+        }
+
+        if (! empty($data['lesson_id']) && empty($data['section_id'])) {
+            $lessonSectionId = Lesson::where('id', $data['lesson_id'])->value('section_id');
+            if (! $lessonSectionId) {
+                $lessonSectionId = Lesson::query()
+                    ->where('id', $data['lesson_id'])
+                    ->join('units', 'units.id', '=', 'lessons.unit_id')
+                    ->value('units.section_id');
+            }
+            $data['section_id'] = $lessonSectionId;
         }
     }
 

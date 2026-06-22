@@ -56,6 +56,7 @@ class Quiz extends Model
         'unit_id',
         'section_id',
         'lesson_id',
+        'copied_from_quiz_id',
         'scope',
         'title',
         'description',
@@ -150,6 +151,16 @@ class Quiz extends Model
     public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);
+    }
+
+    public function copiedFromQuiz(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'copied_from_quiz_id');
+    }
+
+    public function needsRelink(): bool
+    {
+        return $this->copied_from_quiz_id !== null;
     }
 
     /**

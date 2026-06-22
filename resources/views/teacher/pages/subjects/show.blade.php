@@ -1151,56 +1151,7 @@
                                     </div>
                                 </div>
 
-                                <hr class="my-3">
-                                <h6 class="mb-3">
-                                    <i class="bi bi-paperclip text-info me-1"></i>
-                                    مرفق الدرس (اختياري)
-                                </h6>
-
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label class="form-label">عنوان المرفق</label>
-                                            <input type="text" name="attachment_title" class="form-control" placeholder="مثال: ملف شرح الدرس">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label class="form-label">نوع المرفق</label>
-                                            <select name="attachment_type" class="form-select" id="lessonAttachmentType{{ $unit->id }}">
-                                                <option value="">بدون مرفق</option>
-                                                <option value="file">ملف</option>
-                                                <option value="document">مستند</option>
-                                                <option value="image">صورة</option>
-                                                <option value="audio">ملف صوتي</option>
-                                                <option value="link">رابط خارجي</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="mb-3 d-none" id="lessonAttachmentFileField{{ $unit->id }}">
-                                    <label class="form-label">ملف المرفق</label>
-                                    <input type="file" name="attachment_file" class="form-control" id="lessonAttachmentFileInput{{ $unit->id }}">
-                                    <small class="text-muted">الحد الأقصى: 50 ميجابايت</small>
-                                </div>
-
-                                <div class="mb-3 d-none" id="lessonAttachmentUrlField{{ $unit->id }}">
-                                    <label class="form-label">رابط المرفق</label>
-                                    <input type="url" name="attachment_url" class="form-control" id="lessonAttachmentUrlInput{{ $unit->id }}" placeholder="https://example.com/resource">
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">وصف المرفق (اختياري)</label>
-                                    <textarea name="attachment_description" class="form-control" rows="2" placeholder="وصف مختصر للمرفق..."></textarea>
-                                </div>
-
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="attachment_is_downloadable" id="attachmentIsDownloadable{{ $unit->id }}" checked>
-                                    <label class="form-check-label" for="attachmentIsDownloadable{{ $unit->id }}">
-                                        السماح بتحميل المرفق
-                                    </label>
-                                </div>
+                                @include('admin.pages.lessons.partials.lesson-create-attachments-fields', ['fieldId' => 'unit-' . $unit->id])
                             </div>
                             <div class="modal-footer border-0">
                                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
@@ -1763,43 +1714,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // التبديل بين حقل ملف/رابط مرفق الدرس في مودال الإنشاء
-    document.querySelectorAll('[id^="lessonAttachmentType"]').forEach(function(select) {
-        const toggleAttachmentFields = function() {
-            const unitId = select.id.replace('lessonAttachmentType', '');
-            const fileField = document.getElementById('lessonAttachmentFileField' + unitId);
-            const urlField = document.getElementById('lessonAttachmentUrlField' + unitId);
-            const fileInput = document.getElementById('lessonAttachmentFileInput' + unitId);
-            const urlInput = document.getElementById('lessonAttachmentUrlInput' + unitId);
-            const selectedType = select.value;
-
-            if (selectedType === 'link') {
-                fileField.classList.add('d-none');
-                urlField.classList.remove('d-none');
-                if (fileInput) {
-                    fileInput.value = '';
-                }
-            } else if (selectedType) {
-                fileField.classList.remove('d-none');
-                urlField.classList.add('d-none');
-                if (urlInput) {
-                    urlInput.value = '';
-                }
-            } else {
-                fileField.classList.add('d-none');
-                urlField.classList.add('d-none');
-                if (fileInput) {
-                    fileInput.value = '';
-                }
-                if (urlInput) {
-                    urlInput.value = '';
-                }
-            }
-        };
-
-        select.addEventListener('change', toggleAttachmentFields);
-        toggleAttachmentFields();
-    });
+    if (typeof window.initLessonCreateAttachments === 'function') {
+        window.initLessonCreateAttachments(document);
+    }
 
     // التبديل بين حقل الملف وحقل الرابط في مودال المرفقات
     document.querySelectorAll('.attachment-type-select').forEach(function(select) {
@@ -1899,6 +1816,9 @@ document.addEventListener('DOMContentLoaded', function() {
         var nextCreateModal = newDoc.getElementById(createModalId);
         if (currentCreateModal && nextCreateModal) {
             currentCreateModal.replaceWith(nextCreateModal);
+            if (typeof window.initLessonCreateAttachments === 'function') {
+                window.initLessonCreateAttachments(nextCreateModal);
+            }
         }
 
         var lessonRows = document.querySelectorAll('[data-unit-content-id="' + unitId + '"] [data-lesson-id]');
@@ -2163,5 +2083,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+@include('admin.pages.lessons.partials.lesson-create-attachments-script')
 @stop
 

@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreLessonRequest;
 use App\Http\Requests\Admin\UpdateLessonRequest;
 use App\Models\Lesson;
-use App\Models\LessonAttachment;
 use App\Models\LessonCompletion;
 use App\Models\Subject;
 use App\Models\SubjectSection;
@@ -21,13 +20,15 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Helpers\StorageHelper;
 use App\Services\Storage\MediaStorageService;
+use App\Services\LessonAttachmentService;
 use App\Services\StaffNotificationService;
 use App\Services\StudentContentNotificationService;
 
 class LessonController extends Controller
 {
     public function __construct(
-        protected LessonCloneService $cloneService
+        protected LessonCloneService $cloneService,
+        protected LessonAttachmentService $attachmentService
     ) {
         $this->middleware(['permission:lesson-create'])->only('store');
         $this->middleware(['permission:lesson-edit'])->only(['edit', 'update', 'reorder', 'getLinkedUnits', 'linkUnits']);
@@ -35,28 +36,6 @@ class LessonController extends Controller
         $this->middleware(['permission:lesson-show'])->only('show');
         $this->middleware(['permission:lesson-approve-review'])->only('approveReview');
         $this->middleware(['permission:lesson-reject-review'])->only('rejectReview');
-    }
-
-    private function resolveAttachmentTitle(?string $inputTitle, ?\Illuminate\Http\UploadedFile $file, ?string $attachmentType): string
-    {
-        $title = trim((string) $inputTitle);
-        if ($title !== '') {
-            return $title;
-        }
-
-        if ($file) {
-            $base = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-            $base = trim((string) $base);
-            if ($base !== '') {
-                return $base;
-            }
-        }
-
-        if ($attachmentType === 'link') {
-            return 'رابط مرفق';
-        }
-
-        return 'مرفق';
     }
 
     private function applyTeacherLessonReviewOnCreate(array &$data): void
@@ -130,30 +109,25 @@ class LessonController extends Controller
         Log::info('محاولة إنشاء درس جديد (context): ' . $contextId, $request->all());
 
         try {
-            $hasAttachmentInput = $request->filled('attachment_title')
-                || $request->filled('attachment_type')
-                || $request->filled('attachment_url')
-                || $request->filled('attachment_description')
-                || $request->hasFile('attachment_file');
+            $uploadedFiles = array_values(array_filter($request->file('attachment_files') ?? []));
+            $hasLink = $request->filled('attachment_url');
+            $hasLegacyFile = $request->hasFile('attachment_file');
+            $hasAttachmentInput = $uploadedFiles !== [] || $hasLink || $hasLegacyFile;
 
             if ($hasAttachmentInput) {
                 $request->validate([
                     'attachment_title' => ['nullable', 'string', 'max:255'],
-                    'attachment_type' => ['required', 'in:file,link,document,image,audio'],
                     'attachment_description' => ['nullable', 'string'],
-                    'attachment_file' => ['nullable', 'file', 'max:51200'],
+                    'attachment_files' => ['nullable', 'array', 'max:20'],
+                    'attachment_files.*' => ['file', 'max:51200'],
                     'attachment_url' => ['nullable', 'url', 'max:500'],
+                    'attachment_file' => ['nullable', 'file', 'max:51200'],
+                    'attachment_type' => ['nullable', 'in:file,link,document,image,audio'],
                 ]);
 
-                if ($request->input('attachment_type') === 'link' && !$request->filled('attachment_url')) {
+                if ($uploadedFiles === [] && ! $hasLegacyFile && ! $hasLink) {
                     throw ValidationException::withMessages([
-                        'attachment_url' => 'رابط المرفق مطلوب عندما يكون نوع المرفق رابطاً.',
-                    ]);
-                }
-
-                if ($request->input('attachment_type') !== 'link' && !$request->hasFile('attachment_file')) {
-                    throw ValidationException::withMessages([
-                        'attachment_file' => 'ملف المرفق مطلوب عندما يكون نوع المرفق ملفاً.',
+                        'attachment_files' => 'يرجى اختيار ملف واحد على الأقل أو إدخال رابط.',
                     ]);
                 }
             }
@@ -235,37 +209,36 @@ class LessonController extends Controller
 
             $lesson = Lesson::create($data);
 
+            $attachmentCount = 0;
+            $attachmentOptions = [
+                'description' => $request->input('attachment_description'),
+                'is_downloadable' => $request->has('attachment_is_downloadable'),
+            ];
+
             if ($hasAttachmentInput) {
-                $attachmentFile = $request->file('attachment_file');
-                $attachmentType = $request->input('attachment_type');
-                $resolvedTitle = $this->resolveAttachmentTitle(
-                    $request->input('attachment_title'),
-                    $attachmentFile,
-                    $attachmentType
-                );
-
-                $attachmentData = [
-                    'lesson_id' => $lesson->id,
-                    'title' => $resolvedTitle,
-                    'type' => $attachmentType,
-                    'description' => $request->input('attachment_description'),
-                    'is_downloadable' => $request->has('attachment_is_downloadable'),
-                    'is_active' => true,
-                    'order' => 1,
-                ];
-
-                if ($attachmentType === 'link') {
-                    $attachmentData['url'] = $request->input('attachment_url');
-                } elseif ($attachmentFile) {
-                    $attachmentFileName = time() . '_attachment_' . $attachmentFile->getClientOriginalName();
-                    $uploadResult = MediaStorageService::uploadDocument($attachmentFile, 'lessons/attachments', $attachmentFileName);
-                    $attachmentData['file_path'] = $uploadResult['path'];
-                    $attachmentData['file_name'] = $attachmentFile->getClientOriginalName();
-                    $attachmentData['file_type'] = $attachmentFile->getClientOriginalExtension();
-                    $attachmentData['file_size'] = $attachmentFile->getSize();
+                if ($uploadedFiles !== []) {
+                    $singleFileTitle = count($uploadedFiles) === 1 ? $request->input('attachment_title') : null;
+                    foreach ($uploadedFiles as $file) {
+                        $this->attachmentService->createFromUploadedFile($lesson, $file, array_merge($attachmentOptions, [
+                            'title' => $singleFileTitle,
+                        ]));
+                        $attachmentCount++;
+                    }
+                } elseif ($hasLink) {
+                    $this->attachmentService->createFromLink($lesson, array_merge($attachmentOptions, [
+                        'url' => $request->input('attachment_url'),
+                        'title' => $request->input('attachment_title'),
+                    ]));
+                    $attachmentCount = 1;
+                } elseif ($hasLegacyFile) {
+                    $legacyFile = $request->file('attachment_file');
+                    $legacyType = $request->input('attachment_type');
+                    $this->attachmentService->createFromUploadedFile($lesson, $legacyFile, array_merge($attachmentOptions, [
+                        'title' => $request->input('attachment_title'),
+                        'type' => in_array($legacyType, ['file', 'document', 'image', 'audio'], true) ? $legacyType : null,
+                    ]));
+                    $attachmentCount = 1;
                 }
-
-                LessonAttachment::create($attachmentData);
             }
 
             if ($lesson->review_status === Lesson::REVIEW_STATUS_PENDING && $user->shouldSubmitContentForReview()) {
@@ -282,6 +255,10 @@ class LessonController extends Controller
             $successMessage = $submittedForReview
                 ? 'تم حفظ الدرس «' . $lesson->title . '» وإرساله للمراجعة.'
                 : 'تم إنشاء الدرس «' . $lesson->title . '» بنجاح.';
+
+            if ($attachmentCount > 0) {
+                $successMessage .= ' تم إنشاء ' . $attachmentCount . ' مرفق/مرفقات.';
+            }
 
             if ($this->wantsJsonResponse($request)) {
                 return response()->json([

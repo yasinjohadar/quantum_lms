@@ -416,6 +416,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('quizzes.export-results');
         Route::get('quizzes-get-units', [QuizController::class, 'getUnits'])
             ->name('quizzes.get-units');
+        Route::get('quizzes-get-sections', [QuizController::class, 'getSectionsBySubject'])
+            ->name('quizzes.get-sections');
+        Route::get('quizzes-get-lessons-by-unit', [QuizController::class, 'getLessonsByUnit'])
+            ->name('quizzes.get-lessons-by-unit');
         Route::post('quizzes/{quiz}/submit-for-review', [QuizController::class, 'submitForReview'])
             ->name('quizzes.submit-for-review');
         Route::post('quizzes/{quiz}/approve-review', [QuizController::class, 'approveReview'])

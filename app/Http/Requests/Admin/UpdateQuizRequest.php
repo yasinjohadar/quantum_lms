@@ -22,6 +22,8 @@ class UpdateQuizRequest extends FormRequest
             'unit_id' => ['nullable', 'integer', 'exists:units,id'],
             'section_id' => ['nullable', 'integer', 'exists:subject_sections,id'],
             'lesson_id' => ['nullable', 'integer', 'exists:lessons,id'],
+            'scope' => ['nullable', 'string', 'in:unit,lesson,section'],
+            'quiz_relink' => ['nullable', 'boolean'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'instructions' => ['nullable', 'string'],

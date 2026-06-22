@@ -50,6 +50,16 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
+    @if($quiz->needsRelink())
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="bi bi-link-45deg me-2"></i>
+            هذا الاختبار <strong>بانتظار الربط</strong> بمكان في المنهج ولن يظهر للطلاب حتى تكمل الربط من صفحة التعديل.
+            @can('quiz-edit')
+                <a href="{{ route('admin.quizzes.edit', ['quiz' => $quiz->id, 'relink' => 1]) }}" class="alert-link">إكمال الربط الآن</a>
+            @endcan
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
 
     <div class="row">
         <div class="col-lg-8">
@@ -58,6 +68,9 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i> معلومات الاختبار</h6>
                     <div>
+                        @if($quiz->needsRelink())
+                            <span class="badge bg-warning text-dark">بانتظار الربط</span>
+                        @endif
                         @if($quiz->is_published)
                             <span class="badge bg-success">منشور</span>
                         @else

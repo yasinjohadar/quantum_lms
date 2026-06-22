@@ -117,7 +117,15 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(function (units) {
                 resetSelect(unitSelect, 'كل الوحدات');
                 const list = Array.isArray(units) ? units : (units.data || []);
-                populateOptions(unitSelect, list, 'title', selectedUnitId);
+                list.forEach(function (unit) {
+                    const opt = document.createElement('option');
+                    opt.value = unit.id;
+                    opt.textContent = unit.label || unit.title || ('#' + unit.id);
+                    if (selectedUnitId && String(unit.id) === String(selectedUnitId)) {
+                        opt.selected = true;
+                    }
+                    unitSelect.appendChild(opt);
+                });
             })
             .catch(function () {
                 resetSelect(unitSelect, 'كل الوحدات');
