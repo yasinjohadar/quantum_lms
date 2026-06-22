@@ -388,7 +388,10 @@ class QuizController extends Controller
         $quiz = Quiz::with([
             'subject.schoolClass',
             'unit',
+            'lesson',
+            'section',
             'creator',
+            'reviewer',
             'questions.options',
             'attempts' => function ($q) {
                 $q->latest()->limit(10);
