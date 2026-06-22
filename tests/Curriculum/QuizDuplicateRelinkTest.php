@@ -31,7 +31,7 @@ function quizRelinkAdmin(): User
         ['dashboard_type' => 'admin', 'staff_profile' => 'none']
     );
 
-    foreach (['quiz-duplicate', 'quiz-edit', 'quiz-create'] as $permissionName) {
+    foreach (['quiz-duplicate', 'quiz-edit', 'quiz-create', 'quiz-approve-review'] as $permissionName) {
         $permission = Permission::firstOrCreate(['name' => $permissionName, 'guard_name' => 'web']);
         if (! $adminRole->hasPermissionTo($permission)) {
             $adminRole->givePermissionTo($permission);
@@ -259,4 +259,57 @@ test('getUnits returns section label for disambiguation', function () {
         ->and($payload[0]['section_title'])->toBe($sectionA->title)
         ->and($payload[0]['label'])->toContain($sectionA->title)
         ->and($payload[0]['id'])->toBe($unitA->id);
+});
+
+test('approve review activates quiz for student visibility', function () {
+    ['quiz' => $quiz, 'subjectB' => $subjectB, 'sectionB' => $sectionB, 'unitB' => $unitB] = createQuizRelinkFixture();
+    $admin = quizRelinkAdmin();
+
+    $this->actingAs($admin)->post(route('admin.quizzes.duplicate', $quiz));
+    $copy = Quiz::where('copied_from_quiz_id', $quiz->id)->firstOrFail();
+
+    $this->actingAs($admin)->put(route('admin.quizzes.update', $copy), quizUpdatePayload([
+        'scope' => 'unit',
+        'subject_id' => $subjectB->id,
+        'section_id' => $sectionB->id,
+        'unit_id' => $unitB->id,
+        'is_active' => '1',
+    ]));
+
+    $copy->update([
+        'review_status' => Quiz::REVIEW_STATUS_PENDING,
+        'is_published' => false,
+        'is_active' => false,
+    ]);
+
+    $response = $this->actingAs($admin)->post(route('admin.quizzes.approve-review', $copy), []);
+
+    $response->assertRedirect();
+    $copy->refresh();
+
+    expect($copy->review_status)->toBe(Quiz::REVIEW_STATUS_APPROVED)
+        ->and($copy->is_published)->toBeTrue()
+        ->and($copy->is_active)->toBeTrue();
+});
+
+test('updating unit on lesson quiz converts to unit quiz when lesson mismatches', function () {
+    ['quiz' => $quiz, 'subjectB' => $subjectB, 'sectionB' => $sectionB, 'unitB' => $unitB, 'lessonA' => $lessonA] = createQuizRelinkFixture();
+    $admin = quizRelinkAdmin();
+
+    $quiz->update(['copied_from_quiz_id' => null]);
+
+    $response = $this->actingAs($admin)->put(route('admin.quizzes.update', $quiz), quizUpdatePayload([
+        'scope' => 'unit',
+        'subject_id' => $subjectB->id,
+        'unit_id' => $unitB->id,
+        'section_id' => $sectionB->id,
+    ]));
+
+    $response->assertRedirect();
+    $quiz->refresh();
+
+    expect($quiz->lesson_id)->toBeNull()
+        ->and($quiz->scope)->toBe('unit')
+        ->and($quiz->unit_id)->toBe($unitB->id)
+        ->and($quiz->subject_id)->toBe($subjectB->id);
 });

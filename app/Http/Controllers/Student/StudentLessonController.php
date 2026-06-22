@@ -268,10 +268,11 @@ class StudentLessonController extends Controller
             ->values();
 
         $visibleLessons->load([
-            'quizzes' => function ($q) {
+            'quizzes' => function ($q) use ($subject) {
                 $q->where('is_active', true)
                     ->where('is_published', true)
                     ->where('review_status', Quiz::REVIEW_STATUS_APPROVED)
+                    ->where('subject_id', $subject->id)
                     ->orderBy('order');
             },
             'attachments' => function ($q) {
@@ -280,7 +281,10 @@ class StudentLessonController extends Controller
         ]);
 
         $unitQuizzes = $unit->allUnitQuizzes()
-            ->filter(fn ($quiz) => $quiz->is_active && $quiz->is_published && $quiz->review_status === Quiz::REVIEW_STATUS_APPROVED)
+            ->filter(fn ($quiz) => $quiz->is_active
+                && $quiz->is_published
+                && $quiz->review_status === Quiz::REVIEW_STATUS_APPROVED
+                && (int) $quiz->subject_id === (int) $subject->id)
             ->values();
 
         return view('student.pages.lessons.subject-folders-unit', compact('subject', 'section', 'unit', 'visibleLessons', 'unitQuizzes'));

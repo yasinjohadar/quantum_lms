@@ -487,15 +487,13 @@ class QuizController extends Controller
                 }
             }
 
-            // ربط المنهج: نسخة جديدة تحتاج ربطاً صريحاً؛ الاختبارات القائمة تحافظ على lesson_id
+            // ربط المنهج من نموذج التعديل (مادة / قسم / وحدة / درس)
+            $this->applyQuizPlacementFromRequest($data, $request);
             if ($quiz->needsRelink()) {
-                $this->applyQuizPlacementFromRequest($data, $request);
                 $data['copied_from_quiz_id'] = null;
-            } else {
-                $data['lesson_id'] = $quiz->lesson_id;
-                $data['scope'] = $quiz->scope ?? ($quiz->lesson_id ? 'lesson' : 'unit');
-                $this->syncQuizSectionFromPlacement($data);
             }
+
+            $placementAdjusted = $this->reconcileQuizLessonPlacement($data);
 
             if (! empty($data['unit_id']) && ! empty($data['section_id'])) {
                 $unitSectionId = Unit::where('id', $data['unit_id'])->value('section_id');
@@ -536,9 +534,14 @@ class QuizController extends Controller
                 auth()->user()
             );
 
+            $successMessage = 'تم تحديث الاختبار بنجاح';
+            if ($placementAdjusted) {
+                $successMessage .= ' تم تحويل الاختبار إلى «اختبار وحدة» لأن الدرس السابق لا ينتمي للمادة/الوحدة المحددة.';
+            }
+
             return redirect()
                 ->route('admin.quizzes.show', $quiz->id)
-                ->with('success', 'تم تحديث الاختبار بنجاح');
+                ->with('success', $successMessage);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -1312,6 +1315,7 @@ class QuizController extends Controller
             $quiz->update([
                 'review_status' => Quiz::REVIEW_STATUS_APPROVED,
                 'is_published' => true,
+                'is_active' => true,
                 'review_notes' => $request->input('review_notes'),
                 'reviewed_by' => auth()->id(),
                 'reviewed_at' => now(),
@@ -1450,6 +1454,58 @@ class QuizController extends Controller
             }
             $data['section_id'] = $lessonSectionId;
         }
+    }
+
+    /**
+     * يضمن أن ربط الدرس متسق مع المادة/الوحدة المختارة — وإلا يُحوَّل لاختبار وحدة.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    protected function reconcileQuizLessonPlacement(array &$data): bool
+    {
+        $hadLesson = ! empty($data['lesson_id']);
+
+        if (empty($data['lesson_id'])) {
+            if (($data['scope'] ?? null) === 'lesson') {
+                $data['scope'] = 'unit';
+            }
+
+            return false;
+        }
+
+        $lesson = Lesson::query()
+            ->with('unit.section')
+            ->find($data['lesson_id']);
+
+        if (! $lesson) {
+            $data['lesson_id'] = null;
+            $data['scope'] = 'unit';
+
+            return $hadLesson;
+        }
+
+        $unitId = $data['unit_id'] ?? null;
+        if ($unitId && (int) $lesson->unit_id !== (int) $unitId) {
+            $data['lesson_id'] = null;
+            $data['scope'] = 'unit';
+
+            return true;
+        }
+
+        $subjectId = $data['subject_id'] ?? null;
+        if ($subjectId) {
+            $lessonSubjectId = $lesson->unit?->section?->subject_id ?? $lesson->section?->subject_id;
+            if ($lessonSubjectId && (int) $lessonSubjectId !== (int) $subjectId) {
+                $data['lesson_id'] = null;
+                $data['scope'] = 'unit';
+
+                return true;
+            }
+        }
+
+        $data['scope'] = 'lesson';
+
+        return false;
     }
 
     protected function assertTeacherCanAccessQuiz(Quiz $quiz): void

@@ -56,39 +56,19 @@
                         <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i> المعلومات الأساسية</h6>
                     </div>
                     <div class="card-body">
-                        @if(!empty($needsRelink))
-                            @include('admin.pages.quizzes.partials.quiz-relink-fields', [
-                                'stages' => $stages,
-                                'selectedStageId' => $selectedStageId ?? null,
-                                'selectedClassId' => $selectedClassId ?? null,
-                                'selectedSubjectId' => old('subject_id', $selectedSubjectId ?? ''),
-                                'selectedSectionId' => old('section_id', $selectedSectionId ?? ''),
-                                'selectedUnitId' => old('unit_id', $selectedUnitId ?? ''),
-                                'selectedLessonId' => old('lesson_id', $selectedLessonId ?? ''),
-                                'originalWasLessonQuiz' => $originalWasLessonQuiz ?? false,
-                            ])
-                        @else
-                            @include('admin.pages.quizzes.partials.curriculum-cascade-fields', [
-                                'stages' => $stages,
-                                'selectedStageId' => $selectedStageId ?? null,
-                                'selectedClassId' => $selectedClassId ?? null,
-                                'selectedSubjectId' => old('subject_id', $selectedSubjectId ?? ''),
-                                'selectedUnitId' => old('unit_id', $selectedUnitId ?? ''),
-                            ])
-
-                            <div class="mb-3">
-                                <label class="form-label d-block">نوع الاختبار</label>
-                                @if($quiz->lesson_id)
-                                    <div class="alert alert-info py-2 mb-0">
-                                        هذا الاختبار من نوع <strong>اختبار درس</strong> ومربوط بدرس معيّن داخل الوحدة.
-                                    </div>
-                                @else
-                                    <div class="alert alert-info py-2 mb-0">
-                                        هذا الاختبار من نوع <strong>اختبار عام للوحدة</strong> وغير مرتبط بدرس معيّن.
-                                    </div>
-                                @endif
-                            </div>
-                        @endif
+                        @include('admin.pages.quizzes.partials.quiz-placement-fields', [
+                            'stages' => $stages,
+                            'selectedStageId' => $selectedStageId ?? null,
+                            'selectedClassId' => $selectedClassId ?? null,
+                            'selectedSubjectId' => old('subject_id', $selectedSubjectId ?? ''),
+                            'selectedSectionId' => old('section_id', $selectedSectionId ?? ''),
+                            'selectedUnitId' => old('unit_id', $selectedUnitId ?? ''),
+                            'selectedLessonId' => old('lesson_id', $selectedLessonId ?? ''),
+                            'selectedScope' => old('scope', $quiz->lesson_id ? 'lesson' : ($quiz->scope ?? 'unit')),
+                            'showCopyBanner' => !empty($needsRelink),
+                            'includeRelinkFlag' => !empty($needsRelink),
+                            'originalWasLessonQuiz' => $originalWasLessonQuiz ?? false,
+                        ])
                         <div class="mb-3">
                             <label class="form-label">عنوان الاختبار <span class="text-danger">*</span></label>
                             <input type="text" name="title" class="form-control" 
@@ -397,23 +377,15 @@
 @stop
 
 @section('js')
-@if(!empty($needsRelink))
-    @include('admin.pages.quizzes.partials.quiz-relink-script', [
-        'selectedStageId' => $selectedStageId ?? null,
-        'selectedClassId' => $selectedClassId ?? null,
-        'selectedSubjectId' => old('subject_id', $selectedSubjectId ?? ''),
-        'selectedSectionId' => old('section_id', $selectedSectionId ?? ''),
-        'selectedUnitId' => old('unit_id', $selectedUnitId ?? ''),
-        'selectedLessonId' => old('lesson_id', $selectedLessonId ?? ''),
-    ])
-@else
-@include('admin.pages.quizzes.partials.curriculum-cascade-script', [
+@include('admin.pages.quizzes.partials.quiz-placement-script', [
+    'idPrefix' => 'quizPlacement',
     'selectedStageId' => $selectedStageId ?? null,
     'selectedClassId' => $selectedClassId ?? null,
     'selectedSubjectId' => old('subject_id', $selectedSubjectId ?? ''),
+    'selectedSectionId' => old('section_id', $selectedSectionId ?? ''),
     'selectedUnitId' => old('unit_id', $selectedUnitId ?? ''),
+    'selectedLessonId' => old('lesson_id', $selectedLessonId ?? ''),
 ])
-@endif
 <script>
 function togglePasswordField() {
     const checkbox = document.getElementById('requiresPassword');
