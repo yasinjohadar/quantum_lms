@@ -370,6 +370,18 @@
                         </li>
                         @endcan
 
+                        @can('lesson-list')
+                        <li class="slide slide-icon slide-icon--violet {{ request()->routeIs('admin.lessons.index') ? 'active' : '' }}">
+                            <a href="{{ route('admin.lessons.index') }}" class="side-menu__item {{ request()->routeIs('admin.lessons.index') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM10 9l5 3-5 3V9z"/>
+                                </svg>
+                                <span class="side-menu__label">جميع الدروس</span>
+                            </a>
+                        </li>
+                        @endcan
+
                         @canany(['report-view', 'enrollment-list'])
                         <li class="slide slide-icon slide-icon--emerald has-sub {{ request()->is('admin/reports*') || request()->is('admin/report-templates*') || request()->is('admin/analytics-dashboard*') || request()->is('admin/student-progress*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">

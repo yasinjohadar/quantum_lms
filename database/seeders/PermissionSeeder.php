@@ -93,6 +93,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'unit-available-questions', 'description' => 'عرض الأسئلة المتاحة للربط'],
 
             // صلاحيات إدارة الدروس
+            ['name' => 'lesson-list', 'description' => 'عرض قائمة الدروس'],
             ['name' => 'lesson-create', 'description' => 'إنشاء درس جديد'],
             ['name' => 'lesson-edit', 'description' => 'تعديل الدرس'],
             ['name' => 'lesson-delete', 'description' => 'حذف الدرس'],

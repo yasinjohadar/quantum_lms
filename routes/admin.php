@@ -53,6 +53,12 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::resource('social-links', SocialLinkController::class);
 
         // المواد الدراسية
+        Route::get('subjects/linkable/subjects-by-class', [SubjectController::class, 'linkableSubjectsByClass'])
+            ->name('subjects.linkable.subjects-by-class');
+        Route::get('subjects/linkable/sections', [SubjectController::class, 'linkableSectionsBySubject'])
+            ->name('subjects.linkable.sections');
+        Route::get('subjects/linkable/units', [SubjectController::class, 'linkableUnits'])
+            ->name('subjects.linkable.units');
         Route::resource('subjects', SubjectController::class);
         Route::get('subjects/{subject}/enrolled-students', [SubjectController::class, 'enrolledStudents'])
             ->name('subjects.enrolled-students');
@@ -104,7 +110,9 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::delete('units/{unit}', [UnitController::class, 'destroy'])
             ->name('units.destroy');
 
-        // الدروس (داخل كل وحدة)
+        // الدروس
+        Route::get('lessons', [LessonController::class, 'index'])
+            ->name('lessons.index');
         Route::post('units/{unit}/lessons', [LessonController::class, 'store'])
             ->name('units.lessons.store');
         Route::post('sections/{section}/lessons', [LessonController::class, 'storeForSection'])

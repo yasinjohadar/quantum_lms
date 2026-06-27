@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\ProvidesLinkableCurriculum;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreLessonRequest;
 use App\Http\Requests\Admin\UpdateLessonRequest;
 use App\Models\Lesson;
 use App\Models\LessonCompletion;
+use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\SubjectSection;
 use App\Models\SystemSetting;
@@ -26,16 +28,256 @@ use App\Services\StudentContentNotificationService;
 
 class LessonController extends Controller
 {
+    use ProvidesLinkableCurriculum;
+
     public function __construct(
         protected LessonCloneService $cloneService,
         protected LessonAttachmentService $attachmentService
     ) {
+        $this->middleware(['permission:lesson-list'])->only('index');
         $this->middleware(['permission:lesson-create'])->only('store');
         $this->middleware(['permission:lesson-edit'])->only(['edit', 'update', 'reorder', 'getLinkedUnits', 'linkUnits']);
         $this->middleware(['permission:lesson-delete'])->only('destroy');
         $this->middleware(['permission:lesson-show'])->only('show');
         $this->middleware(['permission:lesson-approve-review'])->only('approveReview');
         $this->middleware(['permission:lesson-reject-review'])->only('rejectReview');
+    }
+
+    public function index(Request $request)
+    {
+        $user = auth()->user();
+
+        $query = Lesson::query()
+            ->with([
+                'unit.section.subject.schoolClass.stage',
+                'section.subject.schoolClass.stage',
+                'clonedFromLesson.unit.section.subject.schoolClass',
+                'linkedUnits.section.subject.schoolClass.stage',
+                'syncMirrors.unit.section.subject.schoolClass.stage',
+            ])
+            ->withCount([
+                'syncMirrors as sync_mirrors_count',
+                'linkedUnits as legacy_links_count',
+            ]);
+
+        if ($user->usesTeacherAssignmentScope()) {
+            $classIds = $user->assignedClasses()->pluck('classes.id');
+            $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
+
+            $query->where(function ($q) use ($classIds, $subjectIds) {
+                $applySubjectFilter = function ($subjectQuery) use ($classIds, $subjectIds) {
+                    if ($classIds->isNotEmpty()) {
+                        $subjectQuery->whereIn('class_id', $classIds);
+                    }
+                    if ($subjectIds->isNotEmpty()) {
+                        if ($classIds->isNotEmpty()) {
+                            $subjectQuery->orWhereIn('id', $subjectIds);
+                        } else {
+                            $subjectQuery->whereIn('id', $subjectIds);
+                        }
+                    }
+                    if ($classIds->isEmpty() && $subjectIds->isEmpty()) {
+                        $subjectQuery->whereRaw('1 = 0');
+                    }
+                };
+
+                $q->whereHas('unit.section.subject', $applySubjectFilter)
+                    ->orWhereHas('section.subject', $applySubjectFilter);
+            });
+        }
+
+        if ($user->usesSupervisorAssignmentScope()) {
+            $query->forSupervisor($user->id);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where('title', 'like', "%{$search}%");
+        }
+
+        if ($request->filled('review_status')) {
+            $query->where('review_status', $request->input('review_status'));
+        }
+
+        if ($request->filled('video_type')) {
+            $query->where('video_type', $request->input('video_type'));
+        }
+
+        if ($request->filled('is_active')) {
+            $query->where('is_active', $request->input('is_active') === '1');
+        }
+
+        if ($request->filled('placement')) {
+            if ($request->input('placement') === 'unit') {
+                $query->whereNotNull('unit_id');
+            } elseif ($request->input('placement') === 'section') {
+                $query->whereNull('unit_id')->whereNotNull('section_id');
+            }
+        }
+
+        if ($request->filled('link_role')) {
+            if ($request->input('link_role') === 'original') {
+                $query->whereNull('cloned_from_lesson_id');
+            } elseif ($request->input('link_role') === 'mirror') {
+                $query->whereNotNull('cloned_from_lesson_id');
+            }
+        }
+
+        if ($request->filled('link_presence') && $request->input('link_presence') !== 'any') {
+            $this->applyLessonLinkPresenceFilter($query, $request->input('link_presence'));
+        }
+
+        if ($request->filled('class_id')) {
+            $classId = (int) $request->input('class_id');
+            $this->applyLessonSubjectScope($query, function ($q) use ($classId) {
+                $q->where('class_id', $classId);
+            });
+        }
+
+        if ($request->filled('subject_id')) {
+            $subjectId = (int) $request->input('subject_id');
+            $this->applyLessonSubjectScope($query, function ($q) use ($subjectId) {
+                $q->where('id', $subjectId);
+            });
+        }
+
+        if ($request->filled('section_id')) {
+            $sectionId = (int) $request->input('section_id');
+            $query->where(function ($q) use ($sectionId) {
+                $q->where('section_id', $sectionId)
+                    ->orWhereHas('unit', fn ($uq) => $uq->where('section_id', $sectionId));
+            });
+        }
+
+        if ($request->filled('unit_id')) {
+            $query->where('unit_id', (int) $request->input('unit_id'));
+        }
+
+        $lessons = $query->orderByDesc('updated_at')->paginate(20)->withQueryString();
+
+        $filterData = $this->lessonIndexFilterOptions($user, $request);
+        $linkablePayload = auth()->user()->can('lesson-edit')
+            ? $this->buildLinkableCurriculumPayload($user)
+            : ['linkableStructure' => collect(), 'linkableClasses' => collect()];
+
+        if ($request->expectsJson() || $request->ajax()) {
+            $html = view('admin.pages.lessons.partials.table', compact('lessons'))->render();
+            $pagination = view('admin.pages.lessons.partials.pagination', compact('lessons'))->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'pagination' => $pagination,
+                'count' => $lessons->total(),
+            ]);
+        }
+
+        return view('admin.pages.lessons.index', array_merge(compact('lessons'), $filterData, $linkablePayload));
+    }
+
+    private function applyLessonSubjectScope($query, callable $subjectConstraint): void
+    {
+        $query->where(function ($q) use ($subjectConstraint) {
+            $q->whereHas('unit.section.subject', $subjectConstraint)
+                ->orWhereHas('section.subject', $subjectConstraint);
+        });
+    }
+
+    private function applyLessonLinkPresenceFilter($query, string $presence): void
+    {
+        $legacyExists = function ($sub) {
+            $sub->selectRaw('1')
+                ->from('lesson_units')
+                ->whereColumn('lesson_units.lesson_id', 'lessons.id')
+                ->where(function ($w) {
+                    $w->whereNull('lessons.unit_id')
+                        ->orWhereColumn('lesson_units.unit_id', '!=', 'lessons.unit_id');
+                });
+        };
+
+        match ($presence) {
+            'has_sync' => $query->whereHas('syncMirrors'),
+            'has_legacy' => $query->whereExists($legacyExists),
+            'has_any_link' => $query->where(function ($q) use ($legacyExists) {
+                $q->whereNotNull('cloned_from_lesson_id')
+                    ->orWhereHas('syncMirrors')
+                    ->orWhereExists($legacyExists);
+            }),
+            'none' => $query->whereNull('cloned_from_lesson_id')
+                ->whereDoesntHave('syncMirrors')
+                ->whereNotExists($legacyExists),
+            default => null,
+        };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function lessonIndexFilterOptions($user, Request $request): array
+    {
+        if ($user->usesSupervisorAssignmentScope()) {
+            $classIds = $user->assignedClassesAsSupervisor()->pluck('classes.id');
+            $subjectIds = $user->assignedSubjectsAsSupervisor()->pluck('subjects.id');
+
+            $classes = SchoolClass::with('stage')
+                ->active()
+                ->ordered()
+                ->when($classIds->isNotEmpty(), fn ($q) => $q->whereIn('id', $classIds), fn ($q) => $q->whereRaw('1 = 0'))
+                ->get();
+
+            $subjects = Subject::with('schoolClass.stage')
+                ->active()
+                ->ordered()
+                ->when($subjectIds->isNotEmpty(), fn ($q) => $q->whereIn('id', $subjectIds), fn ($q) => $q->whereRaw('1 = 0'))
+                ->get();
+        } elseif ($user->usesTeacherAssignmentScope()) {
+            $classIds = $user->assignedClasses()->pluck('classes.id');
+            $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
+
+            $classes = SchoolClass::with('stage')
+                ->active()
+                ->ordered()
+                ->when($classIds->isNotEmpty(), fn ($q) => $q->whereIn('id', $classIds), fn ($q) => $q->whereRaw('1 = 0'))
+                ->get();
+
+            $subjects = Subject::with('schoolClass.stage')
+                ->active()
+                ->ordered()
+                ->where(function ($q) use ($classIds, $subjectIds) {
+                    if ($classIds->isNotEmpty()) {
+                        $q->whereIn('class_id', $classIds);
+                    }
+                    if ($subjectIds->isNotEmpty()) {
+                        $classIds->isNotEmpty()
+                            ? $q->orWhereIn('id', $subjectIds)
+                            : $q->whereIn('id', $subjectIds);
+                    }
+                    if ($classIds->isEmpty() && $subjectIds->isEmpty()) {
+                        $q->whereRaw('1 = 0');
+                    }
+                })
+                ->get();
+        } else {
+            $classes = SchoolClass::with('stage')->active()->ordered()->get();
+            $subjects = Subject::with('schoolClass.stage')->active()->ordered()->get();
+        }
+
+        $sections = collect();
+        if ($request->filled('subject_id')) {
+            $sections = SubjectSection::with('subject')
+                ->where('subject_id', (int) $request->input('subject_id'))
+                ->orderBy('order')
+                ->get();
+        }
+
+        $units = collect();
+        if ($request->filled('section_id')) {
+            $units = Unit::where('section_id', (int) $request->input('section_id'))
+                ->orderBy('title')
+                ->get();
+        }
+
+        return compact('classes', 'subjects', 'sections', 'units');
     }
 
     private function applyTeacherLessonReviewOnCreate(array &$data): void

@@ -105,6 +105,11 @@ class Lesson extends Model
         return $this->belongsTo(Lesson::class, 'cloned_from_lesson_id');
     }
 
+    public function syncMirrors(): HasMany
+    {
+        return $this->hasMany(Lesson::class, 'cloned_from_lesson_id');
+    }
+
     public function isSyncMirror(): bool
     {
         return $this->cloned_from_lesson_id !== null;

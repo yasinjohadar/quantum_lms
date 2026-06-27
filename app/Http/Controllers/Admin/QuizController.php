@@ -1229,9 +1229,13 @@ class QuizController extends Controller
             ->where('subject_id', $request->subject_id)
             ->orderBy('order')
             ->orderBy('title')
-            ->get(['id', 'title']);
+            ->get(['id', 'title', 'parent_id']);
 
-        return response()->json($sections);
+        return response()->json($sections->map(fn (SubjectSection $section) => [
+            'id' => $section->id,
+            'title' => $section->title,
+            'path_title' => $section->path_title,
+        ])->values());
     }
 
     /**

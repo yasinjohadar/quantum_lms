@@ -38,7 +38,7 @@ class RoleSeeder extends Seeder
             'unit-attach-questions', 'unit-detach-question', 'unit-available-questions',
             
             // صلاحيات إدارة الدروس
-            'lesson-create', 'lesson-edit', 'lesson-delete', 'lesson-show',
+            'lesson-list', 'lesson-create', 'lesson-edit', 'lesson-delete', 'lesson-show',
             'lesson-approve-review', 'lesson-reject-review',
             
             // صلاحيات إدارة مرفقات الدروس
@@ -170,6 +170,7 @@ class RoleSeeder extends Seeder
             'subject-section-create',
             'subject-section-edit',
             'subject-section-delete',
+            'lesson-list',
             'lesson-create',
             'lesson-edit',
             'lesson-delete',

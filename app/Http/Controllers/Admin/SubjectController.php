@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\ProvidesLinkableCurriculum;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreSubjectRequest;
 use App\Http\Requests\Admin\UpdateSubjectRequest;
 use App\Models\Enrollment;
 use App\Models\SchoolClass;
 use App\Models\Subject;
+use App\Models\SubjectSection;
+use App\Models\Unit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -16,6 +19,8 @@ use App\Services\Storage\MediaStorageService;
 
 class SubjectController extends Controller
 {
+    use ProvidesLinkableCurriculum;
+
     public function __construct()
     {
         $this->middleware(['permission:subject-create'])->only(['create', 'store']);
@@ -24,6 +29,11 @@ class SubjectController extends Controller
         $this->middleware(['permission:subject-enrolled-students'])->only('enrolledStudents');
         $this->middleware(['permission:subject-toggle-status'])->only('toggleStatus');
         $this->middleware(['permission:subject-edit'])->only('reorder');
+        $this->middleware(['permission:subject-show|lesson-edit|quiz-edit|lesson-list'])->only([
+            'linkableSubjectsByClass',
+            'linkableSectionsBySubject',
+            'linkableUnits',
+        ]);
     }
 
     /**
@@ -428,59 +438,10 @@ class SubjectController extends Controller
             $this->authorizeManagedSubjectAccess($user, $subject);
 
             // هيكل المواد/أقسام/وحدات لربط الدرس بوحدات إضافية في مودال التعديل
-            $linkableSubjectsQuery = Subject::with([
-                'schoolClass.stage',
-                'sections' => fn ($q) => $q->orderBy('order')->orderBy('title'),
-                'sections.units' => fn ($q) => $q->orderBy('order')->orderBy('title'),
-            ]);
-            if ($user->usesTeacherAssignmentScope()) {
-                $classIds = $user->assignedClasses()->pluck('classes.id');
-                $subjectIds = $user->assignedSubjects()->pluck('subjects.id');
-                $linkableSubjectsQuery->where(function ($q) use ($classIds, $subjectIds) {
-                    if ($classIds->isNotEmpty()) {
-                        $q->whereIn('class_id', $classIds);
-                    }
-                    if ($subjectIds->isNotEmpty()) {
-                        $q->orWhereIn('id', $subjectIds);
-                    }
-                });
-            } elseif ($user->usesSupervisorAssignmentScope()) {
-                $classIds = $user->assignedClassesAsSupervisor()->pluck('classes.id');
-                $subjectIds = $user->assignedSubjectsAsSupervisor()->pluck('subjects.id');
-                $linkableSubjectsQuery->where(function ($q) use ($classIds, $subjectIds) {
-                    if ($classIds->isNotEmpty()) {
-                        $q->whereIn('class_id', $classIds);
-                    }
-                    if ($subjectIds->isNotEmpty()) {
-                        $q->orWhereIn('id', $subjectIds);
-                    }
-                    if ($classIds->isEmpty() && $subjectIds->isEmpty()) {
-                        $q->whereRaw('1 = 0');
-                    }
-                });
-            }
-            $linkableSubjects = $linkableSubjectsQuery->ordered()->get();
-            $linkableStructure = $linkableSubjects->map(function ($s) {
-                return [
-                    'id' => $s->id,
-                    'class_id' => $s->class_id ?? null,
-                    'name' => $s->name,
-                    'class_name' => $s->schoolClass->name ?? '',
-                    'stage_name' => $s->schoolClass->stage->name ?? '',
-                    'sections' => $s->sections->map(fn ($sec) => [
-                        'id' => $sec->id,
-                        'title' => $sec->title,
-                        'path_title' => $sec->path_title,
-                        'units' => $sec->units->map(fn ($u) => ['id' => $u->id, 'title' => $u->title])->values(),
-                    ])->values(),
-                ];
-            })->values();
-
-            $linkableClasses = $linkableSubjects->pluck('schoolClass')->filter()->unique('id')->values()->map(fn ($c) => [
-                'id' => $c->id,
-                'name' => $c->name,
-                'stage_name' => $c->stage->name ?? '',
-            ])->values();
+            $linkablePayload = $this->buildLinkableCurriculumPayload($user);
+            $linkableStructure = $linkablePayload['linkableStructure'];
+            $linkableClasses = $linkablePayload['linkableClasses'];
+            $linkableSubjects = $this->linkableSubjectsQuery($user)->get();
 
             return view('admin.pages.subjects.show', compact('subject', 'linkableSubjects', 'linkableStructure', 'linkableClasses'));
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -791,6 +752,104 @@ class SubjectController extends Controller
 
         if ($hasPositiveActivePrice) {
             $subject->update(['pricing_mode' => 'paid']);
+        }
+    }
+
+    /**
+     * مواد قابلة للربط حسب الصف (AJAX) — نفس نطاق صفحة المادة بدون فلتر is_active.
+     */
+    public function linkableSubjectsByClass(Request $request)
+    {
+        $request->validate([
+            'class_id' => ['required', 'integer', 'exists:classes,id'],
+        ]);
+
+        $subjects = $this->linkableSubjectsQuery(auth()->user())
+            ->where('class_id', $request->integer('class_id'))
+            ->get(['id', 'name', 'class_id']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $subjects->load('schoolClass:id,name')->map(fn (Subject $subject) => [
+                'id' => $subject->id,
+                'name' => $subject->name,
+                'class_id' => $subject->class_id,
+                'school_class' => $subject->schoolClass ? [
+                    'id' => $subject->schoolClass->id,
+                    'name' => $subject->schoolClass->name,
+                ] : null,
+            ])->values(),
+        ]);
+    }
+
+    /**
+     * أقسام مادة للربط (AJAX).
+     */
+    public function linkableSectionsBySubject(Request $request)
+    {
+        $request->validate([
+            'subject_id' => ['required', 'integer', 'exists:subjects,id'],
+        ]);
+
+        $this->authorizeLinkableSubjectAccess((int) $request->input('subject_id'));
+
+        $sections = SubjectSection::query()
+            ->where('subject_id', $request->subject_id)
+            ->orderBy('order')
+            ->orderBy('title')
+            ->get(['id', 'title', 'parent_id']);
+
+        return response()->json($sections->map(fn (SubjectSection $section) => [
+            'id' => $section->id,
+            'title' => $section->title,
+            'path_title' => $section->path_title,
+        ])->values());
+    }
+
+    /**
+     * وحدات مادة/قسم للربط (AJAX).
+     */
+    public function linkableUnits(Request $request)
+    {
+        $request->validate([
+            'subject_id' => ['required', 'integer', 'exists:subjects,id'],
+            'section_id' => ['nullable', 'integer', 'exists:subject_sections,id'],
+        ]);
+
+        $this->authorizeLinkableSubjectAccess((int) $request->input('subject_id'));
+
+        $query = Unit::query()
+            ->with('section:id,title')
+            ->whereHas('section', function ($q) use ($request) {
+                $q->where('subject_id', $request->subject_id);
+            });
+
+        if ($request->filled('section_id')) {
+            $query->where('section_id', $request->section_id);
+        }
+
+        $units = $query->orderBy('title')->get(['id', 'title', 'section_id']);
+
+        return response()->json($units->map(function (Unit $unit) {
+            $sectionTitle = $unit->section?->title;
+            $label = $sectionTitle ? $sectionTitle.' — '.$unit->title : $unit->title;
+
+            return [
+                'id' => $unit->id,
+                'title' => $unit->title,
+                'section_id' => $unit->section_id,
+                'section_title' => $sectionTitle,
+                'label' => $label,
+            ];
+        })->values());
+    }
+
+    private function authorizeLinkableSubjectAccess(int $subjectId): void
+    {
+        $allowedIds = $this->linkableSubjectsQuery(auth()->user())->pluck('id');
+
+        if (! $allowedIds->contains($subjectId)) {
+            abort(403, 'غير مصرح بالوصول لهذه المادة.');
         }
     }
 }
