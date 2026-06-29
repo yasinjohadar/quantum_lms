@@ -100,11 +100,16 @@
                                     <small class="text-muted">(اتركه فارغاً للحفاظ على القيمة الحالية)</small>
                                 </label>
                                 <div class="input-group">
-                                    <input type="password" class="form-control" id="api_key" name="api_key" placeholder="@if($model->provider == 'google') AlzaSyBo-... (من Google AI Studio) @elseif($model->provider == 'openrouter') sk-or-... (من OpenRouter) @elseif($model->provider == 'openai') sk-... (من OpenAI Platform) @elseif($model->provider == 'zai') zai-... (من Z.ai Platform) @else أدخل مفتاح API @endif">
+                                    <input type="password" class="form-control" id="api_key" name="api_key" autocomplete="new-password" placeholder="@if($model->provider == 'google') AlzaSyBo-... (من Google AI Studio) @elseif($model->provider == 'openrouter') sk-or-... (من OpenRouter) @elseif($model->provider == 'openai') sk-... (من OpenAI Platform) @elseif($model->provider == 'zai') zai-... (من Z.ai Platform) @else أدخل مفتاح API @endif">
                                     <button type="button" class="btn btn-outline-primary" id="testApiKeyBtn" onclick="testApiKey()">
                                         <i class="fas fa-vial me-1"></i> اختبار الاتصال
                                     </button>
                                 </div>
+                                @if($model->api_key)
+                                    <small class="text-success d-block mt-1">
+                                        <i class="fas fa-check-circle me-1"></i> يوجد مفتاح API محفوظ. اترك الحقل فارغاً لاستخدامه، أو أدخل مفتاحاً جديداً لاستبداله.
+                                    </small>
+                                @endif
                                 <small class="text-muted d-block mt-1">
                                     @if($model->provider == 'google')
                                         <strong>📍 للحصول على API Key:</strong> اذهب إلى <a href="https://aistudio.google.com/app/api-keys" target="_blank">Google AI Studio</a> → API Keys → Copy Key
@@ -274,20 +279,56 @@ function testApiKey() {
     const btn = document.getElementById('testApiKeyBtn');
     const resultDiv = document.getElementById('testResult');
     const originalText = btn.innerHTML;
-    
-    // تعطيل الزر وإظهار حالة التحميل
+    const apiKey = document.getElementById('api_key').value;
+    const provider = document.getElementById('provider').value;
+    const modelKey = document.getElementById('model_key_hidden')?.value
+        || document.getElementById('model_key')?.value
+        || '';
+    const hasSavedKey = {{ $model->api_key ? 'true' : 'false' }};
+
+    if ((!apiKey || apiKey.trim() === '') && !hasSavedKey) {
+        resultDiv.innerHTML = `
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <strong>⚠️ تحذير:</strong> يرجى إدخال API Key أولاً ثم الاختبار أو الحفظ
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+            </div>
+        `;
+        return;
+    }
+
+    if (!modelKey || modelKey.trim() === '') {
+        resultDiv.innerHTML = `
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <strong>⚠️ تحذير:</strong> يرجى إدخال معرف الموديل أولاً
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+            </div>
+        `;
+        return;
+    }
+
+    const payload = {
+        provider: provider,
+        model_key: modelKey,
+        base_url: document.getElementById('base_url')?.value || '',
+        api_endpoint: document.getElementById('api_endpoint')?.value || '',
+    };
+
+    if (apiKey && apiKey.trim() !== '') {
+        payload.api_key = apiKey.trim();
+    }
+
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الاختبار...';
     resultDiv.innerHTML = '';
-    
-    // إرسال طلب AJAX
+
     fetch('{{ route("admin.ai.models.test", $model->id) }}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': '{{ csrf_token() }}',
             'Accept': 'application/json'
-        }
+        },
+        body: JSON.stringify(payload)
     })
     .then(response => response.json())
     .then(data => {

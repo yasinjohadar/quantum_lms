@@ -161,12 +161,28 @@ class AIModelController extends Controller
     }
 
     /**
-     * اختبار الموديل
+     * اختبار الموديل (يستخدم المفتاح المحفوظ أو القيم المُرسلة من النموذج)
      */
-    public function test(AIModel $model)
+    public function test(Request $request, AIModel $model)
     {
         try {
-            $result = $this->modelService->testModel($model);
+            $apiKey = trim($request->input('api_key', ''));
+
+            if ($apiKey !== '') {
+                $testModel = new AIModel([
+                    'provider' => $request->input('provider', $model->provider),
+                    'model_key' => $request->input('model_key', $model->model_key),
+                    'api_key' => $apiKey,
+                    'base_url' => $request->input('base_url') ?: $model->base_url,
+                    'api_endpoint' => $request->input('api_endpoint') ?: $model->api_endpoint,
+                    'max_tokens' => $model->max_tokens,
+                    'temperature' => $model->temperature,
+                    'is_active' => true,
+                ]);
+                $result = $this->modelService->testModel($testModel);
+            } else {
+                $result = $this->modelService->testModel($model);
+            }
 
             return response()->json($result);
         } catch (\Exception $e) {

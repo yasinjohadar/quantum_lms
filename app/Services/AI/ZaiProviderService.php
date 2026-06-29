@@ -33,15 +33,10 @@ class ZaiProviderService extends AIProviderService
             ];
         }
 
-        $payload = [
-            'model' => $this->model->model_key,
-            'messages' => $messages,
-            'max_tokens' => (int) ($options['max_tokens'] ?? $this->model->max_tokens),
-            'temperature' => (float) ($options['temperature'] ?? $this->model->temperature),
-        ];
+        $payload = $this->buildPayload($messages, $options);
 
         try {
-            $fullUrl = $url . $endpoint;
+            $fullUrl = $this->buildRequestUrl($url, $endpoint);
             
             Log::info('Z.ai API Request', [
                 'url' => $fullUrl,
@@ -99,20 +94,14 @@ class ZaiProviderService extends AIProviderService
                     ];
                 }
                 
-                // Extract content (OpenAI-style path)
-                $message = $data['choices'][0]['message'] ?? [];
-                $content = $message['content'] ?? '';
-
-                // مسارات بديلة قد يستخدمها Z.ai (بعض الـ APIs تضع النص في مفاتيح أخرى)
-                if (empty($content) && !empty($message)) {
-                    $content = $message['text'] ?? $message['response'] ?? $message['output'] ?? '';
-                }
-                if (empty($content) && isset($data['choices'][0]['text'])) {
-                    $content = $data['choices'][0]['text'];
-                }
+                // Extract content (OpenAI-style + Z.ai reasoning_content)
+                $content = $this->extractMessageContent(
+                    $data['choices'][0]['message'] ?? [],
+                    $data['choices'][0] ?? []
+                );
 
                 // Check if content is empty
-                if (empty(trim((string) $content))) {
+                if ($content === '') {
                     $error = 'الرد من Z.ai API يحتوي على content فارغ. قد يكون النموذج رفض الإجابة أو أن صيغة الرد تغيرت. تحقق من سجلات Laravel (storage/logs) لرؤية الرد الخام.';
                     Log::warning('Z.ai API Response Empty Content', [
                         'message' => $data['choices'][0]['message'] ?? null,
@@ -250,8 +239,11 @@ class ZaiProviderService extends AIProviderService
     {
         try {
             $result = $this->chat([
-                ['role' => 'user', 'content' => 'Say "OK" only.']
-            ], ['max_tokens' => 10]);
+                ['role' => 'user', 'content' => 'Reply with exactly: OK'],
+            ], [
+                'max_tokens' => 64,
+                'thinking_disabled' => true,
+            ]);
 
             return $result['success'] ?? false;
         } catch (\Exception $e) {
@@ -259,6 +251,80 @@ class ZaiProviderService extends AIProviderService
             $this->setLastError('فشل اختبار الاتصال: ' . $e->getMessage());
             return false;
         }
+    }
+
+    private function buildPayload(array $messages, array $options): array
+    {
+        $payload = [
+            'model' => $this->model->model_key,
+            'messages' => $messages,
+            'max_tokens' => (int) ($options['max_tokens'] ?? $this->model->max_tokens),
+            'temperature' => (float) ($options['temperature'] ?? $this->model->temperature),
+        ];
+
+        if (isset($options['thinking'])) {
+            $payload['thinking'] = ['type' => $options['thinking']];
+        } elseif (!empty($options['thinking_disabled'])) {
+            $payload['thinking'] = ['type' => 'disabled'];
+        } elseif (($this->model->settings['thinking'] ?? 'disabled') === 'enabled') {
+            $payload['thinking'] = ['type' => 'enabled'];
+        } else {
+            // GLM على endpoint البرمجة يفعّل التفكير افتراضياً؛ تعطيله يضمن ملء content
+            $payload['thinking'] = ['type' => 'disabled'];
+        }
+
+        return $payload;
+    }
+
+    private function buildRequestUrl(string $baseUrl, string $endpoint): string
+    {
+        return rtrim($baseUrl, '/') . '/' . ltrim($endpoint, '/');
+    }
+
+    private function extractMessageContent(array $message, array $choice = []): string
+    {
+        $content = $this->normalizeContent($message['content'] ?? '');
+
+        if ($content === '') {
+            $content = $this->normalizeContent(
+                $message['text'] ?? $message['response'] ?? $message['output'] ?? ''
+            );
+        }
+
+        if ($content === '') {
+            $content = $this->normalizeContent($message['reasoning_content'] ?? '');
+        }
+
+        if ($content === '' && isset($choice['text'])) {
+            $content = $this->normalizeContent($choice['text']);
+        }
+
+        return trim($content);
+    }
+
+    private function normalizeContent(mixed $content): string
+    {
+        if (is_string($content)) {
+            return $content;
+        }
+
+        if (!is_array($content)) {
+            return '';
+        }
+
+        $parts = [];
+        foreach ($content as $part) {
+            if (is_string($part)) {
+                $parts[] = $part;
+                continue;
+            }
+
+            if (is_array($part)) {
+                $parts[] = $part['text'] ?? $part['content'] ?? '';
+            }
+        }
+
+        return implode('', $parts);
     }
 }
 

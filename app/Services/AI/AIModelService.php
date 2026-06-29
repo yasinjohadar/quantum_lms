@@ -117,7 +117,7 @@ class AIModelService
             if (!$apiKey) {
                 return [
                     'success' => false,
-                    'message' => 'API Key غير موجود. يرجى إدخال API Key أولاً ثم حفظ النموذج.',
+                    'message' => 'API Key غير موجود. أدخل المفتاح في الحقل أعلاه واضغط «اختبار الاتصال»، أو احفظ النموذج بعد إدخال المفتاح.',
                 ];
             }
 

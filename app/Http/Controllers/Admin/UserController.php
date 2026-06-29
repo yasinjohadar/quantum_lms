@@ -1274,25 +1274,34 @@ class UserController extends Controller
      */
     public function impersonate(User $user)
     {
-        // إذا كان الطلب من signed URL (GET بدون auth)
-        if (request()->isMethod('get') && !auth()->check()) {
-            // التحقق من أن الرابط موقّع بشكل صحيح (يتم تلقائياً بواسطة signed middleware)
-            // لا حاجة لتحقق إضافي لأن الأدمن فقط يمكنه إنشاء الرابط الموقّع
-            // لا يوجد مستخدم أصلي في هذه الحالة، لذلك سنستخدم null
-            $impersonatorId = null;
-            $impersonatorName = 'System (Signed URL)';
+        $isSignedUrl = request()->isMethod('get');
+
+        if ($isSignedUrl) {
+            // الرابط الموقّع يُتحقق منه عبر signed middleware
+            if (auth()->check()) {
+                if (! auth()->user()->can('user-impersonate')) {
+                    abort(403, 'غير مصرح لك بتسجيل الدخول كالمستخدم');
+                }
+
+                if ($user->id === auth()->id()) {
+                    return redirect()->back()->with('error', 'لا يمكنك تسجيل الدخول كحسابك الخاص');
+                }
+
+                $impersonatorId = auth()->id();
+                $impersonatorName = auth()->user()->name;
+            } else {
+                $impersonatorId = null;
+                $impersonatorName = 'System (Signed URL)';
+            }
         } else {
-            // إذا كان الطلب من form (POST مع auth)
-            if (!auth()->check() || !auth()->user()->hasRole('admin')) {
+            if (! auth()->check() || ! auth()->user()->can('user-impersonate')) {
                 abort(403, 'غير مصرح لك بتسجيل الدخول كالمستخدم');
             }
 
-            // التحقق من أن المستخدم لا يمكنه impersonate نفسه
             if ($user->id === auth()->id()) {
                 return redirect()->back()->with('error', 'لا يمكنك تسجيل الدخول كحسابك الخاص');
             }
 
-            // حفظ المستخدم الأصلي في session
             $impersonatorId = auth()->id();
             $impersonatorName = auth()->user()->name;
         }
