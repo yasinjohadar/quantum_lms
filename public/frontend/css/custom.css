@@ -2054,6 +2054,64 @@ html[data-bs-theme="light"] .classes-section.homepage-classes::after {
     min-height: 60vh;
 }
 
+.class-show-section .class-card-body {
+    padding: 16px 12px;
+    padding-top: 14px;
+}
+
+.class-show-section .class-card-title {
+    font-size: 1rem;
+    line-height: 1.25;
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+@media (max-width: 991.98px) {
+    .class-show-section .class-card-title {
+        font-size: 0.95rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .class-show-section .subjects-section .row {
+        --bs-gutter-x: 0.5rem;
+    }
+
+    .class-show-section .class-card-body {
+        padding: 10px 8px;
+        padding-top: 10px;
+    }
+
+    .class-show-section .class-card-title {
+        font-size: 0.78rem;
+        margin-bottom: 6px;
+    }
+
+    .class-show-section .class-card-btn.enroll-btn {
+        font-size: 0.72rem;
+        padding: 8px 6px;
+        gap: 4px;
+        line-height: 1.2;
+    }
+
+    .class-show-section .class-card-btn.enroll-btn i {
+        font-size: 0.65rem;
+        margin: 0 !important;
+    }
+
+    .class-show-section .subject-badge {
+        font-size: 0.58rem;
+        padding: 3px 6px;
+        top: 6px;
+        right: 6px;
+        gap: 3px;
+        border-radius: 12px;
+    }
+}
+
 .class-header {
     width: 100%;
     background: var(--secondary-Color);

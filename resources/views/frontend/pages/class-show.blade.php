@@ -55,9 +55,9 @@
                 </div>
             </div>
             
-            <div class="row">
+            <div class="row g-2 g-md-3">
                 @forelse($subjects as $subject)
-                    <div class="col-lg-3 col-md-6 col-12 mb-4" id="subject-{{ $subject->id }}">
+                    <div class="col-6 col-lg-3 mb-2 mb-md-4" id="subject-{{ $subject->id }}">
                         <div class="class-card">
                             <div class="class-card-image">
                                 @if($subject->image)
@@ -78,12 +78,9 @@
                                 <h3 class="class-card-title">{{ $subject->name }}</h3>
                                 
                                 <!-- Price Section -->
+                                @if(!$subject->isEffectivelyFree)
                                 <div class="class-card-price">
-                                    @if($subject->isEffectivelyFree)
-                                        <div class="price-free-wrapper">
-                                            <span class="price-free">مجاني</span>
-                                        </div>
-                                    @elseif(!$subject->showPrice)
+                                    @if(!$subject->showPrice)
                                         <div class="price-hidden-wrapper">
                                             <span class="price-hidden">—</span>
                                         </div>
@@ -103,6 +100,7 @@
                                         </div>
                                     @endif
                                 </div>
+                                @endif
                                 
                                 @if($subject->canAccess)
                                     <a href="{{ route('student.subjects.show', $subject->id) }}" class="class-card-btn enroll-btn">
@@ -309,7 +307,7 @@
         @guest
         <div id="guest-purchase-cta" class="alert alert-info text-center mb-5">
             <i class="fa-solid fa-info-circle me-2"></i>
-            يرجى <a href="{{ route('login') }}" class="alert-link">تسجيل الدخول</a> لشراء الصف أو المواد
+            يرجى <a href="{{ route('student.login', ['redirect' => route('frontend.checkout', ['purchase_type' => 'class', 'class_id' => $class->id])]) }}" class="alert-link">تسجيل الدخول</a> لشراء الصف أو المواد
         </div>
         @endguest
 

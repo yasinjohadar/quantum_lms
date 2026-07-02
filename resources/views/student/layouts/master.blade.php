@@ -18,7 +18,7 @@
     @endif
     @endauth
     <title> @yield('page-title')</title>
-    <meta name="Description" content="منصة كوانتم">
+    <meta name="Description" content="أكاديمية كوانتم">
     <meta name="Author" content="claudSoft">
     <meta name="keywords" content=" لوحة التحكم">
 

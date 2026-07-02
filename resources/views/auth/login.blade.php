@@ -1,6 +1,6 @@
 @extends('auth.layouts.glass')
 
-@section('title', 'صفحة دخول المشرفين والمعلمين - منصة كوانتم التعليمية')
+@section('title', 'صفحة دخول المشرفين والمعلمين - أكاديمية كوانتم التعليمية')
 @section('brand-subtitle', 'بوابة الدخول')
 
 @section('content')

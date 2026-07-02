@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Http\Controllers\Auth\Concerns\RemembersSafeRedirect;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\SystemSetting;
@@ -21,6 +22,7 @@ use Illuminate\View\View;
 class RegisteredUserController extends Controller
 {
     use Concerns\NormalizesAuthPhoneInput;
+    use RemembersSafeRedirect;
 
     public function __construct(
         private OTPService $otpService
@@ -29,8 +31,10 @@ class RegisteredUserController extends Controller
     /**
      * Display the registration view.
      */
-    public function create(): View
+    public function create(Request $request): View
     {
+        $this->rememberSafeRedirect($request);
+
         $phoneVerificationEnabled = SystemSetting::get('phone_verification_enabled', false);
         return view('auth.register', compact('phoneVerificationEnabled'));
     }
@@ -182,7 +186,7 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect(route('student.enrollments.index', absolute: false))
+        return redirect()->intended(route('student.enrollments.index', absolute: false))
             ->with('enrollment_required_warning', true);
     }
 

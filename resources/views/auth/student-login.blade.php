@@ -1,6 +1,6 @@
 @extends('auth.layouts.glass')
 
-@section('title', 'صفحة تسجيل الطالب - منصة كوانتم التعليمية')
+@section('title', 'صفحة تسجيل الطالب - أكاديمية كوانتم التعليمية')
 @section('brand-subtitle', 'بوابة الطلاب')
 
 @section('content')
@@ -12,6 +12,12 @@
 
     @if (session('status'))
         <div class="auth-alert auth-alert-success">{{ session('status') }}</div>
+    @endif
+
+    @if (request('redirect'))
+        <div class="auth-alert auth-alert-info">
+            سجّل الدخول لإكمال عملية الاشتراك. إذا لم يكن لديك حساب، يمكنك إنشاء حساب جديد ثم متابعة الدفع.
+        </div>
     @endif
 
     @if ($errors->any())
@@ -58,7 +64,7 @@
             <br>
             @if (Route::has('register'))
                 لا تملك حسابًا؟
-                <a class="auth-link" href="{{ route('register') }}">إنشاء حساب جديد</a>
+                <a class="auth-link" href="{{ route('register', array_filter(['redirect' => request('redirect')])) }}">إنشاء حساب جديد</a>
             @endif
         </div>
     </form>

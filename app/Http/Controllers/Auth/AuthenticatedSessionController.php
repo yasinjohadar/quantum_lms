@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Http\Controllers\Auth\Concerns\RemembersSafeRedirect;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Services\LoginLogService;
@@ -16,6 +17,8 @@ use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
 {
+    use RemembersSafeRedirect;
+
     protected $sessionService;
     protected $activityService;
     protected AuditLogService $auditLogService;
@@ -41,8 +44,10 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the student login view.
      */
-    public function createStudent(): View
+    public function createStudent(Request $request): View
     {
+        $this->rememberSafeRedirect($request);
+
         return view('auth.student-login');
     }
 

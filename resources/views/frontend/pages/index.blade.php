@@ -171,9 +171,18 @@
                                             عرض المواد
                                         </a>
                                         @if(!empty($class['slug']) && !empty($class['id']))
-                                            <a href="{{ route('frontend.checkout', ['purchase_type' => 'class', 'class_id' => $class['id']]) }}" class="class-card-btn subscribe-btn">
-                                                اشتراك مباشر
-                                            </a>
+                                            @php
+                                                $checkoutUrl = route('frontend.checkout', ['purchase_type' => 'class', 'class_id' => $class['id']]);
+                                            @endphp
+                                            @guest
+                                                <a href="{{ route('register', ['redirect' => $checkoutUrl]) }}" class="class-card-btn subscribe-btn">
+                                                    اشتراك مباشر
+                                                </a>
+                                            @else
+                                                <a href="{{ $checkoutUrl }}" class="class-card-btn subscribe-btn">
+                                                    اشتراك مباشر
+                                                </a>
+                                            @endguest
                                         @endif
                                     </div>
                                 </div>

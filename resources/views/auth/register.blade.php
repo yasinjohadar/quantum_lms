@@ -1,6 +1,6 @@
 @extends('auth.layouts.glass')
 
-@section('title', 'صفحة تسجيل طالب جديد - منصة كوانتم التعليمية')
+@section('title', 'صفحة تسجيل طالب جديد - أكاديمية كوانتم التعليمية')
 @section('brand-subtitle', 'بوابة التسجيل')
 
 @section('content')
@@ -18,6 +18,12 @@
                     <li>{{ $err }}</li>
                 @endforeach
             </ul>
+        </div>
+    @endif
+
+    @if (request('redirect'))
+        <div class="auth-alert auth-alert-info">
+            أنشئ حسابك كطالب جديد لإكمال عملية الاشتراك مباشرة بعد التسجيل.
         </div>
     @endif
 
@@ -74,7 +80,7 @@
 
         <div class="auth-meta">
             لديك حساب بالفعل؟
-            <a href="{{ route('student.login') }}" class="auth-link">تسجيل دخول الطلاب</a>
+            <a href="{{ route('student.login', array_filter(['redirect' => request('redirect')])) }}" class="auth-link">تسجيل دخول الطلاب</a>
         </div>
     </form>
 @endsection

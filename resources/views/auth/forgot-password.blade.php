@@ -1,6 +1,6 @@
 @extends('auth.layouts.glass')
 
-@section('title', 'استعادة كلمة المرور - منصة كوانتم التعليمية')
+@section('title', 'استعادة كلمة المرور - أكاديمية كوانتم التعليمية')
 @section('brand-subtitle', 'استعادة الحساب')
 
 @section('content')

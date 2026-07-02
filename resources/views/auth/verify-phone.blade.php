@@ -1,6 +1,6 @@
 @extends('auth.layouts.glass')
 
-@section('title', 'التحقق من الهاتف - منصة كوانتم التعليمية')
+@section('title', 'التحقق من الهاتف - أكاديمية كوانتم التعليمية')
 @section('brand-subtitle', 'توثيق الحساب')
 
 @push('styles')

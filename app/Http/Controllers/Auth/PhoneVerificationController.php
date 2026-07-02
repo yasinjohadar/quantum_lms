@@ -167,7 +167,7 @@ class PhoneVerificationController extends Controller
 
             Auth::login($user);
 
-            return redirect()->route('student.dashboard')
+            return redirect()->intended(route('student.dashboard'))
                 ->with('success', 'تم إنشاء حسابك والتحقق من رقم الهاتف بنجاح');
         }
 
