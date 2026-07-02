@@ -63,6 +63,8 @@ function getNotificationColor($type) {
         </div>
         <!-- End Page Header -->
 
+        @include('partials.echo-realtime-settings')
+
         <!-- Statistics Cards -->
         <div class="row">
             <div class="col-xl-4 col-md-6">
