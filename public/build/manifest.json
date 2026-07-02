@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-pMrAk7K8.css",
+    "file": "assets/app-CnEkAHRR.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
@@ -11,7 +11,7 @@
     "isEntry": true
   },
   "resources/js/echo-notifications.js": {
-    "file": "assets/echo-notifications-CMX0X63S.js",
+    "file": "assets/echo-notifications-BXFBsFiD.js",
     "name": "echo-notifications",
     "src": "resources/js/echo-notifications.js",
     "isEntry": true

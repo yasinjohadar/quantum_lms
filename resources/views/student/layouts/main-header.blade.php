@@ -154,11 +154,34 @@
                                     notificationDropdown.addEventListener('shown.bs.dropdown', function() {
                                         loadHeaderNotifications();
                                     });
-                                    
-                                    // تحميل الإشعارات عند تحميل الصفحة
-                                    loadHeaderNotifications();
+
+                                    prefetchNotificationBadgeCount();
                                 }
                             });
+
+                            function prefetchNotificationBadgeCount() {
+                                fetch('{{ route("student.notifications.unread-count") }}', {
+                                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                                })
+                                    .then((response) => response.json())
+                                    .then((data) => {
+                                        const badgeCount = document.getElementById('notification-badge-count');
+                                        const countText = document.getElementById('notification-count-text');
+                                        const count = data.count ?? 0;
+                                        if (badgeCount) {
+                                            if (count > 0) {
+                                                badgeCount.textContent = count > 99 ? '99+' : count;
+                                                badgeCount.style.display = 'block';
+                                            } else {
+                                                badgeCount.style.display = 'none';
+                                            }
+                                        }
+                                        if (countText) {
+                                            countText.textContent = count;
+                                        }
+                                    })
+                                    .catch(() => {});
+                            }
                             
                             function loadHeaderNotifications() {
                                 fetch('{{ route("student.notifications.index") }}?limit=10&format=json')

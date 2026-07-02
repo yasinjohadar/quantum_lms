@@ -409,6 +409,44 @@ function getEchoPusher() {
 }
 
 const ECHO_REALTIME_STORAGE_KEY = 'lms_echo_realtime';
+const WS_GIVE_UP_STORAGE_KEY = 'lms_echo_ws_give_up_until';
+const WS_GIVE_UP_COOLDOWN_MS = 5 * 60 * 1000;
+const WS_MAX_FAILS = 2;
+
+let pollingIntervalId = null;
+
+function isWsTemporarilyDisabled() {
+    try {
+        const until = parseInt(sessionStorage.getItem(WS_GIVE_UP_STORAGE_KEY) || '0', 10);
+        return Number.isFinite(until) && Date.now() < until;
+    } catch (_) {
+        return false;
+    }
+}
+
+function markWsGiveUp() {
+    try {
+        sessionStorage.setItem(WS_GIVE_UP_STORAGE_KEY, String(Date.now() + WS_GIVE_UP_COOLDOWN_MS));
+    } catch (_) {}
+}
+
+function startPollingFallback(silent = true) {
+    prefetchUnreadCount();
+    if (!pollingIntervalId) {
+        pollingIntervalId = window.setInterval(prefetchUnreadCount, 120000);
+    }
+    if (!silent) {
+        whenDomReady(() => updateRealtimeStatusUI('polling', { mode: 'polling' }));
+    }
+}
+
+function scheduleIdleTask(fn, fallbackMs = 400) {
+    if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(fn, { timeout: 2500 });
+    } else {
+        window.setTimeout(fn, fallbackMs);
+    }
+}
 
 function isEchoRealtimePausedByUser() {
     try {
@@ -524,6 +562,16 @@ function wireEchoConnectionUi() {
         return;
     }
 
+    let wsFailCount = 0;
+
+    const giveUpWebSocket = () => {
+        markWsGiveUp();
+        try {
+            pusher.disconnect();
+        } catch (_) {}
+        startPollingFallback(false);
+    };
+
     const applyFromConn = () => {
         if (isEchoRealtimePausedByUser()) {
             updateRealtimeStatusUI('paused', { mode: 'web' });
@@ -533,6 +581,16 @@ function wireEchoConnectionUi() {
     };
 
     conn.bind('state_change', (states) => {
+        if (states.current === 'connected') {
+            wsFailCount = 0;
+        }
+        if (states.current === 'failed' || states.current === 'unavailable') {
+            wsFailCount += 1;
+            if (wsFailCount >= WS_MAX_FAILS) {
+                giveUpWebSocket();
+                return;
+            }
+        }
         if (isEchoRealtimePausedByUser()) {
             updateRealtimeStatusUI('paused', { mode: 'web' });
         } else {
@@ -540,6 +598,11 @@ function wireEchoConnectionUi() {
         }
     });
     conn.bind('error', () => {
+        wsFailCount += 1;
+        if (wsFailCount >= WS_MAX_FAILS) {
+            giveUpWebSocket();
+            return;
+        }
         if (isEchoRealtimePausedByUser()) {
             updateRealtimeStatusUI('paused', { mode: 'web' });
         } else {
@@ -563,6 +626,7 @@ function wireEchoConnectionUi() {
 window.reconnectEchoNotifications = function () {
     try {
         localStorage.setItem(ECHO_REALTIME_STORAGE_KEY, '1');
+        sessionStorage.removeItem(WS_GIVE_UP_STORAGE_KEY);
     } catch (_) {}
     const pusher = getEchoPusher();
     if (!pusher) {
@@ -584,6 +648,7 @@ whenDomReady(() => {
         btnOn.addEventListener('click', () => {
             try {
                 localStorage.setItem(ECHO_REALTIME_STORAGE_KEY, '1');
+                sessionStorage.removeItem(WS_GIVE_UP_STORAGE_KEY);
             } catch (_) {}
             updateRealtimeStatusUI('connecting', { mode: 'web' });
             const p = getEchoPusher();
@@ -617,39 +682,50 @@ whenDomReady(() => {
 
 if (!echoNotificationsEnabled) {
     console.warn('ECHO_NOTIFICATIONS_ENABLED=false — تم إيقاف WebSocket (لا إعادة محاولة اتصال).');
-    prefetchUnreadCount();
-    setInterval(prefetchUnreadCount, 120000);
+    startPollingFallback();
     whenDomReady(() => updateRealtimeStatusUI('polling', { mode: 'polling', reason: 'disabled' }));
 } else if (!key) {
     console.warn('VITE_REVERB_APP_KEY غير مضبوط — الإشعارات الفورية معطّلة (استخدم polling الافتراضي).');
-    prefetchUnreadCount();
-    setInterval(prefetchUnreadCount, 120000);
+    startPollingFallback();
     whenDomReady(() => updateRealtimeStatusUI('polling', { mode: 'polling' }));
 } else if (typeof window.currentUserId !== 'undefined') {
-    window.Echo = new Echo({
-        broadcaster: 'reverb',
-        key,
-        wsHost,
-        wsPort: port,
-        wssPort: port,
-        forceTLS,
-        enabledTransports: ['ws', 'wss'],
-        authEndpoint: '/broadcasting/auth',
-        auth: {
-            headers: {
-                'X-CSRF-TOKEN':
-                    document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-            },
-        },
-    });
+    if (isWsTemporarilyDisabled()) {
+        startPollingFallback();
+    } else {
+        scheduleIdleTask(() => {
+            if (isEchoRealtimePausedByUser()) {
+                startPollingFallback();
+                whenDomReady(() => updateRealtimeStatusUI('paused', { mode: 'web' }));
+                return;
+            }
 
-    window.Echo.private(`user.${window.currentUserId}`).listen('.notification', (e) => {
-        handleNotification(e);
-    });
+            window.Echo = new Echo({
+                broadcaster: 'reverb',
+                key,
+                wsHost,
+                wsPort: port,
+                wssPort: port,
+                forceTLS,
+                enabledTransports: forceTLS ? ['wss'] : ['ws'],
+                disableStats: true,
+                authEndpoint: '/broadcasting/auth',
+                auth: {
+                    headers: {
+                        'X-CSRF-TOKEN':
+                            document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    },
+                },
+            });
 
-    prefetchUnreadCount();
-    wireEchoConnectionUi();
+            window.Echo.private(`user.${window.currentUserId}`).listen('.notification', (e) => {
+                handleNotification(e);
+            });
+
+            prefetchUnreadCount();
+            wireEchoConnectionUi();
+        });
+    }
 } else {
-    prefetchUnreadCount();
+    startPollingFallback();
     whenDomReady(() => updateRealtimeStatusUI('polling', { mode: 'polling' }));
 }
