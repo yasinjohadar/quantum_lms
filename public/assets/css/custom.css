@@ -570,6 +570,29 @@ a:hover .folder-card .card-body i[class*="bi-"] {
     display: none !important;
 }
 
+/* الوضع النهاري: خلفية سوداء للوغو في شريط الهيدر العلوي */
+[data-theme-mode="light"] .app-header .horizontal-logo .header-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #000;
+    border-radius: 8px;
+    padding: 0.3rem 0.45rem;
+    line-height: 0;
+}
+
+[data-theme-mode="dark"] .app-header .horizontal-logo .header-logo {
+    background-color: transparent;
+    border-radius: 0;
+    padding: 0;
+}
+
+[data-theme-mode="light"] .app-header .horizontal-logo .header-logo img {
+    height: 2rem;
+    width: auto;
+    max-height: 2rem;
+}
+
 /* أيقونات السايدبار الملونة — رئيسية وفرعية */
 .main-menu > li.slide[class*="slide-icon--"] > .side-menu__item > .side-menu__icon,
 .main-menu > li.slide[class*="slide-icon--"] .slide-menu li.slide[class*="slide-icon--"] > .side-menu__item > .side-menu__icon {

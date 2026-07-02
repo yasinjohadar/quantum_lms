@@ -65,6 +65,12 @@
             @endif
         </td>
         <td>
+            <span class="sv-count-badge sv-count-badge--quiz">{{ number_format($supervisor->created_quizzes_count ?? 0) }}</span>
+            <div class="sv-meta-list">
+                <span>اختبار منشأ</span>
+            </div>
+        </td>
+        <td>
             @if($lastLogin)
                 <span class="small">{{ \Carbon\Carbon::parse($lastLogin)->format('Y-m-d H:i') }}</span>
             @else

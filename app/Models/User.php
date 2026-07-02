@@ -311,6 +311,11 @@ class User extends Authenticatable
         return $this->hasMany(CalendarEvent::class, 'created_by');
     }
 
+    public function createdQuizzes()
+    {
+        return $this->hasMany(Quiz::class, 'created_by');
+    }
+
     public function eventReminders()
     {
         return $this->hasMany(EventReminder::class, 'user_id');

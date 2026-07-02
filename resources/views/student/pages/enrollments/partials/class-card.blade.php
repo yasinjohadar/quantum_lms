@@ -28,8 +28,6 @@
             </a>
             @if($class->description)
                 <p class="enrollment-class-card__desc mb-0">{{ \Illuminate\Support\Str::limit($class->description, 90) }}</p>
-            @else
-                <p class="enrollment-class-card__desc mb-0 text-muted">صف دراسي متاح للانضمام عبر المنصة</p>
             @endif
         </div>
 

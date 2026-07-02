@@ -99,7 +99,7 @@
             </div>
 
             <div class="row g-3 mb-3">
-                <div class="col-md-4">
+                <div class="col-md-6 col-lg-3">
                     <div class="card border-0 shadow-sm">
                         <div class="card-body py-3 d-flex justify-content-between align-items-center">
                             <span class="text-muted small">صفوف مخصصة مباشرة</span>
@@ -107,7 +107,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-6 col-lg-3">
                     <div class="card border-0 shadow-sm">
                         <div class="card-body py-3 d-flex justify-content-between align-items-center">
                             <span class="text-muted small">مواد مخصصة مباشرة</span>
@@ -115,11 +115,19 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-6 col-lg-3">
                     <div class="card border-0 shadow-sm">
                         <div class="card-body py-3 d-flex justify-content-between align-items-center">
                             <span class="text-muted small">إجمالي المواد ضمن النطاق</span>
                             <span class="fs-5 fw-bold text-success">{{ $accessibleSubjects->count() }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body py-3 d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">اختبارات أنشأها</span>
+                            <span class="fs-5 fw-bold text-warning">{{ number_format($supervisor->created_quizzes_count ?? 0) }}</span>
                         </div>
                     </div>
                 </div>

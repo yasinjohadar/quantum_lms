@@ -288,10 +288,17 @@
         color: #0284c7;
     }
 
+    .sv-count-badge--quiz {
+        background: rgba(245, 158, 11, 0.14);
+        color: #d97706;
+    }
+
     [data-theme-mode="dark"] .sv-count-badge--class,
     [data-bs-theme="dark"] .sv-count-badge--class { color: #a5b4fc; }
     [data-theme-mode="dark"] .sv-count-badge--subject,
     [data-bs-theme="dark"] .sv-count-badge--subject { color: #7dd3fc; }
+    [data-theme-mode="dark"] .sv-count-badge--quiz,
+    [data-bs-theme="dark"] .sv-count-badge--quiz { color: #fbbf24; }
 
     .sv-meta-list {
         font-size: 0.72rem;

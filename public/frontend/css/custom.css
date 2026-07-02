@@ -203,8 +203,17 @@ a {
     padding: 0 20px;
     border-bottom: 1px solid #f2f2f2;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
- 
-   
+}
+
+/* الوضع النهاري: خلفية سوداء للوغو في الهيدر */
+#siteHeader:not([data-bs-theme="dark"]) .top-header .col-auto > a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #000;
+    border-radius: 8px;
+    padding: 4px 8px;
+    line-height: 0;
 }
 
 .left-header a {

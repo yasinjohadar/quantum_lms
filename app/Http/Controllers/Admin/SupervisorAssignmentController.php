@@ -32,7 +32,9 @@ class SupervisorAssignmentController extends Controller
             'role' => 'nullable|string|exists:roles,name',
         ]);
 
-        $supervisorsQuery = User::supervisors()->with(['roles', 'assignedClassesAsSupervisor', 'assignedSubjectsAsSupervisor']);
+        $supervisorsQuery = User::supervisors()
+            ->with(['roles', 'assignedClassesAsSupervisor', 'assignedSubjectsAsSupervisor'])
+            ->withCount('createdQuizzes');
 
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -154,6 +156,8 @@ class SupervisorAssignmentController extends Controller
             'assignedClassesAsSupervisor.stage',
             'assignedSubjectsAsSupervisor.schoolClass.stage',
         ]);
+
+        $supervisor->loadCount('createdQuizzes');
 
         $assignedClasses = $supervisor->assignedClassesAsSupervisor->sortBy('name')->values();
         $directSubjects = $supervisor->assignedSubjectsAsSupervisor->sortBy('name')->values();
