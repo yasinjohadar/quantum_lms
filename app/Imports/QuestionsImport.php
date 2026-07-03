@@ -25,6 +25,8 @@ class QuestionsImport implements SkipsOnFailure, ToCollection, WithHeadingRow
 
     protected $errorCount = 0;
 
+    protected array $createdQuestionIds = [];
+
     protected $unitIds = [];
 
     protected $columnMapping = [];
@@ -86,6 +88,7 @@ class QuestionsImport implements SkipsOnFailure, ToCollection, WithHeadingRow
 
                 DB::commit();
                 $this->successCount++;
+                $this->createdQuestionIds[] = $question->id;
 
             } catch (\Exception $e) {
                 DB::rollBack();
@@ -515,5 +518,13 @@ class QuestionsImport implements SkipsOnFailure, ToCollection, WithHeadingRow
     public function getErrorCount(): int
     {
         return $this->errorCount;
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function getCreatedQuestionIds(): array
+    {
+        return $this->createdQuestionIds;
     }
 }

@@ -2084,40 +2084,122 @@ html[data-bs-theme="light"] .classes-section.homepage-classes::after {
     }
 }
 
-@media (max-width: 575.98px) {
-    .class-show-section .subjects-section .row {
-        --bs-gutter-x: 0.5rem;
+@media (max-width: 767.98px) {
+    .class-show-section .subjects-section {
+        margin-top: 24px;
     }
 
-    .class-show-section .class-card-body {
-        padding: 10px 8px;
-        padding-top: 10px;
-    }
-
-    .class-show-section .class-card-title {
-        font-size: 0.78rem;
+    .class-show-section .subjects-section .section-title {
+        font-size: 1.35rem;
         margin-bottom: 6px;
     }
 
-    .class-show-section .class-card-btn.enroll-btn {
+    .class-show-section .subjects-section .section-description {
+        font-size: 0.85rem;
+        margin-bottom: 16px;
+        line-height: 1.45;
+    }
+
+    .class-show-section .class-header {
+        padding: 32px 0;
+        margin-bottom: 24px;
+    }
+
+    .class-show-section .class-header-title {
+        font-size: 1.75rem;
+        margin-bottom: 12px;
+    }
+
+    .class-show-section .class-header-stage {
+        font-size: 0.95rem;
+        margin-bottom: 10px;
+        gap: 6px;
+    }
+
+    .class-show-section .class-header-stage i {
+        font-size: 0.85rem;
+    }
+
+    .class-show-section .class-header-description {
+        font-size: 0.85rem;
+        line-height: 1.55;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .class-show-section .subjects-section .row {
+        --bs-gutter-x: 0.3rem;
+    }
+
+    .class-show-section .subjects-section .section-title {
+        font-size: 1.1rem;
+        margin-bottom: 4px;
+    }
+
+    .class-show-section .subjects-section .section-description {
         font-size: 0.72rem;
-        padding: 8px 6px;
-        gap: 4px;
+        margin-bottom: 12px;
+        padding: 0 4px;
+    }
+
+    .class-show-section .class-card-body {
+        padding: 6px 4px;
+        padding-top: 6px;
+    }
+
+    .class-show-section .class-card-title {
+        font-size: 0.58rem;
+        font-weight: 600;
         line-height: 1.2;
+        margin-bottom: 3px;
+        -webkit-line-clamp: 2;
+    }
+
+    .class-show-section .class-card-price {
+        margin-bottom: 4px;
+    }
+
+    .class-show-section .class-card-price .price-amount,
+    .class-show-section .class-card-price .price-label,
+    .class-show-section .class-card-price .price-hidden,
+    .class-show-section .class-card-price .price-access {
+        font-size: 0.55rem !important;
+    }
+
+    .class-show-section .class-card-btn.enroll-btn {
+        font-size: 0.52rem;
+        font-weight: 700;
+        padding: 5px 3px;
+        gap: 2px;
+        line-height: 1.1;
+        border-radius: 4px;
+        box-shadow: 0 4px 10px rgba(212, 175, 55, 0.15);
     }
 
     .class-show-section .class-card-btn.enroll-btn i {
-        font-size: 0.65rem;
+        font-size: 0.48rem;
         margin: 0 !important;
     }
 
     .class-show-section .subject-badge {
-        font-size: 0.58rem;
-        padding: 3px 6px;
-        top: 6px;
-        right: 6px;
-        gap: 3px;
-        border-radius: 12px;
+        font-size: 0;
+        line-height: 0;
+        padding: 3px;
+        top: 3px;
+        right: 3px;
+        gap: 0;
+        border-radius: 50%;
+        max-width: none;
+        width: 1.15rem;
+        height: 1.15rem;
+        justify-content: center;
+        overflow: visible;
+    }
+
+    .class-show-section .subject-badge i {
+        font-size: 0.48rem;
+        line-height: 1;
+        flex-shrink: 0;
     }
 }
 

@@ -402,6 +402,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::post('sections/{section}/quizzes', [QuizController::class, 'storeForSection'])
             ->name('sections.quizzes.store');
         Route::resource('quizzes', QuizController::class);
+        Route::get('quizzes/{quiz}/import-excel', [QuizController::class, 'showImportExcel'])
+            ->name('quizzes.import-excel.show');
+        Route::post('quizzes/{quiz}/import-excel', [QuizController::class, 'importExcel'])
+            ->name('quizzes.import-excel.store');
         Route::get('quizzes/{quiz}/questions', [QuizController::class, 'questions'])
             ->name('quizzes.questions');
         Route::post('quizzes/{quiz}/add-question', [QuizController::class, 'addQuestion'])

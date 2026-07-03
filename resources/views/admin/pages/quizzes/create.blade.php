@@ -39,6 +39,8 @@
         </div>
     @endif
 
+    @include('admin.pages.quizzes.partials.create-progress-bar', ['currentStep' => 1])
+
     <form action="{{ route('admin.quizzes.store') }}" method="POST" enctype="multipart/form-data">
         @csrf
         
@@ -358,6 +360,7 @@
                                    id="isActive" {{ old('is_active', true) ? 'checked' : '' }}>
                             <label class="form-check-label" for="isActive">تفعيل الاختبار</label>
                             <small class="text-muted d-block">يُنصح بإضافة الأسئلة أولاً ثم التفعيل</small>
+                            <small class="text-muted d-block mt-1">بعد الحفظ يمكنك استيراد أسئلة Excel أو تخطي الاستيراد</small>
                         </div>
                         @if($isTeacher)
                             <div class="alert alert-info mb-3 small">

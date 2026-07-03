@@ -75,10 +75,11 @@ test('admin can create quiz with title only and no curriculum', function () {
     $response = $this->actingAs($admin)
         ->post(route('admin.quizzes.store'), minimalQuizPayload());
 
-    $response->assertRedirect();
-
     $quiz = Quiz::where('title', 'Optional curriculum quiz')->first();
     expect($quiz)->not->toBeNull();
+
+    $response->assertRedirect(route('admin.quizzes.import-excel.show', $quiz));
+
     expect($quiz->subject_id)->toBeNull();
     expect($quiz->unit_id)->toBeNull();
 });
@@ -93,10 +94,11 @@ test('admin can create quiz with subject only and no unit', function () {
             'subject_id' => $subject->id,
         ]));
 
-    $response->assertRedirect();
-
     $quiz = Quiz::where('title', 'Subject only quiz')->first();
     expect($quiz)->not->toBeNull();
+
+    $response->assertRedirect(route('admin.quizzes.import-excel.show', $quiz));
+
     expect($quiz->subject_id)->toBe($subject->id);
     expect($quiz->unit_id)->toBeNull();
 });

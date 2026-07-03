@@ -15,6 +15,7 @@ use App\Models\Stage;
 use App\Models\Subject;
 use App\Models\SubjectSection;
 use App\Models\Unit;
+use App\Services\QuizExcelQuestionImportService;
 use App\Services\ReminderService;
 use App\Services\StaffNotificationService;
 use App\Services\Storage\MediaStorageService;
@@ -28,10 +29,11 @@ class QuizController extends Controller
 {
     public function __construct(
         private ReminderService $reminderService,
-        private StaffNotificationService $staffNotificationService
+        private StaffNotificationService $staffNotificationService,
+        private QuizExcelQuestionImportService $quizExcelQuestionImportService,
     ) {
         $this->middleware(['permission:quiz-list'])->only('index');
-        $this->middleware(['permission:quiz-create'])->only(['create', 'store', 'storeForSection']);
+        $this->middleware(['permission:quiz-create'])->only(['create', 'store', 'storeForSection', 'showImportExcel']);
         $this->middleware(['permission:quiz-edit'])->only(['edit', 'update']);
         $this->middleware(['permission:quiz-delete'])->only('destroy');
         $this->middleware(['permission:quiz-show'])->only('show');
@@ -51,6 +53,7 @@ class QuizController extends Controller
         $this->middleware(['permission:quiz-approve-review'])->only('approveReview');
         $this->middleware(['permission:quiz-reject-review'])->only('rejectReview');
         $this->middleware(['permission:quiz-submit-for-review'])->only('submitForReview');
+        $this->middleware(['permission:question-import'])->only('importExcel');
     }
 
     /**
@@ -352,8 +355,8 @@ class QuizController extends Controller
             );
 
             return redirect()
-                ->route('admin.quizzes.questions', $quiz->id)
-                ->with('success', 'تم إنشاء الاختبار بنجاح، يمكنك الآن إضافة الأسئلة');
+                ->route('admin.quizzes.import-excel.show', $quiz)
+                ->with('success', 'تم إنشاء الاختبار. يمكنك استيراد الأسئلة من Excel أو تخطي هذه الخطوة.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -378,6 +381,87 @@ class QuizController extends Controller
         ]);
 
         return $this->store($request);
+    }
+
+    /**
+     * الخطوة 2: استيراد أسئلة Excel وربطها بالاختبار (اختياري).
+     */
+    public function showImportExcel(string $id)
+    {
+        $quiz = Quiz::with(['subject.schoolClass', 'unit'])->findOrFail($id);
+        $curriculum = $this->quizExcelQuestionImportService->quizCurriculumForImport($quiz);
+
+        return view('admin.pages.quizzes.import-excel', [
+            'quiz' => $quiz,
+            'canImport' => $curriculum['can_import'],
+            'prefillClassId' => $curriculum['class_id'],
+            'prefillSubjectId' => $curriculum['subject_id'],
+            'prefillUnitId' => $curriculum['unit_id'],
+        ]);
+    }
+
+    /**
+     * تنفيذ استيراد Excel وربط الأسئلة بالاختبار.
+     */
+    public function importExcel(Request $request, string $id)
+    {
+        $quiz = Quiz::findOrFail($id);
+
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+            'column_mapping' => ['nullable', 'string'],
+            'class_id' => ['nullable', 'exists:classes,id'],
+            'subject_id' => ['nullable', 'exists:subjects,id'],
+            'unit_id' => ['nullable', 'exists:units,id'],
+        ]);
+
+        try {
+            $columnMapping = [];
+            if ($request->filled('column_mapping')) {
+                $columnMapping = json_decode($request->column_mapping, true) ?? [];
+            }
+
+            $summary = $this->quizExcelQuestionImportService->importAndAttach(
+                $quiz,
+                $request->file('file'),
+                $columnMapping
+            );
+
+            if ($summary['success_count'] === 0) {
+                return redirect()
+                    ->route('admin.quizzes.import-excel.show', $quiz)
+                    ->withInput()
+                    ->with('error', 'لم يتم استيراد أي سؤال. راجع الملف وأعد المحاولة.')
+                    ->with('import_errors', $summary['errors'])
+                    ->with('import_summary', $summary);
+            }
+
+            $message = "تم استيراد {$summary['success_count']} سؤال وربط {$summary['attached_count']} بالاختبار";
+            if ($summary['error_count'] > 0) {
+                $message .= "، وحدثت {$summary['error_count']} أخطاء";
+            }
+
+            return redirect()
+                ->route('admin.quizzes.questions', $quiz)
+                ->with('success', $message)
+                ->with('import_errors', $summary['errors'])
+                ->with('import_summary', $summary);
+
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('admin.quizzes.import-excel.show', $quiz)
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Exception $e) {
+            Log::error('Error importing quiz questions from Excel: '.$e->getMessage(), [
+                'quiz_id' => $quiz->id,
+            ]);
+
+            return redirect()
+                ->route('admin.quizzes.import-excel.show', $quiz)
+                ->withInput()
+                ->with('error', 'حدث خطأ أثناء استيراد الملف: '.$e->getMessage());
+        }
     }
 
     /**

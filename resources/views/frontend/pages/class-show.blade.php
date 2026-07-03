@@ -57,7 +57,7 @@
             
             <div class="row g-2 g-md-3">
                 @forelse($subjects as $subject)
-                    <div class="col-6 col-lg-3 mb-2 mb-md-4" id="subject-{{ $subject->id }}">
+                    <div class="col-4 col-lg-3 mb-2 mb-md-4" id="subject-{{ $subject->id }}">
                         <div class="class-card">
                             <div class="class-card-image">
                                 @if($subject->image)
@@ -109,7 +109,7 @@
                                     </a>
                                 @elseif($subject->isEffectivelyFree)
                                     <a href="{{ route('student.subjects.show', $subject->id) }}" class="class-card-btn enroll-btn">
-                                        مشاهدة مجانية
+                                        مشاهدة
                                         <i class="fa-solid fa-play ms-2"></i>
                                     </a>
                                 @else
