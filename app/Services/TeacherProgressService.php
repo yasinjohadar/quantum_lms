@@ -588,11 +588,11 @@ class TeacherProgressService
     /**
      * ملخص مؤشرات التقدم لعدة معلمين دفعة واحدة (لجدول قائمة المعلمين).
      * المفتاح: teacher_id، القيمة: مصفوفة تحتوي pages_required, pages_completed, pages_percentage,
-     * weekly_target, weekly_completed, weekly_percentage, total_approved_lessons, current_week.
+     * weekly_target, weekly_completed, weekly_percentage, total_approved_lessons, quizzes_created, current_week.
      *
      * @param  Collection<int, User>  $teachers  المعلمون مع تحميل assignedSubjects
      * @param  int|null  $weekId  أسبوع دراسي محدد أو null للأسبوع الحالي
-     * @return array<int, array{pages_required: int, pages_completed: int, pages_percentage: float|null, weekly_target: int, weekly_completed: int, weekly_percentage: float|null, total_approved_lessons: int, current_week: AcademicWeek|null}>
+     * @return array<int, array{pages_required: int, pages_completed: int, pages_percentage: float|null, weekly_target: int, weekly_completed: int, weekly_percentage: float|null, total_approved_lessons: int, quizzes_created: int, current_week: AcademicWeek|null}>
      */
     public static function getTeachersProgressSummary(Collection $teachers, ?int $weekId = null): array
     {
@@ -604,6 +604,15 @@ class TeacherProgressService
         [$startOfWeek, $endOfWeek] = self::getWeekDateRange($week);
 
         $teacherIds = $teachers->pluck('id')->toArray();
+        $quizzesByCreator = DB::table('quizzes')
+            ->whereIn('created_by', $teacherIds)
+            ->whereNull('deleted_at')
+            ->selectRaw('created_by, COUNT(*) as cnt')
+            ->groupBy('created_by')
+            ->pluck('cnt', 'created_by')
+            ->map(fn ($v) => (int) $v)
+            ->all();
+
         $subjectIds = [];
         $teacherSubjectRequired = [];
         $teacherSubjectIds = [];
@@ -706,6 +715,7 @@ class TeacherProgressService
                 'weekly_completed' => $weekly_completed,
                 'weekly_percentage' => $weekly_percentage,
                 'total_approved_lessons' => $total_approved_lessons,
+                'quizzes_created' => (int) ($quizzesByCreator[$tid] ?? 0),
                 'current_week' => $week,
             ];
         }

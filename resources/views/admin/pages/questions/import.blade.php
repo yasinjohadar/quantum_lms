@@ -6,6 +6,7 @@
 
 @push('styles')
     @include('admin.pages.questions.partials.excel-import-wizard-styles')
+    @include('admin.pages.questions.partials.pack-import-upload-styles')
 <style>
     .questions-import-sidebar {
         top: 5rem;

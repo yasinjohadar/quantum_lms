@@ -276,10 +276,33 @@
         color: #0284c7;
     }
 
+    .tv-count-badge--quiz {
+        background: rgba(124, 58, 237, 0.12);
+        color: #6d28d9;
+        font-size: 0.85rem;
+        min-width: 2.5rem;
+        text-align: center;
+    }
+
+    .tv-quiz-count {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.2rem;
+    }
+
+    .tv-quiz-count__label {
+        font-size: 0.68rem;
+        color: var(--tv-muted);
+        font-weight: 600;
+    }
+
     [data-theme-mode="dark"] .tv-count-badge--class,
     [data-bs-theme="dark"] .tv-count-badge--class { color: #6ee7b7; }
     [data-theme-mode="dark"] .tv-count-badge--subject,
     [data-bs-theme="dark"] .tv-count-badge--subject { color: #7dd3fc; }
+    [data-theme-mode="dark"] .tv-count-badge--quiz,
+    [data-bs-theme="dark"] .tv-count-badge--quiz { color: #c4b5fd; }
 
     .tv-meta-list { font-size: 0.72rem; color: var(--tv-muted); margin-top: 0.25rem; }
 
@@ -349,6 +372,69 @@
         opacity: 0.4;
         display: block;
         margin-bottom: 0.75rem;
+    }
+
+    .teachers-table [data-tv-col].tv-col-hidden {
+        display: none !important;
+    }
+
+    .tv-columns-menu {
+        min-width: 220px;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+    }
+
+    .tv-columns-menu__header {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--tv-border);
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        background: var(--tv-soft);
+    }
+
+    .tv-columns-menu__presets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        padding: 0.65rem 1rem;
+        border-bottom: 1px solid var(--tv-border);
+    }
+
+    .tv-columns-menu__presets .btn.active {
+        background: var(--tv-accent, #6366f1);
+        border-color: var(--tv-accent, #6366f1);
+        color: #fff;
+    }
+
+    .tv-columns-menu__list {
+        padding: 0.5rem 0;
+        max-height: 280px;
+        overflow-y: auto;
+    }
+
+    .tv-columns-menu__item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.45rem 1rem;
+        cursor: pointer;
+        margin: 0;
+        user-select: none;
+    }
+
+    .tv-columns-menu__item:hover {
+        background: var(--tv-soft);
+    }
+
+    .tv-columns-menu__item input {
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    .tv-columns-menu__item span {
+        font-size: 0.85rem;
     }
 
     .teachers-pagination { padding-top: 1rem; }

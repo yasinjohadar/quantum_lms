@@ -192,27 +192,31 @@
                         <span class="teachers-card__header-icon"><i class="bi bi-table"></i></span>
                         قائمة المعلمين
                     </div>
-                    <span class="badge bg-primary-transparent text-primary">
-                        صفحة {{ $teachers->currentPage() }} من {{ $teachers->lastPage() }}
-                    </span>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        @include('admin.pages.teachers.partials.column-visibility-toggle')
+                        <span class="badge bg-primary-transparent text-primary">
+                            صفحة {{ $teachers->currentPage() }} من {{ $teachers->lastPage() }}
+                        </span>
+                    </div>
                 </div>
                 <div class="teachers-card__body p-0">
                     @if($teachers->count() > 0)
                         <div class="teachers-table-wrap mx-3 mt-3 mb-0">
                             <div class="table-responsive">
-                                <table class="table teachers-table align-middle mb-0">
+                                <table class="table teachers-table align-middle mb-0" id="teachersAssignmentsTable">
                                     <thead>
                                     <tr>
                                         <th style="width: 48px;">#</th>
-                                        <th>الاسم</th>
-                                        <th>البريد</th>
-                                        <th>الأدوار</th>
-                                        <th>الصفوف</th>
-                                        <th>المواد</th>
-                                        <th>الحالة</th>
-                                        <th>آخر دخول</th>
-                                        <th>الاتصال</th>
-                                        <th>التقدم</th>
+                                        <th data-tv-col="name">الاسم</th>
+                                        <th data-tv-col="email">البريد</th>
+                                        <th data-tv-col="roles">الأدوار</th>
+                                        <th data-tv-col="classes">الصفوف</th>
+                                        <th data-tv-col="subjects">المواد</th>
+                                        <th data-tv-col="status">الحالة</th>
+                                        <th data-tv-col="last_login">آخر دخول</th>
+                                        <th data-tv-col="online">الاتصال</th>
+                                        <th data-tv-col="quizzes" class="text-center" style="min-width: 90px;">الاختبارات</th>
+                                        <th data-tv-col="progress">التقدم</th>
                                         <th style="min-width: 180px;">الإجراءات</th>
                                     </tr>
                                     </thead>
@@ -248,6 +252,7 @@
 @stop
 
 @section('js')
+<script src="{{ asset('js/admin/teachers-table-columns.js') }}"></script>
 <script>
 function copyLink(userId) {
     const linkInput = document.getElementById('impersonateLink' + userId);
@@ -346,6 +351,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             bindPaginationLinks();
             syncCustomPerPageUi();
+            if (window.TeachersTableColumns && typeof window.TeachersTableColumns.refresh === 'function') {
+                window.TeachersTableColumns.refresh();
+            }
             window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
         })
         .catch(function () {});

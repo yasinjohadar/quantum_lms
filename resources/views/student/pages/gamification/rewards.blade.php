@@ -4,95 +4,117 @@
     المكافآت
 @stop
 
+@push('styles')
+    @include('student.partials.dashboard-widget-styles')
+    @include('student.pages.lessons.partials.subject-content-breadcrumb-styles')
+    @include('student.pages.gamification.partials.gamification-dashboard-styles')
+    @include('student.pages.gamification.partials.gamification-rewards-styles')
+@endpush
+
 @section('content')
-<!-- Start::app-content -->
 <div class="main-content app-content">
-    <div class="container-fluid">
-        <!-- Page Header -->
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div class="my-auto">
-                <h5 class="page-title fs-21 mb-1">المكافآت</h5>
-                <nav>
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">المكافآت</li>
-                    </ol>
-                </nav>
-            </div>
-        </div>
-        <!-- End Page Header -->
-
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card bg-primary text-white">
-                    <div class="card-body text-center">
-                        <h3>نقاطك الحالية: {{ number_format($totalPoints) }}</h3>
-                    </div>
+    <div class="container-fluid pt-3">
+        <nav class="student-content-breadcrumb mb-3" aria-label="مسار التنقل">
+            <ol class="student-content-breadcrumb__trail">
+                <li class="student-content-breadcrumb__item">
+                    <a href="{{ route('student.dashboard') }}" class="student-content-breadcrumb__link">
+                        <i class="bi bi-house-door-fill"></i>
+                        <span>الرئيسية</span>
+                    </a>
+                </li>
+                <li class="student-content-breadcrumb__sep" aria-hidden="true"><i class="bi bi-chevron-left"></i></li>
+                <li class="student-content-breadcrumb__item">
+                    <a href="{{ route('student.gamification.dashboard') }}" class="student-content-breadcrumb__link">
+                        <i class="bi bi-trophy"></i>
+                        <span>لوحة التحفيز</span>
+                    </a>
+                </li>
+                <li class="student-content-breadcrumb__sep" aria-hidden="true"><i class="bi bi-chevron-left"></i></li>
+                <li class="student-content-breadcrumb__item" aria-current="page">
+                    <span class="student-content-breadcrumb__current">
+                        <i class="bi bi-gift"></i>
+                        <span>المكافآت</span>
+                    </span>
+                </li>
+            </ol>
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
+                <div>
+                    <h1 class="student-content-breadcrumb__heading mb-0">
+                        <i class="bi bi-gift me-2 text-warning"></i>المكافآت
+                    </h1>
+                    <p class="student-content-breadcrumb__meta mb-0">استبدل نقاطك بمكافآت حصرية</p>
                 </div>
+                <a href="{{ route('student.gamification.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-right me-1"></i>لوحة التحفيز
+                </a>
+            </div>
+        </nav>
+
+        <div class="student-rewards-points">
+            <div>
+                <div class="student-rewards-points__label">نقاطك الحالية</div>
+                <div class="student-rewards-points__value">{{ number_format($totalPoints) }}</div>
+            </div>
+            <div class="student-rewards-points__icon">
+                <i class="bi bi-star-fill"></i>
             </div>
         </div>
 
-        <div class="row">
-            <div class="col-md-8">
-                <div class="card custom-card">
-                    <div class="card-header">
-                        <div class="card-title">المكافآت المتاحة</div>
-                    </div>
-                    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-lg-8 order-lg-1 order-2">
+                <div class="student-gamification-panel h-100">
+                    <div class="student-gamification-panel__head">
+                        <h5 class="student-gamification-panel__title">
+                            <i class="bi bi-shop me-1 text-primary"></i>المكافآت المتاحة
+                        </h5>
                         @if($availableRewards->count() > 0)
-                            <div class="row">
+                            <span class="student-gamification-level__chip">{{ $availableRewards->count() }}</span>
+                        @endif
+                    </div>
+                    <div class="student-gamification-panel__body">
+                        @if($availableRewards->count() > 0)
+                            <div class="student-rewards-grid">
                                 @foreach($availableRewards as $reward)
-                                <div class="col-md-6 mb-4">
-                                    <div class="card border-secondary">
-                                        <div class="card-body">
-                                            <h5>{{ $reward->name }}</h5>
-                                            <p class="text-muted">{{ $reward->description }}</p>
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span class="badge bg-warning">تكلفة: {{ number_format($reward->points_cost) }} نقطة</span>
-                                                @if($totalPoints >= $reward->points_cost)
-                                                    <form action="{{ route('student.gamification.rewards.claim', $reward->id) }}" method="POST" class="d-inline">
-                                                        @csrf
-                                                        <button type="submit" class="btn btn-sm btn-primary">
-                                                            <i class="fe fe-shopping-cart"></i> استبدال
-                                                        </button>
-                                                    </form>
-                                                @else
-                                                    <span class="text-danger">نقاط غير كافية</span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                    @include('student.pages.gamification.partials.reward-card', [
+                                        'reward' => $reward,
+                                        'totalPoints' => $totalPoints,
+                                        'delay' => $loop->index,
+                                    ])
                                 @endforeach
                             </div>
                         @else
-                            <div class="alert alert-info">
-                                <i class="fe fe-info"></i> لا توجد مكافآت متاحة حالياً
+                            <div class="student-gamification-empty">
+                                <div class="student-gamification-empty__icon"><i class="bi bi-gift"></i></div>
+                                <p class="text-muted mb-0">لا توجد مكافآت متاحة حالياً</p>
                             </div>
                         @endif
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card custom-card">
-                    <div class="card-header">
-                        <div class="card-title">مكافآتي</div>
-                    </div>
-                    <div class="card-body">
+
+            <div class="col-lg-4 order-lg-2 order-1">
+                <div class="student-gamification-panel h-100">
+                    <div class="student-gamification-panel__head">
+                        <h5 class="student-gamification-panel__title">
+                            <i class="bi bi-bag-check me-1 text-success"></i>مكافآتي
+                        </h5>
                         @if($userRewards->count() > 0)
-                            <div class="list-group">
-                                @foreach($userRewards as $userReward)
-                                <div class="list-group-item">
-                                    <h6 class="mb-1">{{ $userReward->name }}</h6>
-                                    <small class="text-muted">{{ $userReward->pivot->claimed_at ? \Carbon\Carbon::parse($userReward->pivot->claimed_at)->format('Y-m-d') : '-' }}</small>
-                                    <span class="badge bg-{{ $userReward->pivot->status == 'approved' ? 'success' : 'warning' }} float-end">
-                                        {{ $userReward->pivot->status_name }}
-                                    </span>
-                                </div>
-                                @endforeach
-                            </div>
+                            <span class="student-gamification-level__chip">{{ $userRewards->count() }}</span>
+                        @endif
+                    </div>
+                    <div class="student-gamification-panel__body">
+                        @if($userRewards->count() > 0)
+                            @foreach($userRewards as $userReward)
+                                @include('student.pages.gamification.partials.user-reward-row', [
+                                    'userReward' => $userReward,
+                                    'delay' => $loop->index,
+                                ])
+                            @endforeach
                         @else
-                            <p class="text-muted">لا توجد مكافآت مستبدلة</p>
+                            <div class="student-gamification-empty">
+                                <div class="student-gamification-empty__icon"><i class="bi bi-inbox"></i></div>
+                                <p class="text-muted mb-0">لا توجد مكافآت مستبدلة</p>
+                            </div>
                         @endif
                     </div>
                 </div>
@@ -100,7 +122,4 @@
         </div>
     </div>
 </div>
-</div>
-<!-- End::app-content -->
 @stop
-

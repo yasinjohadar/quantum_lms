@@ -13,8 +13,9 @@ class NerveTestQuestionPersister
 {
     /**
      * @param  array<int, NerveTestQuestionData>|Collection<int, NerveTestQuestionData>  $questions
+     * @return array{count: int, question_ids: array<int, int>}
      */
-    public function persist(Collection|array $questions, ?int $subjectId, ?int $unitId, int $userId): int
+    public function persist(Collection|array $questions, ?int $subjectId, ?int $unitId, int $userId): array
     {
         $questions = $questions instanceof Collection ? $questions : collect($questions);
 
@@ -29,8 +30,9 @@ class NerveTestQuestionPersister
         }
 
         $count = 0;
+        $questionIds = [];
 
-        DB::transaction(function () use ($questions, $subjectId, $unitId, $userId, &$count) {
+        DB::transaction(function () use ($questions, $subjectId, $unitId, $userId, &$count, &$questionIds) {
             foreach ($questions as $dto) {
                 $question = Question::create([
                     'type' => $dto->type,
@@ -48,15 +50,17 @@ class NerveTestQuestionPersister
 
                 if ($unitId) {
                     $question->units()->sync([$unitId]);
-                } elseif (! $subjectId) {
-                    // no-op
                 }
 
+                $questionIds[] = (int) $question->id;
                 $count++;
             }
         });
 
-        return $count;
+        return [
+            'count' => $count,
+            'question_ids' => $questionIds,
+        ];
     }
 
     protected function createTrueFalseOptions(Question $question, NerveTestQuestionData $dto): void

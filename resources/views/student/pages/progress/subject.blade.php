@@ -4,171 +4,159 @@
     تقدمي في {{ $subject->name }}
 @stop
 
+@push('styles')
+    @include('student.partials.dashboard-widget-styles')
+    @include('student.pages.lessons.partials.subject-content-breadcrumb-styles')
+    @include('student.pages.progress.partials.progress-page-styles')
+@endpush
+
 @section('content')
-<!-- Start::app-content -->
 <div class="main-content app-content">
-    <div class="container-fluid">
-        <!-- Page Header -->
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div>
-                <h4 class="mb-0">تقدمي في {{ $subject->name }}</h4>
-                <p class="mb-0 text-muted">عرض تفصيلي لتقدمك في هذه المادة الدراسية</p>
-            </div>
-            <div>
-                <a href="{{ route('student.progress.index') }}" class="btn btn-secondary btn-sm">
-                    <i class="bi bi-arrow-right me-1"></i>
-                    العودة للقائمة
+    <div class="container-fluid pt-3">
+        <nav class="student-content-breadcrumb mb-3" aria-label="مسار التنقل">
+            <ol class="student-content-breadcrumb__trail">
+                <li class="student-content-breadcrumb__item">
+                    <a href="{{ route('student.dashboard') }}" class="student-content-breadcrumb__link">
+                        <i class="bi bi-house-door-fill"></i>
+                        <span>الرئيسية</span>
+                    </a>
+                </li>
+                <li class="student-content-breadcrumb__sep" aria-hidden="true"><i class="bi bi-chevron-left"></i></li>
+                <li class="student-content-breadcrumb__item">
+                    <a href="{{ route('student.progress.index') }}" class="student-content-breadcrumb__link">
+                        <i class="bi bi-graph-up-arrow"></i>
+                        <span>تقدمي الدراسي</span>
+                    </a>
+                </li>
+                <li class="student-content-breadcrumb__sep" aria-hidden="true"><i class="bi bi-chevron-left"></i></li>
+                <li class="student-content-breadcrumb__item" aria-current="page">
+                    <span class="student-content-breadcrumb__current">
+                        <i class="bi bi-book-half"></i>
+                        <span>{{ $subject->name }}</span>
+                    </span>
+                </li>
+            </ol>
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
+                <div>
+                    <h1 class="student-content-breadcrumb__heading mb-0">
+                        <i class="bi bi-book-half me-2 text-warning"></i>تقدمي في {{ $subject->name }}
+                    </h1>
+                    <p class="student-content-breadcrumb__meta mb-0">عرض تفصيلي لتقدمك في هذه المادة الدراسية</p>
+                </div>
+                <a href="{{ route('student.progress.index') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-right me-1"></i>العودة للقائمة
                 </a>
             </div>
-        </div>
-        <!-- End Page Header -->
+        </nav>
 
-        <!-- Overall Progress Card -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">التقدم الكلي</h5>
+        @php
+            $overall = round($progress['overall_percentage'] ?? 0, 1);
+        @endphp
+
+        <div class="student-progress-overview">
+            <div class="student-progress-overview__head">
+                <h5 class="mb-0 fw-bold"><i class="fe fe-trending-up me-2"></i>التقدم الكلي</h5>
+            </div>
+            <div class="student-progress-overview__body">
+                <div class="student-progress-overview__percent">{{ $overall }}%</div>
+                <div class="progress student-progress-overview__bar">
+                    <div class="progress-bar" role="progressbar"
+                         style="width: {{ min(100, $overall) }}%;"
+                         aria-valuenow="{{ $overall }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+
+                <div class="student-progress-overview__stats">
+                    <div class="student-progress-card__stat student-progress-card__stat--lessons">
+                        <span class="student-progress-card__stat-value">{{ $progress['lessons_completed'] ?? 0 }}</span>
+                        <span class="student-progress-card__stat-label">دروس مكتملة</span>
+                        <span class="student-progress-card__stat-total">من {{ $progress['lessons_total'] ?? 0 }}</span>
                     </div>
-                    <div class="card-body">
-                        <div class="row align-items-center">
-                            <div class="col-md-8">
-                                <h2 class="text-primary mb-3">{{ round($progress['overall_percentage'] ?? 0, 1) }}%</h2>
-                                <div class="progress" style="height: 20px;">
-                                    <div class="progress-bar bg-primary" role="progressbar" 
-                                         style="width: {{ $progress['overall_percentage'] ?? 0 }}%"
-                                         aria-valuenow="{{ $progress['overall_percentage'] ?? 0 }}" 
-                                         aria-valuemin="0" 
-                                         aria-valuemax="100">
-                                        {{ round($progress['overall_percentage'] ?? 0, 1) }}%
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4 text-center">
-                                <div class="row">
-                                    <div class="col-6 mb-3">
-                                        <div class="border rounded p-2">
-                                            <h4 class="mb-0 text-success">{{ $progress['lessons_completed'] ?? 0 }}</h4>
-                                            <small class="text-muted">دروس مكتملة</small>
-                                            <div><small class="text-muted">من {{ $progress['lessons_total'] ?? 0 }}</small></div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6 mb-3">
-                                        <div class="border rounded p-2">
-                                            <h4 class="mb-0 text-info">{{ $progress['quizzes_completed'] ?? 0 }}</h4>
-                                            <small class="text-muted">اختبارات</small>
-                                            <div><small class="text-muted">من {{ $progress['quizzes_total'] ?? 0 }}</small></div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="border rounded p-2">
-                                            <h4 class="mb-0 text-warning">{{ $progress['questions_completed'] ?? 0 }}</h4>
-                                            <small class="text-muted">أسئلة</small>
-                                            <div><small class="text-muted">من {{ $progress['questions_total'] ?? 0 }}</small></div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="border rounded p-2">
-                                            <h4 class="mb-0 text-primary">{{ $sections->count() }}</h4>
-                                            <small class="text-muted">أقسام</small>
-                                            <div><small class="text-muted">إجمالي</small></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        @if(isset($stats['attendance']))
-                        <div class="row mt-3 pt-3 border-top">
-                            <div class="col-12">
-                                <h6 class="text-muted mb-2"><i class="bi bi-clock-history me-1"></i> الحضور ومدة المشاهدة</h6>
-                                <p class="mb-0 small">
-                                    حضرت <strong>{{ $stats['attendance']['attended_lessons'] }}</strong> من <strong>{{ $stats['attendance']['total_lessons'] }}</strong> درس
-                                    ({{ $stats['attendance']['lessons_attendance_percentage'] }}%).
-                                    شاهدت <strong>{{ $stats['attendance']['watch_time_percentage'] }}%</strong> من مدة الكورس.
-                                </p>
-                            </div>
-                        </div>
-                        @endif
+                    <div class="student-progress-card__stat student-progress-card__stat--quizzes">
+                        <span class="student-progress-card__stat-value">{{ $progress['quizzes_completed'] ?? 0 }}</span>
+                        <span class="student-progress-card__stat-label">اختبارات</span>
+                        <span class="student-progress-card__stat-total">من {{ $progress['quizzes_total'] ?? 0 }}</span>
+                    </div>
+                    <div class="student-progress-card__stat student-progress-card__stat--questions">
+                        <span class="student-progress-card__stat-value">{{ $progress['questions_completed'] ?? 0 }}</span>
+                        <span class="student-progress-card__stat-label">أسئلة</span>
+                        <span class="student-progress-card__stat-total">من {{ $progress['questions_total'] ?? 0 }}</span>
+                    </div>
+                    <div class="student-progress-card__stat student-progress-card__stat--lessons">
+                        <span class="student-progress-card__stat-value">{{ $sections->count() }}</span>
+                        <span class="student-progress-card__stat-label">أقسام</span>
+                        <span class="student-progress-card__stat-total">إجمالي</span>
                     </div>
                 </div>
+
+                @if(isset($stats['attendance']))
+                    <div class="student-progress-overview__attendance">
+                        <i class="bi bi-clock-history me-1"></i>
+                        <strong>الحضور ومدة المشاهدة:</strong>
+                        حضرت <strong>{{ $stats['attendance']['attended_lessons'] }}</strong> من
+                        <strong>{{ $stats['attendance']['total_lessons'] }}</strong> درس
+                        ({{ $stats['attendance']['lessons_attendance_percentage'] }}%).
+                        شاهدت <strong>{{ $stats['attendance']['watch_time_percentage'] }}%</strong> من مدة الكورس.
+                    </div>
+                @endif
             </div>
         </div>
 
-        <!-- Sections Progress -->
         @if(isset($sections) && $sections->count() > 0)
-            <div class="row">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">التقدم حسب الأقسام</h5>
-                        </div>
-                        <div class="card-body">
-                            @foreach($sections as $section)
-                                @php
-                                    $sectionProgress = $sectionsProgress[$section->id] ?? [];
-                                    $sectionPercentage = $sectionProgress['overall_percentage'] ?? 0;
-                                @endphp
-                                <div class="card mb-3">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between align-items-center mb-3">
-                                            <div>
-                                                <h5 class="mb-1">{{ $section->title }}</h5>
-                                                @if($section->description)
-                                                    <p class="text-muted mb-0">{{ \Illuminate\Support\Str::limit($section->description, 100) }}</p>
-                                                @endif
-                                            </div>
-                                            <div class="text-end">
-                                                <h4 class="mb-0 text-primary">{{ round($sectionPercentage, 1) }}%</h4>
-                                                <small class="text-muted">التقدم</small>
-                                            </div>
-                                        </div>
-
-                                        <div class="progress mb-3" style="height: 10px;">
-                                            <div class="progress-bar bg-info" role="progressbar" 
-                                                 style="width: {{ $sectionPercentage }}%"
-                                                 aria-valuenow="{{ $sectionPercentage }}" 
-                                                 aria-valuemin="0" 
-                                                 aria-valuemax="100">
-                                            </div>
-                                        </div>
-
-                                        <div class="row text-center">
-                                            <div class="col-3">
-                                                <small class="text-muted d-block">دروس</small>
-                                                <strong>{{ $sectionProgress['lessons_completed'] ?? 0 }}/{{ $sectionProgress['lessons_total'] ?? 0 }}</strong>
-                                            </div>
-                                            <div class="col-3">
-                                                <small class="text-muted d-block">اختبارات</small>
-                                                <strong>{{ $sectionProgress['quizzes_completed'] ?? 0 }}/{{ $sectionProgress['quizzes_total'] ?? 0 }}</strong>
-                                            </div>
-                                            <div class="col-3">
-                                                <small class="text-muted d-block">أسئلة</small>
-                                                <strong>{{ $sectionProgress['questions_completed'] ?? 0 }}/{{ $sectionProgress['questions_total'] ?? 0 }}</strong>
-                                            </div>
-                                            <div class="col-3">
-                                                <a href="{{ route('student.progress.section', $section->id) }}" class="btn btn-primary btn-sm">
-                                                    <i class="bi bi-eye me-1"></i>
-                                                    التفاصيل
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
+            <div class="card dashboard-panel student-progress-sections-panel">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="fe fe-layers me-2"></i>التقدم حسب الأقسام</h5>
+                </div>
+                <div class="card-body pt-3">
+                    @foreach($sections as $section)
+                        @php
+                            $sectionProgress = $sectionsProgress[$section->id] ?? [];
+                            $sectionPercentage = round($sectionProgress['overall_percentage'] ?? 0, 1);
+                        @endphp
+                        <div class="student-progress-section-row" style="animation-delay: {{ $loop->index * 0.04 }}s;">
+                            <div class="student-progress-section-row__head">
+                                <div>
+                                    <h3 class="student-progress-section-row__title">{{ $section->title }}</h3>
+                                    @if($section->description)
+                                        <p class="student-progress-section-row__desc">{{ Str::limit($section->description, 100) }}</p>
+                                    @endif
                                 </div>
-                            @endforeach
+                                <div class="text-end">
+                                    <span class="student-progress-section-row__percent">{{ $sectionPercentage }}%</span>
+                                    <span class="student-progress-section-row__percent-label">التقدم</span>
+                                </div>
+                            </div>
+
+                            <div class="progress student-progress-section-row__bar">
+                                <div class="progress-bar" role="progressbar"
+                                     style="width: {{ min(100, $sectionPercentage) }}%;"
+                                     aria-valuenow="{{ $sectionPercentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+
+                            <div class="student-progress-section-row__footer">
+                                <div class="student-progress-section-row__metrics">
+                                    <span><i class="bi bi-book me-1"></i>دروس <strong>{{ $sectionProgress['lessons_completed'] ?? 0 }}/{{ $sectionProgress['lessons_total'] ?? 0 }}</strong></span>
+                                    <span><i class="bi bi-clipboard-check me-1"></i>اختبارات <strong>{{ $sectionProgress['quizzes_completed'] ?? 0 }}/{{ $sectionProgress['quizzes_total'] ?? 0 }}</strong></span>
+                                    <span><i class="bi bi-question-circle me-1"></i>أسئلة <strong>{{ $sectionProgress['questions_completed'] ?? 0 }}/{{ $sectionProgress['questions_total'] ?? 0 }}</strong></span>
+                                </div>
+                                <a href="{{ route('student.progress.section', $section->id) }}" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-eye me-1"></i>التفاصيل
+                                </a>
+                            </div>
                         </div>
-                    </div>
+                    @endforeach
                 </div>
             </div>
         @else
-            <div class="card">
+            <div class="card custom-card student-progress-empty">
                 <div class="card-body text-center py-5">
-                    <i class="bi bi-inbox fs-1 text-muted mb-3 d-block"></i>
-                    <h5 class="mb-2">لا توجد أقسام</h5>
-                    <p class="text-muted">هذه المادة لا تحتوي على أقسام دراسية بعد</p>
+                    <div class="student-progress-empty__icon">
+                        <i class="bi bi-inbox"></i>
+                    </div>
+                    <h5 class="mb-2 text-muted">لا توجد أقسام</h5>
+                    <p class="text-muted mb-0">هذه المادة لا تحتوي على أقسام دراسية بعد</p>
                 </div>
             </div>
         @endif
     </div>
 </div>
-<!-- End::app-content -->
 @stop

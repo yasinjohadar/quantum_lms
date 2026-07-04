@@ -43,7 +43,7 @@
             <li class="nav-item {{ $currentStep === 2 ? 'active' : '' }}" role="listitem">
                 <span class="nav-link {{ $currentStep === 2 ? 'active' : '' }}" @if($currentStep === 2) aria-current="step" @endif>
                     <i class="bi bi-cloud-upload"></i>
-                    <span class="ms-1 d-none d-sm-inline">استيراد Excel</span>
+                    <span class="ms-1 d-none d-sm-inline">استيراد الأسئلة</span>
                 </span>
             </li>
         </ul>

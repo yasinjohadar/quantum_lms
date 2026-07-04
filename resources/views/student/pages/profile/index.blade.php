@@ -4,14 +4,36 @@
     الملف الشخصي
 @stop
 
+@push('styles')
+    @include('student.partials.dashboard-widget-styles')
+    @include('student.pages.lessons.partials.subject-content-breadcrumb-styles')
+    @include('student.pages.profile.partials.profile-page-styles')
+@endpush
+
 @section('content')
 <div class="main-content app-content">
-    <div class="container-fluid">
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div class="my-auto">
-                <h5 class="page-title fs-21 mb-1">الملف الشخصي</h5>
-            </div>
-        </div>
+    <div class="container-fluid pt-3">
+        <nav class="student-content-breadcrumb mb-3" aria-label="مسار التنقل">
+            <ol class="student-content-breadcrumb__trail">
+                <li class="student-content-breadcrumb__item">
+                    <a href="{{ route('student.dashboard') }}" class="student-content-breadcrumb__link">
+                        <i class="bi bi-house-door-fill"></i>
+                        <span>الرئيسية</span>
+                    </a>
+                </li>
+                <li class="student-content-breadcrumb__sep" aria-hidden="true"><i class="bi bi-chevron-left"></i></li>
+                <li class="student-content-breadcrumb__item" aria-current="page">
+                    <span class="student-content-breadcrumb__current">
+                        <i class="bi bi-person-fill"></i>
+                        <span>الملف الشخصي</span>
+                    </span>
+                </li>
+            </ol>
+            <h1 class="student-content-breadcrumb__heading">
+                <i class="bi bi-person-circle me-2 text-warning"></i>الملف الشخصي
+            </h1>
+            <p class="student-content-breadcrumb__meta mb-0">معلوماتك، موادك، ونشاطك الدراسي</p>
+        </nav>
 
         @if (session('success'))
             <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -27,465 +49,213 @@
             </div>
         @endif
 
-        <div class="row">
-            <!-- معلومات المستخدم الأساسية -->
-            <div class="col-xl-4 col-lg-12">
-                <div class="card shadow-sm border-0">
-                    <div class="card-body text-center">
-                        <div class="profile-img mb-3">
-                            @if($user->photo)
-                                <img src="{{ media_public_url($user->photo) }}" alt="صورة المستخدم" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
-                            @else
-                                <div class="rounded-circle bg-primary d-inline-flex align-items-center justify-content-center" style="width: 150px; height: 150px; font-size: 48px; color: white;">
-                                    {{ strtoupper(substr($user->name, 0, 1)) }}
-                                </div>
+        <div class="row g-3">
+            <div class="col-xl-4 col-lg-5">
+                <div class="student-profile-hero">
+                    <div class="student-profile-hero__banner" aria-hidden="true"></div>
+                    <div class="student-profile-hero__body">
+                        <div class="student-profile-hero__avatar-wrap">
+                            <div class="student-profile-hero__avatar">
+                                @if($user->photo)
+                                    <img src="{{ media_public_url($user->photo) }}" alt="{{ $user->name }}">
+                                @else
+                                    {{ mb_substr($user->name, 0, 1) }}
+                                @endif
+                            </div>
+                        </div>
+                        <h2 class="student-profile-hero__name">{{ $user->name }}</h2>
+                        <div class="student-profile-hero__contacts">
+                            @if($user->email)
+                                <span class="student-profile-hero__contact">
+                                    <i class="bi bi-envelope-fill"></i>{{ $user->email }}
+                                </span>
+                            @endif
+                            @if($user->phone)
+                                <span class="student-profile-hero__contact">
+                                    <i class="bi bi-telephone-fill"></i>{{ $user->phone }}
+                                </span>
                             @endif
                         </div>
-                        <h4 class="mb-1">{{ $user->name }}</h4>
-                        <p class="text-muted mb-3">{{ $user->email }}</p>
-                        
-                        @if($user->phone)
-                            <p class="text-muted mb-3">
-                                <i class="fas fa-phone me-2"></i>{{ $user->phone }}
-                            </p>
-                        @endif
-
-                        <div class="d-flex justify-content-center gap-2">
-                            <!-- زر التعديل معطل مؤقتاً -->
-                            <button type="button" class="btn btn-primary btn-sm" disabled>
-                                <i class="fas fa-edit me-1"></i> تعديل الملف الشخصي
-                            </button>
-                        </div>
+                        <button type="button" class="btn btn-primary btn-sm w-100" disabled>
+                            <i class="bi bi-pencil-square me-1"></i>تعديل الملف الشخصي
+                        </button>
                     </div>
                 </div>
 
-                <!-- الإحصائيات -->
-                <div class="card shadow-sm border-0 mt-4">
-                    <div class="card-header bg-transparent">
-                        <h6 class="mb-0">الإحصائيات</h6>
+                <div class="student-profile-panel">
+                    <div class="student-profile-panel__head">
+                        <h3 class="student-profile-panel__title">
+                            <i class="bi bi-bar-chart me-1 text-primary"></i>الإحصائيات
+                        </h3>
                     </div>
-                    <div class="card-body">
-                        <div class="row text-center">
-                            <div class="col-6 mb-3">
-                                <h4 class="mb-0 text-primary">{{ $generalStats['total_subjects'] }}</h4>
-                                <small class="text-muted">المواد</small>
+                    <div class="student-profile-panel__body">
+                        <div class="student-profile-stats">
+                            <div class="student-profile-stat student-profile-stat--subjects">
+                                <span class="student-profile-stat__value">{{ $generalStats['total_subjects'] }}</span>
+                                <span class="student-profile-stat__label">المواد</span>
                             </div>
-                            <div class="col-6 mb-3">
-                                <h4 class="mb-0 text-success">{{ $generalStats['active_enrollments'] }}</h4>
-                                <small class="text-muted">الانضمامات النشطة</small>
+                            <div class="student-profile-stat student-profile-stat--enrollments">
+                                <span class="student-profile-stat__value">{{ $generalStats['active_enrollments'] }}</span>
+                                <span class="student-profile-stat__label">انضمامات نشطة</span>
                             </div>
-                            <div class="col-6 mb-3">
-                                <h4 class="mb-0 text-info">{{ $quizStats['total_attempts'] }}</h4>
-                                <small class="text-muted">محاولات الاختبارات</small>
+                            <div class="student-profile-stat student-profile-stat--attempts">
+                                <span class="student-profile-stat__value">{{ $quizStats['total_attempts'] }}</span>
+                                <span class="student-profile-stat__label">محاولات الاختبارات</span>
                             </div>
-                            <div class="col-6 mb-3">
-                                <h4 class="mb-0 text-warning">{{ $quizStats['passed_attempts'] }}</h4>
-                                <small class="text-muted">اختبارات نجحت</small>
+                            <div class="student-profile-stat student-profile-stat--passed">
+                                <span class="student-profile-stat__value">{{ $quizStats['passed_attempts'] }}</span>
+                                <span class="student-profile-stat__label">اختبارات ناجحة</span>
                             </div>
                             @if($quizStats['average_score'] > 0)
-                            <div class="col-12">
-                                <h4 class="mb-0 text-danger">{{ number_format($quizStats['average_score'], 1) }}%</h4>
-                                <small class="text-muted">متوسط النقاط</small>
-                            </div>
+                                <div class="student-profile-stat student-profile-stat--average" style="grid-column: span 2;">
+                                    <span class="student-profile-stat__value">{{ number_format($quizStats['average_score'], 1) }}%</span>
+                                    <span class="student-profile-stat__label">متوسط النقاط</span>
+                                </div>
                             @endif
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- المحتوى الرئيسي -->
-            <div class="col-xl-8 col-lg-12">
-                <!-- المواد المسجلة -->
-                <div class="card shadow-sm border-0 mb-4">
-                    <div class="card-header bg-transparent">
-                        <h6 class="mb-0">المواد المسجلة</h6>
-                    </div>
-                    <div class="card-body">
+            <div class="col-xl-8 col-lg-7">
+                <div class="student-profile-panel">
+                    <div class="student-profile-panel__head">
+                        <h3 class="student-profile-panel__title">
+                            <i class="bi bi-book me-1 text-primary"></i>المواد المسجلة
+                        </h3>
                         @if($user->subjects->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>المادة</th>
-                                            <th>الصف</th>
-                                            <th>المرحلة</th>
-                                            <th>الحالة</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($user->subjects as $subject)
-                                            <tr>
-                                                <td>
-                                                    <a href="{{ route('student.subjects.show', $subject->id) }}" class="text-decoration-none">
-                                                        {{ $subject->name }}
-                                                    </a>
-                                                </td>
-                                                <td>{{ $subject->schoolClass->name ?? '-' }}</td>
-                                                <td>{{ $subject->schoolClass->stage->name ?? '-' }}</td>
-                                                <td>
-                                                    @php
-                                                        $enrollment = $user->enrollments->where('subject_id', $subject->id)->first();
-                                                    @endphp
-                                                    @if($enrollment)
-                                                        <span class="badge bg-{{ $enrollment->status === 'active' ? 'success' : ($enrollment->status === 'suspended' ? 'warning' : 'secondary') }}">
-                                                            {{ $enrollment->status === 'active' ? 'نشط' : ($enrollment->status === 'suspended' ? 'معلق' : 'مكتمل') }}
-                                                        </span>
-                                                    @else
-                                                        <span class="badge bg-secondary">غير محدد</span>
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
+                            <span class="student-profile-panel__count">{{ $user->subjects->count() }}</span>
+                        @endif
+                    </div>
+                    <div class="student-profile-panel__body">
+                        @if($user->subjects->count() > 0)
+                            @foreach($user->subjects as $subject)
+                                @php
+                                    $enrollment = $user->enrollments->where('subject_id', $subject->id)->first();
+                                    $status = $enrollment?->status;
+                                    $statusLabel = match($status) {
+                                        'active' => 'نشط',
+                                        'suspended' => 'معلق',
+                                        'completed' => 'مكتمل',
+                                        default => 'غير محدد',
+                                    };
+                                    $statusClass = match($status) {
+                                        'active' => 'active',
+                                        'suspended' => 'suspended',
+                                        default => 'other',
+                                    };
+                                @endphp
+                                <a href="{{ route('student.subjects.show', $subject->id) }}"
+                                   class="student-profile-subject-row"
+                                   style="animation-delay: {{ $loop->index * 0.04 }}s;">
+                                    <div class="student-profile-subject-row__icon">
+                                        <i class="bi bi-journal-bookmark"></i>
+                                    </div>
+                                    <div class="student-profile-subject-row__main">
+                                        <h4 class="student-profile-subject-row__title">{{ $subject->name }}</h4>
+                                        <div class="student-profile-subject-row__meta">
+                                            {{ $subject->schoolClass->name ?? '-' }}
+                                            · {{ $subject->schoolClass->stage->name ?? '-' }}
+                                        </div>
+                                    </div>
+                                    <span class="student-profile-subject-row__status student-profile-subject-row__status--{{ $statusClass }}">
+                                        {{ $statusLabel }}
+                                    </span>
+                                </a>
+                            @endforeach
                         @else
-                            <div class="alert alert-info text-center">
-                                <i class="fas fa-info-circle me-2"></i>
-                                لا توجد مواد مسجلة حالياً.
+                            <div class="student-profile-empty">
+                                <div class="student-profile-empty__icon"><i class="bi bi-book"></i></div>
+                                <p class="text-muted mb-0">لا توجد مواد مسجلة حالياً</p>
                             </div>
                         @endif
                     </div>
                 </div>
 
-                <!-- آخر محاولات الاختبارات -->
-                <div class="card shadow-sm border-0 mb-4">
-                    <div class="card-header bg-transparent">
-                        <h6 class="mb-0">آخر محاولات الاختبارات</h6>
+                <div class="student-profile-panel">
+                    <div class="student-profile-panel__head">
+                        <h3 class="student-profile-panel__title">
+                            <i class="bi bi-clipboard-check me-1 text-info"></i>آخر محاولات الاختبارات
+                        </h3>
                     </div>
-                    <div class="card-body">
+                    <div class="student-profile-panel__body">
                         @if($quizStats['recent_attempts']->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>الاختبار</th>
-                                            <th>المادة</th>
-                                            <th>النقاط</th>
-                                            <th>الحالة</th>
-                                            <th>التاريخ</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($quizStats['recent_attempts'] as $attempt)
-                                            <tr>
-                                                <td>{{ $attempt->quiz->title ?? '-' }}</td>
-                                                <td>{{ $attempt->quiz->subject->name ?? '-' }}</td>
-                                                <td>
-                                                    @if($attempt->percentage !== null)
-                                                        <span class="badge bg-{{ $attempt->passed ? 'success' : 'danger' }}">
-                                                            {{ number_format($attempt->percentage, 1) }}%
-                                                        </span>
-                                                    @else
-                                                        <span class="badge bg-secondary">-</span>
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-{{ $attempt->status === 'completed' ? 'success' : ($attempt->status === 'in_progress' ? 'warning' : 'secondary') }}">
-                                                        {{ $attempt->status === 'completed' ? 'مكتمل' : ($attempt->status === 'in_progress' ? 'قيد التنفيذ' : 'منتهي') }}
-                                                    </span>
-                                                </td>
-                                                <td>{{ $attempt->started_at->format('Y-m-d H:i') }}</td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
+                            @foreach($quizStats['recent_attempts'] as $attempt)
+                                @php
+                                    $scoreClass = $attempt->percentage === null
+                                        ? 'pending'
+                                        : ($attempt->passed ? 'passed' : 'failed');
+                                    $statusLabel = match($attempt->status) {
+                                        'completed' => 'مكتمل',
+                                        'in_progress' => 'قيد التنفيذ',
+                                        'graded' => 'مصحح',
+                                        'timeout', 'timed_out' => 'انتهى الوقت',
+                                        default => $attempt->status,
+                                    };
+                                @endphp
+                                <div class="student-profile-attempt-row" style="animation-delay: {{ $loop->index * 0.04 }}s;">
+                                    <div class="student-profile-attempt-row__score student-profile-attempt-row__score--{{ $scoreClass }}">
+                                        @if($attempt->percentage !== null)
+                                            {{ number_format($attempt->percentage, 0) }}%
+                                        @else
+                                            —
+                                        @endif
+                                    </div>
+                                    <div class="flex-grow-1 min-w-0">
+                                        <h4 class="student-profile-attempt-row__title">{{ $attempt->quiz->title ?? '-' }}</h4>
+                                        <div class="student-profile-attempt-row__meta">
+                                            {{ $attempt->quiz->subject->name ?? '-' }}
+                                            · {{ $statusLabel }}
+                                            · {{ $attempt->started_at->format('Y-m-d H:i') }}
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
                         @else
-                            <div class="alert alert-info text-center">
-                                <i class="fas fa-info-circle me-2"></i>
-                                لا توجد محاولات اختبارات حتى الآن.
+                            <div class="student-profile-empty">
+                                <div class="student-profile-empty__icon"><i class="bi bi-clipboard-x"></i></div>
+                                <p class="text-muted mb-0">لا توجد محاولات اختبارات حتى الآن</p>
                             </div>
                         @endif
                     </div>
                 </div>
 
-                <!-- معلومات الدخول الأخيرة -->
                 @if($user->loginLogs->count() > 0)
-                <div class="card shadow-sm border-0">
-                    <div class="card-header bg-transparent">
-                        <h6 class="mb-0">جلسات الدخول الأخيرة</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>IP</th>
-                                        <th>الجهاز</th>
-                                        <th>المتصفح</th>
-                                        <th>الحالة</th>
-                                        <th>التاريخ</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($user->loginLogs->take(5) as $log)
-                                        <tr>
-                                            <td>{{ $log->ip_address }}</td>
-                                            <td>{{ $log->device_type ?? '-' }} - {{ $log->platform ?? '-' }}</td>
-                                            <td>{{ $log->browser ?? '-' }}</td>
-                                            <td>
-                                                <span class="badge bg-{{ $log->is_successful ? 'success' : 'danger' }}">
-                                                    {{ $log->is_successful ? 'ناجح' : 'فاشل' }}
-                                                </span>
-                                            </td>
-                                            <td>{{ $log->login_at->format('Y-m-d H:i') }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                    <div class="student-profile-panel mb-0">
+                        <div class="student-profile-panel__head">
+                            <h3 class="student-profile-panel__title">
+                                <i class="bi bi-shield-lock me-1 text-success"></i>جلسات الدخول الأخيرة
+                            </h3>
+                        </div>
+                        <div class="student-profile-panel__body">
+                            @foreach($user->loginLogs->take(5) as $log)
+                                <div class="student-profile-login-row" style="animation-delay: {{ $loop->index * 0.03 }}s;">
+                                    <span class="student-profile-login-row__status student-profile-login-row__status--{{ $log->is_successful ? 'ok' : 'fail' }}">
+                                        {{ $log->is_successful ? 'ناجح' : 'فاشل' }}
+                                    </span>
+                                    <span class="student-profile-login-row__item">
+                                        <i class="bi bi-globe2"></i>
+                                        <strong>{{ $log->ip_address }}</strong>
+                                    </span>
+                                    <span class="student-profile-login-row__item">
+                                        <i class="bi bi-phone"></i>
+                                        {{ $log->device_type ?? '-' }} · {{ $log->platform ?? '-' }}
+                                    </span>
+                                    <span class="student-profile-login-row__item">
+                                        <i class="bi bi-browser-chrome"></i>
+                                        {{ $log->browser ?? '-' }}
+                                    </span>
+                                    <span class="student-profile-login-row__item">
+                                        <i class="bi bi-clock"></i>
+                                        {{ $log->login_at->format('Y-m-d H:i') }}
+                                    </span>
+                                </div>
+                            @endforeach
                         </div>
                     </div>
-                </div>
                 @endif
             </div>
         </div>
     </div>
 </div>
 @stop
-
-
-@section('page-title')
-    الملف الشخصي
-@stop
-
-@section('content')
-<div class="main-content app-content">
-    <div class="container-fluid">
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div class="my-auto">
-                <h5 class="page-title fs-21 mb-1">الملف الشخصي</h5>
-            </div>
-        </div>
-
-        @if (session('success'))
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-            </div>
-        @endif
-
-        @if (session('error'))
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                {{ session('error') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-            </div>
-        @endif
-
-        <div class="row">
-            <!-- معلومات المستخدم الأساسية -->
-            <div class="col-xl-4 col-lg-12">
-                <div class="card shadow-sm border-0">
-                    <div class="card-body text-center">
-                        <div class="profile-img mb-3">
-                            @if($user->photo)
-                                <img src="{{ media_public_url($user->photo) }}" alt="صورة المستخدم" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
-                            @else
-                                <div class="rounded-circle bg-primary d-inline-flex align-items-center justify-content-center" style="width: 150px; height: 150px; font-size: 48px; color: white;">
-                                    {{ strtoupper(substr($user->name, 0, 1)) }}
-                                </div>
-                            @endif
-                        </div>
-                        <h4 class="mb-1">{{ $user->name }}</h4>
-                        <p class="text-muted mb-3">{{ $user->email }}</p>
-                        
-                        @if($user->phone)
-                            <p class="text-muted mb-3">
-                                <i class="fas fa-phone me-2"></i>{{ $user->phone }}
-                            </p>
-                        @endif
-
-                        <div class="d-flex justify-content-center gap-2">
-                            <!-- زر التعديل معطل مؤقتاً -->
-                            <button type="button" class="btn btn-primary btn-sm" disabled>
-                                <i class="fas fa-edit me-1"></i> تعديل الملف الشخصي
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- الإحصائيات -->
-                <div class="card shadow-sm border-0 mt-4">
-                    <div class="card-header bg-transparent">
-                        <h6 class="mb-0">الإحصائيات</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row text-center">
-                            <div class="col-6 mb-3">
-                                <h4 class="mb-0 text-primary">{{ $generalStats['total_subjects'] }}</h4>
-                                <small class="text-muted">المواد</small>
-                            </div>
-                            <div class="col-6 mb-3">
-                                <h4 class="mb-0 text-success">{{ $generalStats['active_enrollments'] }}</h4>
-                                <small class="text-muted">الانضمامات النشطة</small>
-                            </div>
-                            <div class="col-6 mb-3">
-                                <h4 class="mb-0 text-info">{{ $quizStats['total_attempts'] }}</h4>
-                                <small class="text-muted">محاولات الاختبارات</small>
-                            </div>
-                            <div class="col-6 mb-3">
-                                <h4 class="mb-0 text-warning">{{ $quizStats['passed_attempts'] }}</h4>
-                                <small class="text-muted">اختبارات نجحت</small>
-                            </div>
-                            @if($quizStats['average_score'] > 0)
-                            <div class="col-12">
-                                <h4 class="mb-0 text-danger">{{ number_format($quizStats['average_score'], 1) }}%</h4>
-                                <small class="text-muted">متوسط النقاط</small>
-                            </div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- المحتوى الرئيسي -->
-            <div class="col-xl-8 col-lg-12">
-                <!-- المواد المسجلة -->
-                <div class="card shadow-sm border-0 mb-4">
-                    <div class="card-header bg-transparent">
-                        <h6 class="mb-0">المواد المسجلة</h6>
-                    </div>
-                    <div class="card-body">
-                        @if($user->subjects->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>المادة</th>
-                                            <th>الصف</th>
-                                            <th>المرحلة</th>
-                                            <th>الحالة</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($user->subjects as $subject)
-                                            <tr>
-                                                <td>
-                                                    <a href="{{ route('student.subjects.show', $subject->id) }}" class="text-decoration-none">
-                                                        {{ $subject->name }}
-                                                    </a>
-                                                </td>
-                                                <td>{{ $subject->schoolClass->name ?? '-' }}</td>
-                                                <td>{{ $subject->schoolClass->stage->name ?? '-' }}</td>
-                                                <td>
-                                                    @php
-                                                        $enrollment = $user->enrollments->where('subject_id', $subject->id)->first();
-                                                    @endphp
-                                                    @if($enrollment)
-                                                        <span class="badge bg-{{ $enrollment->status === 'active' ? 'success' : ($enrollment->status === 'suspended' ? 'warning' : 'secondary') }}">
-                                                            {{ $enrollment->status === 'active' ? 'نشط' : ($enrollment->status === 'suspended' ? 'معلق' : 'مكتمل') }}
-                                                        </span>
-                                                    @else
-                                                        <span class="badge bg-secondary">غير محدد</span>
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        @else
-                            <div class="alert alert-info text-center">
-                                <i class="fas fa-info-circle me-2"></i>
-                                لا توجد مواد مسجلة حالياً.
-                            </div>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- آخر محاولات الاختبارات -->
-                <div class="card shadow-sm border-0 mb-4">
-                    <div class="card-header bg-transparent">
-                        <h6 class="mb-0">آخر محاولات الاختبارات</h6>
-                    </div>
-                    <div class="card-body">
-                        @if($quizStats['recent_attempts']->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>الاختبار</th>
-                                            <th>المادة</th>
-                                            <th>النقاط</th>
-                                            <th>الحالة</th>
-                                            <th>التاريخ</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($quizStats['recent_attempts'] as $attempt)
-                                            <tr>
-                                                <td>{{ $attempt->quiz->title ?? '-' }}</td>
-                                                <td>{{ $attempt->quiz->subject->name ?? '-' }}</td>
-                                                <td>
-                                                    @if($attempt->percentage !== null)
-                                                        <span class="badge bg-{{ $attempt->passed ? 'success' : 'danger' }}">
-                                                            {{ number_format($attempt->percentage, 1) }}%
-                                                        </span>
-                                                    @else
-                                                        <span class="badge bg-secondary">-</span>
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-{{ $attempt->status === 'completed' ? 'success' : ($attempt->status === 'in_progress' ? 'warning' : 'secondary') }}">
-                                                        {{ $attempt->status === 'completed' ? 'مكتمل' : ($attempt->status === 'in_progress' ? 'قيد التنفيذ' : 'منتهي') }}
-                                                    </span>
-                                                </td>
-                                                <td>{{ $attempt->started_at->format('Y-m-d H:i') }}</td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        @else
-                            <div class="alert alert-info text-center">
-                                <i class="fas fa-info-circle me-2"></i>
-                                لا توجد محاولات اختبارات حتى الآن.
-                            </div>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- معلومات الدخول الأخيرة -->
-                @if($user->loginLogs->count() > 0)
-                <div class="card shadow-sm border-0">
-                    <div class="card-header bg-transparent">
-                        <h6 class="mb-0">جلسات الدخول الأخيرة</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>IP</th>
-                                        <th>الجهاز</th>
-                                        <th>المتصفح</th>
-                                        <th>الحالة</th>
-                                        <th>التاريخ</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($user->loginLogs->take(5) as $log)
-                                        <tr>
-                                            <td>{{ $log->ip_address }}</td>
-                                            <td>{{ $log->device_type ?? '-' }} - {{ $log->platform ?? '-' }}</td>
-                                            <td>{{ $log->browser ?? '-' }}</td>
-                                            <td>
-                                                <span class="badge bg-{{ $log->is_successful ? 'success' : 'danger' }}">
-                                                    {{ $log->is_successful ? 'ناجح' : 'فاشل' }}
-                                                </span>
-                                            </td>
-                                            <td>{{ $log->login_at->format('Y-m-d H:i') }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                @endif
-            </div>
-        </div>
-    </div>
-</div>
-@stop
-

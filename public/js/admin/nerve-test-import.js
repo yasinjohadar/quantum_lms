@@ -21,6 +21,13 @@
     const fileNameEl = document.getElementById('nerveTestFileName');
     const fileSizeEl = document.getElementById('nerveTestFileSize');
     const acceptHint = document.getElementById('nerveTestAcceptHint');
+    const formatBadge = document.getElementById('nerveTestFormatBadge');
+    const browseBtn = document.getElementById('nerveTestBrowseBtn');
+    const replaceFileBtn = document.getElementById('nerveTestReplaceFile');
+    const parseHint = document.getElementById('nerveTestParseHint');
+    const stepFormat = document.getElementById('nerveTestStepFormat');
+    const stepFile = document.getElementById('nerveTestStepFile');
+    const stepParse = document.getElementById('nerveTestStepParse');
     const removeFileBtn = document.getElementById('nerveTestRemoveFile');
     const parseBtn = document.getElementById('nerveTestParseBtn');
     const parseError = document.getElementById('nerveTestParseError');
@@ -36,6 +43,7 @@
     const importBtnLabel = document.getElementById('nerveTestImportBtnLabel');
 
     let selectedFile = null;
+    let moduleReady = false;
     let csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
         || document.querySelector('#nerveTestImportForm input[name="_token"]')?.value;
 
@@ -43,20 +51,74 @@
         return formatCsv?.checked ? 'csv' : 'md';
     }
 
-    function updateAccept() {
+    function openFilePicker() {
+        if (!fileInput) {
+            return;
+        }
+        fileInput.value = '';
+        fileInput.click();
+    }
+
+    function fileMatchesFormat(file, fmt) {
+        const name = file.name.toLowerCase();
+        if (fmt === 'csv') {
+            return name.endsWith('.csv');
+        }
+        return name.endsWith('.md') || name.endsWith('.txt');
+    }
+
+    function syncStepIndicators() {
+        const hasFile = !!selectedFile;
+        const hasPreview = previewSection && previewSection.style.display !== 'none';
+
+        stepFormat?.classList.toggle('is-active', !hasFile);
+        stepFormat?.classList.toggle('is-done', hasFile || hasPreview);
+        stepFile?.classList.toggle('is-active', !hasFile);
+        stepFile?.classList.toggle('is-done', hasFile);
+        stepParse?.classList.toggle('is-active', hasFile && !hasPreview);
+        stepParse?.classList.toggle('is-done', hasPreview);
+    }
+
+    function syncParseHint() {
+        if (!parseHint) {
+            return;
+        }
+        if (!selectedFile) {
+            parseHint.textContent = 'اختر ملفاً أولاً ثم اضغط تحليل';
+            return;
+        }
+        parseHint.textContent = 'الملف جاهز — اضغط «تحليل الملف» للمعاينة';
+    }
+
+    function updateAccept(openPicker) {
         const fmt = currentFormat();
         if (fileInput) {
-            fileInput.accept = fmt === 'csv' ? '.csv' : '.md,.txt';
+            fileInput.accept = fmt === 'csv' ? '.csv,text/csv' : '.md,.txt,text/markdown';
         }
         if (acceptHint) {
             acceptHint.textContent = fmt === 'csv'
                 ? 'الصيغة: .csv — الحد الأقصى 10 ميجابايت'
-                : 'الصيغة: .md — الحد الأقصى 10 ميجابايت';
+                : 'الصيغة: .md أو .txt — الحد الأقصى 10 ميجابايت';
+        }
+        if (formatBadge) {
+            formatBadge.textContent = fmt === 'csv' ? 'CSV' : 'Markdown';
         }
         if (importFormat) {
             importFormat.value = fmt;
         }
-        clearPreview();
+
+        if (selectedFile && !fileMatchesFormat(selectedFile, fmt)) {
+            clearFile(false);
+        } else {
+            clearPreview();
+        }
+
+        syncStepIndicators();
+        syncParseHint();
+
+        if (openPicker && moduleReady) {
+            setTimeout(openFilePicker, 80);
+        }
     }
 
     function formatBytes(bytes) {
@@ -78,16 +140,22 @@
         uploadArea.classList.add('has-file');
         parseBtn.disabled = false;
         clearPreview();
+        syncStepIndicators();
+        syncParseHint();
     }
 
-    function clearFile() {
+    function clearFile(resetInput) {
+        if (resetInput !== false && fileInput) {
+            fileInput.value = '';
+        }
         selectedFile = null;
-        fileInput.value = '';
         uploadContent.style.display = 'block';
         fileInfo.style.display = 'none';
         uploadArea.classList.remove('has-file');
         parseBtn.disabled = true;
         clearPreview();
+        syncStepIndicators();
+        syncParseHint();
     }
 
     function clearPreview() {
@@ -95,6 +163,7 @@
         previewTable.innerHTML = '';
         previewCount.textContent = '0';
         hideParseError();
+        syncStepIndicators();
     }
 
     function hideParseError() {
@@ -164,6 +233,7 @@
         previewCount.textContent = String(questions.length);
         importBtnLabel.textContent = 'استيراد ' + questions.length + ' سؤال';
         previewSection.style.display = 'block';
+        syncStepIndicators();
     }
 
     function escapeHtml(text) {
@@ -172,19 +242,53 @@
         return div.innerHTML;
     }
 
-    formatMd?.addEventListener('change', updateAccept);
-    formatCsv?.addEventListener('change', updateAccept);
+    formatMd?.addEventListener('change', function () { updateAccept(true); });
+    formatCsv?.addEventListener('change', function () { updateAccept(true); });
+
+    browseBtn?.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openFilePicker();
+    });
+
+    replaceFileBtn?.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openFilePicker();
+    });
 
     uploadArea?.addEventListener('click', function (e) {
-        if (e.target.closest('#nerveTestRemoveFile')) {
+        if (e.target.closest('#nerveTestRemoveFile')
+            || e.target.closest('#nerveTestBrowseBtn')
+            || e.target.closest('#nerveTestReplaceFile')) {
             return;
         }
-        fileInput?.click();
+        if (uploadArea.classList.contains('has-file')) {
+            return;
+        }
+        openFilePicker();
+    });
+
+    uploadArea?.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (!uploadArea.classList.contains('has-file')) {
+                openFilePicker();
+            }
+        }
     });
 
     fileInput?.addEventListener('change', function () {
         if (fileInput.files?.length) {
-            showFile(fileInput.files[0]);
+            const file = fileInput.files[0];
+            if (!fileMatchesFormat(file, currentFormat())) {
+                showParseError(currentFormat() === 'csv'
+                    ? 'الملف المختار ليس بصيغة CSV. اختر ملف .csv أو غيّر الصيغة إلى Markdown.'
+                    : 'الملف المختار ليس Markdown. اختر ملف .md أو .txt أو غيّر الصيغة إلى CSV.');
+                clearFile();
+                return;
+            }
+            showFile(file);
         }
     });
 
@@ -207,6 +311,10 @@
         uploadArea.classList.remove('dragover');
         const file = e.dataTransfer?.files?.[0];
         if (file) {
+            if (!fileMatchesFormat(file, currentFormat())) {
+                showParseError('صيغة الملف لا تطابق الصيغة المحددة.');
+                return;
+            }
             showFile(file);
         }
     });
@@ -295,6 +403,7 @@
         };
     }
 
-    updateAccept();
+    updateAccept(false);
     syncCurriculumFromSidebar();
+    moduleReady = true;
 })();

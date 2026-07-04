@@ -94,7 +94,8 @@ class QuestionPackImportController extends Controller
                 $request->input('format'),
                 $targetType
             );
-            $count = $persister->persist($questions, $subjectId, $unitId, (int) auth()->id());
+            $result = $persister->persist($questions, $subjectId, $unitId, (int) auth()->id());
+            $count = $result['count'];
 
             return redirect()
                 ->route('admin.subjects.questions.index', $subjectId)

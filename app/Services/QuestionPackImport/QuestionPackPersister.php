@@ -13,8 +13,9 @@ class QuestionPackPersister
 {
     /**
      * @param  array<int, QuestionPackQuestionData>|Collection<int, QuestionPackQuestionData>  $questions
+     * @return array{count: int, question_ids: array<int, int>}
      */
-    public function persist(Collection|array $questions, ?int $subjectId, ?int $unitId, int $userId): int
+    public function persist(Collection|array $questions, ?int $subjectId, ?int $unitId, int $userId): array
     {
         $questions = $questions instanceof Collection ? $questions : collect($questions);
 
@@ -29,19 +30,23 @@ class QuestionPackPersister
         }
 
         $count = 0;
+        $questionIds = [];
 
-        DB::transaction(function () use ($questions, $subjectId, $unitId, $userId, &$count) {
+        DB::transaction(function () use ($questions, $subjectId, $unitId, $userId, &$count, &$questionIds) {
             foreach ($questions as $dto) {
                 if ($dto->targetType === 'fill_blanks') {
-                    $this->persistFillBlanks($dto, $subjectId, $unitId, $userId);
+                    $questionIds[] = $this->persistFillBlanks($dto, $subjectId, $unitId, $userId);
                 } else {
-                    $this->persistSingleChoice($dto, $subjectId, $unitId, $userId);
+                    $questionIds[] = $this->persistSingleChoice($dto, $subjectId, $unitId, $userId);
                 }
                 $count++;
             }
         });
 
-        return $count;
+        return [
+            'count' => $count,
+            'question_ids' => $questionIds,
+        ];
     }
 
     protected function persistFillBlanks(
@@ -49,7 +54,7 @@ class QuestionPackPersister
         ?int $subjectId,
         ?int $unitId,
         int $userId
-    ): void {
+    ): int {
         $blankAnswers = $dto->blankAnswers();
         if ($blankAnswers === []) {
             throw new QuestionPackParseException("السؤال رقم {$dto->number}: إجابة الفراغ مفقودة.");
@@ -71,6 +76,8 @@ class QuestionPackPersister
         if ($unitId) {
             $question->units()->sync([$unitId]);
         }
+
+        return (int) $question->id;
     }
 
     protected function persistSingleChoice(
@@ -78,7 +85,7 @@ class QuestionPackPersister
         ?int $subjectId,
         ?int $unitId,
         int $userId
-    ): void {
+    ): int {
         $question = Question::create([
             'type' => 'single_choice',
             'title' => $dto->title,
@@ -108,5 +115,7 @@ class QuestionPackPersister
         if ($unitId) {
             $question->units()->sync([$unitId]);
         }
+
+        return (int) $question->id;
     }
 }

@@ -406,6 +406,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('quizzes.import-excel.show');
         Route::post('quizzes/{quiz}/import-excel', [QuizController::class, 'importExcel'])
             ->name('quizzes.import-excel.store');
+        Route::post('quizzes/{quiz}/import/nerve-test', [QuizController::class, 'importNerveTest'])
+            ->name('quizzes.import-nerve-test.store');
+        Route::post('quizzes/{quiz}/import/question-pack', [QuizController::class, 'importQuestionPack'])
+            ->name('quizzes.import-question-pack.store');
         Route::get('quizzes/{quiz}/questions', [QuizController::class, 'questions'])
             ->name('quizzes.questions');
         Route::post('quizzes/{quiz}/add-question', [QuizController::class, 'addQuestion'])

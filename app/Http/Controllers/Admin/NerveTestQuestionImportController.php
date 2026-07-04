@@ -81,7 +81,8 @@ class NerveTestQuestionImportController extends Controller
 
         try {
             $questions = $parserFactory->parseUploadedFile($request->file('file'), $request->input('format'));
-            $count = $persister->persist($questions, $subjectId, $unitId, (int) auth()->id());
+            $result = $persister->persist($questions, $subjectId, $unitId, (int) auth()->id());
+            $count = $result['count'];
 
             return redirect()
                 ->route('admin.subjects.questions.index', $subjectId)

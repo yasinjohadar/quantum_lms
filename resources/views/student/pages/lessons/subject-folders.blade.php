@@ -8,10 +8,17 @@
 <div class="main-content app-content">
     <div class="container-fluid pt-3">
 
+        @include('student.pages.lessons.partials.subject-content-breadcrumb', [
+            'subject' => $subject,
+            'currentLabel' => $subject->name,
+            'currentIcon' => 'bi-book-half',
+            'pageTitle' => 'الأقسام',
+            'pageIcon' => 'bi-folder2-open',
+        ])
+
         @if($sections->count() > 0)
             <div class="row">
                 <div class="col-12">
-                    <h5 class="mb-3 fw-semibold"><i class="bi bi-folder2-open me-2 text-warning"></i> الأقسام</h5>
                     <div class="row g-3">
                         @foreach($sections as $section)
                             <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-sm-6">

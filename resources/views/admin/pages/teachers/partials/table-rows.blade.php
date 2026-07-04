@@ -6,10 +6,11 @@
         $lastLogin = $lastLogins[$teacher->id] ?? $teacher->last_login_at;
         $isOnline = $onlineUserIds->contains($teacher->id);
         $prog = $teachersProgress[$teacher->id] ?? null;
+        $quizCount = (int) ($prog['quizzes_created'] ?? 0);
     @endphp
     <tr>
         <td class="text-muted small">{{ $loop->iteration + ($teachers->currentPage() - 1) * $teachers->perPage() }}</td>
-        <td>
+        <td data-tv-col="name">
             <div class="tv-user-cell">
                 <span class="tv-user-avatar">
                     @if($teacher->photo)
@@ -23,10 +24,10 @@
                 </a>
             </div>
         </td>
-        <td>
+        <td data-tv-col="email">
             <a href="mailto:{{ $teacher->email }}" class="text-decoration-none small">{{ $teacher->email }}</a>
         </td>
-        <td>
+        <td data-tv-col="roles">
             @if($teacher->roles->count() > 0)
                 @foreach($teacher->roles as $role)
                     <span class="tv-role-pill">{{ $role->name }}</span>
@@ -35,7 +36,7 @@
                 <span class="text-muted small">—</span>
             @endif
         </td>
-        <td>
+        <td data-tv-col="classes">
             @if($assignedClasses->count() > 0)
                 <span class="tv-count-badge tv-count-badge--class">{{ $assignedClasses->count() }} صف</span>
                 <div class="tv-meta-list">
@@ -50,7 +51,7 @@
                 <span class="text-muted small">—</span>
             @endif
         </td>
-        <td>
+        <td data-tv-col="subjects">
             @if($assignedSubjects->count() > 0)
                 <span class="tv-count-badge tv-count-badge--subject">{{ $assignedSubjects->count() }} مادة</span>
                 <div class="tv-meta-list">
@@ -65,7 +66,7 @@
                 <span class="text-muted small">—</span>
             @endif
         </td>
-        <td>
+        <td data-tv-col="status">
             @can('user-toggle-status')
                 <button type="button"
                         class="tv-status-badge {{ $teacher->is_active ? 'tv-status-badge--active' : 'tv-status-badge--inactive' }}"
@@ -81,20 +82,26 @@
                 </span>
             @endcan
         </td>
-        <td>
+        <td data-tv-col="last_login">
             @if($lastLogin)
                 <span class="small">{{ \Carbon\Carbon::parse($lastLogin)->format('Y-m-d H:i') }}</span>
             @else
                 <span class="text-muted small">—</span>
             @endif
         </td>
-        <td>
+        <td data-tv-col="online">
             <span class="tv-online-badge {{ $isOnline ? 'tv-online-badge--on' : 'tv-online-badge--off' }}">
                 <i class="bi {{ $isOnline ? 'bi-circle-fill' : 'bi-circle' }} me-1" style="font-size: 0.5rem;"></i>
                 {{ $isOnline ? 'متصل' : 'غير متصل' }}
             </span>
         </td>
-        <td>
+        <td data-tv-col="quizzes" class="text-center">
+            <div class="tv-quiz-count">
+                <span class="tv-count-badge tv-count-badge--quiz">{{ number_format($quizCount) }}</span>
+                <span class="tv-quiz-count__label">اختبار</span>
+            </div>
+        </td>
+        <td data-tv-col="progress">
             @if($prog)
                 <div class="tv-progress-box">
                     <div class="tv-progress-row">

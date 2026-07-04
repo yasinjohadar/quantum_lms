@@ -119,6 +119,12 @@
 <div class="main-content app-content">
     <div class="container-fluid pt-3">
 
+        @include('student.pages.lessons.partials.subject-content-breadcrumb', [
+            'subject' => $subject,
+            'section' => $section,
+            'unit' => $unit,
+        ])
+
         @if(session('error'))
             <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
                 <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ session('error') }}

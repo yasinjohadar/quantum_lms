@@ -229,7 +229,7 @@
                             </ul>
                         </li>
 
-                        <!-- التقويم -->
+                        {{-- التقويم - مخفي من القائمة
                         <li class="slide slide-icon slide-icon--blue {{ request()->is('student/calendar*') ? 'active' : '' }}">
                             <a href="{{ route('student.calendar.index') }}" class="side-menu__item {{ request()->is('student/calendar*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -239,8 +239,9 @@
                                 <span class="side-menu__label">التقويم</span>
                             </a>
                         </li>
+                        --}}
 
-                        <!-- المساعد التعليمي -->
+                        {{-- المساعد التعليمي - مخفي من القائمة
                         <li class="slide slide-icon slide-icon--violet {{ request()->is('student/ai/chatbot*') ? 'active' : '' }}">
                             <a href="{{ route('student.ai.chatbot.index') }}" class="side-menu__item {{ request()->is('student/ai/chatbot*') ? 'active' : '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
@@ -250,6 +251,7 @@
                                 <span class="side-menu__label">المساعد التعليمي</span>
                             </a>
                         </li>
+                        --}}
 
                         <!-- الإشعارات -->
                         <li class="slide slide-icon slide-icon--amber {{ request()->is('student/notifications*') ? 'active' : '' }}">

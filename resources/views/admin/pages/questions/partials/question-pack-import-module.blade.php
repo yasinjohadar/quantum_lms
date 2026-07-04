@@ -2,11 +2,14 @@
     $requireSubject = $requireSubject ?? empty($lockedSubject);
     $lockedSubjectId = !empty($lockedSubject) ? $lockedSubject->id : null;
     $lockedClassId = !empty($lockedSubject) ? $lockedSubject->class_id : null;
+    $parseUrl = $parseUrl ?? route('admin.questions.question-pack.parse');
+    $importFormAction = $importFormAction ?? route('admin.questions.question-pack.import');
+    $importSubmitLabel = $importSubmitLabel ?? 'استيراد الأسئلة';
 @endphp
 
-<div class="card custom-card mb-3 question-pack-import-module" id="questionPackImportModule"
-     data-parse-url="{{ route('admin.questions.question-pack.parse') }}"
-     data-import-url="{{ route('admin.questions.question-pack.import') }}"
+<div class="card custom-card mb-3 question-pack-import-module pack-import-module" id="questionPackImportModule"
+     data-parse-url="{{ $parseUrl }}"
+     data-import-url="{{ $importFormAction }}"
      data-require-subject="{{ $requireSubject ? '1' : '0' }}"
      data-locked-subject-id="{{ $lockedSubjectId }}"
      data-locked-class-id="{{ $lockedClassId }}">
@@ -24,6 +27,12 @@
             @endif
         </p>
 
+        <div class="pack-import-steps" aria-hidden="true">
+            <span class="pack-import-step is-active" id="questionPackStepFormat">1. النوع والصيغة</span>
+            <span class="pack-import-step" id="questionPackStepFile">2. الملف</span>
+            <span class="pack-import-step" id="questionPackStepParse">3. التحليل</span>
+        </div>
+
         <label class="form-label fw-semibold">نوع الحفظ في بنك الأسئلة</label>
         <div class="btn-group mb-3 d-flex flex-wrap" role="group" aria-label="نوع الحفظ">
             <input type="radio" class="btn-check" name="questionPackTargetType" id="questionPackTargetSingle" value="single_choice" checked autocomplete="off">
@@ -33,43 +42,58 @@
         </div>
 
         <label class="form-label fw-semibold">صيغة الملف</label>
-        <div class="btn-group mb-3" role="group" aria-label="صيغة الملف">
+        <div class="btn-group mb-3 format-toggle" role="group" aria-label="صيغة الملف">
             <input type="radio" class="btn-check" name="questionPackFormat" id="questionPackFormatMd" value="md" checked autocomplete="off">
-            <label class="btn btn-outline-secondary" for="questionPackFormatMd">Markdown (.md)</label>
+            <label class="btn btn-outline-primary" for="questionPackFormatMd"><i class="bi bi-markdown me-1"></i> Markdown (.md)</label>
             <input type="radio" class="btn-check" name="questionPackFormat" id="questionPackFormatCsv" value="csv" autocomplete="off">
-            <label class="btn btn-outline-secondary" for="questionPackFormatCsv">CSV (.csv)</label>
+            <label class="btn btn-outline-primary" for="questionPackFormatCsv"><i class="bi bi-filetype-csv me-1"></i> CSV (.csv)</label>
         </div>
 
-        <div class="upload-area nerve-test-upload-area mb-3" id="questionPackUploadArea">
-            <input type="file" id="questionPackFileInput" accept=".md,.txt" style="display: none;">
+        <label class="form-label fw-semibold">ملف الاستيراد</label>
+        <div class="pack-import-upload-area mb-3"
+             id="questionPackUploadArea"
+             role="button"
+             tabindex="0"
+             aria-label="اختر ملف الحزمة">
+            <input type="file" id="questionPackFileInput" accept=".md,.txt" class="visually-hidden">
             <div id="questionPackUploadContent">
-                <i class="bi bi-file-earmark-spreadsheet display-6 text-muted mb-2"></i>
-                <h6 class="mb-1">اختر ملف الحزمة</h6>
-                <p class="text-muted small mb-0" id="questionPackAcceptHint">الصيغة: .md — الحد الأقصى 10 ميجابايت</p>
+                <span class="pack-import-upload-area__format-badge" id="questionPackFormatBadge">Markdown</span>
+                <i class="bi bi-cloud-arrow-up display-6 text-primary mb-2 d-block"></i>
+                <h6 class="mb-1">اسحب الملف هنا أو انقر للاختيار</h6>
+                <p class="text-muted small mb-2" id="questionPackAcceptHint">الصيغة: .md — الحد الأقصى 10 ميجابايت</p>
+                <button type="button" class="btn btn-primary btn-sm" id="questionPackBrowseBtn">
+                    <i class="bi bi-folder2-open me-1"></i> تصفح واختر ملف
+                </button>
             </div>
             <div id="questionPackFileInfo" style="display: none;">
                 <i class="bi bi-file-earmark-check display-6 text-success mb-2"></i>
                 <h6 class="mb-1" id="questionPackFileName"></h6>
                 <p class="text-muted small mb-2" id="questionPackFileSize"></p>
-                <button type="button" class="btn btn-sm btn-outline-danger" id="questionPackRemoveFile">
-                    <i class="bi bi-x-circle me-1"></i> إزالة
-                </button>
+                <div class="d-flex flex-wrap gap-2 justify-content-center">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="questionPackReplaceFile">
+                        <i class="bi bi-arrow-repeat me-1"></i> استبدال
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="questionPackRemoveFile">
+                        <i class="bi bi-x-circle me-1"></i> إزالة
+                    </button>
+                </div>
             </div>
         </div>
 
         <div id="questionPackParseError" class="alert alert-danger d-none" role="alert"></div>
 
-        <div class="d-flex flex-wrap gap-2 mb-3">
-            <button type="button" class="btn btn-outline-primary" id="questionPackParseBtn" disabled>
+        <div class="d-flex flex-wrap gap-2 mb-3 parse-action-row">
+            <button type="button" class="btn btn-outline-primary btn-parse-file" id="questionPackParseBtn" disabled>
                 <i class="bi bi-search me-1"></i> تحليل الملف
             </button>
+            <span class="align-self-center text-muted small" id="questionPackParseHint">اختر ملفاً أولاً ثم اضغط تحليل</span>
         </div>
 
         <div id="questionPackPreviewSection" style="display: none;">
             <h6 class="fw-semibold mb-2">معاينة (<span id="questionPackPreviewCount">0</span> سؤال)</h6>
             <div class="preview-table border rounded p-2 mb-3" id="questionPackPreviewTable"></div>
 
-            <form action="{{ route('admin.questions.question-pack.import') }}" method="POST" enctype="multipart/form-data" id="questionPackImportForm">
+            <form action="{{ $importFormAction }}" method="POST" enctype="multipart/form-data" id="questionPackImportForm">
                 @csrf
                 <input type="hidden" name="format" id="questionPackImportFormat" value="md">
                 <input type="hidden" name="target_type" id="questionPackImportTargetType" value="single_choice">
@@ -80,7 +104,7 @@
 
                 <button type="submit" class="btn btn-success btn-lg" id="questionPackImportBtn">
                     <i class="bi bi-cloud-download me-2"></i>
-                    <span id="questionPackImportBtnLabel">استيراد الأسئلة</span>
+                    <span id="questionPackImportBtnLabel">{{ $importSubmitLabel }}</span>
                 </button>
             </form>
         </div>

@@ -16,6 +16,7 @@ use App\Models\Subject;
 use App\Models\SubjectSection;
 use App\Models\Unit;
 use App\Services\QuizExcelQuestionImportService;
+use App\Services\QuizPackQuestionImportService;
 use App\Services\ReminderService;
 use App\Services\StaffNotificationService;
 use App\Services\Storage\MediaStorageService;
@@ -31,6 +32,7 @@ class QuizController extends Controller
         private ReminderService $reminderService,
         private StaffNotificationService $staffNotificationService,
         private QuizExcelQuestionImportService $quizExcelQuestionImportService,
+        private QuizPackQuestionImportService $quizPackQuestionImportService,
     ) {
         $this->middleware(['permission:quiz-list'])->only('index');
         $this->middleware(['permission:quiz-create'])->only(['create', 'store', 'storeForSection', 'showImportExcel']);
@@ -53,7 +55,7 @@ class QuizController extends Controller
         $this->middleware(['permission:quiz-approve-review'])->only('approveReview');
         $this->middleware(['permission:quiz-reject-review'])->only('rejectReview');
         $this->middleware(['permission:quiz-submit-for-review'])->only('submitForReview');
-        $this->middleware(['permission:question-import'])->only('importExcel');
+        $this->middleware(['permission:question-import'])->only(['importExcel', 'importNerveTest', 'importQuestionPack']);
     }
 
     /**
@@ -356,7 +358,7 @@ class QuizController extends Controller
 
             return redirect()
                 ->route('admin.quizzes.import-excel.show', $quiz)
-                ->with('success', 'تم إنشاء الاختبار. يمكنك استيراد الأسئلة من Excel أو تخطي هذه الخطوة.');
+                ->with('success', 'تم إنشاء الاختبار. يمكنك استيراد الأسئلة (Excel / MD / CSV) أو تخطي هذه الخطوة.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -384,15 +386,18 @@ class QuizController extends Controller
     }
 
     /**
-     * الخطوة 2: استيراد أسئلة Excel وربطها بالاختبار (اختياري).
+     * الخطوة 2: استيراد أسئلة وربطها بالاختبار (اختياري).
      */
     public function showImportExcel(string $id)
     {
         $quiz = Quiz::with(['subject.schoolClass', 'unit'])->findOrFail($id);
-        $curriculum = $this->quizExcelQuestionImportService->quizCurriculumForImport($quiz);
+        $curriculum = $this->quizPackQuestionImportService->quizCurriculumForImport($quiz);
+        $lockedSubject = $quiz->subject
+            ?? ($curriculum['subject_id'] ? Subject::find($curriculum['subject_id']) : null);
 
         return view('admin.pages.quizzes.import-excel', [
             'quiz' => $quiz,
+            'lockedSubject' => $lockedSubject,
             'canImport' => $curriculum['can_import'],
             'prefillClassId' => $curriculum['class_id'],
             'prefillSubjectId' => $curriculum['subject_id'],
@@ -461,6 +466,104 @@ class QuizController extends Controller
                 ->route('admin.quizzes.import-excel.show', $quiz)
                 ->withInput()
                 ->with('error', 'حدث خطأ أثناء استيراد الملف: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * استيراد حزمة اختبار الأعصاب (MD/CSV) وربطها بالاختبار.
+     */
+    public function importNerveTest(Request $request, string $id)
+    {
+        $quiz = Quiz::findOrFail($id);
+
+        $request->validate([
+            'file' => ['required', 'file', 'max:10240'],
+            'format' => ['required', \Illuminate\Validation\Rule::in(['md', 'csv'])],
+        ]);
+
+        try {
+            $summary = $this->quizPackQuestionImportService->importNerveTestAndAttach(
+                $quiz,
+                $request->file('file'),
+                $request->input('format')
+            );
+
+            if ($summary['count'] === 0) {
+                return redirect()
+                    ->route('admin.quizzes.import-excel.show', $quiz)
+                    ->with('error', 'لم يتم استيراد أي سؤال. راجع الملف وأعد المحاولة.');
+            }
+
+            return redirect()
+                ->route('admin.quizzes.questions', $quiz)
+                ->with('success', "تم استيراد {$summary['count']} سؤال وربط {$summary['attached_count']} بالاختبار.")
+                ->with('import_summary', [
+                    'success' => $summary['count'],
+                    'errors' => 0,
+                    'total' => $summary['count'],
+                ]);
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('admin.quizzes.import-excel.show', $quiz)
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Exception $e) {
+            Log::error('Error importing nerve test for quiz: '.$e->getMessage(), ['quiz_id' => $quiz->id]);
+
+            return redirect()
+                ->route('admin.quizzes.import-excel.show', $quiz)
+                ->with('error', 'حدث خطأ أثناء الاستيراد: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * استيراد حزمة أسئلة (MD/CSV) وربطها بالاختبار.
+     */
+    public function importQuestionPack(Request $request, string $id)
+    {
+        $quiz = Quiz::findOrFail($id);
+
+        $request->validate([
+            'file' => ['required', 'file', 'max:10240'],
+            'format' => ['required', \Illuminate\Validation\Rule::in(['md', 'csv'])],
+            'target_type' => ['required', \Illuminate\Validation\Rule::in(['single_choice', 'fill_blanks'])],
+        ]);
+
+        try {
+            $summary = $this->quizPackQuestionImportService->importQuestionPackAndAttach(
+                $quiz,
+                $request->file('file'),
+                $request->input('format'),
+                $request->input('target_type')
+            );
+
+            if ($summary['count'] === 0) {
+                return redirect()
+                    ->route('admin.quizzes.import-excel.show', $quiz)
+                    ->with('error', 'لم يتم استيراد أي سؤال. راجع الملف وأعد المحاولة.');
+            }
+
+            $typeLabel = $request->input('target_type') === 'fill_blanks' ? 'املأ الفراغ' : 'اختيار من متعدد';
+
+            return redirect()
+                ->route('admin.quizzes.questions', $quiz)
+                ->with('success', "تم استيراد {$summary['count']} سؤال ({$typeLabel}) وربط {$summary['attached_count']} بالاختبار.")
+                ->with('import_summary', [
+                    'success' => $summary['count'],
+                    'errors' => 0,
+                    'total' => $summary['count'],
+                ]);
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('admin.quizzes.import-excel.show', $quiz)
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Exception $e) {
+            Log::error('Error importing question pack for quiz: '.$e->getMessage(), ['quiz_id' => $quiz->id]);
+
+            return redirect()
+                ->route('admin.quizzes.import-excel.show', $quiz)
+                ->with('error', 'حدث خطأ أثناء الاستيراد: '.$e->getMessage());
         }
     }
 

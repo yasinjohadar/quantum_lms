@@ -118,6 +118,11 @@
 <div class="main-content app-content">
     <div class="container-fluid pt-3">
 
+        @include('student.pages.lessons.partials.subject-content-breadcrumb', [
+            'subject' => $subject,
+            'section' => $section,
+        ])
+
         @if($section->type === \App\Models\SubjectSection::TYPE_QUIZZES)
             {{-- قسم الاختبارات: أقسام فرعية ثم الوحدات، الاختبارات تظهر داخل صفحة الوحدة --}}
             @if($children->count() > 0)
