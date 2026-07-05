@@ -11,6 +11,11 @@
         $initial = mb_strtoupper(mb_substr(trim($user->name), 0, 1));
     @endphp
     <tr>
+        @can('user-edit')
+        <td>
+            <input type="checkbox" class="form-check-input user-manage-checkbox" value="{{ $user->id }}" aria-label="تحديد {{ $user->name }}">
+        </td>
+        @endcan
         <th scope="row" class="text-muted small">{{ $loop->iteration + ($users->currentPage() - 1) * $users->perPage() }}</th>
 
         <td>
@@ -138,7 +143,7 @@
     @include('admin.pages.users.change_password', ['user' => $user])
 @empty
     <tr>
-        <td colspan="8">
+        <td colspan="{{ auth()->user()->can('user-edit') ? 9 : 8 }}">
             <div class="users-manage-empty">
                 <i class="bi bi-people"></i>
                 <p class="mb-0 fw-semibold">لا توجد مستخدمين مطابقين للفلاتر</p>

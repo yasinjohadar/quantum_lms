@@ -61,6 +61,8 @@
                         @method('PUT')
                         @php
                             $returnContext = old('return_context', request('return_context', request('role')));
+                            $selectedRoles = old('roles', $user->roles->pluck('name')->toArray());
+                            $emailRequired = (bool) array_intersect($selectedRoles, ['admin', 'teacher', 'supervisor']);
                         @endphp
                         @if (in_array($returnContext, ['supervisor', 'teacher', 'admin', 'manage'], true))
                             <input type="hidden" name="return_context" value="{{ $returnContext }}">
@@ -84,6 +86,7 @@
                             </div>
 
 
+                            @if($emailRequired)
                             <div class="col-md-6">
                                 <div class="form-floating">
                                     <input type="email" class="form-control @error('email') is-invalid @enderror" 
@@ -94,6 +97,7 @@
                                     @enderror
                                 </div>
                             </div>
+                            @endif
 
                             <div class="col-md-6">
                                 <div class="form-floating">
@@ -122,9 +126,6 @@
                                 <h6 class="text-primary mb-2">الأدوار</h6>
                             </div>
                             <div class="col-12">
-                                @php
-                                    $selectedRoles = old('roles', $user->roles->pluck('name')->toArray());
-                                @endphp
                                 <label class="form-label">اختر دورًا واحدًا أو أكثر</label>
                                 <select name="roles[]" class="form-select @error('roles') is-invalid @enderror @error('roles.*') is-invalid @enderror" multiple size="8">
                                     @foreach ($roles as $role)

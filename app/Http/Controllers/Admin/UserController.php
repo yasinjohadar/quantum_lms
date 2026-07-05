@@ -13,6 +13,7 @@ use App\Models\Subject;
 use App\Models\Purchase;
 use App\Services\SMS\OTPService;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Spatie\Permission\Models\Role;
@@ -23,6 +24,7 @@ use App\Helpers\PhoneHelper;
 use App\Helpers\StorageHelper;
 use App\Services\Storage\MediaStorageService;
 use App\Services\AdminStudentEnrollmentService;
+use App\Http\Requests\Admin\BulkUpdateRolesRequest;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -58,7 +60,7 @@ class UserController extends Controller
 
         $this->middleware('permission:user-list')->only(['index', 'trashedIndex']);
         $this->middleware('permission:user-create')->only(['create', 'store', 'storeQuickStudent']);
-        $this->middleware('permission:user-edit')->only(['edit', 'update']);
+        $this->middleware('permission:user-edit')->only(['edit', 'update', 'bulkUpdateRoles']);
         $this->middleware('permission:user-edit')->only([
             'detachFromClass',
             'detachMultipleFromClass',
@@ -378,9 +380,45 @@ class UserController extends Controller
         return view('admin.pages.users.manage', compact('users', 'roles'));
     }
 
+    /**
+     * تحديث أدوار مجموعة من المستخدمين دفعة واحدة.
+     */
+    public function bulkUpdateRoles(BulkUpdateRolesRequest $request): RedirectResponse
+    {
+        $userIds = $request->input('user_ids', []);
+        $roles = array_values(array_unique($request->input('roles', [])));
 
+        if (! in_array('admin', $roles, true)) {
+            $adminsOutsideSelection = User::whereNotIn('id', $userIds)
+                ->whereHas('roles', fn ($q) => $q->where('name', 'admin'))
+                ->count();
 
+            $adminsInSelection = User::whereIn('id', $userIds)
+                ->whereHas('roles', fn ($q) => $q->where('name', 'admin'))
+                ->count();
 
+            if ($adminsOutsideSelection === 0 && $adminsInSelection > 0) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', '❌ لا يمكن إزالة دور admin من جميع المدراء في النظام.');
+            }
+        }
+
+        $updated = 0;
+
+        DB::transaction(function () use ($userIds, $roles, &$updated) {
+            User::query()
+                ->notArchived()
+                ->whereIn('id', $userIds)
+                ->each(function (User $user) use ($roles, &$updated) {
+                    $user->syncRoles($roles);
+                    $updated++;
+                });
+        });
+
+        return redirect()->back()
+            ->with('success', "✅ تم تحديث أدوار {$updated} مستخدم بنجاح.");
+    }
 
     /**
      * Show the form for creating a new resource.
@@ -692,11 +730,18 @@ class UserController extends Controller
                     $request->merge(['phone' => $normalized]);
                 }
             }
+            $roles = $request->input('roles', $user->roles->pluck('name')->toArray());
+            if (! is_array($roles)) {
+                $roles = [];
+            }
+
+            $emailRequired = $this->rolesRequireEmail($roles);
+
             // التحقق من صحة البيانات
             $request->validate([
                 'name' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255|unique:users,email,' . $id,
-                'phone' => 'nullable|string|max:20|regex:/^\+[1-9]\d{1,14}$/|unique:users,phone,' . $id,
+                'email' => ($emailRequired ? 'required' : 'nullable').'|string|email|max:255|unique:users,email,'.$id,
+                'phone' => 'nullable|string|max:20|regex:/^\+[1-9]\d{1,14}$/|unique:users,phone,'.$id,
                 'is_active' => 'boolean',
                 'roles' => 'nullable|array',
                 'roles.*' => 'string|exists:roles,name',
@@ -713,17 +758,17 @@ class UserController extends Controller
             // تجهيز البيانات للتحديث (الاسم، البريد، الهاتف، تفعيل الحساب فقط)
             $updateData = [
                 'name' => $request->name,
-                'email' => $request->email,
                 'phone' => $request->phone,
                 'is_active' => $request->has('is_active'),
             ];
 
-            $user->update($updateData);
-
-            $roles = $request->input('roles', []);
-            if (!is_array($roles)) {
-                $roles = [];
+            if ($emailRequired) {
+                $updateData['email'] = $request->email;
+            } elseif ($request->filled('email')) {
+                $updateData['email'] = $request->email;
             }
+
+            $user->update($updateData);
 
             // حماية: منع إسقاط آخر Admin من النظام
             $hadAdminRole = $user->hasRole('admin');
@@ -1433,6 +1478,16 @@ class UserController extends Controller
                 $cache->invalidateUserAccess($user);
             }
         }
+    }
+
+    /**
+     * @param  array<int, string>  $roles
+     */
+    private function rolesRequireEmail(array $roles): bool
+    {
+        $staffRoles = ['admin', 'teacher', 'supervisor'];
+
+        return (bool) array_intersect($roles, $staffRoles);
     }
 
 }

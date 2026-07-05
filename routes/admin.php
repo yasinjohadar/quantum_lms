@@ -618,6 +618,9 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::post('users/bulk-archive', [\App\Http\Controllers\Admin\ArchivedUserController::class, 'bulkArchive'])
             ->name('users.bulk-archive');
 
+        Route::post('users/bulk-update-roles', [UserController::class, 'bulkUpdateRoles'])
+            ->name('users.bulk-update-roles');
+
         // قائمة المدراء (users with role=admin)
         Route::get('admins', [UserController::class, 'adminsIndex'])
             ->name('admins.index');

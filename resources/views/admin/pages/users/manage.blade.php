@@ -149,11 +149,42 @@
                     </span>
                 </div>
                 <div class="users-manage-card__body p-0">
+                    @can('user-edit')
+                    <form id="bulkRolesForm" method="POST" action="{{ route('admin.users.bulk-update-roles') }}">
+                        @csrf
+                        <input type="hidden" name="user_ids" id="bulkRolesUserIds">
+                        <div class="px-3 pt-3">
+                            <div class="users-manage-bulk-toolbar" id="usersManageBulkToolbar" style="display: none;">
+                                <span class="users-manage-bulk-toolbar__label">
+                                    <i class="bi bi-check2-square me-1"></i>
+                                    <span id="bulkRolesSelectedCount">0</span> محدد
+                                </span>
+                                <div class="users-manage-bulk-toolbar__roles">
+                                    <label class="form-label mb-0 small text-muted" for="bulkRolesSelect">الأدوار الجديدة</label>
+                                    <select name="roles[]" id="bulkRolesSelect" class="form-select form-select-sm" multiple size="4">
+                                        @foreach($roles as $role)
+                                            <option value="{{ $role->name }}">{{ $role->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted">Ctrl/Command لاختيار أكثر من دور</small>
+                                </div>
+                                <button type="button" class="btn btn-primary btn-sm" id="bulkRolesApplyBtn">
+                                    <i class="bi bi-person-gear me-1"></i> تطبيق على المحدد
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                    @endcan
                     <div class="users-manage-table-wrap">
                         <div class="table-responsive">
                             <table class="table users-manage-table align-middle mb-0">
                                 <thead>
                                 <tr>
+                                    @can('user-edit')
+                                    <th scope="col" style="width: 40px;">
+                                        <input type="checkbox" id="selectAllManageUsers" class="form-check-input" aria-label="تحديد الكل">
+                                    </th>
+                                    @endcan
                                     <th scope="col" style="width: 48px;">#</th>
                                     <th scope="col">اسم المستخدم</th>
                                     <th scope="col">النوع</th>
@@ -319,6 +350,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 syncManagePerPageHidden();
                 const newUrl = `${window.location.pathname}?${params.toString()}`;
                 window.history.replaceState({}, '', newUrl);
+                if (typeof updateManageBulkToolbar === 'function') {
+                    updateManageBulkToolbar();
+                }
             })
             .catch(function () {});
     }
@@ -409,6 +443,86 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     bindCopyButtons();
+
+    @can('user-edit')
+    const selectAllManageUsers = document.getElementById('selectAllManageUsers');
+    const bulkRolesForm = document.getElementById('bulkRolesForm');
+    const bulkRolesUserIds = document.getElementById('bulkRolesUserIds');
+    const bulkRolesSelect = document.getElementById('bulkRolesSelect');
+    const bulkRolesApplyBtn = document.getElementById('bulkRolesApplyBtn');
+
+    function getManageUserCheckboxes() {
+        if (!tableBody) return [];
+        return tableBody.querySelectorAll('.user-manage-checkbox');
+    }
+
+    function getCheckedManageUserIds() {
+        if (!tableBody) return [];
+        return Array.from(tableBody.querySelectorAll('.user-manage-checkbox:checked')).map(function (cb) {
+            return cb.value;
+        });
+    }
+
+    function updateManageBulkToolbar() {
+        const bulkRolesToolbar = document.getElementById('usersManageBulkToolbar');
+        const bulkRolesSelectedCount = document.getElementById('bulkRolesSelectedCount');
+        const checked = getCheckedManageUserIds();
+        const count = checked.length;
+        if (bulkRolesSelectedCount) {
+            bulkRolesSelectedCount.textContent = String(count);
+        }
+        if (bulkRolesToolbar) {
+            bulkRolesToolbar.style.display = count > 0 ? 'flex' : 'none';
+        }
+        if (selectAllManageUsers) {
+            const boxes = getManageUserCheckboxes();
+            selectAllManageUsers.checked = boxes.length > 0 && count === boxes.length;
+            selectAllManageUsers.indeterminate = count > 0 && count < boxes.length;
+        }
+    }
+
+    if (selectAllManageUsers) {
+        selectAllManageUsers.addEventListener('change', function () {
+            getManageUserCheckboxes().forEach(function (cb) {
+                cb.checked = selectAllManageUsers.checked;
+            });
+            updateManageBulkToolbar();
+        });
+    }
+
+    tableBody.addEventListener('change', function (e) {
+        if (e.target && e.target.matches('.user-manage-checkbox')) {
+            updateManageBulkToolbar();
+        }
+    });
+
+    if (bulkRolesApplyBtn && bulkRolesForm && bulkRolesUserIds) {
+        bulkRolesApplyBtn.addEventListener('click', function () {
+            const ids = getCheckedManageUserIds();
+            if (ids.length === 0) {
+                alert('حدد مستخدمًا واحدًا على الأقل.');
+                return;
+            }
+            const selectedRoles = bulkRolesSelect
+                ? Array.from(bulkRolesSelect.selectedOptions).map(function (opt) { return opt.value; })
+                : [];
+            if (selectedRoles.length === 0) {
+                alert('اختر دورًا واحدًا على الأقل.');
+                return;
+            }
+            const roleList = selectedRoles.join(', ');
+            if (!confirm('سيتم استبدال أدوار ' + ids.length + ' مستخدم بالأدوار: ' + roleList + '\n\nهل تريد المتابعة؟')) {
+                return;
+            }
+            bulkRolesUserIds.value = JSON.stringify(ids);
+            bulkRolesForm.submit();
+        });
+    }
+    @else
+    function getManageUserCheckboxes() { return []; }
+    function getCheckedManageUserIds() { return []; }
+    function updateManageBulkToolbar() {}
+    @endcan
 });
 </script>
 @stop

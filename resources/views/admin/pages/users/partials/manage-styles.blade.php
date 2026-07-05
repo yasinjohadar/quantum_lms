@@ -304,12 +304,55 @@
         margin-bottom: 0.75rem;
     }
 
+    .users-manage-bulk-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem 1rem;
+        align-items: flex-end;
+        padding: 0.85rem 1rem;
+        border-radius: 10px;
+        background: rgba(var(--primary-rgb, 13, 110, 253), 0.06);
+        border: 1px dashed rgba(var(--primary-rgb, 13, 110, 253), 0.35);
+        margin-bottom: 0.5rem;
+    }
+
+    .users-manage-bulk-toolbar__label {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--ui-text, #1e293b);
+        white-space: nowrap;
+    }
+
+    .users-manage-bulk-toolbar__roles {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        min-width: 180px;
+        flex: 1 1 200px;
+        max-width: 320px;
+    }
+
+    .users-manage-bulk-toolbar__roles .form-select {
+        min-height: 6.5rem;
+    }
+
+    [data-theme-mode="dark"] .users-manage-bulk-toolbar,
+    [data-bs-theme="dark"] .users-manage-bulk-toolbar {
+        background: rgba(var(--primary-rgb, 13, 110, 253), 0.1);
+    }
+
     @media (max-width: 767.98px) {
         .users-manage-hero__actions {
             width: 100%;
         }
         .users-manage-hero__actions .btn {
             flex: 1;
+        }
+        .users-manage-bulk-toolbar {
+            align-items: stretch;
+        }
+        .users-manage-bulk-toolbar__roles {
+            max-width: none;
         }
     }
 </style>
