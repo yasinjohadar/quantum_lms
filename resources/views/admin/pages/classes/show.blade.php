@@ -77,6 +77,15 @@
                                 <i class="bi bi-tag"></i> {{ number_format($class->price, 2) }}
                             </span>
                         @endif
+                        @if ($class->subscription_ends_at)
+                            <span class="class-show-badge {{ $class->hasSubscriptionEnded() ? 'class-show-badge--inactive' : 'class-show-badge--free' }}">
+                                <i class="bi bi-calendar-x"></i>
+                                نهاية الاشتراك: {{ $class->subscription_ends_at->format('Y-m-d') }}
+                                @if ($class->hasSubscriptionEnded())
+                                    (منتهي)
+                                @endif
+                            </span>
+                        @endif
                     </div>
 
                     <div class="class-show-stats">

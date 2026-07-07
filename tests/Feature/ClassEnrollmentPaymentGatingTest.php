@@ -67,7 +67,7 @@ function gatingCreateSubject(SchoolClass $class): Subject
     ]);
 }
 
-test('class with price only in prices table requires payment and does not create class enrollment on request', function () {
+test('class with price only in prices table creates direct pending review request without payment record', function () {
     $class = gatingCreateClass(['price' => 0]);
     gatingAttachClassPrice($class, 599999.97);
     gatingCreateSubject($class);
@@ -78,14 +78,18 @@ test('class with price only in prices table requires payment and does not create
         ->postJson(route('student.enrollments.request-class', $class->id));
 
     $response->assertOk();
-    $response->assertJsonFragment(['requires_payment' => true, 'class_id' => $class->id]);
-    $response->assertJsonMissing(['under_review' => true]);
+    $response->assertJsonFragment([
+        'under_review' => true,
+        'class_id' => $class->id,
+        'requires_whatsapp_followup' => true,
+    ]);
 
     expect(ClassEnrollment::where('user_id', $this->user->id)->where('class_id', $class->id)->exists())->toBeFalse();
-    expect(Purchase::where('user_id', $this->user->id)->where('purchasable_id', $class->id)->exists())->toBeFalse();
+    expect(Purchase::where('user_id', $this->user->id)->where('purchasable_id', $class->id)->where('status', 'pending')->exists())->toBeTrue();
+    expect(Payment::whereHas('purchase', fn ($q) => $q->where('user_id', $this->user->id)->where('purchasable_id', $class->id))->exists())->toBeFalse();
 });
 
-test('rejected class enrollment on paid class routes to payment not immediate pending', function () {
+test('rejected class enrollment on paid class routes to direct pending purchase request', function () {
     $class = gatingCreateClass(['price' => 100]);
     gatingCreateSubject($class);
 
@@ -100,10 +104,13 @@ test('rejected class enrollment on paid class routes to payment not immediate pe
         ->postJson(route('student.enrollments.request-class', $class->id));
 
     $response->assertOk();
-    $response->assertJsonFragment(['requires_payment' => true]);
-    $response->assertJsonMissing(['under_review' => true]);
+    $response->assertJsonFragment([
+        'under_review' => true,
+        'requires_whatsapp_followup' => true,
+    ]);
 
     expect(ClassEnrollment::where('user_id', $this->user->id)->where('class_id', $class->id)->value('status'))->toBe('rejected');
+    expect(Purchase::where('user_id', $this->user->id)->where('purchasable_id', $class->id)->where('status', 'pending')->exists())->toBeTrue();
 });
 
 test('iban payment submission does not create class enrollment until admin approval', function () {

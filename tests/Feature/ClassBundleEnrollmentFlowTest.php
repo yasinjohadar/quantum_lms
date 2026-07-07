@@ -202,7 +202,17 @@ class ClassBundleEnrollmentFlowTest extends TestCase
             ->postJson(route('student.enrollments.request', $paidSubject->id));
 
         $response->assertOk();
-        $response->assertJsonFragment(['requires_payment' => true]);
+        $response->assertJsonFragment([
+            'under_review' => true,
+            'requires_whatsapp_followup' => true,
+        ]);
+
+        $this->assertDatabaseHas('purchases', [
+            'user_id' => $this->user->id,
+            'purchasable_type' => Subject::class,
+            'purchasable_id' => $paidSubject->id,
+            'status' => 'pending',
+        ]);
     }
 
     public function test_inherit_subject_with_price_in_free_class_is_purchasable_not_accessible(): void
@@ -498,5 +508,126 @@ class ClassBundleEnrollmentFlowTest extends TestCase
                 ->where('status', 'pending')
                 ->exists()
         );
+    }
+
+    public function test_enrollment_pages_pass_clicked_button_explicitly_to_class_join_modal_handler(): void
+    {
+        if (\DB::connection()->getDriverName() === 'sqlite') {
+            $this->markTestSkipped('SQLite migrations are incompatible; run with MySQL.');
+        }
+
+        $class = $this->createClass(['is_free' => true, 'price' => 0]);
+        $this->createSubject($class, [
+            'name' => 'Math',
+            'slug' => 'math-'.uniqid(),
+            'pricing_mode' => 'inherit',
+        ]);
+
+        $indexResponse = $this->actingAs($this->user)
+            ->get(route('student.enrollments.index'));
+
+        $indexResponse->assertOk();
+        $indexResponse->assertSee(', this)', false);
+
+        $classResponse = $this->actingAs($this->user)
+            ->get(route('student.enrollments.class.show', $class->id));
+
+        $classResponse->assertOk();
+        $classResponse->assertSee(', this)', false);
+    }
+
+    public function test_enrollments_index_shows_pending_paid_request_card(): void
+    {
+        $class = $this->createClass(['is_free' => false, 'price' => 200]);
+        $subject = $this->createSubject($class, [
+            'name' => 'Pending Subject',
+            'slug' => 'pending-subject-'.uniqid(),
+            'pricing_mode' => 'paid',
+            'price' => 75,
+        ]);
+        $this->attachPrice($subject, 75.0);
+
+        Purchase::create([
+            'user_id' => $this->user->id,
+            'purchasable_type' => Subject::class,
+            'purchasable_id' => $subject->id,
+            'purchase_type' => 'subject',
+            'price' => 75,
+            'status' => 'pending',
+            'notes' => 'طلب مدفوع بانتظار المراجعة',
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('student.enrollments.index'));
+
+        $response->assertOk();
+        $response->assertSee('طلباتك قيد المراجعة', false);
+        $response->assertSee($subject->name, false);
+        $response->assertSee('إلغاء الطلب', false);
+    }
+
+    public function test_student_can_cancel_pending_paid_request(): void
+    {
+        $class = $this->createClass(['is_free' => false, 'price' => 180]);
+        $subject = $this->createSubject($class, [
+            'name' => 'Cancelable Subject',
+            'slug' => 'cancelable-subject-'.uniqid(),
+            'pricing_mode' => 'paid',
+            'price' => 80,
+        ]);
+        $this->attachPrice($subject, 80.0);
+
+        $purchase = Purchase::create([
+            'user_id' => $this->user->id,
+            'purchasable_type' => Subject::class,
+            'purchasable_id' => $subject->id,
+            'purchase_type' => 'subject',
+            'price' => 80,
+            'status' => 'pending',
+            'notes' => 'طلب مدفوع بانتظار المراجعة',
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->deleteJson(route('student.purchases.cancel', $purchase));
+
+        $response->assertOk();
+        $response->assertJsonFragment(['success' => true]);
+
+        $this->assertDatabaseHas('purchases', [
+            'id' => $purchase->id,
+            'status' => 'cancelled',
+            'cancelled_by' => 'student',
+        ]);
+    }
+
+    public function test_class_show_marks_pending_paid_subject_as_under_review(): void
+    {
+        $class = $this->createClass(['is_free' => false, 'price' => 200]);
+        $subject = $this->createSubject($class, [
+            'name' => 'Pending In Class View',
+            'slug' => 'pending-in-class-view-'.uniqid(),
+            'pricing_mode' => 'paid',
+            'price' => 90,
+        ]);
+        $this->attachPrice($subject, 90.0);
+
+        $purchase = Purchase::create([
+            'user_id' => $this->user->id,
+            'purchasable_type' => Subject::class,
+            'purchasable_id' => $subject->id,
+            'purchase_type' => 'subject',
+            'price' => 90,
+            'status' => 'pending',
+            'notes' => 'طلب مدفوع بانتظار المراجعة',
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('student.enrollments.class.show', $class->id));
+
+        $response->assertOk();
+        $response->assertSee($subject->name, false);
+        $response->assertSee('قيد المراجعة', false);
+        $response->assertSee('data-purchase-id="'.$purchase->id.'"', false);
+        $response->assertDontSee('requestEnrollment('.$subject->id, false);
     }
 }

@@ -44,7 +44,7 @@
                 </button>
             @else
                 <button class="btn btn-primary btn-sm enrollment-class-card__btn-join"
-                        onclick="requestClassEnrollment({{ $class->id }}, '{{ addslashes($class->name) }}', {{ $isPaid ? 'true' : 'false' }})"
+                        onclick="requestClassEnrollment({{ $class->id }}, '{{ addslashes($class->name) }}', {{ $isPaid ? 'true' : 'false' }}, this)"
                         type="button">
                     <i class="bi bi-plus-circle me-1"></i>
                     انضم للصف

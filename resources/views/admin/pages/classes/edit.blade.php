@@ -368,6 +368,8 @@
                     </div>
                 </div>
 
+                @include('admin.pages.classes.partials.subscription-ends-field', ['class' => $class])
+
                 @php
                     $editFeatureLabels = $class->features->pluck('label')->values()->all();
                     $editFeatureLabels = array_pad($editFeatureLabels, 10, '');

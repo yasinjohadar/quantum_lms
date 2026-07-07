@@ -45,6 +45,7 @@ class UpdateClassRequest extends FormRequest
             'custom_price_label' => ['nullable', 'string', 'max:100'],
             'features' => ['nullable', 'array', 'max:10'],
             'features.*' => ['nullable', 'string', 'max:255'],
+            'subscription_ends_at' => ['nullable', 'date'],
         ];
     }
 

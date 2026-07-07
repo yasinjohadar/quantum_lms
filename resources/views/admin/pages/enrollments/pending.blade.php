@@ -124,6 +124,84 @@
             <div class="enrollments-index-card__header">
                 <div class="d-flex align-items-center gap-2">
                     <span class="enrollments-index-card__header-icon"><i class="bi bi-table"></i></span>
+                    طلبات المواد المدفوعة المعلقة
+                </div>
+                @if(!empty($pendingSubjectPurchaseRequests) && $pendingSubjectPurchaseRequests->count() > 0)
+                    <span class="badge bg-warning-transparent text-warning">
+                        {{ $pendingSubjectPurchaseRequests->count() }} طلب
+                    </span>
+                @endif
+            </div>
+            <div class="enrollments-index-card__body">
+                @if(!empty($pendingSubjectPurchaseRequests) && $pendingSubjectPurchaseRequests->count() > 0)
+                    <div class="row g-3">
+                        @foreach($pendingSubjectPurchaseRequests as $purchase)
+                            @php
+                                $student = $purchase->user;
+                                $subject = $purchase->purchasable;
+                                $initial = $student ? mb_strtoupper(mb_substr(trim($student->name), 0, 1)) : '—';
+                            @endphp
+                            <div class="col-12 col-xl-6">
+                                <div class="border rounded-4 p-3 h-100 bg-light-subtle">
+                                    <div class="d-flex flex-wrap gap-3 align-items-start justify-content-between">
+                                        <div class="d-flex align-items-center gap-3 min-w-0">
+                                            <span class="ui-user-avatar">{{ $initial }}</span>
+                                            <div class="min-width-0">
+                                                <div class="fw-bold text-truncate">{{ $student->name ?? 'غير محدد' }}</div>
+                                                <div class="small text-muted text-truncate">{{ $student->email ?? '—' }}</div>
+                                                <div class="small mt-1">
+                                                    <span class="ui-enrollment-subject">{{ $subject->name ?? 'مادة غير محددة' }}</span>
+                                                    @if($subject?->schoolClass)
+                                                        <span class="ui-class-pill ms-1">
+                                                            <i class="bi bi-building"></i>
+                                                            {{ $subject->schoolClass->name }}
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-md-end">
+                                            <div class="ui-payment-amount mb-1">{{ number_format((float) $purchase->price, 2) }} ر.س</div>
+                                            <span class="ui-status-pill ui-status-pill--warning">طلب مدفوع بانتظار القبول</span>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3 pt-3 border-top">
+                                        <div class="small text-muted">
+                                            <i class="bi bi-clock me-1"></i>
+                                            تم الإرسال {{ $purchase->created_at->format('Y-m-d H:i') }}
+                                        </div>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            @include('admin.pages.enrollments.partials.approve-purchase-btn', [
+                                                'purchase' => $purchase,
+                                                'studentName' => $student->name ?? 'غير محدد',
+                                                'itemName' => $subject->name ?? 'مادة غير محددة',
+                                                'typeLabel' => 'المادة',
+                                            ])
+                                            <form action="{{ route('admin.payments.pending-purchases.reject', $purchase) }}" method="POST" onsubmit="return confirm('هل تريد رفض طلب المادة المدفوع هذا؟');">
+                                                @csrf
+                                                <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                    <i class="bi bi-x-lg me-1"></i> رفض
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="enrollments-index-empty py-4">
+                        <i class="bi bi-cash-coin"></i>
+                        <p class="mb-0 fw-semibold">لا توجد حالياً طلبات مواد مدفوعة بانتظار القبول</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <div class="enrollments-index-card">
+            <div class="enrollments-index-card__header">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="enrollments-index-card__header-icon"><i class="bi bi-table"></i></span>
                     قائمة طلبات الانضمام المعلقة
                 </div>
                 @can('enrollment-reject-multiple')
@@ -265,7 +343,8 @@
         'context' => 'subject',
     ])
 @endcan
-@endsection
+
+@include('admin.pages.enrollments.partials.approve-purchase-modal')
 
 @push('scripts')
 <script>
@@ -290,3 +369,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endpush
+@endsection

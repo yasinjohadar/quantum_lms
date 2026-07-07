@@ -21,6 +21,7 @@ class Purchase extends Model
         'cancelled_by',
         'purchased_at',
         'expires_at',
+        'access_revoked_at',
         'notes',
     ];
 
@@ -28,6 +29,7 @@ class Purchase extends Model
         'price' => 'decimal:2',
         'purchased_at' => 'datetime',
         'expires_at' => 'datetime',
+        'access_revoked_at' => 'datetime',
         'cancelled_at' => 'datetime',
     ];
 
@@ -36,7 +38,7 @@ class Purchase extends Model
      */
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withTrashed();
     }
 
     /**
@@ -84,6 +86,26 @@ class Purchase extends Model
         return $this->payment !== null && $this->payment->status === 'pending';
     }
 
+    /**
+     * طلب انضمام/شراء معلّق بدون دفعة مرفوعة؛ يحتاج مراجعة الإدارة مباشرة.
+     */
+    public function scopePendingDirectApproval($query)
+    {
+        return $query->where('status', 'pending')
+            ->whereDoesntHave('payment');
+    }
+
+    public function isPendingDirectApproval(): bool
+    {
+        if ($this->status !== 'pending') {
+            return false;
+        }
+
+        $this->loadMissing('payment');
+
+        return $this->payment === null;
+    }
+
     public function scopeCompleted($query)
     {
         return $query->where('status', 'completed');
@@ -97,6 +119,14 @@ class Purchase extends Model
     public function scopeRefunded($query)
     {
         return $query->where('status', 'refunded');
+    }
+
+    public function scopeExpiredAccessDue($query)
+    {
+        return $query->completed()
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<=', now())
+            ->whereNull('access_revoked_at');
     }
 
     public function scopeForUser($query, $userId)

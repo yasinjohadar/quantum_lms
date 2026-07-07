@@ -49,6 +49,73 @@
             </div>
         </div>
 
+        @if($pendingPurchaseRequests->isNotEmpty())
+            <div class="payments-index-card">
+                <div class="payments-index-card__header">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="payments-index-card__header-icon"><i class="bi bi-hourglass-split"></i></span>
+                        طلبات انضمام مدفوعة بانتظار المراجعة
+                    </div>
+                    <span class="badge bg-warning-transparent text-warning">
+                        {{ $pendingPurchaseRequests->count() }} طلب
+                    </span>
+                </div>
+                <div class="payments-index-card__body">
+                    <div class="row g-3">
+                        @foreach($pendingPurchaseRequests as $purchase)
+                            @php
+                                $user = $purchase->user;
+                                $item = $purchase->purchasable;
+                                $initial = $user ? mb_strtoupper(mb_substr(trim($user->name), 0, 1)) : '—';
+                            @endphp
+                            <div class="col-12 col-xl-6">
+                                <div class="border rounded-4 p-3 h-100 bg-light-subtle">
+                                    <div class="d-flex flex-wrap gap-3 align-items-start justify-content-between">
+                                        <div class="d-flex align-items-center gap-3 min-w-0">
+                                            <span class="ui-user-avatar">{{ $initial }}</span>
+                                            <div class="min-w-0">
+                                                <div class="fw-bold text-truncate">{{ $user->name ?? 'غير محدد' }}</div>
+                                                <div class="small text-muted text-truncate">{{ $user->email ?? '—' }}</div>
+                                                <div class="small mt-1">
+                                                    <span class="ui-payment-item">{{ $item->name ?? 'غير محدد' }}</span>
+                                                    <span class="text-muted">· {{ $purchase->purchase_type === 'class' ? 'صف مدفوع' : 'مادة مدفوعة' }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-md-end">
+                                            <div class="ui-payment-amount mb-1">{{ number_format((float) $purchase->price, 2) }} ر.س</div>
+                                            <span class="ui-status-pill ui-status-pill--warning">قيد المراجعة</span>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3 pt-3 border-top">
+                                        <div class="small text-muted">
+                                            <i class="bi bi-clock me-1"></i>
+                                            تم الإرسال {{ $purchase->created_at->format('Y-m-d H:i') }}
+                                        </div>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            @include('admin.pages.enrollments.partials.approve-purchase-btn', [
+                                                'purchase' => $purchase,
+                                                'studentName' => $user->name ?? 'غير محدد',
+                                                'itemName' => $item->name ?? 'غير محدد',
+                                                'typeLabel' => $purchase->purchase_type === 'class' ? 'الصف' : 'المادة',
+                                                'buttonLabel' => 'اعتماد',
+                                            ])
+                                            <form action="{{ route('admin.payments.pending-purchases.reject', $purchase) }}" method="POST" onsubmit="return confirm('هل تريد رفض هذا الطلب؟');">
+                                                @csrf
+                                                <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                    <i class="bi bi-x-lg me-1"></i> رفض
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        @endif
+
         @if (session('success'))
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
@@ -392,4 +459,5 @@ document.getElementById('rejectForm').addEventListener('submit', function(e) {
 });
 </script>
 @endpush
+@include('admin.pages.enrollments.partials.approve-purchase-modal')
 @endsection

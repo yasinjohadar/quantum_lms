@@ -195,6 +195,7 @@ class ClassController extends Controller
             $data['free_join_auto_approve'] = $joinRequiresPayment
                 ? true
                 : $request->boolean('free_join_auto_approve', true);
+            $data = \App\Support\AdminClassSubscriptionInput::merge($data, $request);
 
             $class = SchoolClass::create($data);
 
@@ -328,6 +329,7 @@ class ClassController extends Controller
             $data['free_join_auto_approve'] = $joinRequiresPayment
                 ? true
                 : $request->boolean('free_join_auto_approve', true);
+            $data = \App\Support\AdminClassSubscriptionInput::merge($data, $request, $class);
 
             $class->update($data);
 

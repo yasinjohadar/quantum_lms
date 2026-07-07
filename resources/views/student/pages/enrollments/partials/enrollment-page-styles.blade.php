@@ -351,5 +351,140 @@
             color: var(--primary-color);
             font-size: 1.75rem;
         }
+
+        .enrollment-confirm-modal .modal-dialog {
+            max-width: 30rem;
+        }
+
+        .enrollment-confirm-modal .modal-content {
+            border: 1px solid rgba(var(--primary-rgb), 0.12);
+            border-radius: 1.35rem;
+            overflow: hidden;
+            background: var(--custom-white);
+            box-shadow: 0 1rem 2.5rem rgba(15, 23, 42, 0.16);
+        }
+
+        .enrollment-confirm-modal .modal-header {
+            padding: 1rem 1rem 0;
+        }
+
+        .enrollment-confirm-modal .btn-close {
+            margin-inline-start: auto;
+            opacity: 0.7;
+        }
+
+        .enrollment-confirm-modal .modal-body {
+            padding: 0.5rem 1.5rem 1.5rem;
+        }
+
+        .enrollment-confirm-modal__hero {
+            width: 5.5rem;
+            height: 5.5rem;
+            border-radius: 1.5rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.14) 0%, rgba(var(--primary-rgb), 0.06) 100%);
+            color: var(--primary-color);
+            box-shadow: inset 0 0 0 1px rgba(var(--primary-rgb), 0.12);
+        }
+
+        .enrollment-confirm-modal__hero i {
+            font-size: 2.4rem;
+        }
+
+        .enrollment-confirm-modal__title {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: var(--default-text-color);
+            margin-bottom: 0.6rem;
+        }
+
+        .enrollment-confirm-modal__message {
+            font-size: 0.96rem;
+            line-height: 1.7;
+            color: var(--text-muted);
+            max-width: 24rem;
+            margin: 0 auto 1rem;
+        }
+
+        .enrollment-confirm-modal__note {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            padding: 0.55rem 0.85rem;
+            border-radius: 999px;
+            background: rgba(var(--primary-rgb), 0.08);
+            color: var(--primary-color);
+            font-size: 0.82rem;
+            font-weight: 600;
+            margin-bottom: 1.15rem;
+        }
+
+        .enrollment-confirm-modal__actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.65rem;
+            flex-wrap: wrap;
+        }
+
+        .enrollment-confirm-modal__actions .btn {
+            min-width: 8.75rem;
+            border-radius: 999px;
+            font-weight: 700;
+            padding: 0.65rem 1rem;
+        }
+
+        .enrollment-confirm-modal__actions .btn-primary,
+        .enrollment-confirm-modal__actions .btn-success {
+            box-shadow: 0 0.6rem 1.35rem rgba(var(--primary-rgb), 0.22);
+        }
+
+        [data-theme-mode="dark"] .enrollment-confirm-modal .modal-content,
+        [data-bs-theme="dark"] .enrollment-confirm-modal .modal-content {
+            background: #0f172a;
+            border-color: rgba(148, 163, 184, 0.12);
+            box-shadow: 0 1.1rem 2.6rem rgba(2, 6, 23, 0.48);
+        }
+
+        [data-theme-mode="dark"] .enrollment-confirm-modal__hero,
+        [data-bs-theme="dark"] .enrollment-confirm-modal__hero {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.18) 0%, rgba(37, 99, 235, 0.1) 100%);
+            box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.12);
+        }
+
+        [data-theme-mode="dark"] .enrollment-confirm-modal__note,
+        [data-bs-theme="dark"] .enrollment-confirm-modal__note {
+            background: rgba(59, 130, 246, 0.12);
+            color: #93c5fd;
+        }
+
+        @media (max-width: 575.98px) {
+            .enrollment-confirm-modal .modal-body {
+                padding-inline: 1rem;
+                padding-bottom: 1.15rem;
+            }
+
+            .enrollment-confirm-modal__hero {
+                width: 4.75rem;
+                height: 4.75rem;
+                border-radius: 1.2rem;
+            }
+
+            .enrollment-confirm-modal__hero i {
+                font-size: 2rem;
+            }
+
+            .enrollment-confirm-modal__actions {
+                flex-direction: column-reverse;
+            }
+
+            .enrollment-confirm-modal__actions .btn {
+                width: 100%;
+            }
+        }
     </style>
 @endonce

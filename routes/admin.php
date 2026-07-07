@@ -827,6 +827,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         // المدفوعات
         Route::prefix('payments')->name('payments.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\PaymentController::class, 'index'])->name('index');
+            Route::post('pending-purchases/{purchase}/approve', [\App\Http\Controllers\Admin\PaymentController::class, 'approvePendingPurchase'])->name('pending-purchases.approve');
+            Route::post('pending-purchases/{purchase}/reject', [\App\Http\Controllers\Admin\PaymentController::class, 'rejectPendingPurchase'])->name('pending-purchases.reject');
             Route::get('{payment}', [\App\Http\Controllers\Admin\PaymentController::class, 'show'])->name('show');
             Route::post('{payment}/review', [\App\Http\Controllers\Admin\PaymentController::class, 'reviewPayment'])->name('review');
             Route::post('{payment}/approve', [\App\Http\Controllers\Admin\PaymentController::class, 'approvePayment'])->name('approve');

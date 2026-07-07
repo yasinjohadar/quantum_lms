@@ -150,6 +150,7 @@
                                         <th>الصف</th>
                                         <th>المرحلة</th>
                                         <th>الحالة</th>
+                                        <th style="min-width: 120px;">نهاية الاشتراك</th>
                                         <th style="min-width: 160px;">العمليات</th>
                                     </tr>
                                     </thead>

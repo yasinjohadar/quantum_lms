@@ -45,6 +45,7 @@ class StoreClassRequest extends FormRequest
             'prices.*.is_active' => ['nullable', 'boolean'],
             'features' => ['nullable', 'array', 'max:10'],
             'features.*' => ['nullable', 'string', 'max:255'],
+            'subscription_ends_at' => ['nullable', 'date', 'after_or_equal:today'],
         ];
     }
 

@@ -40,6 +40,8 @@ class SchoolClass extends Model
         'default_currency_id',
         'allow_subjects_purchase',
         'free_join_auto_approve',
+        'subscription_ends_at',
+        'subscription_revoked_at',
     ];
 
     /**
@@ -57,6 +59,8 @@ class SchoolClass extends Model
         'use_custom_price_label' => 'boolean',
         'allow_subjects_purchase' => 'boolean',
         'free_join_auto_approve' => 'boolean',
+        'subscription_ends_at' => 'datetime',
+        'subscription_revoked_at' => 'datetime',
     ];
 
     protected static function boot()
@@ -302,6 +306,29 @@ class SchoolClass extends Model
         }
 
         return ! $this->effectiveFreeJoinAutoApprove();
+    }
+
+    public function hasSubscriptionEnded(): bool
+    {
+        return $this->subscription_ends_at !== null
+            && $this->subscription_ends_at->lte(now());
+    }
+
+    public function subscriptionEndsAtEndOfDay(): ?\Carbon\Carbon
+    {
+        if (! $this->subscription_ends_at) {
+            return null;
+        }
+
+        return $this->subscription_ends_at->copy()->endOfDay();
+    }
+
+    public function scopeSubscriptionExpiredDue($query)
+    {
+        return $query
+            ->whereNotNull('subscription_ends_at')
+            ->where('subscription_ends_at', '<=', now())
+            ->whereNull('subscription_revoked_at');
     }
 }
 

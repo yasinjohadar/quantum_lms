@@ -40,6 +40,20 @@
             @endcan
         </td>
         <td>
+            @if ($class->subscription_ends_at)
+                <span class="cl-subscription-end {{ $class->hasSubscriptionEnded() ? 'cl-subscription-end--expired' : 'cl-subscription-end--active' }}"
+                      title="{{ $class->hasSubscriptionEnded() ? 'انتهى اشتراك الصف' : 'تاريخ انتهاء اشتراك جميع الطلاب' }}">
+                    <i class="bi {{ $class->hasSubscriptionEnded() ? 'bi-calendar-x' : 'bi-calendar-event' }} me-1"></i>
+                    {{ $class->subscription_ends_at->format('Y-m-d') }}
+                    @if ($class->hasSubscriptionEnded())
+                        <span class="cl-subscription-end__tag">منتهي</span>
+                    @endif
+                </span>
+            @else
+                <span class="text-muted small">غير محدد</span>
+            @endif
+        </td>
+        <td>
             <div class="row-action-bar">
                 @can('class-show')
                     <a href="{{ route('admin.classes.show', $class->id) }}"
@@ -84,7 +98,7 @@
     </tr>
 @empty
     <tr>
-        <td colspan="6">
+        <td colspan="7">
             <div class="classes-empty">
                 <i class="bi bi-building"></i>
                 <p class="mb-0 fw-semibold">لا توجد صفوف مطابقة للفلاتر</p>

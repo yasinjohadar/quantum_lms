@@ -50,6 +50,10 @@ class AccessResolver
 
     public function hasClassAccess(User $user, SchoolClass $class): bool
     {
+        if ($class->hasSubscriptionEnded()) {
+            return false;
+        }
+
         if ($class->is_free) {
             if (! $class->gatesFreeEnrollmentUntilApproved()) {
                 return true;
@@ -293,6 +297,10 @@ class AccessResolver
 
     private function hasPurchasedClassDirectly(User $user, SchoolClass $class): bool
     {
+        if ($class->hasSubscriptionEnded()) {
+            return false;
+        }
+
         $purchase = Purchase::where('user_id', $user->id)
             ->where('purchasable_type', SchoolClass::class)
             ->where('purchasable_id', $class->id)
@@ -318,6 +326,10 @@ class AccessResolver
 
     private function isEnrolledInClassDirectly(User $user, SchoolClass $class): bool
     {
+        if ($class->hasSubscriptionEnded()) {
+            return false;
+        }
+
         return ClassEnrollment::where('user_id', $user->id)
             ->where('class_id', $class->id)
             ->where('status', 'approved')

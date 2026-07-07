@@ -60,17 +60,29 @@
                 margin-top: 0.85rem;
             }
 
+            .enrollment-required-banner__steps-title {
+                display: block;
+                margin-top: 0.95rem;
+                margin-bottom: 0.55rem;
+                font-size: 0.82rem;
+                font-weight: 700;
+                color: rgb(var(--danger-rgb));
+            }
+
             .enrollment-required-banner__step {
                 display: inline-flex;
                 align-items: center;
                 gap: 0.4rem;
                 padding: 0.35rem 0.7rem;
-                border-radius: 0.5rem;
+                border-radius: 999px;
                 font-size: 0.8rem;
-                font-weight: 500;
+                font-weight: 600;
                 color: var(--default-text-color);
-                background: var(--custom-white);
-                border: 1px solid var(--default-border);
+                background: rgba(var(--danger-rgb), 0.06);
+                border: 1px dashed rgba(var(--danger-rgb), 0.2);
+                cursor: default;
+                user-select: none;
+                pointer-events: none;
             }
 
             .enrollment-required-banner__step-num {
@@ -84,6 +96,31 @@
                 font-weight: 700;
                 color: #fff;
                 background: rgb(var(--danger-rgb));
+            }
+
+            .enrollment-required-banner__guide {
+                margin-top: 1rem;
+                padding: 0.95rem 1rem;
+                border-radius: 0.8rem;
+                background: rgba(var(--danger-rgb), 0.06);
+                border: 1px dashed rgba(var(--danger-rgb), 0.2);
+            }
+
+            .enrollment-required-banner__guide-title {
+                font-size: 0.92rem;
+                font-weight: 700;
+                color: rgb(var(--danger-rgb));
+                margin-bottom: 0.6rem;
+            }
+
+            .enrollment-required-banner__guide-list {
+                margin: 0;
+                padding-inline-start: 1.1rem;
+                color: var(--default-text-color);
+            }
+
+            .enrollment-required-banner__guide-list li + li {
+                margin-top: 0.35rem;
             }
         </style>
     @endonce
@@ -100,10 +137,16 @@
                 </span>
                 <h5 class="enrollment-required-banner__title">لم يتم تسجيلك بعد في أي صف أو مادة</h5>
                 <p class="enrollment-required-banner__text">
-                    لعرض الدروس والمواد الدراسية الخاصة بك، اختر صفك المناسب من القائمة أدناه واضغط
+                    لعرض الدروس والمواد الدراسية الخاصة بك، يجب أولاً إرسال طلب انضمام صحيح من هذه الصفحة.
+                    اختر صفك المناسب من القائمة أدناه ثم اضغط
                     <strong>«انضم للصف»</strong>
-                    لإرسال طلب الانضمام.
+                    أو
+                    <strong>«طلب الانضمام»</strong>
+                    حسب الخيار الظاهر لك.
                 </p>
+                <span class="enrollment-required-banner__steps-title">
+                    هذه خطوات توضيحية يجب اتباعها بالترتيب، وليست أزرارًا للضغط:
+                </span>
                 <div class="enrollment-required-banner__steps">
                     <span class="enrollment-required-banner__step">
                         <span class="enrollment-required-banner__step-num">1</span>
@@ -115,8 +158,19 @@
                     </span>
                     <span class="enrollment-required-banner__step">
                         <span class="enrollment-required-banner__step-num">3</span>
-                        بعد الموافقة تظهر دروسك
+                        انتظر القبول ثم تظهر دروسك
                     </span>
+                </div>
+                <div class="enrollment-required-banner__guide">
+                    <div class="enrollment-required-banner__guide-title">اتبع هذه الخطوات بالترتيب:</div>
+                    <ol class="enrollment-required-banner__guide-list">
+                        <li>ابحث عن صفك الصحيح من البطاقات المعروضة أدناه.</li>
+                        <li>اضغط على <strong>«انضم للصف»</strong> أو <strong>«طلب الانضمام»</strong>.</li>
+                        <li>أكّد الطلب من النافذة التي ستظهر لك.</li>
+                        <li>إذا ظهر طلبك أعلى الصفحة ضمن <strong>«طلباتك قيد المراجعة»</strong> فهذا يعني أن الطلب تم إرساله بنجاح.</li>
+                        <li>إذا كان الطلب مدفوعًا، تواصل مع المشرفة عبر واتساب لمتابعة القبول.</li>
+                        <li>بعد موافقة الإدارة ستظهر لك المواد والدروس تلقائيًا.</li>
+                    </ol>
                 </div>
             </div>
         </div>

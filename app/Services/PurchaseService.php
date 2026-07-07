@@ -10,6 +10,7 @@ use App\Models\Subject;
 use Illuminate\Support\Facades\DB;
 use App\Services\Pricing\SubjectPricingResolver;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Auth\Access\AuthorizationException;
 
 class PurchaseService
 {
@@ -190,13 +191,14 @@ class PurchaseService
         // تحميل العلاقات اللازمة
         $purchase->refresh();
         $purchase->load(['user', 'purchasable']);
-        
-        $user = $purchase->user;
+
+        $user = User::withTrashed()->find($purchase->user_id);
         $purchasable = $purchase->purchasable;
         
         Log::info('Purchase data loaded', [
             'purchase_id' => $purchase->id,
             'user_exists' => $user ? 'yes' : 'no',
+            'user_trashed' => $user?->trashed() ? 'yes' : 'no',
             'purchasable_exists' => $purchasable ? 'yes' : 'no',
             'purchasable_type' => $purchase->purchasable_type,
             'purchasable_id' => $purchase->purchasable_id,
@@ -209,7 +211,16 @@ class PurchaseService
                 'purchasable_type' => $purchase->purchasable_type,
                 'purchasable_id' => $purchase->purchasable_id,
             ]);
-            throw new \Exception('لا يمكن إكمال الشراء: بيانات غير مكتملة');
+
+            if (!$user) {
+                throw new \InvalidArgumentException('تعذر اعتماد الطلب: حساب الطالب غير موجود أو تم حذفه نهائياً');
+            }
+
+            throw new \InvalidArgumentException('تعذر اعتماد الطلب: الصف أو المادة المرتبطة بالطلب غير متوفرة');
+        }
+
+        if ($user->trashed()) {
+            $user->restore();
         }
 
         $enrolledBy = auth()->id() ?? $user->id; // استخدام ID الأدمن أو المستخدم
@@ -232,17 +243,11 @@ class PurchaseService
             
             // إنشاء تسجيل للصف
             try {
-                $classEnrollment = \App\Models\ClassEnrollment::updateOrCreate(
-                    [
-                        'user_id' => $user->id,
-                        'class_id' => $purchasable->id,
-                    ],
-                    [
-                        'status' => 'approved',
-                        'enrolled_by' => $enrolledBy,
-                        'enrolled_at' => now(),
-                        'notes' => 'تسجيل تلقائي بعد الشراء',
-                    ]
+                $classEnrollment = $this->provisionApprovedClassEnrollment(
+                    $user->id,
+                    $purchasable->id,
+                    $enrolledBy,
+                    'تسجيل تلقائي بعد الشراء'
                 );
 
                 Log::info('ClassEnrollment created/updated', [
@@ -276,17 +281,11 @@ class PurchaseService
                         continue;
                     }
                     try {
-                        $enrollment = \App\Models\Enrollment::updateOrCreate(
-                            [
-                                'user_id' => $user->id,
-                                'subject_id' => $subject->id,
-                            ],
-                            [
-                                'status' => 'active',
-                                'enrolled_by' => $enrolledBy,
-                                'enrolled_at' => now(),
-                                'notes' => 'تسجيل تلقائي بعد شراء الصف',
-                            ]
+                        $enrollment = $this->provisionActiveSubjectEnrollment(
+                            $user->id,
+                            $subject->id,
+                            $enrolledBy,
+                            'تسجيل تلقائي بعد شراء الصف'
                         );
 
                         Log::info('Enrollment created/updated for subject', [
@@ -321,17 +320,11 @@ class PurchaseService
 
             // إنشاء تسجيل للمادة
             try {
-                $enrollment = \App\Models\Enrollment::updateOrCreate(
-                    [
-                        'user_id' => $user->id,
-                        'subject_id' => $purchasable->id,
-                    ],
-                    [
-                        'status' => 'active',
-                        'enrolled_by' => $enrolledBy,
-                        'enrolled_at' => now(),
-                        'notes' => 'تسجيل تلقائي بعد الشراء',
-                    ]
+                $enrollment = $this->provisionActiveSubjectEnrollment(
+                    $user->id,
+                    $purchasable->id,
+                    $enrolledBy,
+                    'تسجيل تلقائي بعد الشراء'
                 );
 
                 Log::info('Enrollment created/updated for subject', [
@@ -369,7 +362,7 @@ class PurchaseService
     public function cancelPendingByStudent(Purchase $purchase, User $user): void
     {
         if ((int) $purchase->user_id !== (int) $user->id) {
-            throw new \Illuminate\Auth\Access\AuthorizationException('غير مصرح بإلغاء هذا الطلب');
+            throw new AuthorizationException('غير مصرح بإلغاء هذا الطلب');
         }
 
         if ($purchase->status !== 'pending') {
@@ -413,6 +406,101 @@ class PurchaseService
     }
 
     /**
+     * اعتماد طلب شراء/انضمام معلّق مباشرة من الإدارة بدون مسار دفع.
+     */
+    public function approvePendingDirectPurchase(
+        Purchase $purchase,
+        int $adminId,
+        ?string $notes = null,
+        ?\DateTimeInterface $expiresAt = null
+    ): void {
+        if ($purchase->status !== 'pending') {
+            throw new \InvalidArgumentException('لا يمكن اعتماد هذا الطلب لأنه ليس قيد المراجعة');
+        }
+
+        if ($expiresAt === null) {
+            throw new \InvalidArgumentException('يجب تحديد تاريخ انتهاء الاشتراك');
+        }
+
+        $purchase->loadMissing(['payment', 'user', 'purchasable']);
+
+        if ($purchase->payment) {
+            throw new \InvalidArgumentException('هذا الطلب مرتبط بدفعة ويجب مراجعته من شاشة المدفوعات المعتادة');
+        }
+
+        DB::transaction(function () use ($purchase, $notes, $expiresAt) {
+            $purchase->refresh();
+            $purchase->loadMissing('payment');
+
+            if ($purchase->status !== 'pending') {
+                throw new \InvalidArgumentException('لا يمكن اعتماد هذا الطلب لأنه لم يعد قيد المراجعة');
+            }
+
+            if ($purchase->payment) {
+                throw new \InvalidArgumentException('هذا الطلب مرتبط بدفعة ويجب مراجعته من شاشة المدفوعات المعتادة');
+            }
+
+            $resolvedExpiresAt = \Carbon\Carbon::parse($expiresAt)->endOfDay();
+            $purchase->loadMissing('purchasable');
+
+            $class = null;
+            if ($purchase->purchasable instanceof \App\Models\SchoolClass) {
+                $class = $purchase->purchasable;
+            } elseif ($purchase->purchasable instanceof \App\Models\Subject) {
+                $purchase->purchasable->loadMissing('schoolClass');
+                $class = $purchase->purchasable->schoolClass;
+            }
+
+            if ($class?->subscription_ends_at) {
+                $resolvedExpiresAt = $resolvedExpiresAt->min($class->subscription_ends_at);
+            }
+
+            $purchase->update([
+                'status' => 'completed',
+                'purchased_at' => now(),
+                'expires_at' => $resolvedExpiresAt,
+                'notes' => trim(($purchase->notes ? $purchase->notes . ' | ' : '') . 'اعتماد إداري مباشر' . ($notes ? ': ' . $notes : '')),
+            ]);
+
+            $this->completePurchase($purchase);
+        });
+    }
+
+    /**
+     * رفض طلب شراء/انضمام معلّق مباشرة من الإدارة بدون مسار دفع.
+     */
+    public function rejectPendingDirectPurchase(Purchase $purchase, int $adminId, ?string $notes = null): void
+    {
+        if ($purchase->status !== 'pending') {
+            throw new \InvalidArgumentException('لا يمكن رفض هذا الطلب لأنه ليس قيد المراجعة');
+        }
+
+        $purchase->loadMissing('payment');
+
+        if ($purchase->payment) {
+            throw new \InvalidArgumentException('هذا الطلب مرتبط بدفعة ويجب رفضه من شاشة المدفوعات المعتادة');
+        }
+
+        $reason = trim((string) $notes);
+
+        $purchase->update([
+            'status' => 'cancelled',
+            'cancelled_by' => 'admin',
+            'cancelled_at' => now(),
+            'notes' => trim(($purchase->notes ? $purchase->notes . ' | ' : '') . 'رفض إداري مباشر' . ($reason !== '' ? ': ' . $reason : '')),
+        ]);
+
+        try {
+            $purchase->loadMissing(['user', 'purchasable']);
+            if ($purchase->user && $purchase->purchasable) {
+                app(\App\Services\Pricing\PricingCacheManager::class)->invalidateOnPurchase($purchase->user, $purchase->purchasable);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Failed to invalidate pricing cache after direct purchase reject: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * التحقق من وصول المستخدم للصف/المادة
      */
     public function checkAccess(User $user, $purchasable): bool
@@ -446,5 +534,175 @@ class PurchaseService
         }
 
         return false;
+    }
+
+    /**
+     * معالجة الاشتراكات المنتهية وإلغاء الوصول تلقائياً.
+     */
+    public function processExpiredPurchases(): int
+    {
+        $processed = 0;
+
+        Purchase::query()
+            ->expiredAccessDue()
+            ->with(['user', 'purchasable'])
+            ->orderBy('id')
+            ->chunkById(100, function ($purchases) use (&$processed) {
+                foreach ($purchases as $purchase) {
+                    $this->revokeExpiredPurchaseAccess($purchase);
+                    $processed++;
+                }
+            });
+
+        return $processed;
+    }
+
+    /**
+     * إلغاء وصول الطالب بعد انتهاء صلاحية الشراء.
+     */
+    public function revokeExpiredPurchaseAccess(Purchase $purchase): void
+    {
+        DB::transaction(function () use ($purchase) {
+            $purchase->refresh();
+            $purchase->loadMissing(['user', 'purchasable']);
+
+            if ($purchase->access_revoked_at !== null) {
+                return;
+            }
+
+            if ($purchase->status !== 'completed' || ! $purchase->expires_at || $purchase->expires_at->isFuture()) {
+                return;
+            }
+
+            $user = $purchase->user;
+            $purchasable = $purchase->purchasable;
+
+            if (! $user || ! $purchasable) {
+                $purchase->update(['access_revoked_at' => now()]);
+
+                return;
+            }
+
+            $revocationNote = 'انتهت صلاحية الاشتراك تلقائياً في ' . now()->format('Y-m-d');
+
+            if ($purchase->purchase_type === 'class') {
+                $classEnrollment = \App\Models\ClassEnrollment::query()
+                    ->where('user_id', $user->id)
+                    ->where('class_id', $purchasable->id)
+                    ->where('status', 'approved')
+                    ->first();
+
+                if ($classEnrollment) {
+                    $classEnrollment->update([
+                        'status' => 'rejected',
+                        'notes' => trim(($classEnrollment->notes ? $classEnrollment->notes . ' | ' : '') . $revocationNote),
+                    ]);
+                }
+
+                $subjects = $purchasable->subjects()->where('is_active', true)->get();
+                foreach ($subjects as $subject) {
+                    if (! $this->subjectPricingResolver->isIncludedInClassBundle($subject)) {
+                        continue;
+                    }
+
+                    $enrollment = \App\Models\Enrollment::query()
+                        ->where('user_id', $user->id)
+                        ->where('subject_id', $subject->id)
+                        ->where('status', 'active')
+                        ->first();
+
+                    if ($enrollment) {
+                        $enrollment->update([
+                            'status' => 'suspended',
+                            'notes' => trim(($enrollment->notes ? $enrollment->notes . ' | ' : '') . $revocationNote),
+                        ]);
+                    }
+                }
+            } elseif ($purchase->purchase_type === 'subject') {
+                $enrollment = \App\Models\Enrollment::query()
+                    ->where('user_id', $user->id)
+                    ->where('subject_id', $purchasable->id)
+                    ->where('status', 'active')
+                    ->first();
+
+                if ($enrollment) {
+                    $enrollment->update([
+                        'status' => 'suspended',
+                        'notes' => trim(($enrollment->notes ? $enrollment->notes . ' | ' : '') . $revocationNote),
+                    ]);
+                }
+            }
+
+            $purchase->update([
+                'access_revoked_at' => now(),
+                'notes' => trim(($purchase->notes ? $purchase->notes . ' | ' : '') . $revocationNote),
+            ]);
+
+            try {
+                app(\App\Services\Pricing\PricingCacheManager::class)->invalidateOnPurchase($user, $purchasable);
+            } catch (\Throwable $e) {
+                Log::warning('Failed to invalidate pricing cache after purchase expiry: ' . $e->getMessage());
+            }
+        });
+    }
+
+    private function provisionApprovedClassEnrollment(int $userId, int $classId, int $enrolledBy, string $notes): \App\Models\ClassEnrollment
+    {
+        $payload = [
+            'status' => 'approved',
+            'enrolled_by' => $enrolledBy,
+            'enrolled_at' => now(),
+            'notes' => $notes,
+        ];
+
+        $existing = \App\Models\ClassEnrollment::withTrashed()
+            ->where('user_id', $userId)
+            ->where('class_id', $classId)
+            ->first();
+
+        if ($existing) {
+            if ($existing->trashed()) {
+                $existing->restore();
+            }
+
+            $existing->update($payload);
+
+            return $existing;
+        }
+
+        return \App\Models\ClassEnrollment::create(array_merge([
+            'user_id' => $userId,
+            'class_id' => $classId,
+        ], $payload));
+    }
+
+    private function provisionActiveSubjectEnrollment(int $userId, int $subjectId, int $enrolledBy, string $notes): \App\Models\Enrollment
+    {
+        $payload = [
+            'status' => 'active',
+            'enrolled_by' => $enrolledBy,
+            'enrolled_at' => now(),
+            'notes' => $notes,
+        ];
+
+        $existing = \App\Models\Enrollment::withTrashed()
+            ->where('user_id', $userId)
+            ->where('subject_id', $subjectId)
+            ->first();
+
+        if ($existing) {
+            if ($existing->trashed()) {
+                $existing->restore();
+            }
+
+            $existing->update($payload);
+
+            return $existing;
+        }
+
+        return \App\Models\Enrollment::create(array_merge([
+            'user_id' => $userId,
+            'subject_id' => $subjectId,
+        ], $payload));
     }
 }

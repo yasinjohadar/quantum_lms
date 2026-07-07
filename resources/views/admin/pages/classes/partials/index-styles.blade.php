@@ -223,6 +223,41 @@
     .cl-status-badge--active { background: rgba(25, 135, 84, 0.12); color: #198754; }
     .cl-status-badge--inactive { background: rgba(220, 53, 69, 0.12); color: #dc3545; }
 
+    .cl-subscription-end {
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 0.35rem 0.55rem;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.15rem;
+        white-space: nowrap;
+    }
+
+    .cl-subscription-end--active {
+        background: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+    }
+
+    .cl-subscription-end--expired {
+        background: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+    }
+
+    .cl-subscription-end__tag {
+        font-size: 0.62rem;
+        padding: 0.1rem 0.35rem;
+        border-radius: 6px;
+        background: rgba(220, 53, 69, 0.15);
+        margin-inline-start: 0.15rem;
+    }
+
+    [data-theme-mode="dark"] .cl-subscription-end--active,
+    [data-bs-theme="dark"] .cl-subscription-end--active { color: #93c5fd; }
+
+    [data-theme-mode="dark"] .cl-subscription-end--expired,
+    [data-bs-theme="dark"] .cl-subscription-end--expired { color: #f87171; }
+
     .classes-loading-overlay {
         position: absolute;
         inset: 0;

@@ -38,6 +38,7 @@
         @include('student.partials.enrollment-required-alert')
 
         @include('student.pages.enrollments.partials.stats-summary')
+        @include('student.partials.pending-purchases-review-banner')
 
         <!-- معلومات الصف -->
         <div class="enrollment-class-hero">
@@ -71,7 +72,7 @@
                             طلب الصف قيد المراجعة
                         </span>
                     @elseif($class->subjects->isNotEmpty())
-                        <button class="btn btn-primary btn-sm enrollment-class-card__btn-join" onclick="requestClassEnrollment({{ $class->id }}, '{{ addslashes($class->name) }}', {{ $class->classJoinRequiresPayment() ? 'true' : 'false' }})" type="button">
+                        <button class="btn btn-primary btn-sm enrollment-class-card__btn-join" onclick="requestClassEnrollment({{ $class->id }}, '{{ addslashes($class->name) }}', {{ $class->classJoinRequiresPayment() ? 'true' : 'false' }}, this)" type="button">
                             <i class="bi bi-plus-circle me-1"></i>
                             انضمام للصف كامل
                         </button>
@@ -106,6 +107,7 @@
                 @foreach($subjectsToShow as $subject)
                     @php
                         $isPending = in_array($subject->id, $pendingEnrollments);
+                        $pendingPurchaseId = $pendingSubjectPurchaseIds[$subject->id] ?? null;
                     @endphp
 
                     <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-3 mb-md-4">
@@ -125,13 +127,17 @@
                                     <p class="text-muted small mb-3">{{ \Illuminate\Support\Str::limit($subject->description, 90) }}</p>
                                 @endif
 
-                                @if($isPending)
+                                @if($isPending || $pendingPurchaseId)
                                     <div class="d-flex gap-2" onclick="event.stopPropagation();">
                                         <button class="btn btn-warning btn-sm flex-grow-1 enrollment-class-card__btn-pending" disabled>
                                             <i class="bi bi-clock me-1"></i>
                                             قيد المراجعة
                                         </button>
-                                        <button class="btn btn-outline-danger btn-sm" onclick="cancelRequest({{ $subject->id }})" title="إلغاء الطلب" type="button">
+                                        <button class="btn btn-outline-danger btn-sm"
+                                                onclick="{{ $pendingPurchaseId ? 'cancelPendingPurchase('.$pendingPurchaseId.')' : 'cancelRequest('.$subject->id.')' }}"
+                                                data-purchase-id="{{ $pendingPurchaseId }}"
+                                                title="إلغاء الطلب"
+                                                type="button">
                                             <i class="bi bi-x-circle"></i>
                                         </button>
                                     </div>
@@ -156,12 +162,12 @@
                                             @if(($access['show_price'] ?? false) && !empty($access['display_price']))
                                                 <p class="small text-muted mb-2 text-center">{{ $access['display_price'] }}</p>
                                             @endif
-                                            <button class="btn btn-warning btn-sm w-100" onclick="requestEnrollment({{ $subject->id }}, '{{ addslashes($subject->name) }}')" type="button">
-                                                <i class="bi bi-cart-plus me-1"></i>
-                                                شراء / طلب الانضمام
+                                            <button class="btn btn-warning btn-sm w-100" onclick="requestEnrollment({{ $subject->id }}, '{{ addslashes($subject->name) }}', this)" type="button">
+                                                <i class="bi bi-send-plus me-1"></i>
+                                                طلب الانضمام
                                             </button>
                                         @elseif($access && ($access['pricing_mode'] ?? '') === 'free' && !($access['can_access'] ?? false))
-                                            <button class="btn btn-primary btn-sm w-100 enrollment-class-card__btn-join" onclick="requestEnrollment({{ $subject->id }}, '{{ addslashes($subject->name) }}')" type="button">
+                                            <button class="btn btn-primary btn-sm w-100 enrollment-class-card__btn-join" onclick="requestEnrollment({{ $subject->id }}, '{{ addslashes($subject->name) }}', this)" type="button">
                                                 <i class="bi bi-plus-circle me-1"></i>
                                                 طلب الانضمام
                                             </button>
@@ -171,7 +177,7 @@
                                                 عبر الصف فقط
                                             </button>
                                         @else
-                                            <button class="btn btn-primary btn-sm w-100 enrollment-class-card__btn-join" onclick="requestEnrollment({{ $subject->id }}, '{{ addslashes($subject->name) }}')" type="button">
+                                            <button class="btn btn-primary btn-sm w-100 enrollment-class-card__btn-join" onclick="requestEnrollment({{ $subject->id }}, '{{ addslashes($subject->name) }}', this)" type="button">
                                                 <i class="bi bi-plus-circle me-1"></i>
                                                 طلب الانضمام
                                             </button>
@@ -239,26 +245,28 @@
 </div>
 
 <!-- Modal لتأكيد طلب الانضمام للصف كامل -->
-<div class="modal fade" id="confirmClassEnrollmentModal" tabindex="-1" aria-labelledby="confirmClassEnrollmentModalLabel" aria-hidden="true">
+<div class="modal fade enrollment-confirm-modal" id="confirmClassEnrollmentModal" tabindex="-1" aria-labelledby="confirmClassEnrollmentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header border-0 pb-0">
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body text-center py-4">
-                <div class="mb-3">
-                    <div class="avatar avatar-xl bg-success-transparent rounded-circle mx-auto d-flex align-items-center justify-content-center">
-                        <i class="bi bi-building-add fs-1 text-success"></i>
-                    </div>
+            <div class="modal-body text-center">
+                <div class="enrollment-confirm-modal__hero" aria-hidden="true">
+                    <i class="bi bi-building-add"></i>
                 </div>
-                <h5 class="modal-title mb-3" id="confirmClassEnrollmentModalLabel">تأكيد طلب الانضمام للصف</h5>
-                <p class="text-muted mb-4" id="confirmClassEnrollmentModalMessage"></p>
-                <div class="d-flex gap-2 justify-content-center">
+                <h5 class="enrollment-confirm-modal__title" id="confirmClassEnrollmentModalLabel">تأكيد طلب الانضمام للصف</h5>
+                <p class="enrollment-confirm-modal__message" id="confirmClassEnrollmentModalMessage"></p>
+                <div class="enrollment-confirm-modal__note">
+                    <i class="bi bi-hourglass-split"></i>
+                    سيتم إرسال الطلب مباشرة إلى الإدارة للمراجعة
+                </div>
+                <div class="enrollment-confirm-modal__actions">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="bi bi-x-circle me-1"></i> إلغاء
+                        <i class="bi bi-x-lg me-1"></i> إلغاء
                     </button>
                     <button type="button" class="btn btn-success" id="confirmClassEnrollmentBtn">
-                        <i class="bi bi-check-circle me-1"></i> تأكيد
+                        <i class="bi bi-check2-circle me-1"></i> تأكيد الانضمام
                     </button>
                 </div>
             </div>
@@ -344,6 +352,7 @@
     let pendingClassId = null;
     let pendingClassName = null;
     let pendingCancelSubjectId = null;
+    let pendingCancelPurchaseId = null;
     let currentButton = null;
     
     // تهيئة المودالات
@@ -376,7 +385,9 @@
         const confirmCancelBtn = document.getElementById('confirmCancelBtn');
         if (confirmCancelBtn) {
             confirmCancelBtn.addEventListener('click', function() {
-                if (pendingCancelSubjectId) {
+                if (pendingCancelPurchaseId) {
+                    processCancelPendingPurchaseRequest(pendingCancelPurchaseId);
+                } else if (pendingCancelSubjectId) {
                     processCancelRequest(pendingCancelSubjectId);
                 }
                 const modal = bootstrap.Modal.getInstance(document.getElementById('confirmCancelModal'));
@@ -384,13 +395,39 @@
             });
         }
     }
+
+    const confirmEnrollmentModalEl = document.getElementById('confirmEnrollmentModal');
+    if (confirmEnrollmentModalEl) {
+        confirmEnrollmentModalEl.addEventListener('hidden.bs.modal', function () {
+            pendingSubjectId = null;
+            pendingSubjectName = null;
+            currentButton = null;
+        });
+    }
+
+    const confirmClassEnrollmentModalEl = document.getElementById('confirmClassEnrollmentModal');
+    if (confirmClassEnrollmentModalEl) {
+        confirmClassEnrollmentModalEl.addEventListener('hidden.bs.modal', function () {
+            pendingClassId = null;
+            pendingClassName = null;
+            currentButton = null;
+        });
+    }
+
+    const confirmCancelModalEl = document.getElementById('confirmCancelModal');
+    if (confirmCancelModalEl) {
+        confirmCancelModalEl.addEventListener('hidden.bs.modal', function () {
+            pendingCancelSubjectId = null;
+            pendingCancelPurchaseId = null;
+        });
+    }
     
-    function requestEnrollment(subjectId, subjectName) {
+    function requestEnrollment(subjectId, subjectName, triggerButton) {
         console.log('requestEnrollment called with:', subjectId, subjectName);
         
         pendingSubjectId = subjectId;
         pendingSubjectName = subjectName;
-        currentButton = event.target;
+        currentButton = triggerButton || null;
         
         // تحديث رسالة المودال
         const messageEl = document.getElementById('confirmEnrollmentModalMessage');
@@ -399,7 +436,7 @@
         }
         
         // إظهار المودال
-        const modal = new bootstrap.Modal(document.getElementById('confirmEnrollmentModal'));
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmEnrollmentModal'));
         modal.show();
     }
     
@@ -460,7 +497,9 @@
             if (data.success) {
                 if (data.under_review) {
                     setTimeout(function () {
-                        showEnrollmentPendingReviewModal(data.message);
+                        showEnrollmentPendingReviewModal(data.message, {
+                            requiresWhatsappFollowup: !!data.requires_whatsapp_followup
+                        });
                     }, 300);
                 } else {
                     showSuccessMessage(data.message);
@@ -484,25 +523,25 @@
         });
     }
     
-    function requestClassEnrollment(classId, className, requiresPayment) {
+    function requestClassEnrollment(classId, className, requiresPayment, triggerButton) {
         console.log('requestClassEnrollment called with:', classId, className);
         
         pendingClassId = classId;
         pendingClassName = className;
-        currentButton = event.target;
+        currentButton = triggerButton || null;
         
         const messageEl = document.getElementById('confirmClassEnrollmentModalMessage');
         if (messageEl) {
             if (requiresPayment) {
-                messageEl.innerHTML = 'لإتمام الانضمام لصف <strong>' + className + '</strong> يجب دفع الرسوم ورفع الإيصال. ' +
-                    'يُرسل طلبك للإدارة <strong>بعد</strong> تأكيد الدفع وليس عند الضغط على التالي.';
+                messageEl.innerHTML = 'سيتم إرسال طلب انضمامك لصف <strong>' + className + '</strong> إلى الإدارة للمراجعة. ' +
+                    'بعد الإرسال يمكنك متابعة القبول عبر واتساب المشرفة.';
             } else {
                 messageEl.textContent = 'هل أنت متأكد من طلب الانضمام لجميع مواد صف "' + className + '"؟';
             }
         }
         
         // إظهار المودال
-        const modal = new bootstrap.Modal(document.getElementById('confirmClassEnrollmentModal'));
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmClassEnrollmentModal'));
         modal.show();
     }
     
@@ -562,7 +601,9 @@
             if (data.success) {
                 if (data.under_review) {
                     setTimeout(function () {
-                        showEnrollmentPendingReviewModal(data.message);
+                        showEnrollmentPendingReviewModal(data.message, {
+                            requiresWhatsappFollowup: !!data.requires_whatsapp_followup
+                        });
                     }, 300);
                 } else {
                     showSuccessMessage(data.message);
@@ -592,8 +633,52 @@
         pendingCancelSubjectId = subjectId;
         
         // إظهار المودال
-        const modal = new bootstrap.Modal(document.getElementById('confirmCancelModal'));
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmCancelModal'));
         modal.show();
+    }
+
+    function cancelPendingPurchase(purchaseId) {
+        pendingCancelPurchaseId = purchaseId;
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmCancelModal'));
+        modal.show();
+    }
+
+    function processCancelPendingPurchaseRequest(purchaseId) {
+        const csrfToken = getCsrfToken();
+        const url = '{{ route("student.purchases.cancel", ":id") }}'.replace(':id', purchaseId);
+
+        fetch(url, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.message || 'حدث خطأ في الطلب');
+                }).catch(err => {
+                    if (err.message) throw err;
+                    throw new Error('حدث خطأ في الاتصال بالخادم');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showSuccessMessage(data.message || 'تم إلغاء الطلب بنجاح');
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                showErrorMessage(data.message || 'تعذر إلغاء الطلب');
+            }
+        })
+        .catch(error => {
+            showErrorMessage(error.message || 'حدث خطأ أثناء إلغاء الطلب. يرجى المحاولة مرة أخرى.');
+        });
     }
     
     function processCancelRequest(subjectId) {
@@ -653,10 +738,15 @@
         setTimeout(() => alertDiv.remove(), 5000);
     }
 
-    function showEnrollmentPendingReviewModal(message) {
+    function showEnrollmentPendingReviewModal(message, options) {
+        options = options || {};
         var msgEl = document.getElementById('enrollmentPendingReviewModalMessage');
         if (msgEl) {
             msgEl.textContent = message || 'تم إرسال طلب الانضمام إلى الإدارة للمراجعة، وهو بانتظار القبول.';
+        }
+        var whatsappAlertEl = document.getElementById('enrollmentPendingReviewWhatsappAlert');
+        if (whatsappAlertEl) {
+            whatsappAlertEl.style.display = options.requiresWhatsappFollowup ? '' : 'none';
         }
 
         var modalEl = document.getElementById('enrollmentPendingReviewModal');
@@ -694,6 +784,7 @@
     window.requestEnrollment = requestEnrollment;
     window.requestClassEnrollment = requestClassEnrollment;
     window.cancelRequest = cancelRequest;
+    window.cancelPendingPurchase = cancelPendingPurchase;
 </script>
 @stop
 

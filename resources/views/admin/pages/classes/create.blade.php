@@ -349,6 +349,8 @@
                     </div>
                 </div>
 
+                @include('admin.pages.classes.partials.subscription-ends-field')
+
                 {{-- خصائص الصف --}}
                 <div class="class-form-card">
                     <div class="class-form-card__header">

@@ -24,6 +24,7 @@
         @include('student.partials.enrollment-required-alert')
 
         @include('student.pages.enrollments.partials.stats-summary')
+        @include('student.partials.pending-purchases-review-banner')
 
         @if($stages->count() > 0)
             @php
@@ -72,28 +73,30 @@
 <!-- main-content closed -->
 
 <!-- Modal لتأكيد طلب الانضمام للصف -->
-<div class="modal fade" id="confirmClassEnrollmentModal" tabindex="-1" aria-labelledby="confirmClassEnrollmentModalLabel" aria-hidden="true">
+<div class="modal fade enrollment-confirm-modal" id="confirmClassEnrollmentModal" tabindex="-1" aria-labelledby="confirmClassEnrollmentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header border-0 pb-0">
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body text-center py-4">
-                <div class="mb-3">
-                    <div class="avatar avatar-xl bg-primary-transparent rounded-circle mx-auto d-flex align-items-center justify-content-center">
-                        <i class="bi bi-building fs-1 text-primary"></i>
-                    </div>
+            <div class="modal-body text-center">
+                <div class="enrollment-confirm-modal__hero" aria-hidden="true">
+                    <i class="bi bi-buildings"></i>
                 </div>
-                <h5 class="modal-title mb-3" id="confirmClassEnrollmentModalLabel">طلب الانضمام للصف</h5>
-                <p class="text-muted mb-4" id="confirmClassEnrollmentModalMessage">
+                <h5 class="enrollment-confirm-modal__title" id="confirmClassEnrollmentModalLabel">طلب الانضمام للصف</h5>
+                <p class="enrollment-confirm-modal__message" id="confirmClassEnrollmentModalMessage">
                     هل تريد طلب الانضمام لجميع المواد في صف <strong id="classNameInModal"></strong>؟
                 </p>
-                <div class="d-flex gap-2 justify-content-center">
+                <div class="enrollment-confirm-modal__note">
+                    <i class="bi bi-shield-check"></i>
+                    سيتم إرسال الطلب مباشرة إلى الإدارة للمراجعة
+                </div>
+                <div class="enrollment-confirm-modal__actions">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="bi bi-x me-1"></i> إلغاء
+                        <i class="bi bi-x-lg me-1"></i> إلغاء
                     </button>
                     <button type="button" class="btn btn-primary" id="confirmClassEnrollmentBtn">
-                        <i class="bi bi-check me-1"></i> تأكيد الانضمام
+                        <i class="bi bi-check2-circle me-1"></i> تأكيد الانضمام
                     </button>
                 </div>
             </div>
@@ -122,18 +125,20 @@
 @include('student.pages.enrollments.partials.inline-purchase-payment-script')
 <script>
     let pendingClassId = null;
+    let pendingClassButton = null;
     
-    function requestClassEnrollment(classId, className, requiresPayment) {
+    function requestClassEnrollment(classId, className, requiresPayment, triggerButton) {
         pendingClassId = classId;
+        pendingClassButton = triggerButton || null;
         document.getElementById('classNameInModal').textContent = className;
         var msgEl = document.getElementById('confirmClassEnrollmentModalMessage');
         if (requiresPayment) {
-            msgEl.innerHTML = 'لإتمام الانضمام لصف <strong>' + className + '</strong> يجب دفع الرسوم ورفع الإيصال. ' +
-                'يُرسل طلبك للإدارة <strong>بعد</strong> تأكيد الدفع وليس عند الضغط على التالي.';
+            msgEl.innerHTML = 'سيتم إرسال طلب انضمامك لصف <strong>' + className + '</strong> إلى الإدارة للمراجعة. ' +
+                'بعد الإرسال يمكنك متابعة القبول عبر واتساب المشرفة.';
         } else {
             msgEl.innerHTML = 'هل تريد طلب الانضمام لجميع المواد في صف <strong>' + className + '</strong>؟';
         }
-        var modal = new bootstrap.Modal(document.getElementById('confirmClassEnrollmentModal'));
+        var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmClassEnrollmentModal'));
         modal.show();
     }
     
@@ -143,6 +148,10 @@
         var btn = this;
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الإرسال...';
+
+        if (pendingClassButton) {
+            pendingClassButton.disabled = true;
+        }
         
         fetch('/student/enrollments/request-class/' + pendingClassId, {
             method: 'POST',
@@ -158,21 +167,12 @@
                 confirmModal.hide();
             }
 
-            if (data.success && data.requires_payment) {
-                var payModalEl = document.getElementById('classEnrollmentPaymentModal');
-                var payBody = document.getElementById('classEnrollmentPaymentModalBody');
-                window.EnrollmentInlinePurchase.openPaymentModal(payModalEl, payBody, data.purchase_id || null, {
-                    return: 'enrollments',
-                    purchase_type: data.purchase_type || 'class',
-                    class_id: data.class_id || pendingClassId,
-                });
-                return;
-            }
-
             if (data.success) {
                 if (data.under_review) {
                     setTimeout(function () {
-                        showEnrollmentPendingReviewModal(data.message);
+                        showEnrollmentPendingReviewModal(data.message, {
+                            requiresWhatsappFollowup: !!data.requires_whatsapp_followup
+                        });
                     }, 300);
                 } else {
                     showAlert('success', data.message || 'تم إرسال طلب الانضمام بنجاح!');
@@ -193,9 +193,21 @@
         .finally(() => {
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-check me-1"></i> تأكيد الانضمام';
+            if (pendingClassButton) {
+                pendingClassButton.disabled = false;
+            }
             pendingClassId = null;
+            pendingClassButton = null;
         });
     });
+
+    var confirmClassEnrollmentModalEl = document.getElementById('confirmClassEnrollmentModal');
+    if (confirmClassEnrollmentModalEl) {
+        confirmClassEnrollmentModalEl.addEventListener('hidden.bs.modal', function () {
+            pendingClassId = null;
+            pendingClassButton = null;
+        });
+    }
     
     var payModalEl = document.getElementById('classEnrollmentPaymentModal');
     if (payModalEl) {
@@ -207,10 +219,15 @@
         });
     }
 
-    function showEnrollmentPendingReviewModal(message) {
+    function showEnrollmentPendingReviewModal(message, options) {
+        options = options || {};
         var msgEl = document.getElementById('enrollmentPendingReviewModalMessage');
         if (msgEl) {
             msgEl.textContent = message || 'تم إرسال طلب الانضمام إلى الإدارة للمراجعة، وهو بانتظار القبول.';
+        }
+        var whatsappAlertEl = document.getElementById('enrollmentPendingReviewWhatsappAlert');
+        if (whatsappAlertEl) {
+            whatsappAlertEl.style.display = options.requiresWhatsappFollowup ? '' : 'none';
         }
 
         var modalEl = document.getElementById('enrollmentPendingReviewModal');

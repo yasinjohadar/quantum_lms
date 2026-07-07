@@ -14,3 +14,7 @@ Schedule::command('backup:cleanup-expired')->daily();
 
 // حذف حسابات التسجيل غير المُفعّلة بعد انتهاء صلاحية كل أكواد التحقق
 Schedule::command('users:prune-unverified-phone-registrations')->everyTenMinutes();
+
+// إلغاء اشتراكات الصفوف والمواد المنتهية تلقائياً
+Schedule::command('purchases:expire-access')->hourly();
+Schedule::command('classes:expire-subscriptions')->hourly();

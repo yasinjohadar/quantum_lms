@@ -9,6 +9,7 @@ use App\Models\Enrollment;
 use App\Models\Stage;
 use App\Models\Payment;
 use App\Models\Purchase;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\ClassEnrollment;
 use App\Services\Pricing\PricingResolver;
@@ -36,6 +37,8 @@ class StudentEnrollmentController extends Controller
         $user = Auth::user();
 
         $stats = $this->studentEnrollmentStats($user);
+        $pendingPurchases = $this->pendingPaidRequests($user);
+        $supervisorWhatsappDigits = SystemSetting::supervisorWhatsappDigits();
 
         // الحصول على جميع المراحل مع الصفوف فقط (بدون تحميل المواد)
         $stages = Stage::with(['classes' => function($query) {
@@ -62,7 +65,7 @@ class StudentEnrollmentController extends Controller
 
         return view(
             'student.pages.enrollments.index',
-            array_merge(compact('stages', 'pendingClassEnrollmentIds'), $stats)
+            array_merge(compact('stages', 'pendingClassEnrollmentIds', 'pendingPurchases', 'supervisorWhatsappDigits'), $stats)
         );
     }
     
@@ -104,6 +107,17 @@ class StudentEnrollmentController extends Controller
                 ->values();
 
         $stats = $this->studentEnrollmentStats($user);
+        $pendingPurchases = $this->pendingPaidRequests($user);
+        $supervisorWhatsappDigits = SystemSetting::supervisorWhatsappDigits();
+        $pendingSubjectPurchaseIds = $pendingPurchases
+            ->where('purchase_type', 'subject')
+            ->pluck('id', 'purchasable_id')
+            ->mapWithKeys(fn ($purchaseId, $subjectId) => [(int) $subjectId => (int) $purchaseId])
+            ->all();
+
+        $subjectsToShow = $subjectsToShow
+            ->reject(fn (Subject $subject) => array_key_exists((int) $subject->id, $pendingSubjectPurchaseIds))
+            ->values();
 
         $subjectAccessById = $class->subjects->mapWithKeys(function (Subject $subject) use ($user) {
             return [
@@ -118,7 +132,10 @@ class StudentEnrollmentController extends Controller
                 'pendingEnrollments',
                 'hasFullClassAccess',
                 'hasPendingClassEnrollment',
-                'subjectAccessById'
+                'subjectAccessById',
+                'pendingPurchases',
+                'supervisorWhatsappDigits',
+                'pendingSubjectPurchaseIds'
             ),
             $stats
         ));
@@ -305,17 +322,16 @@ class StudentEnrollmentController extends Controller
             $access = $this->pricingResolver->resolveSubjectAccessData($subject, $user, $currencyId);
 
             if (! $access->isEffectivelyFree && $access->effectivePrice > 0) {
-                $paymentBlock = $this->subjectPaymentBlockResponse($user, $subject);
-                if ($paymentBlock) {
-                    return $paymentBlock;
-                }
+                $purchase = $this->purchaseService->resolveOrCreatePendingPurchase($user, $subject, 'subject', $currencyId);
 
                 return response()->json([
                     'success' => true,
-                    'requires_payment' => true,
+                    'under_review' => true,
+                    'purchase_id' => $purchase->id,
                     'subject_id' => $subject->id,
                     'purchase_type' => 'subject',
-                    'message' => 'أكمل الدفع وارفع الإيصال لإرسال طلبك للإدارة.',
+                    'requires_whatsapp_followup' => true,
+                    'message' => 'تم إرسال طلب الانضمام إلى الإدارة من أجل القبول.',
                 ]);
             }
 
@@ -425,17 +441,16 @@ class StudentEnrollmentController extends Controller
             }
 
             if ($class->classJoinRequiresPayment($currencyId)) {
-                $paymentBlock = $this->classPaymentBlockResponse($user, $class, $currencyId);
-                if ($paymentBlock) {
-                    return $paymentBlock;
-                }
+                $purchase = $this->purchaseService->resolveOrCreatePendingPurchase($user, $class, 'class', $currencyId);
 
                 return response()->json([
                     'success' => true,
-                    'requires_payment' => true,
+                    'under_review' => true,
+                    'purchase_id' => $purchase->id,
                     'class_id' => $class->id,
                     'purchase_type' => 'class',
-                    'message' => 'أكمل الدفع وارفع الإيصال لإرسال طلبك للإدارة.',
+                    'requires_whatsapp_followup' => true,
+                    'message' => 'تم إرسال طلب الانضمام إلى الإدارة من أجل القبول.',
                 ]);
             }
 
@@ -531,64 +546,15 @@ class StudentEnrollmentController extends Controller
     }
 
     /**
-     * منع تكرار طلب الدفع أو إرجاع رسالة عند وجود دفع قيد المراجعة (صف).
+     * @return \Illuminate\Support\Collection<int, Purchase>
      */
-    private function classPaymentBlockResponse(User $user, SchoolClass $class, ?int $currencyId): ?\Illuminate\Http\JsonResponse
+    private function pendingPaidRequests(User $user)
     {
-        $pendingPurchase = Purchase::query()
+        return Purchase::query()
             ->where('user_id', $user->id)
-            ->where('purchasable_type', SchoolClass::class)
-            ->where('purchasable_id', $class->id)
-            ->where('status', 'pending')
-            ->first();
-
-        if (! $pendingPurchase) {
-            return null;
-        }
-
-        $hasPendingPayment = Payment::query()
-            ->where('purchase_id', $pendingPurchase->id)
-            ->where('status', 'pending')
-            ->exists();
-
-        if ($hasPendingPayment) {
-            return response()->json([
-                'success' => false,
-                'message' => 'لديك طلب دفع لهذا الصف قيد مراجعة الإدارة. يرجى انتظار الموافقة.',
-            ], 400);
-        }
-
-        return null;
-    }
-
-    /**
-     * منع تكرار طلب الدفع أو إرجاع رسالة عند وجود دفع قيد المراجعة (مادة).
-     */
-    private function subjectPaymentBlockResponse(User $user, Subject $subject): ?\Illuminate\Http\JsonResponse
-    {
-        $pendingPurchase = Purchase::query()
-            ->where('user_id', $user->id)
-            ->where('purchasable_type', Subject::class)
-            ->where('purchasable_id', $subject->id)
-            ->where('status', 'pending')
-            ->first();
-
-        if (! $pendingPurchase) {
-            return null;
-        }
-
-        $hasPendingPayment = Payment::query()
-            ->where('purchase_id', $pendingPurchase->id)
-            ->where('status', 'pending')
-            ->exists();
-
-        if ($hasPendingPayment) {
-            return response()->json([
-                'success' => false,
-                'message' => 'لديك طلب دفع لهذه المادة قيد مراجعة الإدارة. يرجى انتظار الموافقة.',
-            ], 400);
-        }
-
-        return null;
+            ->pending()
+            ->with(['purchasable', 'payment'])
+            ->orderByDesc('created_at')
+            ->get();
     }
 }
