@@ -24,6 +24,8 @@ use App\Helpers\PhoneHelper;
 use App\Helpers\StorageHelper;
 use App\Services\Storage\MediaStorageService;
 use App\Services\AdminStudentEnrollmentService;
+use App\Services\PurchaseService;
+use App\Support\StudentSubscriptionExpiryResolver;
 use App\Http\Requests\Admin\BulkUpdateRolesRequest;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -60,7 +62,12 @@ class UserController extends Controller
 
         $this->middleware('permission:user-list')->only(['index', 'trashedIndex']);
         $this->middleware('permission:user-create')->only(['create', 'store', 'storeQuickStudent']);
-        $this->middleware('permission:user-edit')->only(['edit', 'update', 'bulkUpdateRoles']);
+        $this->middleware('permission:user-edit')->only([
+            'edit',
+            'update',
+            'bulkUpdateRoles',
+            'updateSubscriptionExpires',
+        ]);
         $this->middleware('permission:user-edit')->only([
             'detachFromClass',
             'detachMultipleFromClass',
@@ -93,7 +100,14 @@ class UserController extends Controller
         $usersQuery = User::query()->students();
         $usersQuery->with(['classEnrollments' => function ($q) {
             $q->whereIn('status', ['pending', 'approved'])->with('schoolClass');
+        }, 'purchases' => function ($q) {
+            $q->where('purchasable_type', SchoolClass::class)
+                ->completed()
+                ->whereNull('access_revoked_at')
+                ->with('purchasable');
         }]);
+
+        $selectedClassId = $request->filled('class_id') ? (int) $request->input('class_id') : null;
 
         // فلترة حسب البحث (name, email, phone)
         if ($request->filled('query')) {
@@ -126,13 +140,73 @@ class UserController extends Controller
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'html' => view('admin.pages.users.partials.users-tbody', compact('users', 'classesForAssign'))->render(),
+                'html' => view('admin.pages.users.partials.users-tbody', compact('users', 'classesForAssign', 'selectedClassId'))->render(),
                 'pagination' => view('admin.pages.users.partials.pagination-links', compact('users'))->render(),
                 'impersonate_modals' => view('admin.pages.users.partials.impersonate-modals', compact('users'))->render(),
             ]);
         }
 
-        return view('admin.pages.users.index', compact('users', 'roles', 'classes', 'classesForAssign'));
+        return view('admin.pages.users.index', compact('users', 'roles', 'classes', 'classesForAssign', 'selectedClassId'));
+    }
+
+    public function updateSubscriptionExpires(Request $request, User $user, PurchaseService $purchaseService): JsonResponse
+    {
+        $validated = $request->validate([
+            'purchase_id' => ['nullable', 'integer', 'exists:purchases,id', 'required_without:class_id'],
+            'class_id' => ['nullable', 'integer', 'exists:classes,id', 'required_without:purchase_id'],
+            'expires_at' => ['required', 'date'],
+        ], [
+            'purchase_id.exists' => 'سجل الشراء غير موجود',
+            'class_id.exists' => 'الصف غير موجود',
+            'expires_at.required' => 'يجب تحديد تاريخ نهاية الاشتراك',
+            'expires_at.date' => 'تاريخ نهاية الاشتراك غير صالح',
+        ]);
+
+        $newExpiresAt = \Carbon\Carbon::parse($validated['expires_at'])->endOfDay();
+
+        try {
+            if (! empty($validated['class_id'])) {
+                $class = SchoolClass::query()->findOrFail($validated['class_id']);
+                $purchase = $purchaseService->assignClassSubscriptionExpiry($user, $class, $newExpiresAt);
+            } else {
+                $purchase = Purchase::query()
+                    ->where('user_id', $user->id)
+                    ->where('id', $validated['purchase_id'])
+                    ->where('purchasable_type', SchoolClass::class)
+                    ->completed()
+                    ->whereNull('access_revoked_at')
+                    ->firstOrFail();
+
+                $purchase->loadMissing('purchasable');
+
+                if ($purchase->purchasable instanceof SchoolClass && $purchase->purchasable->subscription_ends_at) {
+                    if ($newExpiresAt->gt($purchase->purchasable->subscription_ends_at)) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'لا يمكن أن يتجاوز تاريخ الطالب نهاية اشتراك الصف ('.$purchase->purchasable->subscription_ends_at->format('Y-m-d').')',
+                        ], 422);
+                    }
+                }
+
+                $purchase->update([
+                    'expires_at' => $newExpiresAt,
+                    'access_revoked_at' => $newExpiresAt->isFuture() ? null : $purchase->access_revoked_at,
+                ]);
+            }
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تحديث تاريخ نهاية الاشتراك',
+            'purchase_id' => $purchase->id,
+            'expires_at' => $purchase->expires_at->format('Y-m-d'),
+            'is_expired' => $purchase->expires_at->isPast(),
+        ]);
     }
 
     /**
@@ -695,14 +769,28 @@ class UserController extends Controller
         $user = User::with([
             'classEnrollments.schoolClass.stage',
             'enrollments.subject.schoolClass.stage',
+            'purchases' => function ($q) {
+                $q->where('purchasable_type', SchoolClass::class)
+                    ->completed()
+                    ->whereNull('access_revoked_at')
+                    ->with('purchasable');
+            },
         ])->findOrFail($id);
 
         $classesForAssign = collect();
+        $classSubscriptionMap = [];
+
         if ($user->hasRole('student')) {
             $classesForAssign = SchoolClass::with('stage')->active()->ordered()->get();
+
+            foreach (StudentSubscriptionExpiryResolver::resolveAllForUser($user) as $subscription) {
+                if (! empty($subscription['class_id'])) {
+                    $classSubscriptionMap[$subscription['class_id']] = $subscription;
+                }
+            }
         }
 
-        return view('admin.pages.users.profile', compact('user', 'classesForAssign'));
+        return view('admin.pages.users.profile', compact('user', 'classesForAssign', 'classSubscriptionMap'));
     }
 
     /**
@@ -710,9 +798,26 @@ class UserController extends Controller
      */
     public function edit(string $id)
     {
-        $user = User::findOrFail($id);
+        $user = User::query()
+            ->with([
+                'classEnrollments' => function ($q) {
+                    $q->where('status', 'approved')->with('schoolClass');
+                },
+                'purchases' => function ($q) {
+                    $q->where('purchasable_type', SchoolClass::class)
+                        ->completed()
+                        ->whereNull('access_revoked_at')
+                        ->with('purchasable');
+                },
+            ])
+            ->findOrFail($id);
+
         $roles = Role::all();
-        return view("admin.pages.users.edit" ,compact("roles" , "user"));
+        $classSubscriptions = $user->hasRole('student')
+            ? StudentSubscriptionExpiryResolver::resolveAllForUser($user)
+            : [];
+
+        return view('admin.pages.users.edit', compact('roles', 'user', 'classSubscriptions'));
     }
 
     /**
@@ -723,13 +828,31 @@ class UserController extends Controller
         try {
             $user = User::findOrFail($id);
 
-            // تطبيع رقم الهاتف تلقائياً إن وُجد
             if ($request->filled('phone')) {
                 $normalized = PhoneHelper::normalize($request->phone, config('app.phone_default_country_code', '966'));
                 if ($normalized !== null) {
                     $request->merge(['phone' => $normalized]);
                 }
             }
+
+            if ($user->hasRole('student')) {
+                $request->validate([
+                    'name' => 'required|string|max:255',
+                    'phone' => 'nullable|string|max:20|regex:/^\+[1-9]\d{1,14}$/|unique:users,phone,'.$id,
+                ], [
+                    'name.required' => 'الاسم مطلوب',
+                    'phone.unique' => 'رقم الهاتف مستخدم بالفعل',
+                ]);
+
+                $user->update([
+                    'name' => $request->name,
+                    'phone' => $request->phone,
+                ]);
+
+                return redirect()->route('users.index')
+                    ->with('success', "✅ تم تحديث بيانات الطالب ({$user->name}) بنجاح");
+            }
+
             $roles = $request->input('roles', $user->roles->pluck('name')->toArray());
             if (! is_array($roles)) {
                 $roles = [];

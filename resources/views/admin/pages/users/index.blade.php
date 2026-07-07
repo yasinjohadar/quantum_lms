@@ -184,12 +184,13 @@
                                         <th scope="col">اسم الطالب</th>
                                         <th scope="col">الهاتف</th>
                                         <th scope="col">الحالة</th>
+                                        <th scope="col" style="min-width: 130px;">نهاية الاشتراك</th>
                                         <th scope="col" class="users-classes-col">الصفوف</th>
                                         <th scope="col" style="min-width: 220px;">العمليات</th>
                                     </tr>
                                     </thead>
                                     <tbody id="usersTableBody">
-                                    @include('admin.pages.users.partials.users-tbody', ['users' => $users, 'classesForAssign' => $classesForAssign])
+                                    @include('admin.pages.users.partials.users-tbody', ['users' => $users, 'classesForAssign' => $classesForAssign, 'selectedClassId' => $selectedClassId ?? null])
                                     </tbody>
                                 </table>
                             </div>
@@ -1381,6 +1382,123 @@
                 if (!target || !target.matches('.user-checkbox')) return;
                 toggleBulkArchiveBtn();
                 updateSelectAllUsers();
+            });
+
+            usersTableBody.addEventListener('click', function(e) {
+                const inlineBtn = e.target.closest('.subscription-expires-inline');
+                if (!inlineBtn || inlineBtn.classList.contains('is-editing')) {
+                    return;
+                }
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                const purchaseId = inlineBtn.dataset.purchaseId || '';
+                const classId = inlineBtn.dataset.classId || '';
+                const updateUrl = inlineBtn.dataset.updateUrl;
+                const maxExpires = inlineBtn.dataset.maxExpires || '';
+                const current = inlineBtn.dataset.expiresAt || '';
+                const hintHtml = inlineBtn.querySelector('.subscription-expires-inline__hint')?.outerHTML || '';
+                const wasExpired = inlineBtn.classList.contains('subscription-expires-inline--expired');
+                const wasUnset = inlineBtn.classList.contains('subscription-expires-inline--unset');
+                const userId = inlineBtn.dataset.userId;
+
+                const input = document.createElement('input');
+                input.type = 'date';
+                input.className = 'form-control subscription-expires-input';
+                input.value = current;
+                input.min = new Date().toISOString().slice(0, 10);
+                if (maxExpires) {
+                    input.max = maxExpires;
+                }
+
+                inlineBtn.replaceWith(input);
+                input.focus();
+
+                let saving = false;
+
+                const restoreButton = function(value, expired, newPurchaseId) {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    const unset = !value;
+                    btn.className = 'subscription-expires-inline'
+                        + (expired ? ' subscription-expires-inline--expired' : '')
+                        + (unset ? ' subscription-expires-inline--unset' : '');
+                    btn.dataset.userId = userId;
+                    btn.dataset.purchaseId = newPurchaseId || purchaseId || '';
+                    btn.dataset.classId = classId;
+                    btn.dataset.expiresAt = value;
+                    btn.dataset.maxExpires = maxExpires;
+                    btn.dataset.updateUrl = updateUrl;
+                    btn.title = unset ? 'انقر لتعيين تاريخ نهاية الاشتراك' : 'انقر لتعديل تاريخ نهاية الاشتراك';
+                    btn.innerHTML = '<i class="bi bi-calendar-event me-1"></i><span class="subscription-expires-inline__value">'
+                        + (value || 'تعيين التاريخ') + '</span>' + hintHtml;
+                    input.replaceWith(btn);
+                };
+
+                const save = function() {
+                    if (saving) {
+                        return;
+                    }
+
+                    const newValue = input.value;
+                    if (!newValue || newValue === current) {
+                        restoreButton(current, wasExpired, purchaseId);
+                        return;
+                    }
+
+                    saving = true;
+                    input.disabled = true;
+
+                    const payload = { expires_at: newValue };
+                    if (purchaseId) {
+                        payload.purchase_id = Number(purchaseId);
+                    } else if (classId) {
+                        payload.class_id = Number(classId);
+                    }
+
+                    fetch(updateUrl, {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify(payload)
+                    })
+                        .then(function(response) {
+                            return response.json().then(function(json) {
+                                return { ok: response.ok, json: json };
+                            });
+                        })
+                        .then(function(result) {
+                            if (result.ok && result.json.success) {
+                                restoreButton(
+                                    result.json.expires_at,
+                                    !!result.json.is_expired,
+                                    result.json.purchase_id || purchaseId
+                                );
+                            } else {
+                                alert((result.json && result.json.message) ? result.json.message : 'تعذر تحديث التاريخ');
+                                restoreButton(current, wasExpired, purchaseId);
+                            }
+                        })
+                        .catch(function() {
+                            alert('حدث خطأ في الاتصال');
+                            restoreButton(current, wasExpired, purchaseId);
+                        });
+                };
+
+                input.addEventListener('change', save);
+                input.addEventListener('blur', function() {
+                    setTimeout(save, 120);
+                });
+                input.addEventListener('keydown', function(ev) {
+                    if (ev.key === 'Escape') {
+                        restoreButton(current, wasExpired, purchaseId);
+                    }
+                });
             });
 
             // Individual actions for AJAX-updated rows

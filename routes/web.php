@@ -78,6 +78,7 @@ Route::middleware(['auth', 'check.user.active', 'admin'])->group(function () {
     Route::resource('roles', RoleController::class);
     Route::get('roles/search-permissions', [RoleController::class, 'searchPermissions'])->name('roles.search-permissions');
     Route::put('users/{user}/change-password', [UserController::class, 'updatePassword'])->name('users.update-password');
+    Route::patch('users/{user}/subscription-expires', [UserController::class, 'updateSubscriptionExpires'])->name('users.update-subscription-expires');
     Route::post('users/detach-from-class', [UserController::class, 'detachFromClass'])->name('users.detach-from-class');
     Route::post('users/detach-multiple-from-class', [UserController::class, 'detachMultipleFromClass'])->name('users.detach-multiple-from-class');
     Route::post('users/detach-all-from-class', [UserController::class, 'detachAllFromClass'])->name('users.detach-all-from-class');

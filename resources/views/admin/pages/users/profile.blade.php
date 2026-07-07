@@ -5,39 +5,8 @@
 @stop
 
 @push('styles')
-    <style>
-        .user-profile-hero {
-            border-radius: 1rem;
-            border: 1px solid rgba(13, 110, 253, 0.15);
-            background: linear-gradient(135deg, rgba(13, 110, 253, 0.06) 0%, rgba(13, 110, 253, 0.02) 100%);
-        }
-        .user-profile-avatar {
-            width: 112px;
-            height: 112px;
-            object-fit: cover;
-            border: 3px solid #fff;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-        }
-        .user-profile-stat {
-            font-size: 0.8125rem;
-            color: #6c757d;
-        }
-        .user-profile-card {
-            border-radius: 0.875rem;
-            border: 1px solid rgba(0, 0, 0, 0.06);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-        }
-        .user-profile-table thead th {
-            font-weight: 600;
-            font-size: 0.8125rem;
-            text-transform: none;
-            border-bottom-width: 1px;
-        }
-        .subject-select-loading {
-            opacity: 0.6;
-            pointer-events: none;
-        }
-    </style>
+    @include('admin.pages.users.partials.users-profile-styles')
+    @include('admin.pages.users.partials.user-subscription-shared-styles')
 @endpush
 
 @section('content')
@@ -50,256 +19,316 @@
         $enrollmentRows = $isStudent
             ? $user->enrollments->sortBy(fn ($e) => $e->subject?->name ?? '')
             : collect();
-        $classStatusMap = [
-            'pending' => ['label' => 'معلق', 'class' => 'bg-warning text-dark'],
-            'approved' => ['label' => 'معتمد', 'class' => 'bg-success'],
-            'rejected' => ['label' => 'مرفوض', 'class' => 'bg-danger'],
-        ];
-        $enrollmentStatusMap = [
-            'active' => ['label' => 'نشط', 'class' => 'bg-success'],
-            'pending' => ['label' => 'معلق', 'class' => 'bg-warning text-dark'],
-            'suspended' => ['label' => 'معلّق', 'class' => 'bg-secondary'],
-            'completed' => ['label' => 'مكتمل', 'class' => 'bg-info text-dark'],
-        ];
+        $initial = mb_strtoupper(mb_substr(trim($user->name), 0, 1));
+        $classSubscriptionMap = $classSubscriptionMap ?? [];
+        $approvedClassCount = $classRows->where('status', 'approved')->count();
+        $activeSubjectCount = $enrollmentRows->where('status', 'active')->count();
     @endphp
 
-    <div class="main-content app-content">
+    <div class="main-content app-content user-profile-page">
         <div class="container-fluid">
             @if (session('success'))
-                <div class="alert alert-success alert-dismissible fade show my-3" role="alert">
+                <div class="alert alert-success alert-dismissible fade show mt-3 py-2" role="alert">
                     {{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             @endif
-
             @if (session('error'))
-                <div class="alert alert-danger alert-dismissible fade show my-3" role="alert">
+                <div class="alert alert-danger alert-dismissible fade show mt-3 py-2" role="alert">
                     {{ session('error') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             @endif
-
             @if ($errors->any())
-                <div class="alert alert-danger alert-dismissible fade show my-3" role="alert">
-                    <ul class="mb-0">
+                <div class="alert alert-danger alert-dismissible fade show mt-3 py-2" role="alert">
+                    <ul class="mb-0 small">
                         @foreach ($errors->all() as $error)
-                            <li class="small">{{ $error }}</li>
+                            <li>{{ $error }}</li>
                         @endforeach
                     </ul>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             @endif
-
             @if (request()->query('notice') === 'class_detached')
-                <div class="alert alert-success alert-dismissible fade show my-3" role="alert">
+                <div class="alert alert-success alert-dismissible fade show mt-3 py-2" role="alert">
                     تم فصل الطالب عن الصف بنجاح.
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             @endif
 
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
+            <div class="user-profile-toolbar">
                 <div>
-                    <h5 class="page-title fs-21 mb-1">ملف المستخدم</h5>
-                    <nav>
-                        <ol class="breadcrumb mb-0">
+                    <h1 class="user-profile-toolbar__title">ملف المستخدم</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
                             <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('users.index') }}">المستخدمون</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">{{ $user->name }}</li>
+                            <li class="breadcrumb-item"><a href="{{ route('users.index') }}">الطلاب</a></li>
+                            <li class="breadcrumb-item active">{{ $user->name }}</li>
                         </ol>
                     </nav>
                 </div>
-                <div class="d-flex flex-wrap gap-2 mt-2 mt-md-0">
-                    <a href="{{ route('users.index') }}" class="btn btn-light border btn-sm">
-                        <i class="fas fa-arrow-right me-1"></i> رجوع للقائمة
+                <div class="user-profile-toolbar__actions">
+                    <a href="{{ route('users.index') }}" class="btn btn-light border">
+                        <i class="bi bi-arrow-right me-1"></i> رجوع
                     </a>
                     @can('user-edit')
-                        <a href="{{ route('users.edit', $user) }}" class="btn btn-primary btn-sm">
-                            <i class="fas fa-pen me-1"></i> تعديل
+                        <a href="{{ route('users.edit', $user) }}" class="btn btn-primary">
+                            <i class="bi bi-pencil me-1"></i> تعديل
                         </a>
                     @endcan
                 </div>
             </div>
 
             <div class="row g-4">
-                <div class="col-xl-4">
-                    <div class="card user-profile-card user-profile-hero h-100">
-                        <div class="card-body text-center py-4">
-                            <div class="mb-3">
-                                <img src="{{ $user->photo ? media_public_url($user->photo) : asset('assets/images/faces/default-avatar.jpg') }}"
-                                     alt="{{ $user->name }}"
-                                     class="rounded-circle user-profile-avatar">
-                            </div>
-                            <h5 class="fw-bold mb-1">{{ $user->name }}</h5>
-                            @if ($user->email)
-                                <p class="mb-1">
-                                    <a href="mailto:{{ $user->email }}" class="text-primary text-decoration-none small">
-                                        {{ $user->email }}
-                                    </a>
-                                </p>
-                            @endif
-                            @if ($user->phone)
-                                <p class="mb-2 text-muted small">{{ $user->phone }}</p>
-                            @endif
-
-                            <div class="d-flex flex-wrap justify-content-center gap-1 mb-2">
-                                @foreach ($user->getRoleNames() as $role)
-                                    <span class="badge bg-primary">{{ $role }}</span>
-                                @endforeach
-                            </div>
-
-                            <div class="mb-2">
-                                @if ($user->is_active)
-                                    <span class="badge bg-success">حساب نشط</span>
+                <div class="col-lg-4 col-xl-3">
+                    <div class="user-profile-sidebar">
+                        <div class="user-profile-sidebar__banner"></div>
+                        <div class="user-profile-sidebar__body">
+                            <div class="user-profile-sidebar__avatar">
+                                @if ($user->photo)
+                                    <img src="{{ media_public_url($user->photo) }}" alt="{{ $user->name }}">
                                 @else
-                                    <span class="badge bg-danger">حساب غير نشط</span>
+                                    {{ $initial }}
+                                @endif
+                            </div>
+                            <div class="user-profile-sidebar__name">{{ $user->name }}</div>
+                            <div class="user-profile-sidebar__contact">
+                                @if ($user->phone)
+                                    <div dir="ltr"><i class="bi bi-telephone me-1"></i>{{ $user->phone }}</div>
+                                @endif
+                                @if ($user->email)
+                                    <div class="text-truncate"><i class="bi bi-envelope me-1"></i>{{ $user->email }}</div>
                                 @endif
                             </div>
 
-                            <p class="user-profile-stat mb-0">
-                                آخر دخول:
-                                {{ $user->last_login_at ? $user->last_login_at->diffForHumans() : 'لا يوجد' }}
-                            </p>
+                            <div class="user-profile-sidebar__badges">
+                                @foreach ($user->getRoleNames() as $role)
+                                    <span class="user-profile-badge user-profile-badge--role">{{ $role }}</span>
+                                @endforeach
+                                @if ($user->is_active)
+                                    <span class="user-profile-badge user-profile-badge--active"><i class="bi bi-check-circle"></i> نشط</span>
+                                @else
+                                    <span class="user-profile-badge user-profile-badge--inactive"><i class="bi bi-x-circle"></i> معطّل</span>
+                                @endif
+                            </div>
+
+                            @if ($isStudent)
+                                <div class="user-profile-stats">
+                                    <div class="user-profile-stat">
+                                        <span class="user-profile-stat__value">{{ $approvedClassCount }}</span>
+                                        <span class="user-profile-stat__label">صفوف</span>
+                                    </div>
+                                    <div class="user-profile-stat">
+                                        <span class="user-profile-stat__value">{{ $activeSubjectCount }}</span>
+                                        <span class="user-profile-stat__label">مواد نشطة</span>
+                                    </div>
+                                    <div class="user-profile-stat">
+                                        <span class="user-profile-stat__value" style="font-size:0.75rem;line-height:1.4;padding-top:0.2rem">
+                                            {{ $user->last_login_at ? $user->last_login_at->diffForHumans(null, true) : '—' }}
+                                        </span>
+                                        <span class="user-profile-stat__label">آخر دخول</span>
+                                    </div>
+                                </div>
+                            @else
+                                <p class="small text-muted mb-0 pt-2 border-top">
+                                    آخر دخول: {{ $user->last_login_at ? $user->last_login_at->diffForHumans() : 'لا يوجد' }}
+                                </p>
+                            @endif
                         </div>
                     </div>
                 </div>
 
-                <div class="col-xl-8">
-                    <div class="card user-profile-card mb-4">
-                        <div class="card-header border-bottom-0 pb-0">
-                            <h6 class="mb-0 fw-semibold">معلومات الحساب</h6>
-                        </div>
-                        <div class="card-body pt-3">
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <span class="user-profile-stat d-block mb-1">الاسم الكامل</span>
-                                    <p class="mb-0 fw-semibold">{{ $user->name }}</p>
-                                </div>
-                                <div class="col-md-6">
-                                    <span class="user-profile-stat d-block mb-1">تاريخ الإنشاء</span>
-                                    <p class="mb-0 fw-semibold">{{ $user->created_at?->format('Y-m-d H:i') }}</p>
-                                </div>
-                                <div class="col-md-6">
-                                    <span class="user-profile-stat d-block mb-1">تاريخ آخر تحديث</span>
-                                    <p class="mb-0 fw-semibold">{{ $user->updated_at?->format('Y-m-d H:i') }}</p>
-                                </div>
+                <div class="col-lg-8 col-xl-9">
+                    <div class="user-profile-panel">
+                        <div class="user-profile-panel__head">
+                            <div>
+                                <h6><i class="bi bi-person-vcard me-2 text-primary"></i>معلومات الحساب</h6>
                             </div>
+                        </div>
+                        <div class="user-profile-info-grid">
+                            <div class="user-profile-info-item">
+                                <label>الاسم الكامل</label>
+                                <span>{{ $user->name }}</span>
+                            </div>
+                            <div class="user-profile-info-item">
+                                <label>تاريخ الإنشاء</label>
+                                <span>{{ $user->created_at?->format('Y-m-d') }}</span>
+                            </div>
+                            <div class="user-profile-info-item">
+                                <label>آخر تحديث</label>
+                                <span>{{ $user->updated_at?->format('Y-m-d') }}</span>
+                            </div>
+                            @if ($user->phone)
+                                <div class="user-profile-info-item">
+                                    <label>الهاتف</label>
+                                    <span dir="ltr">{{ $user->phone }}</span>
+                                </div>
+                            @endif
                         </div>
                     </div>
 
                     @if ($isStudent)
-                        <div class="card user-profile-card mb-4">
-                            <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2 border-bottom">
+                        <div class="user-profile-panel">
+                            <div class="user-profile-panel__head">
                                 <div>
-                                    <h6 class="mb-0 fw-semibold">الصفوف الدراسية</h6>
-                                    <small class="text-muted">انضمامات على مستوى الصف (معتمد / معلق / مرفوض)</small>
+                                    <h6><i class="bi bi-mortarboard me-2 text-primary"></i>الصفوف الدراسية</h6>
+                                    <small>انضمامات الصف مع تاريخ نهاية الاشتراك</small>
                                 </div>
                                 @can('enrollment-create')
                                     @if ($classesForAssign->isNotEmpty())
                                         <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalAssignClass">
-                                            <i class="fas fa-link me-1"></i> ربط بصف
+                                            <i class="bi bi-link-45deg me-1"></i> ربط بصف
                                         </button>
                                     @endif
                                 @endcan
                             </div>
-                            <div class="card-body p-0">
-                                @if ($classRows->isEmpty())
-                                    <p class="text-muted text-center py-4 mb-0 small">لا توجد صفوف مسجّلة لهذا الطالب.</p>
-                                @else
-                                    <div class="table-responsive">
-                                        <table class="table table-hover user-profile-table mb-0">
-                                            <thead class="table-light">
+
+                            @if ($classRows->isEmpty())
+                                <div class="user-profile-empty">
+                                    <i class="bi bi-inbox"></i>
+                                    لا توجد صفوف مسجّلة لهذا الطالب
+                                </div>
+                            @else
+                                <div class="user-profile-table-wrap">
+                                    <table class="user-profile-table">
+                                        <thead>
+                                            <tr>
+                                                <th>الصف</th>
+                                                <th>المرحلة</th>
+                                                <th>الحالة</th>
+                                                <th>نهاية الاشتراك</th>
+                                                <th class="text-end">إجراءات</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach ($classRows as $ce)
+                                                @php
+                                                    $statusClass = match ($ce->status) {
+                                                        'approved' => 'user-profile-status--approved',
+                                                        'pending' => 'user-profile-status--pending',
+                                                        'rejected' => 'user-profile-status--rejected',
+                                                        default => '',
+                                                    };
+                                                    $statusLabel = match ($ce->status) {
+                                                        'approved' => 'معتمد',
+                                                        'pending' => 'معلق',
+                                                        'rejected' => 'مرفوض',
+                                                        default => $ce->status,
+                                                    };
+                                                    $subscription = ($ce->status === 'approved' && isset($classSubscriptionMap[$ce->class_id]))
+                                                        ? $classSubscriptionMap[$ce->class_id]
+                                                        : null;
+                                                @endphp
                                                 <tr>
-                                                    <th class="ps-4">الصف</th>
-                                                    <th>المرحلة</th>
-                                                    <th>الحالة</th>
-                                                    <th class="text-end pe-4">إجراءات</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach ($classRows as $ce)
-                                                    @php
-                                                        $st = $classStatusMap[$ce->status] ?? ['label' => $ce->status, 'class' => 'bg-secondary'];
-                                                    @endphp
-                                                    <tr>
-                                                        <td class="ps-4 fw-medium">{{ $ce->schoolClass?->name ?? '—' }}</td>
-                                                        <td class="text-muted small">{{ $ce->schoolClass?->stage?->name ?? '—' }}</td>
-                                                        <td><span class="badge {{ $st['class'] }}">{{ $st['label'] }}</span></td>
-                                                        <td class="text-end pe-4">
-                                                            @can('user-edit')
+                                                    <td><span class="class-name">{{ $ce->schoolClass?->name ?? '—' }}</span></td>
+                                                    <td><span class="stage-name">{{ $ce->schoolClass?->stage?->name ?? '—' }}</span></td>
+                                                    <td>
+                                                        <span class="user-profile-status {{ $statusClass }}">{{ $statusLabel }}</span>
+                                                    </td>
+                                                    <td>
+                                                        @if ($ce->status === 'approved' && $subscription)
+                                                            @include('admin.pages.users.partials.profile-subscription-cell', [
+                                                                'user' => $user,
+                                                                'subscription' => $subscription,
+                                                            ])
+                                                        @else
+                                                            <span class="text-muted small">—</span>
+                                                        @endif
+                                                    </td>
+                                                    <td class="text-end">
+                                                        @can('user-edit')
+                                                            @if ($ce->status === 'approved')
                                                                 <button type="button"
                                                                         class="btn btn-sm btn-outline-danger btn-detach-class"
                                                                         data-class-id="{{ $ce->class_id }}"
                                                                         data-class-name="{{ $ce->schoolClass?->name ?? '' }}">
-                                                                    فصل عن الصف
+                                                                    <i class="bi bi-x-lg"></i> فصل
                                                                 </button>
-                                                            @endcan
-                                                        </td>
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                @endif
-                            </div>
+                                                            @endif
+                                                        @endcan
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @endif
                         </div>
 
-                        <div class="card user-profile-card">
-                            <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2 border-bottom">
+                        <div class="user-profile-panel">
+                            <div class="user-profile-panel__head">
                                 <div>
-                                    <h6 class="mb-0 fw-semibold">المواد الدراسية</h6>
-                                    <small class="text-muted">انضمامات المواد المرتبطة بالطالب</small>
+                                    <h6><i class="bi bi-book me-2 text-primary"></i>المواد الدراسية</h6>
+                                    <small>انضمامات المواد المرتبطة بالطالب</small>
                                 </div>
                                 @can('enrollment-create')
                                     <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalAssignSubjects">
-                                        <i class="fas fa-book me-1"></i> ربط بمواد
+                                        <i class="bi bi-plus-lg me-1"></i> ربط بمواد
                                     </button>
                                 @endcan
                             </div>
-                            <div class="card-body p-0">
-                                @if ($enrollmentRows->isEmpty())
-                                    <p class="text-muted text-center py-4 mb-0 small">لا توجد مواد مسجّلة.</p>
-                                @else
-                                    <div class="table-responsive">
-                                        <table class="table table-hover user-profile-table mb-0">
-                                            <thead class="table-light">
+
+                            @if ($enrollmentRows->isEmpty())
+                                <div class="user-profile-empty">
+                                    <i class="bi bi-journal-x"></i>
+                                    لا توجد مواد مسجّلة
+                                </div>
+                            @else
+                                <div class="user-profile-table-wrap">
+                                    <table class="user-profile-table">
+                                        <thead>
+                                            <tr>
+                                                <th>المادة</th>
+                                                <th>الصف</th>
+                                                <th>الحالة</th>
+                                                <th>تاريخ التسجيل</th>
+                                                <th class="text-end">إجراءات</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach ($enrollmentRows as $enrollment)
+                                                @php
+                                                    $enrStatusClass = match ($enrollment->status) {
+                                                        'active' => 'user-profile-status--active',
+                                                        'pending' => 'user-profile-status--pending',
+                                                        'suspended' => 'user-profile-status--suspended',
+                                                        'completed' => 'user-profile-status--completed',
+                                                        default => '',
+                                                    };
+                                                    $enrStatusLabel = match ($enrollment->status) {
+                                                        'active' => 'نشط',
+                                                        'pending' => 'معلق',
+                                                        'suspended' => 'معلّق',
+                                                        'completed' => 'مكتمل',
+                                                        default => $enrollment->status,
+                                                    };
+                                                @endphp
                                                 <tr>
-                                                    <th class="ps-4">المادة</th>
-                                                    <th>الصف</th>
-                                                    <th>الحالة</th>
-                                                    <th>تاريخ التسجيل</th>
-                                                    <th class="text-end pe-4">إجراءات</th>
+                                                    <td><span class="class-name">{{ $enrollment->subject?->name ?? '—' }}</span></td>
+                                                    <td><span class="stage-name">{{ $enrollment->subject?->schoolClass?->name ?? '—' }}</span></td>
+                                                    <td><span class="user-profile-status {{ $enrStatusClass }}">{{ $enrStatusLabel }}</span></td>
+                                                    <td class="stage-name">{{ $enrollment->enrolled_at?->format('Y-m-d') ?? '—' }}</td>
+                                                    <td class="text-end">
+                                                        @can('enrollment-delete')
+                                                            <form action="{{ route('admin.enrollments.destroy', $enrollment) }}"
+                                                                  method="post"
+                                                                  class="d-inline"
+                                                                  onsubmit="return confirm('إزالة انضمام هذه المادة؟');">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <input type="hidden" name="redirect_to" value="{{ $profileRedirectPath }}">
+                                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                                    <i class="bi bi-trash"></i>
+                                                                </button>
+                                                            </form>
+                                                        @endcan
+                                                    </td>
                                                 </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach ($enrollmentRows as $enrollment)
-                                                    @php
-                                                        $st = $enrollmentStatusMap[$enrollment->status] ?? ['label' => $enrollment->status, 'class' => 'bg-secondary'];
-                                                    @endphp
-                                                    <tr>
-                                                        <td class="ps-4 fw-medium">{{ $enrollment->subject?->name ?? '—' }}</td>
-                                                        <td class="text-muted small">{{ $enrollment->subject?->schoolClass?->name ?? '—' }}</td>
-                                                        <td><span class="badge {{ $st['class'] }}">{{ $st['label'] }}</span></td>
-                                                        <td class="small text-muted">{{ $enrollment->enrolled_at?->format('Y-m-d H:i') ?? '—' }}</td>
-                                                        <td class="text-end pe-4">
-                                                            @can('enrollment-delete')
-                                                                <form action="{{ route('admin.enrollments.destroy', $enrollment) }}"
-                                                                      method="post"
-                                                                      class="d-inline"
-                                                                      onsubmit="return confirm('إزالة انضمام هذه المادة؟');">
-                                                                    @csrf
-                                                                    @method('DELETE')
-                                                                    <input type="hidden" name="redirect_to" value="{{ $profileRedirectPath }}">
-                                                                    <button type="submit" class="btn btn-sm btn-outline-danger">إزالة</button>
-                                                                </form>
-                                                            @endcan
-                                                        </td>
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                @endif
-                            </div>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @endif
                         </div>
                     @endif
                 </div>
@@ -322,7 +351,7 @@
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
                             </div>
                             <div class="modal-body">
-                                <p class="text-muted small mb-3">سيتم اعتماد انضمام الصف وإنشاء انضمامات للمواد النشطة في هذا الصف (مع تخطي المواد المسجّل فيها بنشاط مسبقاً).</p>
+                                <p class="text-muted small mb-3">سيتم اعتماد انضمام الصف وإنشاء انضمامات للمواد النشطة في هذا الصف.</p>
                                 <div class="mb-3">
                                     <label class="form-label">اختر الصف</label>
                                     <select name="class_id" class="form-select" required>
@@ -334,7 +363,7 @@
                                 </div>
                                 <div class="mb-0">
                                     <label class="form-label">ملاحظات (اختياري)</label>
-                                    <textarea name="notes" class="form-control" rows="2" maxlength="1000" placeholder="ملاحظات داخلية…"></textarea>
+                                    <textarea name="notes" class="form-control" rows="2" maxlength="1000"></textarea>
                                 </div>
                             </div>
                             <div class="modal-footer">
@@ -364,7 +393,7 @@
                                 <div class="row g-3">
                                     @if ($classesForAssign->isNotEmpty())
                                     <div class="col-md-6">
-                                        <label class="form-label">تصفية حسب الصف (اختياري)</label>
+                                        <label class="form-label">تصفية حسب الصف</label>
                                         <select class="form-select" id="assignSubjectsClassFilter">
                                             <option value="">جميع المواد</option>
                                             @foreach ($classesForAssign as $sc)
@@ -376,11 +405,10 @@
                                     <div class="col-md-12">
                                         <label class="form-label">اختر المواد <span class="text-danger">*</span></label>
                                         <select name="subject_ids[]" id="assignSubjectsSelect" class="form-select" multiple size="10"></select>
-                                        <small class="text-muted">استخدم Ctrl أو Shift لاختيار أكثر من مادة.</small>
                                     </div>
                                     <div class="col-12">
                                         <label class="form-label">ملاحظات (اختياري)</label>
-                                        <textarea name="notes" class="form-control" rows="2" maxlength="1000" placeholder="ملاحظات…"></textarea>
+                                        <textarea name="notes" class="form-control" rows="2" maxlength="1000"></textarea>
                                     </div>
                                 </div>
                             </div>
@@ -398,6 +426,9 @@
 
 @section('js')
     @if ($isStudent)
+        @can('user-edit')
+            @include('admin.pages.users.partials.user-subscription-date-script')
+        @endcan
         @can('enrollment-create')
             <script>
                 (function () {
@@ -425,37 +456,29 @@
                         if (!subjectSelect) return;
                         hideSubjectsLoadError();
                         subjectSelect.classList.add('subject-select-loading');
-                        const url = classId
-                            ? subjectsUrl + '?class_id=' + encodeURIComponent(classId)
-                            : subjectsUrl;
-                        fetch(url, {
-                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-                        })
+                        const url = classId ? subjectsUrl + '?class_id=' + encodeURIComponent(classId) : subjectsUrl;
+                        fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
                             .then(function (r) {
-                                if (!r.ok) {
-                                    throw new Error('HTTP_' + r.status);
-                                }
+                                if (!r.ok) throw new Error('HTTP_' + r.status);
                                 return r.json();
                             })
                             .then(function (json) {
                                 subjectSelect.innerHTML = '';
                                 if (!json || json.success === false) {
-                                    showSubjectsLoadError('تعذر تحميل قائمة المواد. تحقق من الصلاحيات أو حاول لاحقاً.');
+                                    showSubjectsLoadError('تعذر تحميل قائمة المواد.');
                                     return;
                                 }
-                                const rows = json.data ? json.data : [];
-                                rows.forEach(function (sub) {
+                                (json.data || []).forEach(function (sub) {
                                     const opt = document.createElement('option');
                                     opt.value = sub.id;
                                     const rel = sub.school_class || sub.schoolClass;
-                                    const className = rel && rel.name ? rel.name : '';
-                                    opt.textContent = sub.name + (className ? ' — ' + className : '');
+                                    opt.textContent = sub.name + (rel && rel.name ? ' — ' + rel.name : '');
                                     subjectSelect.appendChild(opt);
                                 });
                             })
                             .catch(function () {
                                 subjectSelect.innerHTML = '';
-                                showSubjectsLoadError('تعذر تحميل قائمة المواد (خطأ في الاتصال، رد غير JSON، أو رفض الخادم مثل 403). تحقق من الصلاحيات أو جرّب تحديث الصفحة.');
+                                showSubjectsLoadError('تعذر تحميل قائمة المواد.');
                             })
                             .finally(function () {
                                 subjectSelect.classList.remove('subject-select-loading');
@@ -463,16 +486,11 @@
                     }
 
                     if (classFilter && subjectSelect) {
-                        classFilter.addEventListener('change', function () {
-                            loadSubjects(this.value || '');
-                        });
+                        classFilter.addEventListener('change', function () { loadSubjects(this.value || ''); });
                     }
-
                     if (modalSubjects) {
                         modalSubjects.addEventListener('show.bs.modal', function () {
-                            if (classFilter) {
-                                classFilter.value = '';
-                            }
+                            if (classFilter) classFilter.value = '';
                             loadSubjects('');
                         });
                     }
@@ -481,9 +499,7 @@
                         btn.addEventListener('click', function () {
                             const classId = this.getAttribute('data-class-id');
                             const className = this.getAttribute('data-class-name') || '';
-                            if (!classId || !confirm('فصل الطالب عن الصف: ' + className + '؟ سيتم حذف انضمامات مواد هذا الصف أيضاً.')) {
-                                return;
-                            }
+                            if (!classId || !confirm('فصل الطالب عن الصف: ' + className + '؟')) return;
                             const token = document.querySelector('meta[name="csrf-token"]');
                             fetch(@json(route('users.detach-from-class')), {
                                 method: 'POST',
@@ -493,24 +509,18 @@
                                     'X-CSRF-TOKEN': token ? token.getAttribute('content') : '',
                                     'X-Requested-With': 'XMLHttpRequest'
                                 },
-                                body: JSON.stringify({
-                                    user_id: {{ (int) $user->id }},
-                                    class_id: parseInt(classId, 10)
-                                })
+                                body: JSON.stringify({ user_id: {{ (int) $user->id }}, class_id: parseInt(classId, 10) })
                             })
                                 .then(function (r) { return r.json(); })
                                 .then(function (data) {
                                     if (data.success) {
                                         var p = @json($profileRedirectPath);
-                                        var sep = p.indexOf('?') === -1 ? '?' : '&';
-                                        window.location.href = p + sep + 'notice=class_detached';
+                                        window.location.href = p + (p.indexOf('?') === -1 ? '?' : '&') + 'notice=class_detached';
                                     } else {
                                         alert(data.message || 'تعذر تنفيذ العملية');
                                     }
                                 })
-                                .catch(function () {
-                                    alert('حدث خطأ في الاتصال');
-                                });
+                                .catch(function () { alert('حدث خطأ في الاتصال'); });
                         });
                     });
                 })();

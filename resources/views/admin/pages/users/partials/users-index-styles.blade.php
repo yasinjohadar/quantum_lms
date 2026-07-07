@@ -253,6 +253,63 @@
     [data-theme-mode="dark"] .ui-status-badge--inactive,
     [data-bs-theme="dark"] .ui-status-badge--inactive { color: #fca5a5; }
 
+    .subscription-expires-inline {
+        border: 1px dashed rgba(13, 110, 253, 0.35);
+        background: rgba(13, 110, 253, 0.06);
+        color: #0d6efd;
+        border-radius: 8px;
+        padding: 0.3rem 0.55rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.15rem;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .subscription-expires-inline:hover {
+        background: rgba(13, 110, 253, 0.12);
+        border-color: rgba(13, 110, 253, 0.55);
+    }
+
+    .subscription-expires-inline--expired {
+        border-color: rgba(220, 53, 69, 0.35);
+        background: rgba(220, 53, 69, 0.08);
+        color: #dc3545;
+    }
+
+    .subscription-expires-inline--unset {
+        border-style: dashed;
+        color: #6c757d;
+        background: rgba(108, 117, 125, 0.06);
+    }
+
+    .subscription-expires-inline--unset:hover {
+        color: #0d6efd;
+        background: rgba(13, 110, 253, 0.08);
+    }
+
+    .subscription-expires-inline__hint {
+        font-size: 0.65rem;
+        opacity: 0.8;
+    }
+
+    .subscription-expires-input {
+        width: 9.5rem;
+        font-size: 0.78rem;
+        padding: 0.2rem 0.45rem;
+        border-radius: 8px;
+    }
+
+    .subscription-expires-readonly {
+        font-size: 0.78rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.15rem;
+    }
+
     .ui-class-pill {
         display: inline-flex;
         align-items: center;

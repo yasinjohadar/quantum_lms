@@ -50,6 +50,11 @@
             </button>
         </td>
 
+        @include('admin.pages.users.partials.subscription-expires-cell', [
+            'user' => $user,
+            'selectedClassId' => $selectedClassId ?? null,
+        ])
+
         <td class="users-classes-col">
             @if ($user->classEnrollments->isNotEmpty())
                 <div class="d-flex flex-wrap">
@@ -174,7 +179,7 @@
     @include('admin.pages.users.change_password', ['user' => $user])
 @empty
     <tr>
-        <td colspan="7">
+        <td colspan="8">
             <div class="users-index-empty">
                 <i class="bi bi-mortarboard"></i>
                 <p class="mb-0 fw-semibold">لا يوجد طلاب مطابقين للفلاتر</p>

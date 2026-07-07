@@ -4,183 +4,231 @@
     تعديل المستخدم
 @stop
 
-@section('css')
-    <style>
-        .form-floating label {
-            right: auto;
-            left: 0.75rem;
-        }
-
-        select.form-select {
-            padding: 0.75rem;
-        }
-    </style>
-@stop
+@push('styles')
+    @include('admin.pages.users.partials.users-edit-styles')
+    @include('admin.pages.users.partials.user-subscription-shared-styles')
+@endpush
 
 @section('content')
-    <div class="main-content app-content">
+    @php
+        $isStudent = $user->hasRole('student');
+        $returnContext = old('return_context', request('return_context', request('role')));
+        $selectedRoles = old('roles', $user->roles->pluck('name')->toArray());
+        $emailRequired = ! $isStudent && (bool) array_intersect($selectedRoles, ['admin', 'teacher', 'supervisor']);
+        $initial = mb_strtoupper(mb_substr(trim($user->name), 0, 1));
+        $cancelUrl = route('users.index');
+        if (in_array($returnContext, ['admin', 'manage', 'supervisor', 'teacher'], true)) {
+            $cancelUrl = match ($returnContext) {
+                'admin' => route('admin.admins.index'),
+                'manage' => route('admin.users.manage'),
+                'supervisor' => route('admin.supervisors.assignments.index'),
+                'teacher' => route('admin.teachers.assignments.index'),
+                default => route('users.index'),
+            };
+        }
+    @endphp
+
+    <div class="main-content app-content user-edit-page">
         <div class="container-fluid">
-            <div class="page-header d-flex justify-content-between align-items-center my-4">
-                <h5 class="page-title mb-0">تعديل المستخدم: {{ $user->name }}</h5>
-            </div>
+            <div class="user-edit-layout user-edit-layout--wide">
 
-            <!-- Success/Error Messages -->
-            @if (session('success'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert" style="margin-top: 20px; display: block !important; visibility: visible !important; opacity: 1 !important;">
-                    <i class="bi bi-check-circle me-2"></i>
-                    <strong>نجح!</strong> {!! session('success') !!}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                <nav class="user-edit-breadcrumb" aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('users.index') }}">الطلاب</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">تعديل</li>
+                    </ol>
+                </nav>
+
+                @if (session('success'))
+                    <div class="alert alert-success alert-dismissible fade show py-2 mb-3" role="alert">
+                        <i class="bi bi-check-circle me-1"></i>{!! session('success') !!}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                @endif
+                @if (session('error'))
+                    <div class="alert alert-danger alert-dismissible fade show py-2 mb-3" role="alert">
+                        <i class="bi bi-exclamation-triangle me-1"></i>{!! session('error') !!}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                @endif
+                @if ($errors->any())
+                    <div class="alert alert-danger alert-dismissible fade show py-2 mb-3" role="alert">
+                        <ul class="mb-0 small">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                @endif
+
+                <div class="user-edit-toolbar">
+                    <a href="{{ $cancelUrl }}"><i class="bi bi-arrow-right"></i> رجوع للقائمة</a>
+                    <a href="{{ route('users.show', $user) }}"><i class="bi bi-person-badge"></i> عرض الملف</a>
                 </div>
-            @endif
 
-            @if (session('error'))
-                <div class="alert alert-danger alert-dismissible fade show" role="alert" style="margin-top: 20px; display: block !important; visibility: visible !important; opacity: 1 !important;">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    <strong>خطأ!</strong> {!! session('error') !!}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-                </div>
-            @endif
+                <div class="user-edit-card">
+                    <div class="user-edit-card__banner"></div>
 
-            @if ($errors->any())
-                <div class="alert alert-danger alert-dismissible fade show" role="alert" style="margin-top: 20px; display: block !important; visibility: visible !important; opacity: 1 !important;">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    <strong>خطأ في البيانات!</strong>
-                    <ul class="mb-0 mt-2">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-                </div>
-            @endif
+                    <div class="user-edit-card__profile">
+                        <div class="user-edit-card__avatar">{{ $initial }}</div>
+                        <h1 class="user-edit-card__title">
+                            {{ $isStudent ? 'تعديل بيانات الطالب' : 'تعديل المستخدم' }}
+                        </h1>
+                        <p class="user-edit-card__name">{{ $user->name }}</p>
 
-            <div class="card">
-                <div class="card-body">
-                    <form method="POST" action="{{ route('users.update', $user->id) }}">
-                        @csrf
-                        @method('PUT')
-                        @php
-                            $returnContext = old('return_context', request('return_context', request('role')));
-                            $selectedRoles = old('roles', $user->roles->pluck('name')->toArray());
-                            $emailRequired = (bool) array_intersect($selectedRoles, ['admin', 'teacher', 'supervisor']);
-                        @endphp
-                        @if (in_array($returnContext, ['supervisor', 'teacher', 'admin', 'manage'], true))
-                            <input type="hidden" name="return_context" value="{{ $returnContext }}">
+                        @if ($isStudent)
+                            <span class="user-edit-status user-edit-status--locked">
+                                <i class="bi bi-shield-lock-fill"></i>
+                                طالب — الدور مقفول
+                            </span>
+                        @else
+                            @foreach ($user->roles as $role)
+                                <span class="user-edit-status user-edit-status--student">{{ $role->name }}</span>
+                            @endforeach
                         @endif
+                    </div>
 
-                        <div class="row g-3">
-                            <!-- المعلومات الأساسية -->
-                            <div class="col-12">
-                                <h6 class="text-primary mb-3">المعلومات الأساسية</h6>
-                            </div>
+                    <div class="user-edit-card__form">
+                        <form method="POST" action="{{ route('users.update', $user->id) }}" novalidate>
+                            @csrf
+                            @method('PUT')
 
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input type="text" class="form-control @error('name') is-invalid @enderror" 
-                                           name="name" placeholder="الاسم الكامل" value="{{ old('name', $user->name) }}" required>
-                                    <label>الاسم الكامل <span class="text-danger">*</span></label>
-                                    @error('name')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-
-
-                            @if($emailRequired)
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input type="email" class="form-control @error('email') is-invalid @enderror" 
-                                           name="email" placeholder="البريد الإلكتروني" value="{{ old('email', $user->email) }}" required>
-                                    <label>البريد الإلكتروني <span class="text-danger">*</span></label>
-                                    @error('email')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
+                            @if (in_array($returnContext, ['supervisor', 'teacher', 'admin', 'manage'], true))
+                                <input type="hidden" name="return_context" value="{{ $returnContext }}">
                             @endif
 
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input type="tel" class="form-control @error('phone') is-invalid @enderror" 
-                                           name="phone" placeholder="رقم الهاتف" value="{{ old('phone', $user->phone) }}">
-                                    <label>رقم الهاتف</label>
-                                    @error('phone')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
+                            @if ($isStudent)
+                                <div class="user-edit-info">
+                                    <span class="user-edit-info__icon"><i class="bi bi-info-lg"></i></span>
+                                    <span>يمكنك تعديل <strong>الاسم</strong> و<strong>رقم الهاتف</strong> و<strong>تواريخ انتهاء الاشتراكات</strong> لكل صف.</span>
                                 </div>
-                            </div>
+                            @endif
 
-                            <!-- تفعيل الحساب -->
-                            <div class="col-md-6">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="is_active" value="1" 
-                                           id="is_active" {{ old('is_active', $user->is_active) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="is_active">
-                                        تفعيل الحساب
-                                    </label>
+                            <div class="user-edit-field">
+                                <label for="name">الاسم الكامل <span class="text-danger">*</span></label>
+                                <div class="input-group @error('name') is-invalid @enderror">
+                                    <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                    <input type="text"
+                                           id="name"
+                                           class="form-control @error('name') is-invalid @enderror"
+                                           name="name"
+                                           value="{{ old('name', $user->name) }}"
+                                           placeholder="أدخل الاسم الكامل"
+                                           required
+                                           autocomplete="name">
                                 </div>
-                            </div>
-
-                            @can('user-edit')
-                            <div class="col-12 mt-2">
-                                <h6 class="text-primary mb-2">الأدوار</h6>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label">اختر دورًا واحدًا أو أكثر</label>
-                                <select name="roles[]" class="form-select @error('roles') is-invalid @enderror @error('roles.*') is-invalid @enderror" multiple size="8">
-                                    @foreach ($roles as $role)
-                                        <option value="{{ $role->name }}" {{ in_array($role->name, $selectedRoles, true) ? 'selected' : '' }}>
-                                            {{ $role->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <small class="text-muted d-block mt-1">اضغط Ctrl/Command لاختيار أكثر من Role.</small>
-                                @error('roles')
-                                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                                @enderror
-                                @error('roles.*')
-                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @error('name')
+                                    <div class="text-danger small mt-1">{{ $message }}</div>
                                 @enderror
                             </div>
-                            @endcan
-                        </div>
 
-                        <div class="text-end mt-4">
-                            <a href="{{ route('users.index') }}" class="btn btn-secondary px-4 me-2">
-                                إلغاء
-                            </a>
-                            <button type="submit" class="btn btn-primary px-4">
-                                <i class="fas fa-save me-2"></i>حفظ التعديلات
-                            </button>
-                        </div>
+                            <div class="user-edit-field">
+                                <label for="phone">رقم الهاتف</label>
+                                <div class="input-group @error('phone') is-invalid @enderror">
+                                    <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                                    <input type="tel"
+                                           id="phone"
+                                           class="form-control @error('phone') is-invalid @enderror"
+                                           name="phone"
+                                           value="{{ old('phone', $user->phone) }}"
+                                           placeholder="+9665xxxxxxxx"
+                                           dir="ltr"
+                                           autocomplete="tel">
+                                </div>
+                                @error('phone')
+                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                @enderror
+                            </div>
 
-                    </form>
+                            @if ($isStudent)
+                                @include('admin.pages.users.partials.user-edit-subscriptions', [
+                                    'user' => $user,
+                                    'classSubscriptions' => $classSubscriptions ?? [],
+                                ])
+                            @endif
+
+                            @unless ($isStudent)
+                                @if ($emailRequired)
+                                    <div class="user-edit-field">
+                                        <label for="email">البريد الإلكتروني <span class="text-danger">*</span></label>
+                                        <div class="input-group @error('email') is-invalid @enderror">
+                                            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                                            <input type="email"
+                                                   id="email"
+                                                   class="form-control @error('email') is-invalid @enderror"
+                                                   name="email"
+                                                   value="{{ old('email', $user->email) }}"
+                                                   placeholder="email@example.com"
+                                                   dir="ltr"
+                                                   required>
+                                        </div>
+                                        @error('email')
+                                            <div class="text-danger small mt-1">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                @endif
+
+                                <div class="user-edit-switch">
+                                    <span class="fw-semibold small">تفعيل الحساب</span>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" name="is_active" value="1"
+                                               id="is_active" {{ old('is_active', $user->is_active) ? 'checked' : '' }}>
+                                    </div>
+                                </div>
+
+                                @can('user-edit')
+                                    <div class="user-edit-field">
+                                        <label>الأدوار</label>
+                                        <div class="user-edit-roles">
+                                            @foreach ($roles as $role)
+                                                <label class="user-edit-role-chip">
+                                                    <input type="checkbox"
+                                                           name="roles[]"
+                                                           value="{{ $role->name }}"
+                                                           {{ in_array($role->name, $selectedRoles, true) ? 'checked' : '' }}>
+                                                    {{ $role->name }}
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                        @error('roles')
+                                            <div class="text-danger small mt-1">{{ $message }}</div>
+                                        @enderror
+                                        @error('roles.*')
+                                            <div class="text-danger small mt-1">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                @endcan
+                            @endunless
+
+                            <div class="user-edit-actions">
+                                <a href="{{ $cancelUrl }}" class="btn btn-cancel">إلغاء</a>
+                                <button type="submit" class="btn btn-save">
+                                    <i class="bi bi-check2-circle me-1"></i> حفظ التعديلات
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
-
         </div>
     </div>
 @stop
 
-@section('script')
+@push('scripts')
     <script>
-        // إظهار الرسائل تلقائياً
         document.addEventListener('DOMContentLoaded', function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(function(alert) {
-                alert.style.display = 'block';
-                alert.style.visibility = 'visible';
-                alert.style.opacity = '1';
+            document.querySelectorAll('.alert-success').forEach(function(alert) {
+                setTimeout(function() {
+                    bootstrap.Alert.getOrCreateInstance(alert).close();
+                }, 5000);
             });
-            
-            setTimeout(function() {
-                alerts.forEach(function(alert) {
-                    if (alert.classList.contains('alert-success')) {
-                        const bsAlert = new bootstrap.Alert(alert);
-                        bsAlert.close();
-                    }
-                });
-            }, 5000);
         });
     </script>
-@stop
+    @can('user-edit')
+        @if ($isStudent ?? false)
+            @include('admin.pages.users.partials.user-subscription-date-script')
+        @endif
+    @endcan
+@endpush

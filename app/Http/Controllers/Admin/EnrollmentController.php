@@ -901,7 +901,14 @@ class EnrollmentController extends Controller
         $classEnrollmentsQuery = ClassEnrollment::with(['user', 'schoolClass.stage', 'enrolledBy'])
             ->pending();
         $pendingClassPurchaseRequests = Purchase::query()
-            ->with(['user', 'purchasable'])
+            ->with([
+                'user',
+                'purchasable' => function (\Illuminate\Database\Eloquent\Relations\MorphTo $morphTo) {
+                    $morphTo->morphWith([
+                        SchoolClass::class => ['stage'],
+                    ]);
+                },
+            ])
             ->pendingDirectApproval()
             ->where('purchase_type', 'class');
 

@@ -705,4 +705,60 @@ class PurchaseService
             'subject_id' => $subjectId,
         ], $payload));
     }
+
+    /**
+     * تعيين أو تحديث تاريخ نهاية اشتراك طالب في صف (من لوحة الإدارة).
+     */
+    public function assignClassSubscriptionExpiry(User $user, SchoolClass $class, \DateTimeInterface $expiresAt): Purchase
+    {
+        $resolvedExpiresAt = \Carbon\Carbon::parse($expiresAt)->endOfDay();
+
+        if ($class->subscription_ends_at && $resolvedExpiresAt->gt($class->subscription_ends_at)) {
+            throw new \InvalidArgumentException(
+                'لا يمكن أن يتجاوز تاريخ الطالب نهاية اشتراك الصف ('.$class->subscription_ends_at->format('Y-m-d').')'
+            );
+        }
+
+        $hasApprovedEnrollment = \App\Models\ClassEnrollment::query()
+            ->where('user_id', $user->id)
+            ->where('class_id', $class->id)
+            ->where('status', 'approved')
+            ->exists();
+
+        if (! $hasApprovedEnrollment) {
+            throw new \InvalidArgumentException('الطالب غير مسجّل في هذا الصف');
+        }
+
+        return DB::transaction(function () use ($user, $class, $resolvedExpiresAt) {
+            $purchase = Purchase::query()
+                ->where('user_id', $user->id)
+                ->where('purchasable_type', SchoolClass::class)
+                ->where('purchasable_id', $class->id)
+                ->completed()
+                ->whereNull('access_revoked_at')
+                ->lockForUpdate()
+                ->first();
+
+            if ($purchase) {
+                $purchase->update([
+                    'expires_at' => $resolvedExpiresAt,
+                    'access_revoked_at' => $resolvedExpiresAt->isFuture() ? null : $purchase->access_revoked_at,
+                ]);
+
+                return $purchase->fresh();
+            }
+
+            return Purchase::create([
+                'user_id' => $user->id,
+                'purchasable_type' => SchoolClass::class,
+                'purchasable_id' => $class->id,
+                'purchase_type' => 'class',
+                'price' => 0,
+                'status' => 'completed',
+                'purchased_at' => now(),
+                'expires_at' => $resolvedExpiresAt,
+                'notes' => 'تعيين إداري لتاريخ نهاية الاشتراك',
+            ]);
+        });
+    }
 }

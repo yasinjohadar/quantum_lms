@@ -418,4 +418,175 @@
             padding: 0.65rem 0.75rem;
         }
     }
+
+    /* بطاقات طلبات الصفوف المدفوعة المعلقة */
+    .pending-purchase-card {
+        background: var(--ui-surface);
+        border: 1px solid var(--ui-border);
+        border-radius: 14px;
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        transition: box-shadow 0.15s, border-color 0.15s;
+    }
+
+    .pending-purchase-card:hover {
+        border-color: rgba(124, 58, 237, 0.25);
+        box-shadow: 0 8px 24px rgba(124, 58, 237, 0.1);
+    }
+
+    .pending-purchase-card__top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 1rem 1rem 0.75rem;
+        border-bottom: 1px dashed var(--ui-border);
+    }
+
+    .pending-purchase-card__student {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .pending-purchase-card__avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 1rem;
+        color: #fff;
+        background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        flex-shrink: 0;
+    }
+
+    .pending-purchase-card__identity {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .pending-purchase-card__name {
+        margin: 0 0 0.2rem;
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: var(--default-text-color, #0f172a);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .pending-purchase-card__phone {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #059669;
+        text-decoration: none;
+    }
+
+    .pending-purchase-card__phone:hover { color: #047857; }
+
+    .pending-purchase-card__meta {
+        font-size: 0.78rem;
+        color: var(--ui-muted);
+    }
+
+    .pending-purchase-card__price-wrap {
+        text-align: end;
+        flex-shrink: 0;
+    }
+
+    .pending-purchase-card__price {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: var(--default-text-color, #0f172a);
+        line-height: 1.2;
+    }
+
+    .pending-purchase-card__price small {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--ui-muted);
+    }
+
+    .pending-purchase-card__badge {
+        display: inline-block;
+        margin-top: 0.25rem;
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 0.15rem 0.45rem;
+        border-radius: 999px;
+        background: rgba(245, 158, 11, 0.15);
+        color: #b45309;
+    }
+
+    .pending-purchase-card__body {
+        padding: 0.85rem 1rem;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+    }
+
+    .pending-purchase-card__row {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        font-size: 0.82rem;
+        color: var(--ui-muted);
+        line-height: 1.45;
+    }
+
+    .pending-purchase-card__row i {
+        color: #7c3aed;
+        font-size: 0.95rem;
+        margin-top: 0.1rem;
+        flex-shrink: 0;
+    }
+
+    .pending-purchase-card__row strong {
+        color: var(--default-text-color, #0f172a);
+        font-weight: 700;
+    }
+
+    .pending-purchase-card__row--expiry {
+        padding: 0.55rem 0.65rem;
+        border-radius: 10px;
+        background: rgba(var(--primary-rgb, 13, 110, 253), 0.06);
+        border: 1px solid rgba(var(--primary-rgb, 13, 110, 253), 0.1);
+    }
+
+    .pending-purchase-card__row--expiry i { color: #2563eb; }
+
+    .pending-purchase-card__hint {
+        display: block;
+        font-size: 0.72rem;
+        color: var(--ui-muted);
+        margin-top: 0.1rem;
+    }
+
+    .pending-purchase-card__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        justify-content: flex-end;
+        padding: 0.75rem 1rem 1rem;
+        border-top: 1px solid var(--ui-border);
+        background: rgba(124, 58, 237, 0.02);
+    }
+
+    .pending-purchase-card__actions .btn {
+        border-radius: 9px;
+        font-weight: 700;
+        font-size: 0.8rem;
+    }
 </style>
