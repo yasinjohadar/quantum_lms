@@ -381,12 +381,7 @@
                             .then(function (res) {
                                 if (res.ok && res.json && res.json.success) {
                                     hidePendingCancelModal(document.getElementById('confirmPendingPurchaseCancelModal'));
-                                    var card = document.querySelector('.pending-purchase-card[data-purchase-id="' + String(id) + '"]');
-                                    if (card) card.remove();
-                                    var grid = document.getElementById('pendingPurchasesGrid');
-                                    if (grid && !grid.querySelector('.pending-purchase-card')) {
-                                        window.location.reload();
-                                    }
+                                    window.location.reload();
                                     pendingPurchaseIdToCancel = null;
                                 } else if (res.json && res.json.message) {
                                     alert(res.json.message);

@@ -54,14 +54,7 @@ class StudentEnrollmentController extends Controller
 
         $stages = $stages->filter(fn (Stage $stage) => $stage->classes->isNotEmpty())->values();
 
-        $pendingClassEnrollmentIds = ClassEnrollment::query()
-            ->withTrashed()
-            ->where('user_id', $user->id)
-            ->where('status', 'pending')
-            ->pluck('class_id')
-            ->map(fn ($id) => (int) $id)
-            ->values()
-            ->all();
+        $pendingClassEnrollmentIds = $this->pendingClassRequestIds($user);
 
         return view(
             'student.pages.enrollments.index',
@@ -100,6 +93,15 @@ class StudentEnrollmentController extends Controller
             ->where('class_id', $class->id)
             ->exists();
 
+        $hasPendingClassPurchase = Purchase::query()
+            ->where('user_id', $user->id)
+            ->where('purchasable_type', SchoolClass::class)
+            ->where('purchasable_id', $class->id)
+            ->pending()
+            ->exists();
+
+        $hasPendingClassRequest = $hasPendingClassEnrollment || $hasPendingClassPurchase;
+
         $subjectsToShow = $hasFullClassAccess
             ? collect()
             : $class->subjects
@@ -132,6 +134,8 @@ class StudentEnrollmentController extends Controller
                 'pendingEnrollments',
                 'hasFullClassAccess',
                 'hasPendingClassEnrollment',
+                'hasPendingClassPurchase',
+                'hasPendingClassRequest',
                 'subjectAccessById',
                 'pendingPurchases',
                 'supervisorWhatsappDigits',
@@ -149,6 +153,7 @@ class StudentEnrollmentController extends Controller
     private function filterStagesForJoinableClasses(User $user, $stages): void
     {
         $approvedClassIdSet = array_flip($user->classEnrollments()->approved()->pluck('class_id')->all());
+        $pendingClassRequestIdSet = array_flip($this->pendingClassRequestIds($user));
         $completedClassPurchaseIdSet = array_flip(Purchase::query()
             ->where('user_id', $user->id)
             ->where('purchasable_type', SchoolClass::class)
@@ -171,11 +176,16 @@ class StudentEnrollmentController extends Controller
         foreach ($stages as $stage) {
             $filtered = $stage->classes->filter(function (SchoolClass $class) use (
                 $approvedClassIdSet,
+                $pendingClassRequestIdSet,
                 $completedClassPurchaseIdSet,
                 $userActiveSubjectIdSet,
                 $activeSubjectsByClass
             ) {
                 if (isset($approvedClassIdSet[$class->id])) {
+                    return false;
+                }
+
+                if (isset($pendingClassRequestIdSet[$class->id])) {
                     return false;
                 }
 
@@ -291,7 +301,14 @@ class StudentEnrollmentController extends Controller
                     ->pending()
                     ->exists();
 
-                if ($pendingClassJoin) {
+                $pendingClassPurchase = Purchase::query()
+                    ->where('user_id', $user->id)
+                    ->where('purchasable_type', SchoolClass::class)
+                    ->where('purchasable_id', $class->id)
+                    ->pending()
+                    ->exists();
+
+                if ($pendingClassJoin || $pendingClassPurchase) {
                     return response()->json([
                         'success' => false,
                         'message' => 'لديك طلب انضمام لهذا الصف كاملاً قيد المراجعة. يمكنك انتظار الموافقة قبل طلب مادة منفردة.',
@@ -441,6 +458,20 @@ class StudentEnrollmentController extends Controller
             }
 
             if ($class->classJoinRequiresPayment($currencyId)) {
+                $existingPendingPurchase = Purchase::query()
+                    ->where('user_id', $user->id)
+                    ->where('purchasable_type', SchoolClass::class)
+                    ->where('purchasable_id', $classId)
+                    ->pending()
+                    ->first();
+
+                if ($existingPendingPurchase) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'لديك بالفعل طلب انضمام لهذا الصف قيد المراجعة',
+                    ], 400);
+                }
+
                 $purchase = $this->purchaseService->resolveOrCreatePendingPurchase($user, $class, 'class', $currencyId);
 
                 return response()->json([
@@ -543,6 +574,31 @@ class StudentEnrollmentController extends Controller
                 'message' => $message,
             ], 500);
         }
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function pendingClassRequestIds(User $user): array
+    {
+        $fromEnrollments = ClassEnrollment::query()
+            ->withTrashed()
+            ->where('user_id', $user->id)
+            ->pending()
+            ->pluck('class_id');
+
+        $fromPurchases = Purchase::query()
+            ->where('user_id', $user->id)
+            ->where('purchasable_type', SchoolClass::class)
+            ->pending()
+            ->pluck('purchasable_id');
+
+        return $fromEnrollments
+            ->merge($fromPurchases)
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**

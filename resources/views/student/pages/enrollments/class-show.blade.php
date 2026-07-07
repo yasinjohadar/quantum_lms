@@ -66,7 +66,7 @@
                             <i class="bi bi-check-circle me-1"></i>
                             منضم لجميع المواد
                         </span>
-                    @elseif($hasPendingClassEnrollment)
+                    @elseif($hasPendingClassRequest)
                         <span class="btn btn-warning btn-sm disabled" title="طلب انضمام الصف قيد المراجعة">
                             <i class="bi bi-clock me-1"></i>
                             طلب الصف قيد المراجعة
@@ -141,7 +141,7 @@
                                             <i class="bi bi-x-circle"></i>
                                         </button>
                                     </div>
-                                @elseif($hasPendingClassEnrollment)
+                                @elseif($hasPendingClassRequest)
                                     <div onclick="event.stopPropagation();">
                                         <button class="btn btn-secondary btn-sm w-100" type="button" disabled title="طلب الانضمام للصف الكامل قيد المراجعة">
                                             <i class="bi bi-clock me-1"></i>
