@@ -18,18 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/v1/extension/*',
         ]);
 
-        $middleware->redirectGuestsTo(function (Request $request) {
-            if ($request->routeIs(
-                'frontend.checkout',
-                'frontend.checkout.process',
-                'frontend.payment',
-                'frontend.payment.process'
-            )) {
-                return route('student.login');
-            }
-
-            return route('login');
-        });
+        // عند انتهاء الجلسة أو زيارة صفحة محمية بدون تسجيل: دائماً بوابة الطلاب.
+        // تسجيل دخول الإدارة/المشرفين يبقى عبر فتح /login يدوياً فقط.
+        $middleware->redirectGuestsTo(fn () => route('student.login'));
 
        $middleware->alias([
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,

@@ -1,14 +1,15 @@
 @php
     $countries = config('countries', []);
     $defaultCode = (string) config('app.phone_default_country_code', '963');
+    $preferredCountry = \App\Support\PreferredAuthCountry::resolve();
     $countryCodeName = $countryCodeName ?? 'country_code';
     $manualCodeName = $manualCodeName ?? 'manual_country_code';
     $phoneName = $phoneName ?? 'phone';
     $countryCodeId = $countryCodeId ?? $countryCodeName;
     $manualCodeId = $manualCodeId ?? $manualCodeName;
     $phoneId = $phoneId ?? $phoneName;
-    $selectedCountryCode = old($countryCodeName, $selectedCountryCode ?? $defaultCode);
-    $manualCountryCodeValue = old($manualCodeName, $manualCountryCodeValue ?? '');
+    $selectedCountryCode = old($countryCodeName, $selectedCountryCode ?? $preferredCountry['country_code'] ?? $defaultCode);
+    $manualCountryCodeValue = old($manualCodeName, $manualCountryCodeValue ?? $preferredCountry['manual_country_code'] ?? '');
     $phoneValue = old($phoneName, $phoneValue ?? '');
     $required = isset($required) ? (bool) $required : false;
     $label = $label ?? 'رقم الهاتف';

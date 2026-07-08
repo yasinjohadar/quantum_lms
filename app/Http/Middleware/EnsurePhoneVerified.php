@@ -47,7 +47,7 @@ class EnsurePhoneVerified
         // إذا كان الحساب غير مفعّل
         if (!$user->is_active) {
             Auth::logout();
-            return redirect()->route('login')
+            return redirect()->route('student.login')
                 ->with('error', 'حسابك غير مفعّل. يرجى التواصل مع الإدارة.');
         }
 

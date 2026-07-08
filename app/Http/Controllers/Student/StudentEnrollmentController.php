@@ -153,7 +153,6 @@ class StudentEnrollmentController extends Controller
     private function filterStagesForJoinableClasses(User $user, $stages): void
     {
         $approvedClassIdSet = array_flip($user->classEnrollments()->approved()->pluck('class_id')->all());
-        $pendingClassRequestIdSet = array_flip($this->pendingClassRequestIds($user));
         $completedClassPurchaseIdSet = array_flip(Purchase::query()
             ->where('user_id', $user->id)
             ->where('purchasable_type', SchoolClass::class)
@@ -176,16 +175,11 @@ class StudentEnrollmentController extends Controller
         foreach ($stages as $stage) {
             $filtered = $stage->classes->filter(function (SchoolClass $class) use (
                 $approvedClassIdSet,
-                $pendingClassRequestIdSet,
                 $completedClassPurchaseIdSet,
                 $userActiveSubjectIdSet,
                 $activeSubjectsByClass
             ) {
                 if (isset($approvedClassIdSet[$class->id])) {
-                    return false;
-                }
-
-                if (isset($pendingClassRequestIdSet[$class->id])) {
                     return false;
                 }
 

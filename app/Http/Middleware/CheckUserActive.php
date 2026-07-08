@@ -23,7 +23,7 @@ class CheckUserActive
             if (!$user->is_active) {
                 Auth::logout();
                 
-                return redirect()->route('login')->withErrors([
+                return redirect()->route('student.login')->withErrors([
                     'email' => 'تم إلغاء تفعيل حسابك. يرجى التواصل مع الإدارة.',
                 ]);
             }

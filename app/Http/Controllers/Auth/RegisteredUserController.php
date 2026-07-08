@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\SystemSetting;
 use App\Services\SMS\OTPService;
 use App\Support\PhoneRegionValidator;
+use App\Support\PreferredAuthCountry;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -101,6 +102,8 @@ class RegisteredUserController extends Controller
             'phone.regex' => 'تعذر تكوين رقم صالح. أدخل الرقم المحلي فقط (أرقام) واختر الدولة من القائمة.',
             'phone.unique' => 'رقم الهاتف مستخدم بالفعل',
         ]);
+
+        PreferredAuthCountry::remember($request);
 
         if ($phoneVerificationEnabled) {
             session()->forget('pending_verification_user_id');

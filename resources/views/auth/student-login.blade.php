@@ -49,7 +49,7 @@
 
         <div class="auth-row">
             <label class="auth-checkbox" for="remember_me">
-                <input id="remember_me" type="checkbox" name="remember">
+                <input id="remember_me" type="checkbox" name="remember" value="1" checked>
                 <span>تذكرني</span>
             </label>
             @if (Route::has('password.request'))

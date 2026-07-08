@@ -8,6 +8,7 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\SMS\OTPService;
 use App\Support\PhoneRegionValidator;
+use App\Support\PreferredAuthCountry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -70,6 +71,8 @@ class PasswordResetLinkController extends Controller
             'phone.required' => 'رقم الهاتف مطلوب',
             'phone.regex' => 'تعذر تكوين رقم صالح. أدخل الرقم المحلي فقط (أرقام) واختر الدولة من القائمة.',
         ]);
+
+        PreferredAuthCountry::remember($request);
 
         $phone = $validated['phone'];
 

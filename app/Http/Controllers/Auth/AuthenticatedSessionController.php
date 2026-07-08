@@ -9,6 +9,7 @@ use App\Services\LoginLogService;
 use App\Services\UserSessionService;
 use App\Services\SessionActivityService;
 use App\Services\AuditLogService;
+use App\Support\PreferredAuthCountry;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -69,6 +70,8 @@ class AuthenticatedSessionController extends Controller
 
     private function attemptLogin(LoginRequest $request, bool $studentOnly): RedirectResponse
     {
+        PreferredAuthCountry::remember($request);
+
         try {
             $request->authenticate();
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -122,6 +125,9 @@ class AuthenticatedSessionController extends Controller
         $request->session()->put('user_session_id', $userSession->id);
 
         $request->session()->regenerate();
+
+        // إعادة حفظ رمز الدولة بعد regenerate حتى يبقى في الجلسة أيضاً
+        PreferredAuthCountry::remember($request);
 
         // توجيه المستخدم حسب صلاحيته
         $hasAdminDashboard = false;

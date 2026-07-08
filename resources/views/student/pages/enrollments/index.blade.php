@@ -125,16 +125,18 @@
 @include('student.pages.enrollments.partials.inline-purchase-payment-script')
 <script>
     let pendingClassId = null;
+    let pendingClassName = null;
     let pendingClassButton = null;
     
     function requestClassEnrollment(classId, className, requiresPayment, triggerButton) {
         pendingClassId = classId;
+        pendingClassName = className || '';
         pendingClassButton = triggerButton || null;
         document.getElementById('classNameInModal').textContent = className;
         var msgEl = document.getElementById('confirmClassEnrollmentModalMessage');
         if (requiresPayment) {
-            msgEl.innerHTML = 'سيتم إرسال طلب انضمامك لصف <strong>' + className + '</strong> إلى الإدارة للمراجعة. ' +
-                'بعد الإرسال يمكنك متابعة القبول عبر واتساب المشرفة.';
+            msgEl.innerHTML = 'سيتم إرسال طلب انضمامك لـ <strong>' + className + '</strong> إلى الإدارة للمراجعة. ' +
+                'بعد الإرسال يمكنك متابعة القبول عبر واتساب قسم الإشراف.';
         } else {
             msgEl.innerHTML = 'هل تريد طلب الانضمام لجميع المواد في صف <strong>' + className + '</strong>؟';
         }
@@ -146,6 +148,7 @@
         if (!pendingClassId) return;
         
         var btn = this;
+        var submittedClassName = pendingClassName || '';
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الإرسال...';
 
@@ -171,7 +174,8 @@
                 if (data.under_review) {
                     setTimeout(function () {
                         showEnrollmentPendingReviewModal(data.message, {
-                            requiresWhatsappFollowup: !!data.requires_whatsapp_followup
+                            requiresWhatsappFollowup: !!data.requires_whatsapp_followup,
+                            className: submittedClassName
                         });
                     }, 300);
                 } else {
@@ -197,6 +201,7 @@
                 pendingClassButton.disabled = false;
             }
             pendingClassId = null;
+            pendingClassName = null;
             pendingClassButton = null;
         });
     });
@@ -205,6 +210,7 @@
     if (confirmClassEnrollmentModalEl) {
         confirmClassEnrollmentModalEl.addEventListener('hidden.bs.modal', function () {
             pendingClassId = null;
+            pendingClassName = null;
             pendingClassButton = null;
         });
     }
@@ -221,9 +227,19 @@
 
     function showEnrollmentPendingReviewModal(message, options) {
         options = options || {};
+        var classNameEl = document.getElementById('enrollmentPendingReviewClassName');
+        if (classNameEl) {
+            classNameEl.textContent = options.className || '';
+        }
         var msgEl = document.getElementById('enrollmentPendingReviewModalMessage');
         if (msgEl) {
-            msgEl.textContent = message || 'تم إرسال طلب الانضمام إلى الإدارة للمراجعة، وهو بانتظار القبول.';
+            if (options.className) {
+                msgEl.classList.add('d-none');
+                msgEl.textContent = '';
+            } else {
+                msgEl.classList.remove('d-none');
+                msgEl.textContent = message || 'تم إرسال طلب انضمامك إلى الإدارة للمراجعة، وهو بانتظار القبول.';
+            }
         }
         var whatsappAlertEl = document.getElementById('enrollmentPendingReviewWhatsappAlert');
         if (whatsappAlertEl) {

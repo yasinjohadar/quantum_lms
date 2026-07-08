@@ -91,6 +91,16 @@
             align-items: center;
             gap: 12px;
             margin-bottom: 22px;
+            text-decoration: none;
+            color: inherit;
+            transition: opacity .2s ease, transform .2s ease;
+        }
+
+        .auth-brand:hover {
+            opacity: 0.92;
+            transform: translateY(-1px);
+            color: inherit;
+            text-decoration: none;
         }
 
         .auth-logo {
@@ -490,13 +500,13 @@
 <body>
 <div class="auth-shell">
     <div class="auth-card">
-        <div class="auth-brand">
+        <a href="{{ route('home') }}" class="auth-brand" title="العودة إلى الرئيسية">
             <div class="auth-logo">
                 <img src="{{ asset('frontend/images/logo.png') }}" alt="أكاديمية كوانتم التعليمية">
             </div>
             <div class="auth-title">أكاديمية كوانتم التعليمية</div>
             <div class="auth-subtitle">@yield('brand-subtitle', 'بوابة الحسابات')</div>
-        </div>
+        </a>
         @yield('content')
     </div>
 </div>

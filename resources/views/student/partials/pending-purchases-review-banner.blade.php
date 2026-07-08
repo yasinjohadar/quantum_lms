@@ -201,7 +201,8 @@
 {{-- مشتريات قيد المراجعة: يظهر في تخطيط الطالب على كل الصفحات عند وجود طلبات --}}@if(isset($pendingPurchases) && $pendingPurchases->isNotEmpty())
     @php
         $supervisorWhatsappDigits = $supervisorWhatsappDigits ?? \App\Models\SystemSetting::supervisorWhatsappDigits();
-        $hasSupervisorWa = $supervisorWhatsappDigits !== '';
+        $hasSupervisorWa = \App\Models\SystemSetting::supervisorWhatsappCtaVisible();
+        $showPendingPurchasePrice = \App\Models\SystemSetting::studentPendingPurchasePriceVisible();
     @endphp
     <div class="student-pending-purchases-banner pt-2 pb-0">
         <div class="container-fluid">
@@ -213,7 +214,7 @@
                         </span>
                         <div>
                             <div>طلباتك قيد المراجعة</div>
-                            <div class="small text-muted fw-normal">تم إرسال طلب الانضمام إلى الإدارة. راجع الخطوات التالية حتى يكتمل القبول.</div>
+                            <div class="small text-muted fw-normal">تم إرسال الطلب وهو بانتظار القبول.</div>
                         </div>
                     </div>
                     <span class="badge bg-warning text-dark rounded-pill px-3 py-2">{{ $pendingPurchases->count() }} طلب</span>
@@ -225,16 +226,7 @@
                                 <i class="fab fa-whatsapp"></i>
                             </span>
                             <div class="flex-grow-1">
-                                <strong class="d-block mb-1 text-danger">للمتابعة السريعة يرجى التواصل مع المشرفة عبر واتساب</strong>
-                                <p class="mb-0 small text-muted">
-                                    لن تحتاج إلى رفع إيصال أو إدخال بيانات دفع من هذه الصفحة. بعد إرسال الطلب اتبع الآتي:
-                                </p>
-                                <ol class="small text-muted mb-0 mt-2 ps-3">
-                                    <li>تأكد أن طلبك ظاهر في هذه القائمة.</li>
-                                    <li>اضغط على زر <strong>واتساب المشرفة</strong>.</li>
-                                    <li>أرسل اسمك والصف أو المادة التي طلبت الانضمام إليها.</li>
-                                    <li>انتظر اعتماد الإدارة، ثم ستظهر لك المواد والدروس تلقائيًا.</li>
-                                </ol>
+                                <strong class="d-block mb-0 text-danger">{{ \App\Models\SystemSetting::supervisorWhatsappMessage() }}</strong>
                             </div>
                         </div>
                         @if($hasSupervisorWa)
@@ -243,8 +235,6 @@
                                 'wrapperClass' => 'align-self-center mb-0',
                                 'btnSize' => 'lg',
                             ])
-                        @else
-                            <span class="small text-muted">سيظهر زر الواتساب هنا بعد ضبط رقم المشرفة.</span>
                         @endif
                     </div>
                     <div class="row student-pending-review-grid" id="pendingPurchasesGrid">
@@ -276,10 +266,12 @@
                                             <span class="student-pending-review-card__meta-label">الوقت</span>
                                             <span class="student-pending-review-card__meta-value">{{ $purchase->created_at->format('H:i') }}</span>
                                         </div>
-                                        <div>
-                                            <span class="student-pending-review-card__meta-label">القيمة</span>
-                                            <span class="student-pending-review-card__meta-value">{{ number_format((float) $purchase->price, 2) }} ر.س</span>
-                                        </div>
+                                        @if($showPendingPurchasePrice)
+                                            <div>
+                                                <span class="student-pending-review-card__meta-label">القيمة</span>
+                                                <span class="student-pending-review-card__meta-value">{{ number_format((float) $purchase->price, 2) }} ر.س</span>
+                                            </div>
+                                        @endif
                                     </div>
                                     <div class="student-pending-review-card__actions">
                                         @if($hasSupervisorWa)

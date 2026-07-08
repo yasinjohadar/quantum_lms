@@ -112,4 +112,27 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Remember Me Cookie Duration
+    |--------------------------------------------------------------------------
+    |
+    | Number of minutes the "remember me" cookie remains valid after login.
+    | Default is five years so students stay signed in across browser restarts.
+    |
+    */
+
+    'remember' => (int) env('AUTH_REMEMBER_MINUTES', 60 * 24 * 365 * 5),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Preferred Country Code Cookie Duration
+    |--------------------------------------------------------------------------
+    |
+    | How long (minutes) the last-selected dial code is stored for auth forms.
+    |
+    */
+
+    'preferred_country_minutes' => (int) env('AUTH_PREFERRED_COUNTRY_MINUTES', 60 * 24 * 365 * 5),
+
 ];

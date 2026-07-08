@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -53,6 +54,13 @@ class AppServiceProvider extends ServiceProvider
             if ($request && $request->getHttpHost()) {
                 URL::forceRootUrl($request->getSchemeAndHttpHost());
             }
+        }
+
+        // تمديد مدة كوكي "تذكرني" (افتراضياً 5 سنوات)
+        try {
+            Auth::guard()->setRememberDuration((int) config('auth.remember', 60 * 24 * 365 * 5));
+        } catch (\Throwable $e) {
+            // ignore during early bootstrap / console edge cases
         }
 
         // Frontend footer data (dynamic classes list + contact info)

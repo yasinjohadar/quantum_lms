@@ -1,6 +1,8 @@
 @php
     $supervisorWhatsappDigits = $supervisorWhatsappDigits ?? \App\Models\SystemSetting::supervisorWhatsappDigits();
-    $hasSupervisorWa = $supervisorWhatsappDigits !== '';
+    $showSupervisorWa = \App\Models\SystemSetting::supervisorWhatsappCtaVisible();
+    $supervisorWhatsappMessage = \App\Models\SystemSetting::supervisorWhatsappMessage();
+    $supervisorWhatsappButtonLabel = \App\Models\SystemSetting::supervisorWhatsappButtonLabel();
 @endphp
 
 @once('enrollment-pending-review-modal-styles')
@@ -63,12 +65,9 @@
                     <i class="bi bi-send-check"></i>
                 </div>
                 <h3 class="fw-bold mb-3" id="enrollmentPendingReviewModalLabel">
-                    تم إرسال طلب الانضمام
+                    تم إرسال طلب انضمامك لـ <span id="enrollmentPendingReviewClassName"></span>
                 </h3>
-                <p class="fs-5 mb-2 px-md-4" id="enrollmentPendingReviewModalMessage"></p>
-                <p class="text-muted mb-4 small px-md-4">
-                    طلبك الآن بانتظار مراجعة الإدارة والقبول. بعد الموافقة سيتم تفعيل وصولك تلقائياً.
-                </p>
+                <p class="fs-5 mb-2 px-md-4 d-none" id="enrollmentPendingReviewModalMessage"></p>
 
                 <div class="enrollment-pending-review-modal__alert text-start mb-4" id="enrollmentPendingReviewWhatsappAlert">
                     <div class="d-flex align-items-start gap-3 flex-wrap">
@@ -76,19 +75,15 @@
                             <i class="fab fa-whatsapp fs-3"></i>
                         </div>
                         <div class="flex-grow-1">
-                            <strong class="d-block mb-2 text-danger">للمتابعة تواصل مع المشرفة عبر واتساب</strong>
-                            <p class="mb-0 small text-muted">
-                                لا يلزم رفع إيصال أو إدخال بيانات إضافية. يكفي انتظار القبول والتواصل مع المشرفة عند الحاجة لتسريع المتابعة.
-                            </p>
+                            <strong class="d-block mb-0 text-danger">{{ $supervisorWhatsappMessage }}</strong>
                         </div>
-                        @if($hasSupervisorWa)
+                        @if($showSupervisorWa)
                             @include('student.partials.supervisor-whatsapp-cta', [
                                 'supervisorWhatsappDigits' => $supervisorWhatsappDigits,
                                 'wrapperClass' => 'align-self-center mb-0',
                                 'btnSize' => 'lg',
+                                'buttonLabel' => $supervisorWhatsappButtonLabel,
                             ])
-                        @else
-                            <span class="small text-muted">سيظهر زر الواتساب هنا بعد ضبط رقم المشرفة.</span>
                         @endif
                     </div>
                 </div>

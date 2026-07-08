@@ -177,12 +177,48 @@ class SystemSetting extends Model
         return is_string($v) && trim($v) !== '' ? trim($v) : $default;
     }
 
-    /** أرقام واتساب المشرفة فقط (بدون رموز) من إعداد student_supervisor_whatsapp_number */
+    /** أرقام واتساب قسم الإشراف فقط (بدون رموز) من إعداد student_supervisor_whatsapp_number */
     public static function supervisorWhatsappDigits(): string
     {
         $raw = self::get('student_supervisor_whatsapp_number', '');
 
         return preg_replace('/\D/', '', (string) $raw);
+    }
+
+    /** هل يظهر زر واتساب قسم الإشراف للطالب؟ */
+    public static function supervisorWhatsappButtonEnabled(): bool
+    {
+        return (bool) self::get('student_supervisor_whatsapp_button_enabled', true);
+    }
+
+    /** هل يتوفر رابط واتساب صالح ويجب إظهار الزر؟ */
+    public static function supervisorWhatsappCtaVisible(): bool
+    {
+        return self::supervisorWhatsappButtonEnabled() && self::supervisorWhatsappDigits() !== '';
+    }
+
+    /** نص زر واتساب قسم الإشراف */
+    public static function supervisorWhatsappButtonLabel(): string
+    {
+        $default = 'واتساب قسم الإشراف';
+        $v = self::get('student_supervisor_whatsapp_button_label', $default);
+
+        return is_string($v) && trim($v) !== '' ? trim($v) : $default;
+    }
+
+    /** رسالة التواصل عبر واتساب قسم الإشراف */
+    public static function supervisorWhatsappMessage(): string
+    {
+        $default = 'حتى يتم تفعيل حسابك يرجى التواصل مع قسم الإشراف عبر الواتساب';
+        $v = self::get('student_supervisor_whatsapp_message', $default);
+
+        return is_string($v) && trim($v) !== '' ? trim($v) : $default;
+    }
+
+    /** هل تظهر قيمة الاشتراك في بطاقات الطلبات قيد المراجعة للطالب؟ */
+    public static function studentPendingPurchasePriceVisible(): bool
+    {
+        return (bool) self::get('student_pending_purchase_price_visible', true);
     }
 }
 

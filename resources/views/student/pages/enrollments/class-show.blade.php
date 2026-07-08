@@ -498,7 +498,8 @@
                 if (data.under_review) {
                     setTimeout(function () {
                         showEnrollmentPendingReviewModal(data.message, {
-                            requiresWhatsappFollowup: !!data.requires_whatsapp_followup
+                            requiresWhatsappFollowup: !!data.requires_whatsapp_followup,
+                            className: @json($class->name)
                         });
                     }, 300);
                 } else {
@@ -533,8 +534,8 @@
         const messageEl = document.getElementById('confirmClassEnrollmentModalMessage');
         if (messageEl) {
             if (requiresPayment) {
-                messageEl.innerHTML = 'سيتم إرسال طلب انضمامك لصف <strong>' + className + '</strong> إلى الإدارة للمراجعة. ' +
-                    'بعد الإرسال يمكنك متابعة القبول عبر واتساب المشرفة.';
+                messageEl.innerHTML = 'سيتم إرسال طلب انضمامك لـ <strong>' + className + '</strong> إلى الإدارة للمراجعة. ' +
+                    'بعد الإرسال يمكنك متابعة القبول عبر واتساب قسم الإشراف.';
             } else {
                 messageEl.textContent = 'هل أنت متأكد من طلب الانضمام لجميع مواد صف "' + className + '"؟';
             }
@@ -602,7 +603,8 @@
                 if (data.under_review) {
                     setTimeout(function () {
                         showEnrollmentPendingReviewModal(data.message, {
-                            requiresWhatsappFollowup: !!data.requires_whatsapp_followup
+                            requiresWhatsappFollowup: !!data.requires_whatsapp_followup,
+                            className: className || pendingClassName || @json($class->name)
                         });
                     }, 300);
                 } else {
@@ -740,9 +742,19 @@
 
     function showEnrollmentPendingReviewModal(message, options) {
         options = options || {};
+        var classNameEl = document.getElementById('enrollmentPendingReviewClassName');
+        if (classNameEl) {
+            classNameEl.textContent = options.className || '';
+        }
         var msgEl = document.getElementById('enrollmentPendingReviewModalMessage');
         if (msgEl) {
-            msgEl.textContent = message || 'تم إرسال طلب الانضمام إلى الإدارة للمراجعة، وهو بانتظار القبول.';
+            if (options.className) {
+                msgEl.classList.add('d-none');
+                msgEl.textContent = '';
+            } else {
+                msgEl.classList.remove('d-none');
+                msgEl.textContent = message || 'تم إرسال طلب انضمامك إلى الإدارة للمراجعة، وهو بانتظار القبول.';
+            }
         }
         var whatsappAlertEl = document.getElementById('enrollmentPendingReviewWhatsappAlert');
         if (whatsappAlertEl) {

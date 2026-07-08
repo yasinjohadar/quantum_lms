@@ -28,7 +28,7 @@ class CheckPurchaseAccess
         $user = auth()->user();
 
         if (!$user) {
-            return redirect()->route('login');
+            return redirect()->route('student.login');
         }
 
         // التحقق من الوصول للمادة

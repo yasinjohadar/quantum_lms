@@ -13,7 +13,11 @@
         'otp_message_template' => ['bi-chat-left-text', 'info', 'نص رسالة كود التحقق', 'استخدم {code} للرمز و {expires_in} لوقت الصلاحية بالدقائق', false],
         'otp_provider' => ['bi-send', 'success', 'مزود إرسال كود التحقق', null, false],
         'whatsapp_contact_number' => ['bi-whatsapp', 'success', 'رقم واتساب للتواصل', null, false],
-        'student_supervisor_whatsapp_number' => ['bi-whatsapp', 'success', 'رقم واتساب مشرفة الطلاب', 'يُستخدم في نموذج إتمام الدفع، شريط المشتريات قيد المراجعة، ومودال تأكيد الدفع.', false],
+        'student_supervisor_whatsapp_number' => ['bi-whatsapp', 'success', 'رقم واتساب قسم الإشراف', 'يظهر للطلاب في مودال طلب الانضمام، شريط الطلبات قيد المراجعة، ونموذج الدفع. اتركه فارغاً لإخفاء الزر.', false],
+        'student_supervisor_whatsapp_button_enabled' => ['bi-toggle-on', 'info', 'إظهار زر واتساب قسم الإشراف', 'عند الإيقاف يُخفى الزر حتى لو كان الرقم مضبوطاً.', false],
+        'student_supervisor_whatsapp_button_label' => ['bi-fonts', 'muted', 'نص زر واتساب قسم الإشراف', 'مثال: واتساب قسم الإشراف', false],
+        'student_supervisor_whatsapp_message' => ['bi-chat-left-text', 'warning', 'رسالة واتساب قسم الإشراف', 'تظهر للطالب في مودال تأكيد إرسال طلب الانضمام.', false],
+        'student_pending_purchase_price_visible' => ['bi-cash-coin', 'success', 'إظهار قيمة الاشتراك في الطلبات قيد المراجعة', 'عند الإيقاف تُخفى خانة القيمة من بطاقات طلبات الطالب.', false],
         'whatsapp_float_button_enabled' => ['bi-chat-dots', 'info', 'إظهار أيقونة واتساب العائمة', null, false],
         'contact_address' => ['bi-geo-alt', 'primary', 'العنوان (الفوتر)', null, false],
         'contact_phone' => ['bi-telephone', 'success', 'الهاتف (الفوتر)', null, false],
@@ -146,8 +150,8 @@
                 <textarea class="form-control"
                           name="settings[{{ $setting->key }}]"
                           id="setting_{{ $setting->id }}"
-                          rows="{{ in_array($key, ['payments_iban_student_instructions', 'payments_iban_pending_message'], true) ? 5 : 3 }}"
-                          @if($key === 'otp_message_template') placeholder="مثال: رمز التحقق الخاص بك هو: {code} - صالح لمدة {expires_in} دقائق" @elseif($key === 'payments_iban_student_instructions') placeholder="مثال: أرسل المبلغ من حسابك باسمك الكامل، ثم احفظ رقم العملية..." @elseif($key === 'payments_iban_pending_message') placeholder="مثال: الطلب قيد المعالجة. يجب التواصل مع المشرفة لتأكيد الاشتراك." @endif>{{ $setting->value }}</textarea>
+                          rows="{{ in_array($key, ['payments_iban_student_instructions', 'payments_iban_pending_message', 'student_supervisor_whatsapp_message'], true) ? 5 : 3 }}"
+                          @if($key === 'otp_message_template') placeholder="مثال: رمز التحقق الخاص بك هو: {code} - صالح لمدة {expires_in} دقائق" @elseif($key === 'payments_iban_student_instructions') placeholder="مثال: أرسل المبلغ من حسابك باسمك الكامل، ثم احفظ رقم العملية..." @elseif($key === 'payments_iban_pending_message') placeholder="مثال: الطلب قيد المعالجة. يجب التواصل مع قسم الإشراف لتأكيد الاشتراك." @elseif($key === 'student_supervisor_whatsapp_message') placeholder="مثال: حتى يتم تفعيل حسابك يرجى التواصل مع قسم الإشراف عبر الواتساب" @endif>{{ $setting->value }}</textarea>
             @else
                 <input type="text" class="form-control"
                        name="settings[{{ $setting->key }}]"
