@@ -7,7 +7,7 @@
 @section('content')
     @php
         $user = auth()->user();
-        $isTeacherReviewer = $user->shouldSubmitContentForReview();
+        $isTeacherReviewer = $user->shouldSubmitLessonForReview();
         $lessonMandatoryReview = \App\Models\SystemSetting::lessonMandatoryReviewEnabled();
         $lessonUpdateButtonLabel = (! $user->canReviewContent() && $lessonMandatoryReview)
             ? 'حفظ وإرسال للمراجعة'

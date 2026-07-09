@@ -13,7 +13,7 @@
         $lessonSubject = $lesson->unit?->section?->subject ?? $lesson->section?->subject;
         $lessonSection = $lesson->unit?->section ?? $lesson->section;
         $user = auth()->user();
-        $isTeacher = $user->shouldSubmitContentForReview();
+        $isTeacher = $user->shouldSubmitLessonForReview();
         $statusChipClass = match ($lesson->review_status) {
             \App\Models\Lesson::REVIEW_STATUS_PENDING => 'ls-chip--status-pending',
             \App\Models\Lesson::REVIEW_STATUS_APPROVED => 'ls-chip--status-approved',

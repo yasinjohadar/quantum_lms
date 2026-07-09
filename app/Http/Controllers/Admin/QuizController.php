@@ -14,6 +14,7 @@ use App\Models\SchoolClass;
 use App\Models\Stage;
 use App\Models\Subject;
 use App\Models\SubjectSection;
+use App\Models\SystemSetting;
 use App\Models\Unit;
 use App\Services\QuizExcelQuestionImportService;
 use App\Services\QuizPackQuestionImportService;
@@ -280,20 +281,15 @@ class QuizController extends Controller
             $data['created_by'] = auth()->id();
             $this->syncQuizSubjectFromUnit($data);
 
-            // منطق المراجعة: إذا كان المستخدم معلم وليس مشرف أو مدير
+            // منطق المراجعة
             $user = auth()->user();
-            $isTeacher = $user->shouldSubmitContentForReview();
+            $submitsForReview = $user->shouldSubmitQuizForReview();
 
-            if ($isTeacher) {
-                // خيار التفعيل الواحد: عند تفعيل يُرسل للمراجعة؛ النشر بعد الموافقة
-                if ($request->has('is_active')) {
-                    $data['review_status'] = Quiz::REVIEW_STATUS_PENDING;
-                    $data['submitted_for_review_at'] = now();
-                    $data['is_published'] = false;
-                } else {
-                    $data['review_status'] = Quiz::REVIEW_STATUS_DRAFT;
-                    $data['is_published'] = false;
-                }
+            if ($submitsForReview) {
+                $this->applyTeacherQuizReviewOnCreate($data);
+            } elseif ($user->isQuizContentUploader() && SystemSetting::quizMandatoryReviewEnabled()) {
+                $this->applyTeacherQuizReviewOnCreate($data);
+                $submitsForReview = true;
             } else {
                 // المشرف والمدير: خيار التفعيل الواحد يحدد is_published أيضاً
                 $data['is_published'] = $request->has('is_active');
@@ -348,6 +344,12 @@ class QuizController extends Controller
             // إنشاء الاختبار
             $quiz = Quiz::create($data);
 
+            if ($quiz->review_status === Quiz::REVIEW_STATUS_PENDING && $submitsForReview) {
+                $this->dispatchNotificationSafely(function () use ($quiz, $user) {
+                    $this->staffNotificationService->notifyQuizSubmittedForReview($quiz->fresh(), $user);
+                }, 'quiz_review_submitted', (int) $quiz->id);
+            }
+
             DB::commit();
 
             app(StudentContentNotificationService::class)->notifyIfQuizBecameVisible(
@@ -356,9 +358,14 @@ class QuizController extends Controller
                 auth()->user()
             );
 
+            $submittedForReview = $quiz->review_status === Quiz::REVIEW_STATUS_PENDING && $submitsForReview;
+            $successMessage = $submittedForReview
+                ? 'تم إنشاء الاختبار وإرساله للمراجعة. يمكنك استيراد الأسئلة (Excel / MD / CSV) أو تخطي هذه الخطوة.'
+                : 'تم إنشاء الاختبار. يمكنك استيراد الأسئلة (Excel / MD / CSV) أو تخطي هذه الخطوة.';
+
             return redirect()
                 ->route('admin.quizzes.import-excel.show', $quiz)
-                ->with('success', 'تم إنشاء الاختبار. يمكنك استيراد الأسئلة (Excel / MD / CSV) أو تخطي هذه الخطوة.');
+                ->with('success', $successMessage);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -652,21 +659,16 @@ class QuizController extends Controller
             $data = $request->validated();
             $this->syncQuizSubjectFromUnit($data);
 
-            // منطق المراجعة: إذا كان المستخدم معلم وليس مشرف أو مدير
+            // منطق المراجعة
             $user = auth()->user();
-            $isTeacher = $user->shouldSubmitContentForReview();
+            $submitsForReview = $user->shouldSubmitQuizForReview();
+            $oldReviewStatus = $quiz->review_status;
 
-            if ($isTeacher) {
-                // خيار التفعيل الواحد: عند تفعيل يُرسل للمراجعة؛ النشر بعد الموافقة
-                if ($request->has('is_active')) {
-                    $data['review_status'] = Quiz::REVIEW_STATUS_PENDING;
-                    $data['submitted_for_review_at'] = now();
-                    $data['review_notes'] = null;
-                    $data['is_published'] = false;
-                } else {
-                    $data['review_status'] = Quiz::REVIEW_STATUS_DRAFT;
-                    $data['is_published'] = false;
-                }
+            if ($submitsForReview) {
+                $this->applyTeacherQuizReviewOnUpdate($data, $request, $quiz);
+            } elseif ($user->isQuizContentUploader() && SystemSetting::quizMandatoryReviewEnabled()) {
+                $this->applyTeacherQuizReviewOnUpdate($data, $request, $quiz);
+                $submitsForReview = true;
             } else {
                 // المشرف والمدير: خيار التفعيل الواحد يحدد is_published أيضاً
                 $data['is_published'] = $request->has('is_active');
@@ -715,6 +717,17 @@ class QuizController extends Controller
             }
 
             $quiz->update($data);
+            $quiz->refresh();
+
+            if (
+                $quiz->review_status === Quiz::REVIEW_STATUS_PENDING
+                && $oldReviewStatus !== Quiz::REVIEW_STATUS_PENDING
+                && $submitsForReview
+            ) {
+                $this->dispatchNotificationSafely(function () use ($quiz, $user) {
+                    $this->staffNotificationService->notifyQuizSubmittedForReview($quiz->fresh(), $user);
+                }, 'quiz_review_submitted', (int) $quiz->id);
+            }
 
             DB::commit();
 
@@ -724,7 +737,12 @@ class QuizController extends Controller
                 auth()->user()
             );
 
-            $successMessage = 'تم تحديث الاختبار بنجاح';
+            $submittedForReview = $quiz->review_status === Quiz::REVIEW_STATUS_PENDING
+                && $submitsForReview
+                && $oldReviewStatus !== Quiz::REVIEW_STATUS_PENDING;
+            $successMessage = $submittedForReview
+                ? 'تم تحديث الاختبار وإرساله للمراجعة.'
+                : 'تم تحديث الاختبار بنجاح';
             if ($placementAdjusted) {
                 $successMessage .= ' تم تحويل الاختبار إلى «اختبار وحدة» لأن الدرس السابق لا ينتمي للمادة/الوحدة المحددة.';
             }
@@ -1299,10 +1317,10 @@ class QuizController extends Controller
             $quiz = Quiz::findOrFail($id);
             $quizBeforeToggle = clone $quiz;
             $user = auth()->user();
-            $isTeacher = $user->shouldSubmitContentForReview();
+            $submitsForReview = $user->shouldSubmitQuizForReview();
 
-            // إذا كان المستخدم معلم، لا يمكنه النشر مباشرة
-            if ($isTeacher) {
+            // إذا كان المستخدم معلماً يُرسل للمراجعة، لا يمكنه النشر مباشرة
+            if ($submitsForReview) {
                 return redirect()->back()->with('error', 'يجب إرسال الاختبار للمراجعة أولاً. لا يمكنك النشر مباشرة.');
             }
 
@@ -1452,8 +1470,8 @@ class QuizController extends Controller
             $quiz = Quiz::findOrFail($id);
             $user = auth()->user();
 
-            // التحقق من أن المستخدم معلم
-            if (! $user->shouldSubmitContentForReview()) {
+            // التحقق من أن المستخدم يملك صلاحية الإرسال للمراجعة
+            if (! $user->shouldSubmitQuizForReview()) {
                 abort(403, 'غير مصرح لك بإرسال الاختبار للمراجعة');
             }
 
@@ -1499,6 +1517,12 @@ class QuizController extends Controller
             $user = auth()->user();
             if (! $user->canReviewContent()) {
                 abort(403, 'غير مصرح لك بالموافقة على نشر الاختبار');
+            }
+
+            $this->assertSupervisorCanReviewQuiz($quiz);
+
+            if ($quiz->review_status !== Quiz::REVIEW_STATUS_PENDING) {
+                return redirect()->back()->with('error', 'لا يمكن الموافقة على اختبار ليس قيد المراجعة.');
             }
 
             // التحقق من وجود أسئلة
@@ -1550,6 +1574,12 @@ class QuizController extends Controller
             $user = auth()->user();
             if (! $user->canReviewContent()) {
                 abort(403, 'غير مصرح لك برفض نشر الاختبار');
+            }
+
+            $this->assertSupervisorCanReviewQuiz($quiz);
+
+            if ($quiz->review_status !== Quiz::REVIEW_STATUS_PENDING) {
+                return redirect()->back()->with('error', 'لا يمكن رفض اختبار ليس قيد المراجعة.');
             }
 
             $quiz->update([
@@ -1715,6 +1745,102 @@ class QuizController extends Controller
         if (! $user->isAssignedToSubject($quiz->subject_id) &&
             (! $classId || ! $user->isAssignedToClass($classId))) {
             abort(403, 'غير مصرح لك بالوصول إلى هذا الاختبار');
+        }
+    }
+
+    protected function assertSupervisorCanReviewQuiz(Quiz $quiz): void
+    {
+        $user = auth()->user();
+
+        if ($user->isPlatformAdmin() || ! $user->usesSupervisorAssignmentScope()) {
+            return;
+        }
+
+        if (! $quiz->subject_id) {
+            abort(403, 'غير مصرح لك بمراجعة هذا الاختبار');
+        }
+
+        $allowed = Quiz::query()
+            ->forSupervisor($user->id)
+            ->where('id', $quiz->id)
+            ->exists();
+
+        if (! $allowed) {
+            abort(403, 'غير مصرح لك بمراجعة هذا الاختبار');
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function applyTeacherQuizReviewOnCreate(array &$data): void
+    {
+        if (SystemSetting::quizMandatoryReviewEnabled()) {
+            $data['review_status'] = Quiz::REVIEW_STATUS_PENDING;
+            $data['is_active'] = false;
+            $data['is_published'] = false;
+            $data['submitted_for_review_at'] = now();
+
+            return;
+        }
+
+        if (request()->has('is_active')) {
+            $data['review_status'] = Quiz::REVIEW_STATUS_PENDING;
+            $data['submitted_for_review_at'] = now();
+            $data['is_published'] = false;
+            $data['is_active'] = false;
+        } else {
+            $data['review_status'] = Quiz::REVIEW_STATUS_DRAFT;
+            $data['is_published'] = false;
+            $data['is_active'] = false;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function applyTeacherQuizReviewOnUpdate(array &$data, Request $request, Quiz $quiz): void
+    {
+        if (SystemSetting::quizMandatoryReviewEnabled()) {
+            $wasPending = $quiz->review_status === Quiz::REVIEW_STATUS_PENDING;
+            $data['review_status'] = Quiz::REVIEW_STATUS_PENDING;
+            $data['is_active'] = false;
+            $data['is_published'] = false;
+            $data['submitted_for_review_at'] = now();
+            if (! $wasPending) {
+                $data['review_notes'] = null;
+            }
+
+            return;
+        }
+
+        if ($request->has('is_active') && in_array($quiz->review_status, [Quiz::REVIEW_STATUS_PENDING, Quiz::REVIEW_STATUS_REJECTED], true)) {
+            $data['review_status'] = Quiz::REVIEW_STATUS_PENDING;
+            $data['submitted_for_review_at'] = now();
+            $data['review_notes'] = null;
+            $data['is_published'] = false;
+            $data['is_active'] = false;
+        } elseif ($request->has('is_active')) {
+            $data['review_status'] = Quiz::REVIEW_STATUS_PENDING;
+            $data['submitted_for_review_at'] = now();
+            $data['is_published'] = false;
+            $data['is_active'] = false;
+        } else {
+            $data['review_status'] = Quiz::REVIEW_STATUS_DRAFT;
+            $data['is_published'] = false;
+            $data['is_active'] = false;
+        }
+    }
+
+    private function dispatchNotificationSafely(callable $callback, string $context, int $quizId): void
+    {
+        try {
+            $callback();
+        } catch (\Throwable $e) {
+            Log::error('Quiz notification dispatch failed: '.$e->getMessage(), [
+                'context' => $context,
+                'quiz_id' => $quizId,
+            ]);
         }
     }
 }

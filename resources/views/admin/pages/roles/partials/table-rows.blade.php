@@ -26,6 +26,11 @@
         </td>
         <td>
             <div class="row-action-bar">
+                @can('role-list')
+                    <a href="{{ route('roles.granted-permissions', $role->id) }}" class="row-action-btn" title="عرض الصلاحيات الممنوحة">
+                        <i class="bi bi-eye"></i>
+                    </a>
+                @endcan
                 @can('role-edit')
                     <a href="{{ route('roles.edit', $role->id) }}" class="row-action-btn row-action-btn--primary" title="تعديل الدور">
                         <i class="bi bi-pencil"></i>

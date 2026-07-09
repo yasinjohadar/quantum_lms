@@ -3,15 +3,10 @@
     $fieldId = $fieldId ?? 'lessonReview';
     $isEdit = $isEdit ?? false;
     $lesson = $lesson ?? null;
+    $isContentUploader = auth()->user()->isLessonContentUploader();
 @endphp
 
-@if(auth()->user()->canReviewContent())
-    <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" name="is_active" id="{{ $fieldId }}"
-            {{ ($isEdit ? ($lesson->is_active ?? false) : true) ? 'checked' : '' }}>
-        <label class="form-check-label" for="{{ $fieldId }}">الدرس نشط</label>
-    </div>
-@elseif($mandatoryReview)
+@if($mandatoryReview && $isContentUploader)
     @if($isEdit && $lesson)
         <div class="mb-2">
             <label class="form-label small">حالة المراجعة:</label>
@@ -39,7 +34,13 @@
             سيُرسل هذا الدرس تلقائياً للمشرف المسؤول عن الصف والمادة. لن يظهر للطلاب حتى تتم الموافقة.
         @endif
     </div>
-@else
+@elseif(auth()->user()->canReviewContent())
+    <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" name="is_active" id="{{ $fieldId }}"
+            {{ ($isEdit ? ($lesson->is_active ?? false) : true) ? 'checked' : '' }}>
+        <label class="form-check-label" for="{{ $fieldId }}">الدرس نشط</label>
+    </div>
+@elseif($isContentUploader)
     @if($isEdit && $lesson)
         <div class="mb-2">
             <label class="form-label small">حالة المراجعة:</label>
@@ -75,4 +76,10 @@
         </div>
         <small class="text-muted d-block mt-1">سيتم إرسال الدرس للمشرف للمراجعة والموافقة</small>
     @endif
+@else
+    <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" name="is_active" id="{{ $fieldId }}"
+            {{ old('is_active', $isEdit ? ($lesson->is_active ?? false) : false) ? 'checked' : '' }}>
+        <label class="form-check-label" for="{{ $fieldId }}">الدرس نشط</label>
+    </div>
 @endif

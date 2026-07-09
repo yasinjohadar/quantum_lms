@@ -11,7 +11,8 @@
 @section('content')
     @php
         $user = auth()->user();
-        $isTeacher = $user->shouldSubmitContentForReview();
+        $submitsForReview = $user->shouldSubmitQuizForReview();
+        $canReview = $user->canReviewContent();
         $reviewBadgeClass = match ($quiz->review_status) {
             \App\Models\Quiz::REVIEW_STATUS_PENDING => 'ls-review-badge--warning',
             \App\Models\Quiz::REVIEW_STATUS_APPROVED => 'ls-review-badge--success',
@@ -126,7 +127,7 @@
                 </div>
             </div>
 
-            @if(!$isTeacher && $quiz->review_status === \App\Models\Quiz::REVIEW_STATUS_PENDING)
+            @if($canReview && $quiz->review_status === \App\Models\Quiz::REVIEW_STATUS_PENDING)
                 <div class="qs-review-bar">
                     <div class="qs-review-bar__text">
                         <i class="bi bi-hourglass-split me-1"></i>
@@ -286,7 +287,7 @@
                                 </div>
                             @endif
 
-                            @if($isTeacher && in_array($quiz->review_status, [\App\Models\Quiz::REVIEW_STATUS_DRAFT, \App\Models\Quiz::REVIEW_STATUS_REJECTED]))
+                            @if($submitsForReview && in_array($quiz->review_status, [\App\Models\Quiz::REVIEW_STATUS_DRAFT, \App\Models\Quiz::REVIEW_STATUS_REJECTED]))
                                 @can('quiz-submit-for-review')
                                     <form action="{{ route('admin.quizzes.submit-for-review', $quiz->id) }}" method="POST" class="mt-3">
                                         @csrf
@@ -298,7 +299,7 @@
                                 @endcan
                             @endif
 
-                            @if(!$isTeacher && $quiz->review_status === \App\Models\Quiz::REVIEW_STATUS_PENDING)
+                            @if($canReview && $quiz->review_status === \App\Models\Quiz::REVIEW_STATUS_PENDING)
                                 @canany(['quiz-approve-review', 'quiz-reject-review'])
                                     <div class="d-flex flex-wrap justify-content-center gap-2 mt-3">
                                         @can('quiz-approve-review')
@@ -570,7 +571,7 @@
             </div>
 
             {{-- Modal الموافقة --}}
-            @if(!$isTeacher && $quiz->review_status === \App\Models\Quiz::REVIEW_STATUS_PENDING)
+            @if($canReview && $quiz->review_status === \App\Models\Quiz::REVIEW_STATUS_PENDING)
                 @can('quiz-approve-review')
                     <div class="modal fade" id="approveModal" tabindex="-1">
                         <div class="modal-dialog">

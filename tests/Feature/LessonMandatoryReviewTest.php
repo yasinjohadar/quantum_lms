@@ -105,14 +105,14 @@ function createReviewerUser(): User
     return $reviewer;
 }
 
-function lessonPayload(): array
+function lessonPayload(array $overrides = []): array
 {
-    return [
+    return array_merge([
         'title' => 'درس اختبار',
         'video_type' => 'youtube',
         'video_url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
         'description' => 'وصف الدرس',
-    ];
+    ], $overrides);
 }
 
 test('mandatory review setting forces teacher lesson create into pending review', function () {
@@ -241,6 +241,46 @@ test('mandatory review re-submits approved lesson when teacher updates', functio
     $lesson->refresh();
     expect($lesson->review_status)->toBe(Lesson::REVIEW_STATUS_PENDING);
     expect($lesson->is_active)->toBeFalse();
+});
+
+test('mandatory review applies to user with lesson-create without teacher staff profile', function () {
+    seedLessonReviewPermissions();
+    SystemSetting::set('content_lesson_mandatory_review', '1', 'boolean', 'general');
+
+    ['unit' => $unit] = createLessonReviewCurriculum();
+
+    $role = Role::updateOrCreate(
+        ['name' => 'lesson-creator-general', 'guard_name' => 'web'],
+        ['dashboard_type' => 'admin', 'staff_profile' => 'none']
+    );
+    $role->syncPermissions(['lesson-create', 'lesson-edit']);
+
+    $creator = User::factory()->create(['is_active' => true]);
+    $creator->assignRole($role);
+
+    expect($creator->shouldSubmitLessonForReview())->toBeTrue();
+
+    $this->actingAs($creator)->post(route('admin.units.lessons.store', $unit), array_merge(lessonPayload([
+        'title' => 'درس بصلاحية عامة',
+    ]), [
+        'is_active' => '1',
+    ]));
+
+    $lesson = Lesson::where('title', 'درس بصلاحية عامة')->first();
+    expect($lesson)->not->toBeNull();
+    expect($lesson->review_status)->toBe(Lesson::REVIEW_STATUS_PENDING);
+    expect($lesson->is_active)->toBeFalse();
+});
+
+test('shouldSubmitLessonForReview uses create permission and excludes reviewers', function () {
+    seedLessonReviewPermissions();
+
+    $teacher = createTeacherUser();
+    expect($teacher->shouldSubmitLessonForReview())->toBeTrue();
+
+    $reviewer = createReviewerUser();
+    expect($reviewer->shouldSubmitLessonForReview())->toBeFalse();
+    expect($reviewer->canReviewContent())->toBeTrue();
 });
 
 test('admin can toggle mandatory review setting', function () {

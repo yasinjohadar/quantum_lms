@@ -75,8 +75,9 @@ Route::middleware(['auth', 'check.user.active', 'admin'])->group(function () {
     Route::post('users/quick-student', [UserController::class, 'storeQuickStudent'])->name('users.store-quick-student');
     Route::resource('users', UserController::class);
     Route::get('users/{user}/login-logs', [UserController::class, 'loginLogs'])->name('users.login-logs');
-    Route::resource('roles', RoleController::class);
     Route::get('roles/search-permissions', [RoleController::class, 'searchPermissions'])->name('roles.search-permissions');
+    Route::get('roles/{role}/granted-permissions', [RoleController::class, 'grantedPermissions'])->name('roles.granted-permissions');
+    Route::resource('roles', RoleController::class);
     Route::put('users/{user}/change-password', [UserController::class, 'updatePassword'])->name('users.update-password');
     Route::patch('users/{user}/subscription-expires', [UserController::class, 'updateSubscriptionExpires'])->name('users.update-subscription-expires');
     Route::post('users/detach-from-class', [UserController::class, 'detachFromClass'])->name('users.detach-from-class');

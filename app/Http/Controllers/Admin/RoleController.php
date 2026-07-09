@@ -14,7 +14,7 @@ class RoleController extends Controller
     public function __construct()
     {
         // يمكنه فقط رؤية قائمة الصلاحيات (index)
-        $this->middleware(['permission:role-list'])->only('index');
+        $this->middleware(['permission:role-list'])->only(['index', 'grantedPermissions']);
 
         // يمكنه فقط إنشاء صلاحية جديدة (create + store)
         $this->middleware(['permission:role-create'])->only(['create', 'store']);
@@ -40,6 +40,7 @@ class RoleController extends Controller
     private function categorizePermissions($permissions)
     {
         $categories = [
+            'مراجعة المحتوى والنشر' => ['review-queue-', 'review-comment-'],
             'إدارة الصفوف' => ['class-'],
             'إدارة المراحل' => ['stage-'],
             'إدارة المواد الدراسية' => ['subject-'],
@@ -107,6 +108,37 @@ class RoleController extends Controller
             });
         }
 
+        $reviewWorkflowNames = [
+            'lesson-submit-for-review',
+            'lesson-approve-review',
+            'lesson-reject-review',
+            'quiz-submit-for-review',
+            'quiz-approve-review',
+            'quiz-reject-review',
+        ];
+
+        $reviewWorkflowPermissions = $permissions->filter(
+            fn ($permission) => in_array($permission->name, $reviewWorkflowNames, true)
+        );
+
+        if ($reviewWorkflowPermissions->isNotEmpty()) {
+            $existingReview = $categorized['مراجعة المحتوى والنشر'] ?? collect();
+            $categorized['مراجعة المحتوى والنشر'] = $existingReview
+                ->merge($reviewWorkflowPermissions)
+                ->unique('id')
+                ->values();
+
+            foreach ($categorized as $categoryName => $categoryPermissions) {
+                if ($categoryName === 'مراجعة المحتوى والنشر') {
+                    continue;
+                }
+
+                $categorized[$categoryName] = $categoryPermissions
+                    ->reject(fn ($permission) => in_array($permission->name, $reviewWorkflowNames, true))
+                    ->values();
+            }
+        }
+
         // إضافة فئة "أخرى" للصلاحيات غير المصنفة
         $allCategorized = collect($categorized)->flatten();
         $uncategorized = $permissions->diff($allCategorized);
@@ -145,6 +177,7 @@ class RoleController extends Controller
     {
         return [
             'إدارة الصفوف' => 'academic',
+            'مراجعة المحتوى والنشر' => 'academic',
             'إدارة المراحل' => 'academic',
             'إدارة المواد الدراسية' => 'academic',
             'إدارة أقسام المواد' => 'academic',
@@ -289,6 +322,23 @@ class RoleController extends Controller
      * Display the specified resource.
      */
     public function show(string $id) {}
+
+    /**
+     * عرض الصلاحيات الممنوحة للدور فقط (قراءة).
+     */
+    public function grantedPermissions(string $role)
+    {
+        $role = Role::with('permissions')->findOrFail($role);
+        $grantedPermissions = $role->permissions->sortBy('name')->values();
+        $categorizedPermissions = $this->categorizePermissions($grantedPermissions);
+        $permissionTabs = $this->tabbedCategorizedPermissions($categorizedPermissions);
+
+        return view('admin.pages.roles.granted-permissions', compact(
+            'role',
+            'permissionTabs',
+            'grantedPermissions'
+        ));
+    }
 
     /**
      * Show the form for editing the specified resource.

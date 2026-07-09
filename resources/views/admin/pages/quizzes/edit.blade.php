@@ -200,65 +200,53 @@
                     </div>
                     <div class="card-body">
                         @php
-                            $user = auth()->user();
-                            $isTeacher = $user->shouldSubmitContentForReview();
+                            $quizMandatoryReview = \App\Models\SystemSetting::quizMandatoryReviewEnabled();
+                            $submitsForReview = auth()->user()->shouldSubmitQuizForReview();
+                            $canReview = auth()->user()->canReviewContent();
                         @endphp
-                        <div class="form-check form-switch mb-3">
-                            <input class="form-check-input" type="checkbox" name="is_active" 
-                                   id="isActive" {{ (old('is_active', $quiz->is_active) || $quiz->is_published) ? 'checked' : '' }}>
-                            <label class="form-check-label" for="isActive">تفعيل الاختبار</label>
-                        </div>
-                        {{-- حالة المراجعة --}}
-                        <div class="mb-3">
-                            <label class="form-label">حالة المراجعة</label>
-                            <div>
-                                <span class="badge bg-{{ $quiz->review_status_color }}">
-                                    {{ $quiz->review_status_name }}
-                                </span>
+                        @include('admin.pages.quizzes.partials.quiz-review-teacher-fields', [
+                            'mandatoryReview' => $quizMandatoryReview,
+                            'fieldId' => 'quizEditReview',
+                            'isEdit' => true,
+                            'quiz' => $quiz,
+                        ])
+
+                        @if($quiz->reviewed_at)
+                            <div class="mb-3">
+                                <small class="text-muted">
+                                    مراجع من: {{ $quiz->reviewer->name ?? 'غير معروف' }}
+                                    في {{ $quiz->reviewed_at->format('Y-m-d H:i') }}
+                                </small>
                             </div>
-                            @if($quiz->review_notes)
-                                <div class="mt-2">
-                                    <small class="text-muted"><strong>ملاحظات المراجعة:</strong></small>
-                                    <p class="mb-0 small">{{ $quiz->review_notes }}</p>
-                                </div>
-                            @endif
-                            @if($quiz->reviewed_at)
-                                <div class="mt-1">
-                                    <small class="text-muted">
-                                        مراجع من: {{ $quiz->reviewer->name ?? 'غير معروف' }} 
-                                        في {{ $quiz->reviewed_at->format('Y-m-d H:i') }}
-                                    </small>
-                                </div>
-                            @endif
-                        </div>
-                        
-                        {{-- أزرار المراجعة للمعلم --}}
-                        @if($isTeacher && in_array($quiz->review_status, [\App\Models\Quiz::REVIEW_STATUS_DRAFT, \App\Models\Quiz::REVIEW_STATUS_REJECTED]))
+                        @endif
+
+                        {{-- أزرار المراجعة للمعلم (بعد الإنشاء وعند وجود أسئلة) --}}
+                        @if($submitsForReview && in_array($quiz->review_status, [\App\Models\Quiz::REVIEW_STATUS_DRAFT, \App\Models\Quiz::REVIEW_STATUS_REJECTED]))
                             <div class="mb-3">
                                 <form action="{{ route('admin.quizzes.submit-for-review', $quiz->id) }}" method="POST" class="d-inline">
                                     @csrf
-                                    <button type="submit" class="btn btn-warning btn-sm w-100" 
+                                    <button type="submit" class="btn btn-warning btn-sm w-100"
                                             onclick="return confirm('هل أنت متأكد من إرسال الاختبار للمراجعة؟')">
                                         <i class="bi bi-send me-1"></i> إرسال للمراجعة
                                     </button>
                                 </form>
                             </div>
                         @endif
-                        
+
                         {{-- أزرار المراجعة للمشرف/الأدمن --}}
-                        @if(!$isTeacher && $quiz->review_status === \App\Models\Quiz::REVIEW_STATUS_PENDING)
+                        @if($canReview && $quiz->review_status === \App\Models\Quiz::REVIEW_STATUS_PENDING)
                             <div class="mb-3">
-                                <button type="button" class="btn btn-success btn-sm w-100 mb-2" 
+                                <button type="button" class="btn btn-success btn-sm w-100 mb-2"
                                         data-bs-toggle="modal" data-bs-target="#approveModal">
                                     <i class="bi bi-check-circle me-1"></i> الموافقة على النشر
                                 </button>
-                                <button type="button" class="btn btn-danger btn-sm w-100" 
+                                <button type="button" class="btn btn-danger btn-sm w-100"
                                         data-bs-toggle="modal" data-bs-target="#rejectModal">
                                     <i class="bi bi-x-circle me-1"></i> رفض النشر
                                 </button>
                             </div>
                         @endif
-                        
+
                         <div class="mb-3">
                             <label class="form-label">ترتيب العرض</label>
                             <input type="number" name="order" class="form-control" 
@@ -268,7 +256,7 @@
                 </div>
                 
                 {{-- Modal الموافقة --}}
-                @if(!$isTeacher && $quiz->review_status === \App\Models\Quiz::REVIEW_STATUS_PENDING)
+                @if($canReview && $quiz->review_status === \App\Models\Quiz::REVIEW_STATUS_PENDING)
                     <div class="modal fade" id="approveModal" tabindex="-1">
                         <div class="modal-dialog">
                             <div class="modal-content">

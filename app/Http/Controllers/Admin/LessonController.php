@@ -404,9 +404,12 @@ class LessonController extends Controller
                 }
             }
 
-            $isTeacher = $user->shouldSubmitContentForReview();
+            $isTeacher = $user->shouldSubmitLessonForReview();
             if ($isTeacher) {
                 $this->applyTeacherLessonReviewOnCreate($data);
+            } elseif ($user->isLessonContentUploader() && SystemSetting::lessonMandatoryReviewEnabled()) {
+                $this->applyTeacherLessonReviewOnCreate($data);
+                $isTeacher = true;
             } else {
                 $data['is_active'] = $request->has('is_active');
                 $data['review_status'] = $data['is_active']
@@ -483,7 +486,7 @@ class LessonController extends Controller
                 }
             }
 
-            if ($lesson->review_status === Lesson::REVIEW_STATUS_PENDING && $user->shouldSubmitContentForReview()) {
+            if ($lesson->review_status === Lesson::REVIEW_STATUS_PENDING && $user->shouldSubmitLessonForReview()) {
                 $this->dispatchNotificationSafely(function () use ($lesson, $user) {
                     app(StaffNotificationService::class)->notifyLessonSubmittedForReview($lesson->fresh(), $user);
                 }, 'lesson_review_submitted', $lesson->id);
@@ -601,10 +604,13 @@ class LessonController extends Controller
             $data['is_preview'] = $request->has('is_preview');
 
             $oldReviewStatus = $lesson->review_status;
-            $isTeacher = $user->shouldSubmitContentForReview();
+            $isTeacher = $user->shouldSubmitLessonForReview();
 
             if ($isTeacher) {
                 $this->applyTeacherLessonReviewOnUpdate($data, $request, $lesson);
+            } elseif ($user->isLessonContentUploader() && SystemSetting::lessonMandatoryReviewEnabled()) {
+                $this->applyTeacherLessonReviewOnUpdate($data, $request, $lesson);
+                $isTeacher = true;
             } else {
                 // المشرف والمدير
                 $data['is_active'] = $request->has('is_active');
@@ -658,7 +664,7 @@ class LessonController extends Controller
             if (
                 $lesson->review_status === Lesson::REVIEW_STATUS_PENDING
                 && $oldReviewStatus !== Lesson::REVIEW_STATUS_PENDING
-                && $user->shouldSubmitContentForReview()
+                && $user->shouldSubmitLessonForReview()
             ) {
                 $this->dispatchNotificationSafely(function () use ($lesson, $user) {
                     app(StaffNotificationService::class)->notifyLessonSubmittedForReview($lesson->fresh(), $user);

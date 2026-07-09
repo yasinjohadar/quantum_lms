@@ -108,6 +108,9 @@
 @push('header-actions')
 <div class="header-element">
     <div class="d-flex gap-2">
+        <a href="{{ route('roles.granted-permissions', $role->id) }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-eye me-1"></i> عرض الصلاحيات الممنوحة
+        </a>
         <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.history.back()">
             <i class="bi bi-x-lg me-1"></i> إغلاق
         </button>

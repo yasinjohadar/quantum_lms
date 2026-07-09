@@ -129,7 +129,20 @@ class SystemSetting extends Model
     /** هل مراجعة الدروس إلزامية للمعلمين قبل النشر؟ */
     public static function lessonMandatoryReviewEnabled(): bool
     {
-        return (bool) self::get('content_lesson_mandatory_review', false);
+        return self::booleanSetting('content_lesson_mandatory_review', false);
+    }
+
+    /** هل مراجعة الاختبارات إلزامية للمعلمين قبل النشر؟ */
+    public static function quizMandatoryReviewEnabled(): bool
+    {
+        return self::booleanSetting('content_quiz_mandatory_review', false);
+    }
+
+    private static function booleanSetting(string $key, bool $default = false): bool
+    {
+        $value = self::byKey($key)->where('group', 'general')->first()?->value ?? self::get($key, $default);
+
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
     }
 
     /** هل يُطلب رفع وصل التحويل البنكي (IBAN) من الطالب؟ */

@@ -352,22 +352,14 @@
                     </div>
                     <div class="card-body">
                         @php
-                            $user = auth()->user();
-                            $isTeacher = $user->shouldSubmitContentForReview();
+                            $quizMandatoryReview = \App\Models\SystemSetting::quizMandatoryReviewEnabled();
                         @endphp
-                        <div class="form-check form-switch mb-3">
-                            <input class="form-check-input" type="checkbox" name="is_active" 
-                                   id="isActive" {{ old('is_active', true) ? 'checked' : '' }}>
-                            <label class="form-check-label" for="isActive">تفعيل الاختبار</label>
-                            <small class="text-muted d-block">يُنصح بإضافة الأسئلة أولاً ثم التفعيل</small>
-                            <small class="text-muted d-block mt-1">بعد الحفظ يمكنك استيراد الأسئلة (Excel / MD / CSV) أو تخطي الاستيراد</small>
-                        </div>
-                        @if($isTeacher)
-                            <div class="alert alert-info mb-3 small">
-                                <i class="bi bi-info-circle me-2"></i>
-                                النشر للطلاب يتم بعد موافقة المراجعة.
-                            </div>
-                        @endif
+                        @include('admin.pages.quizzes.partials.quiz-review-teacher-fields', [
+                            'mandatoryReview' => $quizMandatoryReview,
+                            'fieldId' => 'quizCreateReview',
+                            'isEdit' => false,
+                        ])
+                        <small class="text-muted d-block mb-3">بعد الحفظ يمكنك استيراد الأسئلة (Excel / MD / CSV) أو تخطي الاستيراد</small>
                         <div class="mb-3">
                             <label class="form-label">ترتيب العرض</label>
                             <input type="number" name="order" class="form-control" 

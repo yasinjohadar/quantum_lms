@@ -107,13 +107,10 @@ class RoleSeeder extends Seeder
         $supervisorRole->syncPermissions($supervisorPermissions);
 
         // دور المعلم (Teacher)
-        $teacherRole = Role::firstOrCreate(['name' => 'teacher', 'guard_name' => 'web']);
-        // تحديث dashboard_type لضمان القيمة الصحيحة (مع حماية في حال عدم وجود العمود)
-        try {
-            $teacherRole->update(['dashboard_type' => 'admin']);
-        } catch (\Exception $e) {
-            // تجاهل الخطأ إذا كان عمود dashboard_type غير موجود بعد
-        }
+        $teacherRole = Role::updateOrCreate(
+            ['name' => 'teacher', 'guard_name' => 'web'],
+            ['dashboard_type' => 'admin', 'staff_profile' => 'teacher']
+        );
         
         $teacherPermissions = [
             // صلاحيات أساسية فقط (Read-only)
@@ -133,6 +130,10 @@ class RoleSeeder extends Seeder
             'review-queue-list',
             'review-queue-lessons',
             'review-queue-quizzes',
+            'lesson-list',
+            'lesson-show',
+            'quiz-list',
+            'quiz-show',
             'lesson-approve-review',
             'lesson-reject-review',
             'quiz-approve-review',
@@ -155,10 +156,10 @@ class RoleSeeder extends Seeder
             'dashboard-view',
         ]);
 
-        $teacherContentUploaderRole = Role::firstOrCreate([
-            'name' => 'teacher-content-uploader',
-            'guard_name' => 'web',
-        ]);
+        $teacherContentUploaderRole = Role::updateOrCreate(
+            ['name' => 'teacher-content-uploader', 'guard_name' => 'web'],
+            ['dashboard_type' => 'admin', 'staff_profile' => 'teacher']
+        );
         $teacherContentUploaderRole->syncPermissions([
             'unit-create',
             'unit-edit',
@@ -208,10 +209,10 @@ class RoleSeeder extends Seeder
             'dashboard-view',
         ]);
 
-        $teacherAssistantRole = Role::firstOrCreate([
-            'name' => 'teacher-assistant',
-            'guard_name' => 'web',
-        ]);
+        $teacherAssistantRole = Role::updateOrCreate(
+            ['name' => 'teacher-assistant', 'guard_name' => 'web'],
+            ['dashboard_type' => 'admin', 'staff_profile' => 'teacher']
+        );
         $teacherAssistantRole->syncPermissions([
             'class-list',
             'class-show',
@@ -234,10 +235,10 @@ class RoleSeeder extends Seeder
             'dashboard-view',
         ]);
 
-        $teacherQuizFollowupRole = Role::firstOrCreate([
-            'name' => 'teacher-quiz-followup',
-            'guard_name' => 'web',
-        ]);
+        $teacherQuizFollowupRole = Role::updateOrCreate(
+            ['name' => 'teacher-quiz-followup', 'guard_name' => 'web'],
+            ['dashboard_type' => 'admin', 'staff_profile' => 'teacher']
+        );
         $teacherQuizFollowupRole->syncPermissions([
             'quiz-attempt-list',
             'quiz-attempt-show',

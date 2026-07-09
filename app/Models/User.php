@@ -803,9 +803,53 @@ class User extends Authenticatable
         ]);
     }
 
+    public function isLessonContentUploader(): bool
+    {
+        if ($this->isPlatformAdmin() || $this->usesSupervisorAssignmentScope()) {
+            return false;
+        }
+
+        return $this->usesTeacherAssignmentScope() || $this->can('lesson-create');
+    }
+
+    public function isQuizContentUploader(): bool
+    {
+        if ($this->isPlatformAdmin() || $this->usesSupervisorAssignmentScope()) {
+            return false;
+        }
+
+        return $this->usesTeacherAssignmentScope() || $this->can('quiz-create');
+    }
+
+    public function shouldSubmitLessonForReview(): bool
+    {
+        if (! $this->isLessonContentUploader()) {
+            return false;
+        }
+
+        if (SystemSetting::lessonMandatoryReviewEnabled()) {
+            return true;
+        }
+
+        return ! $this->canReviewContent();
+    }
+
     public function shouldSubmitContentForReview(): bool
     {
-        return $this->usesTeacherAssignmentScope() && ! $this->canReviewContent();
+        return $this->shouldSubmitLessonForReview();
+    }
+
+    public function shouldSubmitQuizForReview(): bool
+    {
+        if (! $this->isQuizContentUploader()) {
+            return false;
+        }
+
+        if (SystemSetting::quizMandatoryReviewEnabled()) {
+            return true;
+        }
+
+        return ! $this->canReviewContent();
     }
 
     public function canManageTeacherAssignments(): bool
