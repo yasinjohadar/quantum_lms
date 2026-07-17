@@ -23,6 +23,7 @@
     <meta name="keywords" content=" لوحة التحكم">
 
     @include('student.layouts.head')
+    <link rel="stylesheet" href="{{ asset('assets/libs/katex/katex.min.css') }}?v=0.16.11">
 </head>
 
 <body>
@@ -58,6 +59,11 @@
     </div>
     @include('student.layouts.footer-scripts')
 
+    {{-- ضمان KaTeX على صفحات الاختبارات حتى لو فشل @push --}}
+    <script src="{{ asset('assets/libs/katex/katex.min.js') }}?v=0.16.11"></script>
+    <script src="{{ asset('assets/libs/katex/contrib/mhchem.min.js') }}?v=0.16.11"></script>
+    <script src="{{ asset('assets/libs/katex/contrib/auto-render.min.js') }}?v=0.16.11"></script>
+    <script src="{{ asset('assets/js/question-math-katex.js') }}?v=20260717d"></script>
 
 </body>
 

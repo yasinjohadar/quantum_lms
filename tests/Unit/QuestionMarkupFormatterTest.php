@@ -390,6 +390,29 @@ test('normalizes bare f(x) equals frac in arabic stem as single math fragment', 
         ->not->toContain('question-inline-code');
 });
 
+test('formats induction sequence stem with braces and inequalities', function () {
+    $input = 'لتكن المتتالية {u_{n+1}} = \sqrt{2 + u_n} مع {u_0} = 1. أثبت بالتدريج أن u_n < 2 لجميع n \geq 0.';
+
+    $formatted = QuestionMarkupFormatter::format($input);
+
+    expect($formatted)
+        ->toContain('question-math-fragment')
+        ->toContain('\\sqrt{2 + u_n}')
+        ->toContain('\\lt')
+        ->toContain('\\geq')
+        ->not->toContain('u_n < 2')
+        ->not->toContain('{u_{n+1}}');
+});
+
+test('html-safe math converts less-than inside fragments', function () {
+    $formatted = QuestionMarkupFormatter::format('نبدأ من الفرض $u_p < 2$ ثم نضيف 2');
+
+    expect($formatted)
+        ->toContain('question-math-fragment')
+        ->toContain('\\lt')
+        ->not->toContain('u_p < 2');
+});
+
 test('looks like math expression detects subscript difference', function () {
     expect(QuestionMarkupFormatter::looksLikeMathExpression('u_{n+1} - u_n'))->toBeTrue();
     expect(QuestionMarkupFormatter::looksLikeMathExpression('= 9 / [(n+5)(n+4)]'))->toBeTrue();

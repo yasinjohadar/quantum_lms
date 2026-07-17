@@ -45,6 +45,7 @@ class QuestionMarkupFormatter
         $text = trim(self::normalizeStoredText($text));
         $text = self::softenImportedHtml($text);
         $text = self::convertMathBackticks($text);
+        $text = self::convertBraceWrappedMathOutsideDelimiters($text);
         $text = self::convertUnicodeMathOutsideDelimiters($text);
         $text = self::normalizePseudoMath($text);
         $text = self::extractInlinePseudoMathInArabicText($text);
@@ -621,16 +622,61 @@ class QuestionMarkupFormatter
         $segment = trim($segment);
 
         if (preg_match('/^\$\$([\s\S]+?)\$\$$/u', $segment, $matches)) {
-            $segment = '\\['.trim($matches[1]).'\\]';
+            $segment = '\\['.self::htmlSafeMathInner(trim($matches[1])).'\\]';
         } elseif (preg_match('/^\\\\\(([\s\S]+?)\\\\\)$/u', $segment, $matches)) {
-            $segment = '\\('.trim($matches[1]).'\\)';
+            $segment = '\\('.self::htmlSafeMathInner(trim($matches[1])).'\\)';
         } elseif (preg_match('/^\\\\\[([\s\S]+?)\\\\\]$/u', $segment, $matches)) {
-            $segment = '\\['.trim($matches[1]).'\\]';
+            $segment = '\\['.self::htmlSafeMathInner(trim($matches[1])).'\\]';
         } elseif (preg_match('/^\$(.+)\$$/us', $segment, $matches)) {
-            $segment = '\\('.trim($matches[1]).'\\)';
+            $segment = '\\('.self::htmlSafeMathInner(trim($matches[1])).'\\)';
+        } else {
+            $segment = self::htmlSafeMathInner($segment);
         }
 
         return '<span class="question-math-fragment">'.$segment.'</span>';
+    }
+
+    /**
+     * تحويل < و > داخل LaTeX حتى لا يكسر المتصفح innerHTML (مهم لـ u_p < 2).
+     */
+    private static function htmlSafeMathInner(string $inner): string
+    {
+        $inner = self::stripRedundantMathBraces($inner);
+        // لا تلمس أوامر LaTeX مثل \langle
+        $inner = preg_replace('/(?<!\\\\)</u', '\\lt ', $inner) ?? $inner;
+        $inner = preg_replace('/(?<!\\\\)>/u', '\\gt ', $inner) ?? $inner;
+        $inner = preg_replace('/\s+/u', ' ', $inner) ?? $inner;
+
+        return trim($inner);
+    }
+
+    /**
+     * {u_{n+1}} → u_{n+1} عندما يغلف التعبير بالكامل — دون لمس \frac{a}{b} أو \mathbb{R}.
+     */
+    private static function stripRedundantMathBraces(string $inner): string
+    {
+        $inner = trim($inner);
+
+        if (! preg_match('/^\{([^{}]*(?:\{[^}]*\}[^{}]*)*)\}$/u', $inner, $matches)) {
+            return $inner;
+        }
+
+        $candidate = trim($matches[1]);
+        if ($candidate === '') {
+            return $inner;
+        }
+
+        // لا تزل غلافاً هو عملياً وسيط أمر LaTeX وحيد مثل {R} بعد أن يُمرَّر خطأً
+        if (preg_match('/^\\\\[a-zA-Z]+$/u', $candidate)) {
+            return $inner;
+        }
+
+        // غلاف NotebookLM: يبدأ بحرف لاتيني (u_{n+1} أو u_0 = 1)
+        if (preg_match('/^[a-zA-Z]/u', $candidate) && self::looksLikeMathExpression($candidate)) {
+            return $candidate;
+        }
+
+        return $inner;
     }
 
     public static function format(?string $text): string
@@ -710,6 +756,7 @@ class QuestionMarkupFormatter
     {
         $text = self::repairBrokenMathDelimiters($text);
         $text = self::convertMathBackticks($text);
+        $text = self::convertBraceWrappedMathOutsideDelimiters($text);
         $text = self::convertUnicodeMathOutsideDelimiters($text);
         $text = self::normalizePseudoMath($text);
         $text = self::extractInlinePseudoMathInArabicText($text);
@@ -787,6 +834,49 @@ class QuestionMarkupFormatter
     }
 
     /**
+     * تحويل أقواس NotebookLM مثل {u_{n+1}} و {u_0 = 1} إلى $...$.
+     * لا يلمس وسيطات أوامر LaTeX مثل \sqrt{...} أو \frac{...}{...}.
+     */
+    private static function convertBraceWrappedMathOutsideDelimiters(string $text): string
+    {
+        if ($text === '' || ! str_contains($text, '{')) {
+            return $text;
+        }
+
+        $parts = preg_split(self::MATH_SEGMENT_PATTERN, $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+        if ($parts === false) {
+            return $text;
+        }
+
+        $output = '';
+        foreach ($parts as $part) {
+            if ($part === '') {
+                continue;
+            }
+            if (preg_match(self::MATH_SEGMENT_PATTERN, $part)) {
+                $output .= $part;
+                continue;
+            }
+
+            // فقط {رمز_بمؤشر} أو {رمز = قيمة} وليس بعد حرف من أمر LaTeX
+            $output .= preg_replace_callback(
+                '/(?<![a-zA-Z])\{([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)(?:\s*=\s*[^{}]*)?|[a-zA-Z]\s*=\s*[^{}]+)\}/u',
+                static function (array $matches): string {
+                    $inner = trim($matches[1]);
+                    if ($inner === '' || ! self::looksLikeMathExpression($inner)) {
+                        return $matches[0];
+                    }
+
+                    return '$'.self::normalizeMathExpression($inner).'$';
+                },
+                $part
+            ) ?? $part;
+        }
+
+        return $output;
+    }
+
+    /**
      * استخراج مقاطع pseudo-LaTeX داخل نص عربي (خارج delimiters).
      */
     private static function extractInlinePseudoMathInArabicText(string $text): string
@@ -826,6 +916,11 @@ class QuestionMarkupFormatter
             '/lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?\\\\infty(?:\s*\\\\frac\{[^}]+\}\{[^}]+\})?/u',
             '/lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?\\\\infty\s*\\\\frac\{[^}]+\}\{[^}]+\}/u',
             '/\([^)]+\)\/\([^)]+\)\s*lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?(?:\\\\infty|∞)/u',
+            // u_{n+1} = \sqrt{...} كوحدة واحدة
+            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\s*=\s*\\\\sqrt\{[^}]+\})/u',
+            // u_n < 2 أو n \geq 0
+            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\s*(?:<|>|<=|>=|\\\\lt|\\\\gt|\\\\leq|\\\\geq|≤|≥)\s*[-+]?\d+)/u',
+            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\s*\\\\(?:geq|leq|neq)\s*[-+]?\d+)/u',
         ];
 
         foreach ($patterns as $pattern) {
@@ -850,8 +945,17 @@ class QuestionMarkupFormatter
     {
         $expr = trim(self::convertPseudoCommands($expr));
         $expr = self::normalizeFractionSlashNotation($expr);
+        $expr = self::stripRedundantMathBraces($expr);
 
         $expr = str_replace(['>=', '<=', '≥', '≤', '≠', '!=', '×'], ['\\geq', '\\leq', '\\geq', '\\leq', '\\neq', '\\neq', '\\cdot'], $expr);
+        $expr = preg_replace('/(?<!\\\\)</u', '\\lt ', $expr) ?? $expr;
+        $expr = preg_replace('/(?<!\\\\)>/u', '\\gt ', $expr) ?? $expr;
+        // {u_{n+1}} داخل تعبير أوسع → u_{n+1} (لا يلمس \sqrt{...})
+        $expr = preg_replace(
+            '/(?<![a-zA-Z\\\\])\{([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+))\}/u',
+            '$1',
+            $expr
+        ) ?? $expr;
         $expr = preg_replace('/(?<=[a-zA-Z0-9\)])\*(?=[a-zA-Z0-9\(])/u', ' \\cdot ', $expr) ?? $expr;
         $expr = preg_replace('/\^(\d+)/u', '^{$1}', $expr) ?? $expr;
         $expr = preg_replace('/\s+/u', ' ', $expr) ?? $expr;
