@@ -1,13 +1,57 @@
 @php
     $showUnit = $showUnit ?? false;
     $showStatus = $showStatus ?? false;
+    $enableBulk = $enableBulk ?? true;
+    $canBulkApprove = $enableBulk && auth()->user()?->can('lesson-approve-review');
     $indexOffset = isset($lessons) ? ($lessons->currentPage() - 1) * $lessons->perPage() : 0;
+    $formId = $formId ?? 'rq-lessons-bulk-form';
 @endphp
+
+@if($canBulkApprove)
+    <form id="{{ $formId }}"
+          method="POST"
+          action="{{ route('admin.review-queue.lessons.bulk-approve') }}"
+          class="rq-bulk-form"
+          data-rq-bulk="lessons">
+        @csrf
+        <input type="hidden" name="approve_all" value="0" data-rq-approve-all>
+
+        <div class="rq-bulk-toolbar mb-3">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <button type="submit"
+                        class="btn btn-sm btn-success"
+                        data-rq-approve-selected
+                        disabled>
+                    <i class="bi bi-check2-square me-1"></i>
+                    قبول المحدد
+                    <span class="badge bg-light text-dark ms-1" data-rq-selected-count>0</span>
+                </button>
+                <button type="submit"
+                        class="btn btn-sm btn-outline-success"
+                        data-rq-approve-all-btn
+                        data-confirm="هل تريد قبول جميع الدروس قيد المراجعة؟">
+                    <i class="bi bi-check-all me-1"></i>
+                    قبول الكل
+                </button>
+                <span class="small text-muted" data-rq-hint>حدّد دروساً ثم اضغط قبول المحدد، أو قبول الكل.</span>
+            </div>
+        </div>
+@endif
+
 <div class="rq-table-wrap">
     <div class="table-responsive">
         <table class="table rq-table align-middle">
             <thead>
                 <tr>
+                    @if($canBulkApprove)
+                        <th style="width: 42px;">
+                            <input type="checkbox"
+                                   class="form-check-input"
+                                   data-rq-select-all
+                                   title="تحديد الكل في الصفحة"
+                                   aria-label="تحديد الكل">
+                        </th>
+                    @endif
                     <th>#</th>
                     <th>عنوان الدرس</th>
                     <th>المادة / الصف</th>
@@ -28,6 +72,15 @@
                         $sectionTitle = $lesson->section?->title ?? $lesson->unit?->section?->title;
                     @endphp
                     <tr>
+                        @if($canBulkApprove)
+                            <td data-label="تحديد">
+                                <input type="checkbox"
+                                       class="form-check-input"
+                                       name="ids[]"
+                                       value="{{ $lesson->id }}"
+                                       data-rq-item>
+                            </td>
+                        @endif
                         <td data-label="#">{{ $loop->iteration + $indexOffset }}</td>
                         <td data-label="عنوان الدرس">
                             <div class="rq-item-title">{{ $lesson->title }}</div>
@@ -87,3 +140,7 @@
         </table>
     </div>
 </div>
+
+@if($canBulkApprove)
+    </form>
+@endif

@@ -1,4 +1,9 @@
-@extends('student.layouts.master')
+@php
+    $isAdminPreview = $isAdminPreview ?? false;
+    $quizLayout = $isAdminPreview ? 'student.layouts.quiz-preview-master' : 'student.layouts.master';
+@endphp
+
+@extends($quizLayout)
 
 @include('partials.question-math-assets')
 
@@ -16,14 +21,21 @@
         <!-- Page Header -->
         <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
             <div>
-                <h4 class="mb-0">نتيجة الاختبار</h4>
+                <h4 class="mb-0">{{ $isAdminPreview ? 'نتيجة المعاينة' : 'نتيجة الاختبار' }}</h4>
                 <p class="mb-0 text-muted">{{ $quiz->title }}</p>
             </div>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('student.quizzes.results') }}">نتائج الاختبارات</a></li>
-                    <li class="breadcrumb-item active">{{ $quiz->title }}</li>
+                    @if($isAdminPreview)
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('admin.quizzes.index') }}">الاختبارات</a></li>
+                        <li class="breadcrumb-item"><a href="{{ $previewReturnUrl ?? route('admin.quizzes.show', $quiz->id) }}">{{ $quiz->title }}</a></li>
+                        <li class="breadcrumb-item active">معاينة</li>
+                    @else
+                        <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('student.quizzes.results') }}">نتائج الاختبارات</a></li>
+                        <li class="breadcrumb-item active">{{ $quiz->title }}</li>
+                    @endif
                 </ol>
             </nav>
         </div>
@@ -36,7 +48,7 @@
                     <div class="card-body py-5">
                         @php
                             $percentage = $attempt->max_score > 0 ? ($attempt->score / $attempt->max_score) * 100 : 0;
-                            $passed = $percentage >= ($quiz->passing_percentage ?? 50);
+                            $passed = $percentage >= ($quiz->pass_percentage ?? $quiz->passing_percentage ?? 50);
                         @endphp
                         
                         <div class="mb-4">
@@ -68,17 +80,28 @@
                             </div>
                         </div>
                         
-                        <div class="d-flex justify-content-center gap-2">
-                            @if($quiz->max_attempts == 0 || $attempt->attempt_number < $quiz->max_attempts)
-                                <a href="{{ route('student.quizzes.start', $quiz->id) }}" class="btn btn-primary">
+                        <div class="d-flex justify-content-center gap-2 flex-wrap">
+                            @if($isAdminPreview)
+                                <a href="{{ route('admin.quizzes.preview', $quiz->id) }}" class="btn btn-primary">
                                     <i class="bi bi-arrow-repeat me-1"></i>
-                                    إعادة الاختبار
+                                    إعادة المعاينة
+                                </a>
+                                <a href="{{ $previewReturnUrl ?? route('admin.quizzes.show', $quiz->id) }}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-right me-1"></i>
+                                    العودة للاختبار
+                                </a>
+                            @else
+                                @if($quiz->max_attempts == 0 || $attempt->attempt_number < $quiz->max_attempts)
+                                    <a href="{{ route('student.quizzes.start', $quiz->id) }}" class="btn btn-primary">
+                                        <i class="bi bi-arrow-repeat me-1"></i>
+                                        إعادة الاختبار
+                                    </a>
+                                @endif
+                                <a href="{{ route('student.quizzes.results') }}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-right me-1"></i>
+                                    العودة للنتائج
                                 </a>
                             @endif
-                            <a href="{{ route('student.quizzes.results') }}" class="btn btn-outline-secondary">
-                                <i class="bi bi-arrow-right me-1"></i>
-                                العودة للنتائج
-                            </a>
                         </div>
                     </div>
                 </div>

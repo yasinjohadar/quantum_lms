@@ -201,7 +201,7 @@ test('quiz submitted for review dispatches staff notification on create', functi
     ]));
 });
 
-test('shouldSubmitQuizForReview uses teacher scope and excludes reviewers', function () {
+test('shouldSubmitQuizForReview applies to uploaders and excludes approve-only reviewers', function () {
     seedQuizReviewPermissions();
 
     $uploader = createQuizUploaderUser();
@@ -218,6 +218,49 @@ test('shouldSubmitQuizForReview uses teacher scope and excludes reviewers', func
 
     expect($reviewer->shouldSubmitQuizForReview())->toBeFalse();
     expect($reviewer->canReviewContent())->toBeTrue();
+});
+
+test('supervisor creating quiz goes to pending review like teacher', function () {
+    seedQuizReviewPermissions();
+    SystemSetting::set('content_quiz_mandatory_review', '1', 'boolean', 'general');
+
+    ['subject' => $subject] = createQuizReviewCurriculum();
+
+    $role = Role::updateOrCreate(
+        ['name' => 'supervisor-quiz-uploader', 'guard_name' => 'web'],
+        ['dashboard_type' => 'admin', 'staff_profile' => 'supervisor']
+    );
+    $role->syncPermissions([
+        'quiz-create',
+        'quiz-edit',
+        'quiz-approve-review',
+        'review-queue-list',
+    ]);
+
+    $supervisor = User::factory()->create(['is_active' => true]);
+    $supervisor->assignRole($role);
+    $supervisor->assignedSubjects()->attach($subject->id, [
+        'assigned_by' => $supervisor->id,
+        'assigned_at' => now(),
+    ]);
+
+    expect($supervisor->usesSupervisorAssignmentScope())->toBeTrue();
+    expect($supervisor->canReviewContent())->toBeTrue();
+    expect($supervisor->isQuizContentUploader())->toBeTrue();
+    expect($supervisor->shouldSubmitQuizForReview())->toBeTrue();
+
+    $this->actingAs($supervisor)->post(route('admin.quizzes.store'), array_merge(quizReviewPayload([
+        'title' => 'اختبار مشرف للمراجعة',
+    ]), [
+        'subject_id' => $subject->id,
+        'is_active' => '1',
+    ]));
+
+    $quiz = Quiz::where('title', 'اختبار مشرف للمراجعة')->first();
+    expect($quiz)->not->toBeNull();
+    expect($quiz->review_status)->toBe(Quiz::REVIEW_STATUS_PENDING);
+    expect($quiz->is_active)->toBeFalse();
+    expect($quiz->is_published)->toBeFalse();
 });
 
 test('mandatory quiz review applies to teacher without quiz-submit-for-review permission', function () {

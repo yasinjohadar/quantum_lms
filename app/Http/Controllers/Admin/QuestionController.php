@@ -569,12 +569,53 @@ class QuestionController extends Controller
      */
     public function mathPreview(Request $request): JsonResponse
     {
+        if ($request->has('rows')) {
+            $request->validate([
+                'rows' => ['required', 'array', 'max:20'],
+                'rows.*.title' => ['nullable', 'string'],
+                'rows.*.content' => ['nullable', 'string'],
+                'rows.*.options' => ['nullable', 'array'],
+                'rows.*.options.*' => ['nullable', 'string'],
+            ]);
+
+            $previews = [];
+            foreach ($request->input('rows', []) as $row) {
+                $titleStored = QuestionMarkupFormatter::normalizeForStorage($row['title'] ?? '');
+                $contentStored = QuestionMarkupFormatter::normalizeForStorage($row['content'] ?? '');
+                $options = [];
+                foreach ($row['options'] ?? [] as $option) {
+                    $stored = QuestionMarkupFormatter::normalizeForStorage(is_string($option) ? $option : '');
+                    $options[] = [
+                        'stored' => $stored,
+                        'html' => format_question_markup($stored),
+                    ];
+                }
+
+                $previews[] = [
+                    'title' => [
+                        'stored' => $titleStored,
+                        'html' => format_question_markup($titleStored),
+                    ],
+                    'content' => [
+                        'stored' => $contentStored,
+                        'html' => format_question_markup($contentStored),
+                    ],
+                    'options' => $options,
+                ];
+            }
+
+            return response()->json(['previews' => $previews]);
+        }
+
         $request->validate([
             'text' => ['nullable', 'string'],
         ]);
 
+        $stored = QuestionMarkupFormatter::normalizeForStorage($request->input('text', ''));
+
         return response()->json([
-            'html' => format_question_markup($request->input('text', '')),
+            'stored' => $stored,
+            'html' => format_question_markup($stored),
         ]);
     }
 
@@ -859,6 +900,22 @@ class QuestionController extends Controller
                     'category' => 'رياضيات',
                     'correct_answer' => 25,
                     'tolerance' => 0,
+                ],
+                [
+                    'type' => 'single_choice',
+                    'title' => 'ليكن $f(x)=\\sqrt{x^{2}+4x+5}$ لماذا يعتبر هذا التابع مستمراً على $\\mathbb{R}$؟',
+                    'content' => 'اكتب المعادلات دائماً داخل $...$ ليظهرها KaTeX كما للطالب',
+                    'difficulty' => 'medium',
+                    'points' => 2,
+                    'category' => 'رياضيات',
+                    'option1' => 'لأنه كثير حدود تحت الجذر ومعرّف على $\\mathbb{R}$',
+                    'option1_correct' => 'true',
+                    'option2' => 'لأنه غير قابل للاشتقاق',
+                    'option2_correct' => 'false',
+                    'option3' => 'لأن مجاله فارغ',
+                    'option3_correct' => 'false',
+                    'option4' => 'لأنه متقطع عند الصفر',
+                    'option4_correct' => 'false',
                 ],
             ];
 

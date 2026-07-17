@@ -5,6 +5,7 @@ namespace App\Services\ExtensionImport;
 use App\Models\Question;
 use App\Models\QuestionOption;
 use App\Models\Unit;
+use App\Support\QuestionMarkupFormatter;
 use Illuminate\Support\Facades\DB;
 
 class ExtensionQuestionPersister
@@ -58,17 +59,28 @@ class ExtensionQuestionPersister
     protected function persistOne(array $payload, int $subjectId, ?int $unitId, int $userId): void
     {
         $type = $payload['type'];
-        $title = $payload['title'];
-        $content = $payload['content'] ?? $title;
+        $title = QuestionMarkupFormatter::normalizeForStorage($payload['title'] ?? '');
+        $content = QuestionMarkupFormatter::normalizeForStorage($payload['content'] ?? $payload['title'] ?? '');
+        $explanation = isset($payload['explanation'])
+            ? QuestionMarkupFormatter::normalizeForStorage($payload['explanation'])
+            : null;
+
+        $blankAnswers = null;
+        if ($type === 'fill_blanks') {
+            $blankAnswers = array_map(
+                fn ($answer) => is_string($answer) ? QuestionMarkupFormatter::normalizeForStorage($answer) : $answer,
+                $payload['blank_answers'] ?? []
+            );
+        }
 
         $question = Question::create([
             'type' => $type,
             'title' => $title,
             'content' => $content,
-            'explanation' => $payload['explanation'] ?? null,
+            'explanation' => $explanation,
             'difficulty' => $payload['difficulty'] ?? 'medium',
             'default_points' => $payload['default_points'] ?? 1,
-            'blank_answers' => $type === 'fill_blanks' ? ($payload['blank_answers'] ?? []) : null,
+            'blank_answers' => $blankAnswers,
             'case_sensitive' => $payload['case_sensitive'] ?? false,
             'is_active' => true,
             'created_by' => $userId,
@@ -80,7 +92,7 @@ class ExtensionQuestionPersister
         }
 
         if ($type === 'fill_blanks') {
-            $blanks = $payload['blank_answers'] ?? [];
+            $blanks = $blankAnswers ?? [];
             if ($blanks === []) {
                 throw new ExtensionImportException('سؤال ملء الفراغات يحتاج إجابة واحدة على الأقل.');
             }
@@ -93,7 +105,7 @@ class ExtensionQuestionPersister
             foreach ($payload['options'] ?? [] as $option) {
                 QuestionOption::create([
                     'question_id' => $question->id,
-                    'content' => $option['text'],
+                    'content' => QuestionMarkupFormatter::normalizeForStorage($option['text'] ?? ''),
                     'is_correct' => (bool) $option['is_correct'],
                     'order' => $order++,
                 ]);
@@ -105,7 +117,7 @@ class ExtensionQuestionPersister
             if ($answer) {
                 QuestionOption::create([
                     'question_id' => $question->id,
-                    'content' => $answer,
+                    'content' => QuestionMarkupFormatter::normalizeForStorage($answer),
                     'is_correct' => true,
                     'order' => 1,
                 ]);

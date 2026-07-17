@@ -85,6 +85,7 @@
                 </div>
                 <div class="users-index-card__body">
                     <form id="usersFiltersForm" action="{{ route('users.index') }}" method="GET" class="users-index-filters">
+                        <input type="hidden" name="sort" id="usersSortInput" value="{{ $sort ?? 'newest' }}">
                         <div class="row g-3 align-items-end">
                             <div class="col-md-6 col-lg-4">
                                 <label class="form-label">بحث</label>
@@ -136,6 +137,21 @@
                         قائمة الطلاب
                     </div>
                     <div class="d-flex flex-wrap gap-2 align-items-center">
+                        @php
+                            $currentSort = $sort ?? 'newest';
+                            $isNewestFirst = $currentSort === 'newest';
+                            $sortToggleParams = request()->except('page');
+                            $sortToggleParams['sort'] = $isNewestFirst ? 'oldest' : 'newest';
+                        @endphp
+                        <a href="{{ route('users.index', $sortToggleParams) }}"
+                           class="btn btn-outline-primary btn-sm"
+                           id="toggleUsersSortBtn"
+                           title="{{ $isNewestFirst ? 'عرض الأقدم أولاً' : 'عرض الأحدث أولاً' }}">
+                            <i class="bi {{ $isNewestFirst ? 'bi-sort-down' : 'bi-sort-up' }} me-1"></i>
+                            <span id="toggleUsersSortLabel">
+                                {{ $isNewestFirst ? 'الأحدث أولاً' : 'الأقدم أولاً' }}
+                            </span>
+                        </a>
                         <button type="button"
                                 class="btn btn-outline-danger btn-sm"
                                 id="detachAllByScopeBtn">
@@ -1718,6 +1734,15 @@
             }
         }
 
+        function getCurrentSort() {
+            const sortInput = document.getElementById('usersSortInput');
+            if (sortInput && (sortInput.value === 'oldest' || sortInput.value === 'newest')) {
+                return sortInput.value;
+            }
+            const urlSort = new URLSearchParams(window.location.search).get('sort');
+            return urlSort === 'oldest' ? 'oldest' : 'newest';
+        }
+
         function buildFetchParams(page) {
             const params = new URLSearchParams();
             const query = queryInput ? queryInput.value.trim() : '';
@@ -1728,6 +1753,7 @@
             // أرسل is_active دائماً (حتى لو فارغ) لتمييز "كل الحالات" عن القيمة الافتراضية
             params.set('is_active', isActive);
             if (classId) params.set('class_id', classId);
+            params.set('sort', getCurrentSort());
             params.set('page', page || 1);
             params.set('per_page', String(getCurrentPerPage()));
 

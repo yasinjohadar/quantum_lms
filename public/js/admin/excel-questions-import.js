@@ -81,16 +81,35 @@
         root.querySelector('.excel-next-preview-btn')?.addEventListener('click', () => {
             const allRequiredMapped = REQUIRED_FIELDS.every((field) => columnMapping[field.key]);
             if (allRequiredMapped) {
+                const confirmCheck = root.querySelector('.excel-math-confirm-check');
+                if (confirmCheck) {
+                    confirmCheck.checked = false;
+                }
+                updateNextImportBtnState(root);
                 showPreview(root, fileData, columnMapping);
                 showStep(root, 3);
+                loadMathPreview(root, fileData, columnMapping);
             } else {
                 alert('الرجاء تحديد جميع الحقول المطلوبة');
             }
         });
 
         root.querySelector('.excel-next-import-btn')?.addEventListener('click', () => {
+            const confirmCheck = root.querySelector('.excel-math-confirm-check');
+            if (!confirmCheck || !confirmCheck.checked) {
+                alert('يجب تأكيد أن المعادلات تظهر بشكل صحيح قبل المتابعة');
+                return;
+            }
             prepareImport(root, uploadedFile, fileData, columnMapping, curriculumSync);
             showStep(root, 4);
+        });
+
+        root.querySelector('.excel-refresh-math-preview-btn')?.addEventListener('click', () => {
+            loadMathPreview(root, fileData, columnMapping);
+        });
+
+        root.querySelector('.excel-math-confirm-check')?.addEventListener('change', () => {
+            updateNextImportBtnState(root);
         });
 
         root.querySelector('.excel-back-upload-btn')?.addEventListener('click', () => showStep(root, 1));
@@ -101,6 +120,13 @@
             if (!uploadedFile) {
                 e.preventDefault();
                 alert('الرجاء رفع ملف أولاً');
+                return;
+            }
+            const confirmCheck = root.querySelector('.excel-math-confirm-check');
+            if (!confirmCheck || !confirmCheck.checked) {
+                e.preventDefault();
+                alert('يجب تأكيد معاينة المعادلات قبل الاستيراد');
+                showStep(root, 3);
                 return;
             }
             if (curriculumSync) {
@@ -377,6 +403,106 @@
         if (countEl) {
             countEl.textContent = Math.min(10, fileData.length);
         }
+    }
+
+    function updateNextImportBtnState(root) {
+        const nextBtn = root.querySelector('.excel-next-import-btn');
+        const confirmCheck = root.querySelector('.excel-math-confirm-check');
+        if (nextBtn) {
+            nextBtn.disabled = !(confirmCheck && confirmCheck.checked);
+        }
+    }
+
+    function cellValue(row, columnMapping, key) {
+        const column = columnMapping[key];
+        if (!column) {
+            return '';
+        }
+        const value = row[column];
+        return value == null ? '' : String(value);
+    }
+
+    function loadMathPreview(root, fileData, columnMapping) {
+        const list = root.querySelector('.excel-math-preview-list');
+        if (!list) {
+            return;
+        }
+
+        const previewUrl = root.dataset.mathPreviewUrl || '/admin/questions/math-preview';
+        const rows = fileData.slice(0, 10).map((row) => ({
+            title: cellValue(row, columnMapping, 'title'),
+            content: cellValue(row, columnMapping, 'content'),
+            options: ['option1', 'option2', 'option3', 'option4', 'correct_answer']
+                .map((key) => cellValue(row, columnMapping, key))
+                .filter((text) => text !== ''),
+        }));
+
+        list.innerHTML = '<p class="text-muted small mb-0">جاري تطبيع المعادلات…</p>';
+
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+        fetch(previewUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': csrf,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({ rows }),
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('تعذر تحميل معاينة المعادلات');
+                }
+                return response.json();
+            })
+            .then((data) => {
+                const previews = data.previews || [];
+                if (previews.length === 0) {
+                    list.innerHTML = '<p class="text-muted small mb-0">لا توجد صفوف للمعاينة.</p>';
+                    return;
+                }
+
+                list.innerHTML = previews
+                    .map((preview, index) => {
+                        const optionsHtml = (preview.options || [])
+                            .map(
+                                (opt, optIndex) =>
+                                    `<div class="small mb-1"><span class="text-muted">خيار ${optIndex + 1}:</span> <span class="question-text-body excel-math-preview-body">${opt.html || ''}</span></div>`
+                            )
+                            .join('');
+
+                        return `
+                            <div class="border rounded p-2 mb-2 excel-math-preview-item">
+                                <div class="fw-semibold small mb-1">سؤال ${index + 1}</div>
+                                <div class="question-text-body excel-math-preview-body mb-1">${preview.title?.html || ''}</div>
+                                ${preview.content?.html ? `<div class="question-text-body excel-math-preview-body text-muted small mb-1">${preview.content.html}</div>` : ''}
+                                ${optionsHtml}
+                                <details class="mt-1">
+                                    <summary class="small text-muted">النص بعد التطبيع (LaTeX)</summary>
+                                    <code class="d-block small mt-1 text-break">${escapeHtml(preview.title?.stored || '')}</code>
+                                </details>
+                            </div>
+                        `;
+                    })
+                    .join('');
+
+                if (typeof window.renderQuestionMath === 'function') {
+                    window.renderQuestionMath(list);
+                }
+            })
+            .catch((error) => {
+                list.innerHTML = `<p class="text-danger small mb-0">${escapeHtml(error.message || 'خطأ في المعاينة')}</p>`;
+            });
+    }
+
+    function escapeHtml(text) {
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
     }
 
     function showStep(root, stepNumber) {

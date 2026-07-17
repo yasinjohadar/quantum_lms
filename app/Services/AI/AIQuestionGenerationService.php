@@ -8,6 +8,7 @@ use App\Models\AIQuestionGeneration;
 use App\Models\Lesson;
 use App\Models\Question;
 use App\Models\QuestionOption;
+use App\Support\QuestionMarkupFormatter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -622,12 +623,14 @@ class AIQuestionGenerationService
             foreach ($questions as $questionData) {
                 $questionType = $questionData['type'] ?? 'single_choice';
 
+                $stem = QuestionMarkupFormatter::normalizeForStorage($questionData['question'] ?? '');
+
                 // إنشاء السؤال
                 $question = Question::create([
                     'type' => $questionType,
-                    'title' => $questionData['question'] ?? '',
-                    'content' => $questionData['question'] ?? '',
-                    'explanation' => $questionData['explanation'] ?? '',
+                    'title' => $stem,
+                    'content' => $stem,
+                    'explanation' => QuestionMarkupFormatter::normalizeForStorage($questionData['explanation'] ?? ''),
                     'difficulty' => $questionData['difficulty'] ?? 'medium',
                     'default_points' => $questionData['points'] ?? 10,
                     'is_active' => true,
@@ -842,7 +845,7 @@ class AIQuestionGenerationService
 
             QuestionOption::create([
                 'question_id' => $question->id,
-                'content' => trim($optionText),
+                'content' => QuestionMarkupFormatter::normalizeForStorage(trim($optionText)),
                 'is_correct' => $isCorrect,
                 'order' => $index + 1,
             ]);
@@ -938,7 +941,7 @@ class AIQuestionGenerationService
 
             QuestionOption::create([
                 'question_id' => $question->id,
-                'content' => trim($optionText),
+                'content' => QuestionMarkupFormatter::normalizeForStorage(trim($optionText)),
                 'match_target' => trim($matchTarget),
                 'is_correct' => true, // جميع خيارات المطابقة صحيحة إذا تمت المطابقة بشكل صحيح
                 'order' => $index + 1,
@@ -984,7 +987,7 @@ class AIQuestionGenerationService
 
             QuestionOption::create([
                 'question_id' => $question->id,
-                'content' => trim($optionText),
+                'content' => QuestionMarkupFormatter::normalizeForStorage(trim($optionText)),
                 'correct_order' => $order,
                 'is_correct' => true,
                 'order' => $index + 1,
@@ -1015,7 +1018,7 @@ class AIQuestionGenerationService
         // إنشاء خيار واحد يحتوي على الإجابة الصحيحة
         QuestionOption::create([
             'question_id' => $question->id,
-            'content' => (string) $correctAnswer,
+            'content' => QuestionMarkupFormatter::normalizeForStorage((string) $correctAnswer),
             'is_correct' => true,
             'order' => 1,
         ]);
@@ -1038,10 +1041,19 @@ class AIQuestionGenerationService
 
         // حفظ blank_answers كـ array في Question
         if (is_array($blankAnswers)) {
-            $question->update(['blank_answers' => $blankAnswers]);
+            $normalized = array_map(
+                fn ($answer) => is_string($answer)
+                    ? QuestionMarkupFormatter::normalizeForStorage($answer)
+                    : $answer,
+                $blankAnswers
+            );
+            $question->update(['blank_answers' => $normalized]);
         } elseif (is_string($blankAnswers)) {
-            // إذا كان string، محاولة تحويله إلى array
-            $question->update(['blank_answers' => explode(',', $blankAnswers)]);
+            $normalized = array_map(
+                fn ($answer) => QuestionMarkupFormatter::normalizeForStorage(trim($answer)),
+                explode(',', $blankAnswers)
+            );
+            $question->update(['blank_answers' => $normalized]);
         }
 
         // حفظ case_sensitive إذا كان موجوداً
@@ -1082,7 +1094,7 @@ class AIQuestionGenerationService
 
             QuestionOption::create([
                 'question_id' => $question->id,
-                'content' => trim($optionText),
+                'content' => QuestionMarkupFormatter::normalizeForStorage(trim($optionText)),
                 'is_correct' => $isCorrect,
                 'order' => $index + 1,
             ]);

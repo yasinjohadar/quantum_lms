@@ -41,6 +41,13 @@
                 </div>
             @endif
 
+            @if (session('error'))
+                <div class="alert alert-danger alert-dismissible fade show">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
+
             @if(isset($stats))
                 @include('admin.pages.review-queue.partials.stats-cards', ['stats' => $stats])
             @endif
@@ -73,6 +80,7 @@
                             'lessons' => $lessons,
                             'showUnit' => true,
                             'showStatus' => true,
+                            'formId' => 'rq-lessons-page-bulk-form',
                         ])
                         <div class="rq-pagination d-flex justify-content-center">
                             {{ $lessons->links() }}
@@ -91,4 +99,8 @@
             @endif
         </div>
     </div>
+@stop
+
+@section('js')
+    @include('admin.pages.review-queue.partials.bulk-approve-scripts')
 @stop

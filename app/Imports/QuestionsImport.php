@@ -242,7 +242,12 @@ class QuestionsImport implements SkipsOnFailure, ToCollection, WithHeadingRow
 
         // لملء الفراغات
         if ($data['type'] === 'fill_blanks' && ! empty($data['blank_answers'])) {
-            $questionData['blank_answers'] = $data['blank_answers'];
+            $questionData['blank_answers'] = array_map(
+                fn ($answer) => is_string($answer)
+                    ? QuestionMarkupFormatter::normalizeForStorage($answer)
+                    : $answer,
+                $data['blank_answers']
+            );
         }
 
         return Question::create($questionData);

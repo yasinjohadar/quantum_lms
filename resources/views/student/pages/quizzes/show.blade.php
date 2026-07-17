@@ -1,4 +1,15 @@
-@extends('student.layouts.master')
+@php
+    $isAdminPreview = $isAdminPreview ?? false;
+    $quizLayout = $isAdminPreview ? 'student.layouts.quiz-preview-master' : 'student.layouts.master';
+    $quizAttemptRoutes = $quizAttemptRoutes ?? [
+        'save' => route('student.quizzes.save-answer', $attempt->id),
+        'submit' => route('student.quizzes.submit', $attempt->id),
+        'result' => route('student.quizzes.result', ['quiz' => $quiz->id, 'attempt' => $attempt->id]),
+        'time' => route('student.quizzes.time', $attempt->id),
+    ];
+@endphp
+
+@extends($quizLayout)
 
 @include('partials.question-math-assets')
 
@@ -45,7 +56,7 @@
                     </div>
                 </div>
                 <div class="card-footer p-2">
-                    <form id="submit-quiz-form" method="POST" action="{{ route('student.quizzes.submit', $attempt->id) }}">
+                    <form id="submit-quiz-form" method="POST" action="{{ $quizAttemptRoutes['submit'] }}">
                         @csrf
                         <button type="submit" class="btn btn-danger w-100" id="submit-quiz-btn">
                             <i class="bi bi-send me-1"></i>
@@ -432,9 +443,9 @@
     }
     
     let currentQuestionIndex = 0;
-    const saveUrl = '{{ route("student.quizzes.save-answer", $attempt->id) }}';
-    const submitUrl = '{{ route("student.quizzes.submit", $attempt->id) }}';
-    const resultUrl = '{{ route("student.quizzes.result", ["quiz" => $quiz->id, "attempt" => $attempt->id]) }}';
+    const saveUrl = @json($quizAttemptRoutes['save']);
+    const submitUrl = @json($quizAttemptRoutes['submit']);
+    const resultUrl = @json($quizAttemptRoutes['result']);
     const csrfToken = '{{ csrf_token() }}';
     let isSubmittingQuiz = false;
 
@@ -1526,7 +1537,7 @@
         const timerMode = displayEl.getAttribute('data-timer-mode') || 'countdown';
         const hasTimeLimit = timerMode === 'countdown';
         const startedAtMs = parseInt(displayEl.getAttribute('data-started-at-ms') || '', 10);
-        const updateUrl = '{{ route("student.quizzes.time", $attempt->id) }}';
+        const updateUrl = @json($quizAttemptRoutes['time']);
 
         const onTimeout = hasTimeLimit && {{ $quiz->auto_submit ? 'true' : 'false' }}
             ? function() { submitQuizAttempt({ reason: 'timeout' }); }

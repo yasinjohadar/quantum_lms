@@ -6,7 +6,8 @@
     $isContentUploader = auth()->user()->isLessonContentUploader();
 @endphp
 
-@if($mandatoryReview && $isContentUploader)
+{{-- المعلمون والمشرفون: مسار المراجعة. الأدمن فقط: تفعيل مباشر. --}}
+@if($isContentUploader && $mandatoryReview)
     @if($isEdit && $lesson)
         <div class="mb-2">
             <label class="form-label small">حالة المراجعة:</label>
@@ -22,23 +23,17 @@
         </div>
         @if($lesson->review_notes)
             <div class="alert alert-info mt-2 small mb-2 py-2">
-                <strong>ملاحظات المشرف:</strong><br>{{ $lesson->review_notes }}
+                <strong>ملاحظات المراجعة:</strong><br>{{ $lesson->review_notes }}
             </div>
         @endif
     @endif
     <div class="alert alert-info mb-0 py-2 small">
         <i class="bi bi-info-circle me-1"></i>
         @if($isEdit)
-            سيُعاد إرسال هذا الدرس تلقائياً للمشرف المسؤول عن الصف والمادة عند الحفظ. لن يظهر للطلاب حتى تتم الموافقة.
+            سيُعاد إرسال هذا الدرس تلقائياً لقائمة المراجعة عند الحفظ. لن يظهر للطلاب حتى تتم الموافقة.
         @else
-            سيُرسل هذا الدرس تلقائياً للمشرف المسؤول عن الصف والمادة. لن يظهر للطلاب حتى تتم الموافقة.
+            سيُرسل هذا الدرس تلقائياً لقائمة المراجعة. لن يظهر للطلاب حتى تتم الموافقة.
         @endif
-    </div>
-@elseif(auth()->user()->canReviewContent())
-    <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" name="is_active" id="{{ $fieldId }}"
-            {{ ($isEdit ? ($lesson->is_active ?? false) : true) ? 'checked' : '' }}>
-        <label class="form-check-label" for="{{ $fieldId }}">الدرس نشط</label>
     </div>
 @elseif($isContentUploader)
     @if($isEdit && $lesson)
@@ -66,7 +61,7 @@
         @endif
         @if($lesson->review_notes)
             <div class="alert alert-info mt-2 small mb-0">
-                <strong>ملاحظات المشرف:</strong><br>{{ $lesson->review_notes }}
+                <strong>ملاحظات المراجعة:</strong><br>{{ $lesson->review_notes }}
             </div>
         @endif
     @else
@@ -74,12 +69,12 @@
             <input class="form-check-input" type="checkbox" name="is_active" id="{{ $fieldId }}">
             <label class="form-check-label" for="{{ $fieldId }}">إرسال للمراجعة</label>
         </div>
-        <small class="text-muted d-block mt-1">سيتم إرسال الدرس للمشرف للمراجعة والموافقة</small>
+        <small class="text-muted d-block mt-1">سيتم إرسال الدرس لقائمة المراجعة للموافقة قبل ظهوره للطلاب</small>
     @endif
 @else
     <div class="form-check form-switch">
         <input class="form-check-input" type="checkbox" name="is_active" id="{{ $fieldId }}"
-            {{ old('is_active', $isEdit ? ($lesson->is_active ?? false) : false) ? 'checked' : '' }}>
+            {{ ($isEdit ? ($lesson->is_active ?? false) : true) ? 'checked' : '' }}>
         <label class="form-check-label" for="{{ $fieldId }}">الدرس نشط</label>
     </div>
 @endif

@@ -18,8 +18,8 @@ class QuestionMarkupFormatter
     /** pseudo-LaTeX بدون backslash */
     private const PSEUDO_MATH_PATTERN = '/\b(?:sum|prod|int|lim)_\{|(?:\([^)]+\)|[a-zA-Z0-9]+)!|[a-zA-Z]\s*[*×]\s*[a-zA-Z]/u';
 
-    /** متباينات القيمة المطلقة: |x| ≤ 3 (بدون محددات regex) */
-    private const ABS_INEQUALITY_PATTERN = '\|[^|\n]+\|\s*(?:≤|≥|<|>|<=|>=|≠|!=)\s*[-−+]?[\d]+(?:[.,][\d]+)?';
+    /** متباينات القيمة المطلقة: |x| ≤ 3 أو |x| \leq 3 */
+    private const ABS_INEQUALITY_PATTERN = '\|[^|\n]+\|\s*(?:≤|≥|<|>|<=|>=|≠|!=|\\\\leq|\\\\geq|\\\\neq)\s*[-−+]?[\d]+(?:[.,][\d]+)?';
 
     /** فترة عددية: [-3, 3] */
     private const INTERVAL_PATTERN = '\[-?[\d]+(?:[.,][\d]+)?\s*,\s*-?[\d]+(?:[.,][\d]+)?\]';
@@ -43,9 +43,12 @@ class QuestionMarkupFormatter
         }
 
         $text = trim(self::normalizeStoredText($text));
+        $text = self::softenImportedHtml($text);
         $text = self::convertMathBackticks($text);
+        $text = self::convertUnicodeMathOutsideDelimiters($text);
         $text = self::normalizePseudoMath($text);
         $text = self::extractInlinePseudoMathInArabicText($text);
+        $text = self::wrapCommonFunctionDefinitionsInArabicText($text);
 
         return $text;
     }
@@ -69,6 +72,291 @@ class QuestionMarkupFormatter
         }
 
         return $decoded;
+    }
+
+    /**
+     * تبسيط HTML المستورد (NotebookLM/Excel) إلى نص مع الحفاظ على فواصل الأسطر،
+     * دون لمس محتوى TinyMCE الغني إن وُجدت وسوم هيكلية مفيدة مع صور.
+     */
+    private static function softenImportedHtml(string $text): string
+    {
+        if (! preg_match('/<(?:p|div|br|span|em|strong|b|i)\b/i', $text)) {
+            return $text;
+        }
+
+        // إن وُجدت صور أو جداول أو روابط ملفات نُبقي HTML كما هو
+        if (preg_match('/<(?:img|table|video|audio|iframe|a)\b/i', $text)) {
+            return $text;
+        }
+
+        $text = preg_replace('/<\s*br\s*\/?\s*>/iu', "\n", $text) ?? $text;
+        $text = preg_replace('/<\/\s*p\s*>/iu', "\n", $text) ?? $text;
+        $text = preg_replace('/<\/\s*div\s*>/iu', "\n", $text) ?? $text;
+        $text = strip_tags($text);
+        $text = preg_replace("/[ \t]+\n/u", "\n", $text) ?? $text;
+        $text = preg_replace("/\n{3,}/u", "\n\n", $text) ?? $text;
+
+        return trim($text);
+    }
+
+    /**
+     * تحويل رموز يونيكود الرياضية الشائعة (من NotebookLM وغيرها) إلى LaTeX خارج المحددات.
+     */
+    public static function convertUnicodeMathOutsideDelimiters(string $text): string
+    {
+        if ($text === '') {
+            return '';
+        }
+
+        $parts = preg_split(self::MATH_SEGMENT_PATTERN, $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+        if ($parts === false) {
+            return self::convertUnicodeMathInPlainSegment($text);
+        }
+
+        $output = '';
+        foreach ($parts as $part) {
+            if ($part === '') {
+                continue;
+            }
+            if (preg_match(self::MATH_SEGMENT_PATTERN, $part)) {
+                $inner = preg_replace('/^\$\$?|\$\$?$/u', '', $part) ?? $part;
+                $inner = preg_replace('/^\\\\[\[\(]|\\\\[\]\)]$/u', '', $inner) ?? $inner;
+                $convertedInner = self::convertUnicodeMathInPlainSegment($inner);
+                if (str_starts_with($part, '$$')) {
+                    $output .= '$$'.$convertedInner.'$$';
+                } elseif (str_starts_with($part, '$')) {
+                    $output .= '$'.$convertedInner.'$';
+                } elseif (str_starts_with($part, '\\[')) {
+                    $output .= '\\['.$convertedInner.'\\]';
+                } else {
+                    $output .= '\\('.$convertedInner.'\\)';
+                }
+            } else {
+                $output .= self::convertUnicodeMathInPlainSegment($part);
+            }
+        }
+
+        return $output;
+    }
+
+    private static function convertUnicodeMathInPlainSegment(string $text): string
+    {
+        static $symbolMap = [
+            '√' => '\\sqrt',
+            '∛' => '\\sqrt[3]',
+            '∜' => '\\sqrt[4]',
+            '∞' => '\\infty',
+            '±' => '\\pm',
+            '∓' => '\\mp',
+            '×' => '\\times',
+            '·' => '\\cdot',
+            '⋅' => '\\cdot',
+            '÷' => '\\div',
+            '≤' => '\\leq',
+            '≥' => '\\geq',
+            '≠' => '\\neq',
+            '≈' => '\\approx',
+            '∈' => '\\in',
+            '∉' => '\\notin',
+            '⊂' => '\\subset',
+            '⊆' => '\\subseteq',
+            '∪' => '\\cup',
+            '∩' => '\\cap',
+            '→' => '\\to',
+            '⇒' => '\\Rightarrow',
+            '⇔' => '\\Leftrightarrow',
+            '∂' => '\\partial',
+            '∇' => '\\nabla',
+            '∫' => '\\int',
+            '∑' => '\\sum',
+            '∏' => '\\prod',
+            'π' => '\\pi',
+            'θ' => '\\theta',
+            'α' => '\\alpha',
+            'β' => '\\beta',
+            'γ' => '\\gamma',
+            'δ' => '\\delta',
+            'λ' => '\\lambda',
+            'μ' => '\\mu',
+            'σ' => '\\sigma',
+            'φ' => '\\varphi',
+            'ω' => '\\omega',
+            'ℝ' => '\\mathbb{R}',
+            'ℕ' => '\\mathbb{N}',
+            'ℤ' => '\\mathbb{Z}',
+            'ℚ' => '\\mathbb{Q}',
+            'ℂ' => '\\mathbb{C}',
+            'ℓ' => '\\ell',
+            '′' => "'",
+            '″' => "''",
+            '−' => '-',
+        ];
+
+        static $superscripts = [
+            '⁰' => '0', '¹' => '1', '²' => '2', '³' => '3', '⁴' => '4',
+            '⁵' => '5', '⁶' => '6', '⁷' => '7', '⁸' => '8', '⁹' => '9',
+            '⁺' => '+', '⁻' => '-', 'ⁿ' => 'n', 'ⁱ' => 'i',
+        ];
+
+        static $subscripts = [
+            '₀' => '0', '₁' => '1', '₂' => '2', '₃' => '3', '₄' => '4',
+            '₅' => '5', '₆' => '6', '₇' => '7', '₈' => '8', '₉' => '9',
+            '₊' => '+', '₋' => '-', 'ₙ' => 'n', 'ᵢ' => 'i', 'ₓ' => 'x',
+            'ₚ' => 'p', 'ₖ' => 'k', 'ₘ' => 'm', 'ₜ' => 't', 'ₛ' => 's',
+            'ᵣ' => 'r', 'ᵤ' => 'u', 'ᵥ' => 'v', 'ₐ' => 'a', 'ₑ' => 'e',
+        ];
+
+        // إصلاحات شائعة من تصدير NotebookLM CSV (يونيكود مشوّه)
+        $text = preg_replace(
+            '/\(([A-Za-z])ₙ\)ₙ\s*gₑ\s*₀/u',
+            '($1_n)_{n \\ge 0}',
+            $text
+        ) ?? $text;
+        $text = preg_replace(
+            '/([A-Za-z])ₙ\+₁/u',
+            '$1_{n+1}',
+            $text
+        ) ?? $text;
+        $text = preg_replace(
+            '/([A-Za-z])ₙ/u',
+            '$1_n',
+            $text
+        ) ?? $text;
+        $text = preg_replace(
+            '/([A-Za-z])ₚ\+₁/u',
+            '$1_{p+1}',
+            $text
+        ) ?? $text;
+        $text = preg_replace(
+            '/([A-Za-z])ₚ/u',
+            '$1_p',
+            $text
+        ) ?? $text;
+        $text = preg_replace(
+            '/limₓ\s*\\\\ₜₒ\s*₊\\\\ᵢₙfₜy/u',
+            '\\lim_{x \\to +\\infty}',
+            $text
+        ) ?? $text;
+        $text = preg_replace(
+            '/limₓ\s*\\\\ₜₒ\s*₋\\\\ᵢₙfₜy/u',
+            '\\lim_{x \\to -\\infty}',
+            $text
+        ) ?? $text;
+        $text = preg_replace(
+            '/limₓ\s*\\\\ₜₒ\s*\\\\ᵢₙfₜy/u',
+            '\\lim_{x \\to \\infty}',
+            $text
+        ) ?? $text;
+        $text = preg_replace(
+            '/limₓ\s*\\\\ₜₒ\s*₀/u',
+            '\\lim_{x \\to 0}',
+            $text
+        ) ?? $text;
+        $text = str_replace(['⅝', '⅜', '⅞', '½', '¼', '¾'], ['\\frac{5}{8}', '\\frac{3}{8}', '\\frac{7}{8}', '\\frac{1}{2}', '\\frac{1}{4}', '\\frac{3}{4}'], $text);
+
+        // √(expr) أو √expr → \sqrt{expr}
+        $text = preg_replace_callback(
+            '/√\s*(?:\(([^()]+)\)|([a-zA-Z0-9]+))/u',
+            static function (array $m): string {
+                $inner = $m[1] !== '' ? $m[1] : $m[2];
+
+                return '\\sqrt{'.$inner.'}';
+            },
+            $text
+        ) ?? $text;
+
+        $text = strtr($text, $symbolMap);
+
+        $text = preg_replace_callback(
+            '/([A-Za-z0-9\)])([⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻ⁿⁱ]+)/u',
+            static function (array $m) use ($superscripts): string {
+                $chars = preg_split('//u', $m[2], -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                $mapped = '';
+                foreach ($chars as $ch) {
+                    $mapped .= $superscripts[$ch] ?? $ch;
+                }
+
+                return $m[1].'^{'.$mapped.'}';
+            },
+            $text
+        ) ?? $text;
+
+        $text = preg_replace_callback(
+            '/([A-Za-z0-9\)])([₀₁₂₃₄₅₆₇₈₉₊₋ₙᵢₓₚₖₘₜₛᵣᵤᵥₐₑ]+)/u',
+            static function (array $m) use ($subscripts): string {
+                $chars = preg_split('//u', $m[2], -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                $mapped = '';
+                foreach ($chars as $ch) {
+                    $mapped .= $subscripts[$ch] ?? $ch;
+                }
+
+                return $m[1].'_{'.$mapped.'}';
+            },
+            $text
+        ) ?? $text;
+
+        return $text;
+    }
+
+    /**
+     * لفّ تعريفات مثل f(x)=\sqrt{...} ومجموعات \mathbb{R} داخل النص العربي.
+     */
+    private static function wrapCommonFunctionDefinitionsInArabicText(string $text): string
+    {
+        if (! preg_match('/[\x{0600}-\x{06FF}]/u', $text) && ! preg_match('/\\\\(?:sqrt|mathbb|frac|int|sum)/u', $text)) {
+            // حتى بدون عربي: لفّ تعبيرات LaTeX العارية الشائعة إن لم تكن داخل $
+            return self::wrapBareLatexCommandsOutsideDelimiters($text);
+        }
+
+        $parts = preg_split(self::MATH_SEGMENT_PATTERN, $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+        if ($parts === false) {
+            return $text;
+        }
+
+        $output = '';
+        foreach ($parts as $part) {
+            if ($part === '') {
+                continue;
+            }
+            if (preg_match(self::MATH_SEGMENT_PATTERN, $part)) {
+                $output .= $part;
+            } else {
+                $output .= self::wrapBareLatexCommandsOutsideDelimiters($part);
+            }
+        }
+
+        return $output;
+    }
+
+    private static function wrapBareLatexCommandsOutsideDelimiters(string $text): string
+    {
+        // f(x)=\sqrt{...} أو f(x)=... حتى نهاية المقطع الرياضي
+        $text = preg_replace_callback(
+            '/(?<!\$)\b([a-zA-Z]\s*\(\s*[a-zA-Z]\s*\)\s*=\s*(?:\\\\sqrt\{[^}]+\}|[^$\n\x{0600}-\x{06FF}?؟]+))/u',
+            static function (array $m): string {
+                $expr = self::normalizeMathExpression(trim($m[1]));
+
+                return '$'.$expr.'$';
+            },
+            $text
+        ) ?? $text;
+
+        $text = preg_replace_callback(
+            '/(?<!\$)(\\\\mathbb\{[RNZQC]\})(?!\$)/u',
+            static fn (array $m): string => '$'.$m[1].'$',
+            $text
+        ) ?? $text;
+
+        $text = preg_replace_callback(
+            '/(?<!\$)(\\\\sqrt\{[^}]+\})(?!\$)/u',
+            static function (array $m): string {
+                // لا تلف إن كانت جزءاً من تعريف دالة لُفّ سابقاً
+                return '$'.$m[1].'$';
+            },
+            $text
+        ) ?? $text;
+
+        return $text;
     }
 
     public static function plainHeading(?string $text, int $limit = 100): string
@@ -326,8 +614,10 @@ class QuestionMarkupFormatter
     private static function formatSingleBlock(string $text): string
     {
         $text = self::convertMathBackticks($text);
+        $text = self::convertUnicodeMathOutsideDelimiters($text);
         $text = self::normalizePseudoMath($text);
         $text = self::extractInlinePseudoMathInArabicText($text);
+        $text = self::wrapCommonFunctionDefinitionsInArabicText($text);
 
         if (str_contains($text, 'question-inline-code')) {
             return $text;
@@ -605,7 +895,7 @@ class QuestionMarkupFormatter
         }
 
         if ($trimmed !== '' && preg_match('/^'.self::ABS_INEQUALITY_PATTERN.'$/u', $trimmed)) {
-            return self::wrapInlineCode($trimmed);
+            return self::wrapBareLatex($trimmed);
         }
 
         if ($trimmed !== '' && preg_match('/^[a-zA-Z_$][\w$.]*\([^)]*\)$/u', $trimmed)) {
@@ -637,7 +927,11 @@ class QuestionMarkupFormatter
                 continue;
             }
             if (preg_match($codePattern, $part)) {
-                $output .= self::wrapInlineCode($part);
+                if (preg_match('/^'.self::ABS_INEQUALITY_PATTERN.'$/u', trim($part))) {
+                    $output .= self::wrapBareLatex($part);
+                } else {
+                    $output .= self::wrapInlineCode($part);
+                }
             } else {
                 $output .= self::escapePlainSegment($part);
             }

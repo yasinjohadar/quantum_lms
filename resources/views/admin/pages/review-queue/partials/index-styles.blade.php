@@ -289,6 +289,19 @@
 
     .rq-pagination { margin-top: 1rem; }
 
+    .rq-bulk-toolbar {
+        padding: 0.75rem 0.9rem;
+        border-radius: 10px;
+        background: rgba(16, 185, 129, 0.08);
+        border: 1px solid rgba(16, 185, 129, 0.22);
+    }
+
+    [data-theme-mode="dark"] .rq-bulk-toolbar,
+    [data-bs-theme="dark"] .rq-bulk-toolbar {
+        background: rgba(16, 185, 129, 0.12);
+        border-color: rgba(16, 185, 129, 0.28);
+    }
+
     @media (max-width: 767.98px) {
         .rq-hero { padding: 1rem; }
         .rq-card__body { padding: 1rem; }

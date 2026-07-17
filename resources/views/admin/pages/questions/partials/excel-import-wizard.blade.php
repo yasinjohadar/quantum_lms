@@ -7,7 +7,8 @@
 @endphp
 
 <div class="excel-import-wizard" id="{{ $wizardId }}"
-     data-curriculum-sync="{{ $curriculumSync ? '1' : '0' }}">
+     data-curriculum-sync="{{ $curriculumSync ? '1' : '0' }}"
+     data-math-preview-url="{{ route('admin.questions.math-preview') }}">
 
     <div class="card custom-card mb-3">
         <div class="card-body py-3">
@@ -45,6 +46,12 @@
             <div class="card-title">رفع ملف Excel/CSV</div>
         </div>
         <div class="card-body">
+            <div class="alert alert-info mb-3">
+                <i class="bi bi-calculator me-2"></i>
+                <strong>المعادلات:</strong> اكتبها بصيغة LaTeX داخل <code>$...$</code>
+                مثل: <code dir="ltr">ليكن $f(x)=\sqrt{x^{2}+4x+5}$ على $\mathbb{R}$</code>.
+                عند الاستيراد ستظهر معاينة KaTeX ويجب تأكيدها قبل الحفظ.
+            </div>
             <div class="upload-area excel-upload-area">
                 <input type="file" class="excel-file-input" accept=".xlsx,.xls,.csv" style="display: none;">
                 <div class="excel-upload-content">
@@ -90,7 +97,7 @@
 
     <div class="card custom-card mb-3 excel-preview-step" style="display: none;">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <div class="card-title">معاينة البيانات</div>
+            <div class="card-title">معاينة البيانات والمعادلات</div>
             <div>
                 <span class="badge bg-primary excel-preview-count">0</span> صف
             </div>
@@ -98,9 +105,9 @@
         <div class="card-body">
             <div class="alert alert-warning mb-3">
                 <i class="bi bi-info-circle me-2"></i>
-                يتم عرض أول 10 صفوف فقط للمعاينة. سيتم استيراد جميع الصفوف عند التأكيد.
+                يتم عرض أول 10 صفوف فقط للمعاينة. المعادلات تُطبَّع تلقائياً إلى LaTeX وتُعرض كما ستظهر للطالب (KaTeX).
             </div>
-            <div class="table-responsive preview-table">
+            <div class="table-responsive preview-table mb-3">
                 <table class="table table-bordered table-hover excel-preview-table">
                     <thead class="table-light sticky-top">
                         <tr class="excel-preview-header"></tr>
@@ -108,8 +115,28 @@
                     <tbody class="excel-preview-body"></tbody>
                 </table>
             </div>
+
+            <div class="card border mb-3">
+                <div class="card-header py-2">
+                    <strong><i class="bi bi-calculator me-1"></i> معاينة المعادلات بعد التطبيع</strong>
+                </div>
+                <div class="card-body excel-math-preview-list">
+                    <p class="text-muted small mb-0">اضغط «تحديث معاينة المعادلات» بعد تحديد الأعمدة.</p>
+                </div>
+            </div>
+
+            <div class="form-check mb-3">
+                <input class="form-check-input excel-math-confirm-check" type="checkbox" id="excelMathConfirm_{{ $wizardId }}">
+                <label class="form-check-label" for="excelMathConfirm_{{ $wizardId }}">
+                    أكّدت أن المعادلات تظهر بشكل صحيح في المعاينة أعلاه (مطلوب قبل الاستيراد)
+                </label>
+            </div>
+
             <div class="d-flex flex-wrap gap-2 mt-4">
-                <button type="button" class="btn btn-primary excel-next-import-btn">
+                <button type="button" class="btn btn-outline-primary excel-refresh-math-preview-btn">
+                    <i class="bi bi-arrow-clockwise me-1"></i> تحديث معاينة المعادلات
+                </button>
+                <button type="button" class="btn btn-primary excel-next-import-btn" disabled>
                     <i class="bi bi-arrow-left me-2"></i> التالي: الاستيراد
                 </button>
                 <button type="button" class="btn btn-secondary excel-back-mapping-btn">

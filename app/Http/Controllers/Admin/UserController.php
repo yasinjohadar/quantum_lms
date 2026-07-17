@@ -133,8 +133,13 @@ class UserController extends Controller
             });
         }
 
+        // افتراضياً: الأحدث تسجيلاً أولاً (يمكن عكسه عبر sort=oldest)
+        $sort = $request->input('sort') === 'oldest' ? 'oldest' : 'newest';
+        $usersQuery->orderBy('created_at', $sort === 'newest' ? 'desc' : 'asc')
+            ->orderBy('id', $sort === 'newest' ? 'desc' : 'asc');
+
         $perPage = min(100, max(1, (int) $request->input('per_page', 25)));
-        $users = $usersQuery->paginate($perPage);
+        $users = $usersQuery->paginate($perPage)->withQueryString();
 
         // AJAX response for class filter + pagination
         if ($request->ajax() || $request->wantsJson()) {
@@ -143,10 +148,11 @@ class UserController extends Controller
                 'html' => view('admin.pages.users.partials.users-tbody', compact('users', 'classesForAssign', 'selectedClassId'))->render(),
                 'pagination' => view('admin.pages.users.partials.pagination-links', compact('users'))->render(),
                 'impersonate_modals' => view('admin.pages.users.partials.impersonate-modals', compact('users'))->render(),
+                'sort' => $sort,
             ]);
         }
 
-        return view('admin.pages.users.index', compact('users', 'roles', 'classes', 'classesForAssign', 'selectedClassId'));
+        return view('admin.pages.users.index', compact('users', 'roles', 'classes', 'classesForAssign', 'selectedClassId', 'sort'));
     }
 
     public function updateSubscriptionExpires(Request $request, User $user, PurchaseService $purchaseService): JsonResponse

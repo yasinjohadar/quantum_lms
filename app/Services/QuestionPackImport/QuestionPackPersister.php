@@ -6,6 +6,7 @@ use App\DataTransferObjects\QuestionPack\QuestionPackQuestionData;
 use App\Models\Question;
 use App\Models\QuestionOption;
 use App\Models\Unit;
+use App\Support\QuestionMarkupFormatter;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -55,16 +56,19 @@ class QuestionPackPersister
         ?int $unitId,
         int $userId
     ): int {
-        $blankAnswers = $dto->blankAnswers();
+        $blankAnswers = array_map(
+            fn ($answer) => is_string($answer) ? QuestionMarkupFormatter::normalizeForStorage($answer) : $answer,
+            $dto->blankAnswers()
+        );
         if ($blankAnswers === []) {
             throw new QuestionPackParseException("السؤال رقم {$dto->number}: إجابة الفراغ مفقودة.");
         }
 
         $question = Question::create([
             'type' => 'fill_blanks',
-            'title' => $dto->title,
-            'content' => $dto->title,
-            'explanation' => $dto->explanation,
+            'title' => QuestionMarkupFormatter::normalizeForStorage($dto->title),
+            'content' => QuestionMarkupFormatter::normalizeForStorage($dto->title),
+            'explanation' => QuestionMarkupFormatter::normalizeForStorage($dto->explanation),
             'difficulty' => $dto->difficulty,
             'default_points' => $dto->points,
             'blank_answers' => $blankAnswers,
@@ -88,9 +92,9 @@ class QuestionPackPersister
     ): int {
         $question = Question::create([
             'type' => 'single_choice',
-            'title' => $dto->title,
-            'content' => $dto->title,
-            'explanation' => $dto->explanation,
+            'title' => QuestionMarkupFormatter::normalizeForStorage($dto->title),
+            'content' => QuestionMarkupFormatter::normalizeForStorage($dto->title),
+            'explanation' => QuestionMarkupFormatter::normalizeForStorage($dto->explanation),
             'difficulty' => $dto->difficulty,
             'default_points' => $dto->points,
             'is_active' => true,
@@ -106,7 +110,7 @@ class QuestionPackPersister
 
             QuestionOption::create([
                 'question_id' => $question->id,
-                'content' => $dto->options[$letter],
+                'content' => QuestionMarkupFormatter::normalizeForStorage($dto->options[$letter]),
                 'is_correct' => strtoupper($dto->correctLetter) === $letter,
                 'order' => $order++,
             ]);

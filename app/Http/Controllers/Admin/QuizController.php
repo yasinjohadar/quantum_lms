@@ -47,7 +47,6 @@ class QuizController extends Controller
         $this->middleware(['permission:quiz-update-question-points'])->only('updateQuestionPoints');
         $this->middleware(['permission:quiz-duplicate'])->only('duplicate');
         $this->middleware(['permission:quiz-toggle-publish'])->only('togglePublish');
-        $this->middleware(['permission:quiz-preview'])->only('preview');
         $this->middleware(['permission:quiz-results'])->only('results');
         $this->middleware(['permission:quiz-export-results'])->only('exportResults');
         $this->middleware(['permission:quiz-get-subjects-by-class'])->only('getSubjectsByClass');
@@ -286,12 +285,10 @@ class QuizController extends Controller
             $submitsForReview = $user->shouldSubmitQuizForReview();
 
             if ($submitsForReview) {
+                // المعلمون والمشرفون: مسار المراجعة (مثل المعلم)
                 $this->applyTeacherQuizReviewOnCreate($data);
-            } elseif ($user->isQuizContentUploader() && SystemSetting::quizMandatoryReviewEnabled()) {
-                $this->applyTeacherQuizReviewOnCreate($data);
-                $submitsForReview = true;
             } else {
-                // المشرف والمدير: خيار التفعيل الواحد يحدد is_published أيضاً
+                // أدمن المنصة فقط: تفعيل مباشر
                 $data['is_published'] = $request->has('is_active');
                 if ($data['is_published']) {
                     $data['review_status'] = Quiz::REVIEW_STATUS_APPROVED;
@@ -666,11 +663,8 @@ class QuizController extends Controller
 
             if ($submitsForReview) {
                 $this->applyTeacherQuizReviewOnUpdate($data, $request, $quiz);
-            } elseif ($user->isQuizContentUploader() && SystemSetting::quizMandatoryReviewEnabled()) {
-                $this->applyTeacherQuizReviewOnUpdate($data, $request, $quiz);
-                $submitsForReview = true;
             } else {
-                // المشرف والمدير: خيار التفعيل الواحد يحدد is_published أيضاً
+                // أدمن المنصة فقط: تفعيل مباشر
                 $data['is_published'] = $request->has('is_active');
                 if ($data['is_published'] && $quiz->review_status !== Quiz::REVIEW_STATUS_APPROVED) {
                     $data['review_status'] = Quiz::REVIEW_STATUS_APPROVED;
@@ -1351,13 +1345,11 @@ class QuizController extends Controller
     }
 
     /**
-     * معاينة الاختبار
+     * @deprecated استخدم QuizPreviewController::start
      */
     public function preview(string $id)
     {
-        $quiz = Quiz::with(['questions.options', 'subject'])->findOrFail($id);
-
-        return view('admin.pages.quizzes.preview', compact('quiz'));
+        return redirect()->route('admin.quizzes.preview', $id);
     }
 
     /**
@@ -1548,7 +1540,7 @@ class QuizController extends Controller
             );
 
             return redirect()
-                ->back()
+                ->route('admin.review-queue.index')
                 ->with('success', 'تم الموافقة على نشر الاختبار بنجاح.');
 
         } catch (\Exception $e) {
@@ -1593,7 +1585,7 @@ class QuizController extends Controller
             $this->staffNotificationService->notifyQuizReviewOutcome($quiz->fresh(), $user, false);
 
             return redirect()
-                ->back()
+                ->route('admin.review-queue.index')
                 ->with('success', 'تم رفض نشر الاختبار وتم إرسال الملاحظات للمعلم.');
 
         } catch (\Exception $e) {

@@ -406,11 +406,10 @@ class LessonController extends Controller
 
             $isTeacher = $user->shouldSubmitLessonForReview();
             if ($isTeacher) {
+                // المعلمون والمشرفون: مسار المراجعة (مثل المعلم)
                 $this->applyTeacherLessonReviewOnCreate($data);
-            } elseif ($user->isLessonContentUploader() && SystemSetting::lessonMandatoryReviewEnabled()) {
-                $this->applyTeacherLessonReviewOnCreate($data);
-                $isTeacher = true;
             } else {
+                // أدمن المنصة فقط: تفعيل مباشر
                 $data['is_active'] = $request->has('is_active');
                 $data['review_status'] = $data['is_active']
                     ? Lesson::REVIEW_STATUS_APPROVED
@@ -608,11 +607,8 @@ class LessonController extends Controller
 
             if ($isTeacher) {
                 $this->applyTeacherLessonReviewOnUpdate($data, $request, $lesson);
-            } elseif ($user->isLessonContentUploader() && SystemSetting::lessonMandatoryReviewEnabled()) {
-                $this->applyTeacherLessonReviewOnUpdate($data, $request, $lesson);
-                $isTeacher = true;
             } else {
-                // المشرف والمدير
+                // أدمن المنصة فقط: تفعيل مباشر
                 $data['is_active'] = $request->has('is_active');
                 if ($data['is_active'] && $lesson->review_status !== Lesson::REVIEW_STATUS_APPROVED) {
                     $data['review_status'] = Lesson::REVIEW_STATUS_APPROVED;

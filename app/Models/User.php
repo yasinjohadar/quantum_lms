@@ -803,35 +803,38 @@ class User extends Authenticatable
         ]);
     }
 
+    /**
+     * منشئ محتوى دروس يخضع لمسار المراجعة (معلم أو مشرف — ليس أدمن المنصة).
+     */
     public function isLessonContentUploader(): bool
     {
-        if ($this->isPlatformAdmin() || $this->usesSupervisorAssignmentScope()) {
+        if ($this->isPlatformAdmin()) {
             return false;
         }
 
-        return $this->usesTeacherAssignmentScope() || $this->can('lesson-create');
+        return $this->usesTeacherAssignmentScope()
+            || $this->usesSupervisorAssignmentScope()
+            || $this->can('lesson-create');
     }
 
+    /**
+     * منشئ محتوى اختبارات يخضع لمسار المراجعة (معلم أو مشرف — ليس أدمن المنصة).
+     */
     public function isQuizContentUploader(): bool
     {
-        if ($this->isPlatformAdmin() || $this->usesSupervisorAssignmentScope()) {
+        if ($this->isPlatformAdmin()) {
             return false;
         }
 
-        return $this->usesTeacherAssignmentScope() || $this->can('quiz-create');
+        return $this->usesTeacherAssignmentScope()
+            || $this->usesSupervisorAssignmentScope()
+            || $this->can('quiz-create');
     }
 
     public function shouldSubmitLessonForReview(): bool
     {
-        if (! $this->isLessonContentUploader()) {
-            return false;
-        }
-
-        if (SystemSetting::lessonMandatoryReviewEnabled()) {
-            return true;
-        }
-
-        return ! $this->canReviewContent();
+        // الأدمن فقط ينشر مباشرة؛ المعلمون والمشرفون يمرّون بمسار المراجعة
+        return $this->isLessonContentUploader();
     }
 
     public function shouldSubmitContentForReview(): bool
@@ -841,15 +844,8 @@ class User extends Authenticatable
 
     public function shouldSubmitQuizForReview(): bool
     {
-        if (! $this->isQuizContentUploader()) {
-            return false;
-        }
-
-        if (SystemSetting::quizMandatoryReviewEnabled()) {
-            return true;
-        }
-
-        return ! $this->canReviewContent();
+        // الأدمن فقط ينشر مباشرة؛ المعلمون والمشرفون يمرّون بمسار المراجعة
+        return $this->isQuizContentUploader();
     }
 
     public function canManageTeacherAssignments(): bool

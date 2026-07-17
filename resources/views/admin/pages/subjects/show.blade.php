@@ -74,8 +74,35 @@
                 <div class="subject-show-hero__content">
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-2 small">
+                            @php
+                                $returnClassId = request()->filled('return_to_class_id')
+                                    ? (int) request('return_to_class_id')
+                                    : null;
+                                $breadcrumbClass = null;
+                                if ($returnClassId && $subject->schoolClass && (int) $subject->schoolClass->id === $returnClassId) {
+                                    $breadcrumbClass = $subject->schoolClass;
+                                } elseif ($returnClassId) {
+                                    $breadcrumbClass = \App\Models\SchoolClass::with('stage')->find($returnClassId);
+                                } elseif ($subject->schoolClass) {
+                                    $breadcrumbClass = $subject->schoolClass;
+                                }
+                                $useClassBreadcrumb = $breadcrumbClass !== null;
+                            @endphp
                             <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('admin.subjects.index') }}">المواد الدراسية</a></li>
+                            @if($useClassBreadcrumb)
+                                <li class="breadcrumb-item">
+                                    <a href="{{ route('admin.classes.index') }}">الصفوف الدراسية</a>
+                                </li>
+                                <li class="breadcrumb-item">
+                                    <a href="{{ route('admin.classes.show', $breadcrumbClass->id) }}" title="{{ $breadcrumbClass->stage?->name ? $breadcrumbClass->stage->name.' - '.$breadcrumbClass->name : $breadcrumbClass->name }}">
+                                        {{ $breadcrumbClass->name }}
+                                    </a>
+                                </li>
+                            @else
+                                <li class="breadcrumb-item">
+                                    <a href="{{ route('admin.subjects.index') }}">المواد الدراسية</a>
+                                </li>
+                            @endif
                             <li class="breadcrumb-item active" aria-current="page">{{ $subject->name }}</li>
                         </ol>
                     </nav>
@@ -128,7 +155,7 @@
 
                 <div class="subject-show-hero__actions">
                     @can('question-list')
-                        <a href="{{ route('admin.subjects.questions.index', $subject->id) }}" class="btn btn-primary btn-sm">
+                        <a href="{{ route('admin.subjects.questions.index', $subject->id) }}{{ request('return_to_class_id') ? '?return_to_class_id=' . request('return_to_class_id') : '' }}" class="btn btn-primary btn-sm">
                             <i class="bi bi-journal-text me-1"></i> بنك الأسئلة
                             <span class="badge bg-light text-dark ms-1">{{ $subject->total_questions }}</span>
                         </a>
@@ -140,6 +167,10 @@
                     @endcan
                     @if(request('return_to_class_id'))
                         <a href="{{ route('admin.classes.show', request('return_to_class_id')) }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-arrow-right me-1"></i> رجوع للصف
+                        </a>
+                    @elseif($subject->schoolClass)
+                        <a href="{{ route('admin.classes.show', $subject->schoolClass->id) }}" class="btn btn-outline-secondary btn-sm">
                             <i class="bi bi-arrow-right me-1"></i> رجوع للصف
                         </a>
                     @else

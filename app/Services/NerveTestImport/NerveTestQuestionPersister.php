@@ -6,6 +6,7 @@ use App\DataTransferObjects\NerveTest\NerveTestQuestionData;
 use App\Models\Question;
 use App\Models\QuestionOption;
 use App\Models\Unit;
+use App\Support\QuestionMarkupFormatter;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -36,9 +37,9 @@ class NerveTestQuestionPersister
             foreach ($questions as $dto) {
                 $question = Question::create([
                     'type' => $dto->type,
-                    'title' => $dto->title,
-                    'content' => $dto->title,
-                    'explanation' => $dto->explanation,
+                    'title' => QuestionMarkupFormatter::normalizeForStorage($dto->title),
+                    'content' => QuestionMarkupFormatter::normalizeForStorage($dto->title),
+                    'explanation' => QuestionMarkupFormatter::normalizeForStorage($dto->explanation),
                     'difficulty' => $dto->difficulty,
                     'default_points' => $dto->points,
                     'is_active' => true,
@@ -67,14 +68,14 @@ class NerveTestQuestionPersister
     {
         QuestionOption::create([
             'question_id' => $question->id,
-            'content' => $dto->optionA,
+            'content' => QuestionMarkupFormatter::normalizeForStorage($dto->optionA),
             'is_correct' => $dto->correctLetter === 'A',
             'order' => 1,
         ]);
 
         QuestionOption::create([
             'question_id' => $question->id,
-            'content' => $dto->optionB,
+            'content' => QuestionMarkupFormatter::normalizeForStorage($dto->optionB),
             'is_correct' => $dto->correctLetter === 'B',
             'order' => 2,
         ]);

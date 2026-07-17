@@ -424,8 +424,20 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('quizzes.duplicate');
         Route::post('quizzes/{quiz}/toggle-publish', [QuizController::class, 'togglePublish'])
             ->name('quizzes.toggle-publish');
-        Route::get('quizzes/{quiz}/preview', [QuizController::class, 'preview'])
+        Route::get('quizzes/{quiz}/preview', [\App\Http\Controllers\Admin\QuizPreviewController::class, 'start'])
             ->name('quizzes.preview');
+        Route::get('quizzes/{quiz}/preview/take', [\App\Http\Controllers\Admin\QuizPreviewController::class, 'show'])
+            ->name('quizzes.preview.show');
+        Route::post('quizzes/{quiz}/preview/answer', [\App\Http\Controllers\Admin\QuizPreviewController::class, 'saveAnswer'])
+            ->name('quizzes.preview.save-answer');
+        Route::post('quizzes/{quiz}/preview/submit', [\App\Http\Controllers\Admin\QuizPreviewController::class, 'submit'])
+            ->name('quizzes.preview.submit');
+        Route::get('quizzes/{quiz}/preview/result', [\App\Http\Controllers\Admin\QuizPreviewController::class, 'result'])
+            ->name('quizzes.preview.result');
+        Route::get('quizzes/{quiz}/preview/time', [\App\Http\Controllers\Admin\QuizPreviewController::class, 'time'])
+            ->name('quizzes.preview.time');
+        Route::get('quizzes/{quiz}/preview/exit', [\App\Http\Controllers\Admin\QuizPreviewController::class, 'exit'])
+            ->name('quizzes.preview.exit');
         Route::get('quizzes/{quiz}/results', [QuizController::class, 'results'])
             ->name('quizzes.results');
         Route::get('quizzes/{quiz}/export-results', [QuizController::class, 'exportResults'])
@@ -454,6 +466,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('review-queue.lessons');
         Route::get('review-queue/quizzes', [\App\Http\Controllers\Admin\ReviewQueueController::class, 'quizzes'])
             ->name('review-queue.quizzes');
+        Route::post('review-queue/lessons/bulk-approve', [\App\Http\Controllers\Admin\ReviewQueueController::class, 'bulkApproveLessons'])
+            ->name('review-queue.lessons.bulk-approve');
+        Route::post('review-queue/quizzes/bulk-approve', [\App\Http\Controllers\Admin\ReviewQueueController::class, 'bulkApproveQuizzes'])
+            ->name('review-queue.quizzes.bulk-approve');
 
         // الملاحظات
         Route::post('review-comments', [\App\Http\Controllers\Admin\ReviewCommentController::class, 'store'])

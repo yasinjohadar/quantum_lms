@@ -130,13 +130,14 @@ test('plain heading decodes entities before stripping', function () {
         ->not->toContain('&quot;');
 });
 
-test('wraps absolute value inequalities in inline code', function () {
+test('wraps absolute value inequalities as math', function () {
     $input = 'حدد جميع القيم التي تحقق المتباينة |x| ≤ 3.';
 
     $result = QuestionMarkupFormatter::format($input);
 
     expect($result)
-        ->toContain('<code class="question-inline-code">|x| ≤ 3</code>')
+        ->toContain('question-math-fragment')
+        ->toContain('\\leq')
         ->toContain('حدد جميع القيم');
 });
 
@@ -265,6 +266,64 @@ test('normalize for storage converts pseudo math backticks', function () {
     expect($stored)
         ->toContain('$')
         ->toContain('\sum_{k=1}^{n}');
+});
+
+test('normalize for storage converts notebooklm unicode math mixed with arabic', function () {
+    $input = 'ليكن f(x) = √(x² + 4x + 5) لماذا يعتبر هذا التابع مستمراً على ℝ؟';
+
+    $stored = QuestionMarkupFormatter::normalizeForStorage($input);
+
+    expect($stored)
+        ->toContain('$')
+        ->toContain('\\sqrt{')
+        ->toContain('x^{2}')
+        ->toContain('\\mathbb{R}')
+        ->not->toContain('√')
+        ->not->toContain('ℝ')
+        ->not->toContain('²');
+});
+
+test('normalize for storage converts notebooklm csv unicode subscripts', function () {
+    $input = 'لتكن المتتالية الحسابية (uₙ)ₙ gₑ ₀ التي حدها الأول u₀ = 5';
+
+    $stored = QuestionMarkupFormatter::normalizeForStorage($input);
+
+    expect($stored)
+        ->toContain('(u_n)_{n \\ge 0}')
+        ->toContain('u_{0}')
+        ->not->toContain('uₙ');
+});
+
+test('format renders notebooklm unicode math as katex fragments', function () {
+    $input = 'ليكن f(x) = √(x² + 4x + 5) لماذا يعتبر هذا التابع مستمراً على ℝ؟';
+
+    $result = QuestionMarkupFormatter::format($input);
+
+    expect($result)
+        ->toContain('question-math-fragment')
+        ->toContain('\\sqrt')
+        ->toContain('\\mathbb{R}');
+});
+
+test('normalize for storage keeps existing dollar latex intact', function () {
+    $input = 'ليكن $f(x) = \\sqrt{x^{2} + 4x + 5}$ لماذا يعتبر هذا التابع مستمراً على $\\mathbb{R}$؟';
+
+    $stored = QuestionMarkupFormatter::normalizeForStorage($input);
+
+    expect($stored)
+        ->toContain('$f(x) = \\sqrt{x^{2} + 4x + 5}$')
+        ->toContain('$\\mathbb{R}$');
+});
+
+test('normalize for storage softens simple html from imports', function () {
+    $input = '<p>احسب &amp;nbsp;`n &gt;= 1`</p>';
+
+    $stored = QuestionMarkupFormatter::normalizeForStorage($input);
+
+    expect($stored)
+        ->not->toContain('<p>')
+        ->toContain('$')
+        ->toContain('\\geq');
 });
 
 test('bare factorial mcq option renders as math', function () {

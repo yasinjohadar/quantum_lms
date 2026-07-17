@@ -272,7 +272,7 @@ test('mandatory review applies to user with lesson-create without teacher staff 
     expect($lesson->is_active)->toBeFalse();
 });
 
-test('shouldSubmitLessonForReview uses create permission and excludes reviewers', function () {
+test('shouldSubmitLessonForReview applies to uploaders and excludes approve-only reviewers', function () {
     seedLessonReviewPermissions();
 
     $teacher = createTeacherUser();
@@ -281,6 +281,43 @@ test('shouldSubmitLessonForReview uses create permission and excludes reviewers'
     $reviewer = createReviewerUser();
     expect($reviewer->shouldSubmitLessonForReview())->toBeFalse();
     expect($reviewer->canReviewContent())->toBeTrue();
+});
+
+test('supervisor creating lesson goes to pending review like teacher', function () {
+    seedLessonReviewPermissions();
+    SystemSetting::set('content_lesson_mandatory_review', '1', 'boolean', 'general');
+
+    ['unit' => $unit] = createLessonReviewCurriculum();
+
+    $role = Role::updateOrCreate(
+        ['name' => 'supervisor-lesson-uploader', 'guard_name' => 'web'],
+        ['dashboard_type' => 'admin', 'staff_profile' => 'supervisor']
+    );
+    $role->syncPermissions([
+        'lesson-create',
+        'lesson-edit',
+        'lesson-approve-review',
+        'review-queue-list',
+    ]);
+
+    $supervisor = User::factory()->create(['is_active' => true]);
+    $supervisor->assignRole($role);
+
+    expect($supervisor->usesSupervisorAssignmentScope())->toBeTrue();
+    expect($supervisor->canReviewContent())->toBeTrue();
+    expect($supervisor->isLessonContentUploader())->toBeTrue();
+    expect($supervisor->shouldSubmitLessonForReview())->toBeTrue();
+
+    $this->actingAs($supervisor)->post(route('admin.units.lessons.store', $unit), array_merge(lessonPayload([
+        'title' => 'درس مشرف للمراجعة',
+    ]), [
+        'is_active' => '1',
+    ]));
+
+    $lesson = Lesson::where('title', 'درس مشرف للمراجعة')->first();
+    expect($lesson)->not->toBeNull();
+    expect($lesson->review_status)->toBe(Lesson::REVIEW_STATUS_PENDING);
+    expect($lesson->is_active)->toBeFalse();
 });
 
 test('admin can toggle mandatory review setting', function () {

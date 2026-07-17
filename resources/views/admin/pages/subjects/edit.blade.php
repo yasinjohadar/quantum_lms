@@ -19,8 +19,36 @@
                 <div class="subject-form-hero__content">
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-2 small">
+                            @php
+                                $returnClassId = request()->filled('return_to_class_id')
+                                    ? (int) request('return_to_class_id')
+                                    : null;
+                                $breadcrumbClass = null;
+                                if ($returnClassId && $subject->schoolClass && (int) $subject->schoolClass->id === $returnClassId) {
+                                    $breadcrumbClass = $subject->schoolClass;
+                                } elseif ($returnClassId) {
+                                    $breadcrumbClass = \App\Models\SchoolClass::with('stage')->find($returnClassId);
+                                } elseif ($subject->schoolClass) {
+                                    $breadcrumbClass = $subject->schoolClass;
+                                }
+                            @endphp
                             <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('admin.subjects.index') }}">المواد الدراسية</a></li>
+                            @if($breadcrumbClass)
+                                <li class="breadcrumb-item">
+                                    <a href="{{ route('admin.classes.index') }}">الصفوف الدراسية</a>
+                                </li>
+                                <li class="breadcrumb-item">
+                                    <a href="{{ route('admin.classes.show', $breadcrumbClass->id) }}">{{ $breadcrumbClass->name }}</a>
+                                </li>
+                                <li class="breadcrumb-item">
+                                    <a href="{{ route('admin.subjects.show', $subject->id) }}{{ $returnClassId ? '?return_to_class_id='.$returnClassId : '' }}">{{ $subject->name }}</a>
+                                </li>
+                            @else
+                                <li class="breadcrumb-item"><a href="{{ route('admin.subjects.index') }}">المواد الدراسية</a></li>
+                                <li class="breadcrumb-item">
+                                    <a href="{{ route('admin.subjects.show', $subject->id) }}">{{ $subject->name }}</a>
+                                </li>
+                            @endif
                             <li class="breadcrumb-item active" aria-current="page">تعديل مادة</li>
                         </ol>
                     </nav>

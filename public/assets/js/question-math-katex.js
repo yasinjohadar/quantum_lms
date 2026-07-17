@@ -29,15 +29,33 @@
             return false;
         }
 
-        var targets = root
-            ? [root]
-            : Array.prototype.slice.call(
-                document.querySelectorAll('.question-text-body, .question-page-heading, .math-live-preview-body')
+        var targets;
+
+        if (root) {
+            targets = [root];
+            if (root.querySelectorAll) {
+                root.querySelectorAll(
+                    '.question-text-body, .question-page-heading, .math-live-preview-body, .question-math-fragment, .question-stem, .excel-math-preview-body'
+                ).forEach(function (el) {
+                    targets.push(el);
+                });
+            }
+        } else {
+            targets = Array.prototype.slice.call(
+                document.querySelectorAll(
+                    '.question-text-body, .question-page-heading, .math-live-preview-body, .excel-math-preview-body'
+                )
             );
+        }
+
+        var seen = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
 
         targets.forEach(function (el) {
-            if (!el) {
+            if (!el || (seen && seen.has(el))) {
                 return;
+            }
+            if (seen) {
+                seen.add(el);
             }
 
             if (el.dataset.mathRendered === '1') {

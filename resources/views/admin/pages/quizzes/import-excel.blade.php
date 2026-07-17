@@ -7,6 +7,7 @@
 @push('styles')
     @include('admin.pages.questions.partials.excel-import-wizard-styles')
     @include('admin.pages.questions.partials.pack-import-upload-styles')
+    @include('partials.question-math-assets')
 @endpush
 
 @section('content')
@@ -183,5 +184,6 @@
 @section('js')
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="{{ asset('js/admin/excel-questions-import.js') }}"></script>
+@include('partials.question-math-scripts')
+<script src="{{ asset('js/admin/excel-questions-import.js') }}?v=20260717a"></script>
 @stop

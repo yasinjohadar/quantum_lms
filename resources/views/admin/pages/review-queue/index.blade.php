@@ -35,6 +35,13 @@
                 </div>
             @endif
 
+            @if (session('error'))
+                <div class="alert alert-danger alert-dismissible fade show">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
+
             @include('admin.pages.review-queue.partials.stats-cards', ['stats' => $stats])
 
             <div class="rq-card mb-4">
@@ -55,7 +62,10 @@
                                 الدروس قيد المراجعة
                                 <span class="badge rounded-pill text-bg-warning">{{ $lessons->total() }}</span>
                             </div>
-                            @include('admin.pages.review-queue.partials.lessons-table', ['lessons' => $lessons])
+                            @include('admin.pages.review-queue.partials.lessons-table', [
+                                'lessons' => $lessons,
+                                'formId' => 'rq-index-lessons-bulk-form',
+                            ])
                             <div class="rq-pagination d-flex justify-content-center">
                                 {{ $lessons->links() }}
                             </div>
@@ -69,7 +79,10 @@
                                 الاختبارات قيد المراجعة
                                 <span class="badge rounded-pill text-bg-info">{{ $quizzes->total() }}</span>
                             </div>
-                            @include('admin.pages.review-queue.partials.quizzes-table', ['quizzes' => $quizzes])
+                            @include('admin.pages.review-queue.partials.quizzes-table', [
+                                'quizzes' => $quizzes,
+                                'formId' => 'rq-index-quizzes-bulk-form',
+                            ])
                             <div class="rq-pagination d-flex justify-content-center">
                                 {{ $quizzes->links() }}
                             </div>
@@ -87,4 +100,8 @@
             </div>
         </div>
     </div>
+@stop
+
+@section('js')
+    @include('admin.pages.review-queue.partials.bulk-approve-scripts')
 @stop
