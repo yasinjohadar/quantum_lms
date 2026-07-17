@@ -380,10 +380,17 @@
 <script>
     @php
         $questionsJson = $questions->map(function($q) {
+            $titleHtml = format_question_markup($q->title);
+            $contentHtml = format_question_markup($q->content);
+            // تجنّب عرض السؤال مرتين عندما يكون المحتوى نسخة من العنوان
+            if (! question_content_differs_from_title($q->title, $q->content)) {
+                $contentHtml = '';
+            }
+
             return [
                 'id' => $q->id,
-                'title' => format_question_markup($q->title),
-                'content' => format_question_markup($q->content),
+                'title' => $titleHtml,
+                'content' => $contentHtml,
                 'type' => $q->type,
                 'default_points' => $q->default_points ?? 0,
                 'options' => $q->options->map(function($opt) {
@@ -569,12 +576,23 @@
         html += '</div>';
         contentDiv.innerHTML = html;
 
-        if (typeof window.renderQuestionMath === 'function') {
-            contentDiv.querySelectorAll('[data-math-rendered="1"]').forEach(function (el) {
-                delete el.dataset.mathRendered;
-            });
-            window.renderQuestionMath(contentDiv);
+        function runMathRender(attempt) {
+            attempt = attempt || 0;
+            if (typeof window.renderQuestionMath === 'function') {
+                contentDiv.querySelectorAll('[data-math-rendered="1"]').forEach(function (el) {
+                    delete el.dataset.mathRendered;
+                });
+                if (window.renderQuestionMath(contentDiv)) {
+                    return;
+                }
+            }
+            if (attempt < 30) {
+                setTimeout(function () {
+                    runMathRender(attempt + 1);
+                }, 100);
+            }
         }
+        runMathRender(0);
         
         // إضافة event listeners للإجابات
         setupAnswerListeners(question);

@@ -10,6 +10,8 @@
     <title>@yield('page-title') — معاينة</title>
     <meta name="Description" content="معاينة اختبار">
     @include('student.layouts.head')
+    {{-- KaTeX مباشرة في المعاينة (لا تعتمد على @push فقط — مهم على السيرفر) --}}
+    <link rel="stylesheet" href="{{ asset('assets/libs/katex/katex.min.css') }}?v=0.16.11">
     <style>
         .quiz-preview-banner {
             position: sticky;
@@ -32,7 +34,12 @@
             margin-left: 0 !important;
             margin-right: 0 !important;
         }
+        .question-math-fragment {
+            display: inline;
+            white-space: normal;
+        }
     </style>
+    @stack('styles')
 </head>
 
 <body class="quiz-preview-mode">
@@ -65,6 +72,24 @@
     </div>
 
     @include('student.layouts.footer-scripts')
+
+    {{-- ضمان تحميل KaTeX حتى لو فشل @push من الصفحة الفرعية --}}
+    <script src="{{ asset('assets/libs/katex/katex.min.js') }}?v=0.16.11"></script>
+    <script src="{{ asset('assets/libs/katex/contrib/mhchem.min.js') }}?v=0.16.11"></script>
+    <script src="{{ asset('assets/libs/katex/contrib/auto-render.min.js') }}?v=0.16.11"></script>
+    <script src="{{ asset('assets/js/question-math-katex.js') }}?v=20260717b"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof window.renderQuestionMath === 'function') {
+                window.renderQuestionMath();
+            }
+        });
+        window.addEventListener('load', function () {
+            if (typeof window.renderQuestionMath === 'function') {
+                window.renderQuestionMath();
+            }
+        });
+    </script>
 </body>
 
 </html>

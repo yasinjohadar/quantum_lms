@@ -531,8 +531,14 @@ class QuestionMarkupFormatter
     {
         $segment = trim($segment);
 
-        if (preg_match('/^\$(.+)\$$/us', $segment, $matches)) {
-            $segment = '\\('.$matches[1].'\\)';
+        if (preg_match('/^\$\$([\s\S]+?)\$\$$/u', $segment, $matches)) {
+            $segment = '\\['.trim($matches[1]).'\\]';
+        } elseif (preg_match('/^\\\\\(([\s\S]+?)\\\\\)$/u', $segment, $matches)) {
+            $segment = '\\('.trim($matches[1]).'\\)';
+        } elseif (preg_match('/^\\\\\[([\s\S]+?)\\\\\]$/u', $segment, $matches)) {
+            $segment = '\\['.trim($matches[1]).'\\]';
+        } elseif (preg_match('/^\$(.+)\$$/us', $segment, $matches)) {
+            $segment = '\\('.trim($matches[1]).'\\)';
         }
 
         return '<span class="question-math-fragment">'.$segment.'</span>';
