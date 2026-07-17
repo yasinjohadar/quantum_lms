@@ -444,3 +444,17 @@ test('looks like math expression detects subscript difference', function () {
     expect(QuestionMarkupFormatter::looksLikeMathExpression('u_{n+1} - u_n'))->toBeTrue();
     expect(QuestionMarkupFormatter::looksLikeMathExpression('= 9 / [(n+5)(n+4)]'))->toBeTrue();
 });
+
+test('formats complex recurrence relation stem as katex fragments', function () {
+    $input = 'بفرض u_n-10u_(n+1) = 10u_n - 18. إذا علمنا أن u_(0) = 7 و u_n = 5*10^(n) + 2 لجميع n ≥ 0, فما هي قيمة u_10؟';
+
+    $formatted = QuestionMarkupFormatter::format($input);
+
+    expect($formatted)
+        ->toContain('katex-src')
+        ->toContain('u_n-10u_(n+1) = 10u_n - 18')
+        ->toContain('u_(0) = 7')
+        ->toContain('u_n = 5 \\cdot 10^(n) + 2')
+        ->toContain('n \\geq 0')
+        ->toContain('u_{10}');
+});

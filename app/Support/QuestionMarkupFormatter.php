@@ -24,6 +24,12 @@ class QuestionMarkupFormatter
     /** فترة عددية: [-3, 3] */
     private const INTERVAL_PATTERN = '\[-?[\d]+(?:[.,][\d]+)?\s*,\s*-?[\d]+(?:[.,][\d]+)?\]';
 
+    /**
+     * مقطع لاتيني متصل (أرقام/حروف/رموز رياضية) خارج أي نص عربي — شبكة أمان عامة
+     * لأي صيغة pseudo-LaTeX لم تُغطَّ بالأنماط المحدّدة أعلاه (مثل متتاليات عودية معقّدة).
+     */
+    private const BARE_MATH_RUN_PATTERN = '#[A-Za-z0-9][A-Za-z0-9_\^{}()+\-=<>.,*\\\\/ ]*[A-Za-z0-9)}]#u';
+
     public static function containsMath(?string $text): bool
     {
         if ($text === null || trim($text) === '') {
@@ -556,6 +562,50 @@ class QuestionMarkupFormatter
         return false;
     }
 
+    /**
+     * تحقق مُتحفّظ لمقطع لاتيني متصل خارج أي محارف عربية: يجب أن يحمل مؤشر
+     * رياضي واضح (تنقيص/رفع/يساوي/أمر LaTeX/مقارنة) وليس مجرد رقم أو كلمة بسيطة.
+     */
+    private static function looksLikeMathRun(string $run): bool
+    {
+        $trimmed = trim($run);
+        if ($trimmed === '' || mb_strlen($trimmed) < 2) {
+            return false;
+        }
+
+        if (self::looksLikeCodeExpression($trimmed)) {
+            return false;
+        }
+
+        // مقطع مثل "sqrt{...}" أو "frac{...}{...}" بدون الـ backslash السابق له
+        // (اقتُطع الـ "\" لأنه خارج فئة المحارف) — اتركه لمعالج \sqrt/\frac اللاحق.
+        if (preg_match('/^(?:frac|sqrt|sum|prod|int|lim|sin|cos|tan|cot|sec|csc|ln|log|arctan|arcsin|arccos|infty|pm|pi|theta|alpha|beta|gamma|delta|cdot|times|left|right|text|quad|mathbb|geq|leq|neq|to)\b/u', $trimmed)) {
+            return false;
+        }
+
+        if (preg_match('/[_^=]/u', $trimmed)) {
+            return true;
+        }
+
+        if (str_contains($trimmed, '\\')) {
+            return true;
+        }
+
+        if (preg_match('/[a-zA-Z]/u', $trimmed) && preg_match('/<|>|≤|≥|≠/u', $trimmed)) {
+            return true;
+        }
+
+        if (preg_match(self::SLASH_FRACTION_PATTERN, $trimmed)) {
+            return true;
+        }
+
+        if (preg_match('/[a-zA-Z]/u', $trimmed) && preg_match('/\d/u', $trimmed) && preg_match('/[+\-*]/u', $trimmed)) {
+            return true;
+        }
+
+        return false;
+    }
+
     private static function looksLikeCodeExpression(string $text): bool
     {
         // دوال برمجية مثل push() / at(1) — وليس n(n+1) أو f(x+1)
@@ -987,6 +1037,10 @@ class QuestionMarkupFormatter
             });
         }
 
+        // شبكة أمان أخيرة: أي مقطع لاتيني متصل متبقٍ خارج $...$ ويحمل مؤشراً
+        // رياضياً واضحاً (مثل متتاليات عودية معقّدة لم تُغطَّ بالأنماط أعلاه).
+        $text = self::wrapBareMathRunsOutsideMath($text);
+
         return $text;
     }
 
@@ -1016,6 +1070,49 @@ class QuestionMarkupFormatter
     }
 
     /**
+     * شبكة الأمان العامة: تلفّ أي مقطع لاتيني متصل يحمل مؤشراً رياضياً واضحاً.
+     * تتخطّى أي جزء غير متوازن الأقواس المعقوفة { } لأن ذلك يعني أننا في وسط
+     * بنية LaTeX متداخلة (مثل \sqrt{ التي احتوت $...$ من تحويل سابق) يُفضَّل
+     * تركها لمعالج الأوامر المتخصص اللاحق (wrapBareLatexCommandsOutsideDelimiters).
+     */
+    private static function wrapBareMathRunsOutsideMath(string $text): string
+    {
+        $parts = preg_split(self::MATH_SEGMENT_PATTERN, $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+        if ($parts === false) {
+            return $text;
+        }
+
+        $callback = static function (array $matches): string {
+            $run = $matches[0];
+            if (! self::looksLikeMathRun($run)) {
+                return $run;
+            }
+
+            $segment = self::normalizeMathExpression(self::normalizePseudoMath($run));
+
+            return '$'.$segment.'$';
+        };
+
+        $output = '';
+        foreach ($parts as $part) {
+            if ($part === '') {
+                continue;
+            }
+            if (preg_match(self::MATH_SEGMENT_PATTERN, $part)) {
+                $output .= $part;
+                continue;
+            }
+            if (substr_count($part, '{') !== substr_count($part, '}')) {
+                $output .= $part;
+                continue;
+            }
+            $output .= preg_replace_callback(self::BARE_MATH_RUN_PATTERN, $callback, $part) ?? $part;
+        }
+
+        return $output;
+    }
+
+    /**
      * تطبيع تعبير رياضي واحد (داخل $...$) دون إضافة محددات.
      */
     private static function normalizeMathExpression(string $expr): string
@@ -1037,6 +1134,8 @@ class QuestionMarkupFormatter
         ) ?? $expr;
         $expr = preg_replace('/(?<=[a-zA-Z0-9\)])\*(?=[a-zA-Z0-9\(])/u', ' \\cdot ', $expr) ?? $expr;
         $expr = preg_replace('/\^(\d+)/u', '^{$1}', $expr) ?? $expr;
+        // مؤشر سفلي متعدد المحارف بدون أقواس (u_10 → u_{10}) — لا يلمس u_n أحادي الحرف
+        $expr = preg_replace('/_(?!\{)([a-zA-Z0-9]{2,})/u', '_{$1}', $expr) ?? $expr;
         $expr = preg_replace('/\.\.\./u', '\\cdots ', $expr) ?? $expr;
         $expr = preg_replace('/…/u', '\\cdots ', $expr) ?? $expr;
         $expr = preg_replace('/\s+/u', ' ', $expr) ?? $expr;
