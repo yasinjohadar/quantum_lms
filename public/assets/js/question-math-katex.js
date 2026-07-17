@@ -1,13 +1,12 @@
+/**
+ * رسم معادلات الأسئلة عبر KaTeX — مسار واحد فقط:
+ * 1) .katex-src → katex.render(textContent)  [المصدر الأساسي الآمن]
+ * 2) احتياطي: auto-render لأي $...$ متبقٍ في .question-text-body
+ */
 (function () {
     'use strict';
 
-    var renderOptions = {
-        delimiters: [
-            { left: '$$', right: '$$', display: true },
-            { left: '\\[', right: '\\]', display: true },
-            { left: '\\(', right: '\\)', display: false },
-            { left: '$', right: '$', display: false },
-        ],
+    var katexOptions = {
         throwOnError: false,
         strict: false,
         trust: function (context) {
@@ -19,133 +18,114 @@
             '\\ZZ': '\\mathbb{Z}',
             '\\QQ': '\\mathbb{Q}',
             '\\CC': '\\mathbb{C}',
+            '\\ge': '\\geq',
+            '\\le': '\\leq',
         },
+    };
+
+    var autoRenderOptions = {
+        delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '\\[', right: '\\]', display: true },
+            { left: '\\(', right: '\\)', display: false },
+            { left: '$', right: '$', display: false },
+        ],
+        throwOnError: false,
+        strict: false,
+        trust: katexOptions.trust,
+        macros: katexOptions.macros,
         ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
-        ignoredClasses: ['question-inline-code', 'question-code-block', 'no-math'],
+        ignoredClasses: ['question-inline-code', 'question-code-block', 'no-math', 'katex-src'],
     };
 
     function katexReady() {
-        return typeof katex !== 'undefined' && typeof katex.render === 'function';
+        return typeof window.katex !== 'undefined' && typeof window.katex.render === 'function';
     }
 
-    function autoRenderReady() {
-        return typeof renderMathInElement === 'function';
-    }
+    function queryAll(root, selector) {
+        var scope = root && root.querySelectorAll ? root : document;
+        var list = [];
 
-    function extractLatexFromFragment(el) {
-        var raw = (el.textContent || '').trim();
-        if (!raw) {
-            return null;
+        if (root && root.matches && root.matches(selector)) {
+            list.push(root);
         }
 
-        var display = false;
-        var latex = raw;
-
-        if (/^\\\[[\s\S]*\\]$/.test(raw)) {
-            display = true;
-            latex = raw.slice(2, -2).trim();
-        } else if (/^\\\([\s\S]*\\\)$/.test(raw)) {
-            latex = raw.slice(2, -2).trim();
-        } else if (/^\$\$[\s\S]*\$\$$/.test(raw)) {
-            display = true;
-            latex = raw.slice(2, -2).trim();
-        } else if (/^\$[\s\S]*\$$/.test(raw)) {
-            latex = raw.slice(1, -1).trim();
+        if (scope.querySelectorAll) {
+            scope.querySelectorAll(selector).forEach(function (el) {
+                list.push(el);
+            });
         }
 
-        return { latex: latex, display: display };
+        return list;
     }
 
-    function renderFragmentsDirectly(root) {
+    function renderKatexSrc(root) {
         if (!katexReady()) {
             return false;
         }
 
-        var scope = root && root.querySelectorAll ? root : document;
-        var fragments = scope.querySelectorAll
-            ? scope.querySelectorAll('.question-math-fragment')
-            : [];
-
-        if (root && root.classList && root.classList.contains('question-math-fragment')) {
-            fragments = [root];
-        }
-
-        Array.prototype.forEach.call(fragments, function (el) {
-            if (!el || el.dataset.katexDirect === '1') {
+        queryAll(root, '.katex-src').forEach(function (el) {
+            if (!el || el.getAttribute('data-katex-done') === '1') {
                 return;
             }
 
-            var parsed = extractLatexFromFragment(el);
-            if (!parsed || !parsed.latex) {
+            var latex = (el.textContent || '').trim();
+            if (!latex) {
                 return;
             }
+
+            var displayMode = el.getAttribute('data-display') === '1';
 
             try {
-                katex.render(parsed.latex, el, {
-                    throwOnError: false,
-                    displayMode: parsed.display,
-                    strict: false,
-                    trust: renderOptions.trust,
-                    macros: renderOptions.macros,
-                });
-                el.dataset.katexDirect = '1';
-                el.dataset.mathRendered = '1';
-            } catch (e) {
-                // اترك النص كما هو
+                window.katex.render(latex, el, Object.assign({}, katexOptions, {
+                    displayMode: displayMode,
+                }));
+                el.setAttribute('data-katex-done', '1');
+            } catch (err) {
+                // اترك النص كما هو إن فشل الرسم
             }
         });
 
         return true;
     }
 
-    function renderQuestionMath(root) {
-        var ok = false;
-
-        if (autoRenderReady()) {
-            var targets;
-
-            if (root) {
-                targets = [root];
-                if (root.querySelectorAll) {
-                    root.querySelectorAll(
-                        '.question-text-body, .question-page-heading, .math-live-preview-body, .question-math-fragment, .question-stem, .excel-math-preview-body'
-                    ).forEach(function (el) {
-                        targets.push(el);
-                    });
-                }
-            } else {
-                targets = Array.prototype.slice.call(
-                    document.querySelectorAll(
-                        '.question-text-body, .question-page-heading, .math-live-preview-body, .excel-math-preview-body'
-                    )
-                );
-            }
-
-            var seen = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
-
-            targets.forEach(function (el) {
-                if (!el || (seen && seen.has(el))) {
-                    return;
-                }
-                if (seen) {
-                    seen.add(el);
-                }
-
-                if (el.dataset.mathRendered === '1') {
-                    delete el.dataset.mathRendered;
-                }
-
-                renderMathInElement(el, renderOptions);
-                el.dataset.mathRendered = '1';
-            });
-
-            ok = true;
+    function renderLeftoverDelimiters(root) {
+        if (typeof window.renderMathInElement !== 'function') {
+            return;
         }
 
-        // مسار مباشر عبر textContent — يتجنّب كسر < داخل HTML
-        renderFragmentsDirectly(root || document);
+        var targets = [];
 
-        return ok || katexReady();
+        if (root) {
+            targets.push(root);
+            queryAll(root, '.question-text-body, .question-page-heading, .math-live-preview-body, .excel-math-preview-body, .question-stem').forEach(function (el) {
+                targets.push(el);
+            });
+        } else {
+            targets = queryAll(document, '.question-text-body, .question-page-heading, .math-live-preview-body, .excel-math-preview-body');
+        }
+
+        var seen = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
+
+        targets.forEach(function (el) {
+            if (!el || (seen && seen.has(el))) {
+                return;
+            }
+            if (seen) {
+                seen.add(el);
+            }
+            try {
+                window.renderMathInElement(el, autoRenderOptions);
+            } catch (err) {
+                // تجاهل
+            }
+        });
+    }
+
+    function renderQuestionMath(root) {
+        var ok = renderKatexSrc(root);
+        renderLeftoverDelimiters(root);
+        return ok;
     }
 
     function boot(attempt) {
@@ -155,31 +135,28 @@
             return;
         }
 
-        if (attempt < 50) {
+        if (attempt < 60) {
             setTimeout(function () {
                 boot(attempt + 1);
             }, 100);
         }
     }
 
-    function scheduleBoot() {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () {
+            boot(0);
+        });
+    } else {
         boot(0);
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', scheduleBoot);
-    } else {
-        scheduleBoot();
-    }
-
     window.addEventListener('load', function () {
-        document.querySelectorAll('.question-text-body[data-math-rendered="1"], .math-live-preview-body[data-math-rendered="1"], .question-math-fragment[data-katex-direct="1"]').forEach(function (el) {
-            delete el.dataset.mathRendered;
-            delete el.dataset.katexDirect;
+        document.querySelectorAll('.katex-src[data-katex-done="1"]').forEach(function (el) {
+            // لا نعيد الرسم إن نجح مسبقاً
         });
         boot(0);
     });
 
     window.renderQuestionMath = renderQuestionMath;
-    window.questionMathRenderOptions = renderOptions;
+    window.questionMathRenderOptions = autoRenderOptions;
 })();

@@ -16,7 +16,8 @@ class QuestionExportContentRenderer
             QuestionMarkupFormatter::normalizeStoredText($html)
         );
 
-        $text = preg_replace('/<span class="question-math-fragment">(.*?)<\/span>/us', '$1', $text) ?? $text;
+        $text = preg_replace('/<span class="(?:katex-src\s+)?question-math-fragment"[^>]*>(.*?)<\/span>/us', '$1', $text) ?? $text;
+        $text = preg_replace('/<span class="katex-src"[^>]*>(.*?)<\/span>/us', '$1', $text) ?? $text;
         $text = preg_replace('/\\\\\(([^)]+)\\\\\)/u', '$1', $text) ?? $text;
         $text = preg_replace('/\$(.+?)\$/u', '$1', $text) ?? $text;
         $text = preg_replace('/`([^`]+)`/u', '$1', $text) ?? $text;

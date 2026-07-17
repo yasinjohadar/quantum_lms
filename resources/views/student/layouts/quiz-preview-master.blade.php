@@ -10,8 +10,7 @@
     <title>@yield('page-title') — معاينة</title>
     <meta name="Description" content="معاينة اختبار">
     @include('student.layouts.head')
-    {{-- KaTeX مباشرة في المعاينة (لا تعتمد على @push فقط — مهم على السيرفر) --}}
-    <link rel="stylesheet" href="{{ asset('assets/libs/katex/katex.min.css') }}?v=0.16.11">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
     <style>
         .quiz-preview-banner {
             position: sticky;
@@ -34,9 +33,14 @@
             margin-left: 0 !important;
             margin-right: 0 !important;
         }
-        .question-math-fragment {
+        .katex-src, .question-math-fragment {
             display: inline;
             white-space: normal;
+        }
+        .katex-src[data-display="1"] {
+            display: block;
+            margin: .35rem 0;
+            text-align: center;
         }
     </style>
     @stack('styles')
@@ -72,12 +76,7 @@
     </div>
 
     @include('student.layouts.footer-scripts')
-
-    {{-- ضمان تحميل KaTeX حتى لو فشل @push من الصفحة الفرعية --}}
-    <script src="{{ asset('assets/libs/katex/katex.min.js') }}?v=0.16.11"></script>
-    <script src="{{ asset('assets/libs/katex/contrib/mhchem.min.js') }}?v=0.16.11"></script>
-    <script src="{{ asset('assets/libs/katex/contrib/auto-render.min.js') }}?v=0.16.11"></script>
-    <script src="{{ asset('assets/js/question-math-katex.js') }}?v=20260717d"></script>
+    @include('partials.question-math-scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             if (typeof window.renderQuestionMath === 'function') {

@@ -614,26 +614,46 @@ class QuestionMarkupFormatter
         $text = rtrim($text, " \t\\");
         $text = self::normalizeMathExpression(self::normalizePseudoMath($text));
 
-        return self::wrapMathSegment('\\('.$text.'\\)');
+        return self::wrapMathLatex($text, false);
     }
 
     private static function wrapMathSegment(string $segment): string
     {
         $segment = trim($segment);
+        $display = false;
+        $inner = $segment;
 
         if (preg_match('/^\$\$([\s\S]+?)\$\$$/u', $segment, $matches)) {
-            $segment = '\\['.self::htmlSafeMathInner(trim($matches[1])).'\\]';
-        } elseif (preg_match('/^\\\\\(([\s\S]+?)\\\\\)$/u', $segment, $matches)) {
-            $segment = '\\('.self::htmlSafeMathInner(trim($matches[1])).'\\)';
+            $display = true;
+            $inner = trim($matches[1]);
         } elseif (preg_match('/^\\\\\[([\s\S]+?)\\\\\]$/u', $segment, $matches)) {
-            $segment = '\\['.self::htmlSafeMathInner(trim($matches[1])).'\\]';
+            $display = true;
+            $inner = trim($matches[1]);
+        } elseif (preg_match('/^\\\\\(([\s\S]+?)\\\\\)$/u', $segment, $matches)) {
+            $inner = trim($matches[1]);
         } elseif (preg_match('/^\$(.+)\$$/us', $segment, $matches)) {
-            $segment = '\\('.self::htmlSafeMathInner(trim($matches[1])).'\\)';
-        } else {
-            $segment = self::htmlSafeMathInner($segment);
+            $inner = trim($matches[1]);
         }
 
-        return '<span class="question-math-fragment">'.$segment.'</span>';
+        return self::wrapMathLatex($inner, $display);
+    }
+
+    /**
+     * مخرجات آمنة 100%: LaTeX كنص مُهرَّب داخل span — KaTeX يقرأه من textContent.
+     * لا نضع \( أو $ أو < خام في HTML.
+     */
+    private static function wrapMathLatex(string $latex, bool $display = false): string
+    {
+        $latex = self::htmlSafeMathInner($latex);
+        if ($latex === '') {
+            return '';
+        }
+
+        $displayAttr = $display ? '1' : '0';
+
+        return '<span class="katex-src question-math-fragment" data-display="'.$displayAttr.'">'
+            .e($latex)
+            .'</span>';
     }
 
     /**
@@ -916,26 +936,50 @@ class QuestionMarkupFormatter
             '/lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?\\\\infty(?:\s*\\\\frac\{[^}]+\}\{[^}]+\})?/u',
             '/lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?\\\\infty\s*\\\\frac\{[^}]+\}\{[^}]+\}/u',
             '/\([^)]+\)\/\([^)]+\)\s*lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?(?:\\\\infty|∞)/u',
-            // u_{n+1} = \sqrt{...} كوحدة واحدة
+            // (u_n)_{n \ge 0} — قبل لفّ n \ge 0 وحدها
+            '/(?<!\$)\([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\)_\{[^}]+\}/u',
             '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\s*=\s*\\\\sqrt\{[^}]+\})/u',
-            // u_n < 2 أو n \geq 0
-            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\s*(?:<|>|<=|>=|\\\\lt|\\\\gt|\\\\leq|\\\\geq|≤|≥)\s*[-+]?\d+)/u',
-            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\s*\\\\(?:geq|leq|neq)\s*[-+]?\d+)/u',
+            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)\s*=\s*[-+]?\d+)/u',
+            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\s*(?:<|>|<=|>=|\\\\lt|\\\\gt|\\\\leq|\\\\geq|\\\\ge|\\\\le|≤|≥)\s*[-+]?\d+)/u',
+            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\s*\\\\(?:geq|leq|neq|ge|le)\s*[-+]?\d+)/u',
+            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+))(?=[\s.؟!،,;:]|$)/u',
+            '/(?<!\$)\b([a-zA-Z]\s*=\s*[-+]?\d+)(?=[\s.؟!،,;:]|$)/u',
         ];
 
         foreach ($patterns as $pattern) {
-            $text = preg_replace_callback(
-                $pattern,
-                static function (array $matches): string {
-                    $segment = self::normalizeMathExpression(self::normalizePseudoMath($matches[0]));
+            $text = self::replacePatternOutsideMath($text, $pattern, static function (array $matches): string {
+                $segment = self::normalizeMathExpression(self::normalizePseudoMath($matches[0]));
 
-                    return '$'.$segment.'$';
-                },
-                $text
-            ) ?? $text;
+                return '$'.$segment.'$';
+            });
         }
 
         return $text;
+    }
+
+    /**
+     * تطبيق استبدال فقط خارج مقاطع $...$ / $$...$$ / \(...\) لتجنّب كسر الصيغ الملفوفة.
+     */
+    private static function replacePatternOutsideMath(string $text, string $pattern, callable $callback): string
+    {
+        $parts = preg_split(self::MATH_SEGMENT_PATTERN, $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+        if ($parts === false) {
+            return preg_replace_callback($pattern, $callback, $text) ?? $text;
+        }
+
+        $output = '';
+        foreach ($parts as $part) {
+            if ($part === '') {
+                continue;
+            }
+            if (preg_match(self::MATH_SEGMENT_PATTERN, $part)) {
+                $output .= $part;
+            } else {
+                $output .= preg_replace_callback($pattern, $callback, $part) ?? $part;
+            }
+        }
+
+        return $output;
     }
 
     /**
@@ -948,6 +992,8 @@ class QuestionMarkupFormatter
         $expr = self::stripRedundantMathBraces($expr);
 
         $expr = str_replace(['>=', '<=', '≥', '≤', '≠', '!=', '×'], ['\\geq', '\\leq', '\\geq', '\\leq', '\\neq', '\\neq', '\\cdot'], $expr);
+        $expr = preg_replace('/\\\\ge(?![a-zA-Z])/u', '\\geq', $expr) ?? $expr;
+        $expr = preg_replace('/\\\\le(?![a-zA-Z])/u', '\\leq', $expr) ?? $expr;
         $expr = preg_replace('/(?<!\\\\)</u', '\\lt ', $expr) ?? $expr;
         $expr = preg_replace('/(?<!\\\\)>/u', '\\gt ', $expr) ?? $expr;
         // {u_{n+1}} داخل تعبير أوسع → u_{n+1} (لا يلمس \sqrt{...})
@@ -1063,7 +1109,7 @@ class QuestionMarkupFormatter
             return '';
         }
 
-        $protectedPattern = '/(<pre class="question-code-block">[\s\S]*?<\/pre>)|(<code class="question-inline-code">[\s\S]*?<\/code>)|(<span class="question-math-fragment">[\s\S]*?<\/span>)/u';
+        $protectedPattern = '/(<pre class="question-code-block">[\s\S]*?<\/pre>)|(<code class="question-inline-code">[\s\S]*?<\/code>)|(<span class="(?:katex-src\s+)?question-math-fragment"[^>]*>[\s\S]*?<\/span>)|(<span class="katex-src"[^>]*>[\s\S]*?<\/span>)/u';
         $parts = preg_split($protectedPattern, $text, -1, PREG_SPLIT_DELIM_CAPTURE);
 
         if ($parts === false) {

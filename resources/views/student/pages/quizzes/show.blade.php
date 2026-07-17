@@ -579,14 +579,15 @@
         function runMathRender(attempt) {
             attempt = attempt || 0;
             if (typeof window.renderQuestionMath === 'function') {
-                contentDiv.querySelectorAll('[data-math-rendered="1"]').forEach(function (el) {
-                    delete el.dataset.mathRendered;
+                contentDiv.querySelectorAll('[data-katex-done], [data-math-rendered]').forEach(function (el) {
+                    el.removeAttribute('data-katex-done');
+                    el.removeAttribute('data-math-rendered');
                 });
                 if (window.renderQuestionMath(contentDiv)) {
                     return;
                 }
             }
-            if (attempt < 30) {
+            if (attempt < 40) {
                 setTimeout(function () {
                     runMathRender(attempt + 1);
                 }, 100);

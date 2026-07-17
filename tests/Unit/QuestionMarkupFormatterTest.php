@@ -31,8 +31,9 @@ test('wraps latex segments for katex rendering', function () {
     $result = QuestionMarkupFormatter::format($input);
 
     expect($result)
+        ->toContain('katex-src')
         ->toContain('question-math-fragment')
-        ->toContain('\(\int \frac{\ln x}{x} dx\)')
+        ->toContain('\int \frac{\ln x}{x} dx')
         ->not->toContain('question-math-content')
         ->not->toContain('&lt;');
 });
@@ -43,8 +44,7 @@ test('wraps bare latex in mcq options for katex', function () {
     $result = QuestionMarkupFormatter::format($input);
 
     expect($result)
-        ->toContain('question-math-fragment')
-        ->toContain('\(')
+        ->toContain('katex-src')
         ->toContain('\cos^{2}x')
         ->not->toContain('question-inline-code');
 });
@@ -160,10 +160,10 @@ test('normalizes famous limit pseudo latex in arabic question stem', function ()
     $result = QuestionMarkupFormatter::format($input);
 
     expect($result)
-        ->toContain('question-math-fragment')
+        ->toContain('katex-src')
         ->toContain('\lim_{x \to +\infty}')
         ->toContain('\frac{1}{x^n}')
-        ->toContain('\(n\)')
+        ->toContain('>n</span>')
         ->toContain('ما هي قيمة النهاية الشهيرة');
 });
 
@@ -173,19 +173,19 @@ test('wraps single dollar inline math segments', function () {
     $result = QuestionMarkupFormatter::format($input);
 
     expect($result)
-        ->toContain('question-math-fragment')
-        ->toContain('\(\lim_{x \to +\infty} \frac{1}{x^n}\)')
-        ->toContain('\(n\)');
+        ->toContain('katex-src')
+        ->toContain('\lim_{x \to +\infty} \frac{1}{x^n}')
+        ->toContain('>n</span>');
 });
 
 test('wraps infinity unicode mcq options as math', function () {
     expect(QuestionMarkupFormatter::format('+∞'))
-        ->toContain('question-math-fragment')
-        ->toContain('\(+\infty\)');
+        ->toContain('katex-src')
+        ->toContain('+\infty');
 
     expect(QuestionMarkupFormatter::format('-∞'))
-        ->toContain('question-math-fragment')
-        ->toContain('\(-\infty\)');
+        ->toContain('katex-src')
+        ->toContain('-\infty');
 });
 
 test('normalizes lim frac storage format in arabic stem', function () {
@@ -205,8 +205,8 @@ test('normalizes split infinity option variants to single fragment', function ()
         $result = QuestionMarkupFormatter::format($option);
 
         expect($result)
-            ->toContain('question-math-fragment')
-            ->toContain('\(+\infty\)')
+            ->toContain('katex-src')
+            ->toContain('+\infty')
             ->not->toContain('$+\infty$$');
     }
 });
@@ -289,7 +289,7 @@ test('normalize for storage converts notebooklm csv unicode subscripts', functio
     $stored = QuestionMarkupFormatter::normalizeForStorage($input);
 
     expect($stored)
-        ->toContain('(u_n)_{n \\ge 0}')
+        ->toContain('(u_n)_{n \\geq 0}')
         ->toContain('u_{0}')
         ->not->toContain('uₙ');
 });
@@ -384,9 +384,9 @@ test('normalizes bare f(x) equals frac in arabic stem as single math fragment', 
         ->not->toContain('=$$');
 
     expect($formatted)
-        ->toContain('question-math-fragment')
-        ->toContain('\\(f(x) = \\frac{5x^{3}')
-        ->toContain('\\(+\\infty\\)')
+        ->toContain('katex-src')
+        ->toContain('f(x) = \\frac{5x^{3}')
+        ->toContain('+\\infty')
         ->not->toContain('question-inline-code');
 });
 
@@ -411,6 +411,19 @@ test('html-safe math converts less-than inside fragments', function () {
         ->toContain('question-math-fragment')
         ->toContain('\\lt')
         ->not->toContain('u_p < 2');
+});
+
+test('formats geometric sequence stem with subscript notation', function () {
+    $input = 'لتكن المتتالية الهندسية (u_n)_{n \\ge 0} أساسها q=2 وحدها الأول u_{0}=3. ما هي قيمة الحد u_{5}؟';
+
+    $formatted = QuestionMarkupFormatter::format($input);
+
+    expect($formatted)
+        ->toContain('katex-src')
+        ->toContain('(u_n)_{n \\geq 0}')
+        ->toContain('u_{0}=3')
+        ->toContain('u_{5}')
+        ->toContain('q=2');
 });
 
 test('looks like math expression detects subscript difference', function () {
