@@ -49,6 +49,56 @@ class QuestionMarkupFormatter
         $text = self::normalizePseudoMath($text);
         $text = self::extractInlinePseudoMathInArabicText($text);
         $text = self::wrapCommonFunctionDefinitionsInArabicText($text);
+        $text = self::repairBrokenMathDelimiters($text);
+
+        return $text;
+    }
+
+    /**
+     * إصلاح فواصل $ المكسورة الناتجة عن لفّ f(x)= و \frac بشكل منفصل:
+     * "$f(x) =$$\frac{a}{b}$" → "$f(x) = \frac{a}{b}$"
+     * "$$f(x) = \frac{a}{b}$" → "$f(x) = \frac{a}{b}$"
+     */
+    private static function repairBrokenMathDelimiters(string $text): string
+    {
+        if ($text === '' || ! str_contains($text, '$')) {
+            return $text;
+        }
+
+        // $f(x) =$$\frac...$ أو $f(x) = $$\frac...$
+        $text = preg_replace_callback(
+            '/\$([a-zA-Z]\s*\(\s*[a-zA-Z0-9]+\s*\)\s*=)\s*\$\$/u',
+            static fn (array $m): string => '$'.$m[1].' ',
+            $text
+        ) ?? $text;
+
+        // $$f(x) = \frac{...}$ (فُتح بـ $$ وأُغلق بـ $)
+        $text = preg_replace_callback(
+            '/\$\$([a-zA-Z]\s*\(\s*[a-zA-Z0-9]+\s*\)\s*=\s*\\\\frac\{[^}]+\}\{[^}]+\})\$/u',
+            static fn (array $m): string => '$'.$m[1].'$',
+            $text
+        ) ?? $text;
+
+        // أي $$...$ غير متوازن يحتوي أوامر LaTeX
+        $text = preg_replace_callback(
+            '/\$\$([^\$\n]+)\$/u',
+            static function (array $m): string {
+                $inner = trim($m[1]);
+                if ($inner !== '' && preg_match('/\\\\(?:frac|sqrt|lim|int|sum|infty)|[a-zA-Z]\s*\(/u', $inner)) {
+                    return '$'.$inner.'$';
+                }
+
+                return $m[0];
+            },
+            $text
+        ) ?? $text;
+
+        // $f(x)$$\frac → $f(x) \frac
+        $text = preg_replace_callback(
+            '/\$([a-zA-Z]\s*\(\s*[a-zA-Z0-9]+\s*\))\s*\$\$/u',
+            static fn (array $m): string => '$'.$m[1].' ',
+            $text
+        ) ?? $text;
 
         return $text;
     }
@@ -314,15 +364,37 @@ class QuestionMarkupFormatter
         }
 
         $output = '';
-        foreach ($parts as $part) {
+        $count = count($parts);
+
+        for ($i = 0; $i < $count; $i++) {
+            $part = $parts[$i];
             if ($part === '') {
                 continue;
             }
+
             if (preg_match(self::MATH_SEGMENT_PATTERN, $part)) {
                 $output .= $part;
-            } else {
-                $output .= self::wrapBareLatexCommandsOutsideDelimiters($part);
+                continue;
             }
+
+            // دمج "f(x) =" مع مقطع رياضي تالٍ لتجنب "$f(x) =$$\frac...$"
+            if (
+                preg_match('/^(.*?)(?<!\$)\b([a-zA-Z]\s*\(\s*[a-zA-Z0-9]+\s*\)\s*=)\s*$/u', $part, $matches)
+                && isset($parts[$i + 1])
+                && preg_match(self::MATH_SEGMENT_PATTERN, $parts[$i + 1])
+            ) {
+                $mathInner = $parts[$i + 1];
+                $mathInner = preg_replace('/^\$\$([\s\S]*)\$\$$/u', '$1', $mathInner) ?? $mathInner;
+                $mathInner = preg_replace('/^\$(.*)\$$/us', '$1', $mathInner) ?? $mathInner;
+                $mathInner = preg_replace('/^\\\\[\[\(]([\s\S]*)\\\\[\]\)]$/u', '$1', $mathInner) ?? $mathInner;
+                $expr = self::normalizeMathExpression(trim($matches[2]).' '.trim($mathInner));
+                $output .= $matches[1].'$'.$expr.'$';
+                $i++;
+
+                continue;
+            }
+
+            $output .= self::wrapBareLatexCommandsOutsideDelimiters($part);
         }
 
         return $output;
@@ -330,9 +402,20 @@ class QuestionMarkupFormatter
 
     private static function wrapBareLatexCommandsOutsideDelimiters(string $text): string
     {
-        // f(x)=\sqrt{...} أو f(x)=... حتى نهاية المقطع الرياضي
+        // f(x)=\frac{...}{...} أو f(x)=\sqrt{...} كوحدة واحدة
         $text = preg_replace_callback(
-            '/(?<!\$)\b([a-zA-Z]\s*\(\s*[a-zA-Z]\s*\)\s*=\s*(?:\\\\sqrt\{[^}]+\}|[^$\n\x{0600}-\x{06FF}?؟]+))/u',
+            '/(?<!\$)\b([a-zA-Z]\s*\(\s*[a-zA-Z0-9]+\s*\)\s*=\s*\\\\(?:frac\{[^}]+\}\{[^}]+\}|sqrt\{[^}]+\}))(?!\$)/u',
+            static function (array $m): string {
+                $expr = self::normalizeMathExpression(trim($m[1]));
+
+                return '$'.$expr.'$';
+            },
+            $text
+        ) ?? $text;
+
+        // f(x)=تعبير حقيقي (ليس مسافات فقط وليس يبدأ بـ $)
+        $text = preg_replace_callback(
+            '/(?<!\$)\b([a-zA-Z]\s*\(\s*[a-zA-Z0-9]+\s*\)\s*=\s*(?!\$)(?!\s*$)(?:\\\\sqrt\{[^}]+\}|[^\s$\n\x{0600}-\x{06FF}?؟][^$\n\x{0600}-\x{06FF}?؟]*))/u',
             static function (array $m): string {
                 $expr = self::normalizeMathExpression(trim($m[1]));
 
@@ -350,9 +433,15 @@ class QuestionMarkupFormatter
         $text = preg_replace_callback(
             '/(?<!\$)(\\\\sqrt\{[^}]+\})(?!\$)/u',
             static function (array $m): string {
-                // لا تلف إن كانت جزءاً من تعريف دالة لُفّ سابقاً
                 return '$'.$m[1].'$';
             },
+            $text
+        ) ?? $text;
+
+        // +\infty / -\infty / \infty عارية داخل نص عربي
+        $text = preg_replace_callback(
+            '/(?<!\$)((?:\+|-)\\\\infty|\\\\infty)(?!\$)/u',
+            static fn (array $m): string => '$'.$m[1].'$',
             $text
         ) ?? $text;
 
@@ -619,11 +708,13 @@ class QuestionMarkupFormatter
 
     private static function formatSingleBlock(string $text): string
     {
+        $text = self::repairBrokenMathDelimiters($text);
         $text = self::convertMathBackticks($text);
         $text = self::convertUnicodeMathOutsideDelimiters($text);
         $text = self::normalizePseudoMath($text);
         $text = self::extractInlinePseudoMathInArabicText($text);
         $text = self::wrapCommonFunctionDefinitionsInArabicText($text);
+        $text = self::repairBrokenMathDelimiters($text);
 
         if (str_contains($text, 'question-inline-code')) {
             return $text;
@@ -904,7 +995,12 @@ class QuestionMarkupFormatter
             return self::wrapBareLatex($trimmed);
         }
 
-        if ($trimmed !== '' && preg_match('/^[a-zA-Z_$][\w$.]*\([^)]*\)$/u', $trimmed)) {
+        // لا نعتبر "$f(x)" كوداً — علامة $ تعني رياضيات مكسورة أو صحيحة
+        if ($trimmed !== '' && preg_match('/^\$/', $trimmed)) {
+            return self::escapePlainSegment($text);
+        }
+
+        if ($trimmed !== '' && preg_match('/^[a-zA-Z_][\w.]*(?:\.[a-zA-Z_][\w.]*)*\([^)]*\)$/u', $trimmed)) {
             return self::wrapInlineCode($trimmed);
         }
 
@@ -916,11 +1012,11 @@ class QuestionMarkupFormatter
             return self::wrapInlineCode($trimmed);
         }
 
-        if ($trimmed !== '' && preg_match('/^[a-zA-Z_$][\w$]*$/u', $trimmed) && strlen($trimmed) <= 40) {
+        if ($trimmed !== '' && preg_match('/^[a-zA-Z_][\w]*$/u', $trimmed) && strlen($trimmed) <= 40) {
             return self::wrapInlineCode($trimmed);
         }
 
-        $codePattern = '/('.self::ABS_INEQUALITY_PATTERN.')|('.self::INTERVAL_PATTERN.')|(\[[^\]]+\])|([a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)*\([^)]*\))/u';
+        $codePattern = '/('.self::ABS_INEQUALITY_PATTERN.')|('.self::INTERVAL_PATTERN.')|(\[[^\]]+\])|([a-zA-Z_][\w]*(?:\.[a-zA-Z_][\w]*)*\([^)]*\))/u';
         $parts = preg_split($codePattern, $text, -1, PREG_SPLIT_DELIM_CAPTURE);
 
         if ($parts === false) {
@@ -1033,6 +1129,8 @@ class QuestionMarkupFormatter
         }
 
         $text = self::applyPseudoCommandsOutsideMath($text);
+        // لفّ f(x)=\frac قبل لفّ \frac وحدها لتفادي "$f(x) =$$\frac$"
+        $text = self::wrapFunctionEqualsFracOutsideMath($text);
         $text = self::replaceBareFracOutsideMath($text);
 
         $text = preg_replace_callback(
@@ -1102,6 +1200,41 @@ class QuestionMarkupFormatter
             },
             $text
         ) ?? $text;
+    }
+
+    private static function wrapFunctionEqualsFracOutsideMath(string $text): string
+    {
+        $parts = preg_split(
+            self::MATH_SEGMENT_PATTERN,
+            $text,
+            -1,
+            PREG_SPLIT_DELIM_CAPTURE
+        );
+
+        if ($parts === false) {
+            return $text;
+        }
+
+        $output = '';
+        foreach ($parts as $part) {
+            if ($part === '') {
+                continue;
+            }
+
+            if (preg_match(self::MATH_SEGMENT_PATTERN, $part)) {
+                $output .= $part;
+            } else {
+                $output .= preg_replace_callback(
+                    '/(?<!\$)\b([a-zA-Z]\s*\(\s*[a-zA-Z0-9]+\s*\)\s*=\s*\\\\frac\{[^}]+\}\{[^}]+\})(?!\$)/u',
+                    static function (array $matches): string {
+                        return '$'.self::normalizeMathExpression($matches[1]).'$';
+                    },
+                    $part
+                ) ?? $part;
+            }
+        }
+
+        return $output;
     }
 
     private static function replaceBareFracOutsideMath(string $text): string

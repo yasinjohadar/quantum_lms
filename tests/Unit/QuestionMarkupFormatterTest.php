@@ -355,6 +355,41 @@ TEXT;
         ->not->toContain('question-inline-code');
 });
 
+test('repairs broken f(x) equals double-dollar frac delimiters', function () {
+    $broken = 'أوجد نهاية التابع $f(x) = $$\frac{5x^{3} - 3x - 1}{8x^{4} - 12x^{2} + 5x}$ عندما x تسعى إلى +\infty.';
+
+    $stored = QuestionMarkupFormatter::normalizeForStorage($broken);
+    $formatted = QuestionMarkupFormatter::format($broken);
+
+    expect($stored)
+        ->toContain('$f(x) = \\frac{5x^{3} - 3x - 1}{8x^{4} - 12x^{2} + 5x}$')
+        ->not->toContain('=$$')
+        ->not->toContain('$$f(x)');
+
+    expect($formatted)
+        ->toContain('question-math-fragment')
+        ->toContain('\\frac{5x^{3}')
+        ->not->toContain('question-inline-code')
+        ->not->toContain('$$');
+});
+
+test('normalizes bare f(x) equals frac in arabic stem as single math fragment', function () {
+    $input = 'أوجد نهاية التابع f(x) = \frac{5x^3 - 3x - 1}{8x^4 - 12x^2 + 2} عندما x تسعى إلى +\infty.';
+
+    $stored = QuestionMarkupFormatter::normalizeForStorage($input);
+    $formatted = QuestionMarkupFormatter::format($input);
+
+    expect($stored)
+        ->toContain('$f(x) = \\frac{5x^{3} - 3x - 1}{8x^{4} - 12x^{2} + 2}$')
+        ->not->toContain('=$$');
+
+    expect($formatted)
+        ->toContain('question-math-fragment')
+        ->toContain('\\(f(x) = \\frac{5x^{3}')
+        ->toContain('\\(+\\infty\\)')
+        ->not->toContain('question-inline-code');
+});
+
 test('looks like math expression detects subscript difference', function () {
     expect(QuestionMarkupFormatter::looksLikeMathExpression('u_{n+1} - u_n'))->toBeTrue();
     expect(QuestionMarkupFormatter::looksLikeMathExpression('= 9 / [(n+5)(n+4)]'))->toBeTrue();
