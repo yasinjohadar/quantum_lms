@@ -44,6 +44,7 @@ class QuestionMarkupFormatter
 
         $text = trim(self::normalizeStoredText($text));
         $text = self::softenImportedHtml($text);
+        $text = self::repairBrokenMathDelimiters($text);
         $text = self::convertMathBackticks($text);
         $text = self::convertBraceWrappedMathOutsideDelimiters($text);
         $text = self::convertUnicodeMathOutsideDelimiters($text);
@@ -557,7 +558,18 @@ class QuestionMarkupFormatter
 
     private static function looksLikeCodeExpression(string $text): bool
     {
-        if (preg_match('/^[a-zA-Z_$][\w$.]*\([^)]*\)$/u', $text)) {
+        // دوال برمجية مثل push() / at(1) — وليس n(n+1) أو f(x+1)
+        if (preg_match('/^[a-zA-Z_$][\w$.]*\(([^)]*)\)$/u', $text, $matches)) {
+            $args = $matches[1];
+            if ($args !== '' && preg_match('/[+\-*\/=^\\]|[a-zA-Z]{2,}/u', $args)) {
+                return false;
+            }
+
+            // وسيط حرف واحد مثل f(x) غالباً رياضيات في هذا المشروع
+            if (preg_match('/^[a-zA-Z]$/u', $args)) {
+                return false;
+            }
+
             return true;
         }
 
@@ -597,6 +609,19 @@ class QuestionMarkupFormatter
         }
 
         if (preg_match(self::PSEUDO_MATH_PATTERN, $text)) {
+            return true;
+        }
+
+        if (preg_match(self::SLASH_FRACTION_PATTERN, $trimmed)) {
+            return true;
+        }
+
+        // (6)/((2p+3)(p+2)(p+1)) أو (p+1)^{3}
+        if (preg_match('/\^\{[^}]+\}/u', $trimmed)) {
+            return true;
+        }
+
+        if (preg_match('/\([^)]+\)\s*\/\s*\(/u', $trimmed)) {
             return true;
         }
 
@@ -930,20 +955,28 @@ class QuestionMarkupFormatter
 
     private static function wrapPseudoMathSegmentsInPlainText(string $text): string
     {
+        // حوّل ... قبل أي لفّ حتى لا يقطعها lookahead النقطة
+        $text = preg_replace('/\.\.\./u', ' \\cdots ', $text) ?? $text;
+        $text = preg_replace('/…/u', ' \\cdots ', $text) ?? $text;
+
         $patterns = [
             '/sum_\{[^}]+\}(?:\s*[=+\-]\s*[^$\n\x{0600}-\x{06FF}]+)?/u',
             '/prod_\{[^}]+\}(?:\s*[=+\-]\s*[^$\n\x{0600}-\x{06FF}]+)?/u',
             '/lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?\\\\infty(?:\s*\\\\frac\{[^}]+\}\{[^}]+\})?/u',
             '/lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?\\\\infty\s*\\\\frac\{[^}]+\}\{[^}]+\}/u',
             '/\([^)]+\)\/\([^)]+\)\s*lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?(?:\\\\infty|∞)/u',
-            // (u_n)_{n \ge 0} — قبل لفّ n \ge 0 وحدها
             '/(?<!\$)\([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\)_\{[^}]+\}/u',
             '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\s*=\s*\\\\sqrt\{[^}]+\})/u',
-            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)\s*=\s*[-+]?\d+)/u',
+            // S_n = 1^{2} + \\cdots + n^{2} = (...) — بدون نقطة كفاصل (تكسر ...)
+            '/(?<!\$)\b([A-Za-z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)\s*=\s*(?:(?![\x{0600}-\x{06FF}])[\s\S])*?\^{[^}]+}(?:(?![\x{0600}-\x{06FF}])[\s\S])*?)(?=\s*(?:[؟!،]|لكل|حيث|ما |$))/u',
+            // كسور بأقواس متداخلة مستوى واحد
+            '/(?<!\$)\((?:[^()]|\([^()]*\))+\)\s*\/\s*\((?:[^()]|\([^()]*\))+\)/u',
+            // (p+1)^{3} — ليس 5x^{3} داخل تعبير أطول
+            '/(?<!\$)(?<![a-zA-Z0-9])((?:\([^()\n\x{0600}-\x{06FF}]+\)|[A-Za-z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?)\s*\^{[^}]+})/u',
             '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\s*(?:<|>|<=|>=|\\\\lt|\\\\gt|\\\\leq|\\\\geq|\\\\ge|\\\\le|≤|≥)\s*[-+]?\d+)/u',
             '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\s*\\\\(?:geq|leq|neq|ge|le)\s*[-+]?\d+)/u',
-            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+))(?=[\s.؟!،,;:]|$)/u',
-            '/(?<!\$)\b([a-zA-Z]\s*=\s*[-+]?\d+)(?=[\s.؟!،,;:]|$)/u',
+            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+))(?!\s*=)(?=[\s.؟!،,;:]|$)/u',
+            '/(?<!\$)\b([a-zA-Z]\s*=\s*[-+]?\d+)(?!\s*\^)(?=[\s.؟!،,;:]|$)/u',
         ];
 
         foreach ($patterns as $pattern) {
@@ -1004,6 +1037,8 @@ class QuestionMarkupFormatter
         ) ?? $expr;
         $expr = preg_replace('/(?<=[a-zA-Z0-9\)])\*(?=[a-zA-Z0-9\(])/u', ' \\cdot ', $expr) ?? $expr;
         $expr = preg_replace('/\^(\d+)/u', '^{$1}', $expr) ?? $expr;
+        $expr = preg_replace('/\.\.\./u', '\\cdots ', $expr) ?? $expr;
+        $expr = preg_replace('/…/u', '\\cdots ', $expr) ?? $expr;
         $expr = preg_replace('/\s+/u', ' ', $expr) ?? $expr;
 
         return trim($expr);
@@ -1016,6 +1051,20 @@ class QuestionMarkupFormatter
     {
         $expr = preg_replace_callback(
             '/\[([^\]]+)\]\s*\/\s*\[([^\]]+)\]/u',
+            static fn (array $matches): string => '\\frac{'.$matches[1].'}{'.$matches[2].'}',
+            $expr
+        ) ?? $expr;
+
+        // (6)/((2p+3)(p+2)(p+1)) — المقام قد يحتوي أقواس متداخلة بسيطة
+        $expr = preg_replace_callback(
+            '/\(([^()]+)\)\s*\/\s*\((.+)\)$/u',
+            static fn (array $matches): string => '\\frac{'.$matches[1].'}{'.$matches[2].'}',
+            $expr
+        ) ?? $expr;
+
+        // ( n(n+1)(2n+1))/(6) داخل تعبير أطول
+        $expr = preg_replace_callback(
+            '/\(((?:[^()]|\([^()]*\))+)\)\s*\/\s*\(((?:[^()]|\([^()]*\))+)\)/u',
             static fn (array $matches): string => '\\frac{'.$matches[1].'}{'.$matches[2].'}',
             $expr
         ) ?? $expr;
@@ -1150,8 +1199,15 @@ class QuestionMarkupFormatter
             return self::escapePlainSegment($text);
         }
 
-        if ($trimmed !== '' && preg_match('/^[a-zA-Z_][\w.]*(?:\.[a-zA-Z_][\w.]*)*\([^)]*\)$/u', $trimmed)) {
-            return self::wrapInlineCode($trimmed);
+        if ($trimmed !== '' && preg_match('/^[a-zA-Z_][\w.]*(?:\.[a-zA-Z_][\w.]*)*\(([^)]*)\)$/u', $trimmed, $fnMatch)) {
+            $args = $fnMatch[1];
+            if ($args !== '' && preg_match('/[+\-*\/=^\\]|[a-zA-Z]{2,}/u', $args)) {
+                // n(n+1) — رياضيات
+            } elseif (preg_match('/^[a-zA-Z]$/u', $args)) {
+                // f(x) — رياضيات في سياق الأسئلة
+            } else {
+                return self::wrapInlineCode($trimmed);
+            }
         }
 
         if ($trimmed !== '' && preg_match('/^'.self::INTERVAL_PATTERN.'$/u', $trimmed)) {

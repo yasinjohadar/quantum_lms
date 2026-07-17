@@ -426,6 +426,20 @@ test('formats geometric sequence stem with subscript notation', function () {
         ->toContain('q=2');
 });
 
+test('formats induction sum of squares stem as single katex source', function () {
+    $input = 'أثبت بالتدريج أن S_n = 1^{2} + 2^{2} + ... + n^{2} = ( n(n+1)(2n+1))/(6) لكل n طبيعي. ما هو الطرف الأيمن لـ S_{p+1}؟';
+
+    $formatted = QuestionMarkupFormatter::format($input);
+
+    expect($formatted)
+        ->toContain('katex-src')
+        ->toContain('S_n = 1^{2}')
+        ->toContain('\\cdots')
+        ->toContain('\\frac')
+        ->not->toContain('question-inline-code')
+        ->not->toContain('1</span>^{2}');
+});
+
 test('looks like math expression detects subscript difference', function () {
     expect(QuestionMarkupFormatter::looksLikeMathExpression('u_{n+1} - u_n'))->toBeTrue();
     expect(QuestionMarkupFormatter::looksLikeMathExpression('= 9 / [(n+5)(n+4)]'))->toBeTrue();
