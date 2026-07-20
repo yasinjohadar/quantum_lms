@@ -42,6 +42,16 @@ class QuestionMarkupFormatter
     /** نفس منطق BALANCED_BRACE_ARG لكن للأقواس العادية (...)، لكسور الشرطة المائلة وجذر النِّسَب. */
     private const BALANCED_PAREN_ARG = '(?:[^()]|\([^()]*\))+';
 
+    /**
+     * مؤشر سفلي عاري بدون أقواس معقوفة، يشمل أيضاً استمراراً حسابياً على حرف
+     * وحيد مثل n+1 أو k-1 (شائع في المتتاليات العودية: u_n+1 يجب أن يُعامَل
+     * كوحدة "n+1" واحدة وليس حرفاً واحداً ثم "+1" منفصلة تُخرَج الغلاف الخارجي
+     * {...} عن التطابق وتُسرّب قوساً معقوفاً خاماً في الصفحة). لا يمسّ حالات
+     * مثل "x_2+3y" لأن الاستمرار الحسابي محدود بحرف مفرد كأساس (n) مع أرقام
+     * فقط بعد العامل، لا سلسلة أحرف عشوائية.
+     */
+    private const BARE_SUBSCRIPT = '_(?:[a-zA-Z](?:[+\-]\d+)+|[a-zA-Z0-9]+)';
+
     public static function containsMath(?string $text): bool
     {
         if ($text === null || trim($text) === '') {
@@ -298,7 +308,35 @@ class QuestionMarkupFormatter
             $decoded = $next;
         }
 
-        return self::convertArabicIndicDigitsToAscii($decoded);
+        $decoded = self::convertArabicIndicDigitsToAscii($decoded);
+
+        return self::mergeDoubleAsciiSubscripts($decoded);
+    }
+
+    /**
+     * إصلاح مؤشر سفلي مضاعف شائع من الكتابة اليدوية/تصدير الذكاء الاصطناعي:
+     * u_n_(+1) أو u_n_{+1} أو u_n_+1 — يُقصَد بها u_{n+1} لكنها كُتبت بمؤشرين
+     * سفليين متتاليين على نفس المتغيّر، وهو خطأ "Double subscript" في KaTeX
+     * يظهر كنص LaTeX خام أحمر بدل معادلة مُصيَّغة. ندمجهما في مؤشر واحد بأقواس
+     * معقوفة قبل أي معالجة أخرى، لأن أي لفّ لاحق بـ $...$ لن يُصحّح البنية الخاطئة.
+     * لا يلمس "a_1 ... a_2" (متغيّرات منفصلة غير متلاصقة) لأن النمط يتطلّب
+     * التلاصق المباشر بين المؤشرين.
+     */
+    private static function mergeDoubleAsciiSubscripts(string $text): string
+    {
+        if (! str_contains($text, '_')) {
+            return $text;
+        }
+
+        return preg_replace_callback(
+            '/([a-zA-Z])_([a-zA-Z0-9])_(?:\{([^{}]+)\}|\(([^()]+)\)|([+\-]?[a-zA-Z0-9]+))/u',
+            static function (array $m): string {
+                $second = $m[3] !== '' ? $m[3] : ($m[4] !== '' ? $m[4] : $m[5]);
+
+                return $m[1].'_{'.$m[2].$second.'}';
+            },
+            $text
+        ) ?? $text;
     }
 
     /**
@@ -736,7 +774,7 @@ class QuestionMarkupFormatter
             return true;
         }
 
-        if (preg_match('/[a-zA-Z](?:_\{[^}]+\}|\^\{[^}]+\}|_[a-zA-Z0-9]|\^[a-zA-Z0-9])+/u', $trimmed)) {
+        if (preg_match('/[a-zA-Z](?:_\{[^}]+\}|\^\{[^}]+\}|_\([^()]+\)|\^\([^()]+\)|_[a-zA-Z0-9]|\^[a-zA-Z0-9])+/u', $trimmed)) {
             return true;
         }
 
@@ -1195,7 +1233,7 @@ class QuestionMarkupFormatter
 
             // فقط {رمز_بمؤشر} أو {رمز = قيمة} وليس بعد حرف من أمر LaTeX
             $output .= preg_replace_callback(
-                '/(?<![a-zA-Z])\{([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)(?:\s*=\s*[^{}]*)?|[a-zA-Z]\s*=\s*[^{}]+)\}/u',
+                '/(?<![a-zA-Z])\{([a-zA-Z](?:_\{[^}]+\}|_\([^()]+\)|'.self::BARE_SUBSCRIPT.')(?:\s*=\s*[^{}]*)?|[a-zA-Z]\s*=\s*[^{}]+)\}/u',
                 static function (array $matches): string {
                     $inner = trim($matches[1]);
                     if ($inner === '' || ! self::looksLikeMathExpression($inner)) {
@@ -1255,17 +1293,17 @@ class QuestionMarkupFormatter
             '/lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?\\\\infty(?:\s*\\\\frac\{'.self::BALANCED_BRACE_ARG.'\}\{'.self::BALANCED_BRACE_ARG.'\})?/u',
             '/lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?\\\\infty\s*\\\\frac\{'.self::BALANCED_BRACE_ARG.'\}\{'.self::BALANCED_BRACE_ARG.'\}/u',
             '/\([^)]+\)\/\([^)]+\)\s*lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?(?:\\\\infty|∞)/u',
-            '/(?<!\$)\([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\)_\{[^}]+\}/u',
-            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\s*=\s*\\\\sqrt\{'.self::BALANCED_BRACE_ARG.'\})/u',
+            '/(?<!\$)\([a-zA-Z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')?\)_\{[^}]+\}/u',
+            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')?\s*=\s*\\\\sqrt\{'.self::BALANCED_BRACE_ARG.'\})/u',
             // S_n = 1^{2} + \\cdots + n^{2} = (...) — بدون نقطة كفاصل (تكسر ...)
-            '/(?<!\$)\b([A-Za-z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)\s*=\s*(?:(?![\x{0600}-\x{06FF}])[\s\S])*?\^{[^}]+}(?:(?![\x{0600}-\x{06FF}])[\s\S])*?)(?=\s*(?:[؟!،]|لكل|حيث|ما |$))/u',
+            '/(?<!\$)\b([A-Za-z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')\s*=\s*(?:(?![\x{0600}-\x{06FF}])[\s\S])*?\^{[^}]+}(?:(?![\x{0600}-\x{06FF}])[\s\S])*?)(?=\s*(?:[؟!،]|لكل|حيث|ما |$))/u',
             // كسور بأقواس متداخلة مستوى واحد
             '/(?<!\$)\((?:[^()]|\([^()]*\))+\)\s*\/\s*\((?:[^()]|\([^()]*\))+\)/u',
             // (p+1)^{3} — ليس 5x^{3} داخل تعبير أطول
-            '/(?<!\$)(?<![a-zA-Z0-9])((?:\([^()\n\x{0600}-\x{06FF}]+\)|[A-Za-z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?)\s*\^{[^}]+})/u',
-            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\s*(?:<|>|<=|>=|\\\\lt|\\\\gt|\\\\leq|\\\\geq|\\\\ge|\\\\le|≤|≥)\s*[-+]?\d+)/u',
-            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\s*\\\\(?:geq|leq|neq|ge|le)\s*[-+]?\d+)/u',
-            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+))(?!\s*=)(?=[\s.؟!،,;:]|$)/u',
+            '/(?<!\$)(?<![a-zA-Z0-9])((?:\([^()\n\x{0600}-\x{06FF}]+\)|[A-Za-z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')?)\s*\^{[^}]+})/u',
+            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')?\s*(?:<|>|<=|>=|\\\\lt|\\\\gt|\\\\leq|\\\\geq|\\\\ge|\\\\le|≤|≥)\s*[-+]?\d+)/u',
+            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')?\s*\\\\(?:geq|leq|neq|ge|le)\s*[-+]?\d+)/u',
+            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.'))(?!\s*=)(?=[\s.؟!،,;:]|$)/u',
             // متغيّر مستقل "x = 1" فقط عندما يبدأ التطابق بحرف مستقل (مسبوق بمسافة/بداية
             // النص)، لا حرفاً ملتصقاً بنهاية تعبير أطول مثل "cos^{2}x = 1" (يجب أن يُلَفّ
             // التعبير كله كوحدة واحدة بدل قطعه في منتصفه).
@@ -1405,7 +1443,7 @@ class QuestionMarkupFormatter
         $expr = preg_replace('/(?<!\\\\)>/u', '\\gt ', $expr) ?? $expr;
         // {u_{n+1}} داخل تعبير أوسع → u_{n+1} (لا يلمس \sqrt{...})
         $expr = preg_replace(
-            '/(?<![a-zA-Z\\\\])\{([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+))\}/u',
+            '/(?<![a-zA-Z\\\\])\{([a-zA-Z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.'))\}/u',
             '$1',
             $expr
         ) ?? $expr;

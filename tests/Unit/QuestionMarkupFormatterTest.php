@@ -715,3 +715,44 @@ test('deep normalize is a no-op safe superset of normalize for storage on alread
 
     expect(QuestionMarkupFormatter::deepNormalizeForStorage($good))->toBe($good);
 });
+
+test('merges a double ascii subscript typo into one braced subscript instead of a KaTeX double-subscript error', function () {
+    // انحدار حقيقي من السيرفر: متتالية عودية كُتبت بمؤشرين سفليين متتاليين
+    // u_n_(+1) بدل u_{n+1}، ما يُسبّب خطأ "Double subscript" في KaTeX ويُعرَض
+    // كنص LaTeX خام أحمر للطالب (لقطة شاشة: سؤال المتتالية العودية 3/20).
+    $withParenContinuation = 'لتكن المتتالية المعرفة بالعلاقة التكرارية u_n_(+1) = \sqrt{2 + u_n} مع u_0 = 1 ، ما هو نوع اطراد هذه المتتالية؟';
+    $withBraceContinuation = 'لتكن المتتالية المعرفة بالعلاقة التكرارية u_n_{+1} = \sqrt{2 + u_n} مع u_0 = 1 ، ما هو نوع اطراد هذه المتتالية؟';
+    $withBareContinuation = 'لتكن المتتالية المعرفة بالعلاقة التكرارية u_n_+1 = \sqrt{2 + u_n} مع u_0 = 1 ، ما هو نوع اطراد هذه المتتالية؟';
+
+    foreach ([$withParenContinuation, $withBraceContinuation, $withBareContinuation] as $input) {
+        $stored = QuestionMarkupFormatter::normalizeForStorage($input);
+
+        expect($stored)
+            ->toContain('u_{n+1}')
+            ->not->toContain('u_n_');
+
+        $html = format_question_markup($stored);
+        expect($html)->toContain('katex-src');
+    }
+
+    // لا يجب أن يلمس متغيّرات منفصلة غير متلاصقة (a_1 ... a_2).
+    $unrelatedVars = 'قارن بين a_1 و a_2 في هذا المتتالية.';
+    expect(QuestionMarkupFormatter::normalizeForStorage($unrelatedVars))->toContain('a_1')->toContain('a_2');
+});
+
+test('recognizes a NotebookLM-style brace wrapping a paren subscript as math instead of leaking a stray brace', function () {
+    // انحدار حقيقي: {u_(n+1)} (غلاف NotebookLM حول مؤشر سفلي بأقواس عادية) لم
+    // يكن looksLikeMathExpression يتعرّف عليه، فيبقى القوس الخارجي { } كنص خام
+    // معلَّق، وشبكة الأمان اللاحقة (wrapBareMathRunsOutsideMath) تلفّ نطاقاً
+    // خاطئ الحدود يتضمن قوساً معقوفاً زائداً.
+    $input = 'لتكن المتتالية المعرفة بالعلاقة التكرارية {u_(n+1)} = \sqrt{2 + u_n} مع {u_0 = 1} ، ما هو نوع اطراد هذه المتتالية؟';
+
+    $stored = QuestionMarkupFormatter::normalizeForStorage($input);
+
+    expect($stored)
+        ->toContain('$u_{n+1}$')
+        ->toContain('$\sqrt{2 + u_n}$')
+        ->toContain('$u_0 = 1$')
+        ->not->toContain('{$')
+        ->not->toContain('}$}');
+});
