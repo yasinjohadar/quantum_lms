@@ -151,6 +151,62 @@ class QuestionMarkupFormatter
     }
 
     /**
+     * سلسلة خطوات التطبيع/اللفّ المستخدَمة في كل من normalizeForStorage وformatSingleBlock
+     * (بدون softenImportedHtml الخاصة بالتخزين فقط)، مستخرَجة كدالة مشتركة تُستخدم مباشرة
+     * عند العرض حتى لا تُفقَد أي HTML أصلي (مثل <p>/<code> من TinyMCE) بشكل غير مقصود.
+     */
+    private static function normalizeForRender(string $text): string
+    {
+        $text = self::repairBrokenMathDelimiters($text);
+        $text = self::convertMathBackticks($text);
+        $text = self::convertBraceWrappedMathOutsideDelimiters($text);
+        $text = self::convertUnicodeMathOutsideDelimiters($text);
+        $text = self::normalizePseudoMath($text);
+        $text = self::extractInlinePseudoMathInArabicText($text);
+        $text = self::wrapCommonFunctionDefinitionsInArabicText($text);
+        $text = self::repairBrokenMathDelimiters($text);
+        $text = self::repairUnbalancedDollarSigns($text);
+
+        return $text;
+    }
+
+    /**
+     * نسخة "إصلاح شامل" من normalizeForRender تُستخدم عند العرض (لا التخزين): تنزع أي
+     * محدِّدات $...$ خاطئة الموضع من صيغة قديمة (سؤال استُورِد/عُدِّل قبل إصلاحات
+     * لاحقة ولم يُشغَّل عليه بعد أداة الإصلاح الشامل) وتعيد بناءها من الصفر، بحيث لا
+     * يبقى سؤال قديم معطَّلاً بانتظار تشغيل الأداة اليدوية. لا تستخدم softenImportedHtml
+     * (خاصة بمسار التخزين فقط) حتى لا تفسد HTML أصلياً صالحاً من TinyMCE. مزوَّدة بشبكة
+     * الأمان نفسها الموجودة في deepNormalizeForStorage لتفادي أي تراجع.
+     */
+    private static function deepNormalizeForRender(string $text): string
+    {
+        $shallow = self::normalizeForRender($text);
+
+        if (! str_contains($text, '$') && ! str_contains($text, '\\(') && ! str_contains($text, '\\[')) {
+            return $shallow;
+        }
+
+        $stripped = self::stripMathDelimiters($text);
+        if ($stripped === $text) {
+            return $shallow;
+        }
+
+        $deep = self::normalizeForRender($stripped);
+
+        // بعكس deepNormalizeForStorage (حيث النتيجة العميقة هي التي تُخزَّن نهائياً)،
+        // formatSingleBlock يملك شبكة أمان لاحقة خاصة به (looksLikeBareLatex/الالتقاط
+        // كـ"لاتكس عارٍ" لكل مقطع خارج $...$) تستفيد من وجود فاصل $ ولو كان في غير
+        // موضعه الصحيح لتقسيم النص. لذلك نعتمد النتيجة العميقة هنا فقط عندما تكون
+        // نظيفة تماماً (بلا أي شرطة عكسية طليقة خارج $...$)؛ وإلا نُبقي على النتيجة
+        // السطحية حتى تستفيد الخطوات اللاحقة من حدود $ الموجودة، مهما كانت غير دقيقة.
+        if (self::hasStrayBackslashOutsideMath($deep)) {
+            return $shallow;
+        }
+
+        return $deep;
+    }
+
+    /**
      * كشف أي شرطة عكسية "\" متبقية خارج مقاطع $...$ المعروفة — مؤشر قوي على أمر
      * LaTeX لم يُلفّ بنجاح وسيظهر خاماً للمستخدم النهائي.
      */
@@ -184,17 +240,8 @@ class QuestionMarkupFormatter
 
         $text = trim(self::normalizeStoredText($text));
         $text = self::softenImportedHtml($text);
-        $text = self::repairBrokenMathDelimiters($text);
-        $text = self::convertMathBackticks($text);
-        $text = self::convertBraceWrappedMathOutsideDelimiters($text);
-        $text = self::convertUnicodeMathOutsideDelimiters($text);
-        $text = self::normalizePseudoMath($text);
-        $text = self::extractInlinePseudoMathInArabicText($text);
-        $text = self::wrapCommonFunctionDefinitionsInArabicText($text);
-        $text = self::repairBrokenMathDelimiters($text);
-        $text = self::repairUnbalancedDollarSigns($text);
 
-        return $text;
+        return self::normalizeForRender($text);
     }
 
     /**
@@ -1125,15 +1172,7 @@ class QuestionMarkupFormatter
 
     private static function formatSingleBlock(string $text): string
     {
-        $text = self::repairBrokenMathDelimiters($text);
-        $text = self::convertMathBackticks($text);
-        $text = self::convertBraceWrappedMathOutsideDelimiters($text);
-        $text = self::convertUnicodeMathOutsideDelimiters($text);
-        $text = self::normalizePseudoMath($text);
-        $text = self::extractInlinePseudoMathInArabicText($text);
-        $text = self::wrapCommonFunctionDefinitionsInArabicText($text);
-        $text = self::repairBrokenMathDelimiters($text);
-        $text = self::repairUnbalancedDollarSigns($text);
+        $text = self::deepNormalizeForRender($text);
 
         // نص يحتوي كود HTML جاهز مسبقاً (من مسار سابق) بدون رياضيات متبقية للمعالجة.
         if (str_contains($text, 'question-inline-code') && ! self::containsMath($text)) {

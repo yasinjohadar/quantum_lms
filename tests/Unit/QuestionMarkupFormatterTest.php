@@ -756,3 +756,31 @@ test('recognizes a NotebookLM-style brace wrapping a paren subscript as math ins
         ->not->toContain('{$')
         ->not->toContain('}$}');
 });
+
+test('renders a legacy question with wrong math delimiters correctly without running the manual backfill tool (screenshot regression)', function () {
+    // نفس سؤال "screenshot regression" أعلاه، لكن هذه المرة نستدعي format_question_markup
+    // مباشرة على النص القديم كما هو مخزَّن في قاعدة بيانات لم يُشغَّل عليها بعد "الإصلاح
+    // الشامل" اليدوي — تحديداً السيناريو الذي أبلغ عنه المستخدم: "مازال هكذا ببعض الأسئلة"
+    // بعد رفع الإصلاحات. يجب أن يُصحَّح العرض تلقائياً دون الحاجة لتشغيل أي أداة.
+    $legacyBroken = 'نهاية التابع $f(x)$ = x - \sqrt(x^{2}+x) $عندما x$ \to+\infty هي:';
+
+    $html = format_question_markup($legacyBroken);
+
+    expect($html)
+        ->toContain('<span class="katex-src question-math-fragment" data-display="0">f(x) = x - \sqrt(x^{2}+x)</span>')
+        ->toContain('<span class="katex-src question-math-fragment" data-display="0">x \to+\infty</span>')
+        ->not->toContain('عندما x</span><span')
+        ->not->toContain('\to</span>');
+});
+
+test('format preserves rich html from a tinymce-authored question instead of running it through storage-only softening', function () {
+    // format_question_markup يُستخدم أيضاً لعرض أسئلة أُنشئت عبر محرر TinyMCE العادي
+    // (بلا رياضيات مستوردة)، حيث تُخزَّن HTML غنية (<p>) كما هي. يجب ألا يُفقد إصلاح
+    // الرياضيات عند العرض هذا الـHTML عبر تمريره بالخطأ من مسار softenImportedHtml
+    // الخاص بالتخزين فقط (والذي يحوّل <p> إلى نص عادي بأسطر جديدة).
+    $input = '<p>وصف السؤال بدون أي رياضيات هنا.</p>';
+
+    $html = format_question_markup($input);
+
+    expect($html)->toContain('<p>وصف السؤال بدون أي رياضيات هنا.</p>');
+});
