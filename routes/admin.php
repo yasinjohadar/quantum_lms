@@ -203,6 +203,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('questions.math-backfill.status');
         Route::post('questions-math-backfill/process-batch', [\App\Http\Controllers\Admin\QuestionMathBackfillController::class, 'processBatch'])
             ->name('questions.math-backfill.process-batch');
+        Route::get('questions-math-backfill/ai-repair-status', [\App\Http\Controllers\Admin\QuestionMathBackfillController::class, 'aiRepairStatus'])
+            ->name('questions.math-backfill.ai-repair-status');
+        Route::post('questions-math-backfill/ai-repair-batch', [\App\Http\Controllers\Admin\QuestionMathBackfillController::class, 'processAiRepairBatch'])
+            ->name('questions.math-backfill.ai-repair-batch');
 
         // ===============================================
         // المكتبة الرقمية

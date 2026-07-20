@@ -127,4 +127,129 @@
             showError(err.message || 'حدث خطأ غير متوقع أثناء الإصلاح.');
         }
     });
+
+    // ==========================================================
+    // المرحلة الثانية: الإصلاح الذكي بالذكاء الاصطناعي (اختياري، أبطأ وأغلى)
+    // ==========================================================
+    const aiRoot = document.getElementById('mathAiRepairTool');
+    if (!aiRoot) {
+        return;
+    }
+
+    const aiStatusUrl = aiRoot.dataset.statusUrl;
+    const aiProcessUrl = aiRoot.dataset.processUrl;
+
+    const aiIdleEl = document.getElementById('mathAiRepairIdle');
+    const aiSuspiciousCountEl = document.getElementById('mathAiRepairSuspiciousCount');
+    const aiStartBtn = document.getElementById('mathAiRepairStartBtn');
+    const aiProgressEl = document.getElementById('mathAiRepairProgress');
+    const aiCountsEl = document.getElementById('mathAiRepairCounts');
+    const aiProgressBarEl = document.getElementById('mathAiRepairProgressBar');
+    const aiUpdatedCountEl = document.getElementById('mathAiRepairUpdatedCount');
+    const aiDoneEl = document.getElementById('mathAiRepairDone');
+    const aiDoneMessageEl = document.getElementById('mathAiRepairDoneMessage');
+    const aiErrorEl = document.getElementById('mathAiRepairError');
+
+    const AI_BATCH_LIMIT = 10;
+
+    function showAiError(message) {
+        aiErrorEl.textContent = message;
+        aiErrorEl.style.display = 'block';
+        aiStartBtn.disabled = false;
+        aiStartBtn.innerHTML = '<i class="bi bi-stars me-1"></i> بدء الإصلاح الذكي الآن';
+    }
+
+    async function refreshAiStatus() {
+        try {
+            const status = await fetchJson(aiStatusUrl);
+
+            if (!status.has_model) {
+                aiSuspiciousCountEl.textContent = 'لا يوجد موديل ذكاء اصطناعي مفعَّل حالياً — فعِّل موديلاً في إدارة الذكاء الاصطناعي أولاً لاستخدام هذه الأداة.';
+                aiStartBtn.disabled = true;
+                return status;
+            }
+
+            aiSuspiciousCountEl.textContent = status.suspicious_questions > 0
+                ? 'عدد الأسئلة المشتبه بها حالياً: ' + status.suspicious_questions + ' سؤال من إجمالي ' + status.total_questions + '.'
+                : 'لا توجد أسئلة مشتبه بها حالياً — لا حاجة لتشغيل هذه الأداة.';
+            aiStartBtn.disabled = status.suspicious_questions <= 0;
+
+            return status;
+        } catch (err) {
+            aiSuspiciousCountEl.textContent = 'تعذّر فحص حالة الإصلاح الذكي.';
+            aiStartBtn.disabled = true;
+
+            return null;
+        }
+    }
+
+    refreshAiStatus();
+
+    aiStartBtn?.addEventListener('click', async function () {
+        aiStartBtn.disabled = true;
+        aiStartBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الإصلاح بالذكاء الاصطناعي...';
+        aiErrorEl.style.display = 'none';
+        aiDoneEl.style.display = 'none';
+        aiIdleEl.style.display = 'none';
+        aiProgressEl.style.display = 'block';
+
+        let afterId = 0;
+        let scannedSoFar = 0;
+        let aiCheckedTotal = 0;
+        let updatedTotal = 0;
+        let done = false;
+
+        try {
+            const status = await fetchJson(aiStatusUrl);
+            const totalQuestions = status.total_questions || 0;
+
+            while (!done) {
+                const params = new URLSearchParams();
+                params.set('after_id', String(afterId));
+                params.set('limit', String(AI_BATCH_LIMIT));
+                params.set('_token', csrfToken);
+
+                const result = await fetchJson(aiProcessUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: params.toString(),
+                });
+
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+
+                scannedSoFar += result.scanned;
+                aiCheckedTotal += result.ai_checked;
+                updatedTotal += result.updated;
+                afterId = result.next_after_id;
+                done = result.done;
+
+                const pct = totalQuestions > 0 ? Math.min(100, Math.round((scannedSoFar / totalQuestions) * 100)) : 100;
+                aiProgressBarEl.style.width = pct + '%';
+                aiCountsEl.textContent = scannedSoFar + ' / ' + totalQuestions;
+                aiUpdatedCountEl.textContent = 'تم فحص ' + aiCheckedTotal + ' سؤال مشتبه به بالذكاء الاصطناعي، وتصحيح ' + updatedTotal + ' سؤال حتى الآن.';
+
+                if (result.scanned === 0) {
+                    break;
+                }
+            }
+
+            aiProgressEl.style.display = 'none';
+            aiDoneMessageEl.textContent = aiCheckedTotal > 0
+                ? 'اكتمل الفحص: تمت مراجعة ' + aiCheckedTotal + ' سؤال مشتبه به بالذكاء الاصطناعي، وتصحيح ' + updatedTotal + ' منها.'
+                : 'اكتمل الفحص: لم يتبقَّ أي سؤال مشتبه به يحتاج مراجعة الذكاء الاصطناعي.';
+            aiDoneEl.style.display = 'block';
+            aiStartBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> إعادة الفحص';
+            aiStartBtn.disabled = false;
+
+            await refreshAiStatus();
+        } catch (err) {
+            aiProgressEl.style.display = 'none';
+            aiIdleEl.style.display = 'block';
+            showAiError(err.message || 'حدث خطأ غير متوقع أثناء الإصلاح الذكي.');
+        }
+    });
 })();

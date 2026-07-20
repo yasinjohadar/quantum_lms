@@ -9,7 +9,21 @@ class QuestionMarkupFormatter
     private const MATH_SEGMENT_PATTERN = '/(\$\$[\s\S]*?\$\$|(?<!\$)\$(?!\$)[^\$\n]+?\$(?!\$)|\\\\\[[\s\S]*?\\\\\]|\\\\\([\s\S]*?\\\\\))/u';
 
     /** أوامر LaTeX شائعة في خيارات الإجابة (بدون delimiters) */
-    private const BARE_LATEX_PATTERN = '/\\\\(?:frac|int|sum|prod|sqrt|sin|cos|tan|cot|sec|csc|ln|log|arctan|arcsin|arccos|lim|infty|to|pm|pi|theta|alpha|beta|gamma|delta|cdot|times|left|right|text|quad|,)|_\{|\^\{/u';
+    private const BARE_LATEX_PATTERN = '/\\\\(?:frac|int|sum|prod|sqrt|sin|cos|tan|cot|sec|csc|ln|log|arctan|arcsin|arccos|lim|infty|to|pm|mp|pi|theta|alpha|beta|gamma|delta|cdot|times|left|right|text|quad|cup|cap|leq|geq|neq|in|notin|subset|subseteq|supset|supseteq|forall|exists|emptyset|vee|wedge|neg|equiv|sim|propto|binom|partial|nabla|approx|Rightarrow|Leftrightarrow|iff|,)|_\{|\^\{/u';
+
+    /**
+     * أسماء أوامر LaTeX شائعة بلا الشرطة المعكوسة (typo/استيراد أزال الـ backslash)،
+     * تُستخدم لمنع معاملة كلمة كهذه كـ"معرِّف كود" منفرد (frac/cup/...) ولترك أمر
+     * دمجها في الرياضيات المحيطة لاحقاً بدل تحويلها إلى شريحة <code> مضلِّلة.
+     */
+    private const BARE_LATEX_COMMAND_WORD = 'frac|sqrt|sum|prod|int|lim|cup|cap|infty|pm|mp|pi|theta|alpha|beta|gamma|delta|cdot|times|left|right|text|quad|mathbb|geq|leq|neq|to';
+
+    /**
+     * جزء مُتحفَّظ (لا "to"/"pi" شائعتين) من BARE_LATEX_COMMAND_WORD يُستخدم فقط
+     * كمؤشر "يحتاج مراجعة/إصلاح ذكي" في hasSuspiciousBareLatex — يفضَّل التحفّظ
+     * هنا لتفادي استدعاء الذكاء الاصطناعي على نصوص سليمة لا علاقة لها بالمشكلة.
+     */
+    private const SUSPICIOUS_BARE_LATEX_WORD = 'frac|sqrt|sum|prod|int|lim|cup|cap|leq|geq|neq|subset|subseteq|cdot|times|mathbb';
 
     /** أسطر خطوات تبدأ بعلامة يساوي */
     private const EQUATION_STEP_PATTERN = '/^=\s/u';
@@ -59,6 +73,34 @@ class QuestionMarkupFormatter
         }
 
         return (bool) preg_match(self::MATH_SEGMENT_PATTERN, $text);
+    }
+
+    /**
+     * يكشف نصاً لا يزال يحمل — حتى بعد deepNormalizeForStorage — أمر LaTeX عارياً
+     * فقد شرطته المعكوسة (مثل "frac"/"cup" منفردة، أو ملتصقة مباشرة ببسط/مقام
+     * بلا أي فاصل مثل "frac2√(4x+1)"). لا يمكن لهذه الحالات إعادة بنائها بثقة
+     * عبر أنماط نصية (regex) لأنه لا توجد إشارة بنيوية تفصل البسط عن المقام —
+     * تُستخدم كبوّابة لاختيار الأسئلة القليلة التي تستحق مراجعة/إصلاح بالذكاء
+     * الاصطناعي (باهظة نسبياً) بدل تشغيله على بنك الأسئلة بالكامل.
+     */
+    public static function hasSuspiciousBareLatex(?string $text): bool
+    {
+        if ($text === null || trim($text) === '') {
+            return false;
+        }
+
+        // نتجاهل شرائح <code> الفعلية (كود برمجي عادي غير متعلق بالرياضيات) فقط —
+        // لكن *لا* نتجاهل مقاطع $...$ الرياضية، لأن أخطر حالة (فقدان الأقواس مع
+        // الشرطة المعكوسة معاً) غالباً ما تنتهي مُغلَّفة *بداخل* مقطع $...$ التصق
+        // فيه الجزء الصحيح (مثل \sqrt{...}) بجزء الكلمة العارية "frac" الملتصقة
+        // به مباشرة (مثال حقيقي: "$frac2\sqrt{4x + 1}$")، فتجاهل المقطع كاملاً
+        // يُخفي المشكلة تماماً عن الكاشف.
+        $withoutCodeChips = preg_replace('/<code class="question-inline-code">[\s\S]*?<\/code>/u', ' ', $text) ?? $text;
+
+        return (bool) preg_match(
+            '/(?<![a-zA-Z\\\\])(?:'.self::SUSPICIOUS_BARE_LATEX_WORD.')/u',
+            $withoutCodeChips
+        );
     }
 
     /**
@@ -809,6 +851,12 @@ class QuestionMarkupFormatter
             return true;
         }
 
+        // رموز يونيكود رياضية شائعة (قبل تحويلها إلى \cup/\sqrt/... — الترتيب في
+        // خط المعالجة قد يستدعي هذا الفحص قبل حدوث ذلك التحويل).
+        if (preg_match('/[√∛∜∞±∓×·⋅÷≤≥≠≈∈∉⊂⊆∪∩→⇒⇔∂∇∫∑∏]/u', $trimmed)) {
+            return true;
+        }
+
         if (preg_match(self::PSEUDO_MATH_PATTERN, $trimmed)) {
             return true;
         }
@@ -876,7 +924,7 @@ class QuestionMarkupFormatter
         // ملاحظة: لا نستثني sin/cos/tan وما شابهها من دوال المثلثات هنا، لأن متطابقات
         // مثل "sin^{2}x + cos^{2}x = 1" شائعة بلا backslash ويجب لفّها كوحدة كاملة
         // (يُضاف الـ backslash لها بعد ذلك في normalizeMathExpression/htmlSafeMathInner).
-        if (preg_match('/^(?:frac|sqrt|sum|prod|int|lim|infty|pm|pi|theta|alpha|beta|gamma|delta|cdot|times|left|right|text|quad|mathbb|geq|leq|neq|to)\b/u', $trimmed)) {
+        if (preg_match('/^(?:'.self::BARE_LATEX_COMMAND_WORD.')\b/u', $trimmed)) {
             return false;
         }
 
@@ -1637,6 +1685,13 @@ class QuestionMarkupFormatter
     {
         $trimmed = trim($text);
 
+        // يحتوي أمر LaTeX حقيقي بشرطة معكوسة (مثل \cup أو \leq) — لا نخبّئه أبداً
+        // داخل شريحة <code> (سيظهر بشرطته المعكوسة حرفياً)، بل نلفّه كرياضيات
+        // ليُعرض عبر KaTeX. هذا أولى من أي فحص "يشبه الكود" لاحق.
+        if ($trimmed !== '' && preg_match(self::BARE_LATEX_PATTERN, $trimmed)) {
+            return self::wrapBareLatex($text);
+        }
+
         if ($trimmed !== '' && self::isSimpleMathValue($trimmed)) {
             return self::wrapInlineCode($trimmed);
         }
@@ -1670,6 +1725,13 @@ class QuestionMarkupFormatter
         }
 
         if ($trimmed !== '' && preg_match('/^[a-zA-Z_][\w]*$/u', $trimmed) && strlen($trimmed) <= 40) {
+            // كلمة أمر LaTeX عارية فقدت الشرطة المعكوسة (مثل "frac" وحدها بين
+            // مقطعين رياضيين آخرين) — لا نلفّها كشريحة كود مضلِّلة، نتركها كنص
+            // عادي (لا يوجد سياق كافٍ لإعادة بناء وسائطها بثقة هنا).
+            if (preg_match('/^(?:'.self::BARE_LATEX_COMMAND_WORD.')$/u', $trimmed)) {
+                return self::escapePlainSegment($text);
+            }
+
             return self::wrapInlineCode($trimmed);
         }
 
@@ -1687,6 +1749,10 @@ class QuestionMarkupFormatter
             }
             if (preg_match($codePattern, $part)) {
                 if (preg_match('/^'.self::ABS_INEQUALITY_PATTERN.'$/u', trim($part))) {
+                    $output .= self::wrapBareLatex($part);
+                } elseif (preg_match(self::BARE_LATEX_PATTERN, $part)) {
+                    // مقطع مثل "[\cup]" (تقاطع أقواس فترة مع أمر \cup الحقيقي) —
+                    // نلفّه كرياضيات لا كشريحة كود، وإلا ظهرت الشرطة المعكوسة حرفياً.
                     $output .= self::wrapBareLatex($part);
                 } else {
                     $output .= self::wrapInlineCode($part);

@@ -40,4 +40,24 @@ class QuestionMathBackfillController extends Controller
 
         return response()->json($result);
     }
+
+    public function aiRepairStatus(QuestionMathBackfillService $service)
+    {
+        return response()->json($service->aiRepairStatus());
+    }
+
+    public function processAiRepairBatch(Request $request, QuestionMathBackfillService $service)
+    {
+        $data = $request->validate([
+            'after_id' => ['nullable', 'integer', 'min:0'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        $afterId = (int) ($data['after_id'] ?? 0);
+        // دفعات أصغر بكثير من المرحلة المجانية: كل سؤال مشتبه به يستدعي طلب AI
+        // واحد (بطيء نسبياً)، فدفعة كبيرة قد تتجاوز مهلة الخادم.
+        $limit = (int) ($data['limit'] ?? 20);
+
+        return response()->json($service->processAiRepairBatch($afterId, $limit));
+    }
 }

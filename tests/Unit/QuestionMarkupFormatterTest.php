@@ -784,3 +784,73 @@ test('format preserves rich html from a tinymce-authored question instead of run
 
     expect($html)->toContain('<p>وصف السؤال بدون أي رياضيات هنا.</p>');
 });
+
+test('does not box a bare "frac" latex command word as an inline code chip between other math fragments (screenshot regression)', function () {
+    // انحدار حقيقي من السيرفر: نص استيراد فقد الشرطة المعكوسة والأقواس من \frac{...}{...}،
+    // فبقيت كلمة "frac" منعزلة بين مقطعين رياضيين آخرين تعرّف عليهما الكود (lim و sqrt)،
+    // فطابقت قاعدة "كلمة إنكليزية منفردة = كود" وظهرت كشريحة <code> زرقاء مضلِّلة.
+    $input = 'احسب النهاية التالية: $\lim_{x \to 0}$ frac $\sqrt{1+x} - \sqrt{1-x}$ على $x$';
+
+    $html = QuestionMarkupFormatter::format($input);
+
+    expect($html)
+        ->not->toContain('<code class="question-inline-code">frac</code>')
+        ->toContain('katex-src');
+});
+
+test('wraps a bare backslash command like cup as math instead of leaking it inside a code chip (screenshot regression)', function () {
+    // انحدار حقيقي: فترة الاتحاد ]-2, 2[∪]2, +∞[ حيث يتحوّل ∪ إلى \cup أثناء التطبيع،
+    // ثم يقع مقطع الأقواس المحيط بالخطأ ضمن قاعدة اكتشاف "شبيه بالكود"، فيظهر \cup
+    // بشرطته المعكوسة حرفياً داخل شريحة <code> بدل أن يُعرض كرياضيات عبر KaTeX.
+    $input = 'ليكن التابع $f(x) = \frac{\sqrt{x+2}-2}{x-2}$ معرفاً على ]-2, 2[∪]2, +∞[. ما القيمة الواجب إعطاؤها لـ f(2)؟';
+
+    $html = QuestionMarkupFormatter::format($input);
+
+    expect($html)
+        ->not->toContain('\cup</code>')
+        ->not->toContain('<code class="question-inline-code">[\cup]</code>');
+});
+
+test('bare latex pattern recognizes cup cap and other set/relation commands', function () {
+    foreach (['\cup', '\cap', '\leq', '\geq', '\neq', '\in', '\notin', '\subset', '\subseteq'] as $command) {
+        expect(QuestionMarkupFormatter::looksLikeMathExpression($command.' x'))->toBeTrue();
+    }
+});
+
+test('hasSuspiciousBareLatex flags questions still needing AI repair after the free regex pass', function () {
+    // من ملف CSV الرياضيات الحقيقي: كسور التصقت بأقواس الجذر بلا أي فاصل، لا يمكن
+    // حسم تقسيمها الصحيح (بسط/مقام) بثقة عبر أنماط نصية بحتة.
+    $ambiguousFractions = [
+        "أوجد نهاية المتتالية إذا كان الحد العام هو frac2\u221a(4x + 1)",
+        "بسّط العبارة التالية: frac12\u221a(4x + 1)",
+        "احسب: fracu'2\u221a(u)",
+    ];
+
+    foreach ($ambiguousFractions as $input) {
+        $stored = QuestionMarkupFormatter::deepNormalizeForStorage($input);
+        expect(QuestionMarkupFormatter::hasSuspiciousBareLatex($stored))
+            ->toBeTrue("Expected '{$input}' to remain suspicious after regex normalization.");
+    }
+});
+
+test('hasSuspiciousBareLatex does not flag clean already-correct math text', function () {
+    $clean = [
+        'نهاية التابع $f(x) = x - \sqrt{x^{2}+x}$ عندما $x \to +\infty$ هي:',
+        'ما هي قيمة النهاية $\lim_{x \to +\infty} \frac{1}{x^n}$ حيث $n$ عدد طبيعي؟',
+        'وصف السؤال بدون أي رياضيات هنا على الإطلاق.',
+        '',
+        null,
+    ];
+
+    foreach ($clean as $input) {
+        expect(QuestionMarkupFormatter::hasSuspiciousBareLatex($input))->toBeFalse();
+    }
+});
+
+test('hasSuspiciousBareLatex ignores bare command words already safely handled inside a rendered code chip', function () {
+    // نص HTML مُصيَّغ مسبقاً عبر format() يحوي "frac" داخل شريحة <code> عادية (غير
+    // متعلقة برياضيات، مثل معرِّف برمجي) — لا يجب أن يُطلق مراجعة AI مكلفة عليه.
+    $html = 'اسم الدالة هي <code class="question-inline-code">frac</code> في هذه المكتبة.';
+
+    expect(QuestionMarkupFormatter::hasSuspiciousBareLatex($html))->toBeFalse();
+});
