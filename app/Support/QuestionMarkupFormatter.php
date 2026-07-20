@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Illuminate\Support\Facades\Log;
+
 class QuestionMarkupFormatter
 {
     private const MATH_SEGMENT_PATTERN = '/(\$\$[\s\S]*?\$\$|(?<!\$)\$(?!\$)[^\$\n]+?\$(?!\$)|\\\\\[[\s\S]*?\\\\\]|\\\\\([\s\S]*?\\\\\))/u';
@@ -29,6 +31,16 @@ class QuestionMarkupFormatter
      * لأي صيغة pseudo-LaTeX لم تُغطَّ بالأنماط المحدّدة أعلاه (مثل متتاليات عودية معقّدة).
      */
     private const BARE_MATH_RUN_PATTERN = '#[A-Za-z0-9][A-Za-z0-9_\^{}()+\-=<>.,*\\\\/ ]*[A-Za-z0-9)}]#u';
+
+    /**
+     * محتوى وسيط LaTeX (مثل وسيط \frac{...} أو \sqrt{...}) يسمح بمستوى تداخل واحد
+     * من {...} بداخله — يغطي حالات شائعة مثل \frac{\sqrt{x+1}}{x^{2}+1} التي تكسر
+     * الأنماط الساذجة المعتمدة على [^}]+ (تتوقف عند أول قوس إغلاق).
+     */
+    private const BALANCED_BRACE_ARG = '(?:[^{}]|\{[^{}]*\})+';
+
+    /** نفس منطق BALANCED_BRACE_ARG لكن للأقواس العادية (...)، لكسور الشرطة المائلة وجذر النِّسَب. */
+    private const BALANCED_PAREN_ARG = '(?:[^()]|\([^()]*\))+';
 
     public static function containsMath(?string $text): bool
     {
@@ -58,6 +70,7 @@ class QuestionMarkupFormatter
         $text = self::extractInlinePseudoMathInArabicText($text);
         $text = self::wrapCommonFunctionDefinitionsInArabicText($text);
         $text = self::repairBrokenMathDelimiters($text);
+        $text = self::repairUnbalancedDollarSigns($text);
 
         return $text;
     }
@@ -82,7 +95,7 @@ class QuestionMarkupFormatter
 
         // $$f(x) = \frac{...}$ (فُتح بـ $$ وأُغلق بـ $)
         $text = preg_replace_callback(
-            '/\$\$([a-zA-Z]\s*\(\s*[a-zA-Z0-9]+\s*\)\s*=\s*\\\\frac\{[^}]+\}\{[^}]+\})\$/u',
+            '/\$\$([a-zA-Z]\s*\(\s*[a-zA-Z0-9]+\s*\)\s*=\s*\\\\frac\{'.self::BALANCED_BRACE_ARG.'\}\{'.self::BALANCED_BRACE_ARG.'\})\$/u',
             static fn (array $m): string => '$'.$m[1].'$',
             $text
         ) ?? $text;
@@ -112,6 +125,50 @@ class QuestionMarkupFormatter
     }
 
     /**
+     * كشف علامة $ فردية غير متزنة (بلا زوج مطابق) وإزالتها بدل تركها تظهر خاماً في
+     * الصفحة، مع تسجيل تحذير يساعد على تتبّع مصدر السؤال المُشكِل.
+     */
+    private static function repairUnbalancedDollarSigns(string $text): string
+    {
+        if (! str_contains($text, '$')) {
+            return $text;
+        }
+
+        $withoutValidPairs = preg_replace(self::MATH_SEGMENT_PATTERN, '', $text) ?? $text;
+
+        if (! str_contains($withoutValidPairs, '$')) {
+            return $text;
+        }
+
+        try {
+            Log::warning('QuestionMarkupFormatter: علامة $ غير متزنة تم رصدها وإزالتها لتفادي عرض خام.', [
+                'excerpt' => mb_substr($text, 0, 300),
+            ]);
+        } catch (\Throwable) {
+            // بيئة بدون حاوية Laravel (اختبارات وحدة بسيطة) — التسجيل ثانوي، لا يجب أن يكسر التطبيع.
+        }
+
+        $parts = preg_split(self::MATH_SEGMENT_PATTERN, $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+        if ($parts === false) {
+            return str_replace('$', '', $text);
+        }
+
+        $output = '';
+        foreach ($parts as $part) {
+            if ($part === '') {
+                continue;
+            }
+            if (preg_match(self::MATH_SEGMENT_PATTERN, $part)) {
+                $output .= $part;
+            } else {
+                $output .= str_replace('$', '', $part);
+            }
+        }
+
+        return $output;
+    }
+
+    /**
      * فكّ كيانات HTML المخزّنة كنص (مثل &quot;) بما فيها التشفير المزدوج.
      */
     public static function normalizeStoredText(?string $text): string
@@ -129,7 +186,24 @@ class QuestionMarkupFormatter
             $decoded = $next;
         }
 
-        return $decoded;
+        return self::convertArabicIndicDigitsToAscii($decoded);
+    }
+
+    /**
+     * تحويل الأرقام العربية-الهندية (٠-٩) والفارسية (۰-۹) إلى ASCII مركزياً حتى
+     * تتعرّف كل أنماط الرياضيات في هذا الملف (التي تستخدم \d/0-9 الفصيح) على
+     * أي معادلة تحتوي أرقاماً عربية — شائع جداً في محتوى عربي مستورد أو مكتوب يدوياً.
+     */
+    private static function convertArabicIndicDigitsToAscii(string $text): string
+    {
+        static $map = [
+            '٠' => '0', '١' => '1', '٢' => '2', '٣' => '3', '٤' => '4',
+            '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9',
+            '۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4',
+            '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9',
+        ];
+
+        return strtr($text, $map);
     }
 
     /**
@@ -314,7 +388,7 @@ class QuestionMarkupFormatter
 
         // √(expr) أو √expr → \sqrt{expr}
         $text = preg_replace_callback(
-            '/√\s*(?:\(([^()]+)\)|([a-zA-Z0-9]+))/u',
+            '/√\s*(?:\(('.self::BALANCED_PAREN_ARG.')\)|([a-zA-Z0-9]+))/u',
             static function (array $m): string {
                 $inner = $m[1] !== '' ? $m[1] : $m[2];
 
@@ -412,7 +486,7 @@ class QuestionMarkupFormatter
     {
         // f(x)=\frac{...}{...} أو f(x)=\sqrt{...} كوحدة واحدة
         $text = preg_replace_callback(
-            '/(?<!\$)\b([a-zA-Z]\s*\(\s*[a-zA-Z0-9]+\s*\)\s*=\s*\\\\(?:frac\{[^}]+\}\{[^}]+\}|sqrt\{[^}]+\}))(?!\$)/u',
+            '/(?<!\$)\b([a-zA-Z]\s*\(\s*[a-zA-Z0-9]+\s*\)\s*=\s*\\\\(?:frac\{'.self::BALANCED_BRACE_ARG.'\}\{'.self::BALANCED_BRACE_ARG.'\}|sqrt\{'.self::BALANCED_BRACE_ARG.'\}))(?!\$)/u',
             static function (array $m): string {
                 $expr = self::normalizeMathExpression(trim($m[1]));
 
@@ -423,7 +497,7 @@ class QuestionMarkupFormatter
 
         // f(x)=تعبير حقيقي (ليس مسافات فقط وليس يبدأ بـ $)
         $text = preg_replace_callback(
-            '/(?<!\$)\b([a-zA-Z]\s*\(\s*[a-zA-Z0-9]+\s*\)\s*=\s*(?!\$)(?!\s*$)(?:\\\\sqrt\{[^}]+\}|[^\s$\n\x{0600}-\x{06FF}?؟][^$\n\x{0600}-\x{06FF}?؟]*))/u',
+            '/(?<!\$)\b([a-zA-Z]\s*\(\s*[a-zA-Z0-9]+\s*\)\s*=\s*(?!\$)(?!\s*$)(?:\\\\sqrt\{'.self::BALANCED_BRACE_ARG.'\}|[^\s$\n\x{0600}-\x{06FF}?؟][^$\n\x{0600}-\x{06FF}?؟]*))/u',
             static function (array $m): string {
                 $expr = self::normalizeMathExpression(trim($m[1]));
 
@@ -439,7 +513,7 @@ class QuestionMarkupFormatter
         ) ?? $text;
 
         $text = preg_replace_callback(
-            '/(?<!\$)(\\\\sqrt\{[^}]+\})(?!\$)/u',
+            '/(?<!\$)(\\\\sqrt\{'.self::BALANCED_BRACE_ARG.'\})(?!\$)/u',
             static function (array $m): string {
                 return '$'.$m[1].'$';
             },
@@ -579,7 +653,10 @@ class QuestionMarkupFormatter
 
         // مقطع مثل "sqrt{...}" أو "frac{...}{...}" بدون الـ backslash السابق له
         // (اقتُطع الـ "\" لأنه خارج فئة المحارف) — اتركه لمعالج \sqrt/\frac اللاحق.
-        if (preg_match('/^(?:frac|sqrt|sum|prod|int|lim|sin|cos|tan|cot|sec|csc|ln|log|arctan|arcsin|arccos|infty|pm|pi|theta|alpha|beta|gamma|delta|cdot|times|left|right|text|quad|mathbb|geq|leq|neq|to)\b/u', $trimmed)) {
+        // ملاحظة: لا نستثني sin/cos/tan وما شابهها من دوال المثلثات هنا، لأن متطابقات
+        // مثل "sin^{2}x + cos^{2}x = 1" شائعة بلا backslash ويجب لفّها كوحدة كاملة
+        // (يُضاف الـ backslash لها بعد ذلك في normalizeMathExpression/htmlSafeMathInner).
+        if (preg_match('/^(?:frac|sqrt|sum|prod|int|lim|infty|pm|pi|theta|alpha|beta|gamma|delta|cdot|times|left|right|text|quad|mathbb|geq|leq|neq|to)\b/u', $trimmed)) {
             return false;
         }
 
@@ -609,8 +686,16 @@ class QuestionMarkupFormatter
     private static function looksLikeCodeExpression(string $text): bool
     {
         // دوال برمجية مثل push() / at(1) — وليس n(n+1) أو f(x+1)
-        if (preg_match('/^[a-zA-Z_$][\w$.]*\(([^)]*)\)$/u', $text, $matches)) {
-            $args = $matches[1];
+        if (preg_match('/^([a-zA-Z_$][\w$.]*)\(([^)]*)\)$/u', $text, $matches)) {
+            $identifier = $matches[1];
+            $args = $matches[2];
+
+            // C(n,k) أو P(n,r) — توافيق/تباديل رياضية، وليست كوداً (استدعاء بحرف كبير
+            // واحد ووسيطين قصيرين مفصولين بفاصلة).
+            if (preg_match('/^[A-Z]$/u', $identifier) && preg_match('/^[a-zA-Z0-9]+\s*,\s*[a-zA-Z0-9]+$/u', $args)) {
+                return false;
+            }
+
             if ($args !== '' && preg_match('/[+\-*\/=^\\]|[a-zA-Z]{2,}/u', $args)) {
                 return false;
             }
@@ -737,12 +822,30 @@ class QuestionMarkupFormatter
     private static function htmlSafeMathInner(string $inner): string
     {
         $inner = self::stripRedundantMathBraces($inner);
+        // u_(n+1) → u_{n+1} و 10^(n) → 10^{n} — حتى للمحتوى المحدَّد مسبقاً بـ $...$
+        $inner = preg_replace('/_\(('.self::BALANCED_PAREN_ARG.')\)/u', '_{$1}', $inner) ?? $inner;
+        $inner = preg_replace('/\^\(('.self::BALANCED_PAREN_ARG.')\)/u', '^{$1}', $inner) ?? $inner;
+        $inner = self::addBackslashToBareTrigAndLogNames($inner);
         // لا تلمس أوامر LaTeX مثل \langle
         $inner = preg_replace('/(?<!\\\\)</u', '\\lt ', $inner) ?? $inner;
         $inner = preg_replace('/(?<!\\\\)>/u', '\\gt ', $inner) ?? $inner;
         $inner = preg_replace('/\s+/u', ' ', $inner) ?? $inner;
 
         return trim($inner);
+    }
+
+    /**
+     * sin/cos/tan/... العارية بدون backslash → \sin/\cos/\tan/... حتى تُصبح
+     * أوامر LaTeX حقيقية يفهمها KaTeX بدل نص عادي. يُطبَّق فقط داخل محتوى رياضي
+     * مؤكَّد (بعد اللف بـ $...$)، لذا لا خطر من تصادمه مع كلمات إنجليزية عادية.
+     */
+    private static function addBackslashToBareTrigAndLogNames(string $inner): string
+    {
+        return preg_replace(
+            '/(?<!\\\\)\b(arcsin|arccos|arctan|sin|cos|tan|cot|sec|csc|ln|log)\b/u',
+            '\\\\$1',
+            $inner
+        ) ?? $inner;
     }
 
     /**
@@ -857,8 +960,10 @@ class QuestionMarkupFormatter
         $text = self::extractInlinePseudoMathInArabicText($text);
         $text = self::wrapCommonFunctionDefinitionsInArabicText($text);
         $text = self::repairBrokenMathDelimiters($text);
+        $text = self::repairUnbalancedDollarSigns($text);
 
-        if (str_contains($text, 'question-inline-code')) {
+        // نص يحتوي كود HTML جاهز مسبقاً (من مسار سابق) بدون رياضيات متبقية للمعالجة.
+        if (str_contains($text, 'question-inline-code') && ! self::containsMath($text)) {
             return $text;
         }
 
@@ -972,14 +1077,12 @@ class QuestionMarkupFormatter
     }
 
     /**
-     * استخراج مقاطع pseudo-LaTeX داخل نص عربي (خارج delimiters).
+     * استخراج مقاطع pseudo-LaTeX خارج delimiters — يعمل على أي نص (عربي أو لاتيني)
+     * وليس فقط النص العربي، لأن نمطاً مثل u_(n+1) أو C(n,k) يجب أن يُلَفّ كرياضيات
+     * قبل أن تصل المعالجة إلى autoWrapCodePatterns التي قد تُخطئ وتعتبره كوداً.
      */
     private static function extractInlinePseudoMathInArabicText(string $text): string
     {
-        if (! preg_match('/[\x{0600}-\x{06FF}]/u', $text)) {
-            return $text;
-        }
-
         if (preg_match(self::MATH_SEGMENT_PATTERN, $text)) {
             $parts = preg_split(self::MATH_SEGMENT_PATTERN, $text, -1, PREG_SPLIT_DELIM_CAPTURE);
             if ($parts === false) {
@@ -1010,13 +1113,15 @@ class QuestionMarkupFormatter
         $text = preg_replace('/…/u', ' \\cdots ', $text) ?? $text;
 
         $patterns = [
+            // C(n,k) أو P(n,r) — توافيق/تباديل، وليست استدعاء كود
+            '/(?<!\$)\b[A-Z]\(\s*[a-zA-Z0-9]+\s*,\s*[a-zA-Z0-9]+\s*\)/u',
             '/sum_\{[^}]+\}(?:\s*[=+\-]\s*[^$\n\x{0600}-\x{06FF}]+)?/u',
             '/prod_\{[^}]+\}(?:\s*[=+\-]\s*[^$\n\x{0600}-\x{06FF}]+)?/u',
-            '/lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?\\\\infty(?:\s*\\\\frac\{[^}]+\}\{[^}]+\})?/u',
-            '/lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?\\\\infty\s*\\\\frac\{[^}]+\}\{[^}]+\}/u',
+            '/lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?\\\\infty(?:\s*\\\\frac\{'.self::BALANCED_BRACE_ARG.'\}\{'.self::BALANCED_BRACE_ARG.'\})?/u',
+            '/lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?\\\\infty\s*\\\\frac\{'.self::BALANCED_BRACE_ARG.'\}\{'.self::BALANCED_BRACE_ARG.'\}/u',
             '/\([^)]+\)\/\([^)]+\)\s*lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?(?:\\\\infty|∞)/u',
             '/(?<!\$)\([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\)_\{[^}]+\}/u',
-            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\s*=\s*\\\\sqrt\{[^}]+\})/u',
+            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\s*=\s*\\\\sqrt\{'.self::BALANCED_BRACE_ARG.'\})/u',
             // S_n = 1^{2} + \\cdots + n^{2} = (...) — بدون نقطة كفاصل (تكسر ...)
             '/(?<!\$)\b([A-Za-z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)\s*=\s*(?:(?![\x{0600}-\x{06FF}])[\s\S])*?\^{[^}]+}(?:(?![\x{0600}-\x{06FF}])[\s\S])*?)(?=\s*(?:[؟!،]|لكل|حيث|ما |$))/u',
             // كسور بأقواس متداخلة مستوى واحد
@@ -1026,7 +1131,10 @@ class QuestionMarkupFormatter
             '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\s*(?:<|>|<=|>=|\\\\lt|\\\\gt|\\\\leq|\\\\geq|\\\\ge|\\\\le|≤|≥)\s*[-+]?\d+)/u',
             '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+)?\s*\\\\(?:geq|leq|neq|ge|le)\s*[-+]?\d+)/u',
             '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|_[a-zA-Z0-9]+))(?!\s*=)(?=[\s.؟!،,;:]|$)/u',
-            '/(?<!\$)\b([a-zA-Z]\s*=\s*[-+]?\d+)(?!\s*\^)(?=[\s.؟!،,;:]|$)/u',
+            // متغيّر مستقل "x = 1" فقط عندما يبدأ التطابق بحرف مستقل (مسبوق بمسافة/بداية
+            // النص)، لا حرفاً ملتصقاً بنهاية تعبير أطول مثل "cos^{2}x = 1" (يجب أن يُلَفّ
+            // التعبير كله كوحدة واحدة بدل قطعه في منتصفه).
+            '/(?<!\$)(?<=^|[\s،,؛;])([a-zA-Z]\s*=\s*[-+]?\d+)(?!\s*\^)(?=[\s.؟!،,;:]|$)/u',
         ];
 
         foreach ($patterns as $pattern) {
@@ -1051,7 +1159,7 @@ class QuestionMarkupFormatter
     {
         $parts = preg_split(self::MATH_SEGMENT_PATTERN, $text, -1, PREG_SPLIT_DELIM_CAPTURE);
         if ($parts === false) {
-            return preg_replace_callback($pattern, $callback, $text) ?? $text;
+            return self::replacePatternSkippingOpenBraces($text, $pattern, $callback);
         }
 
         $output = '';
@@ -1062,11 +1170,41 @@ class QuestionMarkupFormatter
             if (preg_match(self::MATH_SEGMENT_PATTERN, $part)) {
                 $output .= $part;
             } else {
-                $output .= preg_replace_callback($pattern, $callback, $part) ?? $part;
+                $output .= self::replacePatternSkippingOpenBraces($part, $pattern, $callback);
             }
         }
 
         return $output;
+    }
+
+    /**
+     * كالاستبدال العادي، لكنه يتجاهل أي تطابق يقع داخل قوس { لم يُغلَق بعد ضمن نفس
+     * المقطع — لتفادي كسر بنية LaTeX متداخلة مثل \sqrt{(a)/(b)} أو \frac{(a)/(b)}{c}
+     * عندما يلفّ نمط عام (كسور/متتاليات) جزءاً من الوسيط قبل أن يعالجه المعالج
+     * المتخصص للأمر الكامل (\sqrt/\frac) كوحدة واحدة.
+     */
+    private static function replacePatternSkippingOpenBraces(string $text, string $pattern, callable $callback): string
+    {
+        $count = 0;
+
+        return preg_replace_callback(
+            $pattern,
+            static function (array $matches) use ($text, $callback): string {
+                $offset = $matches[0][1];
+                $before = substr($text, 0, $offset);
+                if (substr_count($before, '{') > substr_count($before, '}')) {
+                    return $matches[0][0];
+                }
+
+                $plainMatches = array_map(static fn (array $m): string => $m[0], $matches);
+
+                return $callback($plainMatches);
+            },
+            $text,
+            -1,
+            $count,
+            PREG_OFFSET_CAPTURE
+        ) ?? $text;
     }
 
     /**
@@ -1133,6 +1271,9 @@ class QuestionMarkupFormatter
             $expr
         ) ?? $expr;
         $expr = preg_replace('/(?<=[a-zA-Z0-9\)])\*(?=[a-zA-Z0-9\(])/u', ' \\cdot ', $expr) ?? $expr;
+        // u_(n+1) → u_{n+1} و 10^(n) → 10^{n} — KaTeX يُسيء تفسير الأقواس بعد _/^
+        $expr = preg_replace('/_\(('.self::BALANCED_PAREN_ARG.')\)/u', '_{$1}', $expr) ?? $expr;
+        $expr = preg_replace('/\^\(('.self::BALANCED_PAREN_ARG.')\)/u', '^{$1}', $expr) ?? $expr;
         $expr = preg_replace('/\^(\d+)/u', '^{$1}', $expr) ?? $expr;
         // مؤشر سفلي متعدد المحارف بدون أقواس (u_10 → u_{10}) — لا يلمس u_n أحادي الحرف
         $expr = preg_replace('/_(?!\{)([a-zA-Z0-9]{2,})/u', '_{$1}', $expr) ?? $expr;
@@ -1154,14 +1295,9 @@ class QuestionMarkupFormatter
             $expr
         ) ?? $expr;
 
-        // (6)/((2p+3)(p+2)(p+1)) — المقام قد يحتوي أقواس متداخلة بسيطة
-        $expr = preg_replace_callback(
-            '/\(([^()]+)\)\s*\/\s*\((.+)\)$/u',
-            static fn (array $matches): string => '\\frac{'.$matches[1].'}{'.$matches[2].'}',
-            $expr
-        ) ?? $expr;
-
-        // ( n(n+1)(2n+1))/(6) داخل تعبير أطول
+        // ( n(n+1)(2n+1))/(6) داخل تعبير أطول — يغطي أيضاً حالة "(6)/((2p+3)(p+2)(p+1))"
+        // (المقام قد يحتوي أقواس متداخلة بسيطة) دون الجشع المفرط الذي كان يبتلع كسوراً
+        // لاحقة أخرى في نفس التعبير (مثل "(a)/(b)+(c)/(d)").
         $expr = preg_replace_callback(
             '/\(((?:[^()]|\([^()]*\))+)\)\s*\/\s*\(((?:[^()]|\([^()]*\))+)\)/u',
             static fn (array $matches): string => '\\frac{'.$matches[1].'}{'.$matches[2].'}',
@@ -1195,7 +1331,7 @@ class QuestionMarkupFormatter
         ) ?? $text;
 
         $text = preg_replace_callback(
-            '/lim_([a-zA-Z])\s*\\\\to\s*(\+\\\\infty|\+∞|-\\\\infty|-∞|\\\\infty|∞)(?:\s*\\\\frac\{([^}]+)\}\{([^}]+)\})?/u',
+            '/lim_([a-zA-Z])\s*\\\\to\s*(\+\\\\infty|\+∞|-\\\\infty|-∞|\\\\infty|∞)(?:\s*\\\\frac\{('.self::BALANCED_BRACE_ARG.')\}\{('.self::BALANCED_BRACE_ARG.')\})?/u',
             static function (array $matches): string {
                 $infinity = self::normalizeInfinityTarget($matches[2]);
                 $base = '\\lim_{'.$matches[1].' \to '.$infinity.'}';
@@ -1209,7 +1345,7 @@ class QuestionMarkupFormatter
         ) ?? $text;
 
         $text = preg_replace_callback(
-            '/lim_(?:\{([^}]+)\}|([a-zA-Z]))\s*\\\\to\s*(\+\\\\infty|\+∞|-\\\\infty|-∞|\\\\infty|∞)\s*\\\\frac\{([^}]+)\}\{([^}]+)\}/u',
+            '/lim_(?:\{([^}]+)\}|([a-zA-Z]))\s*\\\\to\s*(\+\\\\infty|\+∞|-\\\\infty|-∞|\\\\infty|∞)\s*\\\\frac\{('.self::BALANCED_BRACE_ARG.')\}\{('.self::BALANCED_BRACE_ARG.')\}/u',
             static function (array $matches): string {
                 $variable = $matches[1] !== '' ? $matches[1] : $matches[2];
                 $infinity = self::normalizeInfinityTarget($matches[3]);
@@ -1242,7 +1378,7 @@ class QuestionMarkupFormatter
         ) ?? $text;
 
         return preg_replace(
-            '/\\\\frac\{([^}]+)\}\{([^}]+)\}/u',
+            '/\\\\frac\{('.self::BALANCED_BRACE_ARG.')\}\{('.self::BALANCED_BRACE_ARG.')\}/u',
             '\\frac{$1}{$2}',
             $text
         ) ?? $text;
@@ -1473,7 +1609,8 @@ class QuestionMarkupFormatter
                 $output .= $part;
             } else {
                 $converted = self::convertPseudoCommands($part);
-                $converted = preg_replace_callback(
+                $converted = self::replacePatternSkippingOpenBraces(
+                    $converted,
                     '/\(([^()]+)\)\/\(([^()]+)\)/u',
                     static function (array $matches): string {
                         if (
@@ -1484,9 +1621,8 @@ class QuestionMarkupFormatter
                         }
 
                         return $matches[0];
-                    },
-                    $converted
-                ) ?? $converted;
+                    }
+                );
                 $output .= self::wrapDetectedLatexExpressionsInDollars($converted);
             }
         }
@@ -1497,7 +1633,7 @@ class QuestionMarkupFormatter
     private static function wrapDetectedLatexExpressionsInDollars(string $text): string
     {
         return preg_replace_callback(
-            '/\\\\(?:lim|sum|prod|int)_(?:\{[^}]+\}|[a-zA-Z])(?:\s*\\\\to\s*[^\s$]+)?(?:\s*\\\\frac\{[^}]+\}\{[^}]+\})?/u',
+            '/\\\\(?:lim|sum|prod|int)_(?:\{[^}]+\}|[a-zA-Z])(?:\s*\\\\to\s*[^\s$]+)?(?:\s*\\\\frac\{'.self::BALANCED_BRACE_ARG.'\}\{'.self::BALANCED_BRACE_ARG.'\})?/u',
             static function (array $matches): string {
                 $expr = $matches[0];
 
@@ -1530,7 +1666,7 @@ class QuestionMarkupFormatter
                 $output .= $part;
             } else {
                 $output .= preg_replace_callback(
-                    '/(?<!\$)\b([a-zA-Z]\s*\(\s*[a-zA-Z0-9]+\s*\)\s*=\s*\\\\frac\{[^}]+\}\{[^}]+\})(?!\$)/u',
+                    '/(?<!\$)\b([a-zA-Z]\s*\(\s*[a-zA-Z0-9]+\s*\)\s*=\s*\\\\frac\{'.self::BALANCED_BRACE_ARG.'\}\{'.self::BALANCED_BRACE_ARG.'\})(?!\$)/u',
                     static function (array $matches): string {
                         return '$'.self::normalizeMathExpression($matches[1]).'$';
                     },
@@ -1564,11 +1700,13 @@ class QuestionMarkupFormatter
             if (preg_match(self::MATH_SEGMENT_PATTERN, $part)) {
                 $output .= $part;
             } else {
-                $output .= preg_replace(
-                    '/\\\\frac\{([^}]+)\}\{([^}]+)\}/u',
-                    '$\\frac{$1}{$2}$',
-                    $part
-                ) ?? $part;
+                // نتجاهل \frac{...}{...} إن كان متداخلاً داخل أمر أعلى لم يُغلَق بعد
+                // (مثل \sqrt{\frac{a}{b}}) لتفادي كسر البنية المتداخلة بلفّه منفرداً.
+                $output .= self::replacePatternSkippingOpenBraces(
+                    $part,
+                    '/\\\\frac\{('.self::BALANCED_BRACE_ARG.')\}\{('.self::BALANCED_BRACE_ARG.')\}/u',
+                    static fn (array $matches): string => '$\\frac{'.$matches[1].'}{'.$matches[2].'}$'
+                );
             }
         }
 

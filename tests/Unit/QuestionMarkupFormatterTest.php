@@ -452,9 +452,158 @@ test('formats complex recurrence relation stem as katex fragments', function () 
 
     expect($formatted)
         ->toContain('katex-src')
-        ->toContain('u_n-10u_(n+1) = 10u_n - 18')
-        ->toContain('u_(0) = 7')
-        ->toContain('u_n = 5 \\cdot 10^(n) + 2')
+        ->toContain('u_n-10u_{n+1} = 10u_n - 18')
+        ->toContain('u_{0} = 7')
+        ->toContain('u_n = 5 \\cdot 10^{n} + 2')
         ->toContain('n \\geq 0')
         ->toContain('u_{10}');
+});
+
+test('does not stop math normalization when inline code is also present', function () {
+    $input = 'استخدم الدالة `at(1)` لحساب $x^2 + 1$.';
+
+    $formatted = QuestionMarkupFormatter::format($input);
+
+    expect($formatted)
+        ->toContain('<code class="question-inline-code">at(1)</code>')
+        ->toContain('katex-src')
+        ->toContain('x^{2} + 1')
+        ->not->toContain('$x^2 + 1$');
+});
+
+test('converts parenthesised subscripts and superscripts to brace notation', function () {
+    $input = 'u_(n+1) = u_n + 1 و 10^(n) عدد كبير.';
+
+    $formatted = QuestionMarkupFormatter::format($input);
+    $stored = QuestionMarkupFormatter::normalizeForStorage($input);
+
+    expect($formatted)
+        ->toContain('u_{n+1}')
+        ->toContain('10^{n}')
+        ->not->toContain('u_(n+1)')
+        ->not->toContain('10^(n)');
+
+    expect($stored)
+        ->toContain('u_{n+1}')
+        ->toContain('10^{n}');
+});
+
+test('removes a stray unbalanced dollar sign instead of rendering it raw', function () {
+    $input = 'السعر هو $5 فقط لهذا المنتج.';
+
+    $formatted = QuestionMarkupFormatter::format($input);
+
+    expect($formatted)
+        ->not->toContain('$5')
+        ->toContain('5 فقط');
+});
+
+test('does not corrupt other fractions in the expression when converting an unbalanced dollar', function () {
+    $input = 'السؤال $ناقص. احسب $\frac{a}{b}$ رجاءً.';
+
+    $formatted = QuestionMarkupFormatter::format($input);
+
+    expect($formatted)->toContain('katex-src');
+});
+
+test('wraps nested frac and sqrt as a single katex fragment without truncation', function () {
+    $input = 'f(x) = \frac{\sqrt{x+1}}{x^{2}+1} هي دالة معرّفة لكل x.';
+
+    $formatted = QuestionMarkupFormatter::format($input);
+
+    expect($formatted)
+        ->toContain('katex-src')
+        ->toContain('f(x) = \\frac{\\sqrt{x+1}}{x^{2}+1}');
+});
+
+test('converts multiple slash fractions in one expression without greedy corruption', function () {
+    $input = 'بسّط (a)/(b)+(c)/(d) إلى أبسط صورة.';
+
+    $formatted = QuestionMarkupFormatter::format($input);
+
+    expect($formatted)
+        ->toContain('\\frac{a}{b}')
+        ->toContain('\\frac{c}{d}')
+        ->not->toContain('b)+(c)/(d');
+});
+
+test('converts nested-parentheses square root as one katex fragment', function () {
+    $input = 'احسب √((x+1)/(x-1)) عند x=3.';
+
+    $formatted = QuestionMarkupFormatter::format($input);
+
+    expect($formatted)
+        ->toContain('\\sqrt{(x+1)/(x-1)}')
+        ->not->toContain('\\sqrt{}')
+        ->not->toContain('} عند');
+});
+
+test('converts arabic-indic digits to ascii before math normalization', function () {
+    $input = 'إذا كان u_٥ = ٣ فأوجد u_٦.';
+
+    $formatted = QuestionMarkupFormatter::format($input);
+    $stored = QuestionMarkupFormatter::normalizeForStorage($input);
+
+    expect($formatted)
+        ->toContain('u_5 = 3')
+        ->toContain('u_6')
+        ->not->toContain('٥')
+        ->not->toContain('٣');
+
+    expect($stored)->toContain('u_5 = 3');
+});
+
+test('wraps bare trig identities without backslash as one math fragment', function () {
+    $input = 'أثبت أن sin^{2}x + cos^{2}x = 1 لكل x.';
+
+    $formatted = QuestionMarkupFormatter::format($input);
+
+    expect($formatted)
+        ->toContain('katex-src')
+        ->toContain('\\sin^{2}x + \\cos^{2}x = 1');
+});
+
+test('treats combinatorics notation as math instead of code', function () {
+    $input = 'عدد التوافيق C(n,k) يساوي n!/(k!(n-k)!) واحسب أيضاً P(n,r).';
+
+    $formatted = QuestionMarkupFormatter::format($input);
+
+    expect($formatted)
+        ->not->toContain('<code class="question-inline-code">C(n,k)</code>')
+        ->not->toContain('<code class="question-inline-code">P(n,r)</code>')
+        ->toContain('katex-src')
+        ->toContain('C(n,k)')
+        ->toContain('P(n,r)');
+});
+
+test('does not misclassify parenthesised subscript recurrence as code without arabic context', function () {
+    $input = 'u_n-10u_(n+1) = 10u_n - 18';
+
+    $formatted = QuestionMarkupFormatter::format($input);
+
+    expect($formatted)
+        ->not->toContain('question-inline-code')
+        ->toContain('katex-src')
+        ->toContain('u_n-10u_{n+1} = 10u_n - 18');
+});
+
+test('wraps sqrt directly wrapping a frac as a single katex fragment', function () {
+    $input = 'f(x) = \sqrt{\frac{a}{b}}';
+
+    $formatted = QuestionMarkupFormatter::format($input);
+
+    expect($formatted)
+        ->toContain('katex-src')
+        ->toContain('f(x) = \\sqrt{\\frac{a}{b}}')
+        ->not->toContain('$');
+});
+
+test('does not wrap a bare frac in dollars when nested inside an unclosed outer command', function () {
+    $input = 'أثبت أن g(x) = \sqrt{\frac{x+1}{x-1}} معرّفة على مجالها.';
+
+    $formatted = QuestionMarkupFormatter::format($input);
+
+    expect($formatted)
+        ->toContain('katex-src')
+        ->toContain('g(x) = \\sqrt{\\frac{x+1}{x-1}}');
 });

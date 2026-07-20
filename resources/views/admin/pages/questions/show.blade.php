@@ -132,7 +132,7 @@
                                         @if($option->feedback)
                                             <small class="text-muted d-block mt-1">
                                                 <i class="bi bi-chat-dots me-1"></i>
-                                                {{ $option->feedback }}
+                                                {!! format_question_markup($option->feedback) !!}
                                             </small>
                                         @endif
                                     </div>
@@ -176,7 +176,7 @@
                             <ol>
                                 @foreach($question->blank_answers as $answer)
                                     <li class="mb-2">
-                                        <span class="badge bg-success">{{ $answer }}</span>
+                                        <span class="badge bg-success question-text-body">{!! format_question_markup($answer) !!}</span>
                                     </li>
                                 @endforeach
                             </ol>

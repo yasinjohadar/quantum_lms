@@ -49,7 +49,7 @@
                 {!! format_question_markup($option->content) !!}
                 @if(!empty($option->feedback))
                     <div class="mcq-option-card__feedback">
-                        <i class="bi bi-chat-dots me-1"></i>{{ $option->feedback }}
+                        <i class="bi bi-chat-dots me-1"></i>{!! format_question_markup($option->feedback) !!}
                     </div>
                 @endif
             </div>

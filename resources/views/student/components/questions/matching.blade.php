@@ -14,13 +14,15 @@
                     @foreach($question->options as $option)
                         @php
                             $isMatched = isset($savedPairs[$option->id]);
+                            $leftRenderedHtml = format_question_markup($option->content);
                         @endphp
                         <div class="list-group-item matching-draggable {{ $isMatched ? 'd-none' : '' }}" 
                              data-option-id="{{ $option->id }}"
+                             data-rendered-html="{{ $leftRenderedHtml }}"
                              draggable="true"
                              ondragstart="return handleDragStart(event)"
                              style="cursor: move !important; user-select: none !important; -webkit-user-drag: element !important; touch-action: none !important; pointer-events: auto !important; -moz-user-select: none !important;">
-                            <strong class="question-text-body">{!! format_question_markup($option->content) !!}</strong>
+                            <strong class="question-text-body">{!! $leftRenderedHtml !!}</strong>
                         </div>
                     @endforeach
                 </div>
@@ -41,9 +43,11 @@
                                 }
                             }
                             $matchedOption = $matchedOptionId ? $question->options->firstWhere('id', $matchedOptionId) : null;
+                            $rightRenderedHtml = format_question_markup($rightOption);
                         @endphp
                         <div class="list-group-item matching-target {{ $matchedOptionId ? 'border-success' : '' }}" 
                              data-content="{{ $rightOption }}" 
+                             data-rendered-html="{{ $rightRenderedHtml }}"
                              data-matched-option-id="{{ $matchedOptionId ?? '' }}"
                              draggable="false"
                              ondragover="return handleDragOver(event)"
@@ -54,16 +58,16 @@
                             @if($matchedOption)
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <strong>{{ $matchedOption->content }}</strong>
+                                        <strong class="question-text-body">{!! format_question_markup($matchedOption->content) !!}</strong>
                                         <i class="bi bi-arrow-left-right mx-2 text-muted"></i>
-                                        <span>{{ $rightOption }}</span>
+                                        <span class="question-text-body">{!! $rightRenderedHtml !!}</span>
                                     </div>
                                     <button type="button" class="btn btn-sm btn-icon btn-danger-transparent remove-match" onclick="removeMatch('{{ $matchedOptionId }}')">
                                         <i class="bi bi-x"></i>
                                     </button>
                                 </div>
                             @else
-                                {{ $rightOption }}
+                                <span class="question-text-body">{!! $rightRenderedHtml !!}</span>
                             @endif
                         </div>
                     @endforeach
@@ -169,8 +173,11 @@
         if (window.draggedElement && !target.dataset.matchedOptionId) {
             const optionId = window.draggedElement.dataset.optionId;
             const targetContent = target.dataset.content;
-            const leftContent = window.draggedElement.querySelector('strong')?.textContent.trim() || window.draggedElement.textContent.trim();
-            
+            const leftRenderedHtml = window.draggedElement.dataset.renderedHtml
+                || window.draggedElement.querySelector('strong')?.innerHTML
+                || window.draggedElement.innerHTML;
+            const targetRenderedHtml = target.dataset.renderedHtml || targetContent;
+
             const pairsInput = document.getElementById('matching-pairs-input');
             const pairs = JSON.parse(pairsInput.value || '{}');
             pairs[optionId] = targetContent;
@@ -178,12 +185,12 @@
             
             console.log('Match created', { optionId, targetContent, pairs });
             
-            // تحديث العرض
+            // تحديث العرض (يُعاد استخدام HTML المُنسَّق مسبقاً من الخادم حتى لا تُفقَد المعادلات)
             target.innerHTML = `<div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <strong>${leftContent}</strong>
+                    <strong class="question-text-body">${leftRenderedHtml}</strong>
                     <i class="bi bi-arrow-left-right mx-2 text-muted"></i>
-                    <span>${targetContent}</span>
+                    <span class="question-text-body">${targetRenderedHtml}</span>
                 </div>
                 <button type="button" class="btn btn-sm btn-icon btn-danger-transparent remove-match" onclick="removeMatch('${optionId}')">
                     <i class="bi bi-x"></i>
@@ -191,6 +198,10 @@
             </div>`;
             target.dataset.matchedOptionId = optionId;
             target.classList.add('border-success');
+
+            if (typeof window.renderQuestionMath === 'function') {
+                window.renderQuestionMath(target);
+            }
             
             // إخفاء العنصر اليسرى المطابق
             window.draggedElement.classList.add('d-none');
@@ -221,14 +232,18 @@
         // إعادة تعيين العنصر اليمنى
         const rightItem = document.querySelector(`#right-items .matching-target[data-matched-option-id="${optionId}"]`);
         if (rightItem) {
-            const originalContent = rightItem.dataset.content;
-            rightItem.innerHTML = originalContent;
+            const originalHtml = rightItem.dataset.renderedHtml || rightItem.dataset.content;
+            rightItem.innerHTML = `<span class="question-text-body">${originalHtml}</span>`;
             rightItem.classList.remove('border-success');
             rightItem.removeAttribute('data-matched-option-id');
             rightItem.setAttribute('ondragover', 'return handleDragOver(event)');
             rightItem.setAttribute('ondragenter', 'return handleDragEnter(event)');
             rightItem.setAttribute('ondragleave', 'handleDragLeave(event)');
             rightItem.setAttribute('ondrop', 'return handleDrop(event)');
+
+            if (typeof window.renderQuestionMath === 'function') {
+                window.renderQuestionMath(rightItem);
+            }
         }
     };
     

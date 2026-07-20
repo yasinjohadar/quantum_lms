@@ -270,7 +270,7 @@
                                                                     $option = $question->options->firstWhere('id', $optionId);
                                                                 @endphp
                                                                 @if($option)
-                                                                    <li class="question-text-body"><strong>{!! format_question_markup($option->content) !!}</strong> → {{ $target }}</li>
+                                                                    <li class="question-text-body"><strong>{!! format_question_markup($option->content) !!}</strong> → {!! format_question_markup($target) !!}</li>
                                                                 @endif
                                                             @endforeach
                                                         </ul>

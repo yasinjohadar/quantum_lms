@@ -942,7 +942,7 @@ class AIQuestionGenerationService
             QuestionOption::create([
                 'question_id' => $question->id,
                 'content' => QuestionMarkupFormatter::normalizeForStorage(trim($optionText)),
-                'match_target' => trim($matchTarget),
+                'match_target' => QuestionMarkupFormatter::normalizeForStorage(trim($matchTarget)),
                 'is_correct' => true, // جميع خيارات المطابقة صحيحة إذا تمت المطابقة بشكل صحيح
                 'order' => $index + 1,
             ]);
