@@ -42,7 +42,7 @@ class NormalizeQuestionMathCommand extends Command
                         if (! is_string($original) || trim($original) === '') {
                             continue;
                         }
-                        $normalized = QuestionMarkupFormatter::normalizeForStorage($original);
+                        $normalized = QuestionMarkupFormatter::deepNormalizeForStorage($original);
                         if ($normalized !== $original) {
                             $changes[$field] = $normalized;
                         }
@@ -51,7 +51,7 @@ class NormalizeQuestionMathCommand extends Command
                     if (is_array($question->blank_answers) && $question->blank_answers !== []) {
                         $normalizedBlanks = array_map(
                             fn ($answer) => is_string($answer)
-                                ? QuestionMarkupFormatter::normalizeForStorage($answer)
+                                ? QuestionMarkupFormatter::deepNormalizeForStorage($answer)
                                 : $answer,
                             $question->blank_answers
                         );
@@ -86,7 +86,7 @@ class NormalizeQuestionMathCommand extends Command
                         if (! is_string($original) || trim($original) === '') {
                             continue;
                         }
-                        $normalized = QuestionMarkupFormatter::normalizeForStorage($original);
+                        $normalized = QuestionMarkupFormatter::deepNormalizeForStorage($original);
                         if ($normalized !== $original) {
                             $changes[$field] = $normalized;
                         }

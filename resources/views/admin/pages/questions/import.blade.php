@@ -66,6 +66,8 @@
             <div class="row g-4">
                 <div class="col-xl-8 col-lg-7">
 
+                    @include('admin.pages.questions.partials.math-backfill-tool')
+
                     @include('admin.pages.questions.partials.excel-import-wizard', [
                         'importFormAction' => route('admin.questions.import'),
                         'cancelUrl' => !empty($lockedSubject)

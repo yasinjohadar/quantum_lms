@@ -199,6 +199,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('questions.math.parse');
         Route::post('questions-import/math/import', [\App\Http\Controllers\Admin\MathQuestionImportController::class, 'import'])
             ->name('questions.math.import');
+        Route::get('questions-math-backfill/status', [\App\Http\Controllers\Admin\QuestionMathBackfillController::class, 'status'])
+            ->name('questions.math-backfill.status');
+        Route::post('questions-math-backfill/process-batch', [\App\Http\Controllers\Admin\QuestionMathBackfillController::class, 'processBatch'])
+            ->name('questions.math-backfill.process-batch');
 
         // ===============================================
         // المكتبة الرقمية

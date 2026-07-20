@@ -125,9 +125,9 @@ class MathQuestionImportController extends Controller
      */
     protected function toMathPreviewArray(QuestionPackQuestionData $dto): array
     {
-        $titleStored = QuestionMarkupFormatter::normalizeForStorage($dto->title);
-        $hintStored = QuestionMarkupFormatter::normalizeForStorage($dto->hint);
-        $explanationStored = QuestionMarkupFormatter::normalizeForStorage($dto->explanation);
+        $titleStored = QuestionMarkupFormatter::deepNormalizeForStorage($dto->title);
+        $hintStored = QuestionMarkupFormatter::deepNormalizeForStorage($dto->hint);
+        $explanationStored = QuestionMarkupFormatter::deepNormalizeForStorage($dto->explanation);
 
         $options = [];
         foreach (['A', 'B', 'C', 'D'] as $letter) {
@@ -135,7 +135,7 @@ class MathQuestionImportController extends Controller
                 continue;
             }
 
-            $stored = QuestionMarkupFormatter::normalizeForStorage($dto->options[$letter]);
+            $stored = QuestionMarkupFormatter::deepNormalizeForStorage($dto->options[$letter]);
             $options[] = [
                 'letter' => $letter,
                 'is_correct' => strtoupper($dto->correctLetter) === $letter,

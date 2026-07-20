@@ -61,9 +61,9 @@ class MathQuestionPackPersister
     ): int {
         $question = Question::create([
             'type' => 'single_choice',
-            'title' => QuestionMarkupFormatter::normalizeForStorage($dto->title),
-            'content' => QuestionMarkupFormatter::normalizeForStorage($dto->title),
-            'explanation' => QuestionMarkupFormatter::normalizeForStorage($this->combineHintAndRationale($dto)),
+            'title' => QuestionMarkupFormatter::deepNormalizeForStorage($dto->title),
+            'content' => QuestionMarkupFormatter::deepNormalizeForStorage($dto->title),
+            'explanation' => QuestionMarkupFormatter::deepNormalizeForStorage($this->combineHintAndRationale($dto)),
             'difficulty' => $dto->difficulty,
             'default_points' => $dto->points,
             'is_active' => true,
@@ -79,7 +79,7 @@ class MathQuestionPackPersister
 
             QuestionOption::create([
                 'question_id' => $question->id,
-                'content' => QuestionMarkupFormatter::normalizeForStorage($dto->options[$letter]),
+                'content' => QuestionMarkupFormatter::deepNormalizeForStorage($dto->options[$letter]),
                 'is_correct' => strtoupper($dto->correctLetter) === $letter,
                 'order' => $order++,
             ]);

@@ -641,3 +641,77 @@ test('converts stacked superscript-slash-subscript unicode fraction to frac nota
         ->toContain('\\frac{10}{2}')
         ->not->toContain('⁄');
 });
+
+test('does not split a sqrt call into fragments when its argument already has a braced exponent', function () {
+    // انحدار حقيقي: \sqrt(x^{2}+x) (وسيط بأس مُهيّأ مسبقاً بأقواس {}) كان يُقسَّم
+    // خطأً إلى ثلاث مقاطع منفصلة "\sqrt" و "x^{2}" و باقي التعبير، بسبب نمط
+    // "أُس عارٍ" في wrapPseudoMathSegmentsInPlainText الذي لا يتحقق من وجوده
+    // داخل قوس ( لم يُغلَق بعد.
+    $withBraces = 'نهاية التابع f(x) = x - \sqrt(x^{2}+x) عندما x \to +\infty هي:';
+    $withoutBraces = 'نهاية التابع f(x) = x - \sqrt(x^2+x) عندما x \to +\infty هي:';
+
+    $storedWithBraces = QuestionMarkupFormatter::normalizeForStorage($withBraces);
+    $storedWithoutBraces = QuestionMarkupFormatter::normalizeForStorage($withoutBraces);
+
+    expect($storedWithBraces)
+        ->toContain('$f(x) = x - \\sqrt(x^{2}+x)$')
+        ->toContain('$x \\to +\\infty$')
+        ->not->toContain('\\sqrt$')
+        ->not->toContain('$\\sqrt');
+
+    expect($storedWithBraces)->toBe($storedWithoutBraces);
+});
+
+test('strips existing math delimiters back to plain latex source', function () {
+    $input = 'نهاية التابع $f(x)$ = x - \sqrt(x^{2}+x) $عندما x$ \to+\infty هي:';
+
+    $stripped = QuestionMarkupFormatter::stripMathDelimiters($input);
+
+    expect($stripped)
+        ->toBe('نهاية التابع f(x) = x - \sqrt(x^{2}+x) عندما x \to+\infty هي:')
+        ->not->toContain('$');
+});
+
+test('deep normalize repairs a legacy question stored with wrong math delimiters (screenshot regression)', function () {
+    // محاكاة سؤال قديم مُخزَّن قبل إصلاح الأُس العاري داخل sqrt: التابع f(x) مُغلَّف
+    // بشكل منعزل، وعبارة "عندما x" مُغلَّفة خطأً بالكامل (نص عربي داخل رياضيات)،
+    // بينما "\to+\infty" وباقي التعبير غير مُغلَّفين أبداً — تماماً كما ظهر على
+    // السيرفر (نص خام ظاهر للطالب).
+    $legacyBroken = 'نهاية التابع $f(x)$ = x - \sqrt(x^{2}+x) $عندما x$ \to+\infty هي:';
+
+    $repaired = QuestionMarkupFormatter::deepNormalizeForStorage($legacyBroken);
+
+    expect($repaired)
+        ->toContain('$f(x) = x - \\sqrt(x^{2}+x)$')
+        ->toContain('$x \\to+\\infty$')
+        ->not->toContain('عندما x$')
+        ->not->toContain('\\to+\\infty هي')
+        ->not->toContain('\\sqrt$');
+
+    // \sqrt و \to يجب أن يظهرا فقط داخل مقاطع katex-src (مصدر خام يُرندَر لاحقاً
+    // عبر KaTeX في المتصفح)، وليس كنص خام طليق خارجها.
+    $html = format_question_markup($repaired);
+    expect($html)
+        ->toContain('katex-src')
+        ->toMatch('/<span class="katex-src[^>]*>[^<]*\\\\sqrt/');
+
+    // إعادة تشغيل الإصلاح على النتيجة المُصحَّحة يجب أن تكون بلا أي تغيير إضافي.
+    expect(QuestionMarkupFormatter::deepNormalizeForStorage($repaired))->toBe($repaired);
+});
+
+test('deep normalize falls back to the safe shallow result instead of leaving stray backslashes', function () {
+    // لاتيكس مخصّص نادر (\oint) قد لا يغطيه الكشف التلقائي بعد نزع $...$ وإعادة
+    // البناء من الصفر؛ يجب ألا يفقد الإصلاح الشامل رياضيات كانت مُغلَّفة بصورة
+    // صحيحة أصلاً عبر ترك شرطة عكسية "\" خاماً ظاهرة للمستخدم.
+    $alreadyGood = 'أثبت أن $\oint_C \vec{F} \cdot d\vec{r} = 0$ لحقل متحفظ.';
+
+    $result = QuestionMarkupFormatter::deepNormalizeForStorage($alreadyGood);
+
+    expect($result)->toBe($alreadyGood);
+});
+
+test('deep normalize is a no-op safe superset of normalize for storage on already-correct text', function () {
+    $good = 'نهاية التابع $f(x) = x - \sqrt{x^{2}+x}$ عندما $x \to +\infty$ هي:';
+
+    expect(QuestionMarkupFormatter::deepNormalizeForStorage($good))->toBe($good);
+});

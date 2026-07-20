@@ -52,6 +52,118 @@ class QuestionMarkupFormatter
     }
 
     /**
+     * عدد مقاطع الرياضيات المحدَّدة ($...$، $$...$$، \(...\)، \[...\]) في النص.
+     * يُستخدم كشبكة أمان في deepNormalizeForStorage لتفادي أي تراجع.
+     */
+    public static function countMathSegments(string $text): int
+    {
+        if ($text === '') {
+            return 0;
+        }
+
+        return (int) preg_match_all(self::MATH_SEGMENT_PATTERN, $text);
+    }
+
+    /**
+     * إزالة محدِّدات الرياضيات الحالية ($...$، $$...$$، \(...\)، \[...\]) مع الحفاظ
+     * على المحتوى الداخلي كما هو، لإعادة تمريره على normalizeForStorage من جديد.
+     *
+     * ضرورية لإصلاح أسئلة قديمة خُزِّنت بمحدِّدات خاطئة (مثل لفّ جزء من نص عربي
+     * داخل $...$ عن طريق الخطأ) من إصدارات سابقة من هذا الصانع؛ لا تكفي إعادة
+     * تشغيل normalizeForStorage وحدها لأنها تتعامل فقط مع المحتوى *خارج* $...$
+     * الحالية وتترك المحدِّدات الموجودة كما هي دون فحصها.
+     */
+    public static function stripMathDelimiters(string $text): string
+    {
+        if ($text === '' || ! preg_match(self::MATH_SEGMENT_PATTERN, $text)) {
+            return $text;
+        }
+
+        return preg_replace_callback(self::MATH_SEGMENT_PATTERN, static function (array $m): string {
+            $seg = $m[0];
+            $len = mb_strlen($seg);
+
+            if (str_starts_with($seg, '$$') && str_ends_with($seg, '$$') && $len >= 4) {
+                return mb_substr($seg, 2, $len - 4);
+            }
+
+            if (
+                $len >= 4
+                && ((str_starts_with($seg, '\\[') && str_ends_with($seg, '\\]'))
+                    || (str_starts_with($seg, '\\(') && str_ends_with($seg, '\\)')))
+            ) {
+                return mb_substr($seg, 2, $len - 4);
+            }
+
+            if (str_starts_with($seg, '$') && str_ends_with($seg, '$') && $len >= 2) {
+                return mb_substr($seg, 1, $len - 2);
+            }
+
+            return $seg;
+        }, $text) ?? $text;
+    }
+
+    /**
+     * نسخة "إصلاح شامل" من normalizeForStorage: تنزع أي محدِّدات $...$ موجودة
+     * مسبقاً وتعيد بناءها من الصفر بأحدث منطق الكشف/اللفّ، بدل ترك محدِّدات قديمة
+     * خاطئة كما هي. مزوَّدة بشبكة أمان: لا تُستخدم النتيجة "العميقة" إلا إذا لم
+     * تقلّ عدد مقاطع الرياضيات المكتشفة عن نتيجة normalizeForStorage العادية،
+     * لتفادي أي تراجع على نص مكتوب يدوياً بصيغة لا يغطيها الكشف التلقائي.
+     */
+    public static function deepNormalizeForStorage(?string $text): string
+    {
+        if ($text === null || trim($text) === '') {
+            return '';
+        }
+
+        $shallow = self::normalizeForStorage($text);
+
+        if (! str_contains($text, '$') && ! str_contains($text, '\\(') && ! str_contains($text, '\\[')) {
+            return $shallow;
+        }
+
+        $stripped = self::stripMathDelimiters($text);
+        if ($stripped === $text) {
+            return $shallow;
+        }
+
+        $deep = self::normalizeForStorage($stripped);
+
+        // شبكة أمان: النتيجة "العميقة" مقبولة فقط إن لم تترك أي شرطة عكسية "\" خارج
+        // مقاطع $...$ (أي أمر LaTeX ظاهر خاماً للمستخدم) بينما النتيجة السطحية سليمة
+        // من هذه الناحية — عدد المقاطع نفسه ليس مؤشراً موثوقاً (توحيد "f(x)=...\sqrt(...)"
+        // في مقطع واحد بدل ثلاثة هو تحسين لا تراجع).
+        if (self::hasStrayBackslashOutsideMath($deep) && ! self::hasStrayBackslashOutsideMath($shallow)) {
+            return $shallow;
+        }
+
+        return $deep;
+    }
+
+    /**
+     * كشف أي شرطة عكسية "\" متبقية خارج مقاطع $...$ المعروفة — مؤشر قوي على أمر
+     * LaTeX لم يُلفّ بنجاح وسيظهر خاماً للمستخدم النهائي.
+     */
+    private static function hasStrayBackslashOutsideMath(string $text): bool
+    {
+        $parts = preg_split(self::MATH_SEGMENT_PATTERN, $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+        if ($parts === false) {
+            return str_contains($text, '\\');
+        }
+
+        foreach ($parts as $part) {
+            if ($part === '' || preg_match(self::MATH_SEGMENT_PATTERN, $part)) {
+                continue;
+            }
+            if (str_contains($part, '\\')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * تطبيع نص السؤال قبل التخزين (pseudo-LaTeX → LaTeX، backticks رياضية → $...$).
      */
     public static function normalizeForStorage(?string $text): string
@@ -1201,10 +1313,11 @@ class QuestionMarkupFormatter
     }
 
     /**
-     * كالاستبدال العادي، لكنه يتجاهل أي تطابق يقع داخل قوس { لم يُغلَق بعد ضمن نفس
-     * المقطع — لتفادي كسر بنية LaTeX متداخلة مثل \sqrt{(a)/(b)} أو \frac{(a)/(b)}{c}
-     * عندما يلفّ نمط عام (كسور/متتاليات) جزءاً من الوسيط قبل أن يعالجه المعالج
-     * المتخصص للأمر الكامل (\sqrt/\frac) كوحدة واحدة.
+     * كالاستبدال العادي، لكنه يتجاهل أي تطابق يقع داخل قوس { أو ( لم يُغلَق بعد ضمن
+     * نفس المقطع — لتفادي كسر بنية LaTeX متداخلة مثل \sqrt{(a)/(b)} أو \frac{(a)/(b)}{c}
+     * أو \sqrt(x^{2}+x) عندما يلفّ نمط عام (كسور/متتاليات/أُسس) جزءاً من الوسيط
+     * (مثل x^{2} بمفردها) قبل أن يعالجه المعالج المتخصص للأمر الكامل (\sqrt/\frac)
+     * كوحدة واحدة.
      */
     private static function replacePatternSkippingOpenBraces(string $text, string $pattern, callable $callback): string
     {
@@ -1216,6 +1329,9 @@ class QuestionMarkupFormatter
                 $offset = $matches[0][1];
                 $before = substr($text, 0, $offset);
                 if (substr_count($before, '{') > substr_count($before, '}')) {
+                    return $matches[0][0];
+                }
+                if (substr_count($before, '(') > substr_count($before, ')')) {
                     return $matches[0][0];
                 }
 
