@@ -327,7 +327,7 @@ class QuestionMarkupFormatter
         static $superscripts = [
             '⁰' => '0', '¹' => '1', '²' => '2', '³' => '3', '⁴' => '4',
             '⁵' => '5', '⁶' => '6', '⁷' => '7', '⁸' => '8', '⁹' => '9',
-            '⁺' => '+', '⁻' => '-', 'ⁿ' => 'n', 'ⁱ' => 'i',
+            '⁺' => '+', '⁻' => '-', 'ⁿ' => 'n', 'ⁱ' => 'i', 'ˣ' => 'x',
         ];
 
         static $subscripts = [
@@ -349,8 +349,11 @@ class QuestionMarkupFormatter
             '$1_{n+1}',
             $text
         ) ?? $text;
+        // ملاحظة: نستثني حالة تبعية رمز تحتي آخر (مثل ₊/₋/رقم) بعد ₙ/ₚ حتى تتولى
+        // المعالجة العامة أدناه تجميع السلسلة كاملة (مثل uₙ₊₁ → u_{n+1} بدل u_n₊₁).
+        $subscriptRunClass = '[₀₁₂₃₄₅₆₇₈₉₊₋ₙᵢₓₚₖₘₜₛᵣᵤᵥₐₑ]';
         $text = preg_replace(
-            '/([A-Za-z])ₙ/u',
+            '/([A-Za-z])ₙ(?!'.$subscriptRunClass.')/u',
             '$1_n',
             $text
         ) ?? $text;
@@ -360,7 +363,7 @@ class QuestionMarkupFormatter
             $text
         ) ?? $text;
         $text = preg_replace(
-            '/([A-Za-z])ₚ/u',
+            '/([A-Za-z])ₚ(?!'.$subscriptRunClass.')/u',
             '$1_p',
             $text
         ) ?? $text;
@@ -386,6 +389,26 @@ class QuestionMarkupFormatter
         ) ?? $text;
         $text = str_replace(['⅝', '⅜', '⅞', '½', '¼', '¾'], ['\\frac{5}{8}', '\\frac{3}{8}', '\\frac{7}{8}', '\\frac{1}{2}', '\\frac{1}{4}', '\\frac{3}{4}'], $text);
 
+        // كسر بصيغة يونيكود: أرقام مرفوعة + شرطة كسر (⁄) + أرقام منخفضة، مثل ¹⁰⁄₂ → \frac{10}{2}
+        $text = preg_replace_callback(
+            '/([⁰¹²³⁴⁵⁶⁷⁸⁹]+)⁄([₀₁₂₃₄₅₆₇₈₉]+)/u',
+            static function (array $m) use ($superscripts, $subscripts): string {
+                $numChars = preg_split('//u', $m[1], -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                $denChars = preg_split('//u', $m[2], -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                $numerator = '';
+                foreach ($numChars as $ch) {
+                    $numerator .= $superscripts[$ch] ?? $ch;
+                }
+                $denominator = '';
+                foreach ($denChars as $ch) {
+                    $denominator .= $subscripts[$ch] ?? $ch;
+                }
+
+                return '\\frac{'.$numerator.'}{'.$denominator.'}';
+            },
+            $text
+        ) ?? $text;
+
         // √(expr) أو √expr → \sqrt{expr}
         $text = preg_replace_callback(
             '/√\s*(?:\(('.self::BALANCED_PAREN_ARG.')\)|([a-zA-Z0-9]+))/u',
@@ -400,7 +423,7 @@ class QuestionMarkupFormatter
         $text = strtr($text, $symbolMap);
 
         $text = preg_replace_callback(
-            '/([A-Za-z0-9\)])([⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻ⁿⁱ]+)/u',
+            '/([A-Za-z0-9\)])([⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻ⁿⁱˣ]+)/u',
             static function (array $m) use ($superscripts): string {
                 $chars = preg_split('//u', $m[2], -1, PREG_SPLIT_NO_EMPTY) ?: [];
                 $mapped = '';

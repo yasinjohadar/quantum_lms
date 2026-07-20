@@ -607,3 +607,37 @@ test('does not wrap a bare frac in dollars when nested inside an unclosed outer 
         ->toContain('katex-src')
         ->toContain('g(x) = \\sqrt{\\frac{x+1}{x-1}}');
 });
+
+test('converts compound unicode subscript with trailing sign as one brace group', function () {
+    $input = 'uₙ₊₁ = 10uₙ - 18 و uₙ₋₁ يساوي القيمة السابقة';
+
+    $stored = QuestionMarkupFormatter::normalizeForStorage($input);
+
+    expect($stored)
+        ->toContain('u_{n+1}')
+        ->toContain('u_{n-1}')
+        ->not->toContain('u_n_{+1}')
+        ->not->toContain('u_n_{-1}')
+        ->not->toContain('ₙ');
+});
+
+test('converts unicode superscript letter x to caret notation', function () {
+    $input = "أوجد مشتق التابع f(x) = eˣ ونهاية g(x) = e⁻³ˣ.";
+
+    $stored = QuestionMarkupFormatter::normalizeForStorage($input);
+
+    expect($stored)
+        ->toContain('e^{x}')
+        ->toContain('e^{-3x}')
+        ->not->toContain('ˣ');
+});
+
+test('converts stacked superscript-slash-subscript unicode fraction to frac notation', function () {
+    $input = 'المجموع هو ¹⁰⁄₂(5 + 32) = 185.';
+
+    $stored = QuestionMarkupFormatter::normalizeForStorage($input);
+
+    expect($stored)
+        ->toContain('\\frac{10}{2}')
+        ->not->toContain('⁄');
+});

@@ -195,6 +195,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('questions.question-pack.parse');
         Route::post('questions-import/question-pack/import', [\App\Http\Controllers\Admin\QuestionPackImportController::class, 'import'])
             ->name('questions.question-pack.import');
+        Route::post('questions-import/math/parse', [\App\Http\Controllers\Admin\MathQuestionImportController::class, 'parse'])
+            ->name('questions.math.parse');
+        Route::post('questions-import/math/import', [\App\Http\Controllers\Admin\MathQuestionImportController::class, 'import'])
+            ->name('questions.math.import');
 
         // ===============================================
         // المكتبة الرقمية

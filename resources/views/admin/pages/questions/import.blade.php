@@ -93,6 +93,14 @@
                         'prefillUnitId' => $prefillUnitId ?? null,
                     ])
 
+                    @include('admin.pages.questions.partials.math-question-import-module', [
+                        'lockedSubject' => $lockedSubject ?? null,
+                        'requireSubject' => empty($lockedSubject),
+                        'prefillClassId' => $prefillClassId ?? null,
+                        'prefillSubjectId' => $prefillSubjectId ?? null,
+                        'prefillUnitId' => $prefillUnitId ?? null,
+                    ])
+
                 </div>
 
                 <div class="col-xl-4 col-lg-5">
