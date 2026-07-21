@@ -55,7 +55,7 @@ class QuizController extends Controller
         $this->middleware(['permission:quiz-approve-review'])->only('approveReview');
         $this->middleware(['permission:quiz-reject-review'])->only('rejectReview');
         $this->middleware(['permission:quiz-submit-for-review'])->only('submitForReview');
-        $this->middleware(['permission:question-import'])->only(['importExcel', 'importNerveTest', 'importQuestionPack']);
+        $this->middleware(['permission:question-import'])->only(['importExcel', 'importNerveTest', 'importQuestionPack', 'importMath']);
     }
 
     /**
@@ -564,6 +564,59 @@ class QuizController extends Controller
                 ->withInput();
         } catch (\Exception $e) {
             Log::error('Error importing question pack for quiz: '.$e->getMessage(), ['quiz_id' => $quiz->id]);
+
+            return redirect()
+                ->route('admin.quizzes.import-excel.show', $quiz)
+                ->with('error', 'حدث خطأ أثناء الاستيراد: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * استيراد أسئلة رياضيات (MD/CSV مع معاينة KaTeX) وربطها بالاختبار.
+     */
+    public function importMath(Request $request, string $id)
+    {
+        $quiz = Quiz::findOrFail($id);
+
+        $request->validate([
+            'file' => ['required', 'file', 'max:10240'],
+            'format' => ['required', \Illuminate\Validation\Rule::in(['md', 'csv'])],
+        ]);
+
+        try {
+            $summary = $this->quizPackQuestionImportService->importMathAndAttach(
+                $quiz,
+                $request->file('file'),
+                $request->input('format')
+            );
+
+            if ($summary['count'] === 0) {
+                return redirect()
+                    ->route('admin.quizzes.import-excel.show', $quiz)
+                    ->with('error', 'لم يتم استيراد أي سؤال. راجع الملف وأعد المحاولة.');
+            }
+
+            $suspiciousCount = $summary['suspicious_count'] ?? 0;
+            $message = "تم استيراد {$summary['count']} سؤال رياضيات وربط {$summary['attached_count']} بالاختبار، مع تنسيق المعادلات لعرضها عبر KaTeX.";
+            if ($suspiciousCount > 0) {
+                $message .= " تنبيه: {$suspiciousCount} منها يحتوي معادلة يصعب تفسيرها تلقائياً — راجعها أو شغّل أداة «إصلاح عرض الرياضيات (AI)».";
+            }
+
+            return redirect()
+                ->route('admin.quizzes.questions', $quiz)
+                ->with($suspiciousCount > 0 ? 'warning' : 'success', $message)
+                ->with('import_summary', [
+                    'success' => $summary['count'],
+                    'errors' => 0,
+                    'total' => $summary['count'],
+                ]);
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('admin.quizzes.import-excel.show', $quiz)
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Exception $e) {
+            Log::error('Error importing math questions for quiz: '.$e->getMessage(), ['quiz_id' => $quiz->id]);
 
             return redirect()
                 ->route('admin.quizzes.import-excel.show', $quiz)

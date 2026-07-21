@@ -229,12 +229,13 @@
         }
     }
 
-    function renderPreview(questions) {
+    function renderPreview(questions, suspiciousCount) {
         const cards = questions.map(function (q) {
             const optionsHtml = (q.options || []).map(function (opt) {
                 return '<div class="math-preview-option' + (opt.is_correct ? ' is-correct' : '') + '">' +
                     '<span class="option-letter">' + escapeHtml(opt.letter) + '.</span>' +
                     '<span class="question-text-body flex-fill">' + opt.html + '</span>' +
+                    (opt.has_warning ? '<i class="bi bi-exclamation-triangle-fill text-warning ms-1" title="معادلة قد لا تُعرض بشكل صحيح"></i>' : '') +
                     (opt.is_correct ? '<i class="bi bi-check-circle-fill text-success ms-1"></i>' : '') +
                     '</div>';
             }).join('');
@@ -247,7 +248,16 @@
                 ? '<div class="small text-muted mt-1"><i class="bi bi-info-circle me-1"></i><strong>التفسير:</strong> <span class="question-text-body">' + q.explanation_html + '</span></div>'
                 : '';
 
-            return '<div class="math-preview-card">' +
+            const warningBanner = q.has_warning
+                ? '<div class="alert alert-warning alert-sm py-1 px-2 small mb-2">' +
+                  '<i class="bi bi-exclamation-triangle-fill me-1"></i>' +
+                  'هذا السؤال يحتوي على معادلة يصعب تفسيرها تلقائياً وقد تظهر بشكل غير صحيح — ' +
+                  'راجعها بعد الاستيراد، أو شغّل أداة «إصلاح عرض الرياضيات (AI)» من صفحة بنك الأسئلة.' +
+                  '</div>'
+                : '';
+
+            return '<div class="math-preview-card' + (q.has_warning ? ' has-math-warning' : '') + '">' +
+                warningBanner +
                 '<div class="d-flex justify-content-between align-items-start mb-1">' +
                 '<strong class="question-text-body">' + escapeHtml(String(q.number)) + '. ' + q.title_html + '</strong>' +
                 '<span class="badge bg-primary-transparent text-nowrap ms-2">اختيار واحد</span>' +
@@ -261,6 +271,21 @@
         previewTable.innerHTML = cards;
         previewCount.textContent = String(questions.length);
         importBtnLabel.textContent = 'استيراد ' + questions.length + ' سؤال رياضيات';
+
+        if (suspiciousCount > 0) {
+            showParseError(
+                'تنبيه: ' + suspiciousCount + ' من ' + questions.length +
+                ' سؤالاً يحتوي على معادلة يصعب تفسيرها تلقائياً (مُعلَّمة أدناه بعلامة ⚠). ' +
+                'يمكنك المتابعة بالاستيراد ثم مراجعتها لاحقاً عبر أداة «إصلاح عرض الرياضيات».'
+            );
+            parseError.classList.remove('alert-danger');
+            parseError.classList.add('alert-warning');
+        } else {
+            hideParseError();
+            parseError.classList.remove('alert-warning');
+            parseError.classList.add('alert-danger');
+        }
+
         previewSection.style.display = 'block';
         syncStepIndicators();
         tryRenderMath(previewTable, 0);
@@ -382,7 +407,7 @@
                 return;
             }
 
-            renderPreview(data.questions);
+            renderPreview(data.questions, data.suspicious_count || 0);
         } catch (err) {
             showParseError('خطأ في الاتصال بالخادم.');
         } finally {

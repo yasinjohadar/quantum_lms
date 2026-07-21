@@ -116,6 +116,10 @@
     .math-import-preview-table .math-preview-card:last-child {
         margin-bottom: 0;
     }
+    .math-import-preview-table .math-preview-card.has-math-warning {
+        border-color: rgba(var(--warning-rgb), 0.5);
+        background: rgba(var(--warning-rgb), 0.04);
+    }
     .math-import-preview-table .math-preview-option {
         display: flex;
         gap: 0.5rem;

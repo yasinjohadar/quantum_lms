@@ -83,9 +83,14 @@
         min-width: 0;
         font-size: 1.05rem;
         line-height: 1.65;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
+        /* تدفّق نصّي عادي (block) لا flex عمودي: يمنع تكسّر الخيار المختلط
+           (نص عربي + مقاطع رياضية مثل «...المجال ]a, b[ يحقق f(c) = 0») إلى أسطر
+           منفصلة مكدّسة عمودياً، ويجعلها تنساب سطراً واحداً يلتفّ طبيعياً.
+           align-self: center يحافظ على التوسيط العمودي داخل صفّ البطاقة،
+           و text-align: start يحاذي كل المحتوى (عربي ورياضي) إلى اليمين في RTL. */
+        display: block;
+        align-self: center;
+        text-align: start;
     }
 
     .mcq-option-card__body .katex {

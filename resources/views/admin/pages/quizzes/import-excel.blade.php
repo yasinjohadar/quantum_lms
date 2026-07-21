@@ -26,7 +26,7 @@
                         </ol>
                     </nav>
                     <p class="text-muted small mb-0 mt-1">
-                        نفس خيارات صفحة استيراد بنك الأسئلة: Excel، حزمة اختبار الأعصاب، وحزمة أسئلة (MD/CSV).
+                        نفس خيارات صفحة استيراد بنك الأسئلة: Excel، حزمة اختبار الأعصاب، حزمة أسئلة (MD/CSV)، وأسئلة رياضيات (KaTeX).
                     </p>
                 </div>
             </div>
@@ -110,6 +110,16 @@
                             'prefillSubjectId' => $prefillSubjectId,
                             'prefillUnitId' => $prefillUnitId,
                             'importFormAction' => route('admin.quizzes.import-question-pack.store', $quiz),
+                            'importSubmitLabel' => 'استيراد وربط بالاختبار',
+                        ])
+
+                        @include('admin.pages.questions.partials.math-question-import-module', [
+                            'lockedSubject' => $lockedSubject ?? null,
+                            'requireSubject' => false,
+                            'prefillClassId' => $prefillClassId,
+                            'prefillSubjectId' => $prefillSubjectId,
+                            'prefillUnitId' => $prefillUnitId,
+                            'importFormAction' => route('admin.quizzes.import-math.store', $quiz),
                             'importSubmitLabel' => 'استيراد وربط بالاختبار',
                         ])
                     @endif

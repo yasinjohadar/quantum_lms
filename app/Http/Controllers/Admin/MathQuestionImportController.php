@@ -43,9 +43,12 @@ class MathQuestionImportController extends Controller
                 'single_choice'
             );
 
+            $previews = collect($questions)->map(fn ($q) => $this->toMathPreviewArray($q))->values();
+
             return response()->json([
                 'count' => count($questions),
-                'questions' => collect($questions)->map(fn ($q) => $this->toMathPreviewArray($q))->values(),
+                'questions' => $previews,
+                'suspicious_count' => $previews->filter(fn ($p) => $p['has_warning'])->count(),
             ]);
         } catch (QuestionPackParseException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
@@ -97,12 +100,21 @@ class MathQuestionImportController extends Controller
                 $request->input('format'),
                 'single_choice'
             );
+            $suspiciousCount = collect($questions)->filter(
+                fn ($q) => $this->toMathPreviewArray($q)['has_warning']
+            )->count();
+
             $result = $persister->persist($questions, $subjectId, $unitId, (int) auth()->id());
             $count = $result['count'];
 
+            $message = "تم استيراد {$count} سؤال رياضيات بنجاح، مع تنسيق المعادلات لعرضها عبر KaTeX.";
+            if ($suspiciousCount > 0) {
+                $message .= " تنبيه: {$suspiciousCount} منها يحتوي معادلة يصعب تفسيرها تلقائياً — راجعها أو شغّل أداة «إصلاح عرض الرياضيات (AI)».";
+            }
+
             return redirect()
                 ->route('admin.subjects.questions.index', $subjectId)
-                ->with('success', "تم استيراد {$count} سؤال رياضيات بنجاح، مع تنسيق المعادلات لعرضها عبر KaTeX.")
+                ->with($suspiciousCount > 0 ? 'warning' : 'success', $message)
                 ->with('import_summary', [
                     'success' => $count,
                     'errors' => 0,
@@ -129,6 +141,10 @@ class MathQuestionImportController extends Controller
         $hintStored = QuestionMarkupFormatter::deepNormalizeForStorage($dto->hint);
         $explanationStored = QuestionMarkupFormatter::deepNormalizeForStorage($dto->explanation);
 
+        $hasWarning = QuestionMarkupFormatter::hasSuspiciousBareLatex($titleStored)
+            || QuestionMarkupFormatter::hasSuspiciousBareLatex($hintStored)
+            || QuestionMarkupFormatter::hasSuspiciousBareLatex($explanationStored);
+
         $options = [];
         foreach (['A', 'B', 'C', 'D'] as $letter) {
             if (empty($dto->options[$letter])) {
@@ -136,10 +152,14 @@ class MathQuestionImportController extends Controller
             }
 
             $stored = QuestionMarkupFormatter::deepNormalizeForStorage($dto->options[$letter]);
+            $optionWarning = QuestionMarkupFormatter::hasSuspiciousBareLatex($stored);
+            $hasWarning = $hasWarning || $optionWarning;
+
             $options[] = [
                 'letter' => $letter,
                 'is_correct' => strtoupper($dto->correctLetter) === $letter,
                 'html' => format_question_markup($stored),
+                'has_warning' => $optionWarning,
             ];
         }
 
@@ -150,6 +170,14 @@ class MathQuestionImportController extends Controller
             'explanation_html' => $explanationStored !== '' ? format_question_markup($explanationStored) : null,
             'options' => $options,
             'correct_letter' => strtoupper($dto->correctLetter),
+            /**
+             * صحيح إن احتوى أي جزء من هذا السؤال (بعد التطبيع) على أمر LaTeX عارٍ
+             * مشتبه به (مثل "frac2..." الملتصقة) لا يمكن إصلاحه بثقة عبر الأنماط
+             * النصية وحدها — يحتاج مراجعة يدوية أو تشغيل أداة «إصلاح AI» بعد
+             * الاستيراد (Admin ▸ بنك الأسئلة ▸ إصلاح عرض الرياضيات) حتى لا يبقى
+             * السؤال معطلاً بصمت للطالب.
+             */
+            'has_warning' => $hasWarning,
         ];
     }
 

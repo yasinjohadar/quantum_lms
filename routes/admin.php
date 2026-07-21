@@ -422,6 +422,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('quizzes.import-nerve-test.store');
         Route::post('quizzes/{quiz}/import/question-pack', [QuizController::class, 'importQuestionPack'])
             ->name('quizzes.import-question-pack.store');
+        Route::post('quizzes/{quiz}/import/math', [QuizController::class, 'importMath'])
+            ->name('quizzes.import-math.store');
         Route::get('quizzes/{quiz}/questions', [QuizController::class, 'questions'])
             ->name('quizzes.questions');
         Route::post('quizzes/{quiz}/add-question', [QuizController::class, 'addQuestion'])

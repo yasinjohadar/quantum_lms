@@ -4,12 +4,14 @@ namespace App\Services;
 
 use App\Http\Controllers\Admin\QuizController;
 use App\Models\Quiz;
+use App\Services\MathQuestionImport\MathQuestionPackPersister;
 use App\Services\NerveTestImport\NerveTestParseException;
 use App\Services\NerveTestImport\NerveTestParserFactory;
 use App\Services\NerveTestImport\NerveTestQuestionPersister;
 use App\Services\QuestionPackImport\QuestionPackParseException;
 use App\Services\QuestionPackImport\QuestionPackParserFactory;
 use App\Services\QuestionPackImport\QuestionPackPersister;
+use App\Support\QuestionMarkupFormatter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 
@@ -21,6 +23,7 @@ class QuizPackQuestionImportService
         protected NerveTestQuestionPersister $nerveTestQuestionPersister,
         protected QuestionPackParserFactory $questionPackParserFactory,
         protected QuestionPackPersister $questionPackPersister,
+        protected MathQuestionPackPersister $mathQuestionPackPersister,
     ) {}
 
     /**
@@ -71,6 +74,59 @@ class QuizPackQuestionImportService
         );
 
         return $this->attachPersistedQuestions($quiz, $result);
+    }
+
+    /**
+     * استيراد أسئلة رياضيات (اختيار واحد A–D مع تنسيق KaTeX) وربطها بالاختبار
+     * — نفس منطق MathQuestionImportController::import لكن مع الربط بالاختبار
+     * بدل التوجيه لبنك الأسئلة.
+     *
+     * @return array{count: int, attached_count: int, question_ids: array<int, int>, suspicious_count: int}
+     */
+    public function importMathAndAttach(Quiz $quiz, UploadedFile $file, string $format): array
+    {
+        $curriculum = $this->resolveCurriculum($quiz);
+
+        try {
+            $questions = $this->questionPackParserFactory->parseUploadedFile($file, $format, 'single_choice');
+        } catch (QuestionPackParseException $e) {
+            throw ValidationException::withMessages(['file' => $e->getMessage()]);
+        }
+
+        $suspiciousCount = collect($questions)->filter(
+            fn ($dto) => $this->questionHasSuspiciousBareLatex($dto)
+        )->count();
+
+        $result = $this->mathQuestionPackPersister->persist(
+            $questions,
+            $curriculum['subject_id'],
+            $curriculum['unit_id'],
+            (int) auth()->id()
+        );
+
+        return [
+            ...$this->attachPersistedQuestions($quiz, $result),
+            'suspicious_count' => $suspiciousCount,
+        ];
+    }
+
+    /**
+     * هل يحتوي هذا السؤال (بعد التطبيع) على أمر LaTeX عارٍ مشتبه به لا يمكن
+     * إصلاحه بثقة عبر الأنماط النصية وحدها (مثل "frac2..." ملتصقة)؟ نفس فحص
+     * MathQuestionImportController::toMathPreviewArray، مستخرَج هنا لإظهار
+     * تنبيه للأدمن بعد الاستيراد مباشرة إلى الاختبار (بدون معاينة KaTeX منفصلة).
+     */
+    private function questionHasSuspiciousBareLatex(\App\DataTransferObjects\QuestionPack\QuestionPackQuestionData $dto): bool
+    {
+        $fields = [$dto->title, $dto->hint, $dto->explanation, ...array_values($dto->options)];
+
+        foreach ($fields as $field) {
+            if (QuestionMarkupFormatter::hasSuspiciousBareLatex(QuestionMarkupFormatter::deepNormalizeForStorage($field))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function quizCurriculumForImport(Quiz $quiz): array

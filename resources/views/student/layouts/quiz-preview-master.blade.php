@@ -33,14 +33,23 @@
             margin-left: 0 !important;
             margin-right: 0 !important;
         }
+        /* عزل اتجاهي (bidi isolate): المعادلة تُعرض LTR داخلياً دوماً حتى داخل صفحة RTL،
+           لمنع المتصفح من إعادة ترتيب/عكس رموز محايدة كالأقواس ( ) المحيطة بالمعادلة. */
         .katex-src, .question-math-fragment {
             display: inline;
             white-space: normal;
+            direction: ltr;
+            unicode-bidi: isolate;
         }
         .katex-src[data-display="1"] {
             display: block;
             margin: .35rem 0;
             text-align: center;
+        }
+        /* KaTeX لا يضبط اتجاهه فيرث rtl من الصفحة فتُعكس الأقواس المرآتية [ ] في
+           الفترات مثل ]0, +∞[ — فرض ltr على مخرجاته يمنع الانعكاس. */
+        .katex, .katex * {
+            direction: ltr;
         }
     </style>
     @stack('styles')

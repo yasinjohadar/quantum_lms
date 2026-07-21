@@ -205,9 +205,37 @@ class QuestionMarkupFormatter
         $text = self::convertUnicodeMathOutsideDelimiters($text);
         $text = self::normalizePseudoMath($text);
         $text = self::extractInlinePseudoMathInArabicText($text);
+        $text = self::mergeAdjacentInlineMath($text);
         $text = self::wrapCommonFunctionDefinitionsInArabicText($text);
         $text = self::repairBrokenMathDelimiters($text);
+        $text = self::mergeAdjacentInlineMath($text);
         $text = self::repairUnbalancedDollarSigns($text);
+
+        return $text;
+    }
+
+    /**
+     * يدمج مقطعين رياضيين متلاصقين بلا فاصل — «$a$$b$» الناتج عن لفّ تعبيرين
+     * متجاورين في المصدر (مثل \frac{n}{2}(u_0+...) أو \frac{10}{2}(5+32)) — في
+     * مقطع واحد «$a b$». بدون الدمج يُقرأ الـ«$$» الأوسط كمحدِّد رياضيات معروضة
+     * (display) فيبتلع النص العربي التالي حتى الـ$ التالي، فتنكسر بقية السطر.
+     * محميّ بـ lookaround حتى لا يمسّ مقاطع $$...$$ (display) الفعلية.
+     */
+    private static function mergeAdjacentInlineMath(string $text): string
+    {
+        if (! str_contains($text, '$$')) {
+            return $text;
+        }
+
+        $prev = null;
+        while ($prev !== $text) {
+            $prev = $text;
+            $text = preg_replace_callback(
+                '/(?<!\$)\$([^$\n]+)\$\$([^$\n]+)\$(?!\$)/u',
+                static fn (array $m): string => '$'.$m[1].' '.$m[2].'$',
+                $text
+            ) ?? $text;
+        }
 
         return $text;
     }
@@ -919,6 +947,17 @@ class QuestionMarkupFormatter
             return false;
         }
 
+        // رفض مقطع غير متوازن الأقواس (عدد ( ≠ عدد ))، مثل "u_n)" الذي فقد قوس فتحه
+        // لأن نمط المقطع العام لا يبدأ بقوس — لفّه كما هو يترك القوس المفرد المقابل
+        // خارج المعادلة فيُعرض معكوساً في سياق RTL. نتركه للمعالجات المتخصّصة (التي
+        // تلتقط المجموعة كاملةً بقوسيها) بدل إنتاج ناتج مكسور.
+        if (
+            substr_count($trimmed, '(') !== substr_count($trimmed, ')')
+            || substr_count($trimmed, '{') !== substr_count($trimmed, '}')
+        ) {
+            return false;
+        }
+
         // مقطع مثل "sqrt{...}" أو "frac{...}{...}" بدون الـ backslash السابق له
         // (اقتُطع الـ "\" لأنه خارج فئة المحارف) — اتركه لمعالج \sqrt/\frac اللاحق.
         // ملاحظة: لا نستثني sin/cos/tan وما شابهها من دوال المثلثات هنا، لأن متطابقات
@@ -948,6 +987,13 @@ class QuestionMarkupFormatter
             return true;
         }
 
+        // تدوين تطبيق دالة رياضية: حرف لاتيني مفرد (مع مؤشر اختياري) يتبعه مباشرة
+        // قوسان — مثل E(n) / E(100) / f(x) / u(n). يضمن لفّ الدالة كرياضيات عبر
+        // شبكة الأمان بدل تركها لتُعامَل كشريحة كود <code> زرقاء.
+        if (preg_match('/(?:^|[^A-Za-z0-9])[A-Za-z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')?\(/u', $trimmed)) {
+            return true;
+        }
+
         return false;
     }
 
@@ -961,6 +1007,13 @@ class QuestionMarkupFormatter
             // C(n,k) أو P(n,r) — توافيق/تباديل رياضية، وليست كوداً (استدعاء بحرف كبير
             // واحد ووسيطين قصيرين مفصولين بفاصلة).
             if (preg_match('/^[A-Z]$/u', $identifier) && preg_match('/^[a-zA-Z0-9]+\s*,\s*[a-zA-Z0-9]+$/u', $args)) {
+                return false;
+            }
+
+            // معرِّف من حرف لاتيني واحد (مثل E(n) / E(100) / f(x) / u(n)) = تدوين
+            // دالة رياضية، وليس استدعاء كود (الكود يستعمل أسماء متعددة الأحرف مثل
+            // push/at/sqrt). نعتبره رياضيات مهما كان وسيطه (رقم/متغيّر).
+            if (preg_match('/^[a-zA-Z]$/u', $identifier)) {
                 return false;
             }
 
@@ -1041,6 +1094,13 @@ class QuestionMarkupFormatter
         $text = preg_replace('/\\\\-+$/u', '', $text) ?? $text;
         $text = rtrim($text, " \t\\");
         $text = self::normalizeMathExpression(self::normalizePseudoMath($text));
+
+        // normalizePseudoMath() قد يُدخل $...$ داخلية عند لفّ مقطع فرعي (مثل
+        // \frac{a}{b} ضمن تعبير أطول)، لكن هذه الدالة مسؤولة عن إخراج مصدر LaTeX
+        // واحد نظيف بلا أي محدِّدات على الإطلاق (كل النص يُغلَّف لاحقاً في span
+        // واحد عبر wrapMathLatex). ترك $ هنا يُنتج مصدراً مكسوراً مثل
+        // "$\frac{1}{-3}$e^{-3x}" يظهر خاماً في KaTeX بدل أن يُفسَّر ككسر صحيح.
+        $text = str_replace('$', '', $text);
 
         return self::wrapMathLatex($text, false);
     }
@@ -1375,12 +1435,23 @@ class QuestionMarkupFormatter
         $patterns = [
             // C(n,k) أو P(n,r) — توافيق/تباديل، وليست استدعاء كود
             '/(?<!\$)\b[A-Z]\(\s*[a-zA-Z0-9]+\s*,\s*[a-zA-Z0-9]+\s*\)/u',
+            // فترة عددية بأقواس مربعة/فرنسية مثل [a, b] أو ]0, +∞[ أو ]a, b] — تُلَفّ
+            // مع قوسيها ككل، وإلا بقيت الأقواس المربعة ]...[ خارج المعادلة فتنعكس
+            // وتتبعثر في سياق RTL (مثل مجال تعريف تابع ]0, +∞[).
+            '/(?<!\$)[\[\]]\s*[-+]?(?:\d+(?:[.,]\d+)?|\\\\infty|∞|[a-zA-Z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')?)\s*,\s*[-+]?(?:\d+(?:[.,]\d+)?|\\\\infty|∞|[a-zA-Z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')?)\s*[\[\]]/u',
             '/sum_\{[^}]+\}(?:\s*[=+\-]\s*[^$\n\x{0600}-\x{06FF}]+)?/u',
             '/prod_\{[^}]+\}(?:\s*[=+\-]\s*[^$\n\x{0600}-\x{06FF}]+)?/u',
             '/lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?\\\\infty(?:\s*\\\\frac\{'.self::BALANCED_BRACE_ARG.'\}\{'.self::BALANCED_BRACE_ARG.'\})?/u',
             '/lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?\\\\infty\s*\\\\frac\{'.self::BALANCED_BRACE_ARG.'\}\{'.self::BALANCED_BRACE_ARG.'\}/u',
             '/\([^)]+\)\/\([^)]+\)\s*lim_(?:\{[^}]+\}|[a-zA-Z])\s*\\\\to\s*(?:\+|-)?(?:\\\\infty|∞)/u',
             '/(?<!\$)\([a-zA-Z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')?\)_\{[^}]+\}/u',
+            // متتالية بين قوسين مثل (u_n) أو (v_{n+1}) (تدوين NotebookLM للمتتاليات) —
+            // تُلَفّ مع القوسين كوحدة واحدة. بدونها تلتقط شبكة الأمان العامة لاحقاً
+            // "u_n)" فقط (لأن نمطها لا يبدأ بقوس) تاركةً قوس الفتح ( خارج المعادلة،
+            // فيظهر معكوساً/مضاعفاً في سياق RTL: «((u_n))».
+            // lookbehind (?<![A-Za-z0-9]) يمنع مطابقة "(n_0)" حين تكون في الحقيقة
+            // وسيط دالة مثل E(n_0) — تلك تُعالَج كوحدة كاملة عبر شبكة الأمان.
+            '/(?<!\$)(?<![A-Za-z0-9])\([a-zA-Z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')\)(?!\s*_\{)/u',
             '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')?\s*=\s*\\\\sqrt\{'.self::BALANCED_BRACE_ARG.'\})/u',
             // S_n = 1^{2} + \\cdots + n^{2} = (...) — بدون نقطة كفاصل (تكسر ...)
             '/(?<!\$)\b([A-Za-z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')\s*=\s*(?:(?![\x{0600}-\x{06FF}])[\s\S])*?\^{[^}]+}(?:(?![\x{0600}-\x{06FF}])[\s\S])*?)(?=\s*(?:[؟!،]|لكل|حيث|ما |$))/u',
@@ -1388,8 +1459,11 @@ class QuestionMarkupFormatter
             '/(?<!\$)\((?:[^()]|\([^()]*\))+\)\s*\/\s*\((?:[^()]|\([^()]*\))+\)/u',
             // (p+1)^{3} — ليس 5x^{3} داخل تعبير أطول
             '/(?<!\$)(?<![a-zA-Z0-9])((?:\([^()\n\x{0600}-\x{06FF}]+\)|[A-Za-z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')?)\s*\^{[^}]+})/u',
-            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')?\s*(?:<|>|<=|>=|\\\\lt|\\\\gt|\\\\leq|\\\\geq|\\\\ge|\\\\le|≤|≥)\s*[-+]?\d+)/u',
-            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')?\s*\\\\(?:geq|leq|neq|ge|le)\s*[-+]?\d+)/u',
+            // متباينة بين متغيّر وعدد أو متغيّر آخر مثل "u_p < 2" أو "p \geq n_0" —
+            // يشمل الطرف الأيمن عدداً أو متغيّراً (مع مؤشر) حتى لا يُقتطع "n_0" وحده
+            // فيتشظّى التعبير إلى مقطعين ($p \geq$ ثم $n_0$).
+            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')?\s*(?:<|>|<=|>=|\\\\lt|\\\\gt|\\\\leq|\\\\geq|\\\\ge|\\\\le|≤|≥)\s*(?:[-+]?\d+|[a-zA-Z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')?))/u',
+            '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')?\s*\\\\(?:geq|leq|neq|ge|le)\s*(?:[-+]?\d+|[a-zA-Z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.')?))/u',
             '/(?<!\$)\b([a-zA-Z](?:_\{[^}]+\}|'.self::BARE_SUBSCRIPT.'))(?!\s*=)(?=[\s.؟!،,;:]|$)/u',
             // متغيّر مستقل "x = 1" فقط عندما يبدأ التطابق بحرف مستقل (مسبوق بمسافة/بداية
             // النص)، لا حرفاً ملتصقاً بنهاية تعبير أطول مثل "cos^{2}x = 1" (يجب أن يُلَفّ
@@ -1405,11 +1479,43 @@ class QuestionMarkupFormatter
             });
         }
 
+        // تعبير رياضي كامل محاط بقوسين (حتى مستوى تداخل واحد) قبل شبكة الأمان،
+        // مثل (f(x) - (ax + b)) — يجب أن يُلَفّ ككل، وإلا اقتطعت شبكة الأمان قوساً
+        // خارجياً غير متوازن فرفضته، فيبقى f(x) الداخلي شريحة كود والأقواس معلّقة.
+        $text = self::wrapParenthesizedMathGroups($text);
+
         // شبكة أمان أخيرة: أي مقطع لاتيني متصل متبقٍ خارج $...$ ويحمل مؤشراً
         // رياضياً واضحاً (مثل متتاليات عودية معقّدة لم تُغطَّ بالأنماط أعلاه).
         $text = self::wrapBareMathRunsOutsideMath($text);
 
         return $text;
+    }
+
+    /**
+     * يلفّ تعبيراً رياضياً كاملاً محاطاً بقوسين (حتى مستوى تداخل واحد) وخالياً من
+     * الحروف العربية — مثل (f(x) - (ax + b)) — كوحدة واحدة، بشرط أن يحمل مؤشراً
+     * رياضياً واضحاً. يمنع ترك الأقواس الخارجية معلّقة (تنعكس في RTL) أو معاملة
+     * دالة داخلية مثل f(x) كشريحة كود. لا يمسّ كسور (a)/(b) (تُلَفّ قبله) بفضل
+     * تجاهل ما يسبقه/يليه شرطة مائلة أو أُس أو مؤشر سفلي.
+     */
+    private static function wrapParenthesizedMathGroups(string $text): string
+    {
+        $pattern = '/(?<!\$)(?<![A-Za-z0-9\/])\((?:[^()\n\x{0600}-\x{06FF}؟]|\((?:[^()\n\x{0600}-\x{06FF}؟])*\))+\)(?![\/^]|\s*_\{)/u';
+
+        return self::replacePatternOutsideMath($text, $pattern, static function (array $matches): string {
+            $whole = $matches[0];
+            $inner = mb_substr($whole, 1, mb_strlen($whole) - 2);
+
+            // لا نلفّ إلا إن حوى مؤشراً رياضياً واضحاً (تطبيق دالة/عامل/أمر LaTeX/رقم)،
+            // حتى لا نلفّ قوساً نصياً بحتاً بلا رياضيات.
+            if (! preg_match('/[A-Za-z]\(|[+\-*=<>^_]|\\\\[a-zA-Z]+|\d/u', $inner)) {
+                return $whole;
+            }
+
+            $segment = self::normalizeMathExpression(self::normalizePseudoMath($whole));
+
+            return '$'.$segment.'$';
+        });
     }
 
     /**
