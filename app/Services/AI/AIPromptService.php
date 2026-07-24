@@ -218,22 +218,12 @@ class AIPromptService
         $prompt .= "## تنسيق الإخراج:\n";
         $prompt .= "أرجع JSON array يحتوي على **بالضبط {$numberOfQuestions} كائنات** (لا أكثر ولا أقل):\n\n";
         $prompt .= "```json\n";
-        $prompt .= "[\n";
-        for ($i = 1; $i <= min(3, $numberOfQuestions); $i++) {
-            $prompt .= "  {\n";
-            $prompt .= "    \"type\": \"single_choice|multiple_choice|true_false|short_answer\",\n";
-            $prompt .= "    \"question\": \"نص السؤال {$i}\",\n";
-            $prompt .= "    \"options\": [\"خيار أ\", \"خيار ب\", \"خيار ج\", \"خيار د\"],\n";
-            $prompt .= "    \"correct_answer\": \"الإجابة الصحيحة\",\n";
-            $prompt .= "    \"explanation\": \"شرح مختصر للإجابة\",\n";
-            $prompt .= "    \"difficulty\": \"easy|medium|hard\"\n";
-            $prompt .= "  }" . ($i < min(3, $numberOfQuestions) ? "," : "") . "\n";
-        }
-        if ($numberOfQuestions > 3) {
-            $prompt .= "  ... (كرر نفس البنية للأسئلة من 4 إلى {$numberOfQuestions}) ...\n";
-        }
-        $prompt .= "]\n";
+        $schemaType = ($questionTypes && is_array($questionTypes) && count($questionTypes) === 1)
+            ? $questionTypes[0]
+            : (($questionTypes && is_array($questionTypes) && count($questionTypes) > 1) ? 'mixed' : $questionType);
+        $prompt .= $this->getJsonSchemaExample($schemaType, $numberOfQuestions);
         $prompt .= "```\n\n";
+        $prompt .= $this->getTypeSchemaContracts($schemaType, is_array($questionTypes) ? $questionTypes : null);
         $prompt .= "## ⚠️ تحذير مهم:\n";
         $prompt .= "- يجب أن يحتوي الرد على **بالضبط {$numberOfQuestions} أسئلة**\n";
         $lessOne = $numberOfQuestions - 1;
@@ -241,7 +231,8 @@ class AIPromptService
         $prompt .= "- لا تقبل أي عدد آخر (لا {$lessOne} ولا {$plusOne})\n";
         $prompt .= "- تأكد من أن JSON array يحتوي على {$numberOfQuestions} عنصر بالضبط\n";
         $prompt .= "- إذا لم تستطع إنشاء {$numberOfQuestions} أسئلة، أبلغ بذلك بوضوح\n";
-        
+        $prompt .= "- التزم بحقول النوع المطلوب فقط كما في العقود أدناه\n";
+
         return $prompt;
     }
 
@@ -280,19 +271,162 @@ class AIPromptService
     private function getTypeInstructions(string $type, int $count): string
     {
         if ($type === 'mixed') {
-            return "4. **توزيع الأنواع**: وزّع الأسئلة بين اختيار من متعدد، صح/خطأ، وإجابة قصيرة";
+            return "4. **توزيع الأنواع**: وزّع الأسئلة بين الأنواع المدعومة مع الالتزام بعقد JSON الخاص بكل نوع";
         }
-        
+
         $typeNames = [
-            'single_choice' => 'اختيار واحد (4 خيارات لكل سؤال)',
-            'multiple_choice' => 'اختيار متعدد (4 خيارات، يمكن أن تكون أكثر من إجابة صحيحة)',
-            'true_false' => 'صح/خطأ',
-            'short_answer' => 'إجابة قصيرة',
+            'single_choice' => 'اختيار واحد (4 خيارات، إجابة صحيحة واحدة في correct_answer)',
+            'multiple_choice' => 'اختيار متعدد (4 خيارات، correct_answer مصفوفة للإجابات الصحيحة)',
+            'true_false' => 'صح/خطأ (correct_answer = صح أو خطأ)',
+            'short_answer' => 'إجابة قصيرة (correct_answer نص)',
             'essay' => 'مقالي',
+            'matching' => 'مطابقة: options للعناصر اليسرى + match_targets للأهداف اليمنى بنفس الترتيب',
+            'ordering' => 'ترتيب: options بالترتيب الصحيح، وcorrect_order = [1,2,3,...]',
+            'fill_blanks' => 'ملء الفراغات: blank_answers مصفوفة الإجابات',
+            'numerical' => 'رقمي: correct_answer رقم، tolerance اختياري (فرق مطلق)',
+            'drag_drop' => 'سحب وإفلات: options للعناصر + match_targets لأسماء المناطق بنفس الترتيب',
         ];
-        
+
         $typeName = $typeNames[$type] ?? $type;
+
         return "4. **نوع كل الأسئلة**: {$typeName}";
+    }
+
+    /**
+     * مثال JSON حسب نوع السؤال.
+     */
+    private function getJsonSchemaExample(string $type, int $numberOfQuestions): string
+    {
+        $examples = [
+            'matching' => <<<'JSON'
+[
+  {
+    "type": "matching",
+    "question": "طابق كل عنصر مع هدفه",
+    "options": ["قطة", "كلب"],
+    "match_targets": ["مواء", "نباح"],
+    "explanation": "كل حيوان بصوته",
+    "difficulty": "easy"
+  }
+]
+JSON,
+            'ordering' => <<<'JSON'
+[
+  {
+    "type": "ordering",
+    "question": "رتّب الأرقام تصاعدياً",
+    "options": ["1", "2", "3"],
+    "correct_order": [1, 2, 3],
+    "explanation": "من الأصغر للأكبر",
+    "difficulty": "easy"
+  }
+]
+JSON,
+            'numerical' => <<<'JSON'
+[
+  {
+    "type": "numerical",
+    "question": "كم يساوي 2 + 2؟",
+    "correct_answer": 4,
+    "tolerance": 0,
+    "explanation": "الجمع البسيط",
+    "difficulty": "easy"
+  }
+]
+JSON,
+            'drag_drop' => <<<'JSON'
+[
+  {
+    "type": "drag_drop",
+    "question": "ضع كل عنصر في مجموعته",
+    "options": ["تفاح", "جزر"],
+    "match_targets": ["فواكه", "خضار"],
+    "explanation": "تصنيف العناصر",
+    "difficulty": "easy"
+  }
+]
+JSON,
+            'true_false' => <<<'JSON'
+[
+  {
+    "type": "true_false",
+    "question": "الشمس تشرق من الشرق.",
+    "correct_answer": "صح",
+    "explanation": "عبارة صحيحة",
+    "difficulty": "easy"
+  }
+]
+JSON,
+            'fill_blanks' => <<<'JSON'
+[
+  {
+    "type": "fill_blanks",
+    "question": "عاصمة فرنسا هي _____.",
+    "blank_answers": ["باريس"],
+    "explanation": "عاصمة فرنسا",
+    "difficulty": "easy"
+  }
+]
+JSON,
+        ];
+
+        if (isset($examples[$type])) {
+            return $examples[$type]."\n";
+        }
+
+        // افتراضي / مختلط / MCQ
+        $out = "[\n";
+        $out .= "  {\n";
+        $out .= "    \"type\": \"single_choice\",\n";
+        $out .= "    \"question\": \"نص السؤال\",\n";
+        $out .= "    \"options\": [\"خيار أ\", \"خيار ب\", \"خيار ج\", \"خيار د\"],\n";
+        $out .= "    \"correct_answer\": \"خيار أ\",\n";
+        $out .= "    \"explanation\": \"شرح مختصر\",\n";
+        $out .= "    \"difficulty\": \"easy|medium|hard\"\n";
+        $out .= "  }\n";
+        if ($numberOfQuestions > 1) {
+            $out .= "  // ... كرّر حتى يصل العدد إلى {$numberOfQuestions} مع عقد النوع المطلوب ...\n";
+        }
+        $out .= "]\n";
+
+        return $out;
+    }
+
+    /**
+     * عقود الحقول الإلزامية لكل نوع.
+     */
+    private function getTypeSchemaContracts(string $schemaType, ?array $questionTypes): string
+    {
+        $types = $questionTypes && is_array($questionTypes) && count($questionTypes) > 0
+            ? $questionTypes
+            : [$schemaType];
+
+        if (in_array('mixed', $types, true) || $schemaType === 'mixed') {
+            $types = ['single_choice', 'multiple_choice', 'true_false', 'matching', 'ordering', 'numerical', 'drag_drop', 'short_answer', 'essay', 'fill_blanks'];
+        }
+
+        $contracts = [
+            'matching' => "- matching: أرسل options (اليسار) وmatch_targets (اليمين) بنفس الطول والترتيب. لا تستخدم correct_answer.\n",
+            'ordering' => "- ordering: أرسل options بالترتيب الصحيح وcorrect_order أرقاماً [1,2,3,...] بنفس طول options.\n",
+            'numerical' => "- numerical: أرسل correct_answer كرقم، وtolerance اختياري (فرق مطلق، افتراضي 0). بدون options.\n",
+            'drag_drop' => "- drag_drop: أرسل options (العناصر) وmatch_targets (اسم المنطقة لكل عنصر) بنفس الطول. لا تستخدم correct_answer بأسلوب MCQ.\n",
+            'single_choice' => "- single_choice: options + correct_answer (نص الخيار الصحيح).\n",
+            'multiple_choice' => "- multiple_choice: options + correct_answer كمصفوفة لنصوص الخيارات الصحيحة.\n",
+            'true_false' => "- true_false: correct_answer = صح أو خطأ.\n",
+            'fill_blanks' => "- fill_blanks: blank_answers مصفوفة.\n",
+            'short_answer' => "- short_answer: correct_answer نص.\n",
+            'essay' => "- essay: نص السؤال والشرح فقط.\n",
+        ];
+
+        $text = "## عقود الحقول حسب النوع (إلزامي):\n";
+        foreach (array_unique($types) as $type) {
+            if (isset($contracts[$type])) {
+                $text .= $contracts[$type];
+            }
+        }
+        $text .= "\n";
+
+        return $text;
     }
 
     /**
@@ -432,16 +566,16 @@ class AIPromptService
     {
         $typeNames = \App\Models\Question::TYPES;
         $typeDescriptions = [
-            'single_choice' => 'اختيار واحد (4 خيارات لكل سؤال)',
-            'multiple_choice' => 'اختيار متعدد (4 خيارات، يمكن أن تكون أكثر من إجابة صحيحة)',
-            'true_false' => 'صح/خطأ',
+            'single_choice' => 'اختيار واحد (options + correct_answer)',
+            'multiple_choice' => 'اختيار متعدد (options + correct_answer كمصفوفة)',
+            'true_false' => 'صح/خطأ (correct_answer = صح|خطأ)',
             'short_answer' => 'إجابة قصيرة',
             'essay' => 'مقالي',
-            'matching' => 'مطابقة',
-            'ordering' => 'ترتيب',
-            'fill_blanks' => 'ملء الفراغات',
-            'numerical' => 'رقمي',
-            'drag_drop' => 'سحب وإفلات',
+            'matching' => 'مطابقة (options + match_targets)',
+            'ordering' => 'ترتيب (options + correct_order [1..n])',
+            'fill_blanks' => 'ملء الفراغات (blank_answers)',
+            'numerical' => 'رقمي (correct_answer رقم + tolerance اختياري)',
+            'drag_drop' => 'سحب وإفلات (options + match_targets كأسماء مناطق)',
         ];
         
         $selectedTypes = array_map(fn($t) => $typeNames[$t] ?? $t, $types);

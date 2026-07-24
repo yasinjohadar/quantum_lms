@@ -413,6 +413,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (form) {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
+            if (typeof renumberOrderingOptions === 'function') {
+                renumberOrderingOptions();
+            }
             tinymce.triggerSave();
             var f = form;
             var submitter = e.submitter;
@@ -531,7 +534,7 @@ function updateFormForType(type) {
                     optionHintText.textContent = 'أدخل العناصر بالترتيب الصحيح';
                     break;
                 case 'drag_drop':
-                    optionHintText.textContent = 'أضف العناصر القابلة للسحب والإفلات';
+                    optionHintText.textContent = 'أضف العناصر وحدد اسم المنطقة التي ينتمي إليها كل عنصر';
                     break;
             }
         }
@@ -612,16 +615,43 @@ function addOption() {
         `;
     } else if (type === 'ordering') {
         optionHtml = `
-            <div class="option-item" id="option${index}">
+            <div class="option-item ordering-option-item" id="option${index}">
                 <button type="button" class="btn btn-sm btn-icon btn-danger-transparent remove-option" 
                         onclick="removeOption(${index})">
                     <i class="bi bi-x-lg"></i>
                 </button>
                 <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-primary">${index + 1}</span>
+                    <span class="badge bg-primary order-badge">0</span>
+                    <div class="btn-group-vertical btn-group-sm">
+                        <button type="button" class="btn btn-outline-secondary py-0 px-1" title="تحريك لأعلى"
+                                onclick="moveOrderingOption(this, -1)">
+                            <i class="bi bi-chevron-up"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary py-0 px-1" title="تحريك لأسفل"
+                                onclick="moveOrderingOption(this, 1)">
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                    </div>
                     <input type="text" name="options[${index}][content]" class="form-control" 
                            placeholder="العنصر رقم ${index + 1}" required>
-                    <input type="hidden" name="options[${index}][correct_order]" value="${index + 1}">
+                    <input type="hidden" name="options[${index}][correct_order]" value="0" class="correct-order-input">
+                </div>
+            </div>
+        `;
+    } else if (type === 'drag_drop') {
+        optionHtml = `
+            <div class="option-item" id="option${index}">
+                <button type="button" class="btn btn-sm btn-icon btn-danger-transparent remove-option"
+                        onclick="removeOption(${index})">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+                <div class="matching-pair">
+                    <input type="text" name="options[${index}][content]" class="form-control"
+                           placeholder="العنصر القابل للسحب" required>
+                    <i class="bi bi-box-arrow-in-down text-muted"></i>
+                    <input type="text" name="options[${index}][match_target]" class="form-control"
+                           placeholder="اسم المنطقة" required>
+                    <input type="hidden" name="options[${index}][is_correct]" value="1">
                 </div>
             </div>
         `;
@@ -699,12 +729,48 @@ function addOption() {
     }
     
     container.insertAdjacentHTML('beforeend', optionHtml);
+    if (type === 'ordering') {
+        renumberOrderingOptions();
+    }
+}
+
+function renumberOrderingOptions() {
+    const type = document.getElementById('questionType')?.value;
+    if (type !== 'ordering') {
+        return;
+    }
+
+    document.querySelectorAll('#optionsContainer .option-item').forEach((item, i) => {
+        const order = i + 1;
+        const badge = item.querySelector('.order-badge, .badge.bg-primary');
+        const hidden = item.querySelector('.correct-order-input, input[name*="[correct_order]"]');
+        if (badge) {
+            badge.textContent = order;
+        }
+        if (hidden) {
+            hidden.value = order;
+        }
+    });
+}
+
+function moveOrderingOption(button, direction) {
+    const item = button.closest('.option-item');
+    if (!item) return;
+
+    if (direction < 0 && item.previousElementSibling) {
+        item.parentNode.insertBefore(item, item.previousElementSibling);
+    } else if (direction > 0 && item.nextElementSibling) {
+        item.parentNode.insertBefore(item.nextElementSibling, item);
+    }
+
+    renumberOrderingOptions();
 }
 
 function removeOption(index) {
     const option = document.getElementById(`option${index}`);
     if (option) {
         option.remove();
+        renumberOrderingOptions();
     }
 }
 

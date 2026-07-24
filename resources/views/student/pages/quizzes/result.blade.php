@@ -232,9 +232,9 @@
                                         <span class="{{ $isCorrect ? 'text-success' : 'text-danger' }}">
                                             {{ $answer->answer_text ?? 'لم يتم الإجابة' }}
                                         </span>
-                                    @elseif($question->type == 'numeric')
+                                    @elseif($question->type == 'numerical' || $question->type == 'numeric')
                                         <span class="{{ $isCorrect ? 'text-success' : 'text-danger' }}">
-                                            {{ $answer->numeric_answer ?? 'لم يتم الإجابة' }}
+                                            {{ $answer->numeric_answer !== null ? $answer->numeric_answer : 'لم يتم الإجابة' }}
                                         </span>
                                     @elseif($question->type == 'fill_blank' || $question->type == 'fill_blanks')
                                         @php
@@ -285,16 +285,17 @@
                                     @elseif($question->type == 'drag_drop')
                                         @php
                                             $assignments = $answer->drag_drop_assignments ?? [];
-                                            // Group items by zone
                                             $zoneItems = [];
-                                            foreach ($assignments as $itemId => $zoneId) {
+                                            foreach ($assignments as $itemId => $zoneLabel) {
                                                 $option = $question->options->firstWhere('id', $itemId);
                                                 if ($option) {
-                                                    $zoneName = 'مجموعة ' . ((int)$zoneId + 1);
-                                                    if (!isset($zoneItems[$zoneName])) {
-                                                        $zoneItems[$zoneName] = [];
+                                                    $label = $zoneLabel !== null && $zoneLabel !== ''
+                                                        ? (string) $zoneLabel
+                                                        : 'منطقة';
+                                                    if (! isset($zoneItems[$label])) {
+                                                        $zoneItems[$label] = [];
                                                     }
-                                                    $zoneItems[$zoneName][] = format_question_markup($option->content);
+                                                    $zoneItems[$label][] = format_question_markup($option->content);
                                                 }
                                             }
                                         @endphp
@@ -303,7 +304,7 @@
                                                 <br>
                                                 @foreach($zoneItems as $zoneName => $items)
                                                     <strong>{{ $zoneName }}:</strong>
-                                                    {!! implode('، ', $items) !!}
+                                                    <span class="question-text-body">{!! implode('، ', $items) !!}</span>
                                                     <br>
                                                 @endforeach
                                             @else
@@ -314,11 +315,10 @@
                                         @php
                                             $pairs = $answer->matching_pairs ?? [];
                                             $pairItems = [];
-                                            foreach ($pairs as $leftId => $rightId) {
+                                            foreach ($pairs as $leftId => $matchTarget) {
                                                 $leftOption = $question->options->firstWhere('id', $leftId);
-                                                $rightOption = $question->options->firstWhere('id', $rightId);
-                                                if ($leftOption && $rightOption) {
-                                                    $pairItems[] = format_question_markup($leftOption->content) . ' ← ' . format_question_markup($rightOption->content);
+                                                if ($leftOption && $matchTarget !== null && $matchTarget !== '') {
+                                                    $pairItems[] = format_question_markup($leftOption->content) . ' ← ' . format_question_markup($matchTarget);
                                                 }
                                             }
                                         @endphp
@@ -373,7 +373,7 @@
                                             <span class="text-success question-text-body">{!! implode('، ', $correctItems) !!}</span>
                                         @elseif($question->type == 'ordering')
                                             @php
-                                                $correctOrder = $question->options->sortBy('order')
+                                                $correctOrder = $question->options->sortBy('correct_order')
                                                     ->map(fn ($opt) => format_question_markup($opt->content))
                                                     ->toArray();
                                             @endphp
@@ -385,11 +385,16 @@
                                             </span>
                                         @elseif($question->type == 'drag_drop')
                                             @php
-                                                // Get correct assignments from question config or options
                                                 $correctAssignments = [];
                                                 foreach ($question->options as $option) {
-                                                    $zone = $option->zone ?? $option->group ?? 'منطقة';
-                                                    if (!isset($correctAssignments[$zone])) {
+                                                    if (! $option->match_target) {
+                                                        continue;
+                                                    }
+                                                    $zone = trim(html_entity_decode(strip_tags((string) $option->match_target), ENT_QUOTES, 'UTF-8'));
+                                                    if ($zone === '') {
+                                                        continue;
+                                                    }
+                                                    if (! isset($correctAssignments[$zone])) {
                                                         $correctAssignments[$zone] = [];
                                                     }
                                                     $correctAssignments[$zone][] = format_question_markup($option->content);
@@ -409,16 +414,19 @@
                                             @php
                                                 $correctPairs = [];
                                                 foreach ($question->options as $option) {
-                                                    if ($option->match_pair) {
-                                                        $correctPairs[$option->content] = $option->match_pair;
+                                                    if ($option->match_target) {
+                                                        $correctPairs[] = [
+                                                            'left' => $option->content,
+                                                            'right' => $option->match_target,
+                                                        ];
                                                     }
                                                 }
                                             @endphp
                                             <span class="text-success">
                                                 @if(!empty($correctPairs))
                                                     <br>
-                                                    @foreach($correctPairs as $left => $right)
-                                                        <span class="question-text-body">{!! format_question_markup($left) !!}</span> ← <span class="question-text-body">{!! format_question_markup($right) !!}</span><br>
+                                                    @foreach($correctPairs as $pair)
+                                                        <span class="question-text-body">{!! format_question_markup($pair['left']) !!}</span> ← <span class="question-text-body">{!! format_question_markup($pair['right']) !!}</span><br>
                                                     @endforeach
                                                 @else
                                                     -
@@ -436,6 +444,18 @@
                                                     @endforeach
                                                 @else
                                                     -
+                                                @endif
+                                            </span>
+                                        @elseif($question->type == 'numerical' || $question->type == 'numeric')
+                                            @php
+                                                $correctNumeric = $question->options->firstWhere('is_correct', true)
+                                                    ?? $question->correctOptions->first()
+                                                    ?? $question->options->first();
+                                            @endphp
+                                            <span class="text-success">
+                                                {{ $correctNumeric->content ?? '-' }}
+                                                @if($question->tolerance)
+                                                    <span class="text-muted">(± {{ $question->tolerance }})</span>
                                                 @endif
                                             </span>
                                         @else

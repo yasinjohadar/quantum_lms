@@ -86,6 +86,16 @@ class QuestionsImport implements SkipsOnFailure, ToCollection, WithHeadingRow
                     $this->createOptions($question, $data['options']);
                 }
 
+                // للأسئلة الرقمية — الإجابة الصحيحة تُخزَّن كخيار
+                if ($question->type === 'numerical' && array_key_exists('correct_answer', $data) && $data['correct_answer'] !== null && $data['correct_answer'] !== '') {
+                    QuestionOption::create([
+                        'question_id' => $question->id,
+                        'content' => (string) $data['correct_answer'],
+                        'is_correct' => true,
+                        'order' => 1,
+                    ]);
+                }
+
                 DB::commit();
                 $this->successCount++;
                 $this->createdQuestionIds[] = $question->id;
@@ -166,7 +176,8 @@ class QuestionsImport implements SkipsOnFailure, ToCollection, WithHeadingRow
         $data['default_points'] = floatval($this->getRowValue($row, 'points', 1));
         $data['category'] = trim($this->getRowValue($row, 'category', ''));
         $data['case_sensitive'] = $this->normalizeBoolean($this->getRowValue($row, 'case_sensitive', false));
-        $data['tolerance'] = $this->getRowValue($row, 'tolerance') ? floatval($this->getRowValue($row, 'tolerance')) : null;
+        $toleranceRaw = $this->getRowValue($row, 'tolerance');
+        $data['tolerance'] = ($toleranceRaw !== null && $toleranceRaw !== '') ? floatval($toleranceRaw) : null;
         $data['is_active'] = $this->normalizeBoolean($this->getRowValue($row, 'is_active', true));
 
         // الوحدات
@@ -177,7 +188,8 @@ class QuestionsImport implements SkipsOnFailure, ToCollection, WithHeadingRow
 
         // للأسئلة الرقمية
         if ($data['type'] === 'numerical') {
-            $data['correct_answer'] = $this->getRowValue($row, 'correct_answer') ? floatval($this->getRowValue($row, 'correct_answer')) : null;
+            $correctRaw = $this->getRowValue($row, 'correct_answer');
+            $data['correct_answer'] = ($correctRaw !== null && $correctRaw !== '') ? floatval($correctRaw) : null;
         }
 
         // لملء الفراغات

@@ -286,11 +286,10 @@ class QuizAnswer extends Model
                 break;
 
             case 'drag_drop':
-                $this->needs_manual_grading = true;
-                $this->is_graded = false;
-                $this->save();
-
-                return;
+                $result = $this->gradeDragDrop();
+                $isCorrect = $result['is_correct'];
+                $pointsEarned = $result['points'];
+                break;
         }
 
         // إذا لم يتم تحديد درجة جزئية
@@ -405,7 +404,8 @@ class QuizAnswer extends Model
         }
 
         foreach ($options as $option) {
-            if (isset($pairs[$option->id]) && $pairs[$option->id] == $option->match_target) {
+            $submitted = $pairs[$option->id] ?? $pairs[(string) $option->id] ?? null;
+            if ($submitted !== null && $submitted == $option->match_target) {
                 $correctPairs++;
             }
         }
@@ -449,17 +449,54 @@ class QuizAnswer extends Model
 
     protected function gradeNumerical(): bool
     {
-        $correctOption = $this->question->correctOptions()->first();
-        
-        if (!$correctOption || $this->numeric_answer === null) {
+        $correctOption = $this->question->relationLoaded('correctOptions')
+            ? $this->question->correctOptions->first()
+            : $this->question->correctOptions()->first();
+
+        if (! $correctOption || $this->numeric_answer === null || $this->numeric_answer === '') {
             return false;
         }
 
         $correctValue = (float) $correctOption->content;
-        $tolerance = $this->question->tolerance ?? 0;
+        $tolerance = (float) ($this->question->tolerance ?? 0);
         $userAnswer = (float) $this->numeric_answer;
 
         return abs($userAnswer - $correctValue) <= $tolerance;
+    }
+
+    /**
+     * تصحيح السحب والإفلات — كل عنصر يُقارن بمنطقته عبر match_target (اسم المنطقة).
+     * صيغة الإجابة: { option_id: zone_label }
+     */
+    protected function gradeDragDrop(): array
+    {
+        $options = $this->question->relationLoaded('options')
+            ? $this->question->options
+            : $this->question->options()->get();
+        $assignments = $this->drag_drop_assignments ?? [];
+
+        if (empty($assignments)) {
+            return ['is_correct' => false, 'points' => 0.0];
+        }
+
+        $correctCount = 0;
+        $totalItems = $options->count();
+
+        if ($totalItems === 0) {
+            return ['is_correct' => false, 'points' => 0.0];
+        }
+
+        foreach ($options as $option) {
+            $submitted = $assignments[$option->id] ?? $assignments[(string) $option->id] ?? null;
+            if ($submitted !== null && $submitted !== '' && $submitted == $option->match_target) {
+                $correctCount++;
+            }
+        }
+
+        $points = $this->pointsForCorrectParts($correctCount, $totalItems);
+        $isCorrect = $correctCount === $totalItems;
+
+        return ['is_correct' => $isCorrect, 'points' => $points];
     }
 
     protected function gradeFillBlanks(): array

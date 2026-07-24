@@ -186,7 +186,16 @@ class QuestionController extends Controller
                         $options[$correctIndex]['is_correct'] = true;
                     }
                 }
+                if ($question->type === 'drag_drop') {
+                    $options = $this->markDragDropOptionsCorrect($options);
+                }
+                if ($question->type === 'ordering') {
+                    $options = $this->normalizeOrderingOptions($options);
+                }
                 $this->saveOptions($question, $options);
+                if ($question->type === 'drag_drop') {
+                    $this->syncDragDropZones($question->fresh('options'));
+                }
             }
 
             // للأسئلة الرقمية - إنشاء خيار يحتوي على الإجابة الصحيحة
@@ -395,7 +404,16 @@ class QuestionController extends Controller
                         $options[$correctIndex]['is_correct'] = true;
                     }
                 }
+                if ($question->type === 'drag_drop') {
+                    $options = $this->markDragDropOptionsCorrect($options);
+                }
+                if ($question->type === 'ordering') {
+                    $options = $this->normalizeOrderingOptions($options);
+                }
                 $this->updateOptions($question, $options);
+                if ($question->type === 'drag_drop') {
+                    $this->syncDragDropZones($question->fresh('options'));
+                }
             }
 
             // للأسئلة الرقمية
@@ -668,6 +686,66 @@ class QuestionController extends Controller
 
             $option->save();
         }
+    }
+
+    /**
+     * عناصر السحب والإفلات تُعدّ كلها جزءاً من الإجابة الصحيحة عبر match_target.
+     */
+    protected function markDragDropOptionsCorrect(array $options): array
+    {
+        foreach ($options as $index => $optionData) {
+            $options[$index]['is_correct'] = true;
+        }
+
+        return $options;
+    }
+
+    /**
+     * إعادة ترقيم correct_order إلى 1..n حسب ترتيب الإرسال (ترتيب الواجهة).
+     */
+    protected function normalizeOrderingOptions(array $options): array
+    {
+        $normalized = [];
+
+        foreach (array_values($options) as $index => $optionData) {
+            $optionData['correct_order'] = $index + 1;
+            $optionData['is_correct'] = true;
+            $normalized[] = $optionData;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * مزامنة مناطق الإفلات في محتوى السؤال من قيم match_target الفريدة.
+     */
+    protected function syncDragDropZones(Question $question): void
+    {
+        $zones = $question->options
+            ->pluck('match_target')
+            ->map(function ($target) {
+                $plain = trim(html_entity_decode(strip_tags((string) $target), ENT_QUOTES, 'UTF-8'));
+
+                return $plain;
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->map(fn (string $label) => ['label' => $label])
+            ->all();
+
+        $zonesAttr = htmlspecialchars(
+            json_encode($zones, JSON_UNESCAPED_UNICODE),
+            ENT_QUOTES,
+            'UTF-8'
+        );
+        $zonesHtml = '<div class="drop-zones" data-zones="'.$zonesAttr.'"></div>';
+
+        $content = (string) ($question->content ?? '');
+        $content = preg_replace('/<div\b[^>]*\bdrop-zones\b[^>]*>.*?<\/div>/is', '', $content) ?? $content;
+        $content = trim($content).$zonesHtml;
+
+        $question->update(['content' => $content]);
     }
 
     /**

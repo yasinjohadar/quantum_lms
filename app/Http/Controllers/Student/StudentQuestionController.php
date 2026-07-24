@@ -271,9 +271,9 @@ class StudentQuestionController extends Controller
         }
 
         try {
-            // حفظ الإجابة النهائية إذا كانت موجودة
-            if ($request->has('answer')) {
-                $answerData = $this->prepareAnswerData($request, $attempt->question);
+            // حفظ الإجابة النهائية إن وُجدت بيانات إجابة حسب نوع السؤال
+            $answerData = $this->prepareAnswerData($request, $attempt->question);
+            if (! empty($answerData)) {
                 $this->questionAttemptService->saveAnswer($attemptId, $answerData);
             }
 
@@ -407,11 +407,25 @@ class StudentQuestionController extends Controller
                 break;
 
             case 'matching':
-                $data['matching_pairs'] = $request->input('matching_pairs', []);
+                $pairs = $request->input('matching_pairs', []);
+                if (is_string($pairs)) {
+                    $decoded = json_decode($pairs, true);
+                    $pairs = is_array($decoded) ? $decoded : [];
+                }
+                $data['matching_pairs'] = is_array($pairs) ? $pairs : [];
                 break;
 
             case 'ordering':
-                $data['ordering'] = $request->input('ordering', []);
+                $ordering = $request->input('ordering', []);
+                if (is_string($ordering)) {
+                    $decoded = json_decode($ordering, true);
+                    if (is_array($decoded)) {
+                        $ordering = $decoded;
+                    } else {
+                        $ordering = array_values(array_filter(array_map('trim', explode(',', $ordering))));
+                    }
+                }
+                $data['ordering'] = is_array($ordering) ? array_values($ordering) : [];
                 break;
 
             case 'numerical':
@@ -423,7 +437,12 @@ class StudentQuestionController extends Controller
                 break;
 
             case 'drag_drop':
-                $data['answer'] = $request->input('answer');
+                $assignments = $request->input('drag_drop_assignments', $request->input('answer', []));
+                if (is_string($assignments)) {
+                    $decoded = json_decode($assignments, true);
+                    $assignments = is_array($decoded) ? $decoded : [];
+                }
+                $data['answer'] = is_array($assignments) ? $assignments : [];
                 break;
         }
 

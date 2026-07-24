@@ -310,6 +310,27 @@
                                                     @else
                                                         <p class="text-muted mb-0">لم يتم ملء الفراغات</p>
                                                     @endif
+                                                @elseif($question->type === 'drag_drop')
+                                                    @php
+                                                        $assignments = is_array($answer->answer) ? $answer->answer : (json_decode($answer->answer ?? '{}', true) ?: []);
+                                                        $zoneItems = [];
+                                                        foreach ($assignments as $itemId => $zoneLabel) {
+                                                            $option = $question->options->firstWhere('id', $itemId);
+                                                            if ($option) {
+                                                                $label = (string) ($zoneLabel ?: 'منطقة');
+                                                                $zoneItems[$label][] = format_question_markup($option->content);
+                                                            }
+                                                        }
+                                                    @endphp
+                                                    @if(!empty($zoneItems))
+                                                        <ul class="mb-0">
+                                                            @foreach($zoneItems as $zoneName => $items)
+                                                                <li><strong>{{ $zoneName }}:</strong> <span class="question-text-body">{!! implode('، ', $items) !!}</span></li>
+                                                            @endforeach
+                                                        </ul>
+                                                    @else
+                                                        <p class="text-muted mb-0">لم يتم الإجابة</p>
+                                                    @endif
                                                 @else
                                                     <p class="text-muted mb-0">نوع سؤال غير معروف</p>
                                                 @endif
@@ -353,6 +374,39 @@
                                                         <li class="question-text-body">{!! format_question_markup($option->content) !!}</li>
                                                     @endforeach
                                                 </ol>
+                                            @elseif($question->type === 'numerical')
+                                                @php
+                                                    $correctNumeric = $question->correctOptions->first()
+                                                        ?? $question->options->firstWhere('is_correct', true)
+                                                        ?? $question->options->first();
+                                                @endphp
+                                                <p class="mb-0">
+                                                    {{ $correctNumeric->content ?? '-' }}
+                                                    @if($question->tolerance)
+                                                        <span class="text-muted">(± {{ $question->tolerance }})</span>
+                                                    @endif
+                                                </p>
+                                            @elseif($question->type === 'drag_drop')
+                                                <ul class="mb-0">
+                                                    @php
+                                                        $correctByZone = [];
+                                                        foreach ($question->options as $option) {
+                                                            if (! $option->match_target) {
+                                                                continue;
+                                                            }
+                                                            $zone = trim(html_entity_decode(strip_tags((string) $option->match_target), ENT_QUOTES, 'UTF-8'));
+                                                            if ($zone === '') {
+                                                                continue;
+                                                            }
+                                                            $correctByZone[$zone][] = format_question_markup($option->content);
+                                                        }
+                                                    @endphp
+                                                    @forelse($correctByZone as $zone => $items)
+                                                        <li><strong>{{ $zone }}:</strong> <span class="question-text-body">{!! implode('، ', $items) !!}</span></li>
+                                                    @empty
+                                                        <li class="text-muted">-</li>
+                                                    @endforelse
+                                                </ul>
                                             @else
                                                 <p class="text-muted mb-0">يتم تقييم هذه الإجابة يدوياً</p>
                                             @endif

@@ -45,12 +45,12 @@ class StoreQuestionRequest extends FormRequest
             'units.*' => ['exists:units,id'],
 
             // خيارات السؤال
-            'options' => ['required_if:type,single_choice,multiple_choice,true_false,matching,ordering', 'array', 'min:2'],
+            'options' => ['required_if:type,single_choice,multiple_choice,true_false,matching,ordering,drag_drop', 'array', 'min:2'],
             'options.*.content' => ['required_with:options', 'string'],
             'options.*.image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'],
             'options.*.is_correct' => ['nullable'],
-            'options.*.match_target' => ['nullable', 'string'],
-            'options.*.correct_order' => ['nullable', 'integer', 'min:1'],
+            'options.*.match_target' => [in_array($type, ['matching', 'drag_drop'], true) ? 'required' : 'nullable', 'string'],
+            'options.*.correct_order' => [$type === 'ordering' ? 'required' : 'nullable', 'integer', 'min:1'],
             'options.*.feedback' => ['nullable', 'string'],
 
             // للأسئلة الرقمية
@@ -75,17 +75,27 @@ class StoreQuestionRequest extends FormRequest
             $subjectId = $this->input('subject_id');
             $units = array_filter((array) $this->input('units', []));
 
-            if (! $subjectId || $units === []) {
-                return;
+            if ($subjectId && $units !== []) {
+                $validCount = Unit::query()
+                    ->whereIn('id', $units)
+                    ->whereHas('section', fn ($q) => $q->where('subject_id', $subjectId))
+                    ->count();
+
+                if ($validCount !== count($units)) {
+                    $validator->errors()->add('units', 'يجب أن تنتمي جميع الوحدات المختارة إلى نفس المادة.');
+                }
             }
 
-            $validCount = Unit::query()
-                ->whereIn('id', $units)
-                ->whereHas('section', fn ($q) => $q->where('subject_id', $subjectId))
-                ->count();
+            if ($this->input('type') === 'ordering') {
+                $orders = collect($this->input('options', []))
+                    ->pluck('correct_order')
+                    ->filter(fn ($order) => $order !== null && $order !== '')
+                    ->map(fn ($order) => (int) $order)
+                    ->values();
 
-            if ($validCount !== count($units)) {
-                $validator->errors()->add('units', 'يجب أن تنتمي جميع الوحدات المختارة إلى نفس المادة.');
+                if ($orders->count() !== $orders->unique()->count()) {
+                    $validator->errors()->add('options', 'يجب أن تكون أرقام الترتيب الصحيح فريدة لكل عنصر.');
+                }
             }
         });
     }

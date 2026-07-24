@@ -164,7 +164,12 @@
                         </div>
                         <div class="card-body">
                             <div id="optionsContainer">
-                                @foreach($question->options as $index => $option)
+                                @php
+                                    $editOptions = $question->type === 'ordering'
+                                        ? $question->options->sortBy('correct_order')->values()
+                                        : $question->options;
+                                @endphp
+                                @foreach($editOptions as $index => $option)
                                     @if($question->type === 'matching')
                                         <div class="option-item" id="option{{ $index }}">
                                             <button type="button" class="btn btn-sm btn-icon btn-danger-transparent remove-option" 
@@ -181,17 +186,43 @@
                                             </div>
                                         </div>
                                     @elseif($question->type === 'ordering')
-                                        <div class="option-item" id="option{{ $index }}">
+                                        <div class="option-item ordering-option-item" id="option{{ $index }}">
                                             <button type="button" class="btn btn-sm btn-icon btn-danger-transparent remove-option" 
                                                     onclick="removeOption({{ $index }})">
                                                 <i class="bi bi-x-lg"></i>
                                             </button>
                                             <input type="hidden" name="options[{{ $index }}][id]" value="{{ $option->id }}">
                                             <div class="d-flex align-items-center gap-2">
-                                                <span class="badge bg-primary">{{ $option->correct_order }}</span>
+                                                <span class="badge bg-primary order-badge">{{ $loop->iteration }}</span>
+                                                <div class="btn-group-vertical btn-group-sm">
+                                                    <button type="button" class="btn btn-outline-secondary py-0 px-1" title="تحريك لأعلى"
+                                                            onclick="moveOrderingOption(this, -1)">
+                                                        <i class="bi bi-chevron-up"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-secondary py-0 px-1" title="تحريك لأسفل"
+                                                            onclick="moveOrderingOption(this, 1)">
+                                                        <i class="bi bi-chevron-down"></i>
+                                                    </button>
+                                                </div>
                                                 <input type="text" name="options[{{ $index }}][content]" class="form-control" 
                                                        value="{{ $option->content }}" required>
-                                                <input type="hidden" name="options[{{ $index }}][correct_order]" value="{{ $option->correct_order }}">
+                                                <input type="hidden" name="options[{{ $index }}][correct_order]" value="{{ $loop->iteration }}" class="correct-order-input">
+                                            </div>
+                                        </div>
+                                    @elseif($question->type === 'drag_drop')
+                                        <div class="option-item" id="option{{ $index }}">
+                                            <button type="button" class="btn btn-sm btn-icon btn-danger-transparent remove-option"
+                                                    onclick="removeOption({{ $index }})">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                            <input type="hidden" name="options[{{ $index }}][id]" value="{{ $option->id }}">
+                                            <div class="matching-pair">
+                                                <input type="text" name="options[{{ $index }}][content]" class="form-control"
+                                                       value="{{ $option->content }}" placeholder="العنصر القابل للسحب" required>
+                                                <i class="bi bi-box-arrow-in-down text-muted"></i>
+                                                <input type="text" name="options[{{ $index }}][match_target]" class="form-control"
+                                                       value="{{ $option->match_target }}" placeholder="اسم المنطقة" required>
+                                                <input type="hidden" name="options[{{ $index }}][is_correct]" value="1">
                                             </div>
                                         </div>
                                     @elseif($question->type === 'true_false')
@@ -502,6 +533,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (form) {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
+            if (questionType === 'ordering') {
+                renumberOrderingOptions();
+            }
             tinymce.triggerSave();
             var f = form;
             setTimeout(function() {
@@ -539,15 +573,42 @@ function addOption() {
         `;
     } else if (questionType === 'ordering') {
         optionHtml = `
-            <div class="option-item" id="option${index}">
+            <div class="option-item ordering-option-item" id="option${index}">
                 <button type="button" class="btn btn-sm btn-icon btn-danger-transparent remove-option" 
                         onclick="removeOption(${index})">
                     <i class="bi bi-x-lg"></i>
                 </button>
                 <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-primary">${index + 1}</span>
+                    <span class="badge bg-primary order-badge">0</span>
+                    <div class="btn-group-vertical btn-group-sm">
+                        <button type="button" class="btn btn-outline-secondary py-0 px-1" title="تحريك لأعلى"
+                                onclick="moveOrderingOption(this, -1)">
+                            <i class="bi bi-chevron-up"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary py-0 px-1" title="تحريك لأسفل"
+                                onclick="moveOrderingOption(this, 1)">
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                    </div>
                     <input type="text" name="options[${index}][content]" class="form-control" required>
-                    <input type="hidden" name="options[${index}][correct_order]" value="${index + 1}">
+                    <input type="hidden" name="options[${index}][correct_order]" value="0" class="correct-order-input">
+                </div>
+            </div>
+        `;
+    } else if (questionType === 'drag_drop') {
+        optionHtml = `
+            <div class="option-item" id="option${index}">
+                <button type="button" class="btn btn-sm btn-icon btn-danger-transparent remove-option"
+                        onclick="removeOption(${index})">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+                <div class="matching-pair">
+                    <input type="text" name="options[${index}][content]" class="form-control"
+                           placeholder="العنصر القابل للسحب" required>
+                    <i class="bi bi-box-arrow-in-down text-muted"></i>
+                    <input type="text" name="options[${index}][match_target]" class="form-control"
+                           placeholder="اسم المنطقة" required>
+                    <input type="hidden" name="options[${index}][is_correct]" value="1">
                 </div>
             </div>
         `;
@@ -603,12 +664,49 @@ function addOption() {
     }
     
     container.insertAdjacentHTML('beforeend', optionHtml);
+    if (questionType === 'ordering') {
+        renumberOrderingOptions();
+    }
+}
+
+function renumberOrderingOptions() {
+    if (questionType !== 'ordering') {
+        return;
+    }
+
+    document.querySelectorAll('#optionsContainer .option-item').forEach((item, i) => {
+        const order = i + 1;
+        const badge = item.querySelector('.order-badge, .badge.bg-primary');
+        const hidden = item.querySelector('.correct-order-input, input[name*="[correct_order]"]');
+        if (badge) {
+            badge.textContent = order;
+        }
+        if (hidden) {
+            hidden.value = order;
+        }
+    });
+}
+
+function moveOrderingOption(button, direction) {
+    const item = button.closest('.option-item');
+    if (!item) return;
+
+    if (direction < 0 && item.previousElementSibling) {
+        item.parentNode.insertBefore(item, item.previousElementSibling);
+    } else if (direction > 0 && item.nextElementSibling) {
+        item.parentNode.insertBefore(item.nextElementSibling, item);
+    }
+
+    renumberOrderingOptions();
 }
 
 function removeOption(index) {
     const option = document.getElementById(`option${index}`);
     if (option) {
         option.remove();
+        if (questionType === 'ordering') {
+            renumberOrderingOptions();
+        }
     }
 }
 

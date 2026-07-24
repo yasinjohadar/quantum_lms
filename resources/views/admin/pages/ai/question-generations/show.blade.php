@@ -359,7 +359,33 @@
                                                     {!! format_question_markup($question['question'] ?? '-') !!}
                                                 </div>
                                                 
-                                                @if(isset($question['options']) && is_array($question['options']) && count($question['options']) > 0)
+                                                @php $qType = $question['type'] ?? 'single_choice'; @endphp
+
+                                                @if(in_array($qType, ['matching', 'drag_drop'], true) && !empty($question['options']))
+                                                    <div class="mb-3">
+                                                        <strong class="text-muted d-block mb-2">{{ $qType === 'matching' ? 'أزواج المطابقة:' : 'العناصر والمناطق:' }}</strong>
+                                                        @foreach($question['options'] as $optIndex => $option)
+                                                            @php $target = $question['match_targets'][$optIndex] ?? '-'; @endphp
+                                                            <div class="question-option-row is-correct">
+                                                                <span class="badge bg-secondary me-2">{{ $optIndex + 1 }}</span>
+                                                                <span class="question-text-body">{!! format_question_markup($option) !!}</span>
+                                                                <i class="bi bi-arrow-left-right mx-2 text-muted"></i>
+                                                                <span class="question-text-body">{!! format_question_markup($target) !!}</span>
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                @elseif($qType === 'ordering' && !empty($question['options']))
+                                                    <div class="mb-3">
+                                                        <strong class="text-muted d-block mb-2">الترتيب الصحيح:</strong>
+                                                        @foreach($question['options'] as $optIndex => $option)
+                                                            @php $rank = $question['correct_order'][$optIndex] ?? ($optIndex + 1); @endphp
+                                                            <div class="question-option-row is-correct">
+                                                                <span class="badge bg-primary me-2">{{ $rank }}</span>
+                                                                <span class="question-text-body">{!! format_question_markup($option) !!}</span>
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                @elseif(isset($question['options']) && is_array($question['options']) && count($question['options']) > 0)
                                                     <div class="mb-3">
                                                         <strong class="text-muted d-block mb-2">الخيارات:</strong>
                                                         @foreach($question['options'] as $optIndex => $option)
@@ -369,7 +395,7 @@
                                                                 if (is_array($correctAnswer)) {
                                                                     $isCorrect = in_array($option, $correctAnswer);
                                                                 } else {
-                                                                    $isCorrect = trim($option) === trim($correctAnswer);
+                                                                    $isCorrect = trim((string) $option) === trim((string) $correctAnswer);
                                                                 }
                                                             @endphp
                                                             <div class="question-option-row {{ $isCorrect ? 'is-correct' : '' }}">
@@ -389,7 +415,18 @@
                                                     <div class="col-md-6">
                                                         <div class="bg-success bg-opacity-10 p-2 rounded">
                                                             <strong class="text-success"><i class="fas fa-check-circle me-1"></i>الإجابة الصحيحة:</strong>
-                                                            <p class="mb-0 mt-1 question-text-body">{!! format_question_markup(is_array($question['correct_answer'] ?? '') ? implode(', ', $question['correct_answer']) : ($question['correct_answer'] ?? '-')) !!}</p>
+                                                            @if($qType === 'numerical')
+                                                                <p class="mb-0 mt-1">
+                                                                    {{ $question['correct_answer'] ?? '-' }}
+                                                                    @if(isset($question['tolerance']))
+                                                                        <span class="text-muted">(± {{ $question['tolerance'] }})</span>
+                                                                    @endif
+                                                                </p>
+                                                            @elseif(in_array($qType, ['matching', 'drag_drop', 'ordering'], true))
+                                                                <p class="mb-0 mt-1 text-muted">موضحة في العناصر أعلاه</p>
+                                                            @else
+                                                                <p class="mb-0 mt-1 question-text-body">{!! format_question_markup(is_array($question['correct_answer'] ?? '') ? implode(', ', $question['correct_answer']) : ($question['correct_answer'] ?? '-')) !!}</p>
+                                                            @endif
                                                         </div>
                                                     </div>
                                                     @if(isset($question['explanation']) && !empty($question['explanation']))

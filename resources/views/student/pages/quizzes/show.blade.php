@@ -44,7 +44,16 @@
                         @foreach($questions as $index => $question)
                             @php
                                 $answer = $answers[$question->id] ?? null;
-                                $isAnswered = $answer && ($answer->answer || $answer->answer_text || $answer->selected_options || $answer->numeric_answer);
+                                $isAnswered = $answer && (
+                                    $answer->answer
+                                    || $answer->answer_text
+                                    || $answer->selected_options
+                                    || $answer->numeric_answer
+                                    || ! empty($answer->matching_pairs)
+                                    || ! empty($answer->ordering)
+                                    || ! empty($answer->fill_blanks_answers)
+                                    || ! empty($answer->drag_drop_assignments)
+                                );
                             @endphp
                             <button type="button" 
                                     class="btn {{ $index === 0 ? 'btn-primary' : ($isAnswered ? 'btn-success' : 'btn-outline-secondary') }} question-nav-btn question-nav-btn-compact"
@@ -397,6 +406,7 @@
                     return [
                         'id' => $opt->id,
                         'content' => format_question_markup($opt->content),
+                        'match_target' => $opt->match_target,
                         'is_correct' => $opt->is_correct,
                     ];
                 })->values()->toArray()
@@ -560,7 +570,8 @@
             case 'fill_blanks':
                 html += renderFillBlank(question, answer);
                 break;
-            case 'numeric':
+            case 'numerical':
+            case 'numeric': // legacy alias
                 html += renderNumeric(question, answer);
                 break;
             case 'multi_select':
@@ -791,12 +802,14 @@
     }
     
     function renderNumeric(question, answer) {
-        const value = answer.numeric_answer || '';
+        const value = (answer.numeric_answer !== null && answer.numeric_answer !== undefined && answer.numeric_answer !== '')
+            ? answer.numeric_answer
+            : '';
         return `
             <div class="mb-3">
                 <label class="form-label">الإجابة الرقمية:</label>
-                <input type="number" step="any" class="form-control form-control-lg" 
-                       name="answer_${question.id}" value="${value}"
+                <input type="number" step="any" class="form-control form-control-lg"
+                       name="answer_${question.id}" value="${escapeHtml(String(value))}"
                        placeholder="أدخل الرقم...">
             </div>
         `;
@@ -828,16 +841,23 @@
         const pairs = answer.matching_pairs || {};
         let html = '<div class="matching-container">';
         html += '<p class="text-muted mb-3"><i class="bi bi-info-circle me-1"></i> قم بمطابقة العناصر من العمود الأيمن مع الأيسر</p>';
-        
-        // Split options into left and right columns (assuming even number)
-        const leftOptions = question.options.filter((_, i) => i % 2 === 0);
-        const rightOptions = question.options.filter((_, i) => i % 2 === 1);
-        
+
+        // Each option is a full pair: content (left) ↔ match_target (right text)
+        const leftOptions = question.options || [];
+        const rightTargets = leftOptions
+            .map(o => o.match_target)
+            .filter(t => t != null && String(t).trim() !== '');
+
+        // Shuffle right-side targets so order does not reveal the answer
+        for (let i = rightTargets.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [rightTargets[i], rightTargets[j]] = [rightTargets[j], rightTargets[i]];
+        }
+
         html += '<div class="row">';
-        leftOptions.forEach((leftOpt, idx) => {
-            const rightOpt = rightOptions[idx] || {};
-            const selectedValue = pairs[leftOpt.id] || '';
-            
+        leftOptions.forEach((leftOpt) => {
+            const selectedValue = pairs[leftOpt.id] ?? pairs[String(leftOpt.id)] ?? '';
+
             html += `
                 <div class="col-12 mb-3">
                     <div class="d-flex align-items-center gap-3">
@@ -847,7 +867,12 @@
                         <i class="bi bi-arrow-left-right text-primary"></i>
                         <select class="form-select flex-fill" name="matching_${question.id}[${leftOpt.id}]">
                             <option value="">-- اختر --</option>
-                            ${rightOptions.map(r => `<option value="${r.id}" ${selectedValue == r.id ? 'selected' : ''}>${escapeHtml(plainTextFromHtml(r.content))}</option>`).join('')}
+                            ${rightTargets.map(target => {
+                                const valueAttr = escapeHtml(String(target));
+                                const label = escapeHtml(plainTextFromHtml(String(target)));
+                                const selected = selectedValue == target ? 'selected' : '';
+                                return `<option value="${valueAttr}" ${selected}>${label}</option>`;
+                            }).join('')}
                         </select>
                     </div>
                 </div>
@@ -859,32 +884,44 @@
     
     function renderOrdering(question, answer) {
         let ordering = answer.ordering;
-        if (!ordering || !Array.isArray(ordering)) {
-            // Convert string to array if needed
-            if (typeof ordering === 'string') {
-                ordering = ordering.split(',').filter(id => id.trim());
-            } else {
-                ordering = question.options.map(o => o.id);
+        const optionIds = (question.options || []).map(o => String(o.id));
+
+        if (typeof ordering === 'string') {
+            ordering = ordering.split(',').map(id => id.trim()).filter(Boolean);
+        } else if (Array.isArray(ordering) && ordering.length > 0) {
+            ordering = ordering.map(id => String(id));
+        } else {
+            // Shuffle so the correct sequence is not leaked on first load
+            ordering = [...optionIds];
+            for (let i = ordering.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [ordering[i], ordering[j]] = [ordering[j], ordering[i]];
             }
         }
-        
+
+        // Include any options missing from a partial saved answer
+        optionIds.forEach(id => {
+            if (!ordering.includes(id)) {
+                ordering.push(id);
+            }
+        });
+
         let html = '<p class="text-muted mb-3"><i class="bi bi-info-circle me-1"></i> اسحب العناصر لترتيبها بالترتيب الصحيح</p>';
         html += `<ul class="list-group ordering-list" id="ordering_${question.id}">`;
-        
-        // Sort options by ordering
+
         const sortedOptions = [...question.options].sort((a, b) => {
-            const indexA = ordering.indexOf(a.id);
-            const indexB = ordering.indexOf(b.id);
+            const indexA = ordering.indexOf(String(a.id));
+            const indexB = ordering.indexOf(String(b.id));
             if (indexA === -1 && indexB === -1) return 0;
             if (indexA === -1) return 1;
             if (indexB === -1) return -1;
             return indexA - indexB;
         });
-        
+
         sortedOptions.forEach((opt, idx) => {
             html += `
-                <li class="list-group-item d-flex align-items-center gap-3 ordering-item" 
-                    data-id="${opt.id}" 
+                <li class="list-group-item d-flex align-items-center gap-3 ordering-item"
+                    data-id="${opt.id}"
                     draggable="true">
                     <span class="badge bg-primary rounded-pill order-number">${idx + 1}</span>
                     <i class="bi bi-grip-vertical text-muted cursor-move"></i>
@@ -892,7 +929,7 @@
                 </li>
             `;
         });
-        
+
         html += '</ul>';
         html += `<input type="hidden" name="ordering_${question.id}" id="ordering_input_${question.id}" value="${ordering.join(',')}">`;
         return html;
@@ -947,78 +984,87 @@
     function renderDragDrop(question, answer) {
         const dragDropData = answer.drag_drop_assignments || {};
         let html = '<p class="text-muted mb-3"><i class="bi bi-info-circle me-1"></i> اسحب العناصر إلى المجموعات المناسبة</p>';
-        
-        // Parse drop zones from content if available
+
+        // Prefer zone labels from option.match_target (canonical answer key)
         let dropZones = [];
-        try {
-            if (question.content) {
-                // Try to extract drop-zones from HTML content using regex
-                const zonesMatch = question.content.match(/data-zones='([^']+)'/);
-                if (zonesMatch) {
-                    dropZones = JSON.parse(zonesMatch[1].replace(/\\u([0-9a-f]{4})/gi, (match, code) => {
-                        return String.fromCharCode(parseInt(code, 16));
-                    }));
+        const labelsFromOptions = [...new Set(
+            (question.options || [])
+                .map(o => o.match_target)
+                .filter(t => t != null && String(t).trim() !== '')
+                .map(t => String(t))
+        )];
+        if (labelsFromOptions.length > 0) {
+            dropZones = labelsFromOptions.map(label => ({ label }));
+        } else {
+            try {
+                if (question.content) {
+                    const zonesMatch = question.content.match(/data-zones=(["'])([\s\S]*?)\1/);
+                    if (zonesMatch) {
+                        const raw = zonesMatch[2]
+                            .replace(/&quot;/g, '"')
+                            .replace(/&#039;/g, "'")
+                            .replace(/&amp;/g, '&');
+                        dropZones = JSON.parse(raw);
+                    }
                 }
+            } catch (e) {
+                console.error('Error parsing drop zones:', e);
             }
-        } catch(e) {
-            console.error('Error parsing drop zones:', e);
         }
-        
-        // If no zones in content, create default zones (every 2 options = one zone)
+
         if (dropZones.length === 0 && question.options.length > 0) {
             const zonesCount = Math.ceil(question.options.length / 2);
             for (let i = 0; i < zonesCount; i++) {
                 dropZones.push({ label: `مجموعة ${i + 1}` });
             }
         }
-        
+
         html += '<div class="drag-drop-container">';
-        
-        // Render draggable items
         html += '<div class="draggable-items mb-4">';
         html += '<h6 class="mb-3">العناصر القابلة للسحب:</h6>';
         html += '<div class="d-flex flex-wrap gap-2" id="draggable-items-' + question.id + '">';
-        
-        question.options.forEach((opt, idx) => {
-            const zoneId = dragDropData[opt.id] || null;
+
+        question.options.forEach((opt) => {
+            const assignedZone = dragDropData[opt.id] ?? dragDropData[String(opt.id)] ?? '';
+            const isAssigned = assignedZone !== null && assignedZone !== '';
             html += `
-                <div class="draggable-item badge bg-primary p-3 cursor-move question-text-body" 
-                     draggable="true" 
+                <div class="draggable-item badge bg-primary p-3 cursor-move question-text-body"
+                     draggable="true"
                      data-item-id="${opt.id}"
-                     data-zone-id="${zoneId || ''}"
-                     id="drag-item-${question.id}-${opt.id}">
+                     data-zone-label="${escapeHtml(String(assignedZone || ''))}"
+                     id="drag-item-${question.id}-${opt.id}"
+                     style="${isAssigned ? 'display:none' : ''}">
                     <i class="bi bi-grip-vertical me-2"></i>
                     ${opt.content || ''}
                 </div>
             `;
         });
         html += '</div></div>';
-        
-        // Render drop zones
+
         html += '<div class="drop-zones-container">';
         html += '<h6 class="mb-3">مناطق الإفلات:</h6>';
         html += '<div class="row">';
-        
+
         dropZones.forEach((zone, zoneIdx) => {
-            const zoneId = zone.id || zoneIdx;
-            const itemsInZone = Object.keys(dragDropData).filter(itemId => dragDropData[itemId] == zoneId);
-            
+            const zoneLabel = zone.label || zone.name || `مجموعة ${zoneIdx + 1}`;
+            const itemsInZone = Object.keys(dragDropData).filter(itemId => String(dragDropData[itemId]) === String(zoneLabel));
+
             html += `
                 <div class="col-md-6 mb-4">
-                    <div class="drop-zone border border-2 border-dashed rounded p-4 text-center min-h-150" 
-                         data-zone-id="${zoneId}"
-                         id="drop-zone-${question.id}-${zoneId}"
-                         ondrop="handleDrop(event, ${question.id})" 
+                    <div class="drop-zone border border-2 border-dashed rounded p-4 text-center min-h-150"
+                         data-zone-label="${escapeHtml(String(zoneLabel))}"
+                         id="drop-zone-${question.id}-${zoneIdx}"
+                         ondrop="handleDrop(event, ${question.id})"
                          ondragover="handleDragOver(event)">
-                        <h6 class="mb-3">${escapeHtml(zone.label || zone.name || `مجموعة ${zoneIdx + 1}`)}</h6>
-                        <div class="dropped-items" id="dropped-items-${question.id}-${zoneId}">
+                        <h6 class="mb-3">${escapeHtml(String(zoneLabel))}</h6>
+                        <div class="dropped-items" id="dropped-items-${question.id}-${zoneIdx}" data-zone-label="${escapeHtml(String(zoneLabel))}">
                             ${itemsInZone.map(itemId => {
-                                const opt = question.options.find(o => o.id == itemId);
+                                const opt = question.options.find(o => String(o.id) === String(itemId));
                                 if (!opt) return '';
                                 return `
                                     <div class="dropped-item badge bg-success p-2 mb-2 me-1 question-text-body" data-item-id="${itemId}">
                                         ${opt.content || ''}
-                                        <button type="button" class="btn-close btn-close-white ms-2" onclick="removeFromZone(${question.id}, ${itemId})"></button>
+                                        <button type="button" class="btn-close btn-close-white ms-2" onclick="removeFromZone(${question.id}, '${itemId}')"></button>
                                     </div>
                                 `;
                             }).join('')}
@@ -1028,14 +1074,12 @@
                 </div>
             `;
         });
-        
-        html += '</div></div>';
-        html += '</div>';
-        
-        // Hidden input to store the answer
+
+        html += '</div></div></div>';
+
         const assignmentsJson = JSON.stringify(dragDropData);
         html += `<input type="hidden" name="drag_drop_${question.id}" id="drag-drop-input-${question.id}" value="${escapeHtml(assignmentsJson)}">`;
-        
+
         return html;
     }
     
@@ -1048,81 +1092,74 @@
     function handleDrop(event, questionId) {
         event.preventDefault();
         const zoneEl = event.currentTarget;
-        const zoneId = zoneEl.dataset.zoneId;
+        const zoneLabel = zoneEl.dataset.zoneLabel || '';
         const itemId = event.dataTransfer.getData('text/plain');
-        
-        // Remove from previous zone
+
         removeFromZone(questionId, itemId, false);
-        
-        // Add to new zone
+
         const itemEl = document.getElementById('drag-item-' + questionId + '-' + itemId);
         const question = questions.find(q => q.id == questionId);
-        const opt = question?.options.find(o => o.id == itemId);
-        
-        if (itemEl && opt) {
-            const droppedItemsEl = document.getElementById('dropped-items-' + questionId + '-' + zoneId);
-            if (droppedItemsEl) {
-                const droppedItem = document.createElement('div');
-                droppedItem.className = 'dropped-item badge bg-success p-2 mb-2 me-1 question-text-body';
-                droppedItem.dataset.itemId = itemId;
-                droppedItem.innerHTML = `
-                    ${opt.content || ''}
-                    <button type="button" class="btn-close btn-close-white ms-2" onclick="removeFromZone(${questionId}, ${itemId})"></button>
-                `;
-                droppedItemsEl.appendChild(droppedItem);
-                if (typeof window.renderQuestionMath === 'function') {
-                    delete droppedItem.dataset.mathRendered;
-                    window.renderQuestionMath(droppedItem);
-                }
+        const opt = question?.options.find(o => String(o.id) === String(itemId));
+        const droppedItemsEl = zoneEl.querySelector('.dropped-items');
+
+        if (itemEl && opt && droppedItemsEl) {
+            const droppedItem = document.createElement('div');
+            droppedItem.className = 'dropped-item badge bg-success p-2 mb-2 me-1 question-text-body';
+            droppedItem.dataset.itemId = itemId;
+            droppedItem.innerHTML = `
+                ${opt.content || ''}
+                <button type="button" class="btn-close btn-close-white ms-2" onclick="removeFromZone(${questionId}, '${itemId}')"></button>
+            `;
+            droppedItemsEl.appendChild(droppedItem);
+            if (typeof window.renderQuestionMath === 'function') {
+                delete droppedItem.dataset.mathRendered;
+                window.renderQuestionMath(droppedItem);
             }
-            
-            itemEl.dataset.zoneId = zoneId;
+
+            itemEl.dataset.zoneLabel = zoneLabel;
             itemEl.style.display = 'none';
         }
-        
+
         zoneEl.classList.remove('border-primary', 'bg-primary-transparent');
         updateDragDropAnswer(questionId);
         saveCurrentAnswer(questions.find(q => String(q.id) === String(questionId)));
     }
-    
+
     function removeFromZone(questionId, itemId, updateAnswer = true) {
         const itemEl = document.getElementById('drag-item-' + questionId + '-' + itemId);
         if (itemEl) {
-            const zoneId = itemEl.dataset.zoneId;
-            if (zoneId) {
-                const droppedItemEl = document.querySelector(`#dropped-items-${questionId}-${zoneId} [data-item-id="${itemId}"]`);
-                if (droppedItemEl) {
-                    droppedItemEl.remove();
-                }
+            const droppedItemEl = document.querySelector(`#question-content .dropped-item[data-item-id="${itemId}"]`);
+            if (droppedItemEl) {
+                droppedItemEl.remove();
             }
-            itemEl.dataset.zoneId = '';
+            itemEl.dataset.zoneLabel = '';
             itemEl.style.display = '';
         }
-        
+
         if (updateAnswer) {
             updateDragDropAnswer(questionId);
             saveCurrentAnswer(questions.find(q => String(q.id) === String(questionId)));
         }
     }
-    
+
     function updateDragDropAnswer(questionId) {
         const question = questions.find(q => q.id == questionId);
         if (!question) return;
-        
+
         const assignments = {};
         question.options.forEach(opt => {
             const itemEl = document.getElementById('drag-item-' + questionId + '-' + opt.id);
-            if (itemEl && itemEl.dataset.zoneId) {
-                assignments[opt.id] = itemEl.dataset.zoneId;
+            if (itemEl && itemEl.dataset.zoneLabel) {
+                assignments[opt.id] = itemEl.dataset.zoneLabel;
             }
         });
-        
+
         const inputEl = document.getElementById('drag-drop-input-' + questionId);
         if (inputEl) {
             inputEl.value = JSON.stringify(assignments);
         }
     }
-    
+
     function setupDragDropListeners(question) {
         // Setup drag start for all draggable items
         setTimeout(() => {
@@ -1327,9 +1364,10 @@
                         formData.append('answer_text', textInput.value);
                     }
                     break;
-                case 'numeric':
+                case 'numerical':
+                case 'numeric': // legacy alias
                     const numInput = document.querySelector(`[name="answer_${question.id}"]`);
-                    if (numInput) {
+                    if (numInput && numInput.value !== '') {
                         formData.append('numeric_answer', numInput.value);
                     }
                     break;

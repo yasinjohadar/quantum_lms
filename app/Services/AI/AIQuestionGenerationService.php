@@ -882,9 +882,11 @@ class AIQuestionGenerationService
      */
     protected function saveMatchingOptions(Question $question, array $questionData): void
     {
-        $options = $questionData['options'] ?? [];
-        $matchTargets = $questionData['match_targets'] ?? [];
-        $matches = $questionData['matches'] ?? [];
+        $options = array_values(array_filter(
+            array_map(fn ($opt) => is_string($opt) ? trim($opt) : trim((string) $opt), $questionData['options'] ?? []),
+            fn ($opt) => $opt !== ''
+        ));
+        $matchTargets = $this->resolveParallelTargets($options, $questionData);
 
         if (count($options) < 2) {
             Log::warning('Insufficient options for matching question', [
@@ -895,55 +897,22 @@ class AIQuestionGenerationService
             return;
         }
 
-        // محاولة استخراج matches من structure مختلف
-        if (empty($matchTargets) && ! empty($matches) && is_array($matches)) {
-            // Structure 1: [{'item': 'A', 'target': '1'}, ...]
-            if (isset($matches[0]) && is_array($matches[0]) && isset($matches[0]['item'])) {
-                foreach ($matches as $match) {
-                    if (isset($match['item']) && isset($match['target'])) {
-                        $itemIndex = array_search($match['item'], $options);
-                        if ($itemIndex !== false) {
-                            $matchTargets[$itemIndex] = $match['target'];
-                        }
-                    }
-                }
-            }
-            // Structure 2: {'A': '1', 'B': '2', ...}
-            elseif (isset($matches[0]) && ! is_array($matches[0])) {
-                foreach ($matches as $key => $value) {
-                    $itemIndex = array_search($key, $options);
-                    if ($itemIndex !== false) {
-                        $matchTargets[$itemIndex] = $value;
-                    }
-                }
-            }
-        }
-
         foreach ($options as $index => $optionText) {
-            if (empty(trim($optionText))) {
+            $matchTarget = trim((string) ($matchTargets[$index] ?? ''));
+            if ($matchTarget === '') {
+                Log::warning('Missing match_target for matching option', [
+                    'question_id' => $question->id,
+                    'index' => $index,
+                ]);
+
                 continue;
-            }
-
-            $matchTarget = $matchTargets[$index] ?? '';
-
-            // إذا لم يكن match_target موجوداً، محاولة البحث في matches مرة أخرى
-            if (empty($matchTarget) && ! empty($matches)) {
-                foreach ($matches as $match) {
-                    if (is_array($match)) {
-                        if ((isset($match['item']) && trim($match['item']) === trim($optionText)) ||
-                            (isset($match['left']) && trim($match['left']) === trim($optionText))) {
-                            $matchTarget = $match['target'] ?? $match['right'] ?? '';
-                            break;
-                        }
-                    }
-                }
             }
 
             QuestionOption::create([
                 'question_id' => $question->id,
-                'content' => QuestionMarkupFormatter::normalizeForStorage(trim($optionText)),
-                'match_target' => QuestionMarkupFormatter::normalizeForStorage(trim($matchTarget)),
-                'is_correct' => true, // جميع خيارات المطابقة صحيحة إذا تمت المطابقة بشكل صحيح
+                'content' => QuestionMarkupFormatter::normalizeForStorage($optionText),
+                'match_target' => QuestionMarkupFormatter::normalizeForStorage($matchTarget),
+                'is_correct' => true,
                 'order' => $index + 1,
             ]);
         }
@@ -954,7 +923,10 @@ class AIQuestionGenerationService
      */
     protected function saveOrderingOptions(Question $question, array $questionData): void
     {
-        $options = $questionData['options'] ?? [];
+        $options = array_values(array_filter(
+            array_map(fn ($opt) => is_string($opt) ? trim($opt) : trim((string) $opt), $questionData['options'] ?? []),
+            fn ($opt) => $opt !== ''
+        ));
 
         if (count($options) < 2) {
             Log::warning('Insufficient options for ordering question', [
@@ -965,30 +937,13 @@ class AIQuestionGenerationService
             return;
         }
 
-        $correctOrder = $questionData['correct_order'] ?? [];
+        $ranks = $this->resolveOrderingRanks($options, $questionData['correct_order'] ?? []);
 
         foreach ($options as $index => $optionText) {
-            if (empty(trim($optionText))) {
-                continue;
-            }
-
-            // تحديد الترتيب الصحيح
-            $order = $index + 1;
-            if (is_array($correctOrder)) {
-                if (isset($correctOrder[$index])) {
-                    $order = (int) $correctOrder[$index];
-                } elseif (isset($correctOrder[$optionText])) {
-                    $order = (int) $correctOrder[$optionText];
-                }
-            } elseif (is_numeric($correctOrder) && $index === 0) {
-                // إذا كان correct_order رقم واحد، استخدمه للخيار الأول
-                $order = (int) $correctOrder;
-            }
-
             QuestionOption::create([
                 'question_id' => $question->id,
-                'content' => QuestionMarkupFormatter::normalizeForStorage(trim($optionText)),
-                'correct_order' => $order,
+                'content' => QuestionMarkupFormatter::normalizeForStorage($optionText),
+                'correct_order' => $ranks[$index] ?? ($index + 1),
                 'is_correct' => true,
                 'order' => $index + 1,
             ]);
@@ -1000,9 +955,9 @@ class AIQuestionGenerationService
      */
     protected function saveNumericalAnswer(Question $question, array $questionData): void
     {
-        $correctAnswer = $questionData['correct_answer'] ?? '';
+        $correctAnswer = $questionData['correct_answer'] ?? null;
 
-        if (empty($correctAnswer) && ! is_numeric($correctAnswer)) {
+        if ($correctAnswer === null || $correctAnswer === '' || ! is_numeric(str_replace(',', '.', (string) $correctAnswer))) {
             Log::warning('Missing correct answer for numerical question', [
                 'question_id' => $question->id,
             ]);
@@ -1010,12 +965,11 @@ class AIQuestionGenerationService
             return;
         }
 
-        // حفظ tolerance إذا كان موجوداً
-        if (isset($questionData['tolerance'])) {
-            $question->update(['tolerance' => (float) $questionData['tolerance']]);
-        }
+        $tolerance = array_key_exists('tolerance', $questionData) && $questionData['tolerance'] !== null && $questionData['tolerance'] !== ''
+            ? (float) $questionData['tolerance']
+            : 0.0;
+        $question->update(['tolerance' => $tolerance]);
 
-        // إنشاء خيار واحد يحتوي على الإجابة الصحيحة
         QuestionOption::create([
             'question_id' => $question->id,
             'content' => QuestionMarkupFormatter::normalizeForStorage((string) $correctAnswer),
@@ -1063,12 +1017,15 @@ class AIQuestionGenerationService
     }
 
     /**
-     * حفظ خيارات السحب والإفلات
+     * حفظ خيارات السحب والإفلات — content + match_target (اسم المنطقة)
      */
     protected function saveDragDropOptions(Question $question, array $questionData): void
     {
-        $options = $questionData['options'] ?? [];
-        $correctAnswer = $questionData['correct_answer'] ?? '';
+        $options = array_values(array_filter(
+            array_map(fn ($opt) => is_string($opt) ? trim($opt) : trim((string) $opt), $questionData['options'] ?? []),
+            fn ($opt) => $opt !== ''
+        ));
+        $matchTargets = $this->resolveParallelTargets($options, $questionData);
 
         if (count($options) < 2) {
             Log::warning('Insufficient options for drag_drop question', [
@@ -1080,25 +1037,189 @@ class AIQuestionGenerationService
         }
 
         foreach ($options as $index => $optionText) {
-            if (empty(trim($optionText))) {
-                continue;
-            }
+            $zone = trim((string) ($matchTargets[$index] ?? ''));
+            if ($zone === '') {
+                Log::warning('Missing zone label for drag_drop option', [
+                    'question_id' => $question->id,
+                    'index' => $index,
+                ]);
 
-            $isCorrect = false;
-            if (is_array($correctAnswer)) {
-                $isCorrect = in_array(trim($optionText), array_map('trim', $correctAnswer), true) ||
-                            in_array($index, $correctAnswer, true);
-            } else {
-                $isCorrect = trim($optionText) === trim($correctAnswer);
+                continue;
             }
 
             QuestionOption::create([
                 'question_id' => $question->id,
-                'content' => QuestionMarkupFormatter::normalizeForStorage(trim($optionText)),
-                'is_correct' => $isCorrect,
+                'content' => QuestionMarkupFormatter::normalizeForStorage($optionText),
+                'match_target' => QuestionMarkupFormatter::normalizeForStorage($zone),
+                'is_correct' => true,
                 'order' => $index + 1,
             ]);
         }
+
+        $this->syncDragDropZones($question->fresh('options'));
+    }
+
+    /**
+     * تحويل match_targets / matches / assignments إلى مصفوفة موازية لـ options.
+     *
+     * @return array<int, string>
+     */
+    protected function resolveParallelTargets(array $options, array $questionData): array
+    {
+        $targets = $questionData['match_targets'] ?? [];
+        $matches = $questionData['matches'] ?? $questionData['assignments'] ?? [];
+
+        // مصفوفة موازية بسيطة من النصوص
+        if (is_array($targets) && $targets !== [] && ! is_array(reset($targets))) {
+            $values = array_values($targets);
+            $resolved = [];
+            foreach ($options as $index => $optionText) {
+                $resolved[$index] = isset($values[$index]) ? trim((string) $values[$index]) : '';
+            }
+
+            if (collect($resolved)->filter()->count() > 0) {
+                return $resolved;
+            }
+        }
+
+        $resolved = array_fill(0, count($options), '');
+
+        if (is_array($matches) && $matches !== []) {
+            // [{item|left|content, target|right|zone}, ...]
+            if (isset($matches[0]) && is_array($matches[0])) {
+                foreach ($matches as $match) {
+                    $item = trim((string) ($match['item'] ?? $match['left'] ?? $match['content'] ?? ''));
+                    $target = trim((string) ($match['target'] ?? $match['right'] ?? $match['zone'] ?? $match['match_target'] ?? ''));
+                    if ($item === '' || $target === '') {
+                        continue;
+                    }
+                    $itemIndex = array_search($item, $options, true);
+                    if ($itemIndex === false) {
+                        foreach ($options as $i => $opt) {
+                            if (trim((string) $opt) === $item) {
+                                $itemIndex = $i;
+                                break;
+                            }
+                        }
+                    }
+                    if ($itemIndex !== false) {
+                        $resolved[$itemIndex] = $target;
+                    }
+                }
+            } else {
+                // خريطة ارتباطية: { "عنصر": "منطقة", ... }
+                foreach ($matches as $key => $value) {
+                    if (is_array($value)) {
+                        continue;
+                    }
+                    $item = trim((string) $key);
+                    $target = trim((string) $value);
+                    $itemIndex = array_search($item, $options, true);
+                    if ($itemIndex === false) {
+                        foreach ($options as $i => $opt) {
+                            if (trim((string) $opt) === $item) {
+                                $itemIndex = $i;
+                                break;
+                            }
+                        }
+                    }
+                    if ($itemIndex !== false) {
+                        $resolved[$itemIndex] = $target;
+                    }
+                }
+            }
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * تحويل correct_order إلى رتب 1..n لكل خيار.
+     *
+     * @return array<int, int>
+     */
+    protected function resolveOrderingRanks(array $options, mixed $correctOrder): array
+    {
+        $count = count($options);
+        $fallback = range(1, $count);
+
+        if (! is_array($correctOrder) || $correctOrder === []) {
+            return $fallback;
+        }
+
+        $values = array_values($correctOrder);
+
+        // نصوص مرتبة = التسلسل الصحيح للعناصر
+        $trimmedOptions = array_map(fn ($o) => trim((string) $o), $options);
+        $allTextRanks = collect($values)->every(function ($value) use ($trimmedOptions) {
+            if (is_array($value) || is_numeric($value)) {
+                return false;
+            }
+
+            return in_array(trim((string) $value), $trimmedOptions, true);
+        });
+
+        if ($allTextRanks) {
+            $ranks = [];
+            foreach ($trimmedOptions as $index => $optionText) {
+                $pos = array_search($optionText, array_map(fn ($v) => trim((string) $v), $values), true);
+                $ranks[$index] = $pos !== false ? ($pos + 1) : ($index + 1);
+            }
+
+            return $ranks;
+        }
+
+        // أرقام رتب لكل فهرس خيار
+        $numericRanks = [];
+        $allNumeric = true;
+        foreach ($options as $index => $optionText) {
+            if (! isset($values[$index]) || ! is_numeric($values[$index])) {
+                $allNumeric = false;
+                break;
+            }
+            $rank = (int) $values[$index];
+            if ($rank < 1) {
+                $allNumeric = false;
+                break;
+            }
+            $numericRanks[$index] = $rank;
+        }
+
+        if ($allNumeric && count($numericRanks) === count(array_unique($numericRanks))) {
+            return $numericRanks;
+        }
+
+        return $fallback;
+    }
+
+    /**
+     * مزامنة مناطق الإفلات في محتوى السؤال من match_target.
+     */
+    protected function syncDragDropZones(Question $question): void
+    {
+        $zones = $question->options
+            ->pluck('match_target')
+            ->map(function ($target) {
+                return trim(html_entity_decode(strip_tags((string) $target), ENT_QUOTES, 'UTF-8'));
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->map(fn (string $label) => ['label' => $label])
+            ->all();
+
+        $zonesAttr = htmlspecialchars(
+            json_encode($zones, JSON_UNESCAPED_UNICODE),
+            ENT_QUOTES,
+            'UTF-8'
+        );
+        $zonesHtml = '<div class="drop-zones" data-zones="'.$zonesAttr.'"></div>';
+
+        $content = (string) ($question->content ?? '');
+        $content = preg_replace('/<div\b[^>]*\bdrop-zones\b[^>]*>.*?<\/div>/is', '', $content) ?? $content;
+        $content = trim($content).$zonesHtml;
+
+        $question->update(['content' => $content]);
     }
 
     /**
@@ -1129,15 +1250,25 @@ class AIQuestionGenerationService
                 continue;
             }
 
+            $normalizedOptions = array_values(array_filter(
+                array_map(fn ($opt) => is_string($opt) ? trim($opt) : trim((string) $opt), $options),
+                fn ($opt) => $opt !== ''
+            ));
+
+            $matchTargets = in_array($type, ['matching', 'drag_drop'], true)
+                ? $this->resolveParallelTargets($normalizedOptions, $question)
+                : ($question['match_targets'] ?? []);
+
             $validated[] = [
                 'type' => $type,
                 'question' => $question['question'],
-                'options' => $options,
+                'options' => $normalizedOptions,
                 'correct_answer' => $question['correct_answer'] ?? '',
-                'match_targets' => $question['match_targets'] ?? $question['matches'] ?? [],
+                'match_targets' => $matchTargets,
+                'matches' => $question['matches'] ?? $question['assignments'] ?? [],
                 'correct_order' => $question['correct_order'] ?? [],
                 'blank_answers' => $question['blank_answers'] ?? $question['correct_answers'] ?? [],
-                'tolerance' => $question['tolerance'] ?? null,
+                'tolerance' => $question['tolerance'] ?? ($type === 'numerical' ? 0 : null),
                 'case_sensitive' => $question['case_sensitive'] ?? false,
                 'explanation' => $question['explanation'] ?? '',
                 'difficulty' => $question['difficulty'] ?? 'medium',
@@ -1153,63 +1284,55 @@ class AIQuestionGenerationService
      */
     protected function validateQuestionData(string $type, array $questionData): bool
     {
-        $options = $questionData['options'] ?? [];
+        $options = array_values(array_filter(
+            array_map(fn ($opt) => is_string($opt) ? trim($opt) : trim((string) $opt), $questionData['options'] ?? []),
+            fn ($opt) => $opt !== ''
+        ));
 
         switch ($type) {
             case 'single_choice':
             case 'multiple_choice':
-            case 'drag_drop':
-                // يجب أن يكون هناك خياران على الأقل
                 if (count($options) < 2) {
                     return false;
                 }
-                // يجب أن تكون هناك إجابة صحيحة
-                if (empty($questionData['correct_answer'])) {
-                    return false;
-                }
 
-                return true;
+                return ! empty($questionData['correct_answer']);
 
             case 'true_false':
-                // لا يحتاج options، سيتم إنشاؤها تلقائياً
                 return ! empty($questionData['correct_answer']);
 
             case 'matching':
-                // يجب أن يكون هناك خياران على الأقل
+            case 'drag_drop':
                 if (count($options) < 2) {
                     return false;
                 }
+                $targets = $this->resolveParallelTargets($options, $questionData);
+                $filled = collect($targets)->filter(fn ($t) => trim((string) $t) !== '')->count();
 
-                // match_targets اختياري - يمكن إنشاؤه لاحقاً
-                return true;
+                return $filled >= 2 && $filled === count($options);
 
             case 'ordering':
-                // يجب أن يكون هناك خياران على الأقل
-                if (count($options) < 2) {
+                return count($options) >= 2;
+
+            case 'numerical':
+                $correctAnswer = $questionData['correct_answer'] ?? null;
+                if ($correctAnswer === null || $correctAnswer === '') {
                     return false;
                 }
 
-                return true;
-
-            case 'numerical':
-                // يجب أن تكون هناك إجابة رقمية
-                $correctAnswer = $questionData['correct_answer'] ?? '';
-
-                return ! empty($correctAnswer) && (is_numeric($correctAnswer) || is_numeric(str_replace(',', '.', $correctAnswer)));
+                return is_numeric(str_replace(',', '.', (string) $correctAnswer));
 
             case 'fill_blanks':
-                // يجب أن تكون هناك blank_answers
                 $blankAnswers = $questionData['blank_answers'] ?? $questionData['correct_answers'] ?? [];
 
                 return ! empty($blankAnswers);
 
             case 'essay':
             case 'short_answer':
-                // لا يحتاج خيارات
                 return true;
 
             default:
-                return true; // السماح بالأنواع الأخرى
+                return true;
         }
     }
 

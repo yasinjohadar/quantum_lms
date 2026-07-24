@@ -160,7 +160,8 @@ class QuestionAttemptService
 
         // تصحيح تلقائي حسب نوع السؤال
         $isCorrect = false;
-        $pointsEarned = 0;
+        $pointsEarned = null;
+        $isPartiallyCorrect = false;
 
         switch ($question->type) {
             case 'single_choice':
@@ -173,10 +174,16 @@ class QuestionAttemptService
                 $isCorrect = $this->gradeTrueFalse($question, $answer);
                 break;
             case 'matching':
-                $isCorrect = $this->gradeMatching($question, $answer);
+                $result = $this->gradeMatching($question, $answer);
+                $isCorrect = $result['is_correct'];
+                $pointsEarned = $result['points'];
+                $isPartiallyCorrect = ! $isCorrect && $pointsEarned > 0;
                 break;
             case 'ordering':
-                $isCorrect = $this->gradeOrdering($question, $answer);
+                $result = $this->gradeOrdering($question, $answer);
+                $isCorrect = $result['is_correct'];
+                $pointsEarned = $result['points'];
+                $isPartiallyCorrect = ! $isCorrect && $pointsEarned > 0;
                 break;
             case 'numerical':
                 $isCorrect = $this->gradeNumerical($question, $answer);
@@ -184,11 +191,20 @@ class QuestionAttemptService
             case 'fill_blanks':
                 $isCorrect = $this->gradeFillBlanks($question, $answer);
                 break;
+            case 'drag_drop':
+                $result = $this->gradeDragDrop($question, $answer);
+                $isCorrect = $result['is_correct'];
+                $pointsEarned = $result['points'];
+                $isPartiallyCorrect = ! $isCorrect && $pointsEarned > 0;
+                break;
         }
 
-        $pointsEarned = $isCorrect ? $answer->max_points : 0;
+        if ($pointsEarned === null) {
+            $pointsEarned = $isCorrect ? $answer->max_points : 0;
+        }
 
         $answer->is_correct = $isCorrect;
+        $answer->is_partially_correct = $isPartiallyCorrect;
         $answer->points_earned = $pointsEarned;
         $answer->is_graded = true;
         $answer->graded_at = now();
@@ -237,54 +253,99 @@ class QuestionAttemptService
     }
 
     /**
-     * تصحيح المطابقة
+     * تصحيح المطابقة — احتساب جزئي لكل زوج صحيح: (صحيح / إجمالي) × max_points
+     * صيغة الإجابة: { option_id: match_target_text }
      */
-    private function gradeMatching($question, $answer): bool
+    private function gradeMatching($question, $answer): array
     {
-        // يجب أن تكون جميع الأزواج صحيحة
-        $correctPairs = $question->options()
-            ->where('is_correct', true)
-            ->get()
-            ->map(function($option) {
-                return [
-                    'left' => $option->content,
-                    'right' => $option->matching_content,
-                ];
-            })
-            ->sortBy('left')
-            ->values()
-            ->toArray();
+        $options = $question->relationLoaded('options')
+            ? $question->options
+            : $question->options()->get();
+        $pairs = $answer->matching_pairs ?? [];
 
-        $userPairs = collect($answer->matching_pairs ?? [])
-            ->sortBy('left')
-            ->values()
-            ->toArray();
+        if (empty($pairs)) {
+            return ['is_correct' => false, 'points' => 0.0];
+        }
 
-        return $correctPairs === $userPairs;
+        $correctPairs = 0;
+        $totalPairs = $options->count();
+
+        if ($totalPairs === 0) {
+            return ['is_correct' => false, 'points' => 0.0];
+        }
+
+        foreach ($options as $option) {
+            $submitted = $pairs[$option->id] ?? $pairs[(string) $option->id] ?? null;
+            if ($submitted !== null && $submitted == $option->match_target) {
+                $correctPairs++;
+            }
+        }
+
+        $maxPoints = (float) ($answer->max_points ?? 0);
+        $points = $maxPoints > 0
+            ? ($correctPairs / $totalPairs) * $maxPoints
+            : 0.0;
+        $isCorrect = $correctPairs === $totalPairs;
+
+        return ['is_correct' => $isCorrect, 'points' => $points];
     }
 
     /**
-     * تصحيح الترتيب
+     * تصحيح الترتيب — احتساب جزئي لكل موضع صحيح مقابل correct_order
+     * صيغة الإجابة: [optionId, optionId, ...] بالترتيب الذي وضعه الطالب
      */
-    private function gradeOrdering($question, $answer): bool
+    private function gradeOrdering($question, $answer): array
     {
-        $correctOrder = $question->options()
-            ->orderBy('order')
-            ->pluck('id')
-            ->toArray();
+        $options = $question->relationLoaded('options')
+            ? $question->options->sortBy('correct_order')->values()
+            : $question->options()->orderBy('correct_order')->get();
 
-        $userOrder = $answer->ordering ?? [];
+        $ordering = $answer->ordering ?? [];
+        if (is_string($ordering)) {
+            $decoded = json_decode($ordering, true);
+            if (is_array($decoded)) {
+                $ordering = $decoded;
+            } else {
+                $ordering = array_values(array_filter(array_map('trim', explode(',', $ordering))));
+            }
+        }
 
-        return $correctOrder === $userOrder;
+        if (empty($ordering)) {
+            return ['is_correct' => false, 'points' => 0.0];
+        }
+
+        $correctPositions = 0;
+        $totalPositions = $options->count();
+
+        if ($totalPositions === 0) {
+            return ['is_correct' => false, 'points' => 0.0];
+        }
+
+        foreach ($options as $index => $option) {
+            if (isset($ordering[$index]) && $ordering[$index] == $option->id) {
+                $correctPositions++;
+            }
+        }
+
+        $maxPoints = (float) ($answer->max_points ?? 0);
+        $points = $maxPoints > 0
+            ? ($correctPositions / $totalPositions) * $maxPoints
+            : 0.0;
+        $isCorrect = $correctPositions === $totalPositions;
+
+        return ['is_correct' => $isCorrect, 'points' => $points];
     }
 
     /**
-     * تصحيح الإجابة الرقمية
+     * تصحيح الإجابة الرقمية — |user − correct| ≤ tolerance
      */
     private function gradeNumerical($question, $answer): bool
     {
-        $correctOption = $question->correctOptions()->first();
-        if (!$correctOption || !$answer->numeric_answer) {
+        $correctOption = $question->relationLoaded('correctOptions')
+            ? $question->correctOptions->first()
+            : $question->correctOptions()->first();
+
+        if (! $correctOption || $answer->numeric_answer === null || $answer->numeric_answer === '') {
             return false;
         }
 
@@ -322,6 +383,48 @@ class QuestionAttemptService
         }
 
         return true;
+    }
+
+    /**
+     * تصحيح السحب والإفلات — { option_id: zone_label } مقابل match_target
+     */
+    private function gradeDragDrop($question, $answer): array
+    {
+        $options = $question->relationLoaded('options')
+            ? $question->options
+            : $question->options()->get();
+
+        $assignments = $answer->answer ?? [];
+        if (is_string($assignments)) {
+            $decoded = json_decode($assignments, true);
+            $assignments = is_array($decoded) ? $decoded : [];
+        }
+
+        if (empty($assignments)) {
+            return ['is_correct' => false, 'points' => 0.0];
+        }
+
+        $correctCount = 0;
+        $totalItems = $options->count();
+
+        if ($totalItems === 0) {
+            return ['is_correct' => false, 'points' => 0.0];
+        }
+
+        foreach ($options as $option) {
+            $submitted = $assignments[$option->id] ?? $assignments[(string) $option->id] ?? null;
+            if ($submitted !== null && $submitted !== '' && $submitted == $option->match_target) {
+                $correctCount++;
+            }
+        }
+
+        $maxPoints = (float) ($answer->max_points ?? 0);
+        $points = $maxPoints > 0
+            ? ($correctCount / $totalItems) * $maxPoints
+            : 0.0;
+        $isCorrect = $correctCount === $totalItems;
+
+        return ['is_correct' => $isCorrect, 'points' => $points];
     }
 }
 
