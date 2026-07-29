@@ -4,7 +4,9 @@
 --}}
 @php
     $helpKey = $helpKey ?? null;
-    $help = $helpKey ? (config('gamification_help.'.$helpKey) ?? null) : null;
+    $helpAll = config('gamification_help', []);
+    // المفاتيح مثل admin.achievements تحتوي نقطة — لا تستخدم config('...'.$helpKey)
+    $help = ($helpKey && is_array($helpAll)) ? ($helpAll[$helpKey] ?? null) : null;
     $showQueueStatus = (bool) ($showQueueStatus ?? false);
     $queueStatus = $showQueueStatus ? app(\App\Services\QueueHealthService::class)->snapshot() : null;
     $storageKey = 'gami_help_collapsed_'.($helpKey ?: 'default');
