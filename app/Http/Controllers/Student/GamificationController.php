@@ -168,11 +168,14 @@ class GamificationController extends Controller
 
         $stats = [
             'total_points' => $this->pointService->getUserTotalPoints($user),
+            // المفاتيح هنا هي أنواع المعاملات الفعلية المخزَّنة في point_transactions
+            // (lesson_attended/lesson_completed/quiz_completed/question_answered/achievement)
+            // — سابقاً كانت تستعمل أسماء غير مطابقة فتُرجع أصفاراً دائماً.
             'points_by_type' => [
-                'attendance' => $this->pointService->getPointsByType($user, 'attendance'),
-                'lesson_completion' => $this->pointService->getPointsByType($user, 'lesson_completion'),
-                'quiz' => $this->pointService->getPointsByType($user, 'quiz'),
-                'question' => $this->pointService->getPointsByType($user, 'question'),
+                'lesson_attended' => $this->pointService->getPointsByType($user, 'lesson_attended'),
+                'lesson_completed' => $this->pointService->getPointsByType($user, 'lesson_completed'),
+                'quiz_completed' => $this->pointService->getPointsByType($user, 'quiz_completed'),
+                'question_answered' => $this->pointService->getPointsByType($user, 'question_answered'),
                 'achievement' => $this->pointService->getPointsByType($user, 'achievement'),
             ],
             'level_progress' => $this->levelService->getLevelProgress($user),

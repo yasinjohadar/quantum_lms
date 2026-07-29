@@ -18,3 +18,8 @@ Schedule::command('users:prune-unverified-phone-registrations')->everyTenMinutes
 // إلغاء اشتراكات الصفوف والمواد المنتهية تلقائياً
 Schedule::command('purchases:expire-access')->hourly();
 Schedule::command('classes:expire-subscriptions')->hourly();
+
+// نظام التحفيز: إعادة تهيئة المهام اليومية/الأسبوعية تلقائياً
+// (بدونها تبقى المهام المُنجَزة مكتملة للأبد ولا تُجدَّد)
+Schedule::command('tasks:reset-daily')->dailyAt('00:05')->withoutOverlapping();
+Schedule::command('tasks:reset-weekly')->weeklyOn(6, '00:10')->withoutOverlapping();

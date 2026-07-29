@@ -77,37 +77,6 @@
                     </div>
                     <!-- End::header-element -->
 
-                    <!-- Start::header-element -->
-                    <div class="header-element messages-dropdown">
-                        <!-- Start::header-link|dropdown-toggle -->
-                        <a href="javascript:void(0);" class="header-link dropdown-toggle" data-bs-auto-close="outside" data-bs-toggle="dropdown">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="header-link-icon" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-2 0l-8 5-8-5h16zm0 12H4V8l8 5 8-5v10z"/></svg>
-                            <span class="pulse-danger"></span>
-                        </a>
-                        <!-- End::header-link|dropdown-toggle -->
-                        <!-- Start::main-header-dropdown -->
-                        <div class="main-header-dropdown dropdown-menu dropdown-menu-end main-header-message" data-popper-placement="none">
-                            <div class="menu-header-content bg-primary text-fixed-white">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <h6 class="mb-0 fs-15 fw-semibold text-fixed-white">الرسائل</h6>
-                                    <span class="badge rounded-pill bg-warning pt-1 text-fixed-black">تحديد الكل كمقروء</span>
-                                </div>
-                                <p class="dropdown-title-text subtext mb-0 text-fixed-white op-6 pb-0 fs-12 ">لديك 0 رسائل جديدة</p>
-                            </div>
-                            <div><hr class="dropdown-divider"></div>
-                            <ul class="list-unstyled mb-0" id="header-cart-items-scroll">
-                                <li class="dropdown-item text-center py-3">
-                                    <p class="text-muted mb-0">لا توجد رسائل جديدة</p>
-                                </li>
-                            </ul>
-                            <div class="text-center dropdown-footer">
-                                <a href="javascript:void(0);" class="text-primary fs-13">عرض الكل</a>
-                            </div>
-                        </div>
-                        <!-- End::main-header-dropdown -->
-                    </div>
-                    <!-- End::header-element -->
-
                     @include('partials.echo-realtime-status')
 
                     <!-- Start::header-element -->

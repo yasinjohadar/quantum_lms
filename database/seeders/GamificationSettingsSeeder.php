@@ -14,13 +14,9 @@ class GamificationSettingsSeeder extends Seeder
     {
         $settings = [
             // قواعد النقاط
-            [
-                'key' => 'gamification_points_attendance',
-                'value' => '10',
-                'type' => 'integer',
-                'group' => 'gamification',
-                'description' => 'نقاط الحضور',
-            ],
+            // ملاحظة: مفتاح الحضور الصحيح الذي يقرأه PointService هو
+            // gamification_points_lesson_attended (مُعرَّف أدناه)، وقد أُزيل المفتاح
+            // القديم gamification_points_attendance لأنه لم يكن يُقرأ من أي مكان.
             [
                 'key' => 'gamification_points_lesson_completed',
                 'value' => '15',

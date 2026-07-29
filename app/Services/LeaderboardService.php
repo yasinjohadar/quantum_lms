@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Leaderboard;
 use App\Models\LeaderboardEntry;
+use App\Models\PointTransaction;
 use App\Models\User;
 use App\Services\PointService;
 use Illuminate\Support\Facades\Cache;

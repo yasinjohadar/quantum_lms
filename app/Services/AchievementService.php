@@ -124,7 +124,9 @@ class AchievementService
 
         foreach ($completions as $date => $items) {
             $dateObj = \Carbon\Carbon::parse($date)->startOfDay();
-            $diff = $currentDate->diffInDays($dateObj);
+            // Carbon 3 يُرجع diffInDays كقيمة عشرية موقّعة (float)، فالمقارنة الصارمة
+            // «1.0 === 1» تفشل وتنكسر السلسلة فوراً. نحوّلها لعدد صحيح مطلق.
+            $diff = (int) abs($currentDate->diffInDays($dateObj));
 
             if ($diff === $streak) {
                 $streak++;

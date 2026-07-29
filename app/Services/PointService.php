@@ -82,20 +82,40 @@ class PointService
     public function awardPoints(User $user, string $type, int $points, $source = null, array $metadata = []): PointTransaction
     {
         return DB::transaction(function() use ($user, $type, $points, $source, $metadata) {
+            $sourceType = $source ? get_class($source) : null;
+            $sourceId = $source ? $source->id : null;
+
+            // حماية من التكرار (idempotency): عند وجود مصدر (محاولة اختبار/سؤال أو
+            // سجل إكمال درس)، لا تُمنح النقاط مرتين لنفس (المستخدم، النوع، المصدر).
+            // يغلق ثغرة "زراعة" النقاط بإعادة إرسال الطلب نفسه أكثر من مرة.
+            // نستخدم lockForUpdate لتقليل التسابق دون الحاجة لقيد فريد في القاعدة
+            // (تفادياً لفشل الترحيل على صفوف مكرّرة قديمة قد تكون موجودة).
+            if ($sourceType !== null && $sourceId !== null) {
+                $existing = PointTransaction::where('user_id', $user->id)
+                    ->where('type', $type)
+                    ->where('source_type', $sourceType)
+                    ->where('source_id', $sourceId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($existing) {
+                    return $existing;
+                }
+            }
+
             $transaction = PointTransaction::create([
                 'user_id' => $user->id,
                 'type' => $type,
                 'points' => $points,
-                'source_type' => $source ? get_class($source) : null,
-                'source_id' => $source ? $source->id : null,
+                'source_type' => $sourceType,
+                'source_id' => $sourceId,
                 'metadata' => $metadata,
             ]);
 
-            // تحديث إجمالي النقاط في UserLevel
-            $this->updateUserTotalPoints($user);
-
-            // إبطال الكاش ليعكس الرقم الجديد في الهيدر وغيره
+            // إبطال الكاش أولاً ثم إعادة حساب الإجمالي في UserLevel من قيمة حديثة
+            // (سابقاً كان التحديث يقرأ الكاش القديم قبل إبطاله فيُخزَّن مجموع متأخّر).
             Cache::forget('user_total_points_' . $user->id);
+            $this->updateUserTotalPoints($user);
 
             return $transaction;
         });

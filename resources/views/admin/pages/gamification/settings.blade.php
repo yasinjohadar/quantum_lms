@@ -45,8 +45,8 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">نقاط الحضور</label>
-                            <input type="number" name="points[attendance]" class="form-control"
-                                   value="{{ $settings->get('gamification_points_attendance')?->value ?? 10 }}" min="0">
+                            <input type="number" name="points[lesson_attended]" class="form-control"
+                                   value="{{ $settings->get('gamification_points_lesson_attended')?->value ?? 10 }}" min="0">
                             <small class="text-muted">النقاط الممنوحة عند حضور درس</small>
                         </div>
                         <div class="col-md-6 mb-3">

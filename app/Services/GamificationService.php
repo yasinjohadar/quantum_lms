@@ -26,17 +26,21 @@ class GamificationService
     /**
      * معالجة حدث
      */
-    public function processEvent(User $user, string $eventType, array $metadata = []): void
+    public function processEvent(User $user, string $eventType, array $metadata = [], $source = null): void
     {
         // منح النقاط
         $points = $this->pointService->calculatePoints($eventType, $metadata);
         if ($points > 0) {
-            $transaction = $this->pointService->awardPoints($user, $eventType, $points, null, $metadata);
+            $transaction = $this->pointService->awardPoints($user, $eventType, $points, $source, $metadata);
 
-            SafeEvent::dispatch(new PointsAwarded($user, $points, $eventType, [
-                'total_points' => $this->pointService->getUserTotalPoints($user),
-                'transaction_id' => $transaction->id,
-            ]));
+            // إن كانت المعاملة موجودة مسبقاً (منح متكرّر لنفس المصدر) فلا نعيد إطلاق
+            // حدث "منح نقاط" — نتفادى إشعاراً مكرّراً ونقاطاً وهمية.
+            if ($transaction->wasRecentlyCreated) {
+                SafeEvent::dispatch(new PointsAwarded($user, $points, $eventType, [
+                    'total_points' => $this->pointService->getUserTotalPoints($user),
+                    'transaction_id' => $transaction->id,
+                ]));
+            }
         }
 
         // فحص المهام
@@ -67,7 +71,7 @@ class GamificationService
             'completion_id' => $completion->id,
         ]));
 
-        $this->processEvent($user, 'lesson_attended', ['lesson_id' => $completion->lesson_id]);
+        $this->processEvent($user, 'lesson_attended', ['lesson_id' => $completion->lesson_id], $completion);
     }
 
     /**
@@ -85,7 +89,7 @@ class GamificationService
             'completion_id' => $completion->id,
         ]));
 
-        $this->processEvent($user, 'lesson_completed', ['lesson_id' => $completion->lesson_id]);
+        $this->processEvent($user, 'lesson_completed', ['lesson_id' => $completion->lesson_id], $completion);
     }
 
     /**
@@ -118,7 +122,7 @@ class GamificationService
             'attempt_id' => $attempt->id,
             'score' => $attempt->score,
             'percentage' => $attempt->percentage,
-        ]);
+        ], $attempt);
     }
 
     /**
@@ -150,6 +154,6 @@ class GamificationService
             'attempt_id' => $attempt->id,
             'score' => $attempt->score,
             'is_correct' => $attempt->is_correct,
-        ]);
+        ], $attempt);
     }
 }

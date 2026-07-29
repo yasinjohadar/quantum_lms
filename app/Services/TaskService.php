@@ -179,23 +179,34 @@ class TaskService
     }
 
     /**
-     * إعادة تعيين المهام اليومية
+     * إعادة تعيين المهام اليومية — تُعيد "تسليح" كل مهام المستخدمين اليومية إلى
+     * الحالة الابتدائية (pending/تقدّم 0) حتى يُمكن إنجازها من جديد اليوم التالي.
+     * ملاحظة: التصميم الحالي يحتفظ بصفٍّ واحد لكل (مستخدم، مهمة) ولا يخزّن تاريخاً،
+     * لذا الإعادة هنا تُصفّر الصف نفسه بدل تركه "منتهياً" فيبقى معطّلاً للأبد.
      */
     public function resetDailyTasks(): void
     {
         UserTask::where('taskable_type', DailyTask::class)
-            ->where('status', '!=', 'completed')
-            ->update(['status' => 'expired']);
+            ->update([
+                'status' => 'pending',
+                'progress' => 0,
+                'completed_at' => null,
+                'claimed_at' => null,
+            ]);
     }
 
     /**
-     * إعادة تعيين المهام الأسبوعية
+     * إعادة تعيين المهام الأسبوعية — نفس منطق اليومية لكن على المهام الأسبوعية.
      */
     public function resetWeeklyTasks(): void
     {
         UserTask::where('taskable_type', WeeklyTask::class)
-            ->where('status', '!=', 'completed')
-            ->update(['status' => 'expired']);
+            ->update([
+                'status' => 'pending',
+                'progress' => 0,
+                'completed_at' => null,
+                'claimed_at' => null,
+            ]);
     }
 
     /**

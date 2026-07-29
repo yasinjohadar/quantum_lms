@@ -16,6 +16,7 @@
     $progress = $stats['level_progress'] ?? null;
     $pointTypeLabels = [
         'attendance' => 'حضور',
+        'lesson_attended' => 'حضور',
         'lesson_completion' => 'إكمال درس',
         'lesson_completed' => 'إكمال درس',
         'quiz' => 'اختبار',
@@ -29,6 +30,7 @@
     ];
     $pointTypeIcons = [
         'attendance' => 'bi-calendar-check',
+        'lesson_attended' => 'bi-calendar-check',
         'lesson_completion' => 'bi-book',
         'lesson_completed' => 'bi-book',
         'quiz' => 'bi-clipboard-check',
@@ -41,10 +43,10 @@
         'manual' => 'bi-pencil-square',
     ];
     $breakdown = [
-        ['key' => 'attendance', 'label' => 'حضور', 'icon' => 'bi-calendar-check', 'class' => 'attendance'],
-        ['key' => 'lesson_completion', 'label' => 'إكمال دروس', 'icon' => 'bi-book', 'class' => 'lessons'],
-        ['key' => 'quiz', 'label' => 'اختبارات', 'icon' => 'bi-clipboard-check', 'class' => 'quiz'],
-        ['key' => 'question', 'label' => 'أسئلة', 'icon' => 'bi-question-circle', 'class' => 'question'],
+        ['key' => 'lesson_attended', 'label' => 'حضور', 'icon' => 'bi-calendar-check', 'class' => 'attendance'],
+        ['key' => 'lesson_completed', 'label' => 'إكمال دروس', 'icon' => 'bi-book', 'class' => 'lessons'],
+        ['key' => 'quiz_completed', 'label' => 'اختبارات', 'icon' => 'bi-clipboard-check', 'class' => 'quiz'],
+        ['key' => 'question_answered', 'label' => 'أسئلة', 'icon' => 'bi-question-circle', 'class' => 'question'],
         ['key' => 'achievement', 'label' => 'إنجازات', 'icon' => 'bi-trophy', 'class' => 'achievement'],
     ];
 @endphp
