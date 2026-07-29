@@ -41,6 +41,8 @@
             <p class="student-content-breadcrumb__meta mb-0">ملف اللاعب — نقاطك، مستواك، وإنجازاتك</p>
         </nav>
 
+        @include('partials.gamification-help-box', ['helpKey' => 'student.dashboard'])
+
         <div class="student-gamification-hero">
             <div class="student-gamification-hero__pattern" aria-hidden="true"></div>
             <div class="student-gamification-hero__inner">

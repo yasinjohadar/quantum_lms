@@ -22,6 +22,8 @@
         </div>
         <!-- End Page Header -->
 
+        @include('partials.gamification-help-box', ['helpKey' => 'student.challenges'])
+
         <div class="row">
             <div class="col-12">
                 <div class="card custom-card">

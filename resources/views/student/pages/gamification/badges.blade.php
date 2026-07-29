@@ -55,6 +55,8 @@
             </div>
         </nav>
 
+        @include('partials.gamification-help-box', ['helpKey' => 'student.badges'])
+
         <div class="student-badges-stats">
             <div class="student-badges-stat student-badges-stat--earned">
                 <div class="student-badges-stat__icon"><i class="bi bi-patch-check-fill"></i></div>

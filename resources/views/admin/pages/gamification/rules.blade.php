@@ -24,6 +24,8 @@
             'gamiHeroActions' => '<a href="' . route('admin.gamification.settings') . '" class="btn btn-sm btn-primary"><i class="bi bi-gear me-1"></i> تعديل القيم في الإعدادات</a>',
         ])
 
+        @include('partials.gamification-help-box', ['helpKey' => 'admin.rules', 'showQueueStatus' => true])
+
         <div class="gami-card mb-4">
             <div class="gami-card__header">
                 <div class="d-flex align-items-center gap-2">

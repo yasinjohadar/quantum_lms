@@ -22,6 +22,8 @@
         </div>
         <!-- End Page Header -->
 
+        @include('partials.gamification-help-box', ['helpKey' => 'student.tasks'])
+
         <!-- المهام اليومية -->
         <div class="row mb-4">
             <div class="col-12">

@@ -25,6 +25,8 @@
             'gamiHeroActions' => '<a href="' . route('admin.challenges.create') . '" class="btn btn-sm btn-primary"><i class="bi bi-plus-circle me-1"></i> إضافة تحدٍ جديد</a>',
         ])
 
+        @include('partials.gamification-help-box', ['helpKey' => 'admin.challenges', 'showQueueStatus' => true])
+
         @if (session('success'))
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 {{ session('success') }}

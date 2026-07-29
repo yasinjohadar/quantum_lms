@@ -24,6 +24,8 @@
             'gamiHeroActions' => '<form action="' . route('admin.gamification.settings.reset') . '" method="POST" class="d-inline" onsubmit="return confirm(\'هل أنت متأكد من إعادة تعيين جميع الإعدادات؟\')">' . csrf_field() . '<button type="submit" class="btn btn-warning btn-sm"><i class="bi bi-arrow-counterclockwise me-1"></i> إعادة تعيين</button></form>',
         ])
 
+        @include('partials.gamification-help-box', ['helpKey' => 'admin.settings', 'showQueueStatus' => true])
+
         @if (session('success'))
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 {{ session('success') }}

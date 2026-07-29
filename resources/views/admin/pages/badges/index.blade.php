@@ -25,6 +25,8 @@
             'gamiHeroActions' => '<a href="' . route('admin.badges.create') . '" class="btn btn-sm btn-primary"><i class="bi bi-plus-circle me-1"></i> إضافة شارة جديدة</a>',
         ])
 
+        @include('partials.gamification-help-box', ['helpKey' => 'admin.badges', 'showQueueStatus' => true])
+
         <div class="gami-card gami-card--flush">
             <div class="gami-card__header">
                 <div class="d-flex align-items-center gap-2">

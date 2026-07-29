@@ -25,6 +25,8 @@
             'gamiHeroActions' => view('admin.pages.gamification.partials.dashboard-actions')->render(),
         ])
 
+        @include('partials.gamification-help-box', ['helpKey' => 'admin.dashboard', 'showQueueStatus' => true])
+
         <div class="gami-stat-grid">
             <div class="gami-stat-card gami-stat-card--primary">
                 <span class="gami-stat-card__icon"><i class="bi bi-coin"></i></span>

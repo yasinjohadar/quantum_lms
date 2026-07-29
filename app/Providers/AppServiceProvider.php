@@ -7,6 +7,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
+use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Queue\Events\Looping;
+use App\Services\QueueHealthService;
 use App\Events\LessonAttended;
 use App\Events\LessonCompleted;
 use App\Events\QuizStarted;
@@ -173,6 +176,14 @@ class AppServiceProvider extends ServiceProvider
 
         // WhatsApp Event Listeners
         Event::listen(\App\Events\WhatsAppMessageReceived::class, \App\Listeners\AutoReplyWhatsAppListener::class);
+
+        // نبض عامل الطابور — يُحدَّث أثناء الحلقة وعند بدء تنفيذ مهمة
+        Event::listen(Looping::class, function () {
+            app(QueueHealthService::class)->touchHeartbeat();
+        });
+        Event::listen(JobProcessing::class, function () {
+            app(QueueHealthService::class)->touchHeartbeat();
+        });
 
         Paginator::useBootstrap();
 

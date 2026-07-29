@@ -50,6 +50,8 @@
             </div>
         </nav>
 
+        @include('partials.gamification-help-box', ['helpKey' => 'student.rewards'])
+
         <div class="student-rewards-points">
             <div>
                 <div class="student-rewards-points__label">نقاطك الحالية</div>

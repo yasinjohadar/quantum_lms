@@ -89,6 +89,8 @@
             </div>
         </nav>
 
+        @include('partials.gamification-help-box', ['helpKey' => 'student.stats'])
+
         <div class="student-stats-total">
             <div>
                 <div class="student-stats-total__label">إجمالي النقاط</div>
