@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'ile_tts' => [
+        'edge_tts_bin' => env('ILE_EDGE_TTS'),
+        'ar_voice' => env('ILE_TTS_AR_VOICE', 'ar-EG-SalmaNeural'),
+        'en_voice' => env('ILE_TTS_EN_VOICE', 'en-US-JennyNeural'),
+    ],
+
 ];

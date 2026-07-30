@@ -761,6 +761,47 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             Route::get('/rules', [\App\Http\Controllers\Admin\GamificationController::class, 'rules'])->name('rules');
         });
 
+        // ===============================================
+        // Interactive Learning Engine (مستقل عن الاختبارات التقليدية)
+        // ===============================================
+        Route::post('learning-experiences/{learning_experience}/transition', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'transition'])
+            ->name('learning-experiences.transition');
+        Route::post('learning-experiences/{learning_experience}/questions', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'addQuestion'])
+            ->name('learning-experiences.questions.add');
+        Route::post('learning-experiences/{learning_experience}/ai/patch', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'aiPatch'])
+            ->name('learning-experiences.ai.patch');
+        Route::post('learning-experiences/{learning_experience}/ai/apply', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'aiApply'])
+            ->name('learning-experiences.ai.apply');
+        Route::post('learning-experiences/{learning_experience}/ai/generate', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'aiGenerate'])
+            ->name('learning-experiences.ai.generate');
+        Route::post('learning-experiences/{learning_experience}/ai/generate-apply', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'aiGenerateApply'])
+            ->name('learning-experiences.ai.generate-apply');
+        Route::post('learning-experiences/{learning_experience}/import/parse', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'importParse'])
+            ->name('learning-experiences.import.parse');
+        Route::post('learning-experiences/{learning_experience}/import/apply', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'importApply'])
+            ->name('learning-experiences.import.apply');
+        Route::get('learning-experiences/import/template', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'importTemplate'])
+            ->name('learning-experiences.import.template');
+        Route::resource('learning-experiences', \App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class)
+            ->except(['show']);
+
+        // ===============================================
+        // AI HTML Quizzes (صفحات اختبار مستقلة مولَّدة بالذكاء الاصطناعي)
+        // ===============================================
+        Route::post('ai-html-quizzes/{aiHtmlQuiz}/transition', [\App\AiHtmlQuiz\Http\Controllers\Admin\AiHtmlQuizController::class, 'transition'])
+            ->name('ai-html-quizzes.transition');
+        Route::get('ai-html-quizzes/{aiHtmlQuiz}/preview', [\App\AiHtmlQuiz\Http\Controllers\Admin\AiHtmlQuizController::class, 'previewBundle'])
+            ->name('ai-html-quizzes.preview');
+        Route::post('ai-html-quizzes/{aiHtmlQuiz}/ai/generate', [\App\AiHtmlQuiz\Http\Controllers\Admin\AiHtmlQuizController::class, 'aiGenerate'])
+            ->name('ai-html-quizzes.ai.generate');
+        Route::post('ai-html-quizzes/{aiHtmlQuiz}/ai/refine', [\App\AiHtmlQuiz\Http\Controllers\Admin\AiHtmlQuizController::class, 'aiRefine'])
+            ->name('ai-html-quizzes.ai.refine');
+        Route::post('ai-html-quizzes/{aiHtmlQuiz}/ai/apply', [\App\AiHtmlQuiz\Http\Controllers\Admin\AiHtmlQuizController::class, 'aiApply'])
+            ->name('ai-html-quizzes.ai.apply');
+        Route::resource('ai-html-quizzes', \App\AiHtmlQuiz\Http\Controllers\Admin\AiHtmlQuizController::class)
+            ->except(['show'])
+            ->parameters(['ai-html-quizzes' => 'aiHtmlQuiz']);
+
         Route::resource('badges', \App\Http\Controllers\Admin\BadgeController::class);
         Route::resource('achievements', \App\Http\Controllers\Admin\AchievementController::class);
         Route::resource('levels', \App\Http\Controllers\Admin\LevelController::class);

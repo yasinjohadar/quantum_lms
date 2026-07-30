@@ -608,6 +608,26 @@
                         </li>
                         @endcanany
 
+                        <li class="slide slide-icon slide-icon--teal {{ request()->is('admin/learning-experiences*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.learning-experiences.index') }}" class="side-menu__item {{ request()->is('admin/learning-experiences*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM9 8H7v2h2V8zm0 4H7v2h2v-2zm0 4H7v2h2v-2zm10-8h-8v2h8V8zm0 4h-8v2h8v-2zm0 4h-8v2h8v-2z"/>
+                                </svg>
+                                <span class="side-menu__label">التجارب التفاعلية</span>
+                            </a>
+                        </li>
+
+                        <li class="slide slide-icon slide-icon--teal {{ request()->is('admin/ai-html-quizzes*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.ai-html-quizzes.index') }}" class="side-menu__item {{ request()->is('admin/ai-html-quizzes*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/>
+                                </svg>
+                                <span class="side-menu__label">اختبارات HTML بالـ AI</span>
+                            </a>
+                        </li>
+
                         @canany(['gamification-list', 'badge-list', 'achievement-list', 'level-list', 'challenge-list', 'reward-list', 'certificate-list', 'leaderboard-list', 'daily-task-list', 'weekly-task-list', 'gamification-update'])
                         <li class="slide slide-icon slide-icon--orange has-sub {{ request()->is('admin/gamification*') || request()->is('admin/badges*') || request()->is('admin/achievements*') || request()->is('admin/levels*') || request()->is('admin/challenges*') || request()->is('admin/rewards*') || request()->is('admin/certificates*') || request()->is('admin/leaderboards*') || request()->is('admin/daily-tasks*') || request()->is('admin/weekly-tasks*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">

@@ -19,7 +19,10 @@
         "vite": "^6.2.4"
     },
     "dependencies": {
+        "canvas-confetti": "^1.9.3",
+        "katex": "^0.18.1",
         "laravel-echo": "^2.3.4",
+        "lottie-web": "^5.13.0",
         "pusher-js": "^8.5.0"
     }
 }
