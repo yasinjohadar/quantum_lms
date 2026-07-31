@@ -5,10 +5,9 @@
 <script src="{{ asset('assets/libs/choices.js/public/assets/scripts/choices.min.js') }}"></script>
 
 <!-- Main Theme Js -->
-<script src="{{ asset('assets/js/main.js') }}"></script>
+<script src="{{ asset('assets/js/main.js') }}{{ file_exists(public_path('assets/js/main.js')) ? '?v=' . filemtime(public_path('assets/js/main.js')) : '' }}"></script>
 
-<!-- Bootstrap Css -->
-<link id="style" href="{{ asset('assets/libs/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+<!-- Bootstrap Css (RTL افتراضي) -->
 <link id="style" href="{{ asset('assets/libs/bootstrap/css/bootstrap.rtl.min.css') }}" rel="stylesheet">
 
 <!-- Style Css -->

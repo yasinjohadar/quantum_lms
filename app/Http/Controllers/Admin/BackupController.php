@@ -20,7 +20,7 @@ class BackupController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Backup::with(['creator', 'schedule']);
+        $query = Backup::with(['creator', 'schedule', 'storageConfig']);
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -47,7 +47,11 @@ class BackupController extends Controller
     {
         $backupTypes = Backup::BACKUP_TYPES;
         $compressionTypes = Backup::COMPRESSION_TYPES;
-        $storageDrivers = \App\Models\BackupStorageConfig::where('is_active', true)->get();
+        $supportedDrivers = ['local', 's3', 'ftp', 'sftp', 'azure', 'digitalocean', 'wasabi', 'backblaze', 'cloudflare_r2'];
+        $storageDrivers = \App\Models\AppStorageConfig::where('is_active', true)
+            ->whereIn('driver', $supportedDrivers)
+            ->orderBy('priority', 'desc')
+            ->get();
 
         return view('admin.pages.backups.create', compact('backupTypes', 'compressionTypes', 'storageDrivers'));
     }
@@ -60,7 +64,7 @@ class BackupController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'backup_type' => 'required|in:' . implode(',', array_keys(Backup::BACKUP_TYPES)),
-            'storage_driver' => 'required|string',
+            'storage_config_id' => 'required|integer|exists:app_storage_configs,id',
             'compression_type' => 'required|in:' . implode(',', array_keys(Backup::COMPRESSION_TYPES)),
             'retention_days' => 'required|integer|min:1|max:365',
         ], [
@@ -69,8 +73,8 @@ class BackupController extends Controller
             'name.max' => 'اسم النسخة لا يمكن أن يتجاوز 255 حرفاً',
             'backup_type.required' => 'نوع النسخ مطلوب',
             'backup_type.in' => 'نوع النسخ المحدد غير صالح',
-            'storage_driver.required' => 'مكان التخزين مطلوب',
-            'storage_driver.string' => 'مكان التخزين يجب أن يكون نصاً',
+            'storage_config_id.required' => 'مكان التخزين مطلوب',
+            'storage_config_id.exists' => 'مكان التخزين المحدد غير موجود',
             'compression_type.required' => 'نوع الضغط مطلوب',
             'compression_type.in' => 'نوع الضغط المحدد غير صالح',
             'retention_days.required' => 'أيام الاحتفاظ مطلوبة',
@@ -79,30 +83,30 @@ class BackupController extends Controller
             'retention_days.max' => 'أيام الاحتفاظ لا يمكن أن تتجاوز 365',
         ]);
 
-        // التحقق من وجود مكان التخزين
-        $storageConfig = \App\Models\BackupStorageConfig::where('driver', $validated['storage_driver'])
+        $storageConfig = \App\Models\AppStorageConfig::where('id', $validated['storage_config_id'])
             ->where('is_active', true)
             ->first();
 
         if (!$storageConfig) {
             return redirect()->back()
-                ->with('error', 'مكان التخزين المحدد غير موجود أو غير نشط')
+                ->with('error', 'مكان التخزين المحدد غير موجود أو غير نشط. أضفه من إعدادات التخزين العامة.')
                 ->withInput();
         }
 
         try {
-            $backup = $this->backupService->createBackup([
+            $backup = $this->backupService->queueBackup([
                 'name' => $validated['name'],
                 'type' => 'manual',
                 'backup_type' => $validated['backup_type'],
-                'storage_driver' => $validated['storage_driver'],
+                'storage_config_id' => $storageConfig->id,
+                'storage_driver' => $storageConfig->driver,
                 'compression_type' => $validated['compression_type'],
                 'retention_days' => $validated['retention_days'],
                 'created_by' => Auth::id(),
             ]);
 
             return redirect()->route('admin.backups.show', $backup)
-                           ->with('success', 'تم إنشاء النسخة الاحتياطية بنجاح.');
+                ->with('success', 'تم إرسال النسخة إلى الطابور. ستكتمل المعالجة في الخلفية.');
         } catch (\Illuminate\Validation\ValidationException $e) {
             throw $e;
         } catch (\Exception $e) {
@@ -145,13 +149,27 @@ class BackupController extends Controller
     {
         $validated = $request->validate([
             'confirm' => 'required|accepted',
+            'confirm_phrase' => ['required', 'string', function (string $attribute, mixed $value, \Closure $fail) {
+                if (trim((string) $value) !== 'RESTORE') {
+                    $fail('للتأكيد اكتب RESTORE بالأحرف الإنجليزية الكبيرة.');
+                }
+            }],
+        ], [
+            'confirm.required' => 'يجب تأكيد الاستعادة.',
+            'confirm.accepted' => 'يجب تأكيد الاستعادة.',
+            'confirm_phrase.required' => 'عبارة التأكيد مطلوبة.',
         ]);
 
-        try {
-            $this->backupService->restoreBackup($backup, $request->all());
+        if ($backup->status !== 'completed') {
+            return redirect()->back()
+                ->with('error', 'يمكن استعادة النسخ المكتملة فقط.');
+        }
 
-            return redirect()->route('admin.backups.index')
-                           ->with('success', 'تم استعادة النسخة الاحتياطية بنجاح.');
+        try {
+            $this->backupService->restoreBackup($backup, $validated);
+
+            return redirect()->route('admin.backups.show', $backup)
+                ->with('success', 'تم استعادة النسخة الاحتياطية بنجاح. راجع الإعدادات إن لزم إعادة تحميل الإعدادات المخزّنة مؤقتاً.');
         } catch (\Exception $e) {
             Log::error('Error restoring backup: ' . $e->getMessage());
             return redirect()->back()

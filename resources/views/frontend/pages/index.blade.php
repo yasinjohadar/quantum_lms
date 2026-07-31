@@ -141,8 +141,18 @@
                             <div class="class-card">
                                 <a href="{{ !empty($class['slug']) ? route('frontend.class.show', $class['slug']) : '#' }}" class="class-card-link">
                                     <div class="class-card-image">
-                                        @if(!empty($class['image']))
-                                            <img src="{{ media_public_url($class['image']) }}" alt="{{ $class['name'] }}" class="img-fluid">
+                                        @php
+                                            $classImageUrl = !empty($class['image']) ? media_public_url($class['image']) : '';
+                                        @endphp
+                                        @if($classImageUrl !== '')
+                                            <img src="{{ $classImageUrl }}"
+                                                 alt="{{ $class['name'] }}"
+                                                 class="img-fluid"
+                                                 loading="lazy"
+                                                 onerror="this.classList.add('d-none'); const p=this.nextElementSibling; if(p){ p.classList.remove('d-none'); }">
+                                            <div class="class-card-placeholder d-none">
+                                                <i class="fa-solid fa-graduation-cap"></i>
+                                            </div>
                                         @else
                                             <div class="class-card-placeholder">
                                                 <i class="fa-solid fa-graduation-cap"></i>

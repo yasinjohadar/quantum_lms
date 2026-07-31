@@ -16,6 +16,7 @@ class Backup extends Model
         'type',
         'backup_type',
         'storage_driver',
+        'storage_config_id',
         'storage_path',
         'file_path',
         'file_size',
@@ -29,7 +30,7 @@ class Backup extends Model
         'retention_days',
         'expires_at',
         'created_by',
-        'schedule_id',
+        'backup_schedule_id',
     ];
 
     protected $casts = [
@@ -81,6 +82,14 @@ class Backup extends Model
     ];
 
     /**
+     * مكان التخزين العام المستخدم لهذه النسخة
+     */
+    public function storageConfig()
+    {
+        return $this->belongsTo(AppStorageConfig::class, 'storage_config_id');
+    }
+
+    /**
      * العلاقة مع منشئ النسخة
      */
     public function creator()
@@ -93,7 +102,7 @@ class Backup extends Model
      */
     public function schedule()
     {
-        return $this->belongsTo(BackupSchedule::class, 'schedule_id');
+        return $this->belongsTo(BackupSchedule::class, 'backup_schedule_id');
     }
 
     /**

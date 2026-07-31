@@ -20,11 +20,22 @@ class BackupScheduleController extends Controller
      */
     public function index()
     {
-        $schedules = BackupSchedule::with(['creator', 'backups'])
+        $schedules = BackupSchedule::with(['creator'])
+                                  ->withCount('backups')
                                   ->latest()
                                   ->paginate(20);
 
-        return view('admin.pages.backup-schedules.index', compact('schedules'));
+        $stats = [
+            'total' => BackupSchedule::count(),
+            'active' => BackupSchedule::where('is_active', true)->count(),
+            'inactive' => BackupSchedule::where('is_active', false)->count(),
+            'upcoming' => BackupSchedule::where('is_active', true)
+                ->whereNotNull('next_run_at')
+                ->where('next_run_at', '>', now())
+                ->count(),
+        ];
+
+        return view('admin.pages.backup-schedules.index', compact('schedules', 'stats'));
     }
 
     /**
@@ -34,7 +45,11 @@ class BackupScheduleController extends Controller
     {
         $backupTypes = BackupSchedule::BACKUP_TYPES;
         $frequencies = BackupSchedule::FREQUENCIES;
-        $storageDrivers = \App\Models\BackupStorageConfig::where('is_active', true)->pluck('driver', 'id');
+        $supportedDrivers = ['local', 's3', 'ftp', 'sftp', 'azure', 'digitalocean', 'wasabi', 'backblaze', 'cloudflare_r2'];
+        $storageDrivers = \App\Models\AppStorageConfig::where('is_active', true)
+            ->whereIn('driver', $supportedDrivers)
+            ->orderBy('priority', 'desc')
+            ->get();
         $compressionTypes = \App\Models\Backup::COMPRESSION_TYPES;
 
         return view('admin.pages.backup-schedules.create', compact(
@@ -55,11 +70,11 @@ class BackupScheduleController extends Controller
             'backup_type' => 'required|in:' . implode(',', array_keys(BackupSchedule::BACKUP_TYPES)),
             'frequency' => 'required|in:' . implode(',', array_keys(BackupSchedule::FREQUENCIES)),
             'time' => 'required|date_format:H:i',
-            'days_of_week' => 'nullable|array',
+            'days_of_week' => 'required_if:frequency,weekly|nullable|array|min:1',
             'days_of_week.*' => 'integer|min:0|max:6',
-            'day_of_month' => 'nullable|integer|min:1|max:31',
+            'day_of_month' => 'required_if:frequency,monthly|nullable|integer|min:1|max:31',
             'storage_drivers' => 'required|array|min:1',
-            'storage_drivers.*' => 'string',
+            'storage_drivers.*' => 'integer|exists:app_storage_configs,id',
             'compression_types' => 'required|array|min:1',
             'compression_types.*' => 'in:' . implode(',', array_keys(\App\Models\Backup::COMPRESSION_TYPES)),
             'retention_days' => 'required|integer|min:1|max:365',
@@ -87,8 +102,11 @@ class BackupScheduleController extends Controller
     {
         $backupTypes = BackupSchedule::BACKUP_TYPES;
         $frequencies = BackupSchedule::FREQUENCIES;
-        $storageConfigs = \App\Models\BackupStorageConfig::where('is_active', true)->get();
-        $storageDrivers = $storageConfigs->pluck('driver')->unique()->toArray();
+        $supportedDrivers = ['local', 's3', 'ftp', 'sftp', 'azure', 'digitalocean', 'wasabi', 'backblaze', 'cloudflare_r2'];
+        $storageDrivers = \App\Models\AppStorageConfig::where('is_active', true)
+            ->whereIn('driver', $supportedDrivers)
+            ->orderBy('priority', 'desc')
+            ->get();
         $compressionTypes = \App\Models\Backup::COMPRESSION_TYPES;
 
         return view('admin.pages.backup-schedules.edit', compact(
@@ -110,11 +128,11 @@ class BackupScheduleController extends Controller
             'backup_type' => 'required|in:' . implode(',', array_keys(BackupSchedule::BACKUP_TYPES)),
             'frequency' => 'required|in:' . implode(',', array_keys(BackupSchedule::FREQUENCIES)),
             'time' => 'required|date_format:H:i',
-            'days_of_week' => 'nullable|array',
+            'days_of_week' => 'required_if:frequency,weekly|nullable|array|min:1',
             'days_of_week.*' => 'integer|min:0|max:6',
-            'day_of_month' => 'nullable|integer|min:1|max:31',
+            'day_of_month' => 'required_if:frequency,monthly|nullable|integer|min:1|max:31',
             'storage_drivers' => 'required|array|min:1',
-            'storage_drivers.*' => 'string',
+            'storage_drivers.*' => 'integer|exists:app_storage_configs,id',
             'compression_types' => 'required|array|min:1',
             'compression_types.*' => 'in:' . implode(',', array_keys(\App\Models\Backup::COMPRESSION_TYPES)),
             'retention_days' => 'required|integer|min:1|max:365',
@@ -158,8 +176,13 @@ class BackupScheduleController extends Controller
         try {
             $backup = $this->scheduleService->executeSchedule($schedule);
 
+            if (! $backup) {
+                return redirect()->route('admin.backup-schedules.index')
+                    ->with('error', 'تم تحديث الجدولة لكن لم تُنشأ أي نسخة. تحقق من أماكن التخزين.');
+            }
+
             return redirect()->route('admin.backups.show', $backup)
-                           ->with('success', 'تم تشغيل الجدولة بنجاح.');
+                ->with('success', 'تم إرسال نسخة الجدولة إلى الطابور للمعالجة في الخلفية.');
         } catch (\Exception $e) {
             Log::error('Error executing backup schedule: ' . $e->getMessage());
             return redirect()->back()

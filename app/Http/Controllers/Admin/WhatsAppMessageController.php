@@ -223,12 +223,23 @@ class WhatsAppMessageController extends Controller
                     $validated['language'] ?? 'ar',
                     []
                 );
-            } else {
-                $message = $this->sendService->sendText($phone, $messageText);
+
+                return redirect()->route('admin.whatsapp-messages.show', $message)
+                    ->with('success', 'تم جدولة إرسال القالب. تأكد أن عامل الطابور (queue:work) يعمل.');
+            }
+
+            $message = $this->sendService->sendTextNow($phone, $messageText);
+            $message->refresh();
+
+            if ($message->status === \App\Models\WhatsAppMessage::STATUS_FAILED) {
+                $errorMessage = data_get($message->error, 'message', 'فشل الإرسال عبر مزود WhatsApp');
+
+                return redirect()->route('admin.whatsapp-messages.show', $message)
+                    ->with('error', 'فشل إرسال الرسالة: '.$errorMessage);
             }
 
             return redirect()->route('admin.whatsapp-messages.show', $message)
-                           ->with('success', 'تم إرسال الرسالة بنجاح.');
+                ->with('success', 'تم إرسال الرسالة بنجاح عبر مزود WhatsApp.');
         } catch (\Exception $e) {
             Log::error('Error sending WhatsApp message: ' . $e->getMessage());
             return redirect()->back()

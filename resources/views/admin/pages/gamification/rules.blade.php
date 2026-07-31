@@ -83,21 +83,6 @@
                                 <td>إجابة سؤال (مع نقاط إضافية للإجابة الصحيحة في المنطق البرمجي)</td>
                                 <td>5 (+2 عادة للصحيح)</td>
                             </tr>
-                            <tr>
-                                <td><code>library_item_viewed</code></td>
-                                <td>مشاهدة عنصر في المكتبة الرقمية</td>
-                                <td>2</td>
-                            </tr>
-                            <tr>
-                                <td><code>library_item_downloaded</code></td>
-                                <td>تحميل من المكتبة</td>
-                                <td>5</td>
-                            </tr>
-                            <tr>
-                                <td><code>library_item_rated</code></td>
-                                <td>تقييم عنصر في المكتبة</td>
-                                <td>3</td>
-                            </tr>
                         </tbody>
                     </table>
                 </div>

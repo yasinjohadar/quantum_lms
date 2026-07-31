@@ -275,50 +275,9 @@ class User extends Authenticatable
         return $this->hasMany(UserTask::class);
     }
 
-    /**
-     * العلاقات مع المكتبة الرقمية
-     */
-    public function libraryItems()
-    {
-        return $this->hasMany(LibraryItem::class, 'uploaded_by');
-    }
-
-    public function libraryDownloads()
-    {
-        return $this->hasMany(LibraryDownload::class, 'user_id');
-    }
-
-    public function libraryViews()
-    {
-        return $this->hasMany(LibraryView::class, 'user_id');
-    }
-
-    public function libraryRatings()
-    {
-        return $this->hasMany(LibraryRating::class, 'user_id');
-    }
-
-    public function libraryFavorites()
-    {
-        return $this->hasMany(LibraryFavorite::class, 'user_id');
-    }
-
-    /**
-     * العلاقات مع التقويم
-     */
-    public function calendarEvents()
-    {
-        return $this->hasMany(CalendarEvent::class, 'created_by');
-    }
-
     public function createdQuizzes()
     {
         return $this->hasMany(Quiz::class, 'created_by');
-    }
-
-    public function eventReminders()
-    {
-        return $this->hasMany(EventReminder::class, 'user_id');
     }
 
     /**
@@ -366,15 +325,6 @@ class User extends Authenticatable
     public function archivedRecord()
     {
         return $this->hasOne(ArchivedUser::class, 'original_user_id');
-    }
-
-    /**
-     * العلاقة مع المفضلة في المكتبة
-     */
-    public function favorites()
-    {
-        return $this->belongsToMany(LibraryItem::class, 'library_favorites', 'user_id', 'library_item_id')
-            ->withTimestamps();
     }
 
     /**

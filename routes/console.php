@@ -9,8 +9,12 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // جدولة النسخ الاحتياطية
-Schedule::command('backup:run-scheduled')->everyMinute();
-Schedule::command('backup:cleanup-expired')->daily();
+Schedule::command('backup:run-scheduled')
+    ->everyMinute()
+    ->withoutOverlapping(120);
+Schedule::command('backup:cleanup-expired')
+    ->daily()
+    ->withoutOverlapping();
 
 // حذف حسابات التسجيل غير المُفعّلة بعد انتهاء صلاحية كل أكواد التحقق
 Schedule::command('users:prune-unverified-phone-registrations')->everyTenMinutes();

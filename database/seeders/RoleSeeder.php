@@ -79,11 +79,6 @@ class RoleSeeder extends Seeder
             // صلاحيات إدارة المستخدمين (عرض فقط)
             'user-list', 'user-show', 'user-login-logs',
             
-            // صلاحيات إدارة المكتبة
-            'library-list', 'library-create', 'library-edit', 'library-delete',
-            'library-show', 'library-preview', 'library-download', 'library-stats',
-            'library-get-subjects-by-class',
-            
             // صلاحيات التقارير والإحصائيات
             'report-view', 'report-export',
             
@@ -227,10 +222,6 @@ class RoleSeeder extends Seeder
             'subject-enrolled-students',
             'enrollment-list',
             'enrollment-show',
-            'library-list',
-            'library-show',
-            'library-preview',
-            'library-download',
             'report-view',
             'dashboard-view',
         ]);

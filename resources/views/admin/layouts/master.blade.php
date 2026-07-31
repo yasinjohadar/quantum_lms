@@ -1,8 +1,13 @@
 <!DOCTYPE html>
-<html lang="en" dir="rtl" data-nav-layout="vertical" data-theme-mode="light" data-header-styles="light"
+<html lang="ar" dir="rtl" data-nav-layout="vertical" data-theme-mode="light" data-header-styles="light"
     data-menu-styles="light" data-toggled="close">
 
 <head>
+    <script>
+        // فرض RTL دائماً وإزالة أي تفضيل LTR قديم
+        document.documentElement.setAttribute('dir', 'rtl');
+        try { localStorage.setItem('valexrtl', true); localStorage.removeItem('valexltr'); } catch (e) {}
+    </script>
 
     <!-- Meta Data -->
     <meta charset="UTF-8">
@@ -48,10 +53,6 @@
         @include('partials.server-realtime-hints')
 
         @include('admin.layouts.main-header')
-
-
-
-        @include('admin.layouts.offcanvas-sidebar')
 
 
 

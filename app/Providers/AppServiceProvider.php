@@ -23,10 +23,7 @@ use App\Events\LevelUp;
 use App\Events\ChallengeCompleted;
 use App\Events\RewardClaimed;
 use App\Events\CustomNotificationSent;
-use App\Events\LibraryItemCreated;
-use App\Events\EventReminderSent;
 use App\Listeners\SendRealTimeNotification;
-use App\Listeners\SendLibraryItemNotification;
 use App\Models\Lesson;
 use App\Models\Quiz;
 use App\Models\SchoolClass;
@@ -171,8 +168,6 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(ChallengeCompleted::class, SendRealTimeNotification::class);
         Event::listen(RewardClaimed::class, SendRealTimeNotification::class);
         Event::listen(CustomNotificationSent::class, SendRealTimeNotification::class);
-        Event::listen(LibraryItemCreated::class, SendLibraryItemNotification::class);
-        Event::listen(EventReminderSent::class, SendRealTimeNotification::class);
 
         // WhatsApp Event Listeners
         Event::listen(\App\Events\WhatsAppMessageReceived::class, \App\Listeners\AutoReplyWhatsAppListener::class);

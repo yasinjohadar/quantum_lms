@@ -4,20 +4,16 @@ namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
 use App\Services\StudentProgressService;
-use App\Services\CalendarService;
 use App\Services\PointService;
 use App\Services\LevelService;
 use App\Services\BadgeService;
 use App\Models\UserBadge;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Carbon\Carbon;
 
 class StudentController extends Controller
 {
     public function __construct(
         private StudentProgressService $progressService,
-        private CalendarService $calendarService,
         private PointService $pointService,
         private LevelService $levelService,
         private BadgeService $badgeService,
@@ -57,15 +53,6 @@ class StudentController extends Controller
             })
             ->take(4);
 
-        // أحداث الأسبوع القادم (اختبارات)
-        $now = Carbon::now();
-        $events = $this->calendarService->getEventsForUser($user, $now, $now->copy()->addWeek());
-        $upcomingEvents = $events
-            ->filter(function ($event) {
-                return ($event['type'] ?? $event['event_type'] ?? null) === 'quiz';
-            })
-            ->take(5);
-
         // إحصائيات Gamification الأساسية
         $totalPoints = $this->pointService->getUserTotalPoints($user);
         $currentLevel = $this->levelService->getUserLevel($user);
@@ -87,7 +74,7 @@ class StudentController extends Controller
             'overallAverage' => round($overallAverage, 1),
             'subjectsCount' => $subjectsProgress->count(),
             'topSubjects' => $topSubjects,
-            'upcomingEvents' => $upcomingEvents,
+            'upcomingEvents' => collect(),
             'totalPoints' => $totalPoints,
             'currentLevel' => $currentLevel,
             'levelProgress' => $levelProgress,

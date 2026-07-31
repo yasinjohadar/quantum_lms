@@ -42,8 +42,6 @@ class GamificationNotification extends Model
         'leaderboard_update' => 'تحديث لوحة المتصدرين',
         'challenge_reminder' => 'تذكير بتحدي',
         'custom_notification' => 'إشعار مخصص',
-        'event_reminder' => 'تذكير بحدث',
-        'library_item' => 'المكتبة الرقمية',
         'lesson_review_submitted' => 'درس قيد المراجعة',
         'lesson_review_approved' => 'قبول مراجعة درس',
         'lesson_review_rejected' => 'رفض مراجعة درس',

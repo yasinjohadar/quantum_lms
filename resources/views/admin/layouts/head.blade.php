@@ -1,6 +1,11 @@
 <!-- Favicon -->
 <link rel="icon" href="{{ asset('assets/images/brand-logos/favicon.ico') }}" type="image/x-icon">
 
+<!-- Alexandria Font -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;600;700;800&display=swap" rel="stylesheet">
+
 <!-- Choices JS -->
 <script src="{{ asset('assets/libs/choices.js/public/assets/scripts/choices.min.js') }}"></script>
 
@@ -13,10 +18,9 @@
 </script>
 
 <!-- Main Theme Js -->
-<script src="{{ asset('assets/js/main.js') }}?v=20260518"></script>
+<script src="{{ asset('assets/js/main.js') }}{{ file_exists(public_path('assets/js/main.js')) ? '?v=' . filemtime(public_path('assets/js/main.js')) : '' }}"></script>
 
-<!-- Bootstrap Css -->
-<link id="style" href="{{ asset('assets/libs/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+<!-- Bootstrap Css (RTL افتراضي) -->
 <link id="style" href="{{ asset('assets/libs/bootstrap/css/bootstrap.rtl.min.css') }}" rel="stylesheet">
 
 <!-- Style Css -->

@@ -157,14 +157,6 @@
                                     accent="purple"
                                     col-class="col-xl-2 col-lg-4 col-md-4 col-sm-6"
                                 />
-                                <x-dashboard-shortcut
-                                    href="{{ route('student.library.index') }}"
-                                    icon="fas fa-book"
-                                    title="المكتبة الرقمية"
-                                    subtitle="كتب وموارد تعليمية"
-                                    accent="teal"
-                                    col-class="col-xl-2 col-lg-4 col-md-4 col-sm-6"
-                                />
                             </div>
                         </div>
                     </div>

@@ -71,6 +71,11 @@
         color: #fff;
         box-shadow: 0 8px 24px rgba(37, 99, 235, 0.28);
     }
+    .dashboard-stat-card--classes {
+        background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 55%, #7c3aed 100%);
+        color: #fff;
+        box-shadow: 0 8px 24px rgba(139, 92, 246, 0.28);
+    }
     .dashboard-stat-card--subjects {
         background: linear-gradient(135deg, #34d399 0%, #10b981 55%, #059669 100%);
         color: #fff;
@@ -87,6 +92,7 @@
         box-shadow: 0 8px 24px rgba(245, 158, 11, 0.28);
     }
     .dashboard-stat-card--students:hover { box-shadow: 0 12px 28px rgba(37, 99, 235, 0.38); }
+    .dashboard-stat-card--classes:hover { box-shadow: 0 12px 28px rgba(139, 92, 246, 0.38); }
     .dashboard-stat-card--subjects:hover { box-shadow: 0 12px 28px rgba(16, 185, 129, 0.38); }
     .dashboard-stat-card--quizzes:hover { box-shadow: 0 12px 28px rgba(14, 165, 233, 0.38); }
     .dashboard-stat-card--enrollments:hover { box-shadow: 0 12px 28px rgba(245, 158, 11, 0.38); }
@@ -110,6 +116,10 @@
         border-color: rgba(74, 124, 255, 0.35);
         background: linear-gradient(145deg, rgba(74, 124, 255, 0.18) 0%, rgba(37, 99, 235, 0.06) 100%);
     }
+    [data-theme-mode="dark"] .dashboard-stat-card--classes {
+        border-color: rgba(167, 139, 250, 0.35);
+        background: linear-gradient(145deg, rgba(167, 139, 250, 0.18) 0%, rgba(139, 92, 246, 0.06) 100%);
+    }
     [data-theme-mode="dark"] .dashboard-stat-card--subjects {
         border-color: rgba(52, 211, 153, 0.35);
         background: linear-gradient(145deg, rgba(52, 211, 153, 0.18) 0%, rgba(16, 185, 129, 0.06) 100%);
@@ -123,6 +133,7 @@
         background: linear-gradient(145deg, rgba(251, 191, 36, 0.18) 0%, rgba(245, 158, 11, 0.06) 100%);
     }
     [data-theme-mode="dark"] .dashboard-stat-card--students .dashboard-stat-card__value { color: #7ba3ff; }
+    [data-theme-mode="dark"] .dashboard-stat-card--classes .dashboard-stat-card__value { color: #c4b5fd; }
     [data-theme-mode="dark"] .dashboard-stat-card--subjects .dashboard-stat-card__value { color: #6ee7b7; }
     [data-theme-mode="dark"] .dashboard-stat-card--quizzes .dashboard-stat-card__value { color: #7dd3fc; }
     [data-theme-mode="dark"] .dashboard-stat-card--enrollments .dashboard-stat-card__value { color: #fcd34d; }
@@ -130,6 +141,7 @@
         background: rgba(255, 255, 255, 0.08);
     }
     [data-theme-mode="dark"] .dashboard-stat-card--students .dashboard-stat-card__icon { color: #7ba3ff; }
+    [data-theme-mode="dark"] .dashboard-stat-card--classes .dashboard-stat-card__icon { color: #c4b5fd; }
     [data-theme-mode="dark"] .dashboard-stat-card--subjects .dashboard-stat-card__icon { color: #6ee7b7; }
     [data-theme-mode="dark"] .dashboard-stat-card--quizzes .dashboard-stat-card__icon { color: #7dd3fc; }
     [data-theme-mode="dark"] .dashboard-stat-card--enrollments .dashboard-stat-card__icon { color: #fcd34d; }

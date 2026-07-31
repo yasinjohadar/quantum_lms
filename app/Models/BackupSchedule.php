@@ -70,115 +70,130 @@ class BackupSchedule extends Model
      */
     public function backups()
     {
-        return $this->hasMany(Backup::class, 'schedule_id');
+        return $this->hasMany(Backup::class, 'backup_schedule_id');
     }
 
     /**
      * التحقق من وجوب التشغيل
      */
-    public function shouldRun(): bool
+    public function shouldRun(?Carbon $at = null): bool
     {
-        if (!$this->is_active) {
+        if (! $this->is_active) {
             return false;
         }
 
-        if (!$this->next_run_at) {
+        if (! $this->next_run_at) {
             return false;
         }
 
-        return now()->gte($this->next_run_at);
+        $at = $at ?? now();
+
+        return $at->greaterThanOrEqualTo($this->next_run_at);
     }
 
     /**
-     * حساب وقت التشغيل التالي
+     * حساب وقت التشغيل التالي بعد لحظة معينة (افتراضياً الآن).
+     * يعيد أول موعد مستقبلي صارم (أكبر من $from).
      */
-    public function calculateNextRun(): Carbon
+    public function calculateNextRun(?Carbon $from = null): Carbon
     {
-        $time = Carbon::parse($this->time);
-        $now = now();
+        $from = ($from ?? now())->copy();
 
-        return match($this->frequency) {
-            'daily' => $now->copy()->setTimeFromTimeString($this->time)->addDay(),
-            'weekly' => $this->calculateNextWeeklyRun(),
-            'monthly' => $this->calculateNextMonthlyRun(),
-            'custom' => $now->copy()->setTimeFromTimeString($this->time)->addDay(),
-            default => $now->copy()->addDay(),
+        return match ($this->frequency) {
+            'daily', 'custom' => $this->calculateNextDailyRun($from),
+            'weekly' => $this->calculateNextWeeklyRun($from),
+            'monthly' => $this->calculateNextMonthlyRun($from),
+            default => $from->copy()->addDay(),
         };
     }
 
     /**
-     * حساب وقت التشغيل الأسبوعي التالي
+     * يومي: إن لم يفت وقت اليوم يُستخدم اليوم، وإلا غداً.
      */
-    private function calculateNextWeeklyRun(): Carbon
+    private function calculateNextDailyRun(Carbon $from): Carbon
     {
-        $time = Carbon::parse($this->time);
-        $now = now();
-        $daysOfWeek = $this->days_of_week ?? [];
+        $candidate = $from->copy()->setTimeFromTimeString($this->normalizedTime());
 
-        if (empty($daysOfWeek)) {
-            return $now->copy()->addWeek();
+        if ($candidate->greaterThan($from)) {
+            return $candidate;
         }
 
-        $currentDay = $now->dayOfWeek;
-        $nextDay = null;
+        return $candidate->addDay();
+    }
 
-        foreach ($daysOfWeek as $day) {
-            if ($day > $currentDay) {
-                $nextDay = $day;
-                break;
+    /**
+     * أسبوعي: يشمل اليوم الحالي إن كان مختاراً والوقت لم يفت بعد.
+     */
+    private function calculateNextWeeklyRun(Carbon $from): Carbon
+    {
+        $daysOfWeek = collect($this->days_of_week ?? [])
+            ->map(static fn ($day) => (int) $day)
+            ->filter(static fn ($day) => $day >= 0 && $day <= 6)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        if ($daysOfWeek === []) {
+            return $this->calculateNextDailyRun($from);
+        }
+
+        for ($offset = 0; $offset < 8; $offset++) {
+            $candidate = $from->copy()
+                ->startOfDay()
+                ->addDays($offset)
+                ->setTimeFromTimeString($this->normalizedTime());
+
+            if (in_array($candidate->dayOfWeek, $daysOfWeek, true) && $candidate->greaterThan($from)) {
+                return $candidate;
             }
         }
 
-        if ($nextDay === null) {
-            $nextDay = $daysOfWeek[0];
-            return $now->copy()->next($this->getDayName($nextDay))->setTimeFromTimeString($this->time);
+        // احتياط نظري
+        return $from->copy()->addWeek()->setTimeFromTimeString($this->normalizedTime());
+    }
+
+    /**
+     * شهري: يراعي أيام الشهر القصيرة (مثل 31 في فبراير).
+     */
+    private function calculateNextMonthlyRun(Carbon $from): Carbon
+    {
+        $desiredDay = max(1, min(31, (int) ($this->day_of_month ?? 1)));
+
+        $candidate = $this->buildMonthlyCandidate($from->copy()->startOfMonth(), $desiredDay);
+
+        if ($candidate->greaterThan($from)) {
+            return $candidate;
         }
 
-        return $now->copy()->next($this->getDayName($nextDay))->setTimeFromTimeString($this->time);
+        return $this->buildMonthlyCandidate(
+            $from->copy()->startOfMonth()->addMonthNoOverflow(),
+            $desiredDay
+        );
+    }
+
+    private function buildMonthlyCandidate(Carbon $monthStart, int $desiredDay): Carbon
+    {
+        $day = min($desiredDay, $monthStart->daysInMonth);
+
+        return $monthStart->copy()->day($day)->setTimeFromTimeString($this->normalizedTime());
     }
 
     /**
-     * حساب وقت التشغيل الشهري التالي
+     * تطبيع الوقت المخزّن (H:i أو H:i:s) إلى H:i:s.
      */
-    private function calculateNextMonthlyRun(): Carbon
+    private function normalizedTime(): string
     {
-        $time = Carbon::parse($this->time);
-        $now = now();
-        $dayOfMonth = $this->day_of_month ?? 1;
+        $raw = (string) $this->time;
 
-        $nextRun = $now->copy()->day($dayOfMonth)->setTimeFromTimeString($this->time);
-
-        if ($nextRun->isPast()) {
-            $nextRun->addMonth();
+        if (preg_match('/^\d{2}:\d{2}$/', $raw)) {
+            return $raw . ':00';
         }
 
-        return $nextRun;
-    }
+        if (preg_match('/^\d{2}:\d{2}:\d{2}$/', $raw)) {
+            return $raw;
+        }
 
-    /**
-     * الحصول على اسم اليوم
-     */
-    private function getDayName(int $day): string
-    {
-        $days = [
-            0 => 'Sunday',
-            1 => 'Monday',
-            2 => 'Tuesday',
-            3 => 'Wednesday',
-            4 => 'Thursday',
-            5 => 'Friday',
-            6 => 'Saturday',
-        ];
-
-        return $days[$day] ?? 'Monday';
-    }
-
-    /**
-     * تنفيذ الجدولة
-     */
-    public function execute(): Backup
-    {
-        // سيتم تنفيذ هذا في Service
-        throw new \Exception('Not implemented');
+        return Carbon::parse($raw)->format('H:i:s');
     }
 }

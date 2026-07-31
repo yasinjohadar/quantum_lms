@@ -13,11 +13,13 @@ class BackupCompressionService
     public function compress(Backup $backup, string $type = 'zip'): string
     {
         $source = $backup->file_path;
-        if (!$source || !file_exists($source)) {
+        if (! $source || ! file_exists($source)) {
             throw new \Exception('مسار الملف غير موجود');
         }
 
-        return match($type) {
+        $this->ensureBackupDirectory();
+
+        return match ($type) {
             'zip' => $this->compressZip($source, $backup->id),
             'gzip' => $this->compressGzip($source, $backup->id),
             'tar' => $this->compressTar($source, $backup->id),
@@ -31,7 +33,8 @@ class BackupCompressionService
     public function compressZip(string $source, int $backupId): string
     {
         $destination = storage_path('app/backups/backup_' . $backupId . '.zip');
-        
+        $this->deleteIfExists($destination);
+
         $zip = new ZipArchive();
         if ($zip->open($destination, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
             throw new \Exception('فشل في إنشاء ملف ZIP');
@@ -45,39 +48,64 @@ class BackupCompressionService
 
         $zip->close();
 
+        if (! file_exists($destination) || filesize($destination) === 0) {
+            throw new \Exception('فشل في إنشاء ملف ZIP صالح');
+        }
+
         return $destination;
     }
 
     /**
      * ضغط GZIP
+     * - ملف واحد: gzip مباشر
+     * - مجلد: tar ثم gzip => backup_{id}.tar.gz
      */
     public function compressGzip(string $source, int $backupId): string
     {
-        $destination = storage_path('app/backups/backup_' . $backupId . '.gz');
-        
+        $removeTarAfter = false;
+        $tarPath = null;
+
         if (is_dir($source)) {
-            // إذا كان مجلد، نضغطه أولاً كـ tar ثم gzip
-            $tarPath = storage_path('app/backups/temp_backup_' . $backupId . '.tar');
-            $this->compressTar($source, $backupId);
+            $tarPath = $this->compressTar($source, $backupId, 'temp_backup_' . $backupId . '.tar');
             $source = $tarPath;
+            $removeTarAfter = true;
+            $destination = storage_path('app/backups/backup_' . $backupId . '.tar.gz');
+        } else {
+            $destination = storage_path('app/backups/backup_' . $backupId . '.gz');
         }
 
-        $fp_in = fopen($source, 'rb');
-        $fp_out = gzopen($destination, 'wb9');
+        $this->deleteIfExists($destination);
 
-        if (!$fp_in || !$fp_out) {
+        $fpIn = fopen($source, 'rb');
+        $fpOut = gzopen($destination, 'wb9');
+
+        if (! $fpIn || ! $fpOut) {
+            if ($fpIn) {
+                fclose($fpIn);
+            }
+            if ($fpOut) {
+                gzclose($fpOut);
+            }
             throw new \Exception('فشل في إنشاء ملف GZIP');
         }
 
-        while (!feof($fp_in)) {
-            gzwrite($fp_out, fread($fp_in, 8192));
+        while (! feof($fpIn)) {
+            $chunk = fread($fpIn, 8192);
+            if ($chunk === false) {
+                break;
+            }
+            gzwrite($fpOut, $chunk);
         }
 
-        fclose($fp_in);
-        gzclose($fp_out);
+        fclose($fpIn);
+        gzclose($fpOut);
 
-        if (isset($tarPath) && file_exists($tarPath)) {
-            unlink($tarPath);
+        if ($removeTarAfter && $tarPath) {
+            $this->deleteIfExists($tarPath);
+        }
+
+        if (! file_exists($destination) || filesize($destination) === 0) {
+            throw new \Exception('فشل في إنشاء ملف GZIP صالح');
         }
 
         return $destination;
@@ -86,20 +114,29 @@ class BackupCompressionService
     /**
      * ضغط TAR
      */
-    public function compressTar(string $source, int $backupId): string
+    public function compressTar(string $source, int $backupId, ?string $filename = null): string
     {
-        $destination = storage_path('app/backups/backup_' . $backupId . '.tar');
-        
+        $destination = storage_path('app/backups/' . ($filename ?: ('backup_' . $backupId . '.tar')));
+        $this->deleteIfExists($destination);
+
+        // PharData يرفض المسارات ذات الامتداد المزدوج أحياناً؛ نضمن ملفاً نظيفاً.
         try {
             $phar = new \PharData($destination);
-            
+
             if (is_dir($source)) {
                 $phar->buildFromDirectory($source);
             } else {
                 $phar->addFile($source, basename($source));
             }
-        } catch (\Exception $e) {
+
+            unset($phar);
+        } catch (\Throwable $e) {
+            $this->deleteIfExists($destination);
             throw new \Exception('فشل في إنشاء ملف TAR: ' . $e->getMessage());
+        }
+
+        if (! file_exists($destination) || filesize($destination) === 0) {
+            throw new \Exception('فشل في إنشاء ملف TAR صالح');
         }
 
         return $destination;
@@ -110,9 +147,15 @@ class BackupCompressionService
      */
     public function decompress(string $file, string $destination): string
     {
-        $extension = pathinfo($file, PATHINFO_EXTENSION);
+        $basename = strtolower(basename($file));
 
-        return match($extension) {
+        if (str_ends_with($basename, '.tar.gz') || str_ends_with($basename, '.tgz')) {
+            return $this->decompressTarGz($file, $destination);
+        }
+
+        $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+
+        return match ($extension) {
             'zip' => $this->decompressZip($file, $destination),
             'gz' => $this->decompressGzip($file, $destination),
             'tar' => $this->decompressTar($file, $destination),
@@ -125,37 +168,53 @@ class BackupCompressionService
      */
     private function decompressZip(string $file, string $destination): string
     {
-        if (!is_dir($destination)) {
+        if (! is_dir($destination)) {
             mkdir($destination, 0755, true);
         }
 
         $zip = new ZipArchive();
-        if ($zip->open($file) === true) {
-            $zip->extractTo($destination);
-            $zip->close();
+        if ($zip->open($file) !== true) {
+            throw new \Exception('فشل في فتح ملف ZIP');
         }
+
+        $zip->extractTo($destination);
+        $zip->close();
 
         return $destination;
     }
 
     /**
-     * فك ضغط GZIP
+     * فك ضغط GZIP لملف واحد إلى مجلد الوجهة.
      */
     private function decompressGzip(string $file, string $destination): string
     {
-        $fp_in = gzopen($file, 'rb');
-        $fp_out = fopen($destination, 'wb');
+        if (! is_dir($destination)) {
+            mkdir($destination, 0755, true);
+        }
 
-        if (!$fp_in || !$fp_out) {
+        $outFile = rtrim($destination, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . pathinfo($file, PATHINFO_FILENAME);
+        // pathinfo على file.sql.gz يعطي file.sql — مناسب
+        if (str_ends_with(strtolower($outFile), '.tar')) {
+            // يُعالج عبر decompressTarGz
+        }
+
+        $fpIn = gzopen($file, 'rb');
+        $fpOut = fopen($outFile, 'wb');
+
+        if (! $fpIn || ! $fpOut) {
             throw new \Exception('فشل في فك ضغط GZIP');
         }
 
-        while (!gzeof($fp_in)) {
-            fwrite($fp_out, gzread($fp_in, 8192));
+        while (! gzeof($fpIn)) {
+            $chunk = gzread($fpIn, 8192);
+            if ($chunk === false) {
+                break;
+            }
+            fwrite($fpOut, $chunk);
         }
 
-        gzclose($fp_in);
-        fclose($fp_out);
+        gzclose($fpIn);
+        fclose($fpOut);
 
         return $destination;
     }
@@ -165,12 +224,51 @@ class BackupCompressionService
      */
     private function decompressTar(string $file, string $destination): string
     {
-        if (!is_dir($destination)) {
+        if (! is_dir($destination)) {
             mkdir($destination, 0755, true);
         }
 
         $phar = new \PharData($file);
-        $phar->extractTo($destination);
+        $phar->extractTo($destination, null, true);
+
+        return $destination;
+    }
+
+    /**
+     * فك .tar.gz إلى مجلد.
+     */
+    private function decompressTarGz(string $file, string $destination): string
+    {
+        if (! is_dir($destination)) {
+            mkdir($destination, 0755, true);
+        }
+
+        $tempTar = storage_path('app/backups/temp_restore_' . uniqid('', true) . '.tar');
+        $this->deleteIfExists($tempTar);
+
+        $fpIn = gzopen($file, 'rb');
+        $fpOut = fopen($tempTar, 'wb');
+
+        if (! $fpIn || ! $fpOut) {
+            throw new \Exception('فشل في فك ضغط TAR.GZ');
+        }
+
+        while (! gzeof($fpIn)) {
+            $chunk = gzread($fpIn, 8192);
+            if ($chunk === false) {
+                break;
+            }
+            fwrite($fpOut, $chunk);
+        }
+
+        gzclose($fpIn);
+        fclose($fpOut);
+
+        try {
+            $this->decompressTar($tempTar, $destination);
+        } finally {
+            $this->deleteIfExists($tempTar);
+        }
 
         return $destination;
     }
@@ -180,7 +278,6 @@ class BackupCompressionService
      */
     public function getCompressionRatio(string $file): float
     {
-        // سيتم تنفيذ هذا لاحقاً
         return 0.0;
     }
 
@@ -190,6 +287,10 @@ class BackupCompressionService
     private function addDirectoryToZip(string $dir, ZipArchive $zip, string $zipDir): void
     {
         $files = scandir($dir);
+        if ($files === false) {
+            return;
+        }
+
         foreach ($files as $file) {
             if ($file === '.' || $file === '..') {
                 continue;
@@ -206,5 +307,19 @@ class BackupCompressionService
             }
         }
     }
-}
 
+    private function ensureBackupDirectory(): void
+    {
+        $dir = storage_path('app/backups');
+        if (! is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+    }
+
+    private function deleteIfExists(string $path): void
+    {
+        if (file_exists($path)) {
+            @unlink($path);
+        }
+    }
+}

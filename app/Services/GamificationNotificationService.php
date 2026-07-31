@@ -29,20 +29,12 @@ class GamificationNotificationService
             return 'staff_review';
         }
 
-        if ($type === 'library_item') {
-            return 'library';
-        }
-
         if ($type === 'class_enrollment_decision') {
             return 'custom';
         }
 
         if ($type === 'custom_notification') {
             return 'custom';
-        }
-
-        if ($type === 'event_reminder') {
-            return 'calendar';
         }
 
         if (in_array($type, ['student_lesson_available', 'student_quiz_available'], true)) {

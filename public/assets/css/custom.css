@@ -466,7 +466,7 @@ a:hover .folder-card .card-body i[class*="bi-"] {
     border-color: rgba(var(--success-rgb), 0.35);
 }
 
-/* ── شعار القائمة الجانبية: نص موسّع + لوغو عند التصغير ── */
+/* ── شعار القائمة الجانبية: لوغو + نص أسود (ولوغو فقط عند التصغير) ── */
 .app-sidebar .main-sidebar-header .header-logo.sidebar-brand {
     display: flex;
     align-items: center;
@@ -474,10 +474,9 @@ a:hover .folder-card .card-body i[class*="bi-"] {
     text-decoration: none;
     width: 100%;
     flex-wrap: nowrap;
-    gap: 0;
+    gap: 0.55rem;
 }
 
-/* موسّع: النص فقط */
 .app-sidebar .main-sidebar-header .header-logo.sidebar-brand .sidebar-brand-text {
     display: block !important;
     font-family: "Cairo", sans-serif;
@@ -487,10 +486,14 @@ a:hover .folder-card .card-body i[class*="bi-"] {
     white-space: nowrap;
     letter-spacing: -0.02em;
     text-align: center;
+    color: #000 !important;
 }
 
 .app-sidebar .main-sidebar-header .header-logo.sidebar-brand .sidebar-brand-logo-wrap {
-    display: none !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
 .app-sidebar .sidebar-brand-logo {
@@ -502,19 +505,11 @@ a:hover .folder-card .card-body i[class*="bi-"] {
     vertical-align: middle;
 }
 
-[data-menu-styles="light"] .app-sidebar .sidebar-brand-text {
-    color: rgb(var(--primary-rgb, 13, 110, 253));
-}
-
 [data-menu-styles="dark"] .app-sidebar .sidebar-brand-text {
-    color: #fff;
+    color: #fff !important;
 }
 
-[data-theme-mode="dark"][data-menu-styles="light"] .app-sidebar .sidebar-brand-text {
-    color: rgb(var(--primary-rgb, 13, 110, 253));
-}
-
-/* الوضع النهاري: خلفية سوداء للوغو (عند التصغير) */
+/* الوضع النهاري: خلفية سوداء للوغو */
 [data-menu-styles="light"] .app-sidebar .sidebar-brand-logo-wrap {
     background-color: #000;
     border-radius: 10px;
@@ -554,7 +549,7 @@ a:hover .folder-card .card-body i[class*="bi-"] {
         display: block !important;
     }
     [data-vertical-style="overlay"][data-icon-overlay="open"] .app-sidebar .main-sidebar-header .header-logo.sidebar-brand .sidebar-brand-logo-wrap {
-        display: none !important;
+        display: inline-flex !important;
     }
 }
 
@@ -568,6 +563,18 @@ a:hover .folder-card .card-body i[class*="bi-"] {
 .app-sidebar .main-sidebar-header .header-logo .desktop-white,
 .app-sidebar .main-sidebar-header .header-logo .toggle-white {
     display: none !important;
+}
+
+/* ترحيب لوحة التحكم بخط Alexandria */
+.dashboard-welcome-title {
+    font-family: "Alexandria", "Segoe UI", Tahoma, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.dashboard-welcome-sub {
+    font-family: "Alexandria", "Segoe UI", Tahoma, sans-serif;
+    font-weight: 400;
 }
 
 /* الوضع النهاري: خلفية سوداء للوغو في شريط الهيدر العلوي */
@@ -725,3 +732,153 @@ html[data-bs-theme="dark"] .slide-icon--yellow { --menu-icon-bg: rgba(202, 138, 
 html[data-bs-theme="dark"] .slide-icon--orange { --menu-icon-bg: rgba(234, 88, 12, 0.2); --menu-icon-fg: #fdba74; }
 [data-theme-mode="dark"] .slide-icon--rose,
 html[data-bs-theme="dark"] .slide-icon--rose { --menu-icon-bg: rgba(225, 29, 72, 0.2); --menu-icon-fg: #fda4af; }
+
+/* ── إعدادات العرض المبسّطة ── */
+.switcher-panel {
+    --switcher-card-bg: #f8fafc;
+    --switcher-card-border: #e2e8f0;
+    --switcher-choice-bg: #fff;
+    --switcher-choice-border: #e2e8f0;
+    --switcher-choice-active: rgb(var(--primary-rgb, 132, 90, 223));
+}
+
+[data-theme-mode="dark"] .switcher-panel {
+    --switcher-card-bg: rgba(255, 255, 255, 0.04);
+    --switcher-card-border: rgba(255, 255, 255, 0.08);
+    --switcher-choice-bg: rgba(255, 255, 255, 0.03);
+    --switcher-choice-border: rgba(255, 255, 255, 0.1);
+}
+
+.switcher-panel__header {
+    padding: 1.1rem 1.25rem;
+}
+
+.switcher-panel__subtitle {
+    margin-top: 0.2rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.switcher-panel__body {
+    padding: 1.1rem 1.15rem 1.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.switcher-card {
+    background: var(--switcher-card-bg);
+    border: 1px solid var(--switcher-card-border);
+    border-radius: 14px;
+    padding: 1rem;
+}
+
+.switcher-card__head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+}
+
+.switcher-card__icon {
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(var(--primary-rgb, 132, 90, 223), 0.12);
+    color: rgb(var(--primary-rgb, 132, 90, 223));
+    flex-shrink: 0;
+}
+
+.switcher-card__title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--default-text-color);
+}
+
+.switcher-card__hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.switcher-choice-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+}
+
+.switcher-choice {
+    margin: 0;
+    cursor: pointer;
+}
+
+.switcher-choice > input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+}
+
+.switcher-choice__box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-height: 4.5rem;
+    padding: 0.75rem 0.5rem;
+    border-radius: 12px;
+    border: 1.5px solid var(--switcher-choice-border);
+    background: var(--switcher-choice-bg);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--default-text-color);
+}
+
+.switcher-choice__box i {
+    font-size: 1.15rem;
+    opacity: 0.85;
+}
+
+.switcher-choice:hover .switcher-choice__box {
+    border-color: rgba(var(--primary-rgb, 132, 90, 223), 0.45);
+}
+
+.switcher-choice > input:checked + .switcher-choice__box {
+    border-color: var(--switcher-choice-active);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb, 132, 90, 223), 0.16);
+    color: var(--switcher-choice-active);
+}
+
+.switcher-colors-row {
+    gap: 0.45rem 0.55rem;
+    min-height: 2.25rem;
+}
+
+/* مربعات ألوان بزوايا منحنية بدل الدوائر */
+.switcher-panel .theme-colors .switch-select .color-input,
+.switcher-panel .theme-colors .switch-select .color-input.form-check-input {
+    border-radius: 8px !important;
+}
+
+.switcher-panel .theme-colors .color-primary-light .pcr-button,
+.switcher-panel .theme-colors .pickr .pcr-button {
+    border-radius: 8px !important;
+}
+
+.switcher-panel__footer {
+    margin: 1rem 0.35rem 0.75rem;
+}
+
+.switcher-panel__footer .btn {
+    border-radius: 12px;
+    padding: 0.7rem 1rem;
+    font-weight: 600;
+    margin: 0;
+}

@@ -112,7 +112,6 @@ return [
         'images' => 'images',
         'videos' => 'videos',
         'attachments' => 'attachments',
-        'library' => 'library',
         'receipts' => 'documents',
         'documents' => 'documents',
     ],

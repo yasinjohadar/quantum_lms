@@ -18,7 +18,6 @@ use App\Models\SystemSetting;
 use App\Models\Unit;
 use App\Services\QuizExcelQuestionImportService;
 use App\Services\QuizPackQuestionImportService;
-use App\Services\ReminderService;
 use App\Services\StaffNotificationService;
 use App\Services\Storage\MediaStorageService;
 use App\Services\StudentContentNotificationService;
@@ -30,7 +29,6 @@ use Illuminate\Validation\ValidationException;
 class QuizController extends Controller
 {
     public function __construct(
-        private ReminderService $reminderService,
         private StaffNotificationService $staffNotificationService,
         private QuizExcelQuestionImportService $quizExcelQuestionImportService,
         private QuizPackQuestionImportService $quizPackQuestionImportService,

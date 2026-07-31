@@ -3,6 +3,7 @@
 namespace App\Services\Backup;
 
 use App\Contracts\BackupStorageInterface;
+use App\Models\AppStorageConfig;
 use App\Models\BackupStorageConfig;
 use App\Services\Backup\StorageDrivers\LocalStorageDriver;
 use App\Services\Backup\StorageDrivers\S3StorageDriver;
@@ -12,36 +13,41 @@ use App\Services\Backup\StorageDrivers\DigitalOceanStorageDriver;
 use App\Services\Backup\StorageDrivers\WasabiStorageDriver;
 use App\Services\Backup\StorageDrivers\BackblazeStorageDriver;
 use App\Services\Backup\StorageDrivers\CloudflareR2StorageDriver;
-use Illuminate\Support\Facades\Log;
+use App\Services\Storage\StorageConfigNormalizer;
 
 class StorageFactory
 {
     /**
-     * إنشاء instance من Storage Driver
+     * إنشاء سائق نسخ من مكان تخزين عام (قراءة فقط من AppStorageConfig).
+     */
+    public static function createFromAppConfig(AppStorageConfig $config): BackupStorageInterface
+    {
+        $driverConfig = StorageConfigNormalizer::normalize(
+            $config->getDecryptedConfig(),
+            $config->driver
+        );
+
+        // جذر محلي فارغ لأن المسار يُبنى مسبقاً ببادئة backups/ من StorageManager
+        if ($config->driver === 'local') {
+            $driverConfig['path'] = '';
+        }
+
+        return self::createFromArray($config->driver, $driverConfig);
+    }
+
+    /**
+     * توافق قديم مع BackupStorageConfig.
      */
     public static function create(BackupStorageConfig $config): BackupStorageInterface
     {
         $driverConfig = $config->getDecryptedConfig();
-        
-        return match($config->driver) {
-            'local' => new LocalStorageDriver($driverConfig),
-            's3' => new S3StorageDriver($driverConfig),
-            'azure' => new AzureStorageDriver($driverConfig),
-            'ftp', 'sftp' => new FTPStorageDriver($driverConfig),
-            'digitalocean' => new DigitalOceanStorageDriver($driverConfig),
-            'wasabi' => new WasabiStorageDriver($driverConfig),
-            'backblaze' => new BackblazeStorageDriver($driverConfig),
-            'cloudflare_r2' => new CloudflareR2StorageDriver($driverConfig),
-            default => throw new \Exception("نوع التخزين غير مدعوم: {$config->driver}"),
-        };
+
+        return self::createFromArray($config->driver, $driverConfig);
     }
 
-    /**
-     * إنشاء instance من Storage Driver من array config
-     */
     public static function createFromArray(string $driver, array $config): BackupStorageInterface
     {
-        return match($driver) {
+        return match ($driver) {
             'local' => new LocalStorageDriver($config),
             's3' => new S3StorageDriver($config),
             'azure' => new AzureStorageDriver($config),
@@ -50,8 +56,7 @@ class StorageFactory
             'wasabi' => new WasabiStorageDriver($config),
             'backblaze' => new BackblazeStorageDriver($config),
             'cloudflare_r2' => new CloudflareR2StorageDriver($config),
-            default => throw new \Exception("نوع التخزين غير مدعوم: {$driver}"),
+            default => throw new \Exception("نوع التخزين غير مدعوم للنسخ الاحتياطي: {$driver}"),
         };
     }
 }
-

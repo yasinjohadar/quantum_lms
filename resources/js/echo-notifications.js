@@ -228,7 +228,6 @@ function distinctiveIconForNotification(data) {
         quiz_review_approved: 'fe fe-check-circle',
         quiz_review_rejected: 'fe fe-x-circle',
         quiz_review_submit_ack: 'fe fe-send',
-        library_item: 'fe fe-book',
         student_lesson_available: 'fe fe-play-circle',
         student_quiz_available: 'fe fe-edit-2',
         class_enrollment_decision: 'fe fe-users',
@@ -236,7 +235,6 @@ function distinctiveIconForNotification(data) {
         badge_earned: 'fe fe-award',
         achievement_unlocked: 'fe fe-star',
         level_up: 'fe fe-trending-up',
-        event_reminder: 'fe fe-calendar',
         staff_review: 'fe fe-bell',
     };
     return byType[t] || fallback;

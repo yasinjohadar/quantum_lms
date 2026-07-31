@@ -80,9 +80,17 @@ class CustomApiProvider implements WhatsAppProviderService
                 $response = $request->asJson()->post($this->apiUrl, $payload);
             }
 
-            if ($response->successful()) {
-                $data = $response->json();
-                $messageId = $data['message_id'] ?? $data['id'] ?? $data['sid'] ?? uniqid('wa_');
+            $data = $response->json() ?? [];
+
+            // Some providers return HTTP 200 with { success: false, message: "..." }
+            if ($response->successful() && ($data['success'] ?? true) !== false) {
+                $messageId = $data['message_id']
+                    ?? $data['id']
+                    ?? $data['sid']
+                    ?? data_get($data, 'data.msgId')
+                    ?? data_get($data, 'data.message_id')
+                    ?? data_get($data, 'data.id')
+                    ?? uniqid('wa_');
 
                 Log::channel('whatsapp')->info('Custom API message sent successfully', [
                     'message_id' => $messageId,
@@ -90,22 +98,24 @@ class CustomApiProvider implements WhatsAppProviderService
                 ]);
 
                 return new SendMessageResponseDTO(
-                    metaMessageId: $messageId,
-                    rawResponse: $data
+                    metaMessageId: (string) $messageId,
+                    rawResponse: is_array($data) ? $data : []
                 );
-            } else {
-                $errorData = $response->json();
-                $errorMessage = $errorData['message'] ?? $errorData['error'] ?? 'Unknown error';
-                $errorCode = $errorData['code'] ?? $response->status();
-
-                Log::channel('whatsapp')->error('Custom API error', [
-                    'status' => $response->status(),
-                    'error' => $errorData,
-                    'to' => $payload['to'] ?? '',
-                ]);
-
-                throw new \Exception("Custom API error: {$errorMessage}", (int) $errorCode);
             }
+
+            $errorMessage = $data['message']
+                ?? $data['error']
+                ?? data_get($data, 'data.message')
+                ?? 'Unknown error';
+            $errorCode = $data['code'] ?? $response->status();
+
+            Log::channel('whatsapp')->error('Custom API error', [
+                'status' => $response->status(),
+                'error' => $data,
+                'to' => $payload['to'] ?? '',
+            ]);
+
+            throw new \Exception('Custom API error: '.$errorMessage, (int) $errorCode);
         } catch (\Exception $e) {
             Log::channel('whatsapp')->error('Exception sending Custom API message', [
                 'error' => $e->getMessage(),
@@ -147,52 +157,54 @@ class CustomApiProvider implements WhatsAppProviderService
             // Use the configured method (POST or GET) to test connection
             // For POST endpoints, send a minimal test payload
             if ($this->method === 'POST') {
-                // Send a test POST request with minimal payload
-                // Many APIs will reject empty payloads, so we send a test message
                 $testPayload = [
-                    'to' => '0000000000', // Test number (will likely fail but shows connection works)
+                    'to' => '0000000000',
                     'text' => 'test',
                 ];
-                
                 $response = $request->asJson()->post($this->apiUrl, $testPayload);
-                
-                // If we get 400/422 (validation error) or 401 (auth error), connection works
-                // If we get 404, endpoint doesn't exist
-                // If we get 405, method not allowed (shouldn't happen if method is POST)
-                if ($response->status() === 401 || $response->status() === 400 || $response->status() === 422) {
-                    // Connection successful, but validation/auth failed (expected for test)
-                    return [
-                        'success' => true,
-                        'message' => 'تم الاتصال بنجاح (الخدمة متاحة)',
-                    ];
-                }
             } else {
-                // For GET, try the URL directly
                 $response = $request->get($this->apiUrl);
             }
 
-            if ($response->successful()) {
+            $body = $response->json() ?? [];
+            $apiMessage = $body['message'] ?? $body['error'] ?? data_get($body, 'data.message') ?? '';
+            $status = $response->status();
+            $apiMessageLower = mb_strtolower((string) $apiMessage);
+
+            // Auth failures must never look like success.
+            if ($status === 401 || $status === 403
+                || str_contains($apiMessageLower, 'invalid api key')
+                || str_contains($apiMessageLower, 'unauthorized')
+                || str_contains($apiMessageLower, 'unauthenticated')) {
+                return [
+                    'success' => false,
+                    'message' => 'فشل المصادقة: تحقق من API Key. '.($apiMessage ?: 'Unauthorized'),
+                ];
+            }
+
+            if ($response->successful() && ($body['success'] ?? true) !== false) {
                 return [
                     'success' => true,
                     'message' => 'تم الاتصال بنجاح',
                 ];
-            } else {
-                $errorData = $response->json();
-                $errorMessage = $errorData['message'] ?? $errorData['error'] ?? 'فشل الاتصال';
-                
-                // If it's a validation/auth error with POST, connection works
-                if ($this->method === 'POST' && in_array($response->status(), [401, 400, 422])) {
-                    return [
-                        'success' => true,
-                        'message' => 'تم الاتصال بنجاح (الخدمة متاحة)',
-                    ];
-                }
-                
+            }
+
+            // Validation errors (bad test number) mean the endpoint+key are reachable.
+            if (in_array($status, [400, 404, 422], true)
+                || str_contains($apiMessageLower, 'jid')
+                || str_contains($apiMessageLower, 'phone')
+                || str_contains($apiMessageLower, 'recipient')
+                || str_contains($apiMessageLower, 'validation')) {
                 return [
-                    'success' => false,
-                    'message' => 'فشل الاتصال: ' . $errorMessage,
+                    'success' => true,
+                    'message' => 'الاتصال بالمزوّد ناجح، لكن بيانات الاختبار مرفوضة (متوقع). المفتاح والرابط يعملان.',
                 ];
             }
+
+            return [
+                'success' => false,
+                'message' => 'فشل الاتصال: '.($apiMessage ?: ('HTTP '.$status)),
+            ];
         } catch (\Exception $e) {
             Log::channel('whatsapp')->error('Custom API connection test error: ' . $e->getMessage());
             return [

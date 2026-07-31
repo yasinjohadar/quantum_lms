@@ -3,6 +3,10 @@
     data-menu-styles="light" data-toggled="close">
 
 <head>
+    <script>
+        document.documentElement.setAttribute('dir', 'rtl');
+        try { localStorage.setItem('valexrtl', true); localStorage.removeItem('valexltr'); } catch (e) {}
+    </script>
 
     <!-- Meta Data -->
     <meta charset="UTF-8">

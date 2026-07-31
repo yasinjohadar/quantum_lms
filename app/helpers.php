@@ -55,16 +55,19 @@ if (! function_exists('media_public_url')) {
         try {
             return \App\Services\Storage\MediaStorageService::url($normalized);
         } catch (\Throwable $e) {
-            // Fallback to plain local storage URL when service not yet available
+            // Fallback to local URL only when the file exists locally
             try {
-                return \Illuminate\Support\Facades\Storage::disk(
+                $disk = \Illuminate\Support\Facades\Storage::disk(
                     config('storage.fallback_disk', 'public')
-                )->url($normalized);
+                );
+                if ($disk->exists($normalized)) {
+                    return $disk->url($normalized);
+                }
             } catch (\Throwable $inner) {
-                $p = ltrim(str_replace('\\', '/', $normalized), '/');
-
-                return '/storage/'.$p;
+                //
             }
+
+            return '';
         }
     }
 }

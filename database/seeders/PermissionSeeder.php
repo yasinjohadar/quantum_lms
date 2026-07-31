@@ -202,17 +202,6 @@ class PermissionSeeder extends Seeder
             ['name' => 'custom-payment-method-delete', 'description' => 'حذف وسيلة الدفع المخصصة'],
             ['name' => 'custom-payment-method-show', 'description' => 'عرض تفاصيل وسيلة الدفع المخصصة'],
 
-            // صلاحيات إدارة المكتبة
-            ['name' => 'library-list', 'description' => 'عرض قائمة عناصر المكتبة'],
-            ['name' => 'library-create', 'description' => 'إضافة عنصر للمكتبة'],
-            ['name' => 'library-edit', 'description' => 'تعديل عنصر المكتبة'],
-            ['name' => 'library-delete', 'description' => 'حذف عنصر المكتبة'],
-            ['name' => 'library-show', 'description' => 'عرض تفاصيل عنصر المكتبة'],
-            ['name' => 'library-preview', 'description' => 'معاينة عنصر المكتبة'],
-            ['name' => 'library-download', 'description' => 'تحميل عنصر المكتبة'],
-            ['name' => 'library-stats', 'description' => 'عرض إحصائيات عنصر المكتبة'],
-            ['name' => 'library-get-subjects-by-class', 'description' => 'الحصول على المواد حسب الصف'],
-
             // صلاحيات إدارة التقارير
             ['name' => 'report-view', 'description' => 'عرض التقارير'],
             ['name' => 'report-export', 'description' => 'تصدير التقارير'],
@@ -238,13 +227,6 @@ class PermissionSeeder extends Seeder
             ['name' => 'exchange-rate-edit', 'description' => 'تعديل سعر الصرف'],
             ['name' => 'exchange-rate-delete', 'description' => 'حذف سعر الصرف'],
             ['name' => 'exchange-rate-show', 'description' => 'عرض تفاصيل سعر الصرف'],
-
-            // صلاحيات إدارة التقويم
-            ['name' => 'calendar-list', 'description' => 'عرض قائمة الأحداث'],
-            ['name' => 'calendar-create', 'description' => 'إنشاء حدث جديد'],
-            ['name' => 'calendar-edit', 'description' => 'تعديل الحدث'],
-            ['name' => 'calendar-delete', 'description' => 'حذف الحدث'],
-            ['name' => 'calendar-get-events', 'description' => 'الحصول على الأحداث'],
 
             // صلاحيات إدارة WhatsApp
             ['name' => 'whats-app-settings-list', 'description' => 'عرض إعدادات WhatsApp'],
@@ -382,12 +364,6 @@ class PermissionSeeder extends Seeder
             ['name' => 'daily-task-edit', 'description' => 'تعديل المهمة اليومية'],
             ['name' => 'daily-task-delete', 'description' => 'حذف المهمة اليومية'],
 
-            // صلاحيات إدارة التذكيرات
-            ['name' => 'reminder-list', 'description' => 'عرض قائمة التذكيرات'],
-            ['name' => 'reminder-create', 'description' => 'إنشاء تذكير جديد'],
-            ['name' => 'reminder-edit', 'description' => 'تعديل التذكير'],
-            ['name' => 'reminder-delete', 'description' => 'حذف التذكير'],
-
             // صلاحيات إدارة تخصيصات المعلمين
             ['name' => 'teacher-assignment-list', 'description' => 'عرض قائمة تخصيصات المعلمين'],
             ['name' => 'teacher-assignment-show', 'description' => 'عرض تفاصيل تخصيص المعلم'],
@@ -410,12 +386,6 @@ class PermissionSeeder extends Seeder
 
             // صلاحيات لوحة التحليلات
             ['name' => 'analytics-dashboard-view', 'description' => 'عرض لوحة التحليلات'],
-
-            // صلاحيات لوحة المكتبة
-            ['name' => 'library-dashboard-view', 'description' => 'عرض لوحة المكتبة'],
-
-            // صلاحيات تقارير المكتبة
-            ['name' => 'library-report-list', 'description' => 'عرض تقارير المكتبة'],
         ];
 
         // حفظ الصلاحيات الأساسية

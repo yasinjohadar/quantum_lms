@@ -16,8 +16,8 @@
                 <!-- Page Header -->
                 <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
                     <div>
-                        <h4 class="mb-0">مرحباً {{ $greetingUserName ?? (auth()->user()->name ?? 'مستخدم') }}، أهلاً بعودتك!</h4>
-                        <p class="mb-0 text-muted">أنت مسجل الدخول كـ {{ $greetingPrimaryRoleLabel ?? (auth()->user()->primary_role_label ?? 'مستخدم') }}</p>
+                        <h4 class="mb-0 dashboard-welcome-title">مرحباً {{ $greetingUserName ?? (auth()->user()->name ?? 'مستخدم') }}، أهلاً بعودتك!</h4>
+                        <p class="mb-0 text-muted dashboard-welcome-sub">أنت مسجل الدخول كـ {{ $greetingPrimaryRoleLabel ?? (auth()->user()->primary_role_label ?? 'مستخدم') }}</p>
                     </div>
                 </div>
                 <!-- End Page Header -->
@@ -25,7 +25,7 @@
                 <!-- الكاردات الملونة: للأدمن فقط -->
                 @if(auth()->check() && auth()->user()->hasRole('admin'))
                 <div class="row mb-4">
-                    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
+                    <div class="col-xl col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
                         <div class="dashboard-stat-card dashboard-stat-card--students h-100">
                             <div class="dashboard-stat-card__body">
                                 <div class="dashboard-stat-card__content">
@@ -40,7 +40,24 @@
                         </div>
                     </div>
 
-                    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
+                    <div class="col-xl col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
+                        <a href="{{ route('admin.classes.index') }}" class="text-decoration-none d-block h-100">
+                            <div class="dashboard-stat-card dashboard-stat-card--classes h-100">
+                                <div class="dashboard-stat-card__body">
+                                    <div class="dashboard-stat-card__content">
+                                        <div class="dashboard-stat-card__label">إجمالي الصفوف</div>
+                                        <div class="dashboard-stat-card__value">{{ number_format($stats['total_classes'] ?? 0) }}</div>
+                                        <p class="dashboard-stat-card__meta">{{ $stats['total_stages'] ?? 0 }} مرحلة</p>
+                                    </div>
+                                    <div class="dashboard-stat-card__icon">
+                                        <i class="fas fa-layer-group"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="col-xl col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
                         <div class="dashboard-stat-card dashboard-stat-card--subjects h-100">
                             <div class="dashboard-stat-card__body">
                                 <div class="dashboard-stat-card__content">
@@ -55,7 +72,7 @@
                         </div>
                     </div>
 
-                    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
+                    <div class="col-xl col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
                         <div class="dashboard-stat-card dashboard-stat-card--quizzes h-100">
                             <div class="dashboard-stat-card__body">
                                 <div class="dashboard-stat-card__content">
@@ -70,7 +87,7 @@
                         </div>
                     </div>
 
-                    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
+                    <div class="col-xl col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
                         <div class="dashboard-stat-card dashboard-stat-card--enrollments h-100">
                             <div class="dashboard-stat-card__body">
                                 <div class="dashboard-stat-card__content">
@@ -210,6 +227,16 @@
                                     />
                                     @endcan
 
+                                    @can('class-list')
+                                    <x-dashboard-shortcut
+                                        href="{{ route('admin.classes.index') }}"
+                                        icon="fas fa-layer-group"
+                                        title="الصفوف"
+                                        subtitle="إدارة الصفوف الدراسية"
+                                        accent="purple"
+                                    />
+                                    @endcan
+
                                     @can('subject-list')
                                     <x-dashboard-shortcut
                                         href="{{ route('admin.subjects.index') }}"
@@ -250,16 +277,6 @@
                                     />
                                     @endcan
 
-                                    @can('library-list')
-                                    <x-dashboard-shortcut
-                                        href="{{ route('admin.library.items.index') }}"
-                                        icon="fas fa-book-reader"
-                                        title="المكتبة"
-                                        subtitle="المكتبة الرقمية"
-                                        accent="secondary"
-                                    />
-                                    @endcan
-
                                     @can('user-login-logs')
                                     <x-dashboard-shortcut
                                         href="{{ route('admin.user-sessions.index') }}"
@@ -287,16 +304,6 @@
                                         title="نماذج AI"
                                         subtitle="إدارة النماذج"
                                         accent="primary"
-                                    />
-                                    @endcan
-
-                                    @can('calendar-list')
-                                    <x-dashboard-shortcut
-                                        href="{{ route('admin.calendar.index') }}"
-                                        icon="fas fa-calendar-alt"
-                                        title="التقويم"
-                                        subtitle="الجدول الزمني"
-                                        accent="orange"
                                     />
                                     @endcan
 

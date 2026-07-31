@@ -208,74 +208,9 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         Route::post('questions-math-backfill/ai-repair-batch', [\App\Http\Controllers\Admin\QuestionMathBackfillController::class, 'processAiRepairBatch'])
             ->name('questions.math-backfill.ai-repair-batch');
 
-        // ===============================================
-        // المكتبة الرقمية
-        // ===============================================
-        Route::resource('library/categories', \App\Http\Controllers\Admin\LibraryCategoryController::class)->names([
-            'index' => 'library.categories.index',
-            'create' => 'library.categories.create',
-            'store' => 'library.categories.store',
-            'show' => 'library.categories.show',
-            'edit' => 'library.categories.edit',
-            'update' => 'library.categories.update',
-            'destroy' => 'library.categories.destroy',
-        ]);
-        Route::get('library/items/subjects-by-class', [\App\Http\Controllers\Admin\LibraryItemController::class, 'getSubjectsByClass'])
-            ->name('library.items.subjects-by-class');
-        Route::resource('library/items', \App\Http\Controllers\Admin\LibraryItemController::class)->names([
-            'index' => 'library.items.index',
-            'create' => 'library.items.create',
-            'store' => 'library.items.store',
-            'show' => 'library.items.show',
-            'edit' => 'library.items.edit',
-            'update' => 'library.items.update',
-            'destroy' => 'library.items.destroy',
-        ]);
-        Route::get('library/items/{item}/preview', [\App\Http\Controllers\Admin\LibraryItemController::class, 'preview'])
-            ->name('library.items.preview');
-        Route::get('library/items/{item}/download', [\App\Http\Controllers\Admin\LibraryItemController::class, 'download'])
-            ->name('library.items.download');
-        Route::get('library/items/{item}/stats', [\App\Http\Controllers\Admin\LibraryItemController::class, 'stats'])
-            ->name('library.items.stats');
-        // تقارير المكتبة
-        Route::get('library/reports/most-downloaded', [\App\Http\Controllers\Admin\LibraryReportController::class, 'exportMostDownloaded'])
-            ->name('library.reports.most-downloaded');
-        Route::get('library/reports/most-viewed', [\App\Http\Controllers\Admin\LibraryReportController::class, 'exportMostViewed'])
-            ->name('library.reports.most-viewed');
-        Route::get('library/reports/categories-usage', [\App\Http\Controllers\Admin\LibraryReportController::class, 'exportCategoriesUsage'])
-            ->name('library.reports.categories-usage');
-
-        // لوحة إحصائيات المكتبة
-        Route::get('library/dashboard', [\App\Http\Controllers\Admin\LibraryDashboardController::class, 'index'])
-            ->name('library.dashboard');
-
         // لوحة تحكم Analytics الموحدة
         Route::get('analytics-dashboard', [AnalyticsDashboardController::class, 'index'])
             ->name('analytics.dashboard');
-
-        // ===============================================
-        // التقويم والجدولة
-        // ===============================================
-        Route::get('calendar', [\App\Http\Controllers\Admin\CalendarController::class, 'index'])
-            ->name('calendar.index');
-        Route::get('calendar/events-api', [\App\Http\Controllers\Admin\CalendarController::class, 'getEvents'])
-            ->name('calendar.events-api');
-        Route::resource('calendar/events', \App\Http\Controllers\Admin\CalendarController::class)->names([
-            'index' => 'calendar.events.index',
-            'create' => 'calendar.events.create',
-            'store' => 'calendar.events.store',
-            'edit' => 'calendar.events.edit',
-            'update' => 'calendar.events.update',
-            'destroy' => 'calendar.events.destroy',
-        ]);
-        Route::resource('calendar/reminders', \App\Http\Controllers\Admin\ReminderController::class)->names([
-            'index' => 'calendar.reminders.index',
-            'create' => 'calendar.reminders.create',
-            'store' => 'calendar.reminders.store',
-            'edit' => 'calendar.reminders.edit',
-            'update' => 'calendar.reminders.update',
-            'destroy' => 'calendar.reminders.destroy',
-        ]);
 
         // ===============================================
         // نظام الذكاء الاصطناعي
@@ -337,19 +272,23 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         // ===============================================
         // نظام النسخ الاحتياطي
         // ===============================================
-        Route::resource('backups', \App\Http\Controllers\Admin\BackupController::class);
+        // stats قبل {backup} حتى لا يُلتقط كمعرّف نسخة
+        Route::get('backups/stats', [\App\Http\Controllers\Admin\BackupController::class, 'stats'])->name('backups.stats');
+        Route::resource('backups', \App\Http\Controllers\Admin\BackupController::class)
+            ->except(['edit', 'update']);
         Route::post('backups/{backup}/restore', [\App\Http\Controllers\Admin\BackupController::class, 'restore'])->name('backups.restore');
         Route::get('backups/{backup}/download', [\App\Http\Controllers\Admin\BackupController::class, 'download'])->name('backups.download');
-        Route::get('backups/stats', [\App\Http\Controllers\Admin\BackupController::class, 'stats'])->name('backups.stats');
 
-        Route::resource('backup-schedules', \App\Http\Controllers\Admin\BackupScheduleController::class);
+        Route::resource('backup-schedules', \App\Http\Controllers\Admin\BackupScheduleController::class)
+            ->parameters(['backup-schedules' => 'schedule'])
+            ->except(['show']);
         Route::post('backup-schedules/{schedule}/execute', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'execute'])->name('backup-schedules.execute');
         Route::post('backup-schedules/{schedule}/toggle-active', [\App\Http\Controllers\Admin\BackupScheduleController::class, 'toggleActive'])->name('backup-schedules.toggle-active');
 
-        Route::resource('backup-storage', \App\Http\Controllers\Admin\BackupStorageController::class, ['except' => ['show']])->parameters(['backup-storage' => 'config']);
-        Route::post('backup-storage/{config}/test', [\App\Http\Controllers\Admin\BackupStorageController::class, 'test'])->name('backup-storage.test');
-        Route::post('backup-storage/test-connection', [\App\Http\Controllers\Admin\BackupStorageController::class, 'testConnection'])->name('backup-storage.test-connection');
-        Route::get('backup-storage/analytics', [\App\Http\Controllers\Admin\BackupStorageAnalyticsController::class, 'index'])->name('backup-storage.analytics');
+        // أماكن تخزين النسخ أُلغيت — تُستخدم أماكن التخزين العامة مع redirect للتوافق
+        Route::redirect('backup-storage', '/admin/app-storage/configs')->name('backup-storage.index');
+        Route::redirect('backup-storage/create', '/admin/app-storage/configs/create')->name('backup-storage.create');
+        Route::redirect('backup-storage/analytics', '/admin/app-storage/analytics')->name('backup-storage.analytics');
 
         // تفضيلات إشعارات الطلاب (عرض فقط)
         Route::get('students/{user}/notification-preferences', [AdminNotificationPreferenceController::class, 'show'])

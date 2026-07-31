@@ -8,12 +8,12 @@
             <!-- Start::main-sidebar-header -->
             <div class="main-sidebar-header">
                 <a href="{{ $studentSidebarHomeRoute }}" class="header-logo sidebar-brand">
-                    <span class="sidebar-brand-text">أكاديمية كوانتم</span>
                     <span class="sidebar-brand-logo-wrap" aria-hidden="true">
                         <img src="{{ asset('frontend/images/logo.png') }}"
                              alt=""
                              class="sidebar-brand-logo">
                     </span>
+                    <span class="sidebar-brand-text">أكاديمية كوانتم</span>
                 </a>
             </div>
             <!-- End::main-sidebar-header -->
@@ -197,49 +197,6 @@
                                 </li>
                             </ul>
                         </li>
-
-                        <!-- المكتبة الرقمية -->
-                        <li class="slide slide-icon slide-icon--rose has-sub {{ request()->is('student/library*') ? 'open' : '' }}">
-                            <a href="javascript:void(0);" class="side-menu__item">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
-                                    <path d="M0 0h24v24H0z" fill="none"/>
-                                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
-                                </svg>
-                                <span class="side-menu__label">المكتبة الرقمية</span>
-                                <i class="fe fe-chevron-right side-menu__angle"></i>
-                            </a>
-                            <ul class="slide-menu child1">
-                                <li class="slide {{ request()->is('student/library') && !request()->is('student/library/*') ? 'active' : '' }}">
-                                    <a href="{{ route('student.library.index') }}" class="side-menu__item {{ request()->is('student/library') && !request()->is('student/library/*') ? 'active' : '' }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                                        </svg>
-                                        <span class="side-menu__label">المكتبة</span>
-                                    </a>
-                                </li>
-                                <li class="slide {{ request()->is('student/library/favorites') ? 'active' : '' }}">
-                                    <a href="{{ route('student.library.favorites') }}" class="side-menu__item {{ request()->is('student/library/favorites') ? 'active' : '' }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                                        </svg>
-                                        <span class="side-menu__label">مفضلتي</span>
-                                    </a>
-                                </li>
-                            </ul>
-                        </li>
-
-                        {{-- التقويم - مخفي من القائمة
-                        <li class="slide slide-icon slide-icon--blue {{ request()->is('student/calendar*') ? 'active' : '' }}">
-                            <a href="{{ route('student.calendar.index') }}" class="side-menu__item {{ request()->is('student/calendar*') ? 'active' : '' }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
-                                    <path d="M0 0h24v24H0z" fill="none"/>
-                                    <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/>
-                                </svg>
-                                <span class="side-menu__label">التقويم</span>
-                            </a>
-                        </li>
-                        --}}
 
                         {{-- المساعد التعليمي - مخفي من القائمة
                         <li class="slide slide-icon slide-icon--violet {{ request()->is('student/ai/chatbot*') ? 'active' : '' }}">

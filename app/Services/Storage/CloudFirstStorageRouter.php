@@ -285,11 +285,18 @@ class CloudFirstStorageRouter
             }
         }
 
+        // لا نُرجع رابط /storage المحلي إلا إذا كان الملف موجوداً فعلياً محلياً،
+        // وإلا يظهر كسر صورة مضلّل رغم أن المشكلة "الملف غير موجود على السحابة".
         try {
-            return Storage::disk($this->localFallbackDisk())->url($path);
+            $localDisk = Storage::disk($this->localFallbackDisk());
+            if ($localDisk->exists($path)) {
+                return $localDisk->url($path);
+            }
         } catch (\Exception $e) {
-            return '';
+            //
         }
+
+        return '';
     }
 
     /**

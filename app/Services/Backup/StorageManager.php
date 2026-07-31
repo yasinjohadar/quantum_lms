@@ -2,15 +2,18 @@
 
 namespace App\Services\Backup;
 
-use App\Contracts\BackupStorageInterface;
+use App\Models\AppStorageConfig;
 use App\Models\Backup;
 use App\Models\BackupStorageConfig;
-use App\Services\Backup\StorageFactory;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class StorageManager
 {
+    public const SUPPORTED_DRIVERS = [
+        'local', 's3', 'ftp', 'sftp', 'azure', 'digitalocean', 'wasabi', 'backblaze', 'cloudflare_r2',
+    ];
+
     protected StorageAnalyticsService $analyticsService;
 
     public function __construct(StorageAnalyticsService $analyticsService)
@@ -18,57 +21,61 @@ class StorageManager
         $this->analyticsService = $analyticsService;
     }
 
+    protected function activeAppConfigsQuery()
+    {
+        return AppStorageConfig::where('is_active', true)
+            ->whereIn('driver', self::SUPPORTED_DRIVERS)
+            ->orderBy('priority', 'desc');
+    }
+
     /**
-     * تخزين مع Auto-failover
+     * تخزين مع تفضيل المكان المحدد ثم Auto-failover على أماكن التخزين العامة.
      */
     public function storeWithFailover(Backup $backup, string $filePath): bool
     {
-        $configs = BackupStorageConfig::where('is_active', true)
-            ->orderBy('priority', 'desc')
-            ->get();
+        $configs = $this->resolveTargetAppConfigs($backup);
+
+        if ($configs->isEmpty()) {
+            throw new \Exception('لا توجد أماكن تخزين عامة نشطة. أضف مكان تخزين من إعدادات التخزين العامة.');
+        }
 
         $fileContent = file_get_contents($filePath);
         $fileSize = filesize($filePath);
 
         foreach ($configs as $config) {
             try {
-                $driver = StorageFactory::create($config);
-                
+                $driver = StorageFactory::createFromAppConfig($config);
+
                 if ($driver->testConnection()) {
                     $storagePath = 'backups/' . $backup->id . '/' . basename($filePath);
-                    
+
                     if ($driver->store($storagePath, $fileContent)) {
-                        // تتبع الإحصائيات
-                        $this->analyticsService->trackStorageUsage($config, $fileSize);
-                        $this->analyticsService->trackBandwidth($config, 'upload', $fileSize);
-                        
-                        // تحديث backup record
                         $backup->update([
+                            'storage_config_id' => $config->id,
                             'storage_driver' => $config->driver,
                             'storage_path' => $storagePath,
                         ]);
 
-                        Log::info("Backup stored successfully to: {$config->name}");
+                        Log::info("Backup stored successfully to app storage: {$config->name}");
                         return true;
                     }
                 }
             } catch (\Exception $e) {
-                Log::warning("Storage failed: {$config->name} - {$e->getMessage()}");
+                Log::warning("App storage failed for backup: {$config->name} - {$e->getMessage()}");
                 continue;
             }
         }
 
-        throw new \Exception('All storage options failed');
+        throw new \Exception('فشلت جميع أماكن التخزين العامة المتاحة');
     }
 
     /**
-     * تخزين في أماكن متعددة (Redundancy)
+     * تخزين في أماكن متعددة (Redundancy) من التخزين العام فقط.
      */
     public function storeToMultipleStorages(Backup $backup, string $filePath): array
     {
-        $configs = BackupStorageConfig::where('is_active', true)
+        $configs = $this->activeAppConfigsQuery()
             ->where('redundancy', true)
-            ->orderBy('priority', 'desc')
             ->get();
 
         if ($configs->isEmpty()) {
@@ -76,21 +83,17 @@ class StorageManager
         }
 
         $fileContent = file_get_contents($filePath);
-        $fileSize = filesize($filePath);
         $successfulStorages = [];
         $failedStorages = [];
 
         foreach ($configs as $config) {
             try {
-                $driver = StorageFactory::create($config);
-                
+                $driver = StorageFactory::createFromAppConfig($config);
+
                 if ($driver->testConnection()) {
                     $storagePath = 'backups/' . $backup->id . '/' . basename($filePath);
-                    
+
                     if ($driver->store($storagePath, $fileContent)) {
-                        $this->analyticsService->trackStorageUsage($config, $fileSize);
-                        $this->analyticsService->trackBandwidth($config, 'upload', $fileSize);
-                        
                         $successfulStorages[] = [
                             'config' => $config,
                             'path' => $storagePath,
@@ -102,7 +105,7 @@ class StorageManager
                     $failedStorages[] = $config->name;
                 }
             } catch (\Exception $e) {
-                Log::error("Redundancy storage failed: {$config->name} - {$e->getMessage()}");
+                Log::error("Redundancy app storage failed: {$config->name} - {$e->getMessage()}");
                 $failedStorages[] = $config->name;
             }
         }
@@ -113,57 +116,38 @@ class StorageManager
         ];
     }
 
-    /**
-     * استرجاع من التخزين
-     */
     public function retrieve(Backup $backup): string
     {
-        $config = BackupStorageConfig::where('driver', $backup->storage_driver)
-            ->where('is_active', true)
-            ->first();
-
-        if (!$config) {
-            throw new \Exception("Storage config not found for driver: {$backup->storage_driver}");
-        }
-
-        $driver = StorageFactory::create($config);
-        $content = $driver->retrieve($backup->storage_path);
-        
-        // تتبع النطاق الترددي
-        $this->analyticsService->trackBandwidth($config, 'download', strlen($content));
-
-        return $content;
+        $driver = $this->resolveDriverForBackup($backup);
+        return $driver->retrieve($backup->storage_path);
     }
 
-    /**
-     * حذف من التخزين
-     */
     public function delete(Backup $backup): bool
     {
-        $config = BackupStorageConfig::where('driver', $backup->storage_driver)
-            ->where('is_active', true)
-            ->first();
-
-        if (!$config) {
-            return false;
+        if (!$backup->storage_path) {
+            return true;
         }
 
-        $driver = StorageFactory::create($config);
-        return $driver->delete($backup->storage_path);
+        try {
+            $driver = $this->resolveDriverForBackup($backup);
+            return $driver->delete($backup->storage_path);
+        } catch (\Exception $e) {
+            Log::warning('Failed to delete backup from storage: ' . $e->getMessage(), [
+                'backup_id' => $backup->id,
+            ]);
+            return false;
+        }
     }
 
-    /**
-     * Health Check لجميع أماكن التخزين
-     */
     public function healthCheck(): Collection
     {
-        $configs = BackupStorageConfig::where('is_active', true)->get();
-        
-        return $configs->map(function ($config) {
+        $configs = $this->activeAppConfigsQuery()->get();
+
+        return $configs->map(function (AppStorageConfig $config) {
             try {
-                $driver = StorageFactory::create($config);
+                $driver = StorageFactory::createFromAppConfig($config);
                 $isHealthy = $driver->testConnection();
-                
+
                 return [
                     'config' => $config,
                     'healthy' => $isHealthy,
@@ -179,18 +163,11 @@ class StorageManager
         });
     }
 
-    /**
-     * Load Balancing - اختيار أفضل مكان تخزين
-     */
-    public function selectBestStorage(): ?BackupStorageConfig
+    public function selectBestStorage(): ?AppStorageConfig
     {
-        $configs = BackupStorageConfig::where('is_active', true)
-            ->orderBy('priority', 'desc')
-            ->get();
-
-        foreach ($configs as $config) {
+        foreach ($this->activeAppConfigsQuery()->get() as $config) {
             try {
-                $driver = StorageFactory::create($config);
+                $driver = StorageFactory::createFromAppConfig($config);
                 if ($driver->testConnection()) {
                     return $config;
                 }
@@ -201,5 +178,67 @@ class StorageManager
 
         return null;
     }
-}
 
+    /**
+     * ترتيب أماكن التخزين المستهدفة: المحدد أولاً ثم الباقي حسب الأولوية.
+     *
+     * @return Collection<int, AppStorageConfig>
+     */
+    protected function resolveTargetAppConfigs(Backup $backup): Collection
+    {
+        $all = $this->activeAppConfigsQuery()->get();
+
+        if ($backup->storage_config_id) {
+            $preferred = $all->firstWhere('id', (int) $backup->storage_config_id);
+            if ($preferred) {
+                return collect([$preferred])->merge($all->where('id', '!=', $preferred->id))->values();
+            }
+        }
+
+        if ($backup->storage_driver) {
+            $byDriver = $all->where('driver', $backup->storage_driver)->values();
+            if ($byDriver->isNotEmpty()) {
+                $rest = $all->whereNotIn('id', $byDriver->pluck('id'))->values();
+                return $byDriver->merge($rest)->values();
+            }
+        }
+
+        return $all;
+    }
+
+    /**
+     * حل سائق النسخة: AppStorageConfig أولاً، ثم توافق قديم مع BackupStorageConfig.
+     */
+    protected function resolveDriverForBackup(Backup $backup)
+    {
+        if ($backup->storage_config_id) {
+            $appConfig = AppStorageConfig::find($backup->storage_config_id);
+            if ($appConfig) {
+                return StorageFactory::createFromAppConfig($appConfig);
+            }
+        }
+
+        if ($backup->storage_driver) {
+            $appConfig = AppStorageConfig::where('driver', $backup->storage_driver)
+                ->where('is_active', true)
+                ->orderBy('priority', 'desc')
+                ->first();
+
+            if ($appConfig) {
+                return StorageFactory::createFromAppConfig($appConfig);
+            }
+
+            // توافق النسخ القديمة المخزّنة عبر backup_storage_configs
+            $legacy = BackupStorageConfig::where('driver', $backup->storage_driver)
+                ->orderByDesc('is_active')
+                ->orderBy('priority', 'desc')
+                ->first();
+
+            if ($legacy) {
+                return StorageFactory::create($legacy);
+            }
+        }
+
+        throw new \Exception('تعذر العثور على إعداد التخزين لهذه النسخة الاحتياطية');
+    }
+}

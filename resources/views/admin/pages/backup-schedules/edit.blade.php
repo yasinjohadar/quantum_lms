@@ -77,14 +77,28 @@
 
                             <div class="mb-3">
                                 <label class="form-label">أماكن التخزين <span class="text-danger">*</span></label>
+                                @php
+                                    $selectedStorageIds = collect(old('storage_drivers', $schedule->storage_drivers ?? []))
+                                        ->map(function ($value) {
+                                            if (is_numeric($value)) {
+                                                return (int) $value;
+                                            }
+                                            return (int) (\App\Models\AppStorageConfig::where('driver', $value)->where('is_active', true)->value('id') ?? 0);
+                                        })
+                                        ->filter()
+                                        ->all();
+                                @endphp
                                 <div class="d-flex gap-2 flex-wrap">
-                                    @foreach($storageDrivers as $id => $driver)
+                                    @forelse($storageDrivers as $config)
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="storage_drivers[]" value="{{ $driver }}" id="storage_{{ $id }}" {{ in_array($driver, old('storage_drivers', $schedule->storage_drivers ?? ['local'])) ? 'checked' : '' }}>
-                                            <label class="form-check-label" for="storage_{{ $id }}">{{ $driver }}</label>
+                                            <input class="form-check-input" type="checkbox" name="storage_drivers[]" value="{{ $config->id }}" id="storage_{{ $config->id }}" {{ in_array($config->id, $selectedStorageIds, true) ? 'checked' : '' }}>
+                                            <label class="form-check-label" for="storage_{{ $config->id }}">{{ $config->name }} ({{ $config->driver }})</label>
                                         </div>
-                                    @endforeach
+                                    @empty
+                                        <small class="text-danger">لا توجد أماكن تخزين عامة نشطة. أضفها من <a href="{{ route('admin.app-storage.configs.index') }}">إعدادات التخزين</a>.</small>
+                                    @endforelse
                                 </div>
+                                <small class="text-muted d-block mt-1">تُستخدم أماكن التخزين العامة مع حفظ النسخ تحت <code>backups/</code>.</small>
                             </div>
 
                             <div class="mb-3">

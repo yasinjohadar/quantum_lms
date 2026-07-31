@@ -30,33 +30,6 @@ Route::middleware(['auth', 'check.user.active', 'ensure.student.enrollment'])->p
     Route::get('/progress/subject/{subject}', [StudentProgressController::class, 'showSubject'])->name('progress.subject');
     Route::get('/progress/section/{section}', [StudentProgressController::class, 'showSection'])->name('progress.section');
     
-    // المكتبة الرقمية
-    Route::get('/library', [\App\Http\Controllers\Student\StudentLibraryController::class, 'index'])->name('library.index');
-    Route::get('/library/search', [\App\Http\Controllers\Student\StudentLibraryController::class, 'search'])->name('library.search');
-    Route::get('/library/favorites', [\App\Http\Controllers\Student\StudentLibraryController::class, 'favorites'])->name('library.favorites');
-    Route::get('/library/subject/{subject}', [\App\Http\Controllers\Student\StudentLibraryController::class, 'subjectLibrary'])->name('library.subject');
-    Route::get('/library/{item}', [\App\Http\Controllers\Student\StudentLibraryController::class, 'show'])->name('library.show');
-    Route::get('/library/{item}/preview', [\App\Http\Controllers\Student\StudentLibraryController::class, 'preview'])->name('library.preview');
-    Route::post('/library/{item}/download', [\App\Http\Controllers\Student\StudentLibraryController::class, 'download'])->name('library.download');
-    Route::post('/library/{item}/rate', [\App\Http\Controllers\Student\StudentLibraryController::class, 'rate'])->name('library.rate');
-    Route::post('/library/{item}/toggle-favorite', [\App\Http\Controllers\Student\StudentLibraryController::class, 'toggleFavorite'])->name('library.toggle-favorite');
-    
-    // التقويم
-    Route::get('/calendar', [\App\Http\Controllers\Student\CalendarController::class, 'index'])->name('calendar.index');
-    Route::get('/calendar/events-api', [\App\Http\Controllers\Student\CalendarController::class, 'getEvents'])->name('calendar.events-api');
-    Route::get('/calendar/export', [\App\Http\Controllers\Student\CalendarController::class, 'export'])->name('calendar.export');
-    Route::post('/calendar/events', [\App\Http\Controllers\Student\CalendarController::class, 'store'])->name('calendar.events.store');
-    Route::get('/calendar/events/{event}', [\App\Http\Controllers\Student\CalendarController::class, 'show'])->name('calendar.events.show');
-    Route::put('/calendar/events/{event}', [\App\Http\Controllers\Student\CalendarController::class, 'update'])->name('calendar.events.update');
-    Route::delete('/calendar/events/{event}', [\App\Http\Controllers\Student\CalendarController::class, 'destroy'])->name('calendar.events.destroy');
-    
-    // المفكرة (Calendar Notes)
-    Route::get('/calendar/notes-api', [\App\Http\Controllers\Student\CalendarController::class, 'getNotes'])->name('calendar.notes-api');
-    Route::post('/calendar/notes', [\App\Http\Controllers\Student\CalendarController::class, 'storeNote'])->name('calendar.notes.store');
-    Route::put('/calendar/notes/{note}', [\App\Http\Controllers\Student\CalendarController::class, 'updateNote'])->name('calendar.notes.update');
-    Route::delete('/calendar/notes/{note}', [\App\Http\Controllers\Student\CalendarController::class, 'deleteNote'])->name('calendar.notes.destroy');
-    Route::post('/calendar/notes/{note}/pin', [\App\Http\Controllers\Student\CalendarController::class, 'pinNote'])->name('calendar.notes.pin');
-    
     // المساعد التعليمي (Chatbot)
     Route::resource('ai/chatbot', \App\Http\Controllers\Student\AIChatbotController::class)
         ->parameters(['chatbot' => 'conversation'])

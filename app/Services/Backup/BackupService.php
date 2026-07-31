@@ -25,34 +25,100 @@ class BackupService
     ) {}
 
     /**
-     * إنشاء نسخة احتياطية
+     * إنشاء سجل معلّق ثم معالجته فوراً (متزامن — للاختبارات/الأوامر).
      */
     public function createBackup(array $options): Backup
     {
+        $backup = $this->createPendingBackup($options);
+
+        return $this->processBackup($backup, $options);
+    }
+
+    /**
+     * إنشاء سجل معلّق وإرساله للطابور.
+     */
+    public function queueBackup(array $options): Backup
+    {
+        $backup = $this->createPendingBackup($options);
+
+        \App\Jobs\CreateBackupJob::dispatch($backup, $options);
+
+        $this->log($backup, 'info', 'تم إرسال مهمة إنشاء النسخة إلى الطابور');
+
+        return $backup->fresh();
+    }
+
+    /**
+     * إنشاء سجل النسخة بحالة pending دون تنفيذ العمل الثقيل.
+     */
+    public function createPendingBackup(array $options): Backup
+    {
+        $storageConfigId = $options['storage_config_id'] ?? null;
+        $storageDriver = $options['storage_driver'] ?? null;
+
+        if ($storageConfigId && ! $storageDriver) {
+            $storageDriver = \App\Models\AppStorageConfig::where('id', $storageConfigId)->value('driver');
+        }
+
         $backup = Backup::create([
             'name' => $options['name'] ?? 'backup_' . now()->format('Y-m-d_H-i-s'),
             'type' => $options['type'] ?? 'manual',
             'backup_type' => $options['backup_type'] ?? 'full',
-            'storage_driver' => $options['storage_driver'] ?? 'local',
-            'storage_path' => null, // سيتم تعيينه بعد الرفع
-            'file_path' => null, // سيتم تعيينه بعد الإنشاء
+            'storage_driver' => $storageDriver ?? 'local',
+            'storage_config_id' => $storageConfigId,
+            'storage_path' => $options['storage_path'] ?? '',
+            'file_path' => $options['file_path'] ?? '',
             'compression_type' => $options['compression_type'] ?? 'zip',
             'status' => 'pending',
             'retention_days' => $options['retention_days'] ?? 30,
             'created_by' => $options['created_by'] ?? auth()->id(),
-            'schedule_id' => $options['schedule_id'] ?? null,
+            'backup_schedule_id' => $options['backup_schedule_id']
+                ?? $options['schedule_id']
+                ?? null,
         ]);
 
         $backup->update([
             'expires_at' => $backup->calculateExpiresAt(),
+        ]);
+
+        return $backup->fresh();
+    }
+
+    /**
+     * تنفيذ عمل النسخ على سجل موجود (يُستدعى من الـ Job عادة).
+     */
+    public function processBackup(Backup $backup, array $options = []): Backup
+    {
+        $backup->refresh();
+
+        if ($backup->status === 'completed') {
+            return $backup;
+        }
+
+        if ($backup->status === 'running') {
+            $this->log($backup, 'warning', 'تم تخطي المعالجة لأن النسخة قيد التنفيذ بالفعل');
+
+            return $backup;
+        }
+
+        if ($backup->status === 'failed') {
+            throw new \RuntimeException('لا يمكن إعادة معالجة نسخة فاشلة. أنشئ نسخة جديدة.');
+        }
+
+        $backup->update([
             'started_at' => now(),
             'status' => 'running',
+            'error_message' => null,
+            'completed_at' => null,
         ]);
+
+        $sourcePath = null;
+        $compressedPath = null;
 
         try {
             $this->log($backup, 'info', 'بدء عملية النسخ الاحتياطي');
 
-            $filePath = match($backup->backup_type) {
+            $sourcePath = match ($backup->backup_type) {
                 'full' => $this->createFullBackup($backup, $options),
                 'database' => $this->createDatabaseBackup($backup, $options),
                 'files' => $this->createFilesBackup($backup, $options),
@@ -60,31 +126,25 @@ class BackupService
                 default => throw new \Exception('نوع النسخ غير معروف'),
             };
 
-            // تحديث file_path قبل الضغط
-            $backup->update(['file_path' => $filePath]);
+            $backup->update(['file_path' => $sourcePath]);
 
-            // ضغط الملف
             $compressedPath = $this->compressionService->compress($backup, $backup->compression_type);
 
-            // رفع الملف إلى التخزين مع Auto-failover
             $this->storageManager->storeWithFailover($backup, $compressedPath);
-            
-            // تخزين في أماكن متعددة إذا كان مفعلاً
             $this->storageManager->storeToMultipleStorages($backup, $compressedPath);
-            
-            $storagePath = $backup->storage_path;
 
-            $duration = now()->diffInSeconds($backup->started_at);
-            
-            // الحصول على حجم الملف - استخدام filesize() لأن compressedPath هو مسار كامل
-            if (!file_exists($compressedPath)) {
+            $storagePath = $backup->fresh()->storage_path;
+
+            if (! file_exists($compressedPath)) {
                 throw new \Exception('ملف النسخة الاحتياطية غير موجود: ' . $compressedPath);
             }
-            
+
             $fileSize = filesize($compressedPath);
             if ($fileSize === false) {
                 throw new \Exception('فشل في الحصول على حجم ملف النسخة الاحتياطية: ' . $compressedPath);
             }
+
+            $duration = now()->diffInSeconds($backup->started_at);
 
             $backup->update([
                 'status' => 'completed',
@@ -96,7 +156,7 @@ class BackupService
             ]);
 
             $this->log($backup, 'info', 'اكتملت عملية النسخ الاحتياطي بنجاح');
-            $this->notificationService->notifyBackupCompleted($backup);
+            $this->notificationService->notifyBackupCompleted($backup->fresh());
 
             return $backup->fresh();
         } catch (\Exception $e) {
@@ -107,35 +167,39 @@ class BackupService
             ]);
 
             $this->log($backup, 'error', 'فشلت عملية النسخ الاحتياطي: ' . $e->getMessage());
-            $this->notificationService->notifyBackupFailed($backup, $e->getMessage());
+            $this->notificationService->notifyBackupFailed($backup->fresh(), $e->getMessage());
 
             throw $e;
+        } finally {
+            $this->cleanupLocalBackupArtifacts($backup, $sourcePath, $compressedPath);
         }
     }
 
     /**
-     * إنشاء نسخة كاملة
+     * إنشاء نسخة كاملة بهيكل موحّد:
+     * database.sql + files/ + config/
      */
     public function createFullBackup(Backup $backup, array $options): string
     {
+        $backupDir = storage_path('app/backups/temp/' . $backup->id);
+        $this->ensureDirectory($backupDir);
+        $this->ensureDirectory($backupDir . DIRECTORY_SEPARATOR . 'files');
+        $this->ensureDirectory($backupDir . DIRECTORY_SEPARATOR . 'config');
+
         $this->log($backup, 'info', 'بدء نسخ قاعدة البيانات');
-        $dbPath = $this->createDatabaseBackup($backup, $options);
+        $dbPath = $backupDir . DIRECTORY_SEPARATOR . 'database.sql';
+        $this->writeDatabaseDump($backup, $dbPath);
 
         $this->log($backup, 'info', 'بدء نسخ الملفات');
-        $filesPath = $this->createFilesBackup($backup, $options);
-
-        $this->log($backup, 'info', 'بدء نسخ الإعدادات');
-        $configPath = $this->createConfigBackup($backup, $options);
-
-        // دمج جميع الملفات في مجلد واحد
-        $backupDir = storage_path('app/backups/temp/' . $backup->id);
-        if (!is_dir($backupDir)) {
-            mkdir($backupDir, 0755, true);
+        $filesSource = storage_path('app/public');
+        if (is_dir($filesSource)) {
+            $this->copyDirectory($filesSource, $backupDir . DIRECTORY_SEPARATOR . 'files');
         }
 
-        copy($dbPath, $backupDir . '/database.sql');
-        $this->extractToDirectory($filesPath, $backupDir . '/files');
-        $this->extractToDirectory($configPath, $backupDir . '/config');
+        $this->log($backup, 'info', 'بدء نسخ الإعدادات');
+        $this->writeConfigFiles($backupDir . DIRECTORY_SEPARATOR . 'config');
+
+        $this->log($backup, 'info', 'تم تجميع النسخة الكاملة بنجاح');
 
         return $backupDir;
     }
@@ -145,106 +209,15 @@ class BackupService
      */
     public function createDatabaseBackup(Backup $backup, array $options): string
     {
-        $filename = 'database_' . now()->format('Y-m-d_H-i-s') . '.sql';
-        $backupDir = storage_path('app/backups');
-        $path = $backupDir . '/' . $filename;
+        $stagingDir = storage_path('app/backups/temp/database_' . $backup->id);
+        $this->ensureDirectory($stagingDir);
 
-        // التأكد من وجود المجلد
-        if (!is_dir($backupDir)) {
-            mkdir($backupDir, 0755, true);
-        }
+        $path = $stagingDir . DIRECTORY_SEPARATOR . 'database.sql';
+        $this->writeDatabaseDump($backup, $path);
 
-        $database = config('database.connections.mysql.database');
-        $username = config('database.connections.mysql.username');
-        $password = config('database.connections.mysql.password');
-        $host = config('database.connections.mysql.host');
-        $port = config('database.connections.mysql.port', 3306);
+        $this->log($backup, 'info', 'تم نسخ قاعدة البيانات بنجاح');
 
-        // استخدام Laravel DB facade بدلاً من mysqldump
-        try {
-            $tables = DB::select('SHOW TABLES');
-            $databaseName = $database;
-            $tablesKey = 'Tables_in_' . $databaseName;
-            
-            $sqlContent = "-- Database Backup\n";
-            $sqlContent .= "-- Generated: " . now()->toDateTimeString() . "\n";
-            $sqlContent .= "-- Database: {$databaseName}\n\n";
-            $sqlContent .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
-
-            foreach ($tables as $table) {
-                $tableName = $table->$tablesKey;
-                
-                // الحصول على CREATE TABLE statement
-                $createTable = DB::select("SHOW CREATE TABLE `{$tableName}`");
-                $sqlContent .= "DROP TABLE IF EXISTS `{$tableName}`;\n";
-                $sqlContent .= $createTable[0]->{'Create Table'} . ";\n\n";
-
-                // الحصول على البيانات
-                $rows = DB::table($tableName)->get();
-                if ($rows->count() > 0) {
-                    $sqlContent .= "LOCK TABLES `{$tableName}` WRITE;\n";
-                    
-                    // الحصول على أسماء الأعمدة من أول صف
-                    $firstRow = (array) $rows->first();
-                    $columns = array_map(function ($col) {
-                        return "`{$col}`";
-                    }, array_keys($firstRow));
-                    $columnsStr = implode(", ", $columns);
-                    
-                    $values = [];
-                    $chunkSize = 100;
-                    $currentChunk = 0;
-                    
-                    foreach ($rows as $row) {
-                        $rowArray = (array) $row;
-                        
-                        $valArray = array_map(function ($val) {
-                            if ($val === null) {
-                                return 'NULL';
-                            }
-                            return DB::getPdo()->quote($val);
-                        }, array_values($rowArray));
-                        
-                        $values[] = "(" . implode(", ", $valArray) . ")";
-                        $currentChunk++;
-                        
-                        // كتابة كل 100 صف
-                        if ($currentChunk >= $chunkSize) {
-                            $valuesStr = implode(",\n", $values);
-                            $sqlContent .= "INSERT INTO `{$tableName}` ({$columnsStr}) VALUES\n{$valuesStr};\n\n";
-                            $values = [];
-                            $currentChunk = 0;
-                        }
-                    }
-                    
-                    // كتابة الصفوف المتبقية
-                    if (!empty($values)) {
-                        $valuesStr = implode(",\n", $values);
-                        $sqlContent .= "INSERT INTO `{$tableName}` ({$columnsStr}) VALUES\n{$valuesStr};\n\n";
-                    }
-                    
-                    $sqlContent .= "UNLOCK TABLES;\n\n";
-                }
-            }
-
-            $sqlContent .= "SET FOREIGN_KEY_CHECKS=1;\n";
-
-            file_put_contents($path, $sqlContent);
-
-            if (!file_exists($path) || filesize($path) === 0) {
-                throw new \Exception('فشل في إنشاء ملف النسخة الاحتياطية - الملف فارغ أو غير موجود');
-            }
-
-            $this->log($backup, 'info', 'تم نسخ قاعدة البيانات بنجاح');
-
-            return $path;
-        } catch (\Exception $e) {
-            Log::error('Database backup failed: ' . $e->getMessage(), [
-                'backup_id' => $backup->id,
-                'trace' => $e->getTraceAsString(),
-            ]);
-            throw new \Exception('فشل في نسخ قاعدة البيانات: ' . $e->getMessage());
-        }
+        return $stagingDir;
     }
 
     /**
@@ -252,14 +225,13 @@ class BackupService
      */
     public function createFilesBackup(Backup $backup, array $options): string
     {
-        $filesDir = storage_path('app/public');
         $backupDir = storage_path('app/backups/temp/files_' . $backup->id);
+        $this->ensureDirectory($backupDir);
 
-        if (!is_dir($backupDir)) {
-            mkdir($backupDir, 0755, true);
+        $filesDir = storage_path('app/public');
+        if (is_dir($filesDir)) {
+            $this->copyDirectory($filesDir, $backupDir);
         }
-
-        $this->copyDirectory($filesDir, $backupDir);
 
         $this->log($backup, 'info', 'تم نسخ الملفات بنجاح');
 
@@ -271,29 +243,124 @@ class BackupService
      */
     public function createConfigBackup(Backup $backup, array $options): string
     {
-        $configFiles = [
-            '.env',
-            'config/app.php',
-            'config/database.php',
-            'config/mail.php',
-        ];
-
         $backupDir = storage_path('app/backups/temp/config_' . $backup->id);
-        if (!is_dir($backupDir)) {
-            mkdir($backupDir, 0755, true);
-        }
-
-        foreach ($configFiles as $file) {
-            $sourcePath = base_path($file);
-            if (file_exists($sourcePath)) {
-                $destPath = $backupDir . '/' . basename($file);
-                copy($sourcePath, $destPath);
-            }
-        }
+        $this->ensureDirectory($backupDir);
+        $this->writeConfigFiles($backupDir);
 
         $this->log($backup, 'info', 'تم نسخ الإعدادات بنجاح');
 
         return $backupDir;
+    }
+
+    /**
+     * كتابة dump SQL إلى مسار محدد.
+     */
+    private function writeDatabaseDump(Backup $backup, string $path): void
+    {
+        $this->ensureDirectory(dirname($path));
+
+        $database = config('database.connections.mysql.database');
+
+        try {
+            $tables = DB::select('SHOW TABLES');
+            $tablesKey = 'Tables_in_' . $database;
+
+            $sqlContent = "-- Database Backup\n";
+            $sqlContent .= '-- Generated: ' . now()->toDateTimeString() . "\n";
+            $sqlContent .= "-- Database: {$database}\n\n";
+            $sqlContent .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
+
+            foreach ($tables as $table) {
+                $tableName = $table->$tablesKey;
+
+                $createTable = DB::select("SHOW CREATE TABLE `{$tableName}`");
+                $sqlContent .= "DROP TABLE IF EXISTS `{$tableName}`;\n";
+                $sqlContent .= $createTable[0]->{'Create Table'} . ";\n\n";
+
+                $rows = DB::table($tableName)->get();
+                if ($rows->count() === 0) {
+                    continue;
+                }
+
+                $sqlContent .= "LOCK TABLES `{$tableName}` WRITE;\n";
+
+                $firstRow = (array) $rows->first();
+                $columns = array_map(static fn ($col) => "`{$col}`", array_keys($firstRow));
+                $columnsStr = implode(', ', $columns);
+
+                $values = [];
+                $currentChunk = 0;
+                $chunkSize = 100;
+
+                foreach ($rows as $row) {
+                    $rowArray = (array) $row;
+                    $valArray = array_map(static function ($val) {
+                        if ($val === null) {
+                            return 'NULL';
+                        }
+
+                        return DB::getPdo()->quote($val);
+                    }, array_values($rowArray));
+
+                    $values[] = '(' . implode(', ', $valArray) . ')';
+                    $currentChunk++;
+
+                    if ($currentChunk >= $chunkSize) {
+                        $sqlContent .= "INSERT INTO `{$tableName}` ({$columnsStr}) VALUES\n" . implode(",\n", $values) . ";\n\n";
+                        $values = [];
+                        $currentChunk = 0;
+                    }
+                }
+
+                if (! empty($values)) {
+                    $sqlContent .= "INSERT INTO `{$tableName}` ({$columnsStr}) VALUES\n" . implode(",\n", $values) . ";\n\n";
+                }
+
+                $sqlContent .= "UNLOCK TABLES;\n\n";
+            }
+
+            $sqlContent .= "SET FOREIGN_KEY_CHECKS=1;\n";
+
+            if (file_put_contents($path, $sqlContent) === false) {
+                throw new \Exception('تعذر كتابة ملف قاعدة البيانات');
+            }
+
+            if (! file_exists($path) || filesize($path) === 0) {
+                throw new \Exception('فشل في إنشاء ملف النسخة الاحتياطية - الملف فارغ أو غير موجود');
+            }
+        } catch (\Exception $e) {
+            Log::error('Database backup failed: ' . $e->getMessage(), [
+                'backup_id' => $backup->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw new \Exception('فشل في نسخ قاعدة البيانات: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * كتابة ملفات الإعدادات بهيكل قابل للاستعادة لاحقاً.
+     */
+    private function writeConfigFiles(string $destinationDir): void
+    {
+        $this->ensureDirectory($destinationDir);
+
+        $configFiles = [
+            '.env' => '.env',
+            'config/app.php' => 'app.php',
+            'config/database.php' => 'database.php',
+            'config/mail.php' => 'mail.php',
+        ];
+
+        foreach ($configFiles as $relativeSource => $relativeDest) {
+            $sourcePath = base_path($relativeSource);
+            if (! file_exists($sourcePath)) {
+                continue;
+            }
+
+            $destPath = $destinationDir . DIRECTORY_SEPARATOR . $relativeDest;
+            $this->ensureDirectory(dirname($destPath));
+            copy($sourcePath, $destPath);
+        }
     }
 
     /**
@@ -323,55 +390,92 @@ class BackupService
     }
 
     /**
-     * تحميل نسخة
+     * تحميل نسخة من التخزين مع حذف الملف المؤقت بعد الإرسال.
      */
     public function downloadBackup(Backup $backup): BinaryFileResponse
     {
+        if ($backup->status !== 'completed') {
+            throw new \RuntimeException('يمكن تحميل النسخ المكتملة فقط.');
+        }
+
+        if (! $backup->storage_path) {
+            throw new \RuntimeException('مسار التخزين غير موجود لهذه النسخة.');
+        }
+
+        $extension = $this->resolveArchiveExtension($backup);
+        $tempFilePath = storage_path(
+            'app/temp/download_' . $backup->id . '_' . uniqid('', true) . '.' . $extension
+        );
+
+        $this->ensureDirectory(dirname($tempFilePath));
+
         $fileContent = $this->storageManager->retrieve($backup);
-        $tempFilePath = storage_path('app/temp/download_' . $backup->id . '_' . time() . '.' . $backup->compression_type);
-        
-        if (!is_dir(dirname($tempFilePath))) {
-            mkdir(dirname($tempFilePath), 0755, true);
-        }
-        
-        file_put_contents($tempFilePath, $fileContent);
-        $filePath = $tempFilePath;
-
-        if (!file_exists($filePath)) {
-            throw new \Exception('الملف غير موجود');
+        if ($fileContent === '' || $fileContent === false) {
+            throw new \RuntimeException('تعذر جلب ملف النسخة من التخزين.');
         }
 
-        return response()->download($filePath, $backup->name . '.' . $backup->compression_type);
+        if (file_put_contents($tempFilePath, $fileContent) === false) {
+            throw new \RuntimeException('تعذر تجهيز ملف التحميل المؤقت.');
+        }
+
+        if (! file_exists($tempFilePath) || filesize($tempFilePath) === 0) {
+            @unlink($tempFilePath);
+            throw new \RuntimeException('ملف التحميل فارغ أو غير موجود.');
+        }
+
+        $downloadName = preg_replace('/[^\w\-\.\p{Arabic}]+/u', '_', $backup->name) . '.' . $extension;
+
+        return response()
+            ->download($tempFilePath, $downloadName)
+            ->deleteFileAfterSend(true);
     }
 
     /**
-     * استعادة نسخة
+     * استعادة نسخة مكتملة فقط، وفق الهيكل الموحّد:
+     * - full: database.sql + files/ + config/
+     * - database: database.sql
+     * - files: محتويات الملفات
+     * - config: .env + app.php + database.php + mail.php
      */
     public function restoreBackup(Backup $backup, array $options = []): bool
     {
+        if ($backup->status !== 'completed') {
+            throw new \RuntimeException('يمكن استعادة النسخ المكتملة فقط.');
+        }
+
+        if (! $backup->storage_path) {
+            throw new \RuntimeException('مسار التخزين غير موجود لهذه النسخة.');
+        }
+
+        $tempArchive = null;
+        $extractDir = storage_path('app/backups/temp/restore_' . $backup->id . '_' . uniqid());
+
         try {
             $this->log($backup, 'info', 'بدء عملية الاستعادة');
 
+            $extension = $this->resolveArchiveExtension($backup);
+            $tempArchive = storage_path('app/temp/restore_' . $backup->id . '_' . uniqid('', true) . '.' . $extension);
+            $this->ensureDirectory(dirname($tempArchive));
+            $this->ensureDirectory($extractDir);
+
             $fileContent = $this->storageManager->retrieve($backup);
-            $tempFilePath = storage_path('app/temp/restore_' . $backup->id . '_' . time() . '.zip');
-            
-            if (!is_dir(dirname($tempFilePath))) {
-                mkdir(dirname($tempFilePath), 0755, true);
+            if ($fileContent === '' || $fileContent === false) {
+                throw new \RuntimeException('تعذر جلب ملف النسخة من التخزين.');
             }
-            
-            file_put_contents($tempFilePath, $fileContent);
-            $filePath = $tempFilePath;
 
-            // فك الضغط
-            $extractedPath = $this->compressionService->decompress($filePath, storage_path('app/backups/restore_' . $backup->id));
+            if (file_put_contents($tempArchive, $fileContent) === false) {
+                throw new \RuntimeException('تعذر حفظ ملف النسخة المؤقت للاستعادة.');
+            }
 
-            // استعادة حسب النوع
-            match($backup->backup_type) {
-                'database' => $this->restoreDatabase($extractedPath),
-                'files' => $this->restoreFiles($extractedPath),
-                'config' => $this->restoreConfig($extractedPath),
-                'full' => $this->restoreFull($extractedPath),
-                default => throw new \Exception('نوع النسخ غير معروف'),
+            $extractedPath = $this->compressionService->decompress($tempArchive, $extractDir);
+            $paths = $this->resolveRestoreContentPaths($extractedPath, $backup->backup_type);
+
+            match ($backup->backup_type) {
+                'database' => $this->restoreDatabase($paths['database']),
+                'files' => $this->restoreFiles($paths['files']),
+                'config' => $this->restoreConfig($paths['config']),
+                'full' => $this->restoreFull($paths),
+                default => throw new \RuntimeException('نوع النسخ غير معروف'),
             };
 
             $this->log($backup, 'info', 'اكتملت عملية الاستعادة بنجاح');
@@ -380,6 +484,11 @@ class BackupService
         } catch (\Exception $e) {
             $this->log($backup, 'error', 'فشلت عملية الاستعادة: ' . $e->getMessage());
             throw $e;
+        } finally {
+            if ($tempArchive) {
+                $this->deletePath($tempArchive);
+            }
+            $this->deletePath($extractDir);
         }
     }
 
@@ -436,60 +545,229 @@ class BackupService
     }
 
     /**
-     * استعادة قاعدة البيانات
+     * استعادة قاعدة البيانات من ملف SQL عبر PDO (بدون تمرير كلمة المرور في الشل).
      */
-    private function restoreDatabase(string $filePath): void
+    private function restoreDatabase(?string $sqlFile): void
     {
-        $database = config('database.connections.mysql.database');
-        $username = config('database.connections.mysql.username');
-        $password = config('database.connections.mysql.password');
-        $host = config('database.connections.mysql.host');
+        if (! $sqlFile || ! is_file($sqlFile)) {
+            throw new \RuntimeException('ملف database.sql غير موجود داخل النسخة.');
+        }
 
-        $command = sprintf(
-            'mysql --user=%s --password=%s --host=%s %s < %s',
-            escapeshellarg($username),
-            escapeshellarg($password),
-            escapeshellarg($host),
-            escapeshellarg($database),
-            escapeshellarg($filePath)
-        );
+        $sql = file_get_contents($sqlFile);
+        if ($sql === false || trim($sql) === '') {
+            throw new \RuntimeException('ملف قاعدة البيانات فارغ أو غير قابل للقراءة.');
+        }
 
-        exec($command, $output, $returnVar);
+        $statements = $this->splitSqlStatements($sql);
+        if ($statements === []) {
+            throw new \RuntimeException('لم يتم العثور على أوامر SQL صالحة داخل ملف النسخة.');
+        }
 
-        if ($returnVar !== 0) {
-            throw new \Exception('فشل في استعادة قاعدة البيانات');
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+
+        try {
+            foreach ($statements as $statement) {
+                DB::unprepared($statement);
+            }
+        } finally {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1');
         }
     }
 
     /**
-     * استعادة الملفات
+     * استعادة الملفات إلى storage/app/public (دمج بدون مسح كامل).
      */
-    private function restoreFiles(string $filePath): void
+    private function restoreFiles(?string $filesDir): void
     {
-        $destDir = storage_path('app/public');
-        $this->copyDirectory($filePath, $destDir);
+        if (! $filesDir || ! is_dir($filesDir)) {
+            throw new \RuntimeException('مجلد الملفات غير موجود داخل النسخة.');
+        }
+
+        $this->copyDirectory($filesDir, storage_path('app/public'));
     }
 
     /**
-     * استعادة الإعدادات
+     * استعادة الإعدادات إلى مساراتها الصحيحة.
      */
-    private function restoreConfig(string $filePath): void
+    private function restoreConfig(?string $configDir): void
     {
-        $files = glob($filePath . '/*');
-        foreach ($files as $file) {
-            $destPath = base_path('config/' . basename($file));
-            copy($file, $destPath);
+        if (! $configDir || ! is_dir($configDir)) {
+            throw new \RuntimeException('مجلد الإعدادات غير موجود داخل النسخة.');
+        }
+
+        $map = [
+            '.env' => base_path('.env'),
+            'app.php' => config_path('app.php'),
+            'database.php' => config_path('database.php'),
+            'mail.php' => config_path('mail.php'),
+        ];
+
+        $restored = 0;
+
+        foreach ($map as $name => $destination) {
+            $source = $configDir . DIRECTORY_SEPARATOR . $name;
+            if (! is_file($source)) {
+                continue;
+            }
+
+            if ($name === '.env' && is_file($destination)) {
+                copy($destination, base_path('.env.pre-restore-' . now()->format('YmdHis')));
+            }
+
+            $this->ensureDirectory(dirname($destination));
+            if (! copy($source, $destination)) {
+                throw new \RuntimeException('تعذر استعادة الملف: ' . $name);
+            }
+
+            $restored++;
+        }
+
+        if ($restored === 0) {
+            throw new \RuntimeException('لم يتم العثور على ملفات إعدادات معروفة داخل النسخة.');
         }
     }
 
     /**
-     * استعادة كاملة
+     * استعادة كاملة من مسارات محلولة مسبقاً.
+     *
+     * @param  array{database:?string,files:?string,config:?string}  $paths
      */
-    private function restoreFull(string $filePath): void
+    private function restoreFull(array $paths): void
     {
-        $this->restoreDatabase($filePath . '/database.sql');
-        $this->restoreFiles($filePath . '/files');
-        $this->restoreConfig($filePath . '/config');
+        $this->restoreDatabase($paths['database']);
+        $this->restoreFiles($paths['files']);
+        $this->restoreConfig($paths['config']);
+    }
+
+    /**
+     * تحديد امتداد الأرشيف المحلي المؤقت.
+     */
+    private function resolveArchiveExtension(Backup $backup): string
+    {
+        $storagePath = (string) ($backup->storage_path ?? '');
+        $basename = strtolower(basename($storagePath));
+
+        if (str_ends_with($basename, '.tar.gz')) {
+            return 'tar.gz';
+        }
+
+        return match ($backup->compression_type) {
+            'gzip' => str_ends_with($basename, '.gz') ? 'gz' : 'tar.gz',
+            'tar' => 'tar',
+            default => 'zip',
+        };
+    }
+
+    /**
+     * اكتشاف مسارات المحتوى داخل الأرشيف بعد فك الضغط.
+     *
+     * @return array{database:?string,files:?string,config:?string}
+     */
+    private function resolveRestoreContentPaths(string $extractedPath, string $backupType): array
+    {
+        $root = rtrim($extractedPath, DIRECTORY_SEPARATOR);
+
+        $database = $this->firstExistingPath([
+            $root . DIRECTORY_SEPARATOR . 'database.sql',
+            $root . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'database.sql',
+        ]);
+
+        $files = $this->firstExistingDirectory([
+            $root . DIRECTORY_SEPARATOR . 'files',
+        ]);
+
+        $config = $this->firstExistingDirectory([
+            $root . DIRECTORY_SEPARATOR . 'config',
+        ]);
+
+        // نسخ الملفات/الإعدادات فقط قد تكون جذر الاستخراج نفسه.
+        if ($backupType === 'files' && ! $files) {
+            $files = $root;
+        }
+
+        if ($backupType === 'config' && ! $config) {
+            $config = $root;
+        }
+
+        if ($backupType === 'database' && ! $database) {
+            $matches = glob($root . DIRECTORY_SEPARATOR . '*.sql') ?: [];
+            $database = $matches[0] ?? null;
+        }
+
+        return [
+            'database' => $database,
+            'files' => $files,
+            'config' => $config,
+        ];
+    }
+
+    private function firstExistingPath(array $candidates): ?string
+    {
+        foreach ($candidates as $path) {
+            if (is_file($path)) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
+    private function firstExistingDirectory(array $candidates): ?string
+    {
+        foreach ($candidates as $path) {
+            if (is_dir($path)) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * تقسيم ملف SQL إلى أوامر مع احترام النصوص المقتبسة.
+     *
+     * @return list<string>
+     */
+    private function splitSqlStatements(string $sql): array
+    {
+        $statements = [];
+        $buffer = '';
+        $inString = false;
+        $stringChar = null;
+        $length = strlen($sql);
+
+        for ($i = 0; $i < $length; $i++) {
+            $char = $sql[$i];
+            $prev = $i > 0 ? $sql[$i - 1] : '';
+
+            if (($char === "'" || $char === '"') && $prev !== '\\') {
+                if (! $inString) {
+                    $inString = true;
+                    $stringChar = $char;
+                } elseif ($char === $stringChar) {
+                    $inString = false;
+                    $stringChar = null;
+                }
+            }
+
+            if ($char === ';' && ! $inString) {
+                $statement = trim($buffer);
+                if ($statement !== '' && ! str_starts_with($statement, '--')) {
+                    $statements[] = $statement;
+                }
+                $buffer = '';
+                continue;
+            }
+
+            $buffer .= $char;
+        }
+
+        $tail = trim($buffer);
+        if ($tail !== '' && ! str_starts_with($tail, '--')) {
+            $statements[] = $tail;
+        }
+
+        return $statements;
     }
 
     /**
@@ -497,9 +775,11 @@ class BackupService
      */
     private function copyDirectory(string $source, string $dest): void
     {
-        if (!is_dir($dest)) {
-            mkdir($dest, 0755, true);
+        if (! is_dir($source)) {
+            return;
         }
+
+        $this->ensureDirectory($dest);
 
         $iterator = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($source, \RecursiveDirectoryIterator::SKIP_DOTS),
@@ -509,29 +789,81 @@ class BackupService
         foreach ($iterator as $item) {
             $destPath = $dest . DIRECTORY_SEPARATOR . $iterator->getSubPathName();
             if ($item->isDir()) {
-                if (!is_dir($destPath)) {
-                    mkdir($destPath, 0755, true);
-                }
+                $this->ensureDirectory($destPath);
             } else {
-                copy($item, $destPath);
+                $this->ensureDirectory(dirname($destPath));
+                copy($item->getPathname(), $destPath);
             }
         }
     }
 
     /**
-     * استخراج إلى مجلد
+     * تنظيف الملفات المحلية المؤقتة بعد محاولة النسخ.
+     * الملف المعتمد يبقى في التخزين العام (storage_path).
      */
-    private function extractToDirectory(string $archivePath, string $destDir): void
+    private function cleanupLocalBackupArtifacts(Backup $backup, ?string $sourcePath, ?string $compressedPath): void
     {
-        if (!is_dir($destDir)) {
-            mkdir($destDir, 0755, true);
+        $knownTempPaths = [
+            storage_path('app/backups/temp/' . $backup->id),
+            storage_path('app/backups/temp/files_' . $backup->id),
+            storage_path('app/backups/temp/config_' . $backup->id),
+            storage_path('app/backups/temp/database_' . $backup->id),
+        ];
+
+        foreach ($knownTempPaths as $path) {
+            $this->deletePath($path);
         }
 
-        $zip = new \ZipArchive();
-        if ($zip->open($archivePath) === true) {
-            $zip->extractTo($destDir);
-            $zip->close();
+        if ($sourcePath) {
+            $this->deletePath($sourcePath);
         }
+
+        $backup->refresh();
+
+        if ($compressedPath && file_exists($compressedPath)) {
+            if ($backup->status === 'completed' && $backup->storage_path) {
+                @unlink($compressedPath);
+                $backup->update(['file_path' => $backup->storage_path]);
+            } elseif ($backup->status === 'failed') {
+                // أرشيف العمل المحلي لم يُعتمد في التخزين
+                @unlink($compressedPath);
+            }
+        }
+    }
+
+    private function ensureDirectory(string $path): void
+    {
+        if (! is_dir($path)) {
+            mkdir($path, 0755, true);
+        }
+    }
+
+    private function deletePath(?string $path): void
+    {
+        if (! $path || ! file_exists($path)) {
+            return;
+        }
+
+        if (is_dir($path)) {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($path, \RecursiveDirectoryIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::CHILD_FIRST
+            );
+
+            foreach ($iterator as $item) {
+                if ($item->isDir()) {
+                    @rmdir($item->getPathname());
+                } else {
+                    @unlink($item->getPathname());
+                }
+            }
+
+            @rmdir($path);
+
+            return;
+        }
+
+        @unlink($path);
     }
 
     /**

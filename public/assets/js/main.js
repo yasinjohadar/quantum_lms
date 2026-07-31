@@ -5,11 +5,16 @@
         document.querySelector("html").setAttribute("data-menu-styles", "dark")
         document.querySelector("html").setAttribute("data-header-styles", "dark")
     }
-    if (localStorage.valexrtl) {
+    // الافتراضي دائماً RTL
+    (function () {
         let html = document.querySelector('html');
         html.setAttribute("dir", "rtl");
+        try {
+            localStorage.setItem("valexrtl", true);
+            localStorage.removeItem("valexltr");
+        } catch (e) {}
         document.querySelector("#style")?.setAttribute("href", "/assets/libs/bootstrap/css/bootstrap.rtl.min.css");
-    }
+    })();
     if (localStorage.getItem("valexlayout") == "horizontal") {
         document.querySelector("html").setAttribute("data-nav-layout", "horizontal")
     }

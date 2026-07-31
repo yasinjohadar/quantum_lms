@@ -12,13 +12,19 @@ class LocalStorageDriver implements BackupStorageInterface
 
     public function __construct(array $config)
     {
-        $this->root = $config['path'] ?? 'backups';
+        $this->root = trim((string) ($config['path'] ?? 'backups'), '/');
+    }
+
+    protected function fullPath(string $path): string
+    {
+        $path = ltrim($path, '/');
+        return $this->root === '' ? $path : ($this->root . '/' . $path);
     }
 
     public function store(string $path, string $content): bool
     {
         try {
-            return Storage::disk('local')->put($this->root . '/' . $path, $content);
+            return Storage::disk('local')->put($this->fullPath($path), $content);
         } catch (\Exception $e) {
             Log::error('Local storage store failed: ' . $e->getMessage());
             return false;
@@ -28,7 +34,7 @@ class LocalStorageDriver implements BackupStorageInterface
     public function retrieve(string $path): string
     {
         try {
-            return Storage::disk('local')->get($this->root . '/' . $path);
+            return Storage::disk('local')->get($this->fullPath($path));
         } catch (\Exception $e) {
             Log::error('Local storage retrieve failed: ' . $e->getMessage());
             throw $e;
@@ -38,7 +44,7 @@ class LocalStorageDriver implements BackupStorageInterface
     public function delete(string $path): bool
     {
         try {
-            return Storage::disk('local')->delete($this->root . '/' . $path);
+            return Storage::disk('local')->delete($this->fullPath($path));
         } catch (\Exception $e) {
             Log::error('Local storage delete failed: ' . $e->getMessage());
             return false;
@@ -47,14 +53,13 @@ class LocalStorageDriver implements BackupStorageInterface
 
     public function exists(string $path): bool
     {
-        return Storage::disk('local')->exists($this->root . '/' . $path);
+        return Storage::disk('local')->exists($this->fullPath($path));
     }
 
     public function list(string $prefix = ''): array
     {
         try {
-            $fullPrefix = $this->root . '/' . $prefix;
-            return Storage::disk('local')->files($fullPrefix);
+            return Storage::disk('local')->files($this->fullPath($prefix));
         } catch (\Exception $e) {
             Log::error('Local storage list failed: ' . $e->getMessage());
             return [];
@@ -64,7 +69,7 @@ class LocalStorageDriver implements BackupStorageInterface
     public function getSize(string $path): int
     {
         try {
-            return Storage::disk('local')->size($this->root . '/' . $path);
+            return Storage::disk('local')->size($this->fullPath($path));
         } catch (\Exception $e) {
             Log::error('Local storage getSize failed: ' . $e->getMessage());
             return 0;
@@ -74,7 +79,7 @@ class LocalStorageDriver implements BackupStorageInterface
     public function testConnection(): bool
     {
         try {
-            $testFile = $this->root . '/test_' . time() . '.txt';
+            $testFile = $this->fullPath('test_' . time() . '.txt');
             $result = Storage::disk('local')->put($testFile, 'test');
             if ($result) {
                 Storage::disk('local')->delete($testFile);
@@ -88,7 +93,7 @@ class LocalStorageDriver implements BackupStorageInterface
     public function getAvailableSpace(): ?int
     {
         try {
-            $path = Storage::disk('local')->path($this->root);
+            $path = Storage::disk('local')->path($this->root === '' ? '/' : $this->root);
             return disk_free_space($path);
         } catch (\Exception $e) {
             return null;
@@ -98,7 +103,7 @@ class LocalStorageDriver implements BackupStorageInterface
     public function getMetadata(string $path): array
     {
         try {
-            $fullPath = $this->root . '/' . $path;
+            $fullPath = $this->fullPath($path);
             return [
                 'size' => Storage::disk('local')->size($fullPath),
                 'last_modified' => Storage::disk('local')->lastModified($fullPath),
@@ -109,4 +114,3 @@ class LocalStorageDriver implements BackupStorageInterface
         }
     }
 }
-

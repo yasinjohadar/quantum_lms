@@ -32,7 +32,7 @@
      لتجنب أخطاء "Element not found" وبطء التحميل. صفحات التقارير تدفع ApexCharts محلياً عند الحاجة. --}}
 
 <!-- Custom-Switcher JS -->
-<script src="{{ asset('assets/js/custom-switcher.min.js') }}"></script>
+<script src="{{ asset('assets/js/custom-switcher.min.js') }}{{ file_exists(public_path('assets/js/custom-switcher.min.js')) ? '?v=' . filemtime(public_path('assets/js/custom-switcher.min.js')) : '' }}"></script>
 
 <!-- Custom JS -->
 <script src="{{ asset('assets/js/custom.js') }}"></script>

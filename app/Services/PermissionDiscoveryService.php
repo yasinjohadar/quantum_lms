@@ -292,9 +292,6 @@ class PermissionDiscoveryService
             'user' => 'المستخدم',
             'archived-user' => 'المستخدم المؤرشف',
             'role' => 'الدور',
-            'library' => 'عنصر المكتبة',
-            'library-item' => 'عنصر المكتبة',
-            'library-category' => 'فئة المكتبة',
             'report' => 'التقرير',
             'settings' => 'الإعدادات',
             'dashboard' => 'لوحة التحكم',
@@ -306,8 +303,6 @@ class PermissionDiscoveryService
             'review-comment' => 'ملاحظة المراجعة',
             'currency' => 'العملة',
             'exchange-rate' => 'سعر الصرف',
-            'calendar' => 'التقويم',
-            'calendar-event' => 'حدث التقويم',
             'whats-app' => 'WhatsApp',
             'whats-app-settings' => 'إعدادات WhatsApp',
             'whats-app-message' => 'رسالة WhatsApp',
@@ -344,7 +339,6 @@ class PermissionDiscoveryService
             'admin-student-progress' => 'تقدم الطالب',
             'weekly-task' => 'المهمة الأسبوعية',
             'daily-task' => 'المهمة اليومية',
-            'reminder' => 'التذكير',
             'level' => 'المستوى',
             'achievement' => 'الإنجاز',
             'badge' => 'الشارة',
@@ -354,8 +348,6 @@ class PermissionDiscoveryService
             'teacher-assignment' => 'تخصيص المعلم',
             'supervisor-assignment' => 'تخصيص المشرف',
             'analytics-dashboard' => 'لوحة التحليلات',
-            'library-dashboard' => 'لوحة المكتبة',
-            'library-report' => 'تقرير المكتبة',
         ];
 
         $resource = str_replace('Controller', '', $controllerName);
