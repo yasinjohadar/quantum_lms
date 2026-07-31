@@ -39,8 +39,10 @@ return new class extends Migration
         });
         
         // جعل عمود completed_at nullable إذا كان موجوداً (لأن الكود يستخدم marked_at الآن)
-        // نستخدم DB::statement مباشرة لتجنب مشاكل doctrine/dbal
-        if (Schema::hasColumn('lesson_completions', 'completed_at')) {
+        // نستخدم DB::statement مباشرة لتجنب مشاكل doctrine/dbal — MySQL فقط، لا مكافئ
+        // لـ MODIFY COLUMN في sqlite (بيئة الاختبارات عبر RefreshDatabase).
+        if (Schema::hasColumn('lesson_completions', 'completed_at')
+            && Schema::getConnection()->getDriverName() === 'mysql') {
             DB::statement('ALTER TABLE `lesson_completions` MODIFY COLUMN `completed_at` TIMESTAMP NULL');
         }
     }

@@ -17,24 +17,29 @@ class CreateBackupJob implements ShouldQueue, ShouldBeUnique
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
-     * مهلة كافية للنسخ الكبيرة (ساعة).
+     * مهلة كافية للنسخ الكبيرة — تُقرأ من config('backup.job_timeout') في المُنشئ.
      */
     public int $timeout = 3600;
 
     /**
-     * لا نعيد المحاولة تلقائياً لتفادي تكرار العمل الثقيل.
+     * لا نعيد المحاولة تلقائياً — processBackup() ليست آمنة لإعادة تشغيل تلقائية
+     * مؤكَّدة (قد تكون كتابة جزئية قيد التقدم). شبكة الأمان الفعلية لمهمة تعطّلت
+     * منتصف التنفيذ هي أمر backup:reconcile-stuck، وليس إعادة محاولة Laravel.
      */
     public int $tries = 1;
 
     /**
-     * مدة اعتبار المهمة فريدة (ثوانٍ).
+     * مدة اعتبار المهمة فريدة (ثوانٍ) — تُقرأ من نفس الإعداد.
      */
     public int $uniqueFor = 3600;
 
     public function __construct(
         public Backup $backup,
         public array $options = []
-    ) {}
+    ) {
+        $this->timeout = (int) config('backup.job_timeout', 3600);
+        $this->uniqueFor = $this->timeout;
+    }
 
     public function uniqueId(): string
     {

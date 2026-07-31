@@ -12,8 +12,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // تعديل enum لإضافة حالة 'pending'
-        DB::statement("ALTER TABLE enrollments MODIFY COLUMN status ENUM('active', 'suspended', 'completed', 'pending') DEFAULT 'active'");
+        // MODIFY COLUMN صيغة خاصة بـ MySQL — لا مكافئ لها في sqlite (تُستخدم في بيئة
+        // الاختبارات via RefreshDatabase). العمود الأصلي أُنشئ عبر enum() القابل للنقل،
+        // وsqlite لا يفرض enum فعلياً (نص عادي) فتخطّي هذه الخطوة عليه غير ضار.
+        if (DB::connection()->getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE enrollments MODIFY COLUMN status ENUM('active', 'suspended', 'completed', 'pending') DEFAULT 'active'");
+        }
     }
 
     /**
@@ -26,8 +30,10 @@ return new class extends Migration
         DB::table('enrollments')
             ->where('status', 'pending')
             ->update(['status' => 'active']);
-        
-        // ثانياً: تعديل enum لإزالة 'pending'
-        DB::statement("ALTER TABLE enrollments MODIFY COLUMN status ENUM('active', 'suspended', 'completed') DEFAULT 'active'");
+
+        // ثانياً: تعديل enum لإزالة 'pending' (MySQL فقط — انظر ملاحظة up() أعلاه)
+        if (DB::connection()->getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE enrollments MODIFY COLUMN status ENUM('active', 'suspended', 'completed') DEFAULT 'active'");
+        }
     }
 };

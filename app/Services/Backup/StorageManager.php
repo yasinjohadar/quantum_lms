@@ -4,7 +4,6 @@ namespace App\Services\Backup;
 
 use App\Models\AppStorageConfig;
 use App\Models\Backup;
-use App\Models\BackupStorageConfig;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -13,13 +12,6 @@ class StorageManager
     public const SUPPORTED_DRIVERS = [
         'local', 's3', 'ftp', 'sftp', 'azure', 'digitalocean', 'wasabi', 'backblaze', 'cloudflare_r2',
     ];
-
-    protected StorageAnalyticsService $analyticsService;
-
-    public function __construct(StorageAnalyticsService $analyticsService)
-    {
-        $this->analyticsService = $analyticsService;
-    }
 
     protected function activeAppConfigsQuery()
     {
@@ -52,7 +44,6 @@ class StorageManager
                     if ($driver->store($storagePath, $fileContent)) {
                         $backup->update([
                             'storage_config_id' => $config->id,
-                            'storage_driver' => $config->driver,
                             'storage_path' => $storagePath,
                         ]);
 
@@ -195,19 +186,11 @@ class StorageManager
             }
         }
 
-        if ($backup->storage_driver) {
-            $byDriver = $all->where('driver', $backup->storage_driver)->values();
-            if ($byDriver->isNotEmpty()) {
-                $rest = $all->whereNotIn('id', $byDriver->pluck('id'))->values();
-                return $byDriver->merge($rest)->values();
-            }
-        }
-
         return $all;
     }
 
     /**
-     * حل سائق النسخة: AppStorageConfig أولاً، ثم توافق قديم مع BackupStorageConfig.
+     * حل سائق النسخة عبر storage_config_id → AppStorageConfig فقط.
      */
     protected function resolveDriverForBackup(Backup $backup)
     {
@@ -215,27 +198,6 @@ class StorageManager
             $appConfig = AppStorageConfig::find($backup->storage_config_id);
             if ($appConfig) {
                 return StorageFactory::createFromAppConfig($appConfig);
-            }
-        }
-
-        if ($backup->storage_driver) {
-            $appConfig = AppStorageConfig::where('driver', $backup->storage_driver)
-                ->where('is_active', true)
-                ->orderBy('priority', 'desc')
-                ->first();
-
-            if ($appConfig) {
-                return StorageFactory::createFromAppConfig($appConfig);
-            }
-
-            // توافق النسخ القديمة المخزّنة عبر backup_storage_configs
-            $legacy = BackupStorageConfig::where('driver', $backup->storage_driver)
-                ->orderByDesc('is_active')
-                ->orderBy('priority', 'desc')
-                ->first();
-
-            if ($legacy) {
-                return StorageFactory::create($legacy);
             }
         }
 

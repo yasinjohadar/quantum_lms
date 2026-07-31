@@ -8,6 +8,14 @@ use ZipArchive;
 class BackupCompressionService
 {
     /**
+     * ملاحظة أمنية: لا تشفير على مستوى الملف هنا — الأرشيف الناتج (zip/gzip/tar)
+     * يُخزَّن كما هو، وقد يتضمن (لنوع full/config) ملف .env الحقيقي بأسراره.
+     * التحسين الموصى به لاحقاً: تشفير AES-256 لاحق للضغط بمفتاح BACKUP_ENCRYPTION_KEY
+     * مخصص منفصل عن APP_KEY (راجع config/backup.php وdocs/guides/backup-operations.md).
+     * مؤجَّل حالياً بقرار صريح.
+     */
+
+    /**
      * ضغط النسخة
      */
     public function compress(Backup $backup, string $type = 'zip'): string

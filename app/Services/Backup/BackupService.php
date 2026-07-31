@@ -54,17 +54,15 @@ class BackupService
     public function createPendingBackup(array $options): Backup
     {
         $storageConfigId = $options['storage_config_id'] ?? null;
-        $storageDriver = $options['storage_driver'] ?? null;
 
-        if ($storageConfigId && ! $storageDriver) {
-            $storageDriver = \App\Models\AppStorageConfig::where('id', $storageConfigId)->value('driver');
+        if (! $storageConfigId) {
+            throw new \InvalidArgumentException('storage_config_id مطلوب لإنشاء نسخة احتياطية.');
         }
 
         $backup = Backup::create([
             'name' => $options['name'] ?? 'backup_' . now()->format('Y-m-d_H-i-s'),
             'type' => $options['type'] ?? 'manual',
             'backup_type' => $options['backup_type'] ?? 'full',
-            'storage_driver' => $storageDriver ?? 'local',
             'storage_config_id' => $storageConfigId,
             'storage_path' => $options['storage_path'] ?? '',
             'file_path' => $options['file_path'] ?? '',
@@ -128,6 +126,8 @@ class BackupService
 
             $backup->update(['file_path' => $sourcePath]);
 
+            // ملاحظة أمنية: $compressedPath غير مشفّر عند تخزينه (انظر BackupCompressionService)
+            // — قد يتضمن .env الحقيقي لنوع full/config. تشفير AES-256 لاحق مؤجَّل بقرار صريح.
             $compressedPath = $this->compressionService->compress($backup, $backup->compression_type);
 
             $this->storageManager->storeWithFailover($backup, $compressedPath);
@@ -265,13 +265,22 @@ class BackupService
             $tables = DB::select('SHOW TABLES');
             $tablesKey = 'Tables_in_' . $database;
 
+            $excludedTables = array_flip((array) config('backup.excluded_tables', []));
+
             $sqlContent = "-- Database Backup\n";
             $sqlContent .= '-- Generated: ' . now()->toDateTimeString() . "\n";
-            $sqlContent .= "-- Database: {$database}\n\n";
+            $sqlContent .= "-- Database: {$database}\n";
+            $sqlContent .= "-- Excluded tables (never touched by restore): " . implode(', ', array_keys($excludedTables)) . "\n\n";
             $sqlContent .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
 
             foreach ($tables as $table) {
                 $tableName = $table->$tablesKey;
+
+                // جداول تتبّع النسخ الاحتياطية والحالة العابرة (جلسات/طابور/كاش)
+                // تُستبعد كلياً — راجع تعليق config('backup.excluded_tables').
+                if (isset($excludedTables[$tableName])) {
+                    continue;
+                }
 
                 $createTable = DB::select("SHOW CREATE TABLE `{$tableName}`");
                 $sqlContent .= "DROP TABLE IF EXISTS `{$tableName}`;\n";
@@ -290,7 +299,9 @@ class BackupService
 
                 $values = [];
                 $currentChunk = 0;
-                $chunkSize = 100;
+                $currentChunkBytes = 0;
+                $chunkSize = (int) config('backup.sql_dump_chunk_size', 100);
+                $maxStatementBytes = (int) config('backup.sql_dump_max_statement_bytes', 512 * 1024);
 
                 foreach ($rows as $row) {
                     $rowArray = (array) $row;
@@ -302,14 +313,21 @@ class BackupService
                         return DB::getPdo()->quote($val);
                     }, array_values($rowArray));
 
-                    $values[] = '(' . implode(', ', $valArray) . ')';
-                    $currentChunk++;
+                    $tuple = '(' . implode(', ', $valArray) . ')';
 
-                    if ($currentChunk >= $chunkSize) {
+                    // إنهاء الدفعة الحالية قبل إضافة الصف الجديد إذا كانت الإضافة
+                    // ستتجاوز الحد الأقصى للبايتات — يمنع عبارة INSERT ضخمة تتجاوز
+                    // max_allowed_packet في MySQL بسبب عمود نصي كبير في صف واحد.
+                    if ($values !== [] && ($currentChunk >= $chunkSize || $currentChunkBytes + strlen($tuple) > $maxStatementBytes)) {
                         $sqlContent .= "INSERT INTO `{$tableName}` ({$columnsStr}) VALUES\n" . implode(",\n", $values) . ";\n\n";
                         $values = [];
                         $currentChunk = 0;
+                        $currentChunkBytes = 0;
                     }
+
+                    $values[] = $tuple;
+                    $currentChunk++;
+                    $currentChunkBytes += strlen($tuple);
                 }
 
                 if (! empty($values)) {
@@ -474,7 +492,7 @@ class BackupService
                 'database' => $this->restoreDatabase($paths['database']),
                 'files' => $this->restoreFiles($paths['files']),
                 'config' => $this->restoreConfig($paths['config']),
-                'full' => $this->restoreFull($paths),
+                'full' => $this->restoreFull($backup, $paths),
                 default => throw new \RuntimeException('نوع النسخ غير معروف'),
             };
 
@@ -493,23 +511,44 @@ class BackupService
     }
 
     /**
-     * تنظيف النسخ المنتهية الصلاحية
+     * تنظيف النسخ المنتهية الصلاحية على دفعات (chunkById) بدل تحميلها كلها دفعة
+     * واحدة، مع تجميع ملخّص كامل بدل مجرد عدد ناجح. $dryRun=true يُعاين فقط
+     * (بدون حذف فعلي) لمعرفة ما سيُحذف قبل التنفيذ الحقيقي.
+     *
+     * @return array{deleted: int, failed: int, total_bytes_freed: int, failed_ids: list<array{id: int, reason: string}>}
      */
-    public function cleanupExpiredBackups(): int
+    public function cleanupExpiredBackups(bool $dryRun = false): array
     {
-        $expiredBackups = Backup::expired()->get();
-        $count = 0;
+        $summary = [
+            'deleted' => 0,
+            'failed' => 0,
+            'total_bytes_freed' => 0,
+            'failed_ids' => [],
+        ];
 
-        foreach ($expiredBackups as $backup) {
-            try {
-                $this->deleteBackup($backup);
-                $count++;
-            } catch (\Exception $e) {
-                \Log::error('Error deleting expired backup: ' . $e->getMessage());
+        Backup::expired()->chunkById(100, function ($backups) use (&$summary, $dryRun) {
+            foreach ($backups as $backup) {
+                $fileSize = (int) $backup->file_size;
+
+                if ($dryRun) {
+                    $summary['deleted']++;
+                    $summary['total_bytes_freed'] += $fileSize;
+                    continue;
+                }
+
+                try {
+                    $this->deleteBackup($backup);
+                    $summary['deleted']++;
+                    $summary['total_bytes_freed'] += $fileSize;
+                } catch (\Exception $e) {
+                    $summary['failed']++;
+                    $summary['failed_ids'][] = ['id' => $backup->id, 'reason' => $e->getMessage()];
+                    Log::error('Error deleting expired backup: ' . $e->getMessage(), ['backup_id' => $backup->id]);
+                }
             }
-        }
+        });
 
-        return $count;
+        return $summary;
     }
 
     /**
@@ -541,7 +580,28 @@ class BackupService
             'running' => Backup::where('status', 'running')->count(),
             'total_size' => $this->getTotalBackupSize(),
             'expired' => Backup::expired()->count(),
+            'stuck' => $this->countStuckBackups(),
         ];
+    }
+
+    /**
+     * عدد النسخ العالقة (running/pending تجاوزت المهلة) — نفس منطق
+     * backup:reconcile-stuck لكن للعرض فقط (بدون أي تعديل).
+     */
+    public function countStuckBackups(): int
+    {
+        $runningTimeout = (int) config('backup.stuck_job_timeout_minutes', 90);
+        $pendingTimeout = (int) config('backup.stuck_pending_timeout_minutes', 30);
+
+        $stuckRunning = Backup::where('status', 'running')
+            ->where('started_at', '<', now()->subMinutes($runningTimeout))
+            ->count();
+
+        $stuckPending = Backup::where('status', 'pending')
+            ->where('created_at', '<', now()->subMinutes($pendingTimeout))
+            ->count();
+
+        return $stuckRunning + $stuckPending;
     }
 
     /**
@@ -563,14 +623,49 @@ class BackupService
             throw new \RuntimeException('لم يتم العثور على أوامر SQL صالحة داخل ملف النسخة.');
         }
 
+        $originalSqlMode = null;
+        try {
+            $originalSqlMode = DB::selectOne('SELECT @@SESSION.sql_mode as mode')->mode ?? '';
+        } catch (\Throwable $e) {
+            // نتابع بدون استعادة sql_mode لاحقاً إن تعذّرت قراءته أصلاً.
+        }
+
+        // تخفيف sql_mode مؤقتاً أثناء الاستعادة: ملف النسخة قد يحوي جداول/بيانات
+        // أُنشئت قبل تفعيل STRICT_TRANS_TABLES/NO_ZERO_DATE في اتصال المشروع
+        // (مثل عمود تاريخ NOT NULL بقيمة افتراضية '0000-00-00 00:00:00') — إعادة
+        // تطبيقها حرفياً يجب أن تنجح لأن هدف الاستعادة هو إعادة الحالة كما كانت
+        // فعلاً، وليس التحقق من توافقها مع قواعد الاتصال الحالية.
+        DB::statement("SET SESSION sql_mode = ''");
         DB::statement('SET FOREIGN_KEY_CHECKS=0');
 
         try {
             foreach ($statements as $statement) {
-                DB::unprepared($statement);
+                try {
+                    DB::unprepared($statement);
+                } catch (\Throwable $e) {
+                    // اتصال MySQL غالباً ما يصبح غير صالح تماماً بعد خطأ كهذا (مثل
+                    // "packet bigger than max_allowed_packet" أو انقطاع الاتصال) —
+                    // نعيد الاتصال فوراً حتى لا تفشل بصمت كل استعلامات قاعدة
+                    // البيانات اللاحقة في هذا الطلب (تسجيل الخطأ، وحتى حفظ جلسة
+                    // Laravel نفسها عند نهاية الطلب) بخطأ "gone away" مُضلِّل.
+                    DB::reconnect();
+
+                    throw new \RuntimeException(
+                        'فشل تنفيذ أحد أوامر SQL أثناء الاستعادة: ' . $e->getMessage(),
+                        previous: $e
+                    );
+                }
             }
         } finally {
-            DB::statement('SET FOREIGN_KEY_CHECKS=1');
+            try {
+                DB::statement('SET FOREIGN_KEY_CHECKS=1');
+                if ($originalSqlMode !== null) {
+                    DB::statement('SET SESSION sql_mode = ' . DB::getPdo()->quote($originalSqlMode));
+                }
+            } catch (\Throwable $e) {
+                // الاتصال قد يكون أُعيد إنشاؤه للتو بعد خطأ أعلاه؛ لا داعي لإخفاء
+                // الخطأ الأصلي باستثناء ثانوي هنا.
+            }
         }
     }
 
@@ -603,6 +698,7 @@ class BackupService
         ];
 
         $restored = 0;
+        $timestamp = now()->format('YmdHis');
 
         foreach ($map as $name => $destination) {
             $source = $configDir . DIRECTORY_SEPARATOR . $name;
@@ -610,8 +706,10 @@ class BackupService
                 continue;
             }
 
-            if ($name === '.env' && is_file($destination)) {
-                copy($destination, base_path('.env.pre-restore-' . now()->format('YmdHis')));
+            // نسخة احتياطية بطابع زمني قبل الاستبدال لكل ملف (وليس .env فقط)،
+            // حتى يمكن التراجع يدوياً إن احتاج الأمر بعد الاستعادة.
+            if (is_file($destination)) {
+                copy($destination, $destination . '.pre-restore-' . $timestamp);
             }
 
             $this->ensureDirectory(dirname($destination));
@@ -628,15 +726,56 @@ class BackupService
     }
 
     /**
-     * استعادة كاملة من مسارات محلولة مسبقاً.
+     * استعادة كاملة من مسارات محلولة مسبقاً، مع لقطة قاعدة بيانات تعويضية:
+     * إذا نجحت استعادة قاعدة البيانات ثم فشلت مرحلة لاحقة (ملفات/إعدادات)،
+     * نعيد قاعدة البيانات إلى حالتها قبل هذه الاستعادة بدل تركها في حالة
+     * وسيطة غير متّسقة مع بقية النظام. لا معاملات DB حقيقية ممكنة هنا لأن
+     * dump/restore الخام يستخدم DDL (DROP/CREATE TABLE) الذي يُنهي أي معاملة
+     * MySQL ضمنياً، لذا اللقطة التعويضية هي البديل العملي الصحيح.
      *
      * @param  array{database:?string,files:?string,config:?string}  $paths
      */
-    private function restoreFull(array $paths): void
+    private function restoreFull(Backup $backup, array $paths): void
     {
-        $this->restoreDatabase($paths['database']);
-        $this->restoreFiles($paths['files']);
-        $this->restoreConfig($paths['config']);
+        $preRestoreDumpPath = storage_path('app/backups/temp/pre_restore_' . $backup->id . '_' . uniqid('', true) . '.sql');
+
+        try {
+            $this->writeDatabaseDump($backup, $preRestoreDumpPath);
+        } catch (\Throwable $e) {
+            Log::warning('تعذّر أخذ لقطة قاعدة بيانات قبل الاستعادة — سيتم المتابعة بدون شبكة أمان للتراجع.', [
+                'backup_id' => $backup->id,
+                'error' => $e->getMessage(),
+            ]);
+            $preRestoreDumpPath = null;
+        }
+
+        try {
+            $this->restoreDatabase($paths['database']);
+            $this->restoreFiles($paths['files']);
+            $this->restoreConfig($paths['config']);
+        } catch (\Throwable $e) {
+            if ($preRestoreDumpPath && is_file($preRestoreDumpPath)) {
+                try {
+                    $this->restoreDatabase($preRestoreDumpPath);
+                    Log::error('فشلت الاستعادة الكاملة بعد استعادة قاعدة البيانات بنجاح — تم التراجع إلى حالة قاعدة البيانات قبل هذه الاستعادة.', [
+                        'backup_id' => $backup->id,
+                        'original_error' => $e->getMessage(),
+                    ]);
+                } catch (\Throwable $rollbackException) {
+                    Log::critical('فشلت الاستعادة الكاملة وفشل التراجع التعويضي لقاعدة البيانات أيضاً — يلزم تدخّل يدوي فوري.', [
+                        'backup_id' => $backup->id,
+                        'original_error' => $e->getMessage(),
+                        'rollback_error' => $rollbackException->getMessage(),
+                    ]);
+                }
+            }
+
+            throw $e;
+        } finally {
+            if ($preRestoreDumpPath) {
+                $this->deletePath($preRestoreDumpPath);
+            }
+        }
     }
 
     /**
@@ -871,12 +1010,23 @@ class BackupService
      */
     private function log(Backup $backup, string $level, string $message, array $context = []): void
     {
-        BackupLog::create([
-            'backup_id' => $backup->id,
-            'level' => $level,
-            'message' => $message,
-            'context' => $context,
-        ]);
+        try {
+            BackupLog::create([
+                'backup_id' => $backup->id,
+                'level' => $level,
+                'message' => $message,
+                'context' => $context,
+            ]);
+        } catch (\Throwable $e) {
+            // إن كان اتصال قاعدة البيانات معطوباً (مثلاً بعد خطأ "gone away" أثناء
+            // الاستعادة)، لا نريد أن يُخفي فشل تسجيل الخطأ نفسه الخطأ الأصلي
+            // برمي استثناء ثانٍ غير متوقع — التسجيل في ملف السجلات يكفي هنا.
+            Log::error('تعذّر تسجيل رسالة في backup_logs: ' . $message, [
+                'backup_id' => $backup->id,
+                'level' => $level,
+                'log_write_error' => $e->getMessage(),
+            ]);
+        }
     }
 }
 

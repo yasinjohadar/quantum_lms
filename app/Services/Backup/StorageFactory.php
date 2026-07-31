@@ -4,7 +4,6 @@ namespace App\Services\Backup;
 
 use App\Contracts\BackupStorageInterface;
 use App\Models\AppStorageConfig;
-use App\Models\BackupStorageConfig;
 use App\Services\Backup\StorageDrivers\LocalStorageDriver;
 use App\Services\Backup\StorageDrivers\S3StorageDriver;
 use App\Services\Backup\StorageDrivers\AzureStorageDriver;
@@ -31,16 +30,6 @@ class StorageFactory
         if ($config->driver === 'local') {
             $driverConfig['path'] = '';
         }
-
-        return self::createFromArray($config->driver, $driverConfig);
-    }
-
-    /**
-     * توافق قديم مع BackupStorageConfig.
-     */
-    public static function create(BackupStorageConfig $config): BackupStorageInterface
-    {
-        $driverConfig = $config->getDecryptedConfig();
 
         return self::createFromArray($config->driver, $driverConfig);
     }

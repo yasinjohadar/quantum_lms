@@ -133,6 +133,21 @@
             </div>
         @endif
 
+        @if(($stats['overdue_schedules'] ?? 0) > 0 || ($stats['stuck'] ?? 0) > 0)
+            <div class="alert alert-warning d-flex align-items-start gap-2 mb-4">
+                <i class="fas fa-triangle-exclamation mt-1"></i>
+                <div>
+                    <strong>تنبيه تشغيلي:</strong>
+                    @if(($stats['overdue_schedules'] ?? 0) > 0)
+                        <div>{{ $stats['overdue_schedules'] }} جدولة نشطة متأخرة عن موعدها — تحقق من تشغيل queue:work و schedule:run/work على الخادم.</div>
+                    @endif
+                    @if(($stats['stuck'] ?? 0) > 0)
+                        <div>{{ $stats['stuck'] }} نسخة عالقة في حالة معلّق/قيد التنفيذ لفترة أطول من المتوقع — شغّل <code>backup:reconcile-stuck</code> أو انتظر تشغيله التلقائي.</div>
+                    @endif
+                </div>
+            </div>
+        @endif
+
         <div class="row g-3 mb-4">
             <div class="col-sm-6 col-xl-3">
                 <div class="backup-stat-card backup-stat-card--total">
@@ -178,7 +193,7 @@
             </div>
             <div class="card-body">
                 <form method="GET" action="{{ route('admin.backups.index') }}" class="row g-3 align-items-end">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label for="status" class="form-label">الحالة</label>
                         <select name="status" id="status" class="form-select">
                             <option value="">الكل</option>
@@ -187,7 +202,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label for="backup_type" class="form-label">نوع النسخ</label>
                         <select name="backup_type" id="backup_type" class="form-select">
                             <option value="">الكل</option>
@@ -196,11 +211,20 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-4 d-flex flex-wrap gap-2">
+                    <div class="col-md-3">
+                        <label for="storage_driver" class="form-label">التخزين</label>
+                        <select name="storage_driver" id="storage_driver" class="form-select">
+                            <option value="">الكل</option>
+                            @foreach(\App\Models\AppStorageConfig::DRIVERS as $key => $label)
+                                <option value="{{ $key }}" {{ request('storage_driver') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex flex-wrap gap-2">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-filter me-1"></i> تطبيق
                         </button>
-                        @if(request()->filled('status') || request()->filled('backup_type'))
+                        @if(request()->filled('status') || request()->filled('backup_type') || request()->filled('storage_driver'))
                             <a href="{{ route('admin.backups.index') }}" class="btn btn-light">إعادة تعيين</a>
                         @endif
                     </div>

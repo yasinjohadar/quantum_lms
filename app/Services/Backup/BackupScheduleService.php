@@ -10,11 +10,13 @@ use Illuminate\Support\Facades\Log;
 
 class BackupScheduleService
 {
-    private const SCHEDULE_LOCK_SECONDS = 3600;
+    private int $scheduleLockSeconds;
 
     public function __construct(
         private BackupService $backupService
-    ) {}
+    ) {
+        $this->scheduleLockSeconds = (int) config('backup.schedule_lock_seconds', 3600);
+    }
 
     /**
      * إنشاء جدولة
@@ -52,7 +54,7 @@ class BackupScheduleService
      */
     public function executeSchedule(BackupSchedule $schedule): ?Backup
     {
-        $lock = Cache::lock($this->scheduleLockKey($schedule), self::SCHEDULE_LOCK_SECONDS);
+        $lock = Cache::lock($this->scheduleLockKey($schedule), $this->scheduleLockSeconds);
 
         if (! $lock->get()) {
             throw new \RuntimeException('هذه الجدولة قيد التنفيذ حالياً. حاول لاحقاً.');
@@ -89,21 +91,8 @@ class BackupScheduleService
                         'compression_type' => $compression,
                         'retention_days' => $schedule->retention_days,
                         'backup_schedule_id' => $schedule->id,
+                        'storage_config_id' => (int) $target,
                     ];
-
-                    // القيم الجديدة: معرف مكان تخزين عام | القيم القديمة: اسم الـ driver
-                    if (is_numeric($target)) {
-                        $options['storage_config_id'] = (int) $target;
-                    } else {
-                        $options['storage_driver'] = (string) $target;
-                        $matchedId = \App\Models\AppStorageConfig::where('driver', $target)
-                            ->where('is_active', true)
-                            ->orderBy('priority', 'desc')
-                            ->value('id');
-                        if ($matchedId) {
-                            $options['storage_config_id'] = $matchedId;
-                        }
-                    }
 
                     $backup = $this->backupService->queueBackup($options);
                     $backups->push($backup);
@@ -127,7 +116,7 @@ class BackupScheduleService
      */
     public function runScheduledBackups(): int
     {
-        $globalLock = Cache::lock('backup-run-scheduled-global', self::SCHEDULE_LOCK_SECONDS);
+        $globalLock = Cache::lock('backup-run-scheduled-global', $this->scheduleLockSeconds);
 
         if (! $globalLock->get()) {
             Log::info('backup:run-scheduled skipped because another run is still active');
@@ -185,5 +174,17 @@ class BackupScheduleService
     private function scheduleLockKey(BackupSchedule $schedule): string
     {
         return 'backup-schedule-execute-' . $schedule->id;
+    }
+
+    /**
+     * عدد الجدولات النشطة "المتأخرة" — next_run_at أقدم من الآن بأكثر من مهلة
+     * سماح، دليل على أن queue:work أو schedule:run/work لا يعملان على الخادم.
+     */
+    public function countOverdueSchedules(int $graceMinutes = 10): int
+    {
+        return BackupSchedule::where('is_active', true)
+            ->whereNotNull('next_run_at')
+            ->where('next_run_at', '<', now()->subMinutes($graceMinutes))
+            ->count();
     }
 }

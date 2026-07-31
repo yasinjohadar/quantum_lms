@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Backup;
+use App\Services\Backup\BackupScheduleService;
 use App\Services\Backup\BackupService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,7 +13,8 @@ use Illuminate\Support\Facades\Log;
 class BackupController extends Controller
 {
     public function __construct(
-        private BackupService $backupService
+        private BackupService $backupService,
+        private BackupScheduleService $scheduleService
     ) {}
 
     /**
@@ -31,11 +33,12 @@ class BackupController extends Controller
         }
 
         if ($request->filled('storage_driver')) {
-            $query->where('storage_driver', $request->storage_driver);
+            $query->byStorageDriver($request->storage_driver);
         }
 
         $backups = $query->latest()->paginate(20);
         $stats = $this->backupService->getBackupStats();
+        $stats['overdue_schedules'] = $this->scheduleService->countOverdueSchedules();
 
         return view('admin.pages.backups.index', compact('backups', 'stats'));
     }
@@ -99,7 +102,6 @@ class BackupController extends Controller
                 'type' => 'manual',
                 'backup_type' => $validated['backup_type'],
                 'storage_config_id' => $storageConfig->id,
-                'storage_driver' => $storageConfig->driver,
                 'compression_type' => $validated['compression_type'],
                 'retention_days' => $validated['retention_days'],
                 'created_by' => Auth::id(),

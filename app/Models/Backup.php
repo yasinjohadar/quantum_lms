@@ -15,7 +15,6 @@ class Backup extends Model
         'name',
         'type',
         'backup_type',
-        'storage_driver',
         'storage_config_id',
         'storage_path',
         'file_path',
@@ -90,6 +89,16 @@ class Backup extends Model
     }
 
     /**
+     * اسم السائق (driver) الفعلي — مشتق من storageConfig بعد حذف عمود
+     * storage_driver النصي القديم، حتى تبقى أي قراءة قديمة لـ $backup->storage_driver
+     * تعمل دون كسر.
+     */
+    public function getStorageDriverAttribute(): ?string
+    {
+        return $this->storageConfig?->driver;
+    }
+
+    /**
      * العلاقة مع منشئ النسخة
      */
     public function creator()
@@ -158,7 +167,7 @@ class Backup extends Model
      */
     public function scopeByStorageDriver($query, string $driver)
     {
-        return $query->where('storage_driver', $driver);
+        return $query->whereHas('storageConfig', fn ($q) => $q->where('driver', $driver));
     }
 
     /**

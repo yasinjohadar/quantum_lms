@@ -4,7 +4,6 @@ namespace App\Services\Backup;
 
 use App\Models\AppStorageConfig;
 use App\Models\Backup;
-use App\Models\BackupStorageConfig;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -76,16 +75,5 @@ class BackupStorageService
         } catch (\Exception $e) {
             return false;
         }
-    }
-
-    /**
-     * توافق قديم إن وُجد BackupStorageConfig بنفس الـ driver.
-     */
-    public function resolveLegacyConfig(string $driver): ?BackupStorageConfig
-    {
-        return BackupStorageConfig::where('driver', $driver)
-            ->orderByDesc('is_active')
-            ->orderBy('priority', 'desc')
-            ->first();
     }
 }

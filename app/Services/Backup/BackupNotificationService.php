@@ -35,11 +35,59 @@ class BackupNotificationService
     }
 
     /**
+     * إشعار ملخّص بعد تشغيل حقيقي (غير dry-run) لتنظيف النسخ المنتهية الصلاحية.
+     *
+     * @param  array{deleted: int, failed: int, total_bytes_freed: int, failed_ids: list<array{id: int, reason: string}>}  $summary
+     */
+    public function notifyCleanupSummary(array $summary): void
+    {
+        if ($summary['deleted'] === 0 && $summary['failed'] === 0) {
+            return;
+        }
+
+        $admin = \App\Models\User::role('admin')->first();
+        if (! $admin) {
+            return;
+        }
+
+        $sizeMb = round($summary['total_bytes_freed'] / 1024 / 1024, 2);
+        $title = 'ملخّص تنظيف النسخ الاحتياطية المنتهية';
+        $message = "تم حذف {$summary['deleted']} نسخة ({$sizeMb} MB). "
+            . ($summary['failed'] > 0 ? "فشل حذف {$summary['failed']} نسخة." : 'بدون أي فشل.');
+
+        try {
+            if ($admin->email) {
+                Mail::raw($message, function ($mail) use ($admin, $title) {
+                    $mail->to($admin->email)->subject($title);
+                });
+            }
+        } catch (\Exception $e) {
+            Log::error('Error sending cleanup summary email: ' . $e->getMessage());
+        }
+
+        try {
+            $this->notificationService->sendNotification(
+                $admin,
+                'backup_cleanup_summary',
+                $title,
+                $message,
+                ['summary' => $summary],
+                false,
+                null,
+                route('admin.backups.index'),
+                true
+            );
+        } catch (\Exception $e) {
+            Log::error('Error creating cleanup summary system notification: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * إرسال إشعار بريد إلكتروني
      */
     public function sendEmailNotification(Backup $backup, string $type): void
     {
-        $admin = $backup->creator ?? \App\Models\User::where('role', 'admin')->first();
+        $admin = $backup->creator ?? \App\Models\User::role('admin')->first();
         
         if (!$admin || !$admin->email) {
             return;
@@ -101,7 +149,7 @@ class BackupNotificationService
      */
     public function createSystemNotification(Backup $backup, string $type): void
     {
-        $user = $backup->creator ?? \App\Models\User::where('role', 'admin')->first();
+        $user = $backup->creator ?? \App\Models\User::role('admin')->first();
         
         if (!$user) {
             return;

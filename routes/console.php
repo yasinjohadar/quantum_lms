@@ -15,6 +15,9 @@ Schedule::command('backup:run-scheduled')
 Schedule::command('backup:cleanup-expired')
     ->daily()
     ->withoutOverlapping();
+Schedule::command('backup:reconcile-stuck')
+    ->everyFiveMinutes()
+    ->withoutOverlapping();
 
 // حذف حسابات التسجيل غير المُفعّلة بعد انتهاء صلاحية كل أكواد التحقق
 Schedule::command('users:prune-unverified-phone-registrations')->everyTenMinutes();
