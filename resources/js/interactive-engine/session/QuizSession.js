@@ -322,6 +322,7 @@ export class QuizSession {
     }
 
     async submitResult(payload) {
+        this._submitError = null;
         if (!this.config.submitUrl || this.config.isPreview) {
             return;
         }
@@ -336,11 +337,16 @@ export class QuizSession {
                 credentials: 'same-origin',
                 body: JSON.stringify(payload),
             });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            this.bus.emit('result.sent', { ok: true });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                const msg = data?.message || data?.errors?.experience?.[0] || `HTTP ${res.status}`;
+                throw new Error(msg);
+            }
+            this.bus.emit('result.sent', { ok: true, attemptId: data.attempt_id });
         } catch (e) {
             console.error('[ILE] result submit failed', e);
-            this.bus.emit('result.sent', { ok: false, error: String(e) });
+            this._submitError = String(e?.message || e);
+            this.bus.emit('result.sent', { ok: false, error: this._submitError });
         }
     }
 
@@ -354,7 +360,15 @@ export class QuizSession {
         const passed = payload.percentage >= this.fx.passThreshold;
         const headline = passed ? 'يااا بطل! نجحت 🏆' : 'هيا نحاول من جديد!';
 
+        const saveErrorHtml = this._submitError
+            ? `<div class="ile-results__save-error" role="alert">
+                    <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                    <span>تعذر حفظ النتيجة في حسابك (${escapeHtml(this._submitError)}). تحقق من الاتصال ثم أعد المحاولة.</span>
+               </div>`
+            : '';
+
         results.innerHTML = `
+            ${saveErrorHtml}
             <div class="ile-results__card ${passed ? 'ile-results__card--pass' : 'ile-results__card--fail'}">
                 <div class="ile-lottie ile-lottie--lg" id="ile-results-lottie" aria-hidden="true"></div>
                 <h2>${headline}</h2>

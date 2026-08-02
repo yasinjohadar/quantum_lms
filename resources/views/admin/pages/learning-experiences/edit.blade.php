@@ -417,6 +417,60 @@
 
         <div class="ile-panel">
             <div class="ile-panel__head">
+                <h6><i class="bi bi-bar-chart-line"></i>محاولات الطلاب</h6>
+                <span class="text-muted small fw-normal">
+                    {{ number_format($attemptsCount ?? 0) }} محاولة
+                    @if(($attemptsCount ?? 0) > 0)
+                        · متوسط {{ number_format($attemptsAvg ?? 0, 1) }}%
+                    @endif
+                </span>
+            </div>
+            <div class="ile-panel__body">
+                @if(($recentAttempts ?? collect())->isEmpty())
+                    <p class="text-muted small mb-0">لا توجد محاولات محفوظة بعد. تظهر هنا بعد إكمال الطلاب لاختبار منشور.</p>
+                @else
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>الطالب</th>
+                                    <th>النسبة</th>
+                                    <th>الدرجة</th>
+                                    <th>المدة</th>
+                                    <th>التاريخ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($recentAttempts as $attempt)
+                                    <tr>
+                                        <td>
+                                            <div class="fw-semibold small">{{ $attempt->user->name ?? '—' }}</div>
+                                            <div class="text-muted" style="font-size:.72rem;">{{ $attempt->user->email ?? '' }}</div>
+                                        </td>
+                                        <td>
+                                            <span class="badge {{ $attempt->percentage >= 50 ? 'bg-success-transparent text-success' : 'bg-danger-transparent text-danger' }}">
+                                                {{ number_format($attempt->percentage, 1) }}%
+                                            </span>
+                                        </td>
+                                        <td class="small">{{ $attempt->score }}/{{ $attempt->total }}</td>
+                                        <td class="small text-muted">{{ $attempt->duration }} ث</td>
+                                        <td class="small text-muted">
+                                            {{ optional($attempt->finished_at ?? $attempt->created_at)->format('Y-m-d H:i') }}
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @if(($attemptsCount ?? 0) > ($recentAttempts->count()))
+                        <p class="text-muted small mt-2 mb-0">عرض آخر {{ $recentAttempts->count() }} من {{ number_format($attemptsCount) }}.</p>
+                    @endif
+                @endif
+            </div>
+        </div>
+
+        <div class="ile-panel">
+            <div class="ile-panel__head">
                 <h6><i class="bi bi-plus-circle"></i>إضافة سؤال</h6>
             </div>
             <div class="ile-panel__body">

@@ -48,10 +48,10 @@ class LearningExperiencePlayController extends Controller
 
     public function storeAttempt(Request $request, LearningExperience $learningExperience): JsonResponse
     {
-        $request->validate([
-            'score' => ['required', 'integer', 'min:0'],
-            'total' => ['required', 'integer', 'min:0'],
-            'percentage' => ['nullable', 'numeric'],
+        $data = $request->validate([
+            'score' => ['required', 'numeric', 'min:0'],
+            'total' => ['required', 'numeric', 'min:0'],
+            'percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'duration' => ['nullable', 'integer', 'min:0'],
             'startedAt' => ['nullable', 'date'],
             'finishedAt' => ['nullable', 'date'],
@@ -63,12 +63,15 @@ class LearningExperiencePlayController extends Controller
         $attempt = $this->attemptService->store(
             $learningExperience,
             $request->user(),
-            $request->all()
+            array_merge($request->all(), $data)
         );
 
         return response()->json([
             'ok' => true,
             'attempt_id' => $attempt->id,
+            'percentage' => $attempt->percentage,
+            'score' => $attempt->score,
+            'total' => $attempt->total,
         ]);
     }
 

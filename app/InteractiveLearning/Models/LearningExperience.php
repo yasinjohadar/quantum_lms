@@ -82,6 +82,13 @@ class LearningExperience extends Model
         return $this->status === self::STATUS_PUBLISHED;
     }
 
+    public function questionsCount(): int
+    {
+        $schema = is_array($this->schema_json) ? $this->schema_json : [];
+
+        return count($schema['questions'] ?? []);
+    }
+
     public function canTransitionTo(string $status): bool
     {
         if (! in_array($status, self::STATUSES, true)) {

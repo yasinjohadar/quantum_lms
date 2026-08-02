@@ -21,11 +21,23 @@ class AttemptService
             ]);
         }
 
-        $score = (int) ($payload['score'] ?? 0);
-        $total = (int) ($payload['total'] ?? 0);
+        $score = round((float) ($payload['score'] ?? 0), 2);
+        $total = round((float) ($payload['total'] ?? 0), 2);
         $percentage = isset($payload['percentage'])
-            ? (float) $payload['percentage']
+            ? round((float) $payload['percentage'], 2)
             : ($total > 0 ? round(($score / $total) * 100, 2) : 0.0);
+
+        $answers = $payload['answers'] ?? [];
+        if (! is_array($answers)) {
+            $answers = [];
+        }
+
+        $resultPayload = $payload;
+        $resultPayload['score'] = $score;
+        $resultPayload['total'] = $total;
+        $resultPayload['percentage'] = $percentage;
+        $resultPayload['answers'] = $answers;
+        $resultPayload['saved_at'] = now()->toIso8601String();
 
         return LearningExperienceAttempt::create([
             'learning_experience_id' => $experience->id,
@@ -33,11 +45,11 @@ class AttemptService
             'score' => $score,
             'total' => $total,
             'percentage' => $percentage,
-            'duration' => (int) ($payload['duration'] ?? 0),
+            'duration' => max(0, (int) ($payload['duration'] ?? 0)),
             'started_at' => isset($payload['startedAt']) ? Carbon::parse($payload['startedAt']) : null,
             'finished_at' => isset($payload['finishedAt']) ? Carbon::parse($payload['finishedAt']) : now(),
-            'answers_json' => $payload['answers'] ?? [],
-            'result_json' => $payload,
+            'answers_json' => $answers,
+            'result_json' => $resultPayload,
         ]);
     }
 }

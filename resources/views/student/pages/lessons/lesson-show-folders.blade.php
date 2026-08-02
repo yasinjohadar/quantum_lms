@@ -155,6 +155,25 @@
                     </div>
                 </div>
                 @endif
+                @php $lessonInteractiveExperiences = $lessonInteractiveExperiences ?? collect(); @endphp
+                @if($lessonInteractiveExperiences->count() > 0)
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingInteractive">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInteractive" aria-expanded="false">
+                            <i class="bi bi-joystick me-2"></i> اختبارات تفاعلية لهذا الدرس
+                        </button>
+                    </h2>
+                    <div id="collapseInteractive" class="accordion-collapse collapse" data-bs-parent="#lessonFoldersAccordion">
+                        <div class="accordion-body p-0">
+                            @include('student.pages.lessons.partials.ile-lesson-cards', [
+                                'experiences' => $lessonInteractiveExperiences,
+                                'ileAttempts' => $ileAttempts ?? collect(),
+                                'bare' => true,
+                            ])
+                        </div>
+                    </div>
+                </div>
+                @endif
                 @if($lessonQuizzes->count() > 0)
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="headingQuizzes">

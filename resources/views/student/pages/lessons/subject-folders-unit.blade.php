@@ -206,6 +206,43 @@
             </div>
         @endif
 
+        @php $unitInteractiveExperiences = $unitInteractiveExperiences ?? collect(); @endphp
+        @if($unitInteractiveExperiences->count() > 0)
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h6 class="mb-3 text-success fw-semibold small">
+                        <i class="bi bi-joystick me-1"></i>
+                        اختبارات تفاعلية للوحدة ({{ $unitInteractiveExperiences->count() }})
+                    </h6>
+                    <div class="list-group list-group-flush">
+                        @foreach($unitInteractiveExperiences as $experience)
+                        <div class="list-group-item d-flex align-items-center justify-content-between px-0 py-2 border-0 bg-success-transparent rounded mb-2">
+                            <div class="d-flex align-items-center flex-grow-1">
+                                <div class="bg-success rounded-circle d-flex align-items-center justify-content-center me-2" style="width:32px;height:32px;">
+                                    <i class="bi bi-joystick text-white small"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <p class="mb-0 small fw-medium">{{ $experience->title }}</p>
+                                    <div class="d-flex align-items-center gap-2 mt-1">
+                                        <span class="text-muted" style="font-size:0.65rem;">
+                                            <i class="bi bi-question-circle me-1"></i>{{ $experience->questionsCount() }} سؤال
+                                        </span>
+                                        <span class="text-muted" style="font-size:0.65rem;">
+                                            <i class="bi bi-joystick me-1"></i>تفاعلي
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <a href="{{ route('learning-experiences.show', $experience) }}" class="btn btn-sm btn-success">
+                                <i class="bi bi-play-fill me-1"></i> بدء الاختبار
+                            </a>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        @endif
+
         @if($visibleLessons->count() > 0 || (isset($unit->questions) && $unit->questions->count() > 0))
             @if($visibleLessons->count() > 0)
                 <div class="unit-lessons-list {{ (isset($unit->questions) && $unit->questions->count() > 0) ? 'mb-3' : '' }}">
@@ -250,6 +287,11 @@
                                             <i class="bi bi-clipboard-check fs-5"></i>
                                         </a>
                                     @endif
+                                    @if($lesson->learningExperiences && $lesson->learningExperiences->count() > 0)
+                                        <a href="{{ route('learning-experiences.show', $lesson->learningExperiences->first()) }}" class="btn btn-sm btn-link p-1 text-success" title="اختبار تفاعلي" aria-label="اختبار تفاعلي">
+                                            <i class="bi bi-joystick fs-5"></i>
+                                        </a>
+                                    @endif
                                     @include('student.pages.lessons.partials.lesson-attachment-quick-link', ['lesson' => $lesson])
                                 </div>
                             </div>
@@ -279,7 +321,7 @@
                 </div>
             @endif
         @else
-            @if($unitQuizzes->count() === 0)
+            @if($unitQuizzes->count() === 0 && ($unitInteractiveExperiences ?? collect())->count() === 0)
             <div class="card">
                 <div class="card-body text-center py-5">
                     <i class="bi bi-folder-x fs-1 text-muted mb-3 d-block"></i>

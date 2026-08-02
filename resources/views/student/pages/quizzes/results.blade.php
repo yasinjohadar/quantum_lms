@@ -88,8 +88,12 @@
 
         @if($attempts->count() > 0)
             <div class="student-quiz-results-list">
-                @foreach($attempts as $attempt)
-                    @include('student.pages.quizzes.partials.quiz-result-row', ['attempt' => $attempt])
+                @foreach($attempts as $row)
+                    @if(($row['kind'] ?? 'quiz') === 'interactive')
+                        @include('student.pages.quizzes.partials.ile-result-row', ['attempt' => $row['attempt']])
+                    @else
+                        @include('student.pages.quizzes.partials.quiz-result-row', ['attempt' => $row['attempt'] ?? $row])
+                    @endif
                 @endforeach
             </div>
 

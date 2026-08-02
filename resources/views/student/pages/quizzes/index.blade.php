@@ -64,9 +64,17 @@
 
         @if($quizzes->count() > 0)
             <div class="row g-3 student-quizzes-grid">
-                @foreach($quizzes as $quiz)
+                @foreach($quizzes as $row)
+                    @php
+                        $kind = is_array($row) ? ($row['kind'] ?? 'quiz') : 'quiz';
+                        $item = is_array($row) ? ($row['model'] ?? $row) : $row;
+                    @endphp
                     <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
-                        @include('student.pages.quizzes.partials.quiz-card', ['quiz' => $quiz])
+                        @if($kind === 'interactive')
+                            @include('student.pages.quizzes.partials.ile-card', ['experience' => $item])
+                        @else
+                            @include('student.pages.quizzes.partials.quiz-card', ['quiz' => $item])
+                        @endif
                     </div>
                 @endforeach
             </div>

@@ -133,6 +133,7 @@
                                 <th>الحالة</th>
                                 <th>الإصدار</th>
                                 <th>الأسئلة</th>
+                                <th>المحاولات</th>
                                 <th style="width: 220px;" class="text-end">إجراءات</th>
                             </tr>
                         </thead>
@@ -193,6 +194,12 @@
                                         <span class="ile-q-count">{{ $qCount }}</span>
                                     </td>
                                     <td>
+                                        <span class="ile-meta-pill">
+                                            <i class="bi bi-people"></i>
+                                            {{ number_format($experience->attempts_count ?? 0) }}
+                                        </span>
+                                    </td>
+                                    <td>
                                         <div class="ile-row-actions">
                                             <a href="{{ route('learning-experiences.show', $experience) }}" class="btn btn-sm btn-outline-success" target="_blank" title="تشغيل">
                                                 <i class="bi bi-play-fill"></i> تشغيل
@@ -212,7 +219,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8">
+                                    <td colspan="9">
                                         <div class="ile-empty">
                                             <div class="ile-empty__icon"><i class="bi bi-joystick"></i></div>
                                             <div class="fw-bold mb-1">لا توجد اختبارات تفاعلية بعد</div>

@@ -481,6 +481,22 @@
     animation: ilePop 0.35s ease, ileGlow 0.7s ease;
 }
 
+.ile-results__save-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    margin-bottom: 0.85rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: 12px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    font-size: 0.88rem;
+    font-weight: 700;
+    text-align: start;
+    line-height: 1.5;
+}
+
 .ile-results__card {
     background: var(--ile-card);
     border-radius: var(--ile-radius);

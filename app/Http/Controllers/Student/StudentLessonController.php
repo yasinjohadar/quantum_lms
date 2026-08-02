@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
+use App\InteractiveLearning\Models\LearningExperience;
+use App\InteractiveLearning\Models\LearningExperienceAttempt;
 use App\Models\Subject;
 use App\Models\SubjectSection;
 use App\Models\Unit;
@@ -275,6 +277,9 @@ class StudentLessonController extends Controller
                     ->where('subject_id', $subject->id)
                     ->orderBy('order');
             },
+            'learningExperiences' => function ($q) {
+                $q->where('status', LearningExperience::STATUS_PUBLISHED)->latest();
+            },
             'attachments' => function ($q) {
                 $q->where('is_active', true)->orderBy('order');
             },
@@ -287,7 +292,19 @@ class StudentLessonController extends Controller
                 && (int) $quiz->subject_id === (int) $subject->id)
             ->values();
 
-        return view('student.pages.lessons.subject-folders-unit', compact('subject', 'section', 'unit', 'visibleLessons', 'unitQuizzes'));
+        $unitInteractiveExperiences = $unit->allUnitLearningExperiences()
+            ->filter(fn (LearningExperience $experience) => $experience->status === LearningExperience::STATUS_PUBLISHED
+                && (int) ($experience->subject_id ?? 0) === (int) $subject->id)
+            ->values();
+
+        return view('student.pages.lessons.subject-folders-unit', compact(
+            'subject',
+            'section',
+            'unit',
+            'visibleLessons',
+            'unitQuizzes',
+            'unitInteractiveExperiences'
+        ));
     }
 
     /**
@@ -388,6 +405,24 @@ class StudentLessonController extends Controller
         }
         $unitQuizzes = $unitQuizzes->get();
 
+        $lessonInteractiveExperiences = LearningExperience::query()
+            ->where('lesson_id', $lesson->id)
+            ->where('status', LearningExperience::STATUS_PUBLISHED)
+            ->latest()
+            ->get();
+
+        $unitInteractiveExperiences = LearningExperience::query()
+            ->where('subject_id', $subject->id)
+            ->whereNull('lesson_id')
+            ->where('status', LearningExperience::STATUS_PUBLISHED)
+            ->when(
+                $lesson->unit_id,
+                fn ($q) => $q->where('unit_id', $lesson->unit_id),
+                fn ($q) => $q->whereNull('unit_id')
+            )
+            ->latest()
+            ->get();
+
         $allQuizzes = $lessonQuizzes->merge($unitQuizzes);
         $quizQuestionIds = $allQuizzes->flatMap(fn($q) => $q->questions->pluck('id'))->unique()->values()->all();
 
@@ -415,6 +450,20 @@ class StudentLessonController extends Controller
             ->get()
             ->keyBy('quiz_id');
 
+        $ileIds = $lessonInteractiveExperiences->pluck('id')
+            ->merge($unitInteractiveExperiences->pluck('id'))
+            ->unique()
+            ->values();
+
+        $ileAttempts = LearningExperienceAttempt::query()
+            ->where('user_id', $user->id)
+            ->whereIn('learning_experience_id', $ileIds)
+            ->orderByDesc('percentage')
+            ->orderByDesc('finished_at')
+            ->get()
+            ->unique('learning_experience_id')
+            ->keyBy('learning_experience_id');
+
         $lessonCompletion = LessonCompletion::where('user_id', $user->id)
             ->where('lesson_id', $lesson->id)
             ->first();
@@ -440,6 +489,8 @@ class StudentLessonController extends Controller
             'videoTypes',
             'lessonQuizzes',
             'unitQuizzes',
+            'lessonInteractiveExperiences',
+            'unitInteractiveExperiences',
             'questions',
             'questionTypes',
             'questionTypeIcons',
@@ -447,6 +498,7 @@ class StudentLessonController extends Controller
             'questionDifficulties',
             'questionAttempts',
             'quizAttempts',
+            'ileAttempts',
             'lessonCompletion'
         );
     }

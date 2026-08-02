@@ -133,6 +133,11 @@
                     @include('student.pages.lessons.partials.course-content-card', ['suffix' => 'mobile'])
                 </div>
 
+                @include('student.pages.lessons.partials.ile-lesson-cards', [
+                    'experiences' => $lessonInteractiveExperiences ?? collect(),
+                    'ileAttempts' => $ileAttempts ?? collect(),
+                ])
+
                 <!-- الاختبارات المرتبطة بالدرس -->
                 @if($lessonQuizzes->count() > 0)
                     <div class="card mt-3">

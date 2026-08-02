@@ -4,6 +4,7 @@ namespace App\InteractiveLearning\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\InteractiveLearning\Models\LearningExperience;
+use App\InteractiveLearning\Models\LearningExperienceAttempt;
 use App\InteractiveLearning\Services\AiPatchService;
 use App\InteractiveLearning\Services\AiSessionGenerationService;
 use App\InteractiveLearning\Services\ExperienceQuestionImportException;
@@ -34,6 +35,7 @@ class LearningExperienceController extends Controller
     {
         $query = LearningExperience::query()
             ->with(['subject.schoolClass', 'unit'])
+            ->withCount('attempts')
             ->latest();
 
         if ($status = $request->string('status')->toString()) {
@@ -153,6 +155,22 @@ class LearningExperienceController extends Controller
 
         $lockedFromCurriculum = (bool) ($learningExperience->subject_id || $learningExperience->unit_id || $learningExperience->lesson_id);
 
+        $recentAttempts = LearningExperienceAttempt::query()
+            ->with('user:id,name,email')
+            ->where('learning_experience_id', $learningExperience->id)
+            ->latest('finished_at')
+            ->latest('id')
+            ->limit(20)
+            ->get();
+
+        $attemptsCount = LearningExperienceAttempt::query()
+            ->where('learning_experience_id', $learningExperience->id)
+            ->count();
+
+        $attemptsAvg = (float) (LearningExperienceAttempt::query()
+            ->where('learning_experience_id', $learningExperience->id)
+            ->avg('percentage') ?? 0);
+
         return view('admin.pages.learning-experiences.edit', [
             'experience' => $learningExperience,
             'types' => QuestionTypeRegistry::all(),
@@ -173,6 +191,9 @@ class LearningExperienceController extends Controller
             'selectedClass' => $learningExperience->subject?->schoolClass,
             'isFromSubjectOrUnit' => $lockedFromCurriculum,
             'isFromLesson' => (bool) $learningExperience->lesson_id,
+            'recentAttempts' => $recentAttempts,
+            'attemptsCount' => $attemptsCount,
+            'attemptsAvg' => $attemptsAvg,
         ]);
     }
 

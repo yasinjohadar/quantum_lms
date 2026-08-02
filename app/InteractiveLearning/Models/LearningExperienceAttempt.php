@@ -29,6 +29,8 @@ class LearningExperienceAttempt extends Model
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
             'percentage' => 'float',
+            'score' => 'float',
+            'total' => 'float',
         ];
     }
 

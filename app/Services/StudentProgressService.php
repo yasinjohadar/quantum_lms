@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\InteractiveLearning\Models\LearningExperience;
+use App\InteractiveLearning\Models\LearningExperienceAttempt;
 use App\Models\Subject;
 use App\Models\SubjectSection;
 use App\Models\Unit;
@@ -144,7 +146,8 @@ class StudentProgressService
         $allQuizzes = collect();
         $allQuestions = collect();
         
-        foreach ($this->unitsForSectionProgressTree($section) as $unit) {
+        $treeUnits = $this->unitsForSectionProgressTree($section);
+        foreach ($treeUnits as $unit) {
             $allLessons = $allLessons->merge($unit->lessons->where('is_active', true));
             $allQuizzes = $allQuizzes->merge($unit->quizzes->where('is_active', true)->where('is_published', true));
             $allQuestions = $allQuestions->merge($unit->questions->where('is_active', true));
@@ -152,6 +155,7 @@ class StudentProgressService
         $allLessons = $allLessons->unique('id')->values();
         $allQuizzes = $allQuizzes->unique('id')->values();
         $allQuestions = $allQuestions->unique('id')->values();
+        $interactiveExperiences = $this->publishedLearningExperiencesForUnits($treeUnits, $section->subject_id);
         
         // حساب الدروس المكتملة
         $lessonsTotal = $allLessons->count();
@@ -164,15 +168,19 @@ class StudentProgressService
         }
         $lessonsPercentage = $lessonsTotal > 0 ? ($lessonsCompleted / $lessonsTotal) * 100 : 0;
         
-        // حساب الاختبارات المكتملة
-        $quizzesTotal = $allQuizzes->count();
-        $quizzesCompleted = QuizAttempt::where('user_id', $userId)
-            ->whereIn('quiz_id', $allQuizzes->pluck('id'))
-            ->whereIn('status', ['completed', 'timed_out'])
-            ->select('quiz_id')
-            ->distinct()
-            ->pluck('quiz_id')
-            ->count();
+        // حساب الاختبارات المكتملة (عادية + تفاعلية)
+        $regularQuizzesCompleted = $allQuizzes->isEmpty()
+            ? 0
+            : QuizAttempt::where('user_id', $userId)
+                ->whereIn('quiz_id', $allQuizzes->pluck('id'))
+                ->whereIn('status', ['completed', 'timed_out'])
+                ->select('quiz_id')
+                ->distinct()
+                ->pluck('quiz_id')
+                ->count();
+        $interactiveCompleted = $this->countCompletedLearningExperiences((int) $userId, $interactiveExperiences);
+        $quizzesTotal = $allQuizzes->count() + $interactiveExperiences->count();
+        $quizzesCompleted = $regularQuizzesCompleted + $interactiveCompleted;
         $quizzesPercentage = $quizzesTotal > 0 ? ($quizzesCompleted / $quizzesTotal) * 100 : 0;
         
         // حساب الأسئلة المكتملة
@@ -256,16 +264,22 @@ class StudentProgressService
         $allQuizzes = collect();
         $allQuestions = collect();
         
+        $allInteractive = collect();
         foreach ($subject->sections as $section) {
-            foreach ($this->unitsForSectionProgressTree($section) as $unit) {
+            $treeUnits = $this->unitsForSectionProgressTree($section);
+            foreach ($treeUnits as $unit) {
                 $allLessons = $allLessons->merge($unit->lessons->where('is_active', true));
                 $allQuizzes = $allQuizzes->merge($unit->quizzes->where('is_active', true)->where('is_published', true));
                 $allQuestions = $allQuestions->merge($unit->questions->where('is_active', true));
             }
+            $allInteractive = $allInteractive->merge(
+                $this->publishedLearningExperiencesForUnits($treeUnits, $subject->id)
+            );
         }
         $allLessons = $allLessons->unique('id')->values();
         $allQuizzes = $allQuizzes->unique('id')->values();
         $allQuestions = $allQuestions->unique('id')->values();
+        $allInteractive = $allInteractive->unique('id')->values();
         
         // حساب الدروس المكتملة
         $lessonsTotal = $allLessons->count();
@@ -278,15 +292,19 @@ class StudentProgressService
         }
         $lessonsPercentage = $lessonsTotal > 0 ? ($lessonsCompleted / $lessonsTotal) * 100 : 0;
         
-        // حساب الاختبارات المكتملة
-        $quizzesTotal = $allQuizzes->count();
-        $quizzesCompleted = QuizAttempt::where('user_id', $userId)
-            ->whereIn('quiz_id', $allQuizzes->pluck('id'))
-            ->whereIn('status', ['completed', 'timed_out'])
-            ->select('quiz_id')
-            ->distinct()
-            ->pluck('quiz_id')
-            ->count();
+        // حساب الاختبارات المكتملة (عادية + تفاعلية)
+        $regularQuizzesCompleted = $allQuizzes->isEmpty()
+            ? 0
+            : QuizAttempt::where('user_id', $userId)
+                ->whereIn('quiz_id', $allQuizzes->pluck('id'))
+                ->whereIn('status', ['completed', 'timed_out'])
+                ->select('quiz_id')
+                ->distinct()
+                ->pluck('quiz_id')
+                ->count();
+        $interactiveCompleted = $this->countCompletedLearningExperiences((int) $userId, $allInteractive);
+        $quizzesTotal = $allQuizzes->count() + $allInteractive->count();
+        $quizzesCompleted = $regularQuizzesCompleted + $interactiveCompleted;
         $quizzesPercentage = $quizzesTotal > 0 ? ($quizzesCompleted / $quizzesTotal) * 100 : 0;
         
         // حساب الأسئلة المكتملة
@@ -613,8 +631,25 @@ class StudentProgressService
                     'unit' => $unit,
                     'attempt' => $attempt,
                     'completed' => $attempt && in_array($attempt->status, ['completed', 'timed_out']),
+                    'kind' => 'quiz',
                 ];
             }
+        }
+
+        $interactiveExperiences = $this->publishedLearningExperiencesForUnits($treeUnits, $section->subject_id);
+        $ileBestAttempts = $this->bestLearningExperienceAttemptsByExperience((int) $userId, $interactiveExperiences);
+        foreach ($interactiveExperiences as $experience) {
+            $best = $ileBestAttempts->get($experience->id);
+            $unit = $treeUnits->firstWhere('id', $experience->unit_id);
+            $quizzesDetails[] = [
+                'quiz' => null,
+                'experience' => $experience,
+                'unit' => $unit,
+                'attempt' => $best,
+                'completed' => $best !== null,
+                'kind' => 'interactive',
+                'best_percentage' => $best?->percentage,
+            ];
         }
 
         // تفاصيل الأسئلة
@@ -647,6 +682,88 @@ class StudentProgressService
             'quizzes' => $quizzesDetails,
             'questions' => $questionsDetails,
         ];
+    }
+
+    /**
+     * الاختبارات التفاعلية المنشورة المرتبطة بوحدات القسم/المادة.
+     *
+     * @param  Collection<int, Unit>  $units
+     * @return Collection<int, LearningExperience>
+     */
+    protected function publishedLearningExperiencesForUnits(Collection $units, ?int $subjectId = null): Collection
+    {
+        $unitIds = $units->pluck('id')->filter()->unique()->values();
+        $lessonIds = $units
+            ->flatMap(fn (Unit $unit) => ($unit->lessons ?? collect())->pluck('id'))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($unitIds->isEmpty() && $lessonIds->isEmpty() && ! $subjectId) {
+            return collect();
+        }
+
+        return LearningExperience::query()
+            ->where('status', LearningExperience::STATUS_PUBLISHED)
+            ->where(function ($query) use ($unitIds, $lessonIds, $subjectId) {
+                $started = false;
+                if ($unitIds->isNotEmpty()) {
+                    $query->whereIn('unit_id', $unitIds);
+                    $started = true;
+                }
+                if ($lessonIds->isNotEmpty()) {
+                    $started ? $query->orWhereIn('lesson_id', $lessonIds) : $query->whereIn('lesson_id', $lessonIds);
+                    $started = true;
+                }
+                if ($subjectId) {
+                    $clause = function ($q) use ($subjectId) {
+                        $q->where('subject_id', $subjectId)
+                            ->whereNull('unit_id')
+                            ->whereNull('lesson_id');
+                    };
+                    $started ? $query->orWhere($clause) : $query->where($clause);
+                }
+            })
+            ->orderBy('title')
+            ->get();
+    }
+
+    /**
+     * @param  Collection<int, LearningExperience>  $experiences
+     */
+    protected function countCompletedLearningExperiences(int $userId, Collection $experiences): int
+    {
+        if ($experiences->isEmpty()) {
+            return 0;
+        }
+
+        return (int) LearningExperienceAttempt::query()
+            ->where('user_id', $userId)
+            ->whereIn('learning_experience_id', $experiences->pluck('id'))
+            ->distinct()
+            ->count('learning_experience_id');
+    }
+
+    /**
+     * أفضل محاولة لكل اختبار تفاعلي (أعلى نسبة).
+     *
+     * @param  Collection<int, LearningExperience>  $experiences
+     * @return Collection<int, LearningExperienceAttempt>
+     */
+    protected function bestLearningExperienceAttemptsByExperience(int $userId, Collection $experiences): Collection
+    {
+        if ($experiences->isEmpty()) {
+            return collect();
+        }
+
+        return LearningExperienceAttempt::query()
+            ->where('user_id', $userId)
+            ->whereIn('learning_experience_id', $experiences->pluck('id'))
+            ->orderByDesc('percentage')
+            ->orderByDesc('finished_at')
+            ->get()
+            ->unique('learning_experience_id')
+            ->keyBy('learning_experience_id');
     }
 }
 
