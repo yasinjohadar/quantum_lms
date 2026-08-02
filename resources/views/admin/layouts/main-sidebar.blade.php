@@ -496,7 +496,7 @@
                                 @endcan
                                 <li class="slide {{ request()->is('admin/learning-experiences*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.learning-experiences.index') }}" class="side-menu__item {{ request()->is('admin/learning-experiences*') ? 'active' : '' }}">
-                                        <span class="side-menu__label">التجارب التفاعلية</span>
+                                        <span class="side-menu__label">اختبارات تفاعلية</span>
                                     </a>
                                 </li>
                                 <li class="slide {{ request()->is('admin/ai-html-quizzes*') ? 'active' : '' }}">

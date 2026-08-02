@@ -1,7 +1,9 @@
-import { escapeAttr, escapeHtml, mediaVisualHtml, speakerButtonHtml, bindSpeakers, itemLabelHtml, anyNeedsKatex } from './_helpers.js';
+import { escapeAttr, mediaVisualHtml, speakerButtonHtml, bindSpeakers, itemLabelHtml, anyNeedsKatex } from './_helpers.js';
 import { loadLibraries } from '../dynamic/LibraryLoader.js';
 
-/** Independent module: connect left items to right by selecting pairs. */
+const LINE_COLORS = ['#059669', '#2563eb', '#d97706', '#db2777', '#7c3aed', '#0891b2'];
+
+/** Independent module: connect left items to right by selecting pairs, with SVG lines. */
 export const connectLinesModule = {
     type: 'connect_lines',
     _el: null,
@@ -9,6 +11,10 @@ export const connectLinesModule = {
     _pairs: {},
     _map: {},
     _selectedLeft: null,
+    _leftById: null,
+    _rightById: null,
+    _ro: null,
+    _onResize: null,
     async beforeMount(ctx) {
         const p = ctx.question.payload || {};
         if (anyNeedsKatex(p.left, p.right)) await loadLibraries(['katex']);
@@ -25,32 +31,36 @@ export const connectLinesModule = {
         this._rightById = Object.fromEntries(right.map((r) => [String(r.id), r]));
 
         el.innerHTML = `<div class="ile-connect">
-            <p class="ile-hint-line">اضغط عنصراً من اليمين ثم من اليسار للربط</p>
-            <div class="ile-connect__cols">
-                <div class="ile-connect__col" data-side="left">
-                    ${left
-                        .map(
-                            (l) => `<button type="button" class="ile-connect__node" data-side="left" data-id="${escapeAttr(l.id)}">
-                                ${mediaVisualHtml(l, '🔵')}
-                                <span>${itemLabelHtml(l)}</span>
-                                ${speakerButtonHtml(l)}
-                            </button>`
-                        )
-                        .join('')}
-                </div>
-                <div class="ile-connect__col" data-side="right">
-                    ${right
-                        .map(
-                            (r) => `<button type="button" class="ile-connect__node" data-side="right" data-id="${escapeAttr(r.id)}">
-                                ${mediaVisualHtml(r, '🟢')}
-                                <span>${itemLabelHtml(r)}</span>
-                                ${speakerButtonHtml(r)}
-                            </button>`
-                        )
-                        .join('')}
+            <p class="ile-hint-line">اضغط عنصراً من العمود الأيمن ثم من الأيسر للربط بخط ملون</p>
+            <div class="ile-connect__board">
+                <svg class="ile-connect__svg" aria-hidden="true"></svg>
+                <div class="ile-connect__cols">
+                    <div class="ile-connect__col" data-side="left">
+                        ${left
+                            .map(
+                                (l) => `<button type="button" class="ile-connect__node" data-side="left" data-id="${escapeAttr(l.id)}">
+                                    <span class="ile-connect__dot" aria-hidden="true"></span>
+                                    ${mediaVisualHtml(l, '🔵')}
+                                    <span>${itemLabelHtml(l)}</span>
+                                    ${speakerButtonHtml(l)}
+                                </button>`
+                            )
+                            .join('')}
+                    </div>
+                    <div class="ile-connect__col" data-side="right">
+                        ${right
+                            .map(
+                                (r) => `<button type="button" class="ile-connect__node" data-side="right" data-id="${escapeAttr(r.id)}">
+                                    <span class="ile-connect__dot" aria-hidden="true"></span>
+                                    ${mediaVisualHtml(r, '🟢')}
+                                    <span>${itemLabelHtml(r)}</span>
+                                    ${speakerButtonHtml(r)}
+                                </button>`
+                            )
+                            .join('')}
+                    </div>
                 </div>
             </div>
-            <div class="ile-connect__links" id="ile-connect-links"></div>
         </div>`;
 
         el.querySelectorAll('.ile-connect__node').forEach((btn) => {
@@ -59,11 +69,22 @@ export const connectLinesModule = {
                 const side = btn.getAttribute('data-side');
                 const id = btn.getAttribute('data-id');
                 if (side === 'left') {
-                    el.querySelectorAll('[data-side="left"]').forEach((n) => n.classList.remove('is-picked'));
+                    el.querySelectorAll('.ile-connect__node[data-side="left"]').forEach((n) => n.classList.remove('is-picked'));
                     btn.classList.add('is-picked');
                     this._selectedLeft = id;
                 } else if (this._selectedLeft) {
-                    this._map[this._selectedLeft] = id;
+                    // إذا كان الطرف الأيمن مربوطاً بعنصر آخر، افصل الرابط القديم
+                    Object.keys(this._map).forEach((leftId) => {
+                        if (String(this._map[leftId]) === String(id) && String(leftId) !== String(this._selectedLeft)) {
+                            delete this._map[leftId];
+                        }
+                    });
+                    // إعادة النقر على نفس الزوج تلغي الربط
+                    if (String(this._map[this._selectedLeft]) === String(id)) {
+                        delete this._map[this._selectedLeft];
+                    } else {
+                        this._map[this._selectedLeft] = id;
+                    }
                     this._selectedLeft = null;
                     el.querySelectorAll('.ile-connect__node').forEach((n) => n.classList.remove('is-picked'));
                     this.refreshLinks();
@@ -71,30 +92,91 @@ export const connectLinesModule = {
                 }
             });
         });
+
+        this._onResize = () => this.refreshLinks();
+        window.addEventListener('resize', this._onResize);
+        if (typeof ResizeObserver !== 'undefined') {
+            const board = el.querySelector('.ile-connect__board');
+            this._ro = new ResizeObserver(() => this.refreshLinks());
+            if (board) this._ro.observe(board);
+        }
+
         bindSpeakers(el, ctx.playOptionAudio);
+        // رسم أولي بعد اكتمال التخطيط
+        requestAnimationFrame(() => this.refreshLinks());
     },
     refreshLinks() {
-        const box = this._el.querySelector('#ile-connect-links');
-        if (!box) return;
-        const leftItems = this._el.querySelectorAll('[data-side="left"] .ile-connect__node, .ile-connect__node[data-side="left"]');
-        // Mark paired nodes
-        this._el.querySelectorAll('.ile-connect__node').forEach((n) => n.classList.remove('is-linked'));
-        Object.entries(this._map).forEach(([l, r]) => {
-            this._el.querySelector(`.ile-connect__node[data-side="left"][data-id="${CSS.escape(l)}"]`)?.classList.add('is-linked');
-            this._el.querySelector(`.ile-connect__node[data-side="right"][data-id="${CSS.escape(r)}"]`)?.classList.add('is-linked');
+        if (!this._el) return;
+        const board = this._el.querySelector('.ile-connect__board');
+        const svg = this._el.querySelector('.ile-connect__svg');
+        if (!board || !svg) return;
+
+        this._el.querySelectorAll('.ile-connect__node').forEach((n) => {
+            n.classList.remove('is-linked');
+            n.style.removeProperty('--ile-link-color');
         });
-        box.innerHTML = Object.entries(this._map)
-            .map(([l, r]) => {
-                const leftItem = this._leftById?.[l];
-                const rightItem = this._rightById?.[r];
-                return `<div class="ile-connect__link-row">${leftItem ? itemLabelHtml(leftItem) : escapeHtml(l)} ↔ ${rightItem ? itemLabelHtml(rightItem) : escapeHtml(r)}</div>`;
-            })
-            .join('');
-        void leftItems;
+
+        const boardRect = board.getBoundingClientRect();
+        const w = Math.max(boardRect.width, 1);
+        const h = Math.max(boardRect.height, 1);
+        svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+        svg.setAttribute('width', String(w));
+        svg.setAttribute('height', String(h));
+
+        const entries = Object.entries(this._map);
+        const parts = [
+            `<defs>
+                <filter id="ile-connect-glow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="rgba(0,0,0,.18)"/>
+                </filter>
+            </defs>`,
+        ];
+
+        entries.forEach(([leftId, rightId], index) => {
+            const leftNode = this._el.querySelector(`.ile-connect__node[data-side="left"][data-id="${CSS.escape(String(leftId))}"]`);
+            const rightNode = this._el.querySelector(`.ile-connect__node[data-side="right"][data-id="${CSS.escape(String(rightId))}"]`);
+            if (!leftNode || !rightNode) return;
+
+            const color = LINE_COLORS[index % LINE_COLORS.length];
+            leftNode.classList.add('is-linked');
+            rightNode.classList.add('is-linked');
+            leftNode.style.setProperty('--ile-link-color', color);
+            rightNode.style.setProperty('--ile-link-color', color);
+
+            const lr = leftNode.getBoundingClientRect();
+            const rr = rightNode.getBoundingClientRect();
+
+            // من منتصف الحافة الداخلية لكل بطاقة باتجاه العمود الآخر
+            const x1 = lr.left + lr.width / 2 - boardRect.left;
+            const y1 = lr.top + lr.height / 2 - boardRect.top;
+            const x2 = rr.left + rr.width / 2 - boardRect.left;
+            const y2 = rr.top + rr.height / 2 - boardRect.top;
+            const mx = (x1 + x2) / 2;
+
+            parts.push(`
+                <path class="ile-connect__line" pathLength="1" d="M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}"
+                      fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round"
+                      filter="url(#ile-connect-glow)" />
+                <circle cx="${x1}" cy="${y1}" r="6" fill="${color}" class="ile-connect__endpoint" />
+                <circle cx="${x2}" cy="${y2}" r="6" fill="${color}" class="ile-connect__endpoint" />
+            `);
+        });
+
+        svg.innerHTML = parts.join('');
     },
-    async afterMount() {},
+    async afterMount() {
+        requestAnimationFrame(() => this.refreshLinks());
+    },
     beforeDestroy() {},
     destroy() {
+        if (this._onResize) {
+            window.removeEventListener('resize', this._onResize);
+            this._onResize = null;
+        }
+        if (this._ro) {
+            this._ro.disconnect();
+            this._ro = null;
+        }
         if (this._el) this._el.innerHTML = '';
         this._el = null;
     },

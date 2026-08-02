@@ -294,6 +294,7 @@ class SubjectController extends Controller
                         ->with([
                             'attachments',
                             'quizzes',
+                            'learningExperiences',
                             'linkedUnits.section.subject',
                             'clonedFromLesson.unit.section.subject',
                             'clonedFromLesson.section.subject',
@@ -316,6 +317,12 @@ class SubjectController extends Controller
                 },
                 'sections.units.lessons.quizzes' => function ($q) {
                     $q->orderBy('order')->orderBy('title');
+                },
+                'sections.units.lessons.learningExperiences' => function ($q) {
+                    $q->latest();
+                },
+                'sections.units.learningExperiences' => function ($q) {
+                    $q->latest();
                 },
                 'sections.units.questions' => function ($q) {
                     $q->orderBy('created_at', 'desc');
@@ -350,6 +357,12 @@ class SubjectController extends Controller
                 'sections.mirroredUnits.lessons.quizzes' => function ($q) {
                     $q->orderBy('order')->orderBy('title');
                 },
+                'sections.mirroredUnits.lessons.learningExperiences' => function ($q) {
+                    $q->latest();
+                },
+                'sections.mirroredUnits.learningExperiences' => function ($q) {
+                    $q->latest();
+                },
                 'sections.mirroredUnits.questions' => function ($q) {
                     $q->orderBy('created_at', 'desc');
                 },
@@ -369,6 +382,7 @@ class SubjectController extends Controller
                         ->with([
                             'attachments',
                             'quizzes',
+                            'learningExperiences',
                             'linkedUnits.section.subject',
                             'clonedFromLesson.unit.section.subject',
                             'clonedFromLesson.section.subject',
@@ -390,6 +404,12 @@ class SubjectController extends Controller
                 },
                 'linkedSections.units.lessons.attachments' => function ($q) {
                     $q->orderBy('order');
+                },
+                'linkedSections.units.lessons.learningExperiences' => function ($q) {
+                    $q->latest();
+                },
+                'linkedSections.units.learningExperiences' => function ($q) {
+                    $q->latest();
                 },
                 'linkedSections.units.quizzes' => function ($q) {
                     $q->orderBy('order')->orderBy('title');
@@ -418,6 +438,12 @@ class SubjectController extends Controller
                 },
                 'linkedSections.mirroredUnits.lessons.quizzes' => function ($q) {
                     $q->orderBy('order')->orderBy('title');
+                },
+                'linkedSections.mirroredUnits.lessons.learningExperiences' => function ($q) {
+                    $q->latest();
+                },
+                'linkedSections.mirroredUnits.learningExperiences' => function ($q) {
+                    $q->latest();
                 },
                 'linkedSections.mirroredUnits.questions' => function ($q) {
                     $q->orderBy('created_at', 'desc');

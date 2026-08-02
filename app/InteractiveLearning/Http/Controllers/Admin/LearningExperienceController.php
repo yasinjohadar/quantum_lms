@@ -11,6 +11,10 @@ use App\InteractiveLearning\Services\ExperienceQuestionImportService;
 use App\InteractiveLearning\Services\SchemaValidator;
 use App\InteractiveLearning\Support\QuestionTypeRegistry;
 use App\Models\AIModel;
+use App\Models\Lesson;
+use App\Models\Stage;
+use App\Models\Subject;
+use App\Models\Unit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,7 +32,9 @@ class LearningExperienceController extends Controller
 
     public function index(Request $request): View
     {
-        $query = LearningExperience::query()->latest();
+        $query = LearningExperience::query()
+            ->with(['subject.schoolClass', 'unit'])
+            ->latest();
 
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);
@@ -36,6 +42,10 @@ class LearningExperienceController extends Controller
 
         if ($search = trim($request->string('q')->toString())) {
             $query->where('title', 'like', "%{$search}%");
+        }
+
+        if ($subjectId = $request->integer('subject_id')) {
+            $query->where('subject_id', $subjectId);
         }
 
         $stats = [
@@ -52,11 +62,14 @@ class LearningExperienceController extends Controller
         ]);
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('admin.pages.learning-experiences.create', [
+        $context = $this->resolveCurriculumContext($request);
+
+        return view('admin.pages.learning-experiences.create', array_merge($context, [
             'types' => QuestionTypeRegistry::all(),
-        ]);
+            'stages' => Stage::ordered()->get(),
+        ]));
     }
 
     public function store(Request $request): RedirectResponse
@@ -65,6 +78,9 @@ class LearningExperienceController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'experience_mode' => ['nullable', 'string', 'in:classic,dynamic'],
+            'subject_id' => ['nullable', 'integer', 'exists:subjects,id'],
+            'unit_id' => ['nullable', 'integer', 'exists:units,id'],
+            'lesson_id' => ['nullable', 'integer', 'exists:lessons,id'],
         ]);
 
         $mode = ($data['experience_mode'] ?? 'classic') === 'dynamic' ? 'dynamic' : 'classic';
@@ -89,6 +105,12 @@ class LearningExperienceController extends Controller
             $schema['questions'][0]['stem'] = 'مثال: هل هذه العبارة صحيحة؟';
         }
 
+        $links = $this->normalizeCurriculumLinks(
+            $data['subject_id'] ?? null,
+            $data['unit_id'] ?? null,
+            $data['lesson_id'] ?? null
+        );
+
         $experience = LearningExperience::create([
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
@@ -99,15 +121,20 @@ class LearningExperienceController extends Controller
                 : SchemaValidator::SCHEMA_VERSION,
             'engine_version' => SchemaValidator::ENGINE_VERSION,
             'created_by' => $request->user()->id,
+            'subject_id' => $links['subject_id'],
+            'unit_id' => $links['unit_id'],
+            'lesson_id' => $links['lesson_id'],
         ]);
 
         return redirect()
             ->route('admin.learning-experiences.edit', $experience)
-            ->with('success', 'تم إنشاء التجربة. أكمل الأسئلة ثم انشر.');
+            ->with('success', 'تم إنشاء الاختبار التفاعلي. أكمل الأسئلة ثم انشر.');
     }
 
     public function edit(LearningExperience $learningExperience): View
     {
+        $learningExperience->loadMissing(['subject.schoolClass', 'unit', 'lesson']);
+
         $blankTemplates = [];
         foreach (QuestionTypeRegistry::types() as $type) {
             $blankTemplates[$type] = $this->schemaValidator->makeBlankQuestion($type);
@@ -124,6 +151,8 @@ class LearningExperienceController extends Controller
             ->orderByDesc('priority')
             ->get(['id', 'name', 'provider', 'is_default']);
 
+        $lockedFromCurriculum = (bool) ($learningExperience->subject_id || $learningExperience->unit_id || $learningExperience->lesson_id);
+
         return view('admin.pages.learning-experiences.edit', [
             'experience' => $learningExperience,
             'types' => QuestionTypeRegistry::all(),
@@ -132,6 +161,18 @@ class LearningExperienceController extends Controller
             'blankDynamicTemplates' => $blankDynamicTemplates,
             'dynamicInteractionTypes' => QuestionTypeRegistry::types(),
             'aiModels' => $aiModels,
+            'stages' => Stage::ordered()->get(),
+            'selectedStageId' => $learningExperience->subject?->schoolClass?->stage_id,
+            'selectedClassId' => $learningExperience->subject?->schoolClass?->id,
+            'selectedSubjectId' => old('subject_id', $learningExperience->subject_id),
+            'selectedUnitId' => old('unit_id', $learningExperience->unit_id),
+            'selectedLessonId' => old('lesson_id', $learningExperience->lesson_id),
+            'selectedSubject' => $learningExperience->subject,
+            'selectedUnit' => $learningExperience->unit,
+            'selectedLesson' => $learningExperience->lesson,
+            'selectedClass' => $learningExperience->subject?->schoolClass,
+            'isFromSubjectOrUnit' => $lockedFromCurriculum,
+            'isFromLesson' => (bool) $learningExperience->lesson_id,
         ]);
     }
 
@@ -141,6 +182,9 @@ class LearningExperienceController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'schema_json' => ['required', 'string'],
+            'subject_id' => ['nullable', 'integer', 'exists:subjects,id'],
+            'unit_id' => ['nullable', 'integer', 'exists:units,id'],
+            'lesson_id' => ['nullable', 'integer', 'exists:lessons,id'],
         ]);
 
         $schema = json_decode($data['schema_json'], true);
@@ -154,6 +198,12 @@ class LearningExperienceController extends Controller
             return back()->withInput()->withErrors(['schema_json' => implode(' ', $result['errors'])]);
         }
 
+        $links = $this->normalizeCurriculumLinks(
+            $data['subject_id'] ?? null,
+            $data['unit_id'] ?? null,
+            $data['lesson_id'] ?? null
+        );
+
         $learningExperience->update([
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
@@ -162,18 +212,153 @@ class LearningExperienceController extends Controller
                 ? SchemaValidator::SCHEMA_VERSION_DYNAMIC
                 : SchemaValidator::SCHEMA_VERSION,
             'engine_version' => SchemaValidator::ENGINE_VERSION,
+            'subject_id' => $links['subject_id'],
+            'unit_id' => $links['unit_id'],
+            'lesson_id' => $links['lesson_id'],
         ]);
 
-        return back()->with('success', 'تم حفظ التجربة.');
+        return back()->with('success', 'تم حفظ الاختبار التفاعلي.');
     }
 
     public function destroy(LearningExperience $learningExperience): RedirectResponse
     {
         $learningExperience->delete();
 
+        if (url()->previous() && url()->previous() !== url()->current()) {
+            return redirect()
+                ->back()
+                ->with('success', 'تم حذف الاختبار التفاعلي.');
+        }
+
         return redirect()
             ->route('admin.learning-experiences.index')
-            ->with('success', 'تم حذف التجربة.');
+            ->with('success', 'تم حذف الاختبار التفاعلي.');
+    }
+
+    /**
+     * @return array{
+     *     selectedStageId: mixed,
+     *     selectedClassId: mixed,
+     *     selectedSubjectId: mixed,
+     *     selectedUnitId: mixed,
+     *     selectedLessonId: mixed,
+     *     selectedSubject: ?Subject,
+     *     selectedUnit: ?Unit,
+     *     selectedLesson: ?Lesson,
+     *     selectedClass: mixed,
+     *     isFromSubjectOrUnit: bool,
+     *     isFromLesson: bool
+     * }
+     */
+    protected function resolveCurriculumContext(Request $request): array
+    {
+        $selectedStageId = null;
+        $selectedClassId = null;
+        $selectedSubjectId = $request->get('subject_id');
+        $selectedUnitId = $request->get('unit_id');
+        $selectedLessonId = $request->get('lesson_id');
+
+        $selectedSubject = null;
+        $selectedUnit = null;
+        $selectedLesson = null;
+        $selectedClass = null;
+        $isFromSubjectOrUnit = false;
+        $isFromLesson = false;
+
+        if ($selectedLessonId) {
+            $selectedLesson = Lesson::with([
+                'unit.section.subject.schoolClass',
+                'section.subject.schoolClass',
+            ])->find($selectedLessonId);
+            if ($selectedLesson) {
+                $selectedUnit = $selectedLesson->unit;
+                $selectedSubject = $selectedUnit?->section?->subject
+                    ?? $selectedLesson->section?->subject;
+                $selectedClass = $selectedSubject?->schoolClass;
+                $selectedSubjectId = $selectedSubject?->id;
+                $selectedUnitId = $selectedUnit?->id ?? $selectedUnitId;
+                $isFromSubjectOrUnit = true;
+                $isFromLesson = true;
+            }
+        }
+
+        if (! $selectedLesson && $selectedUnitId) {
+            $selectedUnit = Unit::with('section.subject.schoolClass')->find($selectedUnitId);
+            if ($selectedUnit) {
+                $selectedSubject = $selectedUnit->section?->subject;
+                $selectedClass = $selectedSubject?->schoolClass;
+                $selectedSubjectId = $selectedSubject?->id ?? $selectedSubjectId;
+                $isFromSubjectOrUnit = true;
+            }
+        }
+
+        if (! $selectedSubject && $selectedSubjectId) {
+            $selectedSubject = Subject::with('schoolClass')->find($selectedSubjectId);
+            if ($selectedSubject) {
+                $selectedClass = $selectedSubject->schoolClass;
+                $isFromSubjectOrUnit = true;
+            }
+        }
+
+        if ($selectedClass) {
+            $selectedStageId = $selectedClass->stage_id;
+            $selectedClassId = $selectedClass->id;
+        }
+
+        return [
+            'selectedStageId' => $selectedStageId,
+            'selectedClassId' => $selectedClassId,
+            'selectedSubjectId' => old('subject_id', $selectedSubjectId),
+            'selectedUnitId' => old('unit_id', $selectedUnitId),
+            'selectedLessonId' => old('lesson_id', $selectedLessonId),
+            'selectedSubject' => $selectedSubject,
+            'selectedUnit' => $selectedUnit,
+            'selectedLesson' => $selectedLesson,
+            'selectedClass' => $selectedClass,
+            'isFromSubjectOrUnit' => $isFromSubjectOrUnit,
+            'isFromLesson' => $isFromLesson,
+        ];
+    }
+
+    /**
+     * @return array{subject_id: ?int, unit_id: ?int, lesson_id: ?int}
+     */
+    protected function normalizeCurriculumLinks(?int $subjectId, ?int $unitId, ?int $lessonId): array
+    {
+        if ($lessonId) {
+            $lesson = Lesson::with(['unit.section.subject', 'section.subject'])->find($lessonId);
+            if ($lesson) {
+                $unit = $lesson->unit;
+                $subject = $unit?->section?->subject ?? $lesson->section?->subject;
+
+                return [
+                    'subject_id' => $subject?->id ?? $subjectId,
+                    'unit_id' => $unit?->id ?? $unitId,
+                    'lesson_id' => $lesson->id,
+                ];
+            }
+        }
+
+        if (! $subjectId) {
+            return [
+                'subject_id' => null,
+                'unit_id' => null,
+                'lesson_id' => null,
+            ];
+        }
+
+        if ($unitId) {
+            $unit = Unit::with('section')->find($unitId);
+            if ($unit && (int) optional($unit->section)->subject_id !== (int) $subjectId) {
+                $unitId = null;
+            }
+        }
+
+        return [
+            'subject_id' => $subjectId,
+            'unit_id' => $unitId,
+            'lesson_id' => null,
+        ];
     }
 
     public function transition(Request $request, LearningExperience $learningExperience): RedirectResponse

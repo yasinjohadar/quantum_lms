@@ -1,7 +1,7 @@
 @extends('admin.layouts.master')
 
 @section('page-title')
-    تحرير تجربة تفاعلية
+    تحرير اختبار تفاعلي
 @stop
 
 @push('styles')
@@ -285,7 +285,7 @@
         <div class="ile-hero">
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
                 <div>
-                    <h1 class="ile-hero__title">تحرير التجربة</h1>
+                    <h1 class="ile-hero__title">تحرير الاختبار التفاعلي</h1>
                     <div class="ile-hero__meta">
                         <span class="ile-chip ile-chip--live">{{ $experience->status }}</span>
                         <span class="ile-chip" x-text="isDynamic ? 'ديناميك 2.0' : 'كلاسيك 1.0'"></span>
@@ -440,17 +440,79 @@
 
             <div class="ile-panel">
                 <div class="ile-panel__head">
+                    <h6><i class="bi bi-diagram-3"></i>ربط بالمنهج</h6>
+                </div>
+                <div class="ile-panel__body">
+                    @if(!empty($isFromLesson) && ($selectedLesson ?? null))
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">المادة</label>
+                                <div class="form-control bg-light" style="cursor: not-allowed;">
+                                    <strong>{{ $selectedSubject->name ?? '—' }}</strong>
+                                </div>
+                                <input type="hidden" name="subject_id" value="{{ $selectedSubject->id ?? '' }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">الوحدة</label>
+                                <div class="form-control bg-light" style="cursor: not-allowed;">
+                                    <strong>{{ $selectedUnit->title ?? '—' }}</strong>
+                                </div>
+                                <input type="hidden" name="unit_id" value="{{ $selectedUnit->id ?? '' }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">الدرس</label>
+                                <div class="form-control bg-light" style="cursor: not-allowed;">
+                                    <strong>{{ $selectedLesson->title }}</strong>
+                                </div>
+                                <input type="hidden" name="lesson_id" value="{{ $selectedLesson->id }}">
+                            </div>
+                        </div>
+                    @elseif(!empty($isFromSubjectOrUnit) && ($selectedUnit ?? null) && empty($experience->lesson_id))
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">المادة</label>
+                                <div class="form-control bg-light" style="cursor: not-allowed;">
+                                    <strong>{{ $selectedSubject->name ?? '—' }}</strong>
+                                </div>
+                                <input type="hidden" name="subject_id" value="{{ $selectedSubject->id ?? '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">الوحدة</label>
+                                <div class="form-control bg-light" style="cursor: not-allowed;">
+                                    <strong>{{ $selectedUnit->title }}</strong>
+                                </div>
+                                <input type="hidden" name="unit_id" value="{{ $selectedUnit->id }}">
+                            </div>
+                        </div>
+                    @else
+                        @include('admin.pages.quizzes.partials.curriculum-cascade-fields', [
+                            'stages' => $stages,
+                            'selectedStageId' => $selectedStageId ?? null,
+                            'selectedClassId' => $selectedClassId ?? null,
+                            'selectedSubjectId' => old('subject_id', $selectedSubjectId ?? ''),
+                            'selectedUnitId' => old('unit_id', $selectedUnitId ?? ''),
+                            'cascadeRequireStage' => true,
+                        ])
+                    @endif
+                    @error('subject_id')<div class="text-danger small">{{ $message }}</div>@enderror
+                    @error('unit_id')<div class="text-danger small">{{ $message }}</div>@enderror
+                    @error('lesson_id')<div class="text-danger small">{{ $message }}</div>@enderror
+                </div>
+            </div>
+
+            <div class="ile-panel">
+                <div class="ile-panel__head">
                     <h6><i class="bi bi-sliders"></i>إعدادات الجلسة</h6>
                 </div>
                 <div class="ile-panel__body">
                     <div class="row g-3">
                         <div class="col-lg-7">
-                            <label class="form-label">عنوان التجربة</label>
+                            <label class="form-label">عنوان الاختبار</label>
                             <input type="text" class="form-control" x-model="schema.meta.title" @input="validateLive()">
                         </div>
                         <div class="col-lg-5">
                             <label class="form-label">الوصف</label>
-                            <input type="text" class="form-control" x-model="description" placeholder="وصف مختصر للتجربة">
+                            <input type="text" class="form-control" x-model="description" placeholder="وصف مختصر للاختبار">
                         </div>
                         <div class="col-6 col-md-3">
                             <label class="form-label">السماح بالرجوع</label>
@@ -815,7 +877,7 @@
 
             <div class="ile-sticky-actions">
                 <button type="submit" class="ile-btn ile-btn--primary" :disabled="clientErrors.length > 0">
-                    <i class="bi bi-check2"></i>حفظ التجربة
+                    <i class="bi bi-check2"></i>حفظ الاختبار
                 </button>
                 <button type="button" class="ile-btn ile-btn--line" @click="validateLive()">تحقق الآن</button>
                 <button type="button" class="ile-btn ile-btn--line" @click="undo()" :disabled="!history.length">تراجع</button>
@@ -899,6 +961,16 @@
 @endsection
 
 @push('scripts')
+@if(empty($isFromLesson) && (empty($isFromSubjectOrUnit) || empty($selectedUnit)))
+@include('admin.pages.quizzes.partials.curriculum-cascade-script', [
+    'selectedStageId' => $selectedStageId ?? null,
+    'selectedClassId' => $selectedClassId ?? null,
+    'selectedSubjectId' => old('subject_id', $selectedSubjectId ?? ''),
+    'selectedUnitId' => old('unit_id', $selectedUnitId ?? ''),
+    'cascadeRequireStage' => true,
+])
+@endif
+
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 <script>
 function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDynamicTemplates, dynamicInteractionTypes) {

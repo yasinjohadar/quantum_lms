@@ -334,11 +334,16 @@
                                         @can('quiz-create')
                                             <a href="{{ route('admin.quizzes.create', ['subject_id' => $subject->id, 'section_id' => $section->id, 'lesson_id' => $lesson->id, 'scope' => 'lesson']) }}" class="btn btn-sm btn-outline-info" title="اختبار لهذا الدرس"><i class="bi bi-clipboard-check me-1"></i> اختبار الدرس</a>
                                         @endcan
+                                        <a href="{{ route('admin.learning-experiences.create', ['subject_id' => $subject->id, 'unit_id' => $lesson->unit_id, 'lesson_id' => $lesson->id]) }}" class="btn btn-sm btn-outline-success" title="اختبار تفاعلي لهذا الدرس"><i class="bi bi-joystick me-1"></i> اختبار تفاعلي</a>
                                         @if($lesson->quizzes && $lesson->quizzes->count() > 0)
                                             @php $firstQuiz = $lesson->quizzes->first(); @endphp
                                             @can('quiz-show')
                                                 <a href="{{ route('admin.quizzes.show', $firstQuiz->id) }}" class="btn btn-sm btn-icon btn-info-transparent" title="{{ $firstQuiz->title }}"><i class="bi bi-question-circle"></i></a>
                                             @endcan
+                                        @endif
+                                        @if($lesson->learningExperiences && $lesson->learningExperiences->count() > 0)
+                                            @php $firstExperience = $lesson->learningExperiences->first(); @endphp
+                                            <a href="{{ route('admin.learning-experiences.edit', $firstExperience) }}" class="btn btn-sm btn-icon btn-success-transparent" title="{{ $firstExperience->title }}"><i class="bi bi-joystick"></i></a>
                                         @endif
                                     </div>
                                 </div>

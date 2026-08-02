@@ -1,3 +1,6 @@
+@php
+    $cascadeRequireStage = (bool) ($cascadeRequireStage ?? false);
+@endphp
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const stageSelect = document.getElementById('stageSelect');
@@ -8,6 +11,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!stageSelect || !classSelect || !subjectSelect || !unitSelect) {
         return;
     }
+
+    const requireStage = @json($cascadeRequireStage);
 
     const routes = {
         classes: @json(route('admin.quizzes.get-classes-by-stage')),
@@ -20,6 +25,18 @@ document.addEventListener('DOMContentLoaded', function () {
         classId: @json(old('class_id', $selectedClassId ?? '')),
         subjectId: @json(old('subject_id', $selectedSubjectId ?? '')),
         unitId: @json(old('unit_id', $selectedUnitId ?? '')),
+    };
+
+    const labels = {
+        classAll: requireStage ? 'اختر الصف' : 'كل الصفوف',
+        classNeedStage: 'اختر المرحلة أولاً',
+        subjectAll: requireStage ? 'اختر المادة' : 'كل المواد',
+        subjectNeedClass: 'اختر الصف أولاً',
+        unitAll: requireStage ? 'اختر الوحدة (اختياري)' : 'كل الوحدات',
+        unitNeedSubject: 'اختر المادة أولاً',
+        loading: 'جاري التحميل...',
+        classError: 'تعذر تحميل الصفوف',
+        subjectError: 'تعذر تحميل المواد',
     };
 
     let isInitializing = true;
@@ -39,8 +56,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    function resetSelect(select, placeholder) {
+    function resetSelect(select, placeholder, disabled) {
         select.innerHTML = '<option value="">' + placeholder + '</option>';
+        if (typeof disabled === 'boolean') {
+            select.disabled = disabled;
+        }
     }
 
     function populateOptions(select, items, labelKey, selectedId) {
@@ -56,7 +76,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function loadClasses(stageId, selectedClassId) {
-        resetSelect(classSelect, 'جاري التحميل...');
+        if (requireStage && !stageId) {
+            resetSelect(classSelect, labels.classNeedStage, true);
+            return Promise.resolve();
+        }
+
+        resetSelect(classSelect, labels.loading, false);
         const params = new URLSearchParams();
         if (stageId) {
             params.set('stage_id', stageId);
@@ -64,16 +89,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
         return fetchJson(routes.classes + (params.toString() ? '?' + params.toString() : ''))
             .then(function (payload) {
-                resetSelect(classSelect, 'كل الصفوف');
+                resetSelect(classSelect, labels.classAll, false);
                 populateOptions(classSelect, payload.data || [], 'name', selectedClassId);
             })
             .catch(function () {
-                resetSelect(classSelect, 'تعذر تحميل الصفوف');
+                resetSelect(classSelect, labels.classError, false);
             });
     }
 
     function loadSubjects(classId, stageId, selectedSubjectId) {
-        resetSelect(subjectSelect, 'جاري التحميل...');
+        if (requireStage && !classId && !stageId) {
+            resetSelect(subjectSelect, labels.subjectNeedClass, true);
+            return Promise.resolve();
+        }
+
+        if (requireStage && !classId && stageId) {
+            // في الوضع الصارم: المواد تظهر بعد اختيار الصف فقط
+            resetSelect(subjectSelect, labels.subjectNeedClass, true);
+            return Promise.resolve();
+        }
+
+        resetSelect(subjectSelect, labels.loading, false);
         const params = new URLSearchParams();
         if (classId) {
             params.set('class_id', classId);
@@ -84,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         return fetchJson(routes.subjects + (params.toString() ? '?' + params.toString() : ''))
             .then(function (payload) {
-                resetSelect(subjectSelect, 'كل المواد');
+                resetSelect(subjectSelect, labels.subjectAll, false);
                 const items = payload.data || [];
                 items.forEach(function (subject) {
                     const opt = document.createElement('option');
@@ -101,21 +137,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             })
             .catch(function () {
-                resetSelect(subjectSelect, 'تعذر تحميل المواد');
+                resetSelect(subjectSelect, labels.subjectError, false);
             });
     }
 
     function loadUnits(subjectId, selectedUnitId) {
-        resetSelect(unitSelect, 'كل الوحدات');
         if (!subjectId) {
+            resetSelect(unitSelect, requireStage ? labels.unitNeedSubject : labels.unitAll, !!requireStage);
             return Promise.resolve();
         }
 
-        resetSelect(unitSelect, 'جاري التحميل...');
+        resetSelect(unitSelect, labels.loading, false);
 
         return fetchJson(routes.units + '?subject_id=' + encodeURIComponent(subjectId))
             .then(function (units) {
-                resetSelect(unitSelect, 'كل الوحدات');
+                resetSelect(unitSelect, labels.unitAll, false);
                 const list = Array.isArray(units) ? units : (units.data || []);
                 list.forEach(function (unit) {
                     const opt = document.createElement('option');
@@ -128,7 +164,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             })
             .catch(function () {
-                resetSelect(unitSelect, 'كل الوحدات');
+                resetSelect(unitSelect, labels.unitAll, false);
             });
     }
 
@@ -137,10 +173,12 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         const stageId = stageSelect.value;
-        resetSelect(classSelect, 'جاري التحميل...');
-        resetSelect(subjectSelect, 'كل المواد');
-        resetSelect(unitSelect, 'كل الوحدات');
+        resetSelect(subjectSelect, requireStage ? labels.subjectNeedClass : labels.subjectAll, !!requireStage);
+        resetSelect(unitSelect, requireStage ? labels.unitNeedSubject : labels.unitAll, !!requireStage);
         loadClasses(stageId, '').then(function () {
+            if (requireStage) {
+                return Promise.resolve();
+            }
             return loadSubjects('', stageId, '');
         });
     });
@@ -150,8 +188,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         const classId = classSelect.value;
-        resetSelect(subjectSelect, 'جاري التحميل...');
-        resetSelect(unitSelect, 'كل الوحدات');
+        resetSelect(unitSelect, requireStage ? labels.unitNeedSubject : labels.unitAll, !!requireStage);
         loadSubjects(classId, stageSelect.value, '').then(function () {
             return loadUnits('', '');
         });

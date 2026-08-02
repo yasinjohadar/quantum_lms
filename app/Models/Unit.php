@@ -231,6 +231,38 @@ class Unit extends Model
     }
 
     /**
+     * كل الاختبارات التفاعلية المرتبطة بالوحدة (قد تشمل اختبارات دروس).
+     */
+    public function learningExperiences()
+    {
+        return $this->hasMany(\App\InteractiveLearning\Models\LearningExperience::class)->latest();
+    }
+
+    /**
+     * اختبارات تفاعلية عامة للوحدة (بدون درس).
+     */
+    public function unitLearningExperiences()
+    {
+        return $this->hasMany(\App\InteractiveLearning\Models\LearningExperience::class)
+            ->whereNull('lesson_id')
+            ->latest();
+    }
+
+    /**
+     * اختبارات الوحدة التفاعلية المعروضة في صفحة المادة.
+     */
+    public function allUnitLearningExperiences()
+    {
+        if ($this->relationLoaded('learningExperiences')) {
+            return $this->learningExperiences
+                ->filter(fn ($experience) => is_null($experience->lesson_id))
+                ->values();
+        }
+
+        return $this->unitLearningExperiences()->get();
+    }
+
+    /**
      * اختبارات تابعة لدروس هذه الوحدة (لكل درس اختبار/اختبارات خاصة).
      * مفيدة إذا احتجنا إحصائيات على مستوى الوحدة لكل اختبارات الدروس.
      */

@@ -1,7 +1,7 @@
 @extends('admin.layouts.master')
 
 @section('page-title')
-    التجارب التفاعلية
+    اختبارات تفاعلية
 @stop
 
 @push('styles')
@@ -35,10 +35,10 @@
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb mb-2 small">
                         <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">التجارب التفاعلية</li>
+                        <li class="breadcrumb-item active" aria-current="page">اختبارات تفاعلية</li>
                     </ol>
                 </nav>
-                <h4 class="ile-index-hero__title">مكتبة التجارب التفاعلية</h4>
+                <h4 class="ile-index-hero__title">مكتبة الاختبارات التفاعلية</h4>
                 <p class="ile-index-hero__subtitle">محرك تعليمي مستقل — كلاسيك وديناميك، للأطفال والتفاعل الغني</p>
             </div>
             <div class="ile-index-stats">
@@ -57,7 +57,7 @@
             </div>
             <div class="ile-index-hero__actions">
                 <a href="{{ route('admin.learning-experiences.create') }}" class="btn btn-sm btn-success">
-                    <i class="bi bi-plus-circle me-1"></i> تجربة جديدة
+                    <i class="bi bi-plus-circle me-1"></i> اختبار جديد
                 </a>
             </div>
         </div>
@@ -83,7 +83,7 @@
                             <label class="form-label">بحث</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-muted"></i></span>
-                                <input type="search" name="q" value="{{ request('q') }}" class="form-control border-start-0" placeholder="ابحث بعنوان التجربة...">
+                                <input type="search" name="q" value="{{ request('q') }}" class="form-control border-start-0" placeholder="ابحث بعنوان الاختبار...">
                             </div>
                         </div>
                         <div class="col-8 col-md-4 col-lg-3">
@@ -114,7 +114,7 @@
             <div class="ile-index-card__header">
                 <div class="d-flex align-items-center gap-2">
                     <span class="ile-index-card__header-icon"><i class="bi bi-collection-play"></i></span>
-                    <span>التجارب ({{ number_format($experiences->total()) }})</span>
+                    <span>الاختبارات ({{ number_format($experiences->total()) }})</span>
                 </div>
                 <span class="text-muted small fw-normal">
                     {{ $experiences->firstItem() ?? 0 }}–{{ $experiences->lastItem() ?? 0 }}
@@ -127,7 +127,8 @@
                         <thead>
                             <tr>
                                 <th style="width: 56px;">#</th>
-                                <th>التجربة</th>
+                                <th>الاختبار</th>
+                                <th>المنهج</th>
                                 <th>الوضع</th>
                                 <th>الحالة</th>
                                 <th>الإصدار</th>
@@ -160,6 +161,16 @@
                                         </div>
                                     </td>
                                     <td>
+                                        @if($experience->subject)
+                                            <div class="small fw-semibold">{{ $experience->subject->name }}</div>
+                                            @if($experience->unit)
+                                                <div class="text-muted small">{{ $experience->unit->title }}</div>
+                                            @endif
+                                        @else
+                                            <span class="text-muted small">—</span>
+                                        @endif
+                                    </td>
+                                    <td>
                                         @if($isDynamic)
                                             <span class="ile-badge ile-badge--dynamic"><i class="bi bi-stars"></i> ديناميك</span>
                                         @else
@@ -189,7 +200,7 @@
                                             <a href="{{ route('admin.learning-experiences.edit', $experience) }}" class="btn btn-sm btn-outline-primary" title="تحرير">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
-                                            <form action="{{ route('admin.learning-experiences.destroy', $experience) }}" method="POST" class="d-inline" onsubmit="return confirm('حذف التجربة؟')">
+                                            <form action="{{ route('admin.learning-experiences.destroy', $experience) }}" method="POST" class="d-inline" onsubmit="return confirm('حذف الاختبار التفاعلي؟')">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button class="btn btn-sm btn-outline-danger" title="حذف" type="submit">
@@ -201,13 +212,13 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7">
+                                    <td colspan="8">
                                         <div class="ile-empty">
                                             <div class="ile-empty__icon"><i class="bi bi-joystick"></i></div>
-                                            <div class="fw-bold mb-1">لا توجد تجارب بعد</div>
-                                            <p class="mb-3 small">ابدأ بإنشاء تجربة كلاسيك أو ديناميك للطلاب.</p>
+                                            <div class="fw-bold mb-1">لا توجد اختبارات تفاعلية بعد</div>
+                                            <p class="mb-3 small">ابدأ بإنشاء اختبار كلاسيك أو ديناميك للطلاب.</p>
                                             <a href="{{ route('admin.learning-experiences.create') }}" class="btn btn-sm btn-success">
-                                                <i class="bi bi-plus-circle me-1"></i> تجربة جديدة
+                                                <i class="bi bi-plus-circle me-1"></i> اختبار جديد
                                             </a>
                                         </div>
                                     </td>

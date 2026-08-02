@@ -194,6 +194,14 @@ class Lesson extends Model
     }
 
     /**
+     * الاختبارات التفاعلية المرتبطة بهذا الدرس.
+     */
+    public function learningExperiences(): HasMany
+    {
+        return $this->hasMany(\App\InteractiveLearning\Models\LearningExperience::class, 'lesson_id')->latest();
+    }
+
+    /**
      * العلاقة مع محاولات الأسئلة.
      */
     public function questionAttempts()

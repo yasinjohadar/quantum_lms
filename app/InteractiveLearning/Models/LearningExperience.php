@@ -2,6 +2,9 @@
 
 namespace App\InteractiveLearning\Models;
 
+use App\Models\Lesson;
+use App\Models\Subject;
+use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -32,6 +35,9 @@ class LearningExperience extends Model
         'schema_version',
         'engine_version',
         'created_by',
+        'subject_id',
+        'unit_id',
+        'lesson_id',
     ];
 
     protected function casts(): array
@@ -44,6 +50,21 @@ class LearningExperience extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function subject(): BelongsTo
+    {
+        return $this->belongsTo(Subject::class);
+    }
+
+    public function unit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class);
+    }
+
+    public function lesson(): BelongsTo
+    {
+        return $this->belongsTo(Lesson::class);
     }
 
     public function attempts(): HasMany

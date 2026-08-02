@@ -14,11 +14,15 @@
             <i class="bi bi-clipboard-check me-1"></i> اختبار الوحدة
         </a>
         @endcan
+        <a href="{{ route('admin.learning-experiences.create', ['subject_id' => $subject->id, 'unit_id' => $unit->id]) }}" class="btn btn-sm btn-success" title="إضافة اختبار تفاعلي للوحدة">
+            <i class="bi bi-joystick me-1"></i> اختبار تفاعلي
+        </a>
     </div>
 </div>
 
 @php
     $unitQuizzesList = $unit->allUnitQuizzes();
+    $unitLearningExperiencesList = $unit->allUnitLearningExperiences();
 @endphp
 @if($unitQuizzesList->count() > 0)
 <div class="unit-quizzes mb-3">
@@ -95,6 +99,57 @@
                         <button type="submit" class="btn btn-sm btn-icon btn-danger-transparent" title="حذف"><i class="bi bi-trash"></i></button>
                     </form>
                 @endcan
+            </div>
+        </div>
+        @endforeach
+    </div>
+</div>
+@endif
+
+@if($unitLearningExperiencesList->count() > 0)
+<div class="unit-learning-experiences mb-3">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <h6 class="mb-0 text-success fw-semibold small">
+            <i class="bi bi-joystick me-1"></i>
+            اختبارات تفاعلية للوحدة ({{ $unitLearningExperiencesList->count() }})
+        </h6>
+    </div>
+    <div class="list-group list-group-flush">
+        @foreach($unitLearningExperiencesList as $experience)
+        @php
+            $statusLabels = [
+                'draft' => 'مسودة',
+                'review' => 'مراجعة',
+                'published' => 'منشور',
+                'archived' => 'مؤرشف',
+            ];
+            $qCount = count(($experience->schema_json['questions'] ?? []) ?: []);
+        @endphp
+        <div class="list-group-item d-flex align-items-center justify-content-between px-2 py-2 bg-success-transparent rounded mb-1">
+            <div class="d-flex align-items-center flex-grow-1">
+                <div class="bg-success rounded-circle d-flex align-items-center justify-content-center me-2" style="width:32px;height:32px;">
+                    <i class="bi bi-joystick text-white small"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <p class="mb-0 small fw-medium">{{ $experience->title }}</p>
+                    <div class="d-flex align-items-center gap-2 mt-1">
+                        <span class="badge bg-success-transparent text-success" style="font-size:0.6rem;">
+                            {{ $statusLabels[$experience->status] ?? $experience->status }}
+                        </span>
+                        <span class="text-muted" style="font-size:0.65rem;">
+                            <i class="bi bi-question-circle me-1"></i>{{ $qCount }} سؤال
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-1">
+                <a href="{{ route('learning-experiences.show', $experience) }}" class="btn btn-sm btn-icon btn-success-transparent" target="_blank" title="تشغيل"><i class="bi bi-play-fill"></i></a>
+                <a href="{{ route('admin.learning-experiences.edit', $experience) }}" class="btn btn-sm btn-icon btn-warning-transparent" title="تعديل"><i class="bi bi-pencil"></i></a>
+                <form action="{{ route('admin.learning-experiences.destroy', $experience) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف هذا الاختبار التفاعلي؟');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-sm btn-icon btn-danger-transparent" title="حذف"><i class="bi bi-trash"></i></button>
+                </form>
             </div>
         </div>
         @endforeach
@@ -282,11 +337,16 @@
                         @can('quiz-create')
                             <a href="{{ route('admin.quizzes.create', ['subject_id' => $subject->id, 'unit_id' => $unit->id, 'lesson_id' => $lesson->id, 'scope' => 'lesson']) }}" class="btn btn-sm btn-outline-info" title="اختبار لهذا الدرس"><i class="bi bi-clipboard-check me-1"></i> اختبار الدرس</a>
                         @endcan
+                        <a href="{{ route('admin.learning-experiences.create', ['subject_id' => $subject->id, 'unit_id' => $unit->id, 'lesson_id' => $lesson->id]) }}" class="btn btn-sm btn-outline-success" title="اختبار تفاعلي لهذا الدرس"><i class="bi bi-joystick me-1"></i> اختبار تفاعلي</a>
                         @if($lesson->quizzes && $lesson->quizzes->count() > 0)
                             @php $firstQuiz = $lesson->quizzes->first(); @endphp
                             @can('quiz-show')
                                 <a href="{{ route('admin.quizzes.show', $firstQuiz->id) }}" class="btn btn-sm btn-icon btn-info-transparent" title="{{ $firstQuiz->title }}"><i class="bi bi-question-circle"></i></a>
                             @endcan
+                        @endif
+                        @if($lesson->learningExperiences && $lesson->learningExperiences->count() > 0)
+                            @php $firstExperience = $lesson->learningExperiences->first(); @endphp
+                            <a href="{{ route('admin.learning-experiences.edit', $firstExperience) }}" class="btn btn-sm btn-icon btn-success-transparent" title="{{ $firstExperience->title }}"><i class="bi bi-joystick"></i></a>
                         @endif
                     </div>
                 </div>
