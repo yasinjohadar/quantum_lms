@@ -330,8 +330,8 @@
         transition: all 0.2s;
     }
     .sqt-take .drop-zone.border-primary {
-        border-color: #0d9488 !important;
-        background-color: rgba(13, 148, 136, 0.1) !important;
+        border-color: var(--sqt-accent) !important;
+        background-color: rgba(var(--sqt-accent-rgb), 0.1) !important;
     }
     .dropped-item {
         display: inline-block;
@@ -345,11 +345,11 @@
         cursor: move;
     }
     .sqt-take .ordering-item:hover {
-        background-color: rgba(13, 148, 136, 0.05);
+        background-color: rgba(var(--sqt-accent-rgb), 0.05);
     }
     .sqt-take .ordering-item.drag-over {
-        border-top: 3px solid #0d9488;
-        background-color: rgba(13, 148, 136, 0.1);
+        border-top: 3px solid var(--sqt-accent);
+        background-color: rgba(var(--sqt-accent-rgb), 0.1);
     }
     .ordering-item[draggable="true"]:active {
         cursor: grabbing;

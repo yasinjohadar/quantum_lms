@@ -1,19 +1,19 @@
 <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
     .sqt-take {
-        --sqt-accent: #0d9488;
-        --sqt-accent-2: #059669;
+        --sqt-accent: var(--primary-color, rgb(var(--primary-rgb, 1, 98, 232)));
+        --sqt-accent-rgb: var(--primary-rgb, 1, 98, 232);
         --sqt-warn: #f59e0b;
         --sqt-danger: #e11d48;
         --sqt-surface: #ffffff;
         --sqt-surface-2: #f8fafc;
         --sqt-text: #0f172a;
         --sqt-muted: #64748b;
-        --sqt-border: #d1fae5;
-        --sqt-soft: rgba(13, 148, 136, 0.08);
+        --sqt-border: rgba(var(--sqt-accent-rgb), 0.22);
+        --sqt-soft: rgba(var(--sqt-accent-rgb), 0.1);
         --sqt-radius: 18px;
         --sqt-font: "Alexandria", "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif;
-        --sqt-divider: rgba(13, 148, 136, 0.28);
+        --sqt-divider: rgba(var(--sqt-accent-rgb), 0.35);
         font-family: var(--sqt-font);
         color: var(--sqt-text);
     }
@@ -21,9 +21,9 @@
     .sqt-take .main-content.app-content,
     .sqt-take.main-content {
         background:
-            radial-gradient(1200px 420px at 100% -10%, rgba(16, 185, 129, 0.16), transparent 55%),
-            radial-gradient(900px 380px at 0% 0%, rgba(14, 165, 233, 0.1), transparent 50%),
-            linear-gradient(180deg, #f0fdfa 0%, #f8fafc 42%, #f1f5f9 100%);
+            radial-gradient(1200px 420px at 100% -10%, rgba(var(--sqt-accent-rgb), 0.16), transparent 55%),
+            radial-gradient(900px 380px at 0% 0%, rgba(var(--sqt-accent-rgb), 0.08), transparent 50%),
+            linear-gradient(180deg, rgba(var(--sqt-accent-rgb), 0.06) 0%, #f8fafc 42%, #f1f5f9 100%);
         min-height: 100vh;
     }
 
@@ -36,8 +36,8 @@
         --sqt-text: #e5e7eb;
         --sqt-muted: #94a3b8;
         --sqt-border: rgba(255, 255, 255, 0.12);
-        --sqt-soft: rgba(16, 185, 129, 0.14);
-        --sqt-divider: rgba(45, 212, 191, 0.35);
+        --sqt-soft: rgba(var(--sqt-accent-rgb), 0.16);
+        --sqt-divider: rgba(var(--sqt-accent-rgb), 0.4);
         color: var(--sqt-text);
     }
 
@@ -46,7 +46,7 @@
     [data-theme-mode="dark"] .sqt-take.main-content,
     [data-bs-theme="dark"] .sqt-take.main-content {
         background:
-            radial-gradient(900px 360px at 100% 0%, rgba(16, 185, 129, 0.12), transparent 50%),
+            radial-gradient(900px 360px at 100% 0%, rgba(var(--sqt-accent-rgb), 0.14), transparent 50%),
             linear-gradient(180deg, #0f172a 0%, #111827 100%);
     }
 
@@ -94,9 +94,9 @@
         padding: 1.1rem 1.25rem;
         margin-bottom: 1.15rem;
         border-radius: var(--sqt-radius);
-        background: linear-gradient(135deg, rgba(13, 148, 136, 0.16) 0%, rgba(14, 165, 233, 0.08) 100%);
-        border: 1px solid rgba(13, 148, 136, 0.28);
-        box-shadow: 0 10px 28px rgba(13, 148, 136, 0.08);
+        background: linear-gradient(135deg, rgba(var(--sqt-accent-rgb), 0.16) 0%, rgba(var(--sqt-accent-rgb), 0.06) 100%);
+        border: 1px solid rgba(var(--sqt-accent-rgb), 0.28);
+        box-shadow: 0 10px 28px rgba(var(--sqt-accent-rgb), 0.08);
     }
 
     .sqt-take .sqt-hero__icon {
@@ -105,7 +105,7 @@
         border-radius: 14px;
         display: grid;
         place-items: center;
-        background: rgba(13, 148, 136, 0.16);
+        background: rgba(var(--sqt-accent-rgb), 0.16);
         color: var(--sqt-accent);
         font-size: 1.45rem;
         flex-shrink: 0;
@@ -189,7 +189,7 @@
         border-radius: 12px;
         display: grid;
         place-items: center;
-        background: rgba(13, 148, 136, 0.14);
+        background: rgba(var(--sqt-accent-rgb), 0.14);
         color: var(--sqt-accent);
         font-size: 1.25rem;
     }
@@ -263,20 +263,20 @@
     .sqt-take .sqt-progress-card .progress {
         height: 14px;
         border-radius: 999px;
-        background: rgba(13, 148, 136, 0.12);
+        background: rgba(var(--sqt-accent-rgb), 0.12);
         overflow: hidden;
     }
 
     .sqt-take .sqt-progress-card .progress-bar,
     .sqt-take #progress-bar {
-        background: linear-gradient(90deg, #0d9488, #10b981);
+        background: linear-gradient(90deg, var(--sqt-accent), var(--sqt-accent));
         border-radius: 999px;
         transition: width .35s ease;
     }
 
     .sqt-take #progress-text {
         font-weight: 800;
-        color: #0f766e;
+        color: var(--sqt-accent);
     }
 
     .sqt-take #question-card {
@@ -295,7 +295,7 @@
 
     .sqt-take #question-card > .card-header,
     .sqt-take #question-card .sqt-q-head {
-        background: linear-gradient(135deg, #0f766e 0%, #0d9488 55%, #0891b2 100%) !important;
+        background: linear-gradient(135deg, var(--sqt-accent) 0%, var(--sqt-accent) 55%, var(--sqt-accent) 100%) !important;
         color: #fff !important;
         border: 0;
         padding: 1rem 1.25rem;
@@ -345,7 +345,7 @@
     .sqt-take .sqt-side .card-header,
     .sqt-take .sqt-side__head,
     .sqt-take .sqt-side__toggle {
-        background: linear-gradient(135deg, #0f766e, #0d9488) !important;
+        background: linear-gradient(135deg, var(--sqt-accent), var(--sqt-accent)) !important;
         color: #fff !important;
         border: 0;
         padding: 0.95rem 1.1rem;
@@ -431,18 +431,18 @@
 
     .sqt-take .question-nav-btn.btn-success,
     .sqt-take .question-nav-btn.answered {
-        background: linear-gradient(180deg, #34d399, #059669) !important;
-        border-color: #059669 !important;
+        background: linear-gradient(180deg, var(--sqt-accent), var(--sqt-accent)) !important;
+        border-color: var(--sqt-accent) !important;
         color: #fff !important;
-        box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+        box-shadow: 0 4px 12px rgba(var(--sqt-accent-rgb), 0.25);
     }
 
     .sqt-take .question-nav-btn.btn-primary,
     .sqt-take .question-nav-btn.active {
-        background: linear-gradient(180deg, #22d3ee, #0d9488) !important;
-        border-color: #0d9488 !important;
+        background: linear-gradient(180deg, var(--sqt-accent), var(--sqt-accent)) !important;
+        border-color: var(--sqt-accent) !important;
         color: #fff !important;
-        box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.22);
+        box-shadow: 0 0 0 3px rgba(var(--sqt-accent-rgb), 0.22);
         transform: scale(1.04);
     }
 
@@ -485,10 +485,10 @@
 
     .sqt-take #next-btn.btn-outline-primary,
     .sqt-take #next-btn.btn-primary {
-        background: linear-gradient(135deg, #0d9488, #059669) !important;
+        background: linear-gradient(135deg, var(--sqt-accent), var(--sqt-accent)) !important;
         border-color: transparent !important;
         color: #fff !important;
-        box-shadow: 0 8px 18px rgba(13, 148, 136, 0.25);
+        box-shadow: 0 8px 18px rgba(var(--sqt-accent-rgb), 0.25);
     }
 
     .sqt-take #next-btn.btn-danger {
@@ -512,20 +512,20 @@
     }
 
     .sqt-take .mcq-option-card.is-interactive:hover:not(.is-selected):not(.is-correct):not(.is-wrong) {
-        border-color: rgba(13, 148, 136, 0.45);
+        border-color: rgba(var(--sqt-accent-rgb), 0.45);
         background: var(--sqt-soft) !important;
-        box-shadow: 0 8px 20px rgba(13, 148, 136, 0.1);
+        box-shadow: 0 8px 20px rgba(var(--sqt-accent-rgb), 0.1);
         transform: translateY(-1px);
     }
 
     .sqt-take .mcq-option-card.is-selected {
-        border-color: #0d9488;
-        background: rgba(13, 148, 136, 0.14) !important;
-        box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.14);
+        border-color: var(--sqt-accent);
+        background: rgba(var(--sqt-accent-rgb), 0.14) !important;
+        box-shadow: 0 0 0 3px rgba(var(--sqt-accent-rgb), 0.14);
     }
 
     .sqt-take .mcq-option-card.is-selected .mcq-option-card__letter {
-        background: #0d9488;
+        background: var(--sqt-accent);
         color: #fff;
     }
 
@@ -542,8 +542,8 @@
     }
 
     .sqt-take .option-item:hover {
-        border-color: #0d9488 !important;
-        background-color: rgba(13, 148, 136, 0.06);
+        border-color: var(--sqt-accent) !important;
+        background-color: rgba(var(--sqt-accent-rgb), 0.06);
     }
 
     .sqt-take .form-check.p-4 {
@@ -552,14 +552,14 @@
     }
 
     .sqt-take .form-check.p-4:hover {
-        border-color: #0d9488 !important;
-        background: rgba(13, 148, 136, 0.05);
+        border-color: var(--sqt-accent) !important;
+        background: rgba(var(--sqt-accent-rgb), 0.05);
     }
 
     .sqt-take .drop-zone.drag-over,
     .sqt-take .drop-zone.border-primary {
-        border-color: #0d9488 !important;
-        background-color: rgba(13, 148, 136, 0.1) !important;
+        border-color: var(--sqt-accent) !important;
+        background-color: rgba(var(--sqt-accent-rgb), 0.1) !important;
     }
 
     @media (max-width: 991.98px) {

@@ -1,14 +1,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
     .sqr-result {
-        --sqr-accent: #0d9488;
-        --sqr-accent-2: #059669;
-        --sqr-pass: #059669;
+        --sqr-accent: var(--primary-color, rgb(var(--primary-rgb, 1, 98, 232)));
+        --sqr-accent-rgb: var(--primary-rgb, 1, 98, 232);
+        --sqr-pass: var(--sqr-accent);
         --sqr-fail: #e11d48;
         --sqr-surface: #ffffff;
         --sqr-muted: #64748b;
-        --sqr-border: #d1fae5;
-        --sqr-soft: rgba(13, 148, 136, 0.08);
+        --sqr-border: rgba(var(--sqr-accent-rgb), 0.22);
+        --sqr-soft: rgba(var(--sqr-accent-rgb), 0.08);
         --sqr-radius: 18px;
         --sqr-font: "Alexandria", "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif;
         font-family: var(--sqr-font);
@@ -16,21 +16,21 @@
 
     .sqr-result.main-content {
         background:
-            radial-gradient(1100px 400px at 100% -8%, rgba(16, 185, 129, 0.16), transparent 55%),
-            radial-gradient(800px 340px at 0% 0%, rgba(14, 165, 233, 0.1), transparent 50%),
-            linear-gradient(180deg, #f0fdfa 0%, #f8fafc 45%, #f1f5f9 100%);
+            radial-gradient(1100px 400px at 100% -8%, rgba(var(--sqr-accent-rgb), 0.16), transparent 55%),
+            radial-gradient(800px 340px at 0% 0%, rgba(var(--sqr-accent-rgb), 0.08), transparent 50%),
+            linear-gradient(180deg, rgba(var(--sqr-accent-rgb), 0.06) 0%, #f8fafc 45%, #f1f5f9 100%);
         min-height: 100vh;
     }
 
     [data-theme-mode="dark"] .sqr-result.main-content,
     [data-bs-theme="dark"] .sqr-result.main-content {
         background:
-            radial-gradient(900px 360px at 100% 0%, rgba(16, 185, 129, 0.12), transparent 50%),
+            radial-gradient(900px 360px at 100% 0%, rgba(var(--sqr-accent-rgb), 0.12), transparent 50%),
             linear-gradient(180deg, #0f172a 0%, #111827 100%);
         --sqr-surface: #111a2e;
         --sqr-muted: #94a3b8;
         --sqr-border: rgba(255, 255, 255, 0.1);
-        --sqr-soft: rgba(16, 185, 129, 0.12);
+        --sqr-soft: rgba(var(--sqr-accent-rgb), 0.12);
     }
 
     .sqr-result .sqr-hero {
@@ -42,9 +42,9 @@
         padding: 1.1rem 1.25rem;
         margin-bottom: 1.15rem;
         border-radius: var(--sqr-radius);
-        background: linear-gradient(135deg, rgba(13, 148, 136, 0.16) 0%, rgba(14, 165, 233, 0.08) 100%);
-        border: 1px solid rgba(13, 148, 136, 0.28);
-        box-shadow: 0 10px 28px rgba(13, 148, 136, 0.08);
+        background: linear-gradient(135deg, rgba(var(--sqr-accent-rgb), 0.16) 0%, rgba(var(--sqr-accent-rgb), 0.06) 100%);
+        border: 1px solid rgba(var(--sqr-accent-rgb), 0.28);
+        box-shadow: 0 10px 28px rgba(var(--sqr-accent-rgb), 0.08);
     }
 
     .sqr-result .sqr-hero__icon {
@@ -53,7 +53,7 @@
         border-radius: 14px;
         display: grid;
         place-items: center;
-        background: rgba(13, 148, 136, 0.16);
+        background: rgba(var(--sqr-accent-rgb), 0.16);
         color: var(--sqr-accent);
         font-size: 1.45rem;
         flex-shrink: 0;
@@ -106,7 +106,7 @@
         align-items: center;
         gap: 0.55rem;
         padding: 0.95rem 1.15rem;
-        background: linear-gradient(135deg, #0f766e, #0d9488);
+        background: linear-gradient(135deg, var(--sqr-accent), var(--sqr-accent));
         color: #fff;
         font-weight: 800;
         font-size: 0.95rem;
@@ -229,9 +229,9 @@
     }
 
     .sqr-result .sqr-actions .btn-primary {
-        background: linear-gradient(135deg, #0d9488, #059669);
+        background: linear-gradient(135deg, var(--sqr-accent), var(--sqr-accent));
         border: 0;
-        box-shadow: 0 8px 18px rgba(13, 148, 136, 0.25);
+        box-shadow: 0 8px 18px rgba(var(--sqr-accent-rgb), 0.25);
     }
 
     .sqr-result .sqr-actions .btn-outline-secondary {
@@ -366,12 +366,12 @@
     }
 
     .sqr-result .mcq-option-card.is-selected {
-        border-color: #0d9488;
-        background: rgba(13, 148, 136, 0.08);
+        border-color: var(--sqr-accent);
+        background: rgba(var(--sqr-accent-rgb), 0.08);
     }
 
     .sqr-result .mcq-option-card.is-correct {
-        border-color: #059669;
+        border-color: var(--sqr-accent);
         background: rgba(5, 150, 105, 0.08);
     }
 

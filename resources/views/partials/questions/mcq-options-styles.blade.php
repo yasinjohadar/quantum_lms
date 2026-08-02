@@ -133,7 +133,7 @@
         background: rgba(98, 89, 202, 0.18);
     }
 
-    /* وضع أداء الاختبار (طالب / معاينة أدمن): بطاقات أكبر بألوان teal */
+    /* وضع أداء الاختبار: بطاقات بألوان الثيم الأساسي */
     .sqt-take .mcq-option-card {
         border-radius: 16px;
         padding: 1.05rem 1.2rem;
@@ -141,20 +141,20 @@
     }
 
     .sqt-take .mcq-option-card.is-interactive:hover:not(.is-selected):not(.is-correct):not(.is-wrong) {
-        border-color: rgba(13, 148, 136, 0.45);
-        box-shadow: 0 8px 20px rgba(13, 148, 136, 0.1);
-        background: rgba(13, 148, 136, 0.05);
+        border-color: rgba(var(--sqt-accent-rgb), 0.45);
+        box-shadow: 0 8px 20px rgba(var(--sqt-accent-rgb), 0.1);
+        background: rgba(var(--sqt-accent-rgb), 0.05);
         transform: translateY(-1px);
     }
 
     .sqt-take .mcq-option-card.is-selected {
-        border-color: #0d9488;
-        background: rgba(13, 148, 136, 0.1);
-        box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.14);
+        border-color: var(--sqt-accent);
+        background: rgba(var(--sqt-accent-rgb), 0.1);
+        box-shadow: 0 0 0 3px rgba(var(--sqt-accent-rgb), 0.14);
     }
 
     .sqt-take .mcq-option-card.is-selected .mcq-option-card__letter {
-        background: #0d9488;
+        background: var(--sqt-accent);
         color: #fff;
     }
 
@@ -162,8 +162,8 @@
         width: 2.5rem;
         height: 2.5rem;
         font-size: 1rem;
-        background: #ecfdf5;
-        color: #0f766e;
+        background: rgba(var(--sqt-accent-rgb), 0.12);
+        color: var(--sqt-accent);
     }
 
     html[data-theme-mode="dark"] .sqt-take .mcq-option-card,
@@ -178,21 +178,21 @@
     html[data-theme-mode="dark"] .sqt-take .mcq-option-card__letter,
     html[data-bs-theme="dark"] .sqt-take .mcq-option-card__letter,
     [data-theme-mode="dark"] .sqt-take .mcq-option-card__letter {
-        background: rgba(13, 148, 136, 0.18);
-        color: #5eead4;
+        background: rgba(var(--sqt-accent-rgb), 0.18);
+        color: var(--sqt-accent);
     }
 
     html[data-theme-mode="dark"] .sqt-take .mcq-option-card.is-interactive:hover:not(.is-selected):not(.is-correct):not(.is-wrong),
     html[data-bs-theme="dark"] .sqt-take .mcq-option-card.is-interactive:hover:not(.is-selected):not(.is-correct):not(.is-wrong),
     [data-theme-mode="dark"] .sqt-take .mcq-option-card.is-interactive:hover:not(.is-selected):not(.is-correct):not(.is-wrong) {
-        background: rgba(13, 148, 136, 0.14) !important;
-        border-color: rgba(45, 212, 191, 0.45) !important;
+        background: rgba(var(--sqt-accent-rgb), 0.14) !important;
+        border-color: rgba(var(--sqt-accent-rgb), 0.5) !important;
     }
 
     html[data-theme-mode="dark"] .sqt-take .mcq-option-card.is-selected,
     html[data-bs-theme="dark"] .sqt-take .mcq-option-card.is-selected,
     [data-theme-mode="dark"] .sqt-take .mcq-option-card.is-selected {
-        background: rgba(13, 148, 136, 0.22) !important;
-        border-color: #14b8a6 !important;
+        background: rgba(var(--sqt-accent-rgb), 0.22) !important;
+        border-color: var(--sqt-accent) !important;
     }
 </style>
