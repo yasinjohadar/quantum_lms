@@ -4,144 +4,119 @@
     مهامي
 @stop
 
+@push('styles')
+    @include('student.pages.tasks.partials.tasks-page-styles')
+@endpush
+
 @section('content')
+@php
+    $dailyCompleted = $dailyTasks->filter(function ($task) use ($dailyUserTasks) {
+        $ut = $dailyUserTasks->get($task->id);
+        return $ut && $ut->status === 'completed';
+    })->count();
+    $weeklyCompleted = $weeklyTasks->filter(function ($task) use ($weeklyUserTasks) {
+        $ut = $weeklyUserTasks->get($task->id);
+        return $ut && $ut->status === 'completed';
+    })->count();
+    $totalTasks = $dailyTasks->count() + $weeklyTasks->count();
+    $totalCompleted = $dailyCompleted + $weeklyCompleted;
+    $pointsAvailable = $dailyTasks->sum('points_reward') + $weeklyTasks->sum('points_reward');
+@endphp
 <!-- Start::app-content -->
-<div class="main-content app-content">
+<div class="main-content app-content stask-page">
     <div class="container-fluid">
-        <!-- Page Header -->
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div class="my-auto">
-                <h5 class="page-title fs-21 mb-1">مهامي</h5>
-                <nav>
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">مهامي</li>
-                    </ol>
-                </nav>
+        <div class="stask-hero">
+            <div class="stask-hero__main">
+                <div class="stask-hero__icon" aria-hidden="true">
+                    <i class="bi bi-list-check"></i>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="stask-hero__title">مهامي</h1>
+                    <p class="stask-hero__meta">أنجز المهام اليومية والأسبوعية واجمع النقاط</p>
+                </div>
+            </div>
+            <div class="stask-stats">
+                <div class="stask-stat">
+                    <span class="stask-stat__value">{{ $totalCompleted }}/{{ $totalTasks }}</span>
+                    <span class="stask-stat__label">مكتمل</span>
+                </div>
+                <div class="stask-stat">
+                    <span class="stask-stat__value">{{ $dailyCompleted }}/{{ $dailyTasks->count() }}</span>
+                    <span class="stask-stat__label">يومية</span>
+                </div>
+                <div class="stask-stat">
+                    <span class="stask-stat__value">{{ number_format($pointsAvailable) }}</span>
+                    <span class="stask-stat__label">نقاط متاحة</span>
+                </div>
             </div>
         </div>
-        <!-- End Page Header -->
 
         @include('partials.gamification-help-box', ['helpKey' => 'student.tasks'])
 
-        <!-- المهام اليومية -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card custom-card">
-                    <div class="card-header">
-                        <div class="card-title">المهام اليومية</div>
-                    </div>
-                    <div class="card-body">
-                        @if($dailyTasks->count() > 0)
-                            <div class="row">
-                                @foreach($dailyTasks as $task)
-                                @php
-                                    $userTask = $dailyUserTasks->get($task->id);
-                                    $progress = $userTask ? $userTask->progress : 0;
-                                    $requiredCount = $task->criteria['count'] ?? 1;
-                                    $percentage = min(($progress / $requiredCount) * 100, 100);
-                                @endphp
-                                <div class="col-md-6 mb-4">
-                                    <div class="card border-primary">
-                                        <div class="card-header bg-primary text-white">
-                                            <h5 class="mb-0">{{ $task->name }}</h5>
-                                        </div>
-                                        <div class="card-body">
-                                            <p>{{ $task->description }}</p>
-                                            <div class="mb-2">
-                                                <small class="text-muted">النوع: {{ $task->type_name }}</small>
-                                            </div>
-                                            <div class="progress mb-2">
-                                                <div class="progress-bar" role="progressbar" style="width: {{ $percentage }}%">
-                                                    {{ $progress }} / {{ $requiredCount }}
-                                                </div>
-                                            </div>
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span class="badge bg-warning">مكافأة: {{ number_format($task->points_reward) }} نقطة</span>
-                                                @if($userTask && $userTask->status === 'completed')
-                                                    <span class="badge bg-success">مكتملة</span>
-                                                @elseif($userTask && $userTask->status === 'expired')
-                                                    <span class="badge bg-danger">منتهية</span>
-                                                @else
-                                                    <span class="badge bg-info">قيد التنفيذ</span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                @endforeach
-                            </div>
-                        @else
-                            <div class="alert alert-info">
-                                <i class="fe fe-info"></i> لا توجد مهام يومية حالياً
-                            </div>
-                        @endif
-                    </div>
-                </div>
+        <section class="stask-section stask-section--daily">
+            <div class="stask-section__head">
+                <h2 class="stask-section__title">
+                    <span class="stask-section__title-icon" aria-hidden="true">
+                        <i class="bi bi-sun"></i>
+                    </span>
+                    المهام اليومية
+                </h2>
+                <span class="stask-section__count">{{ $dailyCompleted }} / {{ $dailyTasks->count() }} مكتمل</span>
             </div>
-        </div>
 
-        <!-- المهام الأسبوعية -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card custom-card">
-                    <div class="card-header">
-                        <div class="card-title">المهام الأسبوعية</div>
-                    </div>
-                    <div class="card-body">
-                        @if($weeklyTasks->count() > 0)
-                            <div class="row">
-                                @foreach($weeklyTasks as $task)
-                                @php
-                                    $userTask = $weeklyUserTasks->get($task->id);
-                                    $progress = $userTask ? $userTask->progress : 0;
-                                    $requiredCount = $task->criteria['count'] ?? 1;
-                                    $percentage = min(($progress / $requiredCount) * 100, 100);
-                                @endphp
-                                <div class="col-md-6 mb-4">
-                                    <div class="card border-success">
-                                        <div class="card-header bg-success text-white">
-                                            <h5 class="mb-0">{{ $task->name }}</h5>
-                                        </div>
-                                        <div class="card-body">
-                                            <p>{{ $task->description }}</p>
-                                            <div class="mb-2">
-                                                <small class="text-muted">النوع: {{ $task->type_name }}</small>
-                                                <br>
-                                                <small class="text-muted">الفترة: {{ $task->start_day_name }} - {{ $task->end_day_name }}</small>
-                                            </div>
-                                            <div class="progress mb-2">
-                                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ $percentage }}%">
-                                                    {{ $progress }} / {{ $requiredCount }}
-                                                </div>
-                                            </div>
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span class="badge bg-warning">مكافأة: {{ number_format($task->points_reward) }} نقطة</span>
-                                                @if($userTask && $userTask->status === 'completed')
-                                                    <span class="badge bg-success">مكتملة</span>
-                                                @elseif($userTask && $userTask->status === 'expired')
-                                                    <span class="badge bg-danger">منتهية</span>
-                                                @else
-                                                    <span class="badge bg-info">قيد التنفيذ</span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                @endforeach
-                            </div>
-                        @else
-                            <div class="alert alert-info">
-                                <i class="fe fe-info"></i> لا توجد مهام أسبوعية حالياً
-                            </div>
-                        @endif
-                    </div>
+            @if($dailyTasks->count() > 0)
+                <div class="stask-grid">
+                    @foreach($dailyTasks as $task)
+                        @include('student.pages.tasks.partials.task-card', [
+                            'task' => $task,
+                            'userTask' => $dailyUserTasks->get($task->id),
+                            'showPeriod' => false,
+                        ])
+                    @endforeach
                 </div>
+            @else
+                <div class="stask-empty">
+                    <div class="stask-empty__icon" aria-hidden="true">
+                        <i class="bi bi-sun"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">لا توجد مهام يومية حالياً</h5>
+                    <p class="text-muted mb-0">ستظهر هنا المهام اليومية عند تفعيلها</p>
+                </div>
+            @endif
+        </section>
+
+        <section class="stask-section stask-section--weekly">
+            <div class="stask-section__head">
+                <h2 class="stask-section__title">
+                    <span class="stask-section__title-icon" aria-hidden="true">
+                        <i class="bi bi-calendar-week"></i>
+                    </span>
+                    المهام الأسبوعية
+                </h2>
+                <span class="stask-section__count">{{ $weeklyCompleted }} / {{ $weeklyTasks->count() }} مكتمل</span>
             </div>
-        </div>
+
+            @if($weeklyTasks->count() > 0)
+                <div class="stask-grid">
+                    @foreach($weeklyTasks as $task)
+                        @include('student.pages.tasks.partials.task-card', [
+                            'task' => $task,
+                            'userTask' => $weeklyUserTasks->get($task->id),
+                            'showPeriod' => true,
+                        ])
+                    @endforeach
+                </div>
+            @else
+                <div class="stask-empty">
+                    <div class="stask-empty__icon" aria-hidden="true">
+                        <i class="bi bi-calendar-week"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">لا توجد مهام أسبوعية حالياً</h5>
+                    <p class="text-muted mb-0">ستظهر هنا المهام الأسبوعية عند تفعيلها</p>
+                </div>
+            @endif
+        </section>
     </div>
-</div>
 </div>
 <!-- End::app-content -->
 @stop
-

@@ -5,6 +5,7 @@
 @stop
 
 @push('styles')
+    <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@600;700;800&display=swap" rel="stylesheet">
     @include('student.partials.dashboard-widget-styles')
     <style>
         .dashboard-badge-item {
@@ -23,17 +24,65 @@
             margin-bottom: 0 !important;
             padding-bottom: 0 !important;
         }
+
+        .dashboard-welcome {
+            margin: 1rem 0 1.25rem;
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .dashboard-welcome__title {
+            margin: 0 0 0.35rem;
+            font-family: "Alexandria", "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif;
+            font-weight: 800;
+            font-size: clamp(1.15rem, 2.8vw + 0.7rem, 1.75rem);
+            line-height: 1.45;
+            letter-spacing: -0.01em;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .dashboard-welcome__name {
+            color: #0d9488;
+        }
+
+        [data-theme-mode="dark"] .dashboard-welcome__name,
+        [data-bs-theme="dark"] .dashboard-welcome__name {
+            color: #2dd4bf;
+        }
+
+        .dashboard-welcome__meta {
+            margin: 0;
+            color: var(--text-muted, #64748b);
+            font-size: 0.88rem;
+            font-weight: 600;
+            line-height: 1.55;
+        }
+
+        @media (max-width: 575.98px) {
+            .dashboard-welcome {
+                margin: 0.75rem 0 1rem;
+            }
+
+            .dashboard-welcome__title {
+                font-size: 1.2rem;
+            }
+
+            .dashboard-welcome__meta {
+                font-size: 0.8rem;
+            }
+        }
     </style>
 @endpush
 
 @section('content')
     <div class="main-content app-content">
         <div class="container-fluid">
-            <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-                <div>
-                    <h4 class="mb-0">مرحباً {{ Auth::user()->name }}، أهلاً بعودتك!</h4>
-                    <p class="mb-0 text-muted">{{ now()->translatedFormat('l، d F Y') }} — أنت مسجل كطالب</p>
-                </div>
+            <div class="dashboard-welcome">
+                <h1 class="dashboard-welcome__title">
+                    مرحباً <span class="dashboard-welcome__name">{{ Auth::user()->name }}</span>، أهلاً بعودتك!
+                </h1>
+                <p class="dashboard-welcome__meta">{{ now()->translatedFormat('l، d F Y') }} — أنت مسجل كطالب</p>
             </div>
 
             @php

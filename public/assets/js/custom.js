@@ -263,7 +263,7 @@
       localStorage.removeItem("bodylightRGB");
       localStorage.removeItem("bodyBgRGB");
       if (localStorage.getItem("valexlayout") != "horizontal") {
-        html.setAttribute("data-menu-styles", "light  ");
+        html.setAttribute("data-menu-styles", "light");
       }
       html.setAttribute("data-header-styles", "light");
     } else {

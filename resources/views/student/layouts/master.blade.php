@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-nav-layout="vertical" data-theme-mode="light" data-header-styles="light"
+<html lang="ar" dir="rtl" class="student-panel" data-nav-layout="vertical" data-theme-mode="light" data-header-styles="light"
     data-menu-styles="light" data-toggled="close">
 
 <head>
     <script>
         document.documentElement.setAttribute('dir', 'rtl');
+        document.documentElement.classList.add('student-panel');
         try { localStorage.setItem('valexrtl', true); localStorage.removeItem('valexltr'); } catch (e) {}
     </script>
 
@@ -39,7 +40,7 @@
     </style>
 </head>
 
-<body>
+<body class="student-panel">
 
 
     @include('student.layouts.switcher')
@@ -74,6 +75,8 @@
 
     {{-- KaTeX: CDN أولاً ثم محرك الرسم الموحد --}}
     @include('partials.question-math-scripts')
+
+    @include('student.layouts.partials.mobile-sidebar-fix')
 
 </body>
 

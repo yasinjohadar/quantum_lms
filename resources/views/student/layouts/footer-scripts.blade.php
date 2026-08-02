@@ -1,7 +1,8 @@
 <!-- Scroll To Top -->
-<div class="scrollToTop">
-    <span class="arrow"><i class="las la-angle-double-up"></i></span>
-</div>
+<button type="button" class="scrollToTop student-scroll-top" aria-label="الرجوع للأعلى">
+    <span class="student-scroll-top__glow" aria-hidden="true"></span>
+    <i class="bi bi-arrow-up-short student-scroll-top__icon" aria-hidden="true"></i>
+</button>
 <div id="responsive-overlay"></div>
 <!-- Scroll To Top -->
 

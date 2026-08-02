@@ -132,4 +132,41 @@
     [data-theme-mode="dark"] .mcq-option-card.is-selected {
         background: rgba(98, 89, 202, 0.18);
     }
+
+    /* وضع أداء الاختبار (طالب / معاينة أدمن): بطاقات أكبر بألوان teal */
+    .sqt-take .mcq-option-card {
+        border-radius: 16px;
+        padding: 1.05rem 1.2rem;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+    }
+
+    .sqt-take .mcq-option-card.is-interactive:hover:not(.is-selected):not(.is-correct):not(.is-wrong) {
+        border-color: rgba(13, 148, 136, 0.45);
+        box-shadow: 0 8px 20px rgba(13, 148, 136, 0.1);
+        background: rgba(13, 148, 136, 0.05);
+        transform: translateY(-1px);
+    }
+
+    .sqt-take .mcq-option-card.is-selected {
+        border-color: #0d9488;
+        background: rgba(13, 148, 136, 0.1);
+        box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.14);
+    }
+
+    .sqt-take .mcq-option-card.is-selected .mcq-option-card__letter {
+        background: #0d9488;
+        color: #fff;
+    }
+
+    .sqt-take .mcq-option-card__letter {
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 1rem;
+        background: #ecfdf5;
+        color: #0f766e;
+    }
+
+    [data-theme-mode="dark"] .sqt-take .mcq-option-card.is-selected {
+        background: rgba(13, 148, 136, 0.18);
+    }
 </style>

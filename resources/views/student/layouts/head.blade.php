@@ -44,4 +44,25 @@
 }
 </style>
 
+{{-- جوال: السايدبار تحت الناف + بوردر أساسي علوي (بعد كل أنماط الثيم) --}}
+<style>
+@media (max-width: 991.98px) {
+    html body.student-panel .app-header {
+        z-index: 110 !important;
+    }
+    html body.student-panel #sidebar.app-sidebar {
+        top: 4.15rem !important;
+        inset-block-start: 4.15rem !important;
+        bottom: 0 !important;
+        inset-block-end: 0 !important;
+        height: auto !important;
+        z-index: 104 !important;
+        border-top: 3px solid var(--primary-color, #0162e8) !important;
+        border-start-end-radius: 1.15rem !important;
+        border-end-end-radius: 1.15rem !important;
+        overflow: hidden !important;
+    }
+}
+</style>
+
 @stack('styles')

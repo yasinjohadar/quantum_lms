@@ -301,6 +301,56 @@ a:hover .folder-card .card-body i[class*="bi-"] {
     }
 }
 
+/* لوحة الطالب (جوال): السايدبار تحت الناف + بوردر علوي + انحناء داخلي */
+@media (max-width: 991.98px) {
+    html body.student-panel {
+        --student-mobile-header-h: 4.15rem; /* تحت الناف مع فراغ بسيط */
+    }
+
+    html body.student-panel .app-header {
+        z-index: 110 !important;
+    }
+
+    html body.student-panel aside.app-sidebar,
+    html body.student-panel .app-sidebar.sticky,
+    html body.student-panel #sidebar.app-sidebar {
+        top: var(--student-mobile-header-h) !important;
+        inset-block-start: var(--student-mobile-header-h) !important;
+        bottom: 0 !important;
+        inset-block-end: 0 !important;
+        height: auto !important;
+        max-height: none !important;
+        z-index: 104 !important;
+        border-start-end-radius: 1.15rem !important;
+        border-end-end-radius: 1.15rem !important;
+        border-top: 3px solid var(--primary-color, #0162e8) !important;
+        border-block-start: 3px solid var(--primary-color, #0162e8) !important;
+        overflow: hidden !important;
+        box-shadow: -8px 10px 28px rgba(15, 23, 42, 0.12);
+    }
+
+    html[dir="rtl"] body.student-panel aside.app-sidebar,
+    html[dir="rtl"] body.student-panel .app-sidebar.sticky,
+    html[dir="rtl"] body.student-panel #sidebar.app-sidebar {
+        box-shadow: 8px 10px 28px rgba(15, 23, 42, 0.12);
+    }
+
+    html body.student-panel .app-sidebar .main-sidebar {
+        height: 100% !important;
+        max-height: 100% !important;
+    }
+
+    html[data-theme-mode="dark"] body.student-panel aside.app-sidebar,
+    html[data-bs-theme="dark"] body.student-panel aside.app-sidebar {
+        box-shadow: -8px 10px 28px rgba(0, 0, 0, 0.35);
+    }
+
+    html[dir="rtl"][data-theme-mode="dark"] body.student-panel aside.app-sidebar,
+    html[dir="rtl"][data-bs-theme="dark"] body.student-panel aside.app-sidebar {
+        box-shadow: 8px 10px 28px rgba(0, 0, 0, 0.35);
+    }
+}
+
 /* كود مضمّن وكتل كود في نصوص الأسئلة (backticks) */
 .question-inline-code {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
@@ -486,7 +536,9 @@ a:hover .folder-card .card-body i[class*="bi-"] {
     white-space: nowrap;
     letter-spacing: -0.02em;
     text-align: center;
-    color: #000 !important;
+    /* نهاري افتراضي */
+    color: #111827 !important;
+    transition: color .2s ease;
 }
 
 .app-sidebar .main-sidebar-header .header-logo.sidebar-brand .sidebar-brand-logo-wrap {
@@ -494,6 +546,11 @@ a:hover .folder-card .card-body i[class*="bi-"] {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    background-color: #000;
+    border-radius: 10px;
+    padding: 0.35rem 0.5rem;
+    line-height: 0;
+    transition: background-color .2s ease, padding .2s ease;
 }
 
 .app-sidebar .sidebar-brand-logo {
@@ -505,19 +562,15 @@ a:hover .folder-card .card-body i[class*="bi-"] {
     vertical-align: middle;
 }
 
-[data-menu-styles="dark"] .app-sidebar .sidebar-brand-text {
+/* ليلي: اسم الأكاديمية أبيض */
+html[data-theme-mode="dark"] .app-sidebar .main-sidebar-header .header-logo.sidebar-brand .sidebar-brand-text,
+html[data-bs-theme="dark"] .app-sidebar .main-sidebar-header .header-logo.sidebar-brand .sidebar-brand-text {
     color: #fff !important;
 }
 
-/* الوضع النهاري: خلفية سوداء للوغو */
-[data-menu-styles="light"] .app-sidebar .sidebar-brand-logo-wrap {
-    background-color: #000;
-    border-radius: 10px;
-    padding: 0.35rem 0.5rem;
-    line-height: 0;
-}
-
-[data-menu-styles="dark"] .app-sidebar .sidebar-brand-logo-wrap {
+/* ليلي: إزالة خلفية اللوغو السوداء */
+html[data-theme-mode="dark"] .app-sidebar .sidebar-brand-logo-wrap,
+html[data-bs-theme="dark"] .app-sidebar .sidebar-brand-logo-wrap {
     background-color: transparent;
     border-radius: 0;
     padding: 0;
@@ -881,4 +934,129 @@ html[data-bs-theme="dark"] .slide-icon--rose { --menu-icon-bg: rgba(225, 29, 72,
     padding: 0.7rem 1rem;
     font-weight: 600;
     margin: 0;
+}
+
+/* زر الرجوع للأعلى — لوحة الطالب (لون أساسي + ليلي/نهاري) */
+html.student-panel .scrollToTop.student-scroll-top,
+body.student-panel .scrollToTop.student-scroll-top {
+    position: fixed;
+    inset-inline-end: 1.1rem;
+    bottom: 1.25rem;
+    width: 3.1rem;
+    height: 3.1rem;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    border-radius: 999px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10000;
+    color: #fff;
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255, 255, 255, 0.22) 0%,
+            transparent 42%
+        ),
+        var(--primary-color, rgb(var(--primary-rgb, 1, 98, 232)));
+    box-shadow:
+        0 10px 24px rgba(var(--primary-rgb, 1, 98, 232), 0.38),
+        0 2px 6px rgba(15, 23, 42, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    transition: transform .2s ease, box-shadow .2s ease, filter .2s ease, background-color .2s ease;
+    -webkit-tap-highlight-color: transparent;
+    overflow: hidden;
+}
+
+html.student-panel .scrollToTop.student-scroll-top:hover,
+body.student-panel .scrollToTop.student-scroll-top:hover {
+    transform: translateY(-3px) scale(1.04);
+    filter: brightness(1.06);
+    box-shadow:
+        0 14px 28px rgba(var(--primary-rgb, 1, 98, 232), 0.45),
+        0 4px 10px rgba(15, 23, 42, 0.14),
+        inset 0 1px 0 rgba(255, 255, 255, 0.32);
+}
+
+html.student-panel .scrollToTop.student-scroll-top:active,
+body.student-panel .scrollToTop.student-scroll-top:active {
+    transform: translateY(0) scale(0.97);
+}
+
+html.student-panel .student-scroll-top__icon,
+body.student-panel .student-scroll-top__icon {
+    position: relative;
+    z-index: 1;
+    font-size: 1.65rem;
+    line-height: 1;
+    font-weight: 700;
+    color: #fff;
+}
+
+html.student-panel .student-scroll-top__glow,
+body.student-panel .student-scroll-top__glow {
+    position: absolute;
+    inset: -40% -20% auto;
+    height: 70%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.45), transparent 68%);
+    pointer-events: none;
+}
+
+/* نهاري */
+html[data-theme-mode="light"] .scrollToTop.student-scroll-top,
+html:not([data-theme-mode="dark"]) .scrollToTop.student-scroll-top {
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.24) 0%, transparent 42%),
+        var(--primary-color, rgb(var(--primary-rgb, 1, 98, 232)));
+    box-shadow:
+        0 10px 24px rgba(var(--primary-rgb, 1, 98, 232), 0.36),
+        0 2px 6px rgba(15, 23, 42, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* ليلي */
+html[data-theme-mode="dark"] .scrollToTop.student-scroll-top,
+html[data-bs-theme="dark"] .scrollToTop.student-scroll-top {
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.14) 0%, transparent 45%),
+        var(--primary-color, rgb(var(--primary-rgb, 1, 98, 232)));
+    box-shadow:
+        0 10px 26px rgba(0, 0, 0, 0.45),
+        0 0 0 1px rgba(255, 255, 255, 0.1),
+        0 0 18px rgba(var(--primary-rgb, 1, 98, 232), 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    color: #fff;
+}
+
+html[data-theme-mode="dark"] .scrollToTop.student-scroll-top:hover,
+html[data-bs-theme="dark"] .scrollToTop.student-scroll-top:hover {
+    box-shadow:
+        0 14px 30px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.12),
+        0 0 22px rgba(var(--primary-rgb, 1, 98, 232), 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+@media (max-width: 575.98px) {
+    html.student-panel .scrollToTop.student-scroll-top,
+    body.student-panel .scrollToTop.student-scroll-top {
+        width: 2.85rem;
+        height: 2.85rem;
+        inset-inline-end: 0.9rem;
+        bottom: 1rem;
+    }
+
+    html.student-panel .student-scroll-top__icon,
+    body.student-panel .student-scroll-top__icon {
+        font-size: 1.5rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.student-panel .scrollToTop.student-scroll-top,
+    body.student-panel .scrollToTop.student-scroll-top {
+        transition: none;
+    }
 }

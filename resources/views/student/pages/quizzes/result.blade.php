@@ -9,6 +9,7 @@
 
 @push('styles')
     @include('partials.questions.mcq-options-styles')
+    @include('student.pages.quizzes.partials.quiz-result-styles')
 @endpush
 
 @section('page-title')
@@ -16,71 +17,68 @@
 @stop
 
 @section('content')
-<div class="main-content app-content">
+@php
+    $percentage = $attempt->max_score > 0 ? ($attempt->score / $attempt->max_score) * 100 : 0;
+    $passed = $percentage >= ($quiz->pass_percentage ?? $quiz->passing_percentage ?? 50);
+    $pctCss = max(0, min(100, $percentage));
+@endphp
+<div class="main-content app-content sqr-result">
     <div class="container-fluid">
-        <!-- Page Header -->
-        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-            <div>
-                <h4 class="mb-0">{{ $isAdminPreview ? 'نتيجة المعاينة' : 'نتيجة الاختبار' }}</h4>
-                <p class="mb-0 text-muted">{{ $quiz->title }}</p>
+        <div class="sqr-hero">
+            <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
+                <div class="sqr-hero__icon" aria-hidden="true">
+                    <i class="bi bi-clipboard2-check"></i>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="sqr-hero__title">{{ $isAdminPreview ? 'نتيجة المعاينة' : 'نتيجة الاختبار' }}</h1>
+                    <p class="sqr-hero__meta">{{ $quiz->title }}</p>
+                </div>
             </div>
             <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0">
+                <ol class="sqr-breadcrumb">
                     @if($isAdminPreview)
-                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('admin.quizzes.index') }}">الاختبارات</a></li>
-                        <li class="breadcrumb-item"><a href="{{ $previewReturnUrl ?? route('admin.quizzes.show', $quiz->id) }}">{{ $quiz->title }}</a></li>
-                        <li class="breadcrumb-item active">معاينة</li>
+                        <li><a href="{{ route('admin.dashboard') }}">الرئيسية</a></li>
+                        <li aria-hidden="true">»</li>
+                        <li><a href="{{ route('admin.quizzes.index') }}">الاختبارات</a></li>
+                        <li aria-hidden="true">»</li>
+                        <li class="active">معاينة</li>
                     @else
-                        <li class="breadcrumb-item"><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('student.quizzes.results') }}">نتائج الاختبارات</a></li>
-                        <li class="breadcrumb-item active">{{ $quiz->title }}</li>
+                        <li><a href="{{ route('student.dashboard') }}">الرئيسية</a></li>
+                        <li aria-hidden="true">»</li>
+                        <li><a href="{{ route('student.quizzes.results') }}">نتائج الاختبارات</a></li>
+                        <li aria-hidden="true">»</li>
+                        <li class="active">{{ $quiz->title }}</li>
                     @endif
                 </ol>
             </nav>
         </div>
-        <!-- End Page Header -->
 
-        <!-- Result Summary Card -->
-        <div class="row">
-            <div class="col-lg-4 mb-4">
-                <div class="card custom-card text-center">
-                    <div class="card-body py-5">
-                        @php
-                            $percentage = $attempt->max_score > 0 ? ($attempt->score / $attempt->max_score) * 100 : 0;
-                            $passed = $percentage >= ($quiz->pass_percentage ?? $quiz->passing_percentage ?? 50);
-                        @endphp
-                        
-                        <div class="mb-4">
+        <div class="row g-3">
+            <div class="col-lg-4">
+                <div class="sqr-card">
+                    <div class="sqr-score {{ $passed ? 'is-pass' : 'is-fail' }}" style="--sqr-pct: {{ number_format($pctCss, 2, '.', '') }}%;">
+                        <div class="sqr-score__icon" aria-hidden="true">
                             @if($passed)
-                                <div class="avatar avatar-xxl bg-success-transparent rounded-circle mx-auto mb-3">
-                                    <i class="bi bi-trophy-fill fs-1 text-success"></i>
-                                </div>
-                                <h3 class="text-success mb-2">ناجح!</h3>
+                                <i class="bi bi-trophy-fill"></i>
                             @else
-                                <div class="avatar avatar-xxl bg-danger-transparent rounded-circle mx-auto mb-3">
-                                    <i class="bi bi-x-circle-fill fs-1 text-danger"></i>
-                                </div>
-                                <h3 class="text-danger mb-2">راسب</h3>
+                                <i class="bi bi-x-circle-fill"></i>
                             @endif
                         </div>
-                        
-                        <div class="display-4 fw-bold {{ $passed ? 'text-success' : 'text-danger' }} mb-2">
-                            {{ number_format($percentage, 1) }}%
-                        </div>
-                        
-                        <h5 class="text-muted mb-4">
-                            {{ $attempt->score }} / {{ $attempt->max_score }} نقطة
-                        </h5>
-                        
-                        <div class="progress mb-4" style="height: 12px;">
-                            <div class="progress-bar {{ $passed ? 'bg-success' : 'bg-danger' }}" 
-                                 role="progressbar" 
-                                 style="width: {{ $percentage }}%">
+
+                        <div class="sqr-score__ring" aria-hidden="true">
+                            <div class="sqr-score__ring-inner">
+                                <span class="sqr-score__pct">{{ number_format($percentage, 1) }}%</span>
                             </div>
                         </div>
-                        
-                        <div class="d-flex justify-content-center gap-2 flex-wrap">
+
+                        <h2 class="sqr-score__status">{{ $passed ? 'ناجح!' : 'راسب' }}</h2>
+                        <p class="sqr-score__points">{{ $attempt->score }} / {{ $attempt->max_score }} نقطة</p>
+
+                        <div class="sqr-score__bar" role="progressbar" aria-valuenow="{{ number_format($pctCss, 1, '.', '') }}" aria-valuemin="0" aria-valuemax="100">
+                            <span style="width: {{ number_format($pctCss, 2, '.', '') }}%"></span>
+                        </div>
+
+                        <div class="sqr-actions">
                             @if($isAdminPreview)
                                 <a href="{{ route('admin.quizzes.preview', $quiz->id) }}" class="btn btn-primary">
                                     <i class="bi bi-arrow-repeat me-1"></i>
@@ -105,47 +103,44 @@
                         </div>
                     </div>
                 </div>
-                
-                <!-- Quiz Info -->
-                <div class="card custom-card">
-                    <div class="card-header">
-                        <h6 class="mb-0">
-                            <i class="bi bi-info-circle me-2"></i>
-                            معلومات الاختبار
-                        </h6>
+
+                <div class="sqr-card">
+                    <div class="sqr-card__head">
+                        <i class="bi bi-info-circle"></i>
+                        معلومات الاختبار
                     </div>
-                    <div class="card-body">
-                        <ul class="list-group list-group-flush">
-                            <li class="list-group-item d-flex justify-content-between">
-                                <span class="text-muted">المادة</span>
-                                <span class="fw-semibold">{{ $quiz->subject->name ?? 'عام' }}</span>
+                    <div class="sqr-card__body">
+                        <ul class="sqr-info-list">
+                            <li>
+                                <span class="label">المادة</span>
+                                <span class="value">{{ $quiz->subject->name ?? 'عام' }}</span>
                             </li>
                             @if($quiz->unit)
-                            <li class="list-group-item d-flex justify-content-between">
-                                <span class="text-muted">الوحدة</span>
-                                <span class="fw-semibold">{{ $quiz->unit->title }}</span>
+                            <li>
+                                <span class="label">الوحدة</span>
+                                <span class="value">{{ $quiz->unit->title }}</span>
                             </li>
                             @endif
-                            <li class="list-group-item d-flex justify-content-between">
-                                <span class="text-muted">عدد الأسئلة</span>
-                                <span class="fw-semibold">{{ $answers->count() }}</span>
+                            <li>
+                                <span class="label">عدد الأسئلة</span>
+                                <span class="value">{{ $answers->count() }}</span>
                             </li>
-                            <li class="list-group-item d-flex justify-content-between">
-                                <span class="text-muted">رقم المحاولة</span>
-                                <span class="fw-semibold">{{ $attempt->attempt_number }}</span>
+                            <li>
+                                <span class="label">رقم المحاولة</span>
+                                <span class="value">{{ $attempt->attempt_number }}</span>
                             </li>
-                            <li class="list-group-item d-flex justify-content-between">
-                                <span class="text-muted">تاريخ البدء</span>
-                                <span class="fw-semibold">{{ $attempt->started_at->format('Y-m-d H:i') }}</span>
+                            <li>
+                                <span class="label">تاريخ البدء</span>
+                                <span class="value">{{ $attempt->started_at->format('Y-m-d H:i') }}</span>
                             </li>
-                            <li class="list-group-item d-flex justify-content-between">
-                                <span class="text-muted">تاريخ الانتهاء</span>
-                                <span class="fw-semibold">{{ $attempt->finished_at ? $attempt->finished_at->format('Y-m-d H:i') : '-' }}</span>
+                            <li>
+                                <span class="label">تاريخ الانتهاء</span>
+                                <span class="value">{{ $attempt->finished_at ? $attempt->finished_at->format('Y-m-d H:i') : '-' }}</span>
                             </li>
                             @if($quiz->duration_minutes && $attempt->started_at && $attempt->finished_at)
-                            <li class="list-group-item d-flex justify-content-between">
-                                <span class="text-muted">الوقت المستغرق</span>
-                                <span class="fw-semibold">
+                            <li>
+                                <span class="label">الوقت المستغرق</span>
+                                <span class="value">
                                     {{ $attempt->started_at->diff($attempt->finished_at)->format('%i دقيقة %s ثانية') }}
                                 </span>
                             </li>
@@ -157,35 +152,31 @@
             
             <!-- Answers Review -->
             <div class="col-lg-8">
-                <div class="card custom-card">
-                    <div class="card-header">
-                        <h6 class="mb-0">
-                            <i class="bi bi-list-check me-2"></i>
-                            مراجعة الإجابات
-                        </h6>
+                <div class="sqr-card">
+                    <div class="sqr-card__head">
+                        <i class="bi bi-list-check"></i>
+                        مراجعة الإجابات
                     </div>
-                    <div class="card-body">
+                    <div class="sqr-card__body">
                         @foreach($answers as $index => $answer)
                             @php
                                 $question = $answer->question;
                                 $isCorrect = $answer->is_correct;
                             @endphp
-                            <div class="border rounded p-3 mb-3 {{ $isCorrect ? 'border-success bg-success-transparent' : 'border-danger bg-danger-transparent' }}">
-                                <div class="d-flex justify-content-between align-items-start mb-3">
-                                    <div>
-                                        <span class="badge {{ $isCorrect ? 'bg-success' : 'bg-danger' }} me-2">
-                                            {{ $index + 1 }}
-                                        </span>
-                                        <span class="fw-semibold question-stem question-text-body">{!! format_question_markup($question->title ?? 'سؤال ' . ($index + 1)) !!}</span>
+                            <div class="sqr-answer {{ $isCorrect ? 'is-correct' : 'is-wrong' }}">
+                                <div class="sqr-answer__top">
+                                    <div class="d-flex align-items-start">
+                                        <span class="sqr-answer__num">{{ $index + 1 }}</span>
+                                        <span class="sqr-answer__title question-stem question-text-body">{!! format_question_markup($question->title ?? 'سؤال ' . ($index + 1)) !!}</span>
                                     </div>
                                     <div>
                                         @if($isCorrect)
-                                            <span class="badge bg-success">
+                                            <span class="badge bg-success sqr-answer__badge">
                                                 <i class="bi bi-check-circle me-1"></i>
                                                 صحيح - {{ $answer->points_earned ?? 0 }} نقطة
                                             </span>
                                         @else
-                                            <span class="badge bg-danger">
+                                            <span class="badge bg-danger sqr-answer__badge">
                                                 <i class="bi bi-x-circle me-1"></i>
                                                 خطأ
                                             </span>
@@ -339,7 +330,7 @@
                                 
                                 <!-- Explanation -->
                                 @if($question->explanation)
-                                    <div class="mt-3 p-3 bg-light rounded border-start border-3 {{ $isCorrect ? 'border-success' : 'border-info' }}">
+                                    <div class="sqr-explain {{ $isCorrect ? 'is-correct' : '' }}">
                                         <div class="d-flex align-items-start">
                                             <i class="bi bi-lightbulb-fill {{ $isCorrect ? 'text-success' : 'text-info' }} me-2 mt-1"></i>
                                             <div>
@@ -467,10 +458,12 @@
                         @endforeach
                         
                         @if($answers->count() == 0)
-                            <div class="text-center py-5">
-                                <i class="bi bi-inbox fs-1 text-muted mb-3 d-block"></i>
-                                <h5 class="mb-2">لا توجد إجابات</h5>
-                                <p class="text-muted">لم يتم العثور على أي إجابات لهذا الاختبار</p>
+                            <div class="sqr-empty">
+                                <div class="sqr-empty__icon" aria-hidden="true">
+                                    <i class="bi bi-inbox"></i>
+                                </div>
+                                <h5 class="mb-2 fw-bold">لا توجد إجابات</h5>
+                                <p class="text-muted mb-0">لم يتم العثور على أي إجابات لهذا الاختبار</p>
                             </div>
                         @endif
                     </div>

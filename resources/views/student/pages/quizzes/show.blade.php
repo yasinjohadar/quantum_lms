@@ -15,107 +15,127 @@
 
 @push('styles')
     @include('partials.questions.mcq-options-styles')
+    @include('student.pages.quizzes.partials.quiz-take-styles')
 @endpush
 
 @section('page-title', $quiz->title)
 
 @section('content')
 <!-- Start::app-content -->
-<div class="main-content app-content">
+<div class="main-content app-content sqt-take">
     <div class="container-fluid">
-        <!-- Page Header: العنوان الرئيسي فقط -->
-        <div class="my-2 my-md-3">
-            <h5 class="mb-0 fw-semibold text-body">{{ $quiz->title }}</h5>
+        <div class="sqt-hero">
+            <div class="sqt-hero__icon" aria-hidden="true">
+                <i class="bi bi-pencil-square"></i>
+            </div>
+            <div class="flex-grow-1">
+                <h1 class="sqt-hero__title">{{ $quiz->title }}</h1>
+                <p class="sqt-hero__meta">
+                    {{ $questions->count() }} سؤال
+                    @if($quiz->show_timer && $quiz->hasTimeLimit())
+                        · المدة {{ $quiz->duration_minutes }} دقيقة
+                    @endif
+                </p>
+            </div>
         </div>
-        <!-- End Page Header -->
 
-        <div class="row">
-        <!-- Sidebar: قائمة الأسئلة - يظهر أولاً في RTL -->
-        <div class="col-lg-3 order-lg-1 mb-3 mb-lg-0">
-            <div class="card sticky-top" style="top: 20px;">
-                <div class="card-header bg-primary text-white">
-                    <h6 class="mb-0">
-                        <i class="bi bi-list-ul me-2"></i>
+        <div class="row g-3">
+        <!-- Sidebar: قائمة الأسئلة - يظهر أولاً في RTL على سطح المكتب -->
+        <div class="col-lg-3 order-2 order-lg-1">
+            <div class="card sqt-side sticky-top" style="top: 20px;">
+                <button type="button"
+                        class="card-header sqt-side__head sqt-side__toggle"
+                        id="sqt-side-toggle"
+                        aria-expanded="true"
+                        aria-controls="sqt-side-panel">
+                    <span class="d-flex align-items-center gap-2">
+                        <i class="bi bi-list-ul"></i>
                         قائمة الأسئلة
-                    </h6>
-                </div>
-                <div class="card-body p-2">
-                    <div class="d-flex flex-wrap gap-2" id="questions-list">
-                        @foreach($questions as $index => $question)
-                            @php
-                                $answer = $answers[$question->id] ?? null;
-                                $isAnswered = $answer && (
-                                    $answer->answer
-                                    || $answer->answer_text
-                                    || $answer->selected_options
-                                    || $answer->numeric_answer
-                                    || ! empty($answer->matching_pairs)
-                                    || ! empty($answer->ordering)
-                                    || ! empty($answer->fill_blanks_answers)
-                                    || ! empty($answer->drag_drop_assignments)
-                                );
-                            @endphp
-                            <button type="button" 
-                                    class="btn {{ $index === 0 ? 'btn-primary' : ($isAnswered ? 'btn-success' : 'btn-outline-secondary') }} question-nav-btn question-nav-btn-compact"
-                                    data-question-id="{{ $question->id }}"
-                                    data-question-index="{{ $index }}">
-                                {{ $index + 1 }}
-                            </button>
-                        @endforeach
+                        <span class="sqt-side__count">{{ $questions->count() }}</span>
+                    </span>
+                    <i class="bi bi-chevron-down sqt-side__chevron d-lg-none" aria-hidden="true"></i>
+                </button>
+                <div id="sqt-side-panel" class="sqt-side__panel">
+                    <div class="card-body p-3">
+                        <div id="questions-list">
+                            @foreach($questions as $index => $question)
+                                @php
+                                    $answer = $answers[$question->id] ?? null;
+                                    $isAnswered = $answer && (
+                                        $answer->answer
+                                        || $answer->answer_text
+                                        || $answer->selected_options
+                                        || $answer->numeric_answer
+                                        || ! empty($answer->matching_pairs)
+                                        || ! empty($answer->ordering)
+                                        || ! empty($answer->fill_blanks_answers)
+                                        || ! empty($answer->drag_drop_assignments)
+                                    );
+                                @endphp
+                                <button type="button"
+                                        class="btn {{ $index === 0 ? 'btn-primary' : ($isAnswered ? 'btn-success' : 'btn-outline-secondary') }} question-nav-btn question-nav-btn-compact"
+                                        data-question-id="{{ $question->id }}"
+                                        data-question-index="{{ $index }}">
+                                    {{ $index + 1 }}
+                                </button>
+                            @endforeach
+                        </div>
                     </div>
-                </div>
-                <div class="card-footer p-2">
-                    <form id="submit-quiz-form" method="POST" action="{{ $quizAttemptRoutes['submit'] }}">
-                        @csrf
-                        <button type="submit" class="btn btn-danger w-100" id="submit-quiz-btn">
-                            <i class="bi bi-send me-1"></i>
-                            إرسال الاختبار
-                        </button>
-                    </form>
+                    <div class="card-footer p-3 border-0 bg-transparent pt-0">
+                        <form id="submit-quiz-form" method="POST" action="{{ $quizAttemptRoutes['submit'] }}">
+                            @csrf
+                            <button type="submit" class="btn btn-danger w-100" id="submit-quiz-btn">
+                                <i class="bi bi-send me-1"></i>
+                                إرسال الاختبار
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
         
         <!-- المحتوى الرئيسي -->
-        <div class="col-lg-9 order-lg-2">
-            <!-- عداد الوقت -->
-            @if($quiz->show_timer)
-                @php
-                    $hasTimeLimit = $quiz->hasTimeLimit();
-                    $initialRemaining = $hasTimeLimit
-                        ? ($attempt->remaining_time ?? ($quiz->duration_minutes * 60))
-                        : null;
-                    $initialElapsed = $hasTimeLimit ? null : $attempt->elapsed_seconds;
-                @endphp
-                <div class="card mb-3" id="timer-card">
-                    <div class="card-body text-center">
-                        <div class="d-flex align-items-center justify-content-center gap-3">
-                            <i class="bi bi-clock-history fs-4 text-primary"></i>
-                            <div>
-                                <h5 class="mb-0" id="timer-display"
-                                    data-timer-mode="{{ $hasTimeLimit ? 'countdown' : 'elapsed' }}"
-                                    data-started-at-ms="{{ $attempt->started_at ? $attempt->started_at->getTimestamp() * 1000 : '' }}"
-                                    @if($hasTimeLimit)
-                                        data-remaining-seconds="{{ (int) $initialRemaining }}"
-                                    @else
-                                        data-elapsed-seconds="{{ (int) $initialElapsed }}"
-                                    @endif
-                                >{{ $hasTimeLimit ? ($attempt->formatted_remaining_time ?? '--:--') : $attempt->formatted_elapsed_time }}</h5>
-                                <small class="text-muted">{{ $hasTimeLimit ? 'الوقت المتبقي' : 'الوقت المنقضي' }}</small>
+        <div class="col-lg-9 order-1 order-lg-2">
+            <div class="sqt-stats">
+                <!-- عداد الوقت -->
+                @if($quiz->show_timer)
+                    @php
+                        $hasTimeLimit = $quiz->hasTimeLimit();
+                        $initialRemaining = $hasTimeLimit
+                            ? ($attempt->remaining_time ?? ($quiz->duration_minutes * 60))
+                            : null;
+                        $initialElapsed = $hasTimeLimit ? null : $attempt->elapsed_seconds;
+                    @endphp
+                    <div class="card" id="timer-card">
+                        <div class="card-body text-center">
+                            <div class="sqt-timer">
+                                <div class="sqt-timer__icon" aria-hidden="true">
+                                    <i class="bi bi-clock-history"></i>
+                                </div>
+                                <div class="text-start">
+                                    <h5 class="mb-0" id="timer-display"
+                                        data-timer-mode="{{ $hasTimeLimit ? 'countdown' : 'elapsed' }}"
+                                        data-started-at-ms="{{ $attempt->started_at ? $attempt->started_at->getTimestamp() * 1000 : '' }}"
+                                        @if($hasTimeLimit)
+                                            data-remaining-seconds="{{ (int) $initialRemaining }}"
+                                        @else
+                                            data-elapsed-seconds="{{ (int) $initialElapsed }}"
+                                        @endif
+                                    >{{ $hasTimeLimit ? ($attempt->formatted_remaining_time ?? '--:--') : $attempt->formatted_elapsed_time }}</h5>
+                                    <small class="text-muted">{{ $hasTimeLimit ? 'الوقت المتبقي' : 'الوقت المنقضي' }}</small>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            @endif
+                @endif
 
-            <!-- Progress Bar -->
-            <div class="card mb-3">
-                <div class="card-body">
+                <!-- Progress Bar -->
+                <div class="sqt-progress-card">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-muted">التقدم</span>
+                        <span class="text-muted fw-semibold">التقدم</span>
                         <span class="fw-semibold" id="progress-text">0 / {{ $questions->count() }}</span>
                     </div>
-                    <div class="progress" style="height: 10px;">
+                    <div class="progress">
                         <div class="progress-bar" role="progressbar" id="progress-bar" style="width: 0%"></div>
                     </div>
                 </div>
@@ -123,11 +143,11 @@
 
             <!-- السؤال الحالي -->
             <div class="card" id="question-card">
-                <div class="card-header bg-primary text-white">
-                    <div class="d-flex justify-content-between align-items-center">
+                <div class="card-header sqt-q-head">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <h5 class="mb-0">
                             <i class="bi bi-question-circle me-2"></i>
-                            سؤال <span id="current-question-number">1</span> من {{ $questions->count() }}
+                            سؤال <span id="current-question-number">1</span> من <span id="total-questions-count">{{ $questions->count() }}</span>
                         </h5>
                         <div>
                             <span class="badge bg-light text-dark">
@@ -143,7 +163,7 @@
             </div>
 
             <!-- Navigation -->
-            <div class="d-flex justify-content-between align-items-center mt-3">
+            <div class="sqt-nav">
                 <button type="button" class="btn btn-outline-secondary" id="prev-btn" disabled>
                     <i class="bi bi-arrow-right me-1"></i>
                     السابق
@@ -172,51 +192,15 @@
 
 @push('styles')
 <style>
-    #timer-card {
-        transition: all 0.3s ease;
-    }
-    #timer-card.warning {
-        background-color: #fff3cd;
-        border-color: #ffc107;
-    }
-    #timer-card.danger {
-        background-color: #f8d7da;
-        border-color: #dc3545;
-        animation: pulse 1s infinite;
-    }
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
-    }
-    #questions-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-    .question-nav-btn-compact {
-        width: 2.5rem;
-        height: 2.5rem;
-        min-width: 2.5rem;
-        min-height: 2.5rem;
-        padding: 0;
+    /* أنماط وظيفية للأنواع التفاعلية / الصور — المظهر العام في quiz-take-styles */
+    .sqt-take .question-nav-btn-compact {
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 0.5rem;
-    }
-    .question-nav-btn {
-        transition: all 0.2s ease;
-    }
-    .question-nav-btn:hover {
-        transform: translateX(-3px);
     }
     .option-item {
         transition: all 0.2s ease;
         cursor: pointer;
-    }
-    .option-item:hover {
-        border-color: #0d6efd !important;
-        background-color: rgba(13, 110, 253, 0.05);
     }
     .cursor-pointer {
         cursor: pointer;
@@ -244,20 +228,12 @@
         transition: all 0.2s;
     }
     
-    .drop-zone.drag-over {
-        border-color: #0d6efd !important;
-        background-color: rgba(13, 110, 253, 0.1) !important;
-    }
-    
     .dropped-item {
         display: inline-block;
     }
     
     .min-h-150 {
         cursor: move;
-    }
-    #question-content {
-        min-height: 200px;
     }
     /* جوال: عرض كامل | شاشات ≥768px: 600px كحد أقصى */
     #question-content .question-stem img,
@@ -353,9 +329,9 @@
         min-height: 150px;
         transition: all 0.2s;
     }
-    .drop-zone.border-primary {
-        border-color: #0d6efd !important;
-        background-color: rgba(13, 110, 253, 0.1) !important;
+    .sqt-take .drop-zone.border-primary {
+        border-color: #0d9488 !important;
+        background-color: rgba(13, 148, 136, 0.1) !important;
     }
     .dropped-item {
         display: inline-block;
@@ -368,12 +344,12 @@
         transition: background-color 0.2s, transform 0.2s;
         cursor: move;
     }
-    .ordering-item:hover {
-        background-color: rgba(13, 110, 253, 0.05);
+    .sqt-take .ordering-item:hover {
+        background-color: rgba(13, 148, 136, 0.05);
     }
-    .ordering-item.drag-over {
-        border-top: 3px solid #0d6efd;
-        background-color: rgba(13, 110, 253, 0.1);
+    .sqt-take .ordering-item.drag-over {
+        border-top: 3px solid #0d9488;
+        background-color: rgba(13, 148, 136, 0.1);
     }
     .ordering-item[draggable="true"]:active {
         cursor: grabbing;
@@ -386,53 +362,66 @@
 <script src="{{ asset('js/quiz-timer.js') }}?v=5"></script>
 <script src="{{ asset('js/auto-save-answer.js') }}?v=2"></script>
 <script src="{{ asset('js/question-types.js') }}"></script>
-<script>
-    @php
-        $questionsJson = $questions->map(function($q) {
-            $titleHtml = format_question_markup($q->title);
-            $contentHtml = format_question_markup($q->content);
-            // تجنّب عرض السؤال مرتين عندما يكون المحتوى نسخة من العنوان
-            if (! question_content_differs_from_title($q->title, $q->content)) {
-                $contentHtml = '';
-            }
+@php
+    $questionsJson = $questions->map(function($q) {
+        $titleHtml = format_question_markup($q->title);
+        $contentHtml = format_question_markup($q->content);
+        // تجنّب عرض السؤال مرتين عندما يكون المحتوى نسخة من العنوان
+        if (! question_content_differs_from_title($q->title, $q->content)) {
+            $contentHtml = '';
+        }
 
-            return [
-                'id' => $q->id,
-                'title' => $titleHtml,
-                'content' => $contentHtml,
-                'type' => $q->type,
-                'default_points' => $q->default_points ?? 0,
-                'options' => $q->options->map(function($opt) {
-                    return [
-                        'id' => $opt->id,
-                        'content' => format_question_markup($opt->content),
-                        'match_target' => $opt->match_target,
-                        'is_correct' => $opt->is_correct,
-                    ];
-                })->values()->toArray()
-            ];
-        })->values()->toArray();
-        
-        $answersJson = $answers->mapWithKeys(function($a) {
-            return [$a->question_id => [
-                'selected_options' => $a->selected_options,
-                'answer_text' => $a->answer_text,
-                'numeric_answer' => $a->numeric_answer,
-                'matching_pairs' => $a->matching_pairs,
-                'ordering' => $a->ordering,
-                'fill_blanks_answers' => $a->fill_blanks_answers,
-                'drag_drop_assignments' => $a->drag_drop_assignments,
-            ]];
-        })->toArray();
-    @endphp
-    
-    let questions = @json($questionsJson);
-    let answers = @json($answersJson);
+        return [
+            'id' => $q->id,
+            'title' => $titleHtml,
+            'content' => $contentHtml,
+            'type' => $q->type,
+            'default_points' => $q->default_points ?? 0,
+            'options' => $q->options->map(function($opt) {
+                return [
+                    'id' => $opt->id,
+                    'content' => format_question_markup($opt->content),
+                    'match_target' => $opt->match_target,
+                    'is_correct' => $opt->is_correct,
+                ];
+            })->values()->toArray()
+        ];
+    })->values()->toArray();
+
+    $answersJson = $answers->mapWithKeys(function($a) {
+        return [$a->question_id => [
+            'selected_options' => $a->selected_options,
+            'answer_text' => $a->answer_text,
+            'numeric_answer' => $a->numeric_answer,
+            'matching_pairs' => $a->matching_pairs,
+            'ordering' => $a->ordering,
+            'fill_blanks_answers' => $a->fill_blanks_answers,
+            'drag_drop_assignments' => $a->drag_drop_assignments,
+        ]];
+    })->toArray();
+@endphp
+<script type="application/json" id="quiz-questions-data">@json($questionsJson)</script>
+<script type="application/json" id="quiz-answers-data">@json($answersJson)</script>
+<script>
+    function parseQuizJsonData(elementId, fallback) {
+        const el = document.getElementById(elementId);
+        if (!el) return fallback;
+        try {
+            const parsed = JSON.parse(el.textContent || 'null');
+            return parsed == null ? fallback : parsed;
+        } catch (err) {
+            console.error('Failed to parse', elementId, err);
+            return fallback;
+        }
+    }
+
+    let questions = parseQuizJsonData('quiz-questions-data', []);
+    let answers = parseQuizJsonData('quiz-answers-data', {});
     
     // Ensure questions is an array
     if (!Array.isArray(questions)) {
         console.error('Questions is not an array:', questions);
-        questions = Object.values(questions);
+        questions = Object.values(questions || {});
     }
     
     // Ensure answers is an object (it should be)
@@ -442,6 +431,28 @@
     }
     
     console.log('Quiz initialized with', questions.length, 'questions');
+
+    (function syncQuizCounts() {
+        const totalEl = document.getElementById('total-questions-count');
+        const progressEl = document.getElementById('progress-text');
+        if (totalEl) totalEl.textContent = String(questions.length);
+        if (progressEl && !progressEl.dataset.synced) {
+            progressEl.textContent = '0 / ' + questions.length;
+            progressEl.dataset.synced = '1';
+        }
+    })();
+
+    (function setupMobileQuestionsPanel() {
+        const side = document.querySelector('.sqt-take .sqt-side');
+        const toggle = document.getElementById('sqt-side-toggle');
+        if (!side || !toggle) return;
+
+        toggle.addEventListener('click', function () {
+            if (window.matchMedia('(min-width: 992px)').matches) return;
+            const collapsed = side.classList.toggle('is-collapsed');
+            toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        });
+    })();
 
     function countAnsweredQuestions() {
         return Object.keys(answers).filter((k) => {
@@ -1689,7 +1700,11 @@
 
     // Initialize when DOM is ready so first question and timer render correctly
     function initQuiz() {
-        loadQuestion(0);
+        const totalEl = document.getElementById('total-questions-count');
+        if (totalEl) totalEl.textContent = String(questions.length);
+        if (questions.length > 0) {
+            loadQuestion(0);
+        }
         startQuizCountdown();
     }
 
