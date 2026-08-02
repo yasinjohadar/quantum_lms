@@ -166,7 +166,33 @@
         color: #0f766e;
     }
 
-    [data-theme-mode="dark"] .sqt-take .mcq-option-card.is-selected {
+    html[data-theme-mode="dark"] .sqt-take .mcq-option-card,
+    html[data-bs-theme="dark"] .sqt-take .mcq-option-card,
+    [data-theme-mode="dark"] .sqt-take .mcq-option-card {
+        background: #151c2e !important;
+        border-color: rgba(255, 255, 255, 0.12) !important;
+        color: #e5e7eb;
+        box-shadow: none;
+    }
+
+    html[data-theme-mode="dark"] .sqt-take .mcq-option-card__letter,
+    html[data-bs-theme="dark"] .sqt-take .mcq-option-card__letter,
+    [data-theme-mode="dark"] .sqt-take .mcq-option-card__letter {
         background: rgba(13, 148, 136, 0.18);
+        color: #5eead4;
+    }
+
+    html[data-theme-mode="dark"] .sqt-take .mcq-option-card.is-interactive:hover:not(.is-selected):not(.is-correct):not(.is-wrong),
+    html[data-bs-theme="dark"] .sqt-take .mcq-option-card.is-interactive:hover:not(.is-selected):not(.is-correct):not(.is-wrong),
+    [data-theme-mode="dark"] .sqt-take .mcq-option-card.is-interactive:hover:not(.is-selected):not(.is-correct):not(.is-wrong) {
+        background: rgba(13, 148, 136, 0.14) !important;
+        border-color: rgba(45, 212, 191, 0.45) !important;
+    }
+
+    html[data-theme-mode="dark"] .sqt-take .mcq-option-card.is-selected,
+    html[data-bs-theme="dark"] .sqt-take .mcq-option-card.is-selected,
+    [data-theme-mode="dark"] .sqt-take .mcq-option-card.is-selected {
+        background: rgba(13, 148, 136, 0.22) !important;
+        border-color: #14b8a6 !important;
     }
 </style>

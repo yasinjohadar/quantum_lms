@@ -39,9 +39,9 @@
             </div>
         </div>
 
-        <div class="row g-3">
+        <div class="row g-3 sqt-layout">
         <!-- Sidebar: قائمة الأسئلة - يظهر أولاً في RTL على سطح المكتب -->
-        <div class="col-lg-3 order-2 order-lg-1">
+        <div class="col-lg-3 order-2 order-lg-1 sqt-aside-col">
             <div class="card sqt-side sticky-top" style="top: 20px;">
                 <button type="button"
                         class="card-header sqt-side__head sqt-side__toggle"
@@ -95,7 +95,7 @@
         </div>
         
         <!-- المحتوى الرئيسي -->
-        <div class="col-lg-9 order-1 order-lg-2">
+        <div class="col-lg-9 order-1 order-lg-2 sqt-main-col">
             <div class="sqt-stats">
                 <!-- عداد الوقت -->
                 @if($quiz->show_timer)
