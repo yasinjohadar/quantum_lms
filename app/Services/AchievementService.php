@@ -82,9 +82,8 @@ class AchievementService
 
             case 'quiz':
                 $target = $criteria['quizzes_completed'] ?? 0;
-                $current = $user->quizAttempts()
-                    ->completed()
-                    ->count();
+                // العادية + التفاعلية
+                $current = $user->completedQuizAttemptsCount();
                 $progress = $target > 0 ? min(100, ($current / $target) * 100) : 0;
                 break;
 

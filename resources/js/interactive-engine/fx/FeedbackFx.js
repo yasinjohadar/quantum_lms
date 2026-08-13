@@ -6,6 +6,7 @@ import confetti from 'canvas-confetti';
 import { playLottie, destroyLottie } from './LottieIcon.js';
 import { SoundKit } from './SoundKit.js';
 import { showFlourish } from './Flourish.js';
+import { buildPhraseIndex, lookupPhrase } from './phraseKey.js';
 
 const DEFAULT_CONFETTI_COLORS = ['#f59e0b', '#22c55e', '#3b82f6', '#ec4899', '#a855f7', '#14b8a6', '#ef4444'];
 
@@ -14,7 +15,6 @@ export class FeedbackFx {
         this.motion = options.motion || 'full';
         this.passThreshold = Number(options.passThreshold ?? 50);
         this.voiceEnabled = options.voice !== false;
-        this.baseUrl = (options.soundsBaseUrl || '/sounds/ile').replace(/\/$/, '');
         this.ttsUrl = options.ttsUrl || '';
         this.muted = this.readMuted();
         this._audio = null;
@@ -22,43 +22,39 @@ export class FeedbackFx {
         this._lottie = null;
         this._confettiFns = new WeakMap();
         SoundKit.bindMuteState(() => this.muted);
-        this.clips = {
-            success: [
-                'success-01.mp3',
-                'success-02.mp3',
-                'success-03.mp3',
-                'success-04.mp3',
-                'success-05.mp3',
-                'success-06.mp3',
-                'success-07.mp3',
-                'success-08.mp3',
-                'success-09.mp3',
-            ],
-            wrong: [
-                'wrong-01.mp3',
-                'wrong-02.mp3',
-                'wrong-03.mp3',
-                'wrong-04.mp3',
-                'wrong-05.mp3',
-            ],
-            continue: [
-                'continue-01.mp3',
-                'continue-02.mp3',
-                'continue-03.mp3',
-                'continue-04.mp3',
-            ],
-            pass: [
-                'pass-01.mp3',
-                'pass-02.mp3',
-                'pass-03.mp3',
-                'pass-04.mp3',
-            ],
-            retry: [
-                'retry-01.mp3',
-                'retry-02.mp3',
-                'retry-03.mp3',
-            ],
+
+        /**
+         * عبارات التغذية الراجعة مع تسجيلاتها، قادمة من السيرفر
+         * (App\InteractiveLearning\Support\FeedbackPhrases::forPlayer) عبر
+         * window.__interactiveConfig.feedbackPhrases — كل عبارة مقرونة بالملف
+         * الذي ينطقها حرفياً، فيبقى المكتوب على الشاشة هو المسموع.
+         */
+        const phraseSets = options.feedbackPhrases || {};
+        const successPool = Array.isArray(phraseSets.success) ? phraseSets.success : [];
+        const failPool = Array.isArray(phraseSets.fail) ? phraseSets.fail : [];
+
+        this.pools = {
+            success: successPool,
+            wrong: failPool,
+            pass: successPool, // نهاية الاختبار بنجاح تعيد استخدام تسجيلات النجاح
+            retry: failPool, // ونهايته برسوب تعيد استخدام تسجيلات الفشل
+            continue: [], // زر «يلا نكمّل» بلا تسجيل — صامت
         };
+
+        const successIndex = buildPhraseIndex(successPool);
+        const failIndex = buildPhraseIndex(failPool);
+        this.phraseIndex = {
+            success: successIndex,
+            pass: successIndex,
+            wrong: failIndex,
+            retry: failIndex,
+            continue: new Map(),
+        };
+
+        /** أنواع لا يُشغَّل لها صوت إطلاقاً. */
+        this.silentKinds = new Set(['continue']);
+
+        /** نص احتياطي يُستخدم فقط إذا لم تصل خريطة العبارات من السيرفر. */
         this.phrases = {
             success: [
                 'يا بطل!',
@@ -149,11 +145,17 @@ export class FeedbackFx {
     }
 
     preload() {
-        Object.values(this.clips).flat().forEach((file) => {
-            if (this._cache.has(file)) return;
-            const a = new Audio(`${this.baseUrl}/${file}`);
+        const urls = new Set();
+        Object.values(this.pools).forEach((pool) => {
+            (pool || []).forEach((row) => {
+                if (row?.url) urls.add(row.url);
+            });
+        });
+        urls.forEach((url) => {
+            if (this._cache.has(url)) return;
+            const a = new Audio(url);
             a.preload = 'auto';
-            this._cache.set(file, a);
+            this._cache.set(url, a);
         });
     }
 
@@ -189,63 +191,96 @@ export class FeedbackFx {
     }
 
     /**
-     * Play a recorded Arabic voice clip.
+     * حدّد العبارة وتسجيلها: العبارة المكتوبة في السؤال إن كان لها تسجيل،
+     * وإلا نصّها كما هو (يُنطق آلياً)، وإلا عبارة عشوائية من مجموعة النوع.
+     *
      * @param {'success'|'wrong'|'continue'|'pass'|'retry'} kind
-     * @returns {string} matching Arabic phrase for on-screen text
+     * @param {string} authoredText رسالة السؤال المحفوظة (successMessage / errorMessage)
+     * @returns {{text: string, url: string}}
      */
-    playVoice(kind) {
-        const files = this.clips[kind] || this.clips.success;
-        const phrases = this.phrases[kind] || this.phrases.success;
-        const i = this.pickIndex(files);
-        const phrase = phrases[i] || phrases[0];
-        const file = files[i];
+    resolvePhrase(kind, authoredText = '') {
+        const pool = this.pools[kind] || this.pools.success;
+        const index = this.phraseIndex[kind] || this.phraseIndex.success;
+        const authored = String(authoredText || '').trim();
 
-        if (!this.voiceEnabled || this.muted) return phrase;
+        if (authored) {
+            const hit = lookupPhrase(index, authored);
+            if (hit) return { text: hit.text, url: hit.url || '' };
+            // رسالة خارج القائمة (لا يُتوقع حدوثها بعد الترحيل والفرض على السيرفر):
+            // يُعرض نصها بلا صوت — لا نستبدلها ولا نستعين بنطق آلي
+            return { text: authored, url: '' };
+        }
+
+        if (pool.length) {
+            const row = pool[this.pickIndex(pool)];
+            return { text: row.text, url: row.url || '' };
+        }
+
+        const fallback = this.phrases[kind] || this.phrases.success;
+        return { text: this.pick(fallback), url: '' };
+    }
+
+    /**
+     * شغّل تسجيل العبارة وأعِد النص الذي سُمع فعلاً — على المُنادي أن يعرض
+     * هذا النص بالذات حتى لا يختلف المكتوب عن المسموع.
+     *
+     * @param {'success'|'wrong'|'continue'|'pass'|'retry'} kind
+     * @param {string} authoredText
+     * @returns {string} النص المطابق للصوت
+     */
+    playPhrase(kind, authoredText = '') {
+        if (this.silentKinds.has(kind)) return '';
+
+        const { text, url } = this.resolvePhrase(kind, authoredText);
+
+        if (!this.voiceEnabled || this.muted) return text;
 
         this.unlock();
         this.stopVoice();
 
-        const src = `${this.baseUrl}/${file}`;
-        let audio = this._cache.get(file);
+        // لا تسجيل مطابق → صمت. ممنوع النطق الآلي (TTS) في تغذية الإجابة:
+        // المسموع عند الصواب والخطأ يجب أن يكون من التسجيلات العشرين فقط.
+        if (!url) return text;
+
+        let audio = this._cache.get(url);
         if (!audio) {
-            audio = new Audio(src);
-            this._cache.set(file, audio);
+            audio = new Audio(url);
+            this._cache.set(url, audio);
         }
         this._audio = audio;
-        audio.currentTime = 0;
+        try {
+            audio.currentTime = 0;
+        } catch {
+            /* ignore */
+        }
         audio.volume = 1;
         const play = audio.play();
+        // فشل/إلغاء التشغيل (AbortError عند التشغيل السريع المتتالي مثلاً) → صمت لا صوت بديل
         if (play?.catch) play.catch(() => {});
-        return phrase;
+        return text;
     }
 
-    kidSuccessPhrase(custom) {
-        if (custom && String(custom).trim()) return String(custom).split(/[—–|]/)[0].trim();
-        return this.pick(this.phrases.success);
-    }
-
-    kidWrongPhrase(custom) {
-        if (custom && String(custom).trim()) return String(custom).split(/[—–|]/)[0].trim();
-        return this.pick(this.phrases.wrong);
-    }
-
-    kidPassPhrase() {
-        return this.pick(this.phrases.pass);
-    }
-
-    kidRetryPhrase() {
-        return this.pick(this.phrases.retry);
+    /**
+     * تسجيل عشوائي من مجموعة النوع بلا رسالة محدّدة.
+     * @param {'success'|'wrong'|'continue'|'pass'|'retry'} kind
+     * @returns {string} matching Arabic phrase for on-screen text
+     */
+    playVoice(kind) {
+        return this.playPhrase(kind, '');
     }
 
     /**
      * Visual + spoken Arabic clip + Lottie (no music).
+     *
+     * `phrase` هي رسالة السؤال المحفوظة؛ المعروض هو ما نطقه التسجيل بالضبط
+     * (playPhrase تُرجع النص القانوني للتسجيل) فلا يحدث اختلاف بين المكتوب والمسموع.
      */
     cheer(root, { correct = true, big = false, phrase = '', color = '' } = {}) {
         const kind = big
             ? (correct ? 'pass' : 'retry')
             : (correct ? 'success' : 'wrong');
-        const spoken = this.playVoice(kind);
-        const display = phrase || spoken;
+        const spoken = this.playPhrase(kind, phrase);
+        const display = spoken || phrase || '';
 
         const lottieKind = big
             ? (correct ? 'celebrate' : 'try-again')

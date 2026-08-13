@@ -1,4 +1,4 @@
-import { optionButtons, bindSpeakers } from './_helpers.js';
+import { optionButtons, bindSpeakers, revealChoice, lockChoice } from './_helpers.js';
 
 export const singleChoiceModule = {
     type: 'single_choice',
@@ -18,6 +18,7 @@ export const singleChoiceModule = {
             input.addEventListener('change', () => {
                 el.querySelectorAll('.ile-option').forEach((lab) => lab.classList.remove('is-selected'));
                 input.closest('.ile-option')?.classList.add('is-selected');
+                ctx.playSfx?.('pop');
                 ctx.bus.emit('answer.changed', { questionId: ctx.question.id });
             });
         });
@@ -28,6 +29,13 @@ export const singleChoiceModule = {
     destroy() {
         if (this._el) this._el.innerHTML = '';
         this._el = null;
+    },
+    reveal({ answer } = {}) {
+        revealChoice(this._el, {
+            correctIds: [this._correctId],
+            chosenIds: [answer],
+        });
+        lockChoice(this._el);
     },
     getAnswer() {
         const checked = this._el?.querySelector('input:checked');

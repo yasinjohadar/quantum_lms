@@ -12,15 +12,21 @@ function getNotificationIcon($type) {
         'achievement_unlocked' => 'star',
         'level_up' => 'trending-up',
         'points_earned' => 'plus-circle',
+        'points_awarded' => 'star',
         'challenge_completed' => 'target',
+        'challenge_reminder' => 'clock',
         'reward_claimed' => 'gift',
         'leaderboard_update' => 'bar-chart-2',
         'task_completed' => 'check-circle',
-        'custom_notification' => 'bell',
+        'custom_notification' => 'message-square',
         'lesson_attended' => 'book-open',
         'lesson_completed' => 'check-square',
+        'quiz_started' => 'play-circle',
         'quiz_completed' => 'edit-3',
         'question_answered' => 'help-circle',
+        'student_lesson_available' => 'play-circle',
+        'student_quiz_available' => 'edit-2',
+        'class_enrollment_decision' => 'users',
     ];
     return $icons[$type] ?? 'bell';
 }
@@ -31,15 +37,21 @@ function getNotificationColor($type) {
         'achievement_unlocked' => 'success',
         'level_up' => 'primary',
         'points_earned' => 'info',
+        'points_awarded' => 'warning',
         'challenge_completed' => 'danger',
+        'challenge_reminder' => 'warning',
         'reward_claimed' => 'purple',
         'leaderboard_update' => 'orange',
         'task_completed' => 'success',
         'custom_notification' => 'primary',
         'lesson_attended' => 'info',
         'lesson_completed' => 'success',
+        'quiz_started' => 'info',
         'quiz_completed' => 'warning',
         'question_answered' => 'secondary',
+        'student_lesson_available' => 'primary',
+        'student_quiz_available' => 'success',
+        'class_enrollment_decision' => 'info',
     ];
     return $colors[$type] ?? 'primary';
 }
@@ -105,11 +117,9 @@ function getNotificationColor($type) {
                         <select class="form-select form-select-sm" id="type-filter" onchange="filterNotifications()">
                             <option value="all" {{ $currentType === 'all' ? 'selected' : '' }}>جميع الأنواع</option>
                             @foreach($typeStats as $typeKey => $typeStat)
-                                @if($typeStat['total'] > 0)
-                                    <option value="{{ $typeKey }}" {{ $currentType === $typeKey ? 'selected' : '' }}>
-                                        {{ $typeStat['name'] }} ({{ $typeStat['total'] }})
-                                    </option>
-                                @endif
+                                <option value="{{ $typeKey }}" {{ $currentType === $typeKey ? 'selected' : '' }}>
+                                    {{ $typeStat['name'] }} ({{ $typeStat['total'] }})
+                                </option>
                             @endforeach
                         </select>
                         <select class="form-select form-select-sm" id="status-filter" onchange="filterNotifications()">
@@ -286,6 +296,27 @@ function getNotificationColor($type) {
         url.searchParams.set('status', status);
         window.location.href = url.toString();
     }
+
+    // Navigate to the related lesson/quiz when clicking a notification with an action URL
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.student-notif-card__actions')) {
+            return;
+        }
+        const card = e.target.closest('.notification-item[data-action-url]');
+        if (!card || !card.dataset.actionUrl) {
+            return;
+        }
+        if (card.dataset.isRead === 'false') {
+            fetch(`/student/notifications/${card.dataset.notificationId}/read`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            }).catch(() => {});
+        }
+        window.location.href = card.dataset.actionUrl;
+    });
 
     // Mark as read
     document.addEventListener('click', function(e) {

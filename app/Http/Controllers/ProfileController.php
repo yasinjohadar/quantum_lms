@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
+use App\InteractiveLearning\Models\LearningExperienceAttempt;
 use App\Models\QuizAttempt;
 
 class ProfileController extends Controller
@@ -48,19 +49,35 @@ class ProfileController extends Controller
             }
         ]);
         
-        // إحصائيات الاختبارات
+        // إحصائيات الاختبارات — العادية والتفاعلية معاً.
+        // محاولة التجربة التفاعلية تُنشأ عند التسليم فهي مكتملة دائماً.
+        $regularCompleted = QuizAttempt::where('user_id', $user->id)
+            ->whereIn('status', ['completed', 'timed_out']);
+        $interactive = LearningExperienceAttempt::where('user_id', $user->id);
+
+        $regularCompletedCount = (clone $regularCompleted)->count();
+        $interactiveCount = (clone $interactive)->count();
+        $regularAvg = (float) ((clone $regularCompleted)->avg('percentage') ?? 0);
+        $interactiveAvg = (float) ((clone $interactive)->avg('percentage') ?? 0);
+        $totalCompleted = $regularCompletedCount + $interactiveCount;
+
         $quizStats = [
-            'total_attempts' => QuizAttempt::where('user_id', $user->id)->count(),
-            'completed_attempts' => QuizAttempt::where('user_id', $user->id)
-                ->whereIn('status', ['completed', 'timed_out'])->count(),
-            'passed_attempts' => QuizAttempt::where('user_id', $user->id)
-                ->where('passed', true)->count(),
-            'average_score' => QuizAttempt::where('user_id', $user->id)
-                ->whereIn('status', ['completed', 'timed_out'])
-                ->avg('percentage') ?? 0,
+            'total_attempts' => QuizAttempt::where('user_id', $user->id)->count() + $interactiveCount,
+            'completed_attempts' => $totalCompleted,
+            'passed_attempts' => QuizAttempt::where('user_id', $user->id)->where('passed', true)->count()
+                + (clone $interactive)->where('passed', true)->count(),
+            // متوسط مرجّح بعدد المحاولات، لا متوسط المتوسطين
+            'average_score' => $totalCompleted > 0
+                ? (($regularAvg * $regularCompletedCount) + ($interactiveAvg * $interactiveCount)) / $totalCompleted
+                : 0,
             'recent_attempts' => QuizAttempt::with(['quiz.subject'])
                 ->where('user_id', $user->id)
                 ->latest('started_at')
+                ->limit(5)
+                ->get(),
+            'recent_interactive_attempts' => LearningExperienceAttempt::with(['experience.subject'])
+                ->where('user_id', $user->id)
+                ->latest('finished_at')
                 ->limit(5)
                 ->get(),
         ];

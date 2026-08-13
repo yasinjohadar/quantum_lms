@@ -609,7 +609,7 @@
                     }, 300);
                 } else {
                     showSuccessMessage(data.message);
-                    setTimeout(() => location.reload(), 1500);
+                    setTimeout(() => { window.location.href = '{{ route("student.classes") }}'; }, 1500);
                 }
             } else {
                 showErrorMessage(data.message || 'حدث خطأ أثناء إرسال الطلب');

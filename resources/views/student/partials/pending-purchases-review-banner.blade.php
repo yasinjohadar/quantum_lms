@@ -220,23 +220,14 @@
                     <span class="badge bg-warning text-dark rounded-pill px-3 py-2">{{ $pendingPurchases->count() }} طلب</span>
                 </div>
                 <div class="student-pending-review-panel__body">
-                    <div class="student-pending-review-alert">
-                        <div class="d-flex align-items-start gap-3 flex-grow-1">
-                            <span class="student-pending-review-alert__icon">
-                                <i class="fab fa-whatsapp"></i>
-                            </span>
-                            <div class="flex-grow-1">
-                                <strong class="d-block mb-0 text-danger">{{ \App\Models\SystemSetting::supervisorWhatsappMessage() }}</strong>
-                            </div>
-                        </div>
-                        @if($hasSupervisorWa)
-                            @include('student.partials.supervisor-whatsapp-cta', [
-                                'supervisorWhatsappDigits' => $supervisorWhatsappDigits,
-                                'wrapperClass' => 'align-self-center mb-0',
-                                'btnSize' => 'lg',
-                            ])
-                        @endif
-                    </div>
+                    @if($hasSupervisorWa)
+                        @include('student.partials.supervisor-whatsapp-cta', [
+                            'supervisorWhatsappDigits' => $supervisorWhatsappDigits,
+                            'wrapperClass' => 'mb-3',
+                            'btnSize' => 'lg',
+                            'align' => 'center',
+                        ])
+                    @endif
                     <div class="row student-pending-review-grid" id="pendingPurchasesGrid">
                         @foreach($pendingPurchases as $purchase)
                             <div class="{{ $pendingPurchases->count() === 1 ? 'col-12' : 'col-12 col-md-6 col-xl-4' }} mb-3 pending-purchase-card" data-purchase-id="{{ $purchase->id }}">

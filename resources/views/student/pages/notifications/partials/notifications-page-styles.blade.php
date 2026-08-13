@@ -132,6 +132,10 @@
         border-color: rgba(var(--primary-rgb, 13, 110, 253), 0.2);
     }
 
+    .student-notif-card--clickable {
+        cursor: pointer;
+    }
+
     .student-notif-card--unread {
         background: linear-gradient(90deg, rgba(var(--primary-rgb, 13, 110, 253), 0.06) 0%, var(--custom-card-bg, var(--default-background, #fff)) 28%);
         border-color: rgba(var(--primary-rgb, 13, 110, 253), 0.22);

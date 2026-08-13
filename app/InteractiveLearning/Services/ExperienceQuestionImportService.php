@@ -2,6 +2,7 @@
 
 namespace App\InteractiveLearning\Services;
 
+use App\InteractiveLearning\Support\FeedbackPhrases;
 use App\InteractiveLearning\Support\QuestionTypeRegistry;
 use App\Services\QuestionPackImport\CsvQuestionPackParser;
 use App\Services\QuestionPackImport\MarkdownQuestionPackParser;
@@ -62,7 +63,7 @@ class ExperienceQuestionImportService
 
         foreach ($raw as $index => $row) {
             try {
-                $normalized = $this->normalizeRow($row, $mode);
+                $normalized = $this->normalizeRow($row, $mode, (int) $index);
                 if ($normalized === null) {
                     $errors[] = 'سؤال #'.($index + 1).': نوع أو نص غير صالح.';
                     continue;
@@ -615,7 +616,7 @@ class ExperienceQuestionImportService
      * @param  array<string, mixed>  $row
      * @return array<string, mixed>|null
      */
-    protected function normalizeRow(array $row, string $mode): ?array
+    protected function normalizeRow(array $row, string $mode, int $index = 0): ?array
     {
         $type = $this->normalizeType((string) ($row['type'] ?? ($row['interaction']['type'] ?? '')));
         if ($type === '' || ! QuestionTypeRegistry::has($type)) {
@@ -665,8 +666,17 @@ class ExperienceQuestionImportService
                 ? array_values(array_map(fn ($h) => QuestionMarkupFormatter::deepNormalizeForStorage((string) $h), $row['hints']))
                 : (! empty($row['hint']) ? [QuestionMarkupFormatter::deepNormalizeForStorage((string) $row['hint'])] : []),
             'explanation' => QuestionMarkupFormatter::deepNormalizeForStorage((string) ($row['explanation'] ?? '')),
-            'successMessage' => (string) ($row['successMessage'] ?? 'أحسنت!'),
-            'errorMessage' => (string) ($row['errorMessage'] ?? 'حاول مرة أخرى'),
+            // مقيّدة بقائمة العبارات المسجّلة صوتياً (FeedbackPhrases)
+            'successMessage' => FeedbackPhrases::snap(
+                $row['successMessage'] ?? null,
+                FeedbackPhrases::KIND_SUCCESS,
+                $index
+            ),
+            'errorMessage' => FeedbackPhrases::snap(
+                $row['errorMessage'] ?? null,
+                FeedbackPhrases::KIND_FAIL,
+                $index
+            ),
             'estimatedSeconds' => is_numeric($row['estimatedSeconds'] ?? null) ? (int) $row['estimatedSeconds'] : 30,
             'tags' => is_array($row['tags'] ?? null) ? array_values(array_map('strval', $row['tags'])) : [],
             'learningObjectives' => is_array($row['learningObjectives'] ?? null)

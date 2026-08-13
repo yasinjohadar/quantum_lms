@@ -1,4 +1,4 @@
-import { escapeAttr, escapeHtml, bindSpeakers, speakerButtonHtml, optionsNeedKatex } from '../../modules/_helpers.js';
+import { escapeAttr, escapeHtml, bindSpeakers, speakerButtonHtml, optionsNeedKatex, revealChoice } from '../../modules/_helpers.js';
 import { loadLibraries } from '../LibraryLoader.js';
 import { renderBlocks } from '../BlockRenderer.js';
 import { renderMathLabel, latexToSpeakText, isMathyLabel } from '../mathText.js';
@@ -87,12 +87,15 @@ function bindChoice(el, ctx, { multiple = false } = {}) {
                     n.classList.toggle('is-selected', !!checked);
                 });
             }
+            ctx.playSfx?.('pop');
             ctx.bus.emit('answer.changed', { questionId: ctx.question.id });
         });
     });
     el.querySelectorAll('.ile-dyn-opt').forEach((card) => {
         card.addEventListener('click', (e) => {
             if (e.target.closest('.ile-speak')) return;
+            // بعد كشف الإجابة لا يُسمح بتغيير الاختيار
+            if (el.classList.contains('is-revealed')) return;
             const input = card.querySelector('input');
             if (!input) return;
             if (multiple) {
@@ -231,6 +234,9 @@ export function createDynamicInteractionModule(layout) {
 
         mount(el, ctx) {
             this._el = el;
+            // #ile-module يُعاد استخدامه لكل سؤال، فيجب مسح أثر كشف السؤال السابق
+            // وإلا بقي حاجز is-revealed يمنع اختيار الإجابات في بقية الأسئلة.
+            el.classList.remove('is-revealed');
             this._points = Number(ctx.question.points ?? 1);
             this._qType = ctx.question.type;
             const p = ctx.question.payload || {};
@@ -252,8 +258,10 @@ export function createDynamicInteractionModule(layout) {
                 el.querySelectorAll('.ile-dyn-truth').forEach((btn) => {
                     btn.addEventListener('click', (e) => {
                         if (e.target.closest('.ile-speak')) return;
+                        if (el.classList.contains('is-revealed')) return;
                         el.querySelectorAll('.ile-dyn-truth').forEach((b) => b.classList.remove('is-selected'));
                         btn.classList.add('is-selected');
+                        ctx.playSfx?.('pop');
                         ctx.bus.emit('answer.changed', { questionId: ctx.question.id });
                     });
                 });
@@ -311,8 +319,41 @@ export function createDynamicInteractionModule(layout) {
         async afterMount() {},
         beforeDestroy() {},
         destroy() {
-            if (this._el) this._el.innerHTML = '';
+            if (this._el) {
+                this._el.innerHTML = '';
+                this._el.classList.remove('is-revealed');
+            }
             this._el = null;
+        },
+
+        /**
+         * كشف الإجابة الصحيحة بعد التحقق. يخدم تخطيطات الاختيار ولافتات صح/خطأ؛
+         * أما لوحة الأرقام والإدخال النصي فلا خيارات فيها تُلوَّن.
+         */
+        reveal({ answer } = {}) {
+            const el = this._el;
+            if (!el) return;
+
+            if (this._qType === 'true_false') {
+                el.querySelectorAll('.ile-dyn-truth').forEach((btn) => {
+                    const val = btn.getAttribute('data-val') === 'true';
+                    if (val === this._correctBool) btn.classList.add('is-correct');
+                    else if (answer != null && val === answer) btn.classList.add('is-wrong');
+                });
+                el.classList.add('is-revealed');
+                return;
+            }
+
+            if (this._qType === 'numerical' || this._qType === 'short_answer') {
+                return;
+            }
+
+            revealChoice(el, {
+                selector: '.ile-dyn-opt',
+                correctIds: this._multiple ? this._correctIds : [this._correctId],
+                chosenIds: Array.isArray(answer) ? answer : [answer],
+            });
+            el.classList.add('is-revealed');
         },
 
         getAnswer() {

@@ -90,11 +90,9 @@ class User extends Authenticatable
      */
     public function hasActiveStudentEnrollment(): bool
     {
-        if ($this->enrollments()->where('status', 'active')->exists()) {
-            return true;
-        }
-
-        return $this->classEnrollments()->approved()->exists();
+        return $this->enrollments()->whereIn('status', ['active', 'pending'])->exists()
+            || $this->classEnrollments()->whereIn('status', ['approved', 'pending'])->exists()
+            || $this->purchases()->where('status', 'pending')->exists();
     }
 
     /**
@@ -189,6 +187,34 @@ class User extends Authenticatable
     public function quizAttempts()
     {
         return $this->hasMany(QuizAttempt::class);
+    }
+
+    /**
+     * محاولات الاختبارات التفاعلية (التجارب التعليمية).
+     */
+    public function learningExperienceAttempts()
+    {
+        return $this->hasMany(\App\InteractiveLearning\Models\LearningExperienceAttempt::class);
+    }
+
+    /**
+     * عدد الاختبارات المكتملة للطالب — العادية والتفاعلية معاً.
+     *
+     * محاولة التجربة التفاعلية تُنشأ عند التسليم فهي مكتملة دائماً (لا يوجد
+     * عمود status يقابل quiz_attempts). تُستخدم في معايير الشارات والإنجازات
+     * والتحديات حتى تتقدّم بالنوعين لا بالعادية فقط.
+     */
+    public function completedQuizAttemptsCount(?string $from = null, ?string $to = null): int
+    {
+        $regular = $this->quizAttempts()->completed();
+        $interactive = $this->learningExperienceAttempts();
+
+        if ($from !== null && $to !== null) {
+            $regular->whereBetween('finished_at', [$from, $to]);
+            $interactive->whereBetween('finished_at', [$from, $to]);
+        }
+
+        return $regular->count() + $interactive->count();
     }
 
     /**

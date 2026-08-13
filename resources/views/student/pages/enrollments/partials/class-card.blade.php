@@ -2,6 +2,7 @@
     $isPending = isset($pendingClassIdSet[$class->id]);
     $joinableCount = $class->joinable_subjects_count ?? $class->subjects()->where('is_active', true)->count();
     $isPaid = $class->classJoinRequiresPayment();
+    $freeCount = $class->getFreeSubjectsCount();
 @endphp
 <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-3 mb-md-4">
     <article class="enrollment-class-card">
@@ -34,7 +35,11 @@
         <div class="enrollment-class-card__actions">
             <span class="enrollment-class-card__meta">
                 <i class="bi bi-journal-bookmark" aria-hidden="true"></i>
-                {{ $joinableCount }} {{ $joinableCount === 1 ? 'مادة متاحة' : 'مواد متاحة' }}
+                {{ $joinableCount }} {{ $joinableCount === 1 ? 'مادة' : 'مواد' }}
+            </span>
+            <span class="enrollment-class-card__meta enrollment-class-card__meta--free">
+                <i class="bi bi-gift-fill" aria-hidden="true"></i>
+                {{ $freeCount }} {{ $freeCount === 1 ? 'مادة مجانا' : 'مواد مجانا' }}
             </span>
 
             @if($isPending)

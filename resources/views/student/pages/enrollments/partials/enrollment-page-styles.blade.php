@@ -217,35 +217,73 @@
         .enrollment-class-card__meta {
             display: inline-flex;
             align-items: center;
-            gap: 0.35rem;
-            padding: 0.3rem 0.6rem;
-            border-radius: 0.45rem;
-            font-size: 0.78rem;
-            font-weight: 500;
+            gap: 0.45rem;
+            padding: 0.4rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 600;
             color: var(--text-muted);
-            background: rgba(var(--primary-rgb), 0.06);
-            border: 1px solid rgba(var(--primary-rgb), 0.1);
+            background: rgba(107, 114, 128, 0.1);
+            border: 1px solid rgba(107, 114, 128, 0.2);
+        }
+
+        .enrollment-class-card__meta--free {
+            background: rgba(34, 197, 94, 0.12);
+            border-color: #22c55e;
+            color: #16a34a;
+            font-weight: 700;
         }
 
         .enrollment-class-card__actions {
-            padding: 0 1rem 1rem;
+            padding: 0.75rem 1rem 1rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 0.65rem;
+            gap: 0.75rem;
             flex-wrap: wrap;
+            border-top: 1px solid var(--default-border);
+            background: rgba(var(--primary-rgb), 0.02);
         }
 
         .enrollment-class-card__btn-join {
-            border-radius: 0.55rem;
-            font-weight: 600;
-            padding: 0.45rem 0.85rem;
-            box-shadow: 0 0.2rem 0.65rem rgba(var(--primary-rgb), 0.25);
+            border-radius: 5px !important;
+            font-weight: 800 !important;
+            padding: 12px 24px !important;
+            background: linear-gradient(
+                135deg,
+                #fff6b7 0%,
+                #f5d76e 20%,
+                #d4af37 45%,
+                #b8962e 60%,
+                #f5d76e 80%,
+                #fff6b7 100%
+            ) !important;
+            background-size: 200% 200% !important;
+            color: #0b1b2b !important;
+            border: 1px solid rgba(212, 175, 55, 0.45) !important;
+            box-shadow: 0 10px 22px rgba(212, 175, 55, 0.18) !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .enrollment-class-card__btn-join:hover {
+            background-position: 100% 0 !important;
+            color: #0b1b2b !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 16px 34px rgba(212, 175, 55, 0.28) !important;
+        }
+
+        .enrollment-class-card__btn-join:active {
+            transform: translateY(0) !important;
         }
 
         .enrollment-class-card__btn-pending {
             border-radius: 0.55rem;
-            font-weight: 600;
+            font-weight: 700;
+            padding: 0.5rem 1rem;
+            background: rgba(251, 146, 60, 0.15);
+            border-color: #fb923c;
+            color: #b45309;
+            cursor: not-allowed;
         }
 
         .enrollment-class-card__footer {

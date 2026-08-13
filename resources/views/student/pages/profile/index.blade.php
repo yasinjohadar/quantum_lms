@@ -211,7 +211,28 @@
                                     </div>
                                 </div>
                             @endforeach
-                        @else
+                        @endif
+
+                        {{-- محاولات الاختبارات التفاعلية (تُحفظ في جدول منفصل) --}}
+                        @foreach($quizStats['recent_interactive_attempts'] ?? [] as $attempt)
+                            <div class="student-profile-attempt-row" style="animation-delay: {{ $loop->index * 0.04 }}s;">
+                                <div class="student-profile-attempt-row__score student-profile-attempt-row__score--{{ $attempt->passed ? 'passed' : 'failed' }}">
+                                    {{ number_format($attempt->percentage, 0) }}%
+                                </div>
+                                <div class="flex-grow-1 min-w-0">
+                                    <h4 class="student-profile-attempt-row__title">
+                                        <i class="bi bi-joystick text-primary me-1"></i>{{ $attempt->experience->title ?? '-' }}
+                                    </h4>
+                                    <div class="student-profile-attempt-row__meta">
+                                        {{ $attempt->experience->subject->name ?? '-' }}
+                                        · تفاعلي
+                                        · {{ optional($attempt->finished_at ?? $attempt->created_at)->format('Y-m-d H:i') }}
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+
+                        @if($quizStats['recent_attempts']->count() === 0 && ($quizStats['recent_interactive_attempts'] ?? collect())->count() === 0)
                             <div class="student-profile-empty">
                                 <div class="student-profile-empty__icon"><i class="bi bi-clipboard-x"></i></div>
                                 <p class="text-muted mb-0">لا توجد محاولات اختبارات حتى الآن</p>

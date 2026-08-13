@@ -93,7 +93,8 @@ export const memoryCardsModule = {
         this._lock = true;
         const [a, b] = this._flipped;
         const match = this.isMatch(a, b);
-        ctx.playSfx?.(match ? 'ding' : 'thud');
+        // بلا صوت للمطابقة الصحيحة/الخاطئة: الصواب والخطأ يُسمَعان بتسجيلات
+        // العبارات فقط (FeedbackPhrases) لا بنغمات توليفية.
 
         window.setTimeout(() => {
             if (match) {

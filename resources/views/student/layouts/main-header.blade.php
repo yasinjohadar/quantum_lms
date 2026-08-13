@@ -211,7 +211,7 @@
                                                 const item = document.createElement('li');
                                                 item.className = 'dropdown-item';
                                                 item.style.cssText = 'padding: 0.75rem 1rem; border-bottom: 1px solid rgba(0,0,0,0.1); cursor: pointer;';
-                                                item.onclick = () => window.location.href = '{{ route("student.notifications.index") }}';
+                                                item.onclick = () => window.location.href = notif.action_url || '{{ route("student.notifications.index") }}';
                                                 
                                                 const icon = getNotificationIcon(notif.type);
                                                 const color = getNotificationColor(notif.type);
@@ -244,34 +244,46 @@
                                     'achievement_unlocked': 'fe fe-star',
                                     'level_up': 'fe fe-trending-up',
                                     'points_earned': 'fe fe-plus-circle',
+                                    'points_awarded': 'fe fe-star',
                                     'challenge_completed': 'fe fe-target',
+                                    'challenge_reminder': 'fe fe-clock',
                                     'reward_claimed': 'fe fe-gift',
                                     'leaderboard_update': 'fe fe-bar-chart-2',
                                     'task_completed': 'fe fe-check-circle',
-                                    'custom_notification': 'fe fe-bell',
+                                    'custom_notification': 'fe fe-message-square',
                                     'lesson_attended': 'fe fe-book-open',
                                     'lesson_completed': 'fe fe-check-square',
+                                    'quiz_started': 'fe fe-play-circle',
                                     'quiz_completed': 'fe fe-edit-3',
                                     'question_answered': 'fe fe-help-circle',
+                                    'student_lesson_available': 'fe fe-play-circle',
+                                    'student_quiz_available': 'fe fe-edit-2',
+                                    'class_enrollment_decision': 'fe fe-users',
                                 };
                                 return icons[type] || 'fe fe-bell';
                             }
-                            
+
                             function getNotificationColor(type) {
                                 const colors = {
                                     'badge_earned': 'warning',
                                     'achievement_unlocked': 'success',
                                     'level_up': 'primary',
                                     'points_earned': 'info',
+                                    'points_awarded': 'warning',
                                     'challenge_completed': 'danger',
+                                    'challenge_reminder': 'warning',
                                     'reward_claimed': 'purple',
                                     'leaderboard_update': 'orange',
                                     'task_completed': 'success',
                                     'custom_notification': 'primary',
                                     'lesson_attended': 'info',
                                     'lesson_completed': 'success',
+                                    'quiz_started': 'info',
                                     'quiz_completed': 'warning',
                                     'question_answered': 'secondary',
+                                    'student_lesson_available': 'primary',
+                                    'student_quiz_available': 'success',
+                                    'class_enrollment_decision': 'info',
                                 };
                                 return colors[type] || 'primary';
                             }
@@ -349,13 +361,8 @@
                                 </div>
                             </li>
                             <li>
-                                <a class="dropdown-item d-flex" href="{{ route('student.profile') }}">
-                                    <i class="bx bx-user-circle fs-18 me-2 op-7"></i>الملف الشخصي
-                                </a>
-                            </li>
-                            <li>
                                 <a class="dropdown-item d-flex border-block-end" href="{{ route('student.profile') }}">
-                                    <i class="bx bx-cog fs-18 me-2 op-7"></i>عرض الملف الشخصي
+                                    <i class="bx bx-user-circle fs-18 me-2 op-7"></i>الملف الشخصي
                                 </a>
                             </li>
                             <li>

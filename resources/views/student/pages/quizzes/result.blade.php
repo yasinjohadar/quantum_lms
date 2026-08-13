@@ -78,6 +78,11 @@
                             <span style="width: {{ number_format($pctCss, 2, '.', '') }}%"></span>
                         </div>
 
+                        <p class="sqr-score__hint">
+                            <i class="bi bi-arrow-down-circle-fill sqr-score__hint-icon" aria-hidden="true"></i>
+                            انزل للأسفل لمراجعة اجاباتك وفهم الاجابات الصحيحة
+                        </p>
+
                         <div class="sqr-actions">
                             @if($isAdminPreview)
                                 <a href="{{ route('admin.quizzes.preview', $quiz->id) }}" class="btn btn-primary">

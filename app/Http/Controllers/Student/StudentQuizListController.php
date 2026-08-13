@@ -87,8 +87,7 @@ class StudentQuizListController extends Controller
         if ($includeInteractive && ! empty($subjectIds)) {
             $ileQuery = LearningExperience::query()
                 ->with(['subject', 'unit'])
-                ->where('status', LearningExperience::STATUS_PUBLISHED)
-                ->whereIn('subject_id', $subjectIds);
+                ->forStudentSubjects($subjectIds);
 
             if ($request->filled('subject_id')) {
                 $ileQuery->where('subject_id', $request->subject_id);
@@ -141,9 +140,12 @@ class StudentQuizListController extends Controller
         $page = max(1, (int) $request->get('page', 1));
         $perPage = 15;
 
+        // النطاق completed() = ['completed','timed_out'] — القيم السابقة
+        // ('graded' و'timeout') غير موجودة في الحقل، فكانت محاولات انتهاء الوقت
+        // لا تظهر للطالب إطلاقاً.
         $quizQuery = QuizAttempt::with(['quiz.subject', 'quiz.unit'])
             ->where('user_id', $user->id)
-            ->whereIn('status', ['completed', 'graded', 'timeout']);
+            ->completed();
 
         if ($request->filled('subject_id')) {
             $quizQuery->whereHas('quiz', function ($q) use ($request) {
@@ -159,7 +161,7 @@ class StudentQuizListController extends Controller
             $quizQuery->where('passed', $request->passed === '1');
         }
 
-        $includeInteractive = ! $request->filled('status') || in_array($request->status, ['completed', 'graded'], true);
+        $includeInteractive = ! $request->filled('status') || in_array($request->status, ['completed', 'timed_out'], true);
 
         $rows = $quizQuery->get()->map(function (QuizAttempt $attempt) {
             return [
@@ -180,14 +182,9 @@ class StudentQuizListController extends Controller
             }
 
             if ($request->filled('passed')) {
-                $wantPassed = $request->passed === '1';
-                $ileQuery->where(function ($q) use ($wantPassed) {
-                    if ($wantPassed) {
-                        $q->where('percentage', '>=', 50);
-                    } else {
-                        $q->where('percentage', '<', 50);
-                    }
-                });
+                // عمود passed يُحسب على الخادم مقابل passing_score للتجربة،
+                // بدل نسبة 50 كانت مكتوبة هنا يدوياً.
+                $ileQuery->where('passed', $request->passed === '1');
             }
 
             $ileRows = $ileQuery->get()->map(function (LearningExperienceAttempt $attempt) {

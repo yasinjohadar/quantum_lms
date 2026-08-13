@@ -28,6 +28,7 @@ export const trueFalseModule = {
                 if (e.target.closest('.ile-speak')) return;
                 el.querySelectorAll('.ile-tf__btn').forEach((b) => b.classList.remove('is-active'));
                 btn.classList.add('is-active');
+                ctx.playSfx?.('pop');
                 ctx.bus.emit('answer.changed', { questionId: ctx.question.id });
             });
         });
@@ -38,6 +39,15 @@ export const trueFalseModule = {
     destroy() {
         if (this._el) this._el.innerHTML = '';
         this._el = null;
+    },
+    reveal({ answer } = {}) {
+        // صح/خطأ لا تستخدم ids بل data-val، فالكشف هنا خاص بها.
+        // لا نعطّل الأزرار: زر الاستماع مُضمَّن داخلها ويجب أن يبقى يعمل بعد الكشف.
+        this._el?.querySelectorAll('.ile-tf__btn').forEach((btn) => {
+            const val = btn.getAttribute('data-val') === 'true';
+            if (val === this._correct) btn.classList.add('is-correct');
+            else if (answer != null && val === answer) btn.classList.add('is-wrong');
+        });
     },
     getAnswer() {
         const active = this._el?.querySelector('.is-active');

@@ -2,10 +2,12 @@
 
 namespace App\InteractiveLearning\Services;
 
+use App\InteractiveLearning\Support\FeedbackPhrases;
 use App\InteractiveLearning\Support\QuestionTypeRegistry;
 use App\Models\AIModel;
 use App\Services\AI\AIModelService;
 use App\Services\AI\AIProviderFactory;
+use App\Services\AI\VisionQuestionGenerationSupport;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -76,12 +78,30 @@ STICKERS;
             throw new RuntimeException($provider->getLastError() ?: 'فشل استدعاء الذكاء الاصطناعي.');
         }
 
+        return $this->finishGeneration($response, $types, $count, $experienceMode, $model, 'حول: '.$topic);
+    }
+
+    /**
+     * تحليل رد النموذج وتطبيع الأسئلة — مشترك بين التوليد من موضوع والتوليد من ملف،
+     * فيسري على كليهما فرضُ عبارات التغذية الراجعة وقائمة الملصقات وفحص المنطق.
+     *
+     * @param  list<string>  $types
+     * @return array{questions: list<array<string, mixed>>, summary: string, model: string}
+     */
+    protected function finishGeneration(
+        string $response,
+        array $types,
+        int $count,
+        string $experienceMode,
+        AIModel $model,
+        string $summarySuffix
+    ): array {
         $questions = $this->parseQuestions($response);
         $normalized = [];
-        foreach ($questions as $question) {
+        foreach ($questions as $i => $question) {
             $row = $experienceMode === 'dynamic'
-                ? $this->normalizeDynamicQuestion($question, $types)
-                : $this->normalizeQuestion($question, $types);
+                ? $this->normalizeDynamicQuestion($question, $types, $i)
+                : $this->normalizeQuestion($question, $types, $i);
             if ($row) {
                 $normalized[] = $row;
             }
@@ -96,9 +116,114 @@ STICKERS;
 
         return [
             'questions' => $normalized,
-            'summary' => 'تم توليد '.count($normalized).' سؤال/أسئلة حول: '.$topic,
+            'summary' => 'تم توليد '.count($normalized).' سؤال/أسئلة '.$summarySuffix,
             'model' => $model->name ?? $model->model_id ?? (string) $model->id,
         ];
+    }
+
+    /**
+     * توليد أسئلة من محتوى ملف مرفوع (PDF نصي، أو صور صفحات/صورة عبر موديل رؤية).
+     *
+     * @param  array{kind: string, text?: string, images?: array<int, array{mime: string, binary: string}>}  $source
+     * @param  list<string>  $types
+     * @return array{questions: list<array<string, mixed>>, summary: string, model: string}
+     */
+    public function generateFromSource(
+        array $source,
+        array $types,
+        int $count = 5,
+        string $difficulty = 'medium',
+        string $objectives = '',
+        ?int $modelId = null,
+        string $experienceMode = 'classic'
+    ): array {
+        $experienceMode = $experienceMode === 'dynamic' ? 'dynamic' : 'classic';
+
+        $types = array_values(array_filter($types, fn ($t) => QuestionTypeRegistry::has((string) $t)));
+        if ($types === []) {
+            $types = QuestionTypeRegistry::types();
+        }
+
+        $count = max(1, min(15, $count));
+        $model = $this->resolveModel($modelId);
+        $provider = AIProviderFactory::create($model);
+
+        $kind = ($source['kind'] ?? '') === ExperienceSourceExtractionService::KIND_IMAGES
+            ? ExperienceSourceExtractionService::KIND_IMAGES
+            : ExperienceSourceExtractionService::KIND_TEXT;
+
+        $sourceText = trim((string) ($source['text'] ?? ''));
+        $images = is_array($source['images'] ?? null) ? $source['images'] : [];
+
+        // البرومبت نفسه المستخدم في التوليد من موضوع، لكن مقيّداً بمحتوى الملف
+        $topicLine = $kind === ExperienceSourceExtractionService::KIND_IMAGES
+            ? 'المحتوى المرفق في الصور'
+            : 'المحتوى المرفق أدناه';
+
+        $prompt = $experienceMode === 'dynamic'
+            ? $this->buildDynamicPrompt($topicLine, $types, $count, $difficulty, $objectives)
+            : $this->buildPrompt($topicLine, $types, $count, $difficulty, $objectives);
+
+        $prompt .= "\n\n".$this->sourceConstraintBlock($kind, $sourceText);
+
+        $maxTokens = min(max(2500, $count * 700), $model->max_tokens ?: 8000);
+        $options = ['max_tokens' => $maxTokens, 'temperature' => 0.55];
+
+        if ($kind === ExperienceSourceExtractionService::KIND_IMAGES) {
+            if ($images === []) {
+                throw new RuntimeException('لا توجد صور للتحليل.');
+            }
+
+            if (! VisionQuestionGenerationSupport::providerSupportsVisionConversion((string) $model->provider)) {
+                throw new RuntimeException(
+                    'النموذج المختار ('.($model->name ?: $model->provider).') لا يدعم تحليل الصور. '
+                    .'اختر نموذجاً من: OpenAI أو OpenRouter أو Anthropic أو Google أو Z.ai مع موديل يدعم الرؤية (Vision).'
+                );
+            }
+
+            $messages = VisionQuestionGenerationSupport::buildOpenAiStyleMessagesWithImages($prompt, $images);
+            $result = $provider->chat($messages, $options);
+
+            if (! ($result['success'] ?? false)) {
+                throw new RuntimeException((string) ($result['error'] ?? 'فشل طلب تحليل الصورة.'));
+            }
+
+            $response = (string) ($result['content'] ?? '');
+            $summarySuffix = 'من الملف المرفوع (تحليل بصري)';
+        } else {
+            if ($sourceText === '') {
+                throw new RuntimeException('لا يوجد نص لتوليد الأسئلة منه.');
+            }
+
+            $response = (string) $provider->generateText($prompt, $options);
+            $summarySuffix = 'من الملف المرفوع';
+        }
+
+        if (trim($response) === '') {
+            throw new RuntimeException($provider->getLastError() ?: 'فشل استدعاء الذكاء الاصطناعي.');
+        }
+
+        return $this->finishGeneration($response, $types, $count, $experienceMode, $model, $summarySuffix);
+    }
+
+    /**
+     * تعليمات تُقيّد النموذج بمحتوى الملف وتمنعه من الاستعانة بمعرفته العامة.
+     */
+    protected function sourceConstraintBlock(string $kind, string $sourceText): string
+    {
+        $rules = <<<'RULES'
+قواعد المصدر (إضافية وإلزامية):
+- استخرج الأسئلة من المحتوى المرفق فقط، وممنوع إضافة معلومات من خارجه.
+- إن كان المحتوى غير كافٍ لعدد الأسئلة المطلوب فأعد أسئلة أقل بدل اختلاق معلومات.
+- حافظ على المصطلحات والأسماء والأرقام كما وردت في المحتوى حرفياً.
+- تجاهل الحشو مثل أرقام الصفحات والترويسات والفهارس.
+RULES;
+
+        if ($kind === ExperienceSourceExtractionService::KIND_IMAGES) {
+            return $rules."\n- اقرأ نص الصور المرفقة بعناية واعتمد عليه وحده.";
+        }
+
+        return $rules."\n\n--- محتوى الملف ---\n".$sourceText;
     }
 
     protected function resolveModel(?int $modelId): AIModel
@@ -110,7 +235,9 @@ STICKERS;
             }
         }
 
-        $model = $this->modelService->getBestModelFor('text_generation')
+        // 'question_generation' قدرة معتمدة في AIModel::CAPABILITIES، بخلاف 'text_generation'
+        // التي كانت مستخدمة سابقاً فتسقط دائماً للنموذج الافتراضي.
+        $model = $this->modelService->getBestModelFor('question_generation')
             ?? $this->modelService->getDefaultModel();
 
         if (! $model) {
@@ -139,8 +266,8 @@ STICKERS;
                 'difficulty' => 'easy',
                 'hints' => ['تلميح'],
                 'explanation' => 'شرح',
-                'successMessage' => 'شرح',
-                'errorMessage' => 'حاول مرة أخرى',
+                'successMessage' => FeedbackPhrases::texts(FeedbackPhrases::KIND_SUCCESS)[0],
+                'errorMessage' => FeedbackPhrases::texts(FeedbackPhrases::KIND_FAIL)[0],
                 'estimatedSeconds' => 20,
                 'payload' => ['correct' => true],
             ],
@@ -202,6 +329,8 @@ STICKERS;
 
         $objectivesLine = $objectives !== '' ? "الأهداف التعليمية: {$objectives}" : 'الأهداف: فهم أساسي للموضوع.';
         $stickersClassic = self::AVAILABLE_STICKERS;
+        $successPhrases = $this->phraseList(FeedbackPhrases::KIND_SUCCESS);
+        $errorPhrases = $this->phraseList(FeedbackPhrases::KIND_FAIL);
 
         return <<<PROMPT
 أنت مصمم تجارب تعليمية تفاعلية عربية لطلاب صغار (مرحلة ابتدائية).
@@ -245,8 +374,10 @@ STICKERS;
 8) لـ drag_drop: items, zones, assignments
 9) لـ matching: left, right, pairs
 10) استخدم ids قصيرة مثل a,b,c أو i1,z1,l1,r1
-11) successMessage بعبارات أطفال حماسية مثل: "يا بطل!", "أحسنت يا شاطر!", "أنت نجم!", "وووو رائع!"
-12) errorMessage مشجّعة وليست قاسية مثل: "جرّب مرة ثانية!", "أنت قادر!", "فكّر بهدوء…"
+11) successMessage: انسخ عبارة واحدة حرفياً من هذه القائمة فقط (كل عبارة لها تسجيل صوتي مطابق، فأي تغيير في حرف واحد يُفقد الصوت). نوّع العبارات بين الأسئلة:
+{$successPhrases}
+12) errorMessage: انسخ عبارة واحدة حرفياً من هذه القائمة فقط (نفس القاعدة تماماً). نوّع العبارات بين الأسئلة:
+{$errorPhrases}
 13) نص السؤال والخيارات قصير وبسيط ومناسب لعمر صغير
 14) لكل خيار/عنصر أضف حقل icon: فضّل اسم ملصق من القائمة أعلاه (مثل lion) عندما يناسب الموضوع، وإلا إيموجي مناسب واحد فقط (مثل 🦁) — ممنوع تكرار الإيموجي كعدّاد (❌🍎🍎🍎)
 15) يمكن ترك imageUrl و audioUrl فارغين (null)
@@ -255,6 +386,20 @@ STICKERS;
 أمثلة البنية:
 {$examples}
 PROMPT;
+    }
+
+    /**
+     * قائمة العبارات المسموح بها كسطور مرقّمة للبرومبت.
+     * تُبنى من FeedbackPhrases حتى لا تتكرّر العبارات يدوياً في أكثر من موضع.
+     */
+    protected function phraseList(string $kind): string
+    {
+        $lines = [];
+        foreach (FeedbackPhrases::texts($kind) as $i => $text) {
+            $lines[] = '   '.($i + 1).'. '.$text;
+        }
+
+        return implode("\n", $lines);
     }
 
     /**
@@ -286,7 +431,7 @@ PROMPT;
      * @param  list<string>  $allowedTypes
      * @return array<string, mixed>|null
      */
-    protected function normalizeQuestion(array $question, array $allowedTypes): ?array
+    protected function normalizeQuestion(array $question, array $allowedTypes, int $index = 0): ?array
     {
         $type = (string) ($question['type'] ?? '');
         if (! in_array($type, $allowedTypes, true) || ! QuestionTypeRegistry::has($type)) {
@@ -313,8 +458,17 @@ PROMPT;
                 ? array_values(array_map('strval', $question['hints']))
                 : [],
             'explanation' => (string) ($question['explanation'] ?? ''),
-            'successMessage' => (string) ($question['successMessage'] ?? 'أحسنت!'),
-            'errorMessage' => (string) ($question['errorMessage'] ?? 'حاول مرة أخرى'),
+            // فرض قائمة العبارات المسجّلة صوتياً — البرومبت وحده لا يُعتمد عليه
+            'successMessage' => FeedbackPhrases::snap(
+                $question['successMessage'] ?? null,
+                FeedbackPhrases::KIND_SUCCESS,
+                $index
+            ),
+            'errorMessage' => FeedbackPhrases::snap(
+                $question['errorMessage'] ?? null,
+                FeedbackPhrases::KIND_FAIL,
+                $index
+            ),
             'estimatedSeconds' => is_numeric($question['estimatedSeconds'] ?? null)
                 ? (int) $question['estimatedSeconds']
                 : 30,
@@ -450,6 +604,10 @@ PROMPT;
         $objectivesLine = $objectives !== '' ? "الأهداف: {$objectives}" : 'فهم أساسي للموضوع.';
         $libs = implode(', ', SchemaValidator::ALLOWED_LIBRARIES);
         $stickers = self::AVAILABLE_STICKERS;
+        $successPhrases = $this->phraseList(FeedbackPhrases::KIND_SUCCESS);
+        $errorPhrases = $this->phraseList(FeedbackPhrases::KIND_FAIL);
+        $successExample = FeedbackPhrases::texts(FeedbackPhrases::KIND_SUCCESS)[0];
+        $errorExample = FeedbackPhrases::texts(FeedbackPhrases::KIND_FAIL)[0];
 
         return <<<PROMPT
 أنت مصمم تجارب تعليمية ديناميكية عربية للأطفال. أخرج Schema كتل فقط — ممنوع HTML/JS.
@@ -486,8 +644,8 @@ PROMPT;
   "difficulty": "easy",
   "hints": [],
   "explanation": "",
-  "successMessage": "يا بطل!",
-  "errorMessage": "جرّب مرة ثانية!",
+  "successMessage": "{$successExample}",
+  "errorMessage": "{$errorExample}",
   "estimatedSeconds": 20,
   "assets": {"libraries":["stickers","katex","tts"]}
 }
@@ -515,7 +673,11 @@ PROMPT;
 5) لـ math استخدم latex
 6) interaction.type من القائمة فقط، وشكل payload يطابق النوع تماماً حسب الجدول أعلاه
 7) استخدم ids قصيرة مثل a,b,c أو i1,z1,l1,r1
-8) أعد JSON: {"summary":"...","questions":[...]}
+8) successMessage: انسخ عبارة واحدة حرفياً من هذه القائمة فقط (كل عبارة لها تسجيل صوتي مطابق، فأي تغيير في حرف واحد يُفقد الصوت). نوّع العبارات بين الأسئلة:
+{$successPhrases}
+9) errorMessage: انسخ عبارة واحدة حرفياً من هذه القائمة فقط (نفس القاعدة تماماً). نوّع العبارات بين الأسئلة:
+{$errorPhrases}
+10) أعد JSON: {"summary":"...","questions":[...]}
 PROMPT;
     }
 
@@ -524,7 +686,7 @@ PROMPT;
      * @param  list<string>  $allowedTypes
      * @return array<string, mixed>|null
      */
-    protected function normalizeDynamicQuestion(array $question, array $allowedTypes): ?array
+    protected function normalizeDynamicQuestion(array $question, array $allowedTypes, int $index = 0): ?array
     {
         $interaction = is_array($question['interaction'] ?? null) ? $question['interaction'] : [];
         $type = (string) ($interaction['type'] ?? $question['type'] ?? '');
@@ -544,11 +706,11 @@ PROMPT;
             'difficulty' => $question['difficulty'] ?? 'medium',
             'hints' => $question['hints'] ?? [],
             'explanation' => $question['explanation'] ?? '',
-            'successMessage' => $question['successMessage'] ?? 'يا بطل!',
-            'errorMessage' => $question['errorMessage'] ?? 'جرّب مرة ثانية!',
+            'successMessage' => $question['successMessage'] ?? null,
+            'errorMessage' => $question['errorMessage'] ?? null,
             'estimatedSeconds' => $question['estimatedSeconds'] ?? 20,
             'payload' => $payload,
-        ], $allowedTypes);
+        ], $allowedTypes, $index);
 
         if (! $classic) {
             return null;

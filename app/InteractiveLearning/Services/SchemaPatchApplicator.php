@@ -2,6 +2,7 @@
 
 namespace App\InteractiveLearning\Services;
 
+use App\InteractiveLearning\Support\FeedbackPhrases;
 use InvalidArgumentException;
 
 class SchemaPatchApplicator
@@ -67,9 +68,15 @@ class SchemaPatchApplicator
                 continue;
             }
             $found = true;
-            foreach (['stem', 'explanation', 'successMessage', 'errorMessage', 'difficulty'] as $key) {
+            foreach (['stem', 'explanation', 'difficulty'] as $key) {
                 if (array_key_exists($key, $fields) && is_scalar($fields[$key])) {
                     $questions[$i][$key] = (string) $fields[$key];
+                }
+            }
+            // الرسائل مقيّدة بقائمة العبارات المسجّلة صوتياً — أي عبارة أخرى تُضبط عليها
+            foreach (['successMessage' => FeedbackPhrases::KIND_SUCCESS, 'errorMessage' => FeedbackPhrases::KIND_FAIL] as $key => $kind) {
+                if (array_key_exists($key, $fields) && is_scalar($fields[$key])) {
+                    $questions[$i][$key] = FeedbackPhrases::snap((string) $fields[$key], $kind, $i);
                 }
             }
             if (isset($fields['hints']) && is_array($fields['hints'])) {

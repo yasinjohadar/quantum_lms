@@ -1,4 +1,4 @@
-import { optionButtons, bindSpeakers } from './_helpers.js';
+import { optionButtons, bindSpeakers, revealChoice, lockChoice } from './_helpers.js';
 
 export const multipleChoiceModule = {
     type: 'multiple_choice',
@@ -18,6 +18,7 @@ export const multipleChoiceModule = {
                     const inp = lab.querySelector('input');
                     lab.classList.toggle('is-selected', Boolean(inp?.checked));
                 });
+                ctx.playSfx?.('pop');
                 ctx.bus.emit('answer.changed', { questionId: ctx.question.id });
             });
         });
@@ -28,6 +29,13 @@ export const multipleChoiceModule = {
     destroy() {
         if (this._el) this._el.innerHTML = '';
         this._el = null;
+    },
+    reveal({ answer } = {}) {
+        revealChoice(this._el, {
+            correctIds: this._correctIds,
+            chosenIds: Array.isArray(answer) ? answer : [],
+        });
+        lockChoice(this._el);
     },
     getAnswer() {
         return [...(this._el?.querySelectorAll('input:checked') || [])].map((i) => i.value);

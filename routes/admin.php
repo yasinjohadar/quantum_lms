@@ -715,6 +715,10 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('learning-experiences.ai.generate');
         Route::post('learning-experiences/{learning_experience}/ai/generate-apply', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'aiGenerateApply'])
             ->name('learning-experiences.ai.generate-apply');
+        Route::post('learning-experiences/{learning_experience}/ai/source/extract', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'aiSourceExtract'])
+            ->name('learning-experiences.ai.source.extract');
+        Route::post('learning-experiences/{learning_experience}/ai/source/generate', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'aiGenerateFromSource'])
+            ->name('learning-experiences.ai.source.generate');
         Route::post('learning-experiences/{learning_experience}/import/parse', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'importParse'])
             ->name('learning-experiences.import.parse');
         Route::post('learning-experiences/{learning_experience}/import/apply', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'importApply'])

@@ -72,9 +72,8 @@ class BadgeService
 
         // فحص عدد الاختبارات المكتملة
         if (isset($criteria['quizzes_completed'])) {
-            $quizzesCompleted = $user->quizAttempts()
-                ->completed()
-                ->count();
+            // العادية + التفاعلية
+            $quizzesCompleted = $user->completedQuizAttemptsCount();
             if ($quizzesCompleted < $criteria['quizzes_completed']) {
                 return false;
             }

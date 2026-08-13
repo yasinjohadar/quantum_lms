@@ -569,50 +569,87 @@
             padding-right: 0.75rem;
         }
 
+        /* عرض السؤال أولاً، ثم أزرار التنقل، ثم التقدم/الوقت تحتها */
+        .sqt-take .sqt-main-col {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sqt-take #question-card {
+            order: 1;
+        }
+
+        .sqt-take .sqt-nav {
+            order: 2;
+        }
+
+        .sqt-take .sqt-stats {
+            order: 3;
+            margin-top: 0.5rem;
+        }
+
         .sqt-take .sqt-hero {
-            padding: 0.75rem 0.9rem;
-            margin-bottom: 0.75rem;
-            gap: 0.65rem;
+            padding: 0.45rem 0.65rem;
+            margin-bottom: 0.5rem;
+            gap: 0.5rem;
         }
 
         .sqt-take .sqt-hero__icon {
-            width: 42px;
-            height: 42px;
-            font-size: 1.15rem;
-            border-radius: 12px;
+            display: none;
         }
 
-        .sqt-take .sqt-hero__title { font-size: 1rem; }
+        .sqt-take .sqt-hero__title { font-size: 0.9rem; }
 
-        .sqt-take .sqt-hero__meta { font-size: 0.8rem; }
+        .sqt-take .sqt-hero__meta { font-size: 0.72rem; }
+
+        .sqt-take .sqt-stats {
+            margin-bottom: 0.5rem;
+        }
+
+        .sqt-take #timer-card .card-body {
+            padding: 0.5rem 0.6rem;
+        }
 
         .sqt-take #timer-card .sqt-timer__icon {
-            width: 36px;
-            height: 36px;
-            font-size: 1rem;
+            width: 28px;
+            height: 28px;
+            font-size: 0.85rem;
         }
 
-        .sqt-take #timer-display { font-size: 1.2rem; }
+        .sqt-take #timer-display { font-size: 1.05rem; }
 
         .sqt-take .sqt-progress-card {
-            padding: 0.7rem 0.85rem;
+            padding: 0.5rem 0.65rem;
             border-radius: 14px;
         }
 
-        .sqt-take .sqt-progress-card .progress { height: 10px; }
+        .sqt-take .sqt-progress-card .d-flex.justify-content-between {
+            font-size: 0.75rem;
+        }
+
+        .sqt-take .sqt-progress-card .progress { height: 8px; }
+
+        .sqt-take #question-card {
+            margin-bottom: 0.5rem;
+        }
 
         .sqt-take #question-card .sqt-q-head,
         .sqt-take #question-card > .card-header {
-            padding: 0.75rem 0.9rem;
+            padding: 0.5rem 0.7rem;
         }
 
         .sqt-take #question-card .sqt-q-head h5,
         .sqt-take #question-card .card-header h5 {
-            font-size: 0.95rem;
+            font-size: 0.85rem;
+        }
+
+        .sqt-take #question-card .badge.bg-light {
+            padding: 0.3rem 0.55rem;
+            font-size: 0.75rem;
         }
 
         .sqt-take #question-content {
-            min-height: 100px;
+            min-height: 60px;
             font-size: 1rem;
         }
 
@@ -688,7 +725,7 @@
         }
 
         .sqt-take #timer-card .card-body {
-            padding: 0.65rem 0.55rem;
+            padding: 0.4rem 0.5rem;
         }
 
         .sqt-take #timer-card .sqt-timer {
@@ -701,13 +738,11 @@
             text-align: center !important;
         }
 
-        .sqt-take #timer-display { font-size: 1.1rem; }
+        .sqt-take #timer-display { font-size: 1rem; }
 
         .sqt-take #questions-list {
             grid-template-columns: repeat(5, minmax(0, 1fr));
         }
-
-        .sqt-take .sqt-hero__icon { display: none; }
     }
 
     @media (prefers-reduced-motion: reduce) {

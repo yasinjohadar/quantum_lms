@@ -1,4 +1,4 @@
-import { escapeAttr, escapeHtml, mediaVisualHtml, speakerButtonHtml, bindSpeakers, optionLabelHtml, optionsNeedKatex } from './_helpers.js';
+import { escapeAttr, escapeHtml, mediaVisualHtml, speakerButtonHtml, bindSpeakers, optionLabelHtml, optionsNeedKatex, revealChoice, lockChoice } from './_helpers.js';
 import { loadLibraries } from '../dynamic/LibraryLoader.js';
 
 /** Independent module: listen then choose. */
@@ -28,7 +28,7 @@ export const listenChooseModule = {
             <div class="ile-options">
                 ${options
                     .map(
-                        (opt) => `<label class="ile-option">
+                        (opt) => `<label class="ile-option" data-id="${escapeAttr(opt.id)}">
                             <input type="radio" name="lc_${escapeAttr(ctx.question.id)}" value="${escapeAttr(opt.id)}">
                             <span class="ile-option__media">${mediaVisualHtml(opt)}</span>
                             <span class="ile-option__label">${optionLabelHtml(opt)}</span>
@@ -49,10 +49,18 @@ export const listenChooseModule = {
             input.addEventListener('change', () => {
                 el.querySelectorAll('.ile-option').forEach((lab) => lab.classList.remove('is-selected'));
                 input.closest('.ile-option')?.classList.add('is-selected');
+                ctx.playSfx?.('pop');
                 ctx.bus.emit('answer.changed', { questionId: ctx.question.id });
             });
         });
         bindSpeakers(el, ctx.playOptionAudio);
+    },
+    reveal({ answer } = {}) {
+        revealChoice(this._el, {
+            correctIds: [this._correctId],
+            chosenIds: [answer],
+        });
+        lockChoice(this._el);
     },
     resolveSpeakText(question, prompt, options) {
         const direct = prompt.text || prompt.speak || prompt.word || '';

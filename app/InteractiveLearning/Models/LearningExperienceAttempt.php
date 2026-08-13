@@ -14,6 +14,7 @@ class LearningExperienceAttempt extends Model
         'score',
         'total',
         'percentage',
+        'passed',
         'duration',
         'started_at',
         'finished_at',
@@ -31,7 +32,14 @@ class LearningExperienceAttempt extends Model
             'percentage' => 'float',
             'score' => 'float',
             'total' => 'float',
+            'passed' => 'boolean',
         ];
+    }
+
+    /** مطابقة QuizAttempt::scopePassed للاستعلامات الإحصائية. */
+    public function scopePassed($query)
+    {
+        return $query->where('passed', true);
     }
 
     public function experience(): BelongsTo

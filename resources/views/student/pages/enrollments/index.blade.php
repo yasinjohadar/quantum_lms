@@ -180,7 +180,7 @@
                     }, 300);
                 } else {
                     showAlert('success', data.message || 'تم إرسال طلب الانضمام بنجاح!');
-                    setTimeout(function () { window.location.reload(); }, 800);
+                    setTimeout(function () { window.location.href = '{{ route("student.classes") }}'; }, 800);
                 }
             } else {
                 showAlert('warning', data.message || 'حدث خطأ أثناء إرسال الطلب');

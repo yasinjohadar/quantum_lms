@@ -2,6 +2,7 @@
 
 namespace App\InteractiveLearning\Services;
 
+use App\InteractiveLearning\Support\FeedbackPhrases;
 use App\Services\AI\AIModelService;
 use App\Services\AI\AIProviderFactory;
 use Illuminate\Support\Facades\Log;
@@ -69,11 +70,21 @@ class AiPatchService
     protected function buildPrompt(array $schema, string $intent): string
     {
         $json = json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        $successPhrases = implode("\n", array_map(
+            fn ($t, $i) => '   '.($i + 1).'. '.$t,
+            FeedbackPhrases::texts(FeedbackPhrases::KIND_SUCCESS),
+            array_keys(FeedbackPhrases::texts(FeedbackPhrases::KIND_SUCCESS))
+        ));
+        $errorPhrases = implode("\n", array_map(
+            fn ($t, $i) => '   '.($i + 1).'. '.$t,
+            FeedbackPhrases::texts(FeedbackPhrases::KIND_FAIL),
+            array_keys(FeedbackPhrases::texts(FeedbackPhrases::KIND_FAIL))
+        ));
 
         return <<<PROMPT
 أنت مساعد تأليف تجارب تعليمية تفاعلية لطلاب صغار.
 مهمتك اقتراح تحسينات على Schema الجلسة دون تغيير المنطق الصحيح للإجابات.
-استخدم لغة عربية بسيطة حماسية تناسب الأطفال (مثل: يا بطل، أحسنت يا شاطر، جرّب مرة ثانية).
+استخدم لغة عربية بسيطة حماسية تناسب الأطفال.
 
 النية: {$intent}
 
@@ -100,7 +111,11 @@ class AiPatchService
 4) لا تغيّر correct / correctId / correctIds / assignments / pairs إلا إذا كان النص فقط (labels) أوضح.
 5) لا تُخرج HTML أو JavaScript.
 6) لا تنشر — اقترح operations فقط.
-7) successMessage و errorMessage و messages يجب أن تكون قصيرة وحماسية للأطفال.
+7) successMessage: انسخ عبارة واحدة حرفياً من هذه القائمة فقط (كل عبارة لها تسجيل صوتي مطابق، وأي تغيير في حرف واحد يُفقد الصوت):
+{$successPhrases}
+   و errorMessage من هذه القائمة فقط بنفس القاعدة:
+{$errorPhrases}
+   وإن لم تحتج تغييرها فلا تضعها في fields إطلاقاً.
 8) عند تحسين الخيارات أضف أو حسّن حقل icon بإيموجي مناسب لكل خيار إن أمكن.
 
 Schema الحالي:

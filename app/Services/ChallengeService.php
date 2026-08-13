@@ -87,10 +87,8 @@ class ChallengeService
                     $startDate = $challenge->start_date;
                     $endDate = $challenge->end_date;
                     
-                    $current = $user->quizAttempts()
-                        ->completed()
-                        ->whereBetween('finished_at', [$startDate, $endDate])
-                        ->count();
+                    // العادية + التفاعلية داخل نافذة التحدي
+                    $current = $user->completedQuizAttemptsCount($startDate, $endDate);
                     
                     $progress = max($progress, $target > 0 ? min(100, ($current / $target) * 100) : 0);
                 }

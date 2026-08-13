@@ -1,7 +1,8 @@
 @php
     /** @var \App\InteractiveLearning\Models\LearningExperienceAttempt $attempt */
     $scorePct = round((float) ($attempt->percentage ?? 0), 1);
-    $passed = $scorePct >= 50;
+    // النجاح محسوب على الخادم مقابل passing_score للتجربة (بدل 50 مكتوبة هنا)
+    $passed = (bool) $attempt->passed;
     $scoreClass = $passed ? 'passed' : 'failed';
 @endphp
 

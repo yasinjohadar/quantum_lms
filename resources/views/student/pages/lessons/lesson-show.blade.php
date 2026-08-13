@@ -30,7 +30,7 @@
         <div class="row">
             <!-- مشغل الفيديو -->
             <div class="col-xl-8 col-lg-12">
-                <div class="card">
+                <div class="card lesson-video-card">
                     <div class="card-body">
                         @if($lesson->embed_url)
                             @php
@@ -449,6 +449,27 @@
 [data-theme-mode="dark"] .content-tree-flat .list-group-item.list-group-item-action.current-lesson:hover .text-muted,
 [data-theme-mode="dark"] .content-tree-flat .list-group-item.list-group-item-action.current-lesson:hover i {
     color: #fff !important;
+}
+
+/* جعل الفيديو fixed في الأعلى على الجوال */
+@media (max-width: 1199px) {
+    .lesson-video-card {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        z-index: 1050;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        margin: 0 !important;
+        border-radius: 0;
+        max-height: 50vh;
+        overflow: hidden;
+    }
+
+    .col-xl-8 {
+        margin-top: calc(50vh + 1rem) !important;
+    }
 }
 </style>
 @stop

@@ -112,6 +112,31 @@
     [data-theme-mode="dark"] .section-lesson-video-btn.active .lesson-row-card__title {
         color: #9ec5fe;
     }
+
+    /* تثبيت شريط (Breadcrumb + الفيديو) أعلى الشاشة على الجوال (fixed بدل sticky لأن body { overflow-x: clip } في ملف الثيم يعطّل sticky على بعض المتصفحات مثل Safari) */
+    @media (max-width: 991.98px) {
+        #unitFixedTopBar {
+            position: fixed;
+            top: 3.75rem;
+            inset-inline: 0;
+            z-index: 90;
+            background: var(--custom-white, #fff);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+            padding: 0.5rem 0.75rem 0;
+        }
+        [data-theme-mode="dark"] #unitFixedTopBar {
+            background: var(--custom-black, #1a1d21);
+        }
+        #unitFixedTopBar .student-content-breadcrumb {
+            margin-bottom: 0.5rem !important;
+        }
+        #unitFixedTopBar #unitVideoPlayerCard {
+            margin: 0 !important;
+        }
+        #unitFixedTopSpacer {
+            display: block !important;
+        }
+    }
 </style>
 @endpush
 
@@ -119,11 +144,41 @@
 <div class="main-content app-content">
     <div class="container-fluid pt-3">
 
-        @include('student.pages.lessons.partials.subject-content-breadcrumb', [
-            'subject' => $subject,
-            'section' => $section,
-            'unit' => $unit,
-        ])
+        @if($visibleLessons->count() > 0)
+            <div id="unitFixedTopSpacer" style="display: none;"></div>
+            <div id="unitFixedTopBar">
+                @include('student.pages.lessons.partials.subject-content-breadcrumb', [
+                    'subject' => $subject,
+                    'section' => $section,
+                    'unit' => $unit,
+                ])
+
+                {{-- مشغّل الفيديو في الأعلى --}}
+                <div id="unitVideoPlayerCard" class="card mb-4">
+                    <div class="card-body">
+                        <div id="unitVideoPlayerPlaceholder" class="text-center py-5 text-muted bg-light rounded">
+                            <i class="bi bi-collection-play display-5 d-block mb-2"></i>
+                            <p class="mb-0">اختر درساً من القائمة لمشاهدة الفيديو</p>
+                        </div>
+                        <div id="unitVideoPlayerContainer" class="unit-video-player bg-dark rounded overflow-hidden position-relative" style="display: none;" data-progress-url-base="{{ url('student/lessons') }}">
+                            <iframe id="unitVideoIframe" title="" src="" frameborder="0" referrerpolicy="strict-origin-when-cross-origin" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen loading="eager" class="position-absolute top-0 start-0 w-100 h-100" style="display: none;"></iframe>
+                            <video id="unitVideoNative" controls class="position-absolute top-0 start-0 w-100 h-100" controlsList="nodownload" style="display: none;">
+                                <source src="" type="video/mp4">
+                                <source src="" type="video/webm">
+                                <source src="" type="video/ogg">
+                                المتصفح لا يدعم تشغيل الفيديو.
+                            </video>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @else
+            @include('student.pages.lessons.partials.subject-content-breadcrumb', [
+                'subject' => $subject,
+                'section' => $section,
+                'unit' => $unit,
+            ])
+        @endif
 
         @if(session('error'))
             <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
@@ -142,27 +197,6 @@
             <div class="card mb-4">
                 <div class="card-body">
                     <p class="mb-0 text-muted">{{ $unit->description }}</p>
-                </div>
-            </div>
-        @endif
-
-        @if($visibleLessons->count() > 0)
-            {{-- مشغّل الفيديو في الأعلى --}}
-            <div id="unitVideoPlayerCard" class="card mb-4">
-                <div class="card-body">
-                    <div id="unitVideoPlayerPlaceholder" class="text-center py-5 text-muted bg-light rounded">
-                        <i class="bi bi-collection-play display-5 d-block mb-2"></i>
-                        <p class="mb-0">اختر درساً من القائمة لمشاهدة الفيديو</p>
-                    </div>
-                    <div id="unitVideoPlayerContainer" class="unit-video-player bg-dark rounded overflow-hidden position-relative" style="display: none;" data-progress-url-base="{{ url('student/lessons') }}">
-                        <iframe id="unitVideoIframe" title="" src="" frameborder="0" referrerpolicy="strict-origin-when-cross-origin" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen loading="eager" class="position-absolute top-0 start-0 w-100 h-100" style="display: none;"></iframe>
-                        <video id="unitVideoNative" controls class="position-absolute top-0 start-0 w-100 h-100" controlsList="nodownload" style="display: none;">
-                            <source src="" type="video/mp4">
-                            <source src="" type="video/webm">
-                            <source src="" type="video/ogg">
-                            المتصفح لا يدعم تشغيل الفيديو.
-                        </video>
-                    </div>
                 </div>
             </div>
         @endif
@@ -467,6 +501,34 @@
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', autoPlayFirst);
     else autoPlayFirst();
+})();
+</script>
+<script>
+(function() {
+    var bar     = document.getElementById('unitFixedTopBar');
+    var spacer  = document.getElementById('unitFixedTopSpacer');
+    if (!bar || !spacer) return;
+
+    function isMobileNav() {
+        return window.matchMedia('(max-width: 991.98px)').matches;
+    }
+
+    function syncSpacerHeight() {
+        if (!isMobileNav()) {
+            spacer.style.height = '';
+            return;
+        }
+        spacer.style.height = bar.getBoundingClientRect().height + 'px';
+    }
+
+    syncSpacerHeight();
+    window.addEventListener('resize', syncSpacerHeight);
+    window.addEventListener('orientationchange', syncSpacerHeight);
+    window.addEventListener('load', syncSpacerHeight);
+
+    if (window.ResizeObserver) {
+        new ResizeObserver(syncSpacerHeight).observe(bar);
+    }
 })();
 </script>
 @endpush

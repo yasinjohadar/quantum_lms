@@ -72,6 +72,30 @@
                 font-size: 0.8rem;
             }
         }
+
+        /* على الجوال: الاختصارات السريعة أولاً (بترتيب معكوس)، ثم الودجات الملونة تحتها */
+        @media (max-width: 991.98px) {
+            .main-content.app-content > .container-fluid {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .main-content.app-content > .container-fluid > .dashboard-welcome { order: 0; }
+            .main-content.app-content > .container-fluid > .dashboard-shortcuts-row { order: 1; }
+            .main-content.app-content > .container-fluid > .dashboard-stats-row { order: 2; }
+            .main-content.app-content > .container-fluid > .dashboard-main-row { order: 3; }
+
+            .dashboard-shortcuts-grid {
+                flex-direction: row-reverse;
+            }
+        }
+
+        /* دون 576px تصبح البطاقات عموداً واحداً، فنعكسها عمودياً بدل أفقياً */
+        @media (max-width: 575.98px) {
+            .dashboard-shortcuts-grid {
+                flex-direction: column-reverse;
+            }
+        }
     </style>
 @endpush
 
@@ -90,7 +114,7 @@
                 $subjectsTotal = $subjectsCount ?? $subjectsCollection->count();
             @endphp
 
-            <div class="row mb-4">
+            <div class="row mb-4 dashboard-stats-row">
                 <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
                     <div class="dashboard-stat-card dashboard-stat-card--enrollments h-100">
                         <div class="dashboard-stat-card__body">
@@ -155,7 +179,7 @@
                 </div>
             </div>
 
-            <div class="row mb-4">
+            <div class="row mb-4 dashboard-shortcuts-row">
                 <div class="col-12">
                     <div class="card dashboard-panel">
                         <div class="card-header pb-2">
@@ -165,7 +189,7 @@
                             <p class="fs-12 text-muted mb-0">الوصول السريع لأهم أقسام منصتك</p>
                         </div>
                         <div class="card-body">
-                            <div class="row g-3">
+                            <div class="row g-3 dashboard-shortcuts-grid">
                                 <x-dashboard-shortcut
                                     href="{{ route('student.classes') }}"
                                     icon="fas fa-layer-group"
@@ -212,7 +236,7 @@
                 </div>
             </div>
 
-            <div class="row">
+            <div class="row dashboard-main-row">
                 <div class="col-xl-7 col-lg-12 mb-4">
                     <div class="card dashboard-panel h-100">
                         <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">

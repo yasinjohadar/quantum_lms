@@ -27,6 +27,8 @@ export class QuizSession {
             return sum + Number(classic.points ?? q.points ?? 1);
         }, 0);
         this.wrongCount = 0;
+        this.streak = 0;
+        this.bestStreak = 0;
         this.startedAt = null;
         this.finishedAt = null;
         this.currentModule = null;
@@ -36,6 +38,7 @@ export class QuizSession {
             motion: schema.theme?.motion || 'full',
             passThreshold: config.passThreshold ?? 50,
             ttsUrl: config.ttsUrl || '',
+            feedbackPhrases: config.feedbackPhrases || {},
         });
     }
 
@@ -71,6 +74,8 @@ export class QuizSession {
                     </div>
                     <div class="ile-header__meta">
                         <span id="ile-step"></span>
+                        <span class="ile-hud ile-hud--score" id="ile-score" title="نجومك">⭐ <strong id="ile-score-value">0</strong></span>
+                        <span class="ile-hud ile-hud--streak" id="ile-streak" title="إجابات صحيحة متتالية" hidden>🔥 <strong id="ile-streak-value">0</strong></span>
                         <button type="button" class="ile-mute" id="ile-mute" title="${this.fx.muted ? 'تشغيل الصوت' : 'كتم الصوت'}" aria-label="الصوت"><i class="bi ${this.fx.muted ? 'bi-volume-mute-fill' : 'bi-volume-up-fill'}" aria-hidden="true"></i></button>
                     </div>
                 </header>
@@ -128,6 +133,42 @@ export class QuizSession {
         if (step) step.textContent = `سؤال ${this.index + 1} من ${this.questions.length}`;
     }
 
+    /** مجموع النجوم المكتسبة حتى الآن — مشتق من this.answers فلا يتعارض مع حساب complete(). */
+    earnedScore() {
+        return this.answers.reduce((sum, a) => sum + Number(a.score || 0), 0);
+    }
+
+    /**
+     * تحديث رقاقتَي النجوم والسلسلة في الرأس.
+     * @param {boolean} bump هل نُشغّل حركة القفزة (عند كسب نجوم جديدة)
+     */
+    updateHud({ bump = false } = {}) {
+        const earned = this.earnedScore();
+
+        const scoreEl = this.root?.querySelector('#ile-score');
+        const scoreValue = this.root?.querySelector('#ile-score-value');
+        if (scoreValue) scoreValue.textContent = String(Math.round(earned * 10) / 10);
+        if (scoreEl && bump) {
+            scoreEl.classList.remove('ile-hud--bump');
+            void scoreEl.offsetWidth; // إعادة تشغيل الحركة
+            scoreEl.classList.add('ile-hud--bump');
+        }
+
+        // السلسلة تظهر كمكافأة من الإجابة الصحيحة الثانية المتتالية
+        const streakEl = this.root?.querySelector('#ile-streak');
+        const streakValue = this.root?.querySelector('#ile-streak-value');
+        if (streakValue) streakValue.textContent = String(this.streak);
+        if (streakEl) {
+            const show = this.streak >= 2;
+            streakEl.hidden = !show;
+            if (show && bump) {
+                streakEl.classList.remove('ile-hud--bump');
+                void streakEl.offsetWidth;
+                streakEl.classList.add('ile-hud--bump');
+            }
+        }
+    }
+
     async destroyCurrent() {
         if (!this.currentModule) return;
         const q = this.questions[this.index];
@@ -149,6 +190,7 @@ export class QuizSession {
         const question = this.isDynamic ? toClassicQuestion(raw) : raw;
 
         this.updateProgress();
+        this.updateHud();
 
         const stemEl = this.root.querySelector('#ile-stem');
         if (this.isDynamic && Array.isArray(raw.stemBlocks) && raw.stemBlocks.length) {
@@ -214,7 +256,11 @@ export class QuizSession {
         const color = this.typeColor(question.type);
 
         if (result.correct) {
-            const okMsg = this.fx.cheer(this.root, { correct: true, color });
+            const okMsg = this.fx.cheer(this.root, {
+                correct: true,
+                color,
+                phrase: question.successMessage || '',
+            });
             feedback.hidden = false;
             feedback.className = 'ile-feedback ile-feedback--ok';
             const textEl = feedback.querySelector('#ile-feedback-text');
@@ -231,11 +277,22 @@ export class QuizSession {
             }
             this.bus.emit('question.correct', { questionId: question.id, result });
             this.recordAnswer(question, answer, result, used);
+            // الإجابة صحيحة: نكشف اختياره الصحيح فوراً ونزيد السلسلة
+            this.currentModule.reveal?.({ answer, result });
+            this.streak += 1;
+            this.bestStreak = Math.max(this.bestStreak, this.streak);
+            this.updateHud({ bump: true });
             this.root.querySelector('#ile-submit').hidden = true;
             this.root.querySelector('#ile-next').hidden = false;
         } else {
             this.wrongCount += 1;
-            const badMsg = this.fx.cheer(this.root, { correct: false, color });
+            this.streak = 0;
+            this.updateHud();
+            const badMsg = this.fx.cheer(this.root, {
+                correct: false,
+                color,
+                phrase: question.errorMessage || '',
+            });
             feedback.hidden = false;
             feedback.className = 'ile-feedback ile-feedback--bad';
             const textEl = feedback.querySelector('#ile-feedback-text');
@@ -250,6 +307,9 @@ export class QuizSession {
             const maxAttempts = Number(this.rules.attemptsPerQuestion ?? 1);
             if (used >= maxAttempts) {
                 this.recordAnswer(question, answer, result, used);
+                // نفدت المحاولات: الآن فقط نكشف الصواب حتى لا نُفسد محاولة متبقية
+                this.currentModule.reveal?.({ answer, result });
+                this.updateHud();
                 this.root.querySelector('#ile-submit').hidden = true;
                 this.root.querySelector('#ile-next').hidden = false;
                 if (this.rules.showExplanation && question.explanation && hintEl) {
@@ -379,6 +439,7 @@ export class QuizSession {
                     <li>صح: ${correct}</li>
                     <li>جرّبنا: ${wrong}</li>
                     <li>الوقت: ${payload.duration} ث</li>
+                    ${this.bestStreak >= 2 ? `<li>أطول سلسلة: 🔥 ${this.bestStreak}</li>` : ''}
                 </ul>
                 <div class="ile-results__actions">
                     <button type="button" class="ile-btn ile-btn--primary" id="ile-retry">${passed ? 'العب مرة ثانية!' : 'يلا نعيد!'}</button>

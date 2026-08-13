@@ -2,6 +2,7 @@
 
 namespace App\InteractiveLearning\Services;
 
+use App\InteractiveLearning\Support\FeedbackPhrases;
 use App\InteractiveLearning\Support\QuestionTypeRegistry;
 use Illuminate\Support\Str;
 
@@ -656,8 +657,8 @@ class SchemaValidator
             'difficulty' => $classic['difficulty'] ?? 'medium',
             'hints' => [],
             'explanation' => '',
-            'successMessage' => $classic['successMessage'] ?? 'يا بطل!',
-            'errorMessage' => $classic['errorMessage'] ?? 'جرّب مرة ثانية!',
+            'successMessage' => $classic['successMessage'] ?? FeedbackPhrases::texts(FeedbackPhrases::KIND_SUCCESS)[0],
+            'errorMessage' => $classic['errorMessage'] ?? FeedbackPhrases::texts(FeedbackPhrases::KIND_FAIL)[0],
             'estimatedSeconds' => $classic['estimatedSeconds'] ?? 30,
             'tags' => [],
             'learningObjectives' => [],
@@ -696,8 +697,9 @@ class SchemaValidator
             'difficulty' => 'medium',
             'hints' => [],
             'explanation' => '',
-            'successMessage' => 'يا بطل!',
-            'errorMessage' => 'جرّب مرة ثانية!',
+            // القيم الافتراضية من قائمة العبارات المسجّلة صوتياً (FeedbackPhrases)
+            'successMessage' => FeedbackPhrases::texts(FeedbackPhrases::KIND_SUCCESS)[0],
+            'errorMessage' => FeedbackPhrases::texts(FeedbackPhrases::KIND_FAIL)[0],
             'estimatedSeconds' => 30,
             'tags' => [],
             'learningObjectives' => [],

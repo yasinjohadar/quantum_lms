@@ -277,9 +277,12 @@
         applyUrl: @js(route('admin.learning-experiences.ai.apply', $experience)),
         generateUrl: @js(route('admin.learning-experiences.ai.generate', $experience)),
         generateApplyUrl: @js(route('admin.learning-experiences.ai.generate-apply', $experience)),
+        sourceExtractUrl: @js(route('admin.learning-experiences.ai.source.extract', $experience)),
+        sourceGenerateUrl: @js(route('admin.learning-experiences.ai.source.generate', $experience)),
         importApplyUrl: @js(route('admin.learning-experiences.import.apply', $experience)),
         csrf: @js(csrf_token()),
-     }, @js($aiModels->map(fn ($m) => ['id' => $m->id, 'name' => $m->name, 'provider' => $m->provider, 'is_default' => (bool) $m->is_default])->values()), @js($blankDynamicTemplates), @js($dynamicInteractionTypes))">
+        feedbackPhrases: @js($feedbackPhrases),
+     },@js($aiModels->map(fn ($m) => ['id' => $m->id, 'name' => $m->name, 'provider' => $m->provider, 'is_default' => (bool) $m->is_default])->values()), @js($blankDynamicTemplates), @js($dynamicInteractionTypes))">
     <div class="container-fluid">
 
         <div class="ile-hero">
@@ -316,15 +319,85 @@
             </div>
             <div class="ile-panel__body">
                 <p class="ile-hint">يُنشئ الذكاء الاصطناعي أسئلة من الأنواع المختارة عبر نماذج النظام، ثم تراجعها قبل الإضافة إلى التجربة.</p>
+
+                {{-- مصدر التوليد: موضوع نصي أو ملف PDF/صورة --}}
+                <div class="btn-group mb-3" role="group" aria-label="مصدر التوليد">
+                    <button type="button" class="btn btn-sm"
+                            :class="gen.source === 'topic' ? 'btn-primary' : 'btn-outline-primary'"
+                            @click="gen.source = 'topic'">
+                        <i class="bi bi-pencil"></i> من موضوع
+                    </button>
+                    <button type="button" class="btn btn-sm"
+                            :class="gen.source === 'file' ? 'btn-primary' : 'btn-outline-primary'"
+                            @click="gen.source = 'file'">
+                        <i class="bi bi-file-earmark-arrow-up"></i> من ملف PDF أو صورة
+                    </button>
+                </div>
+
                 <div class="row g-3">
-                    <div class="col-lg-6">
-                        <label class="form-label">الموضوع *</label>
-                        <input type="text" class="form-control" x-model="gen.topic" placeholder="مثال: أساسيات الطاقة الشمسية">
-                    </div>
+                    <template x-if="gen.source === 'topic'">
+                        <div class="col-lg-6">
+                            <label class="form-label">الموضوع *</label>
+                            <input type="text" class="form-control" x-model="gen.topic" placeholder="مثال: أساسيات الطاقة الشمسية">
+                        </div>
+                    </template>
+
+                    <template x-if="gen.source === 'file'">
+                        <div class="col-lg-6">
+                            <label class="form-label">ملف المصدر *</label>
+                            <div class="input-group">
+                                <input type="file" class="form-control" accept=".pdf,image/jpeg,image/png,image/webp,image/gif"
+                                       @change="onSourceFileChange($event)">
+                                <button type="button" class="btn btn-outline-secondary"
+                                        @click="extractSourceFile()"
+                                        :disabled="srcLoading || !srcFile">
+                                    <span x-show="!srcLoading">تحليل الملف</span>
+                                    <span x-show="srcLoading" x-cloak>جاري التحليل…</span>
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                ملف PDF نصي يعمل دائماً. الصور والـ PDF الممسوح ضوئياً يحتاجان نموذجاً يدعم الرؤية
+                                (OpenAI / OpenRouter / Anthropic / Google / Z.ai)، والممسوح يحتاج Imagick على الخادم.
+                            </div>
+                            <div class="text-danger small mt-1" x-show="srcError" x-text="srcError" x-cloak></div>
+                        </div>
+                    </template>
+
                     <div class="col-lg-6">
                         <label class="form-label">الأهداف (اختياري)</label>
                         <input type="text" class="form-control" x-model="gen.objectives" placeholder="ما الذي يجب أن يتعلمه الطالب؟">
                     </div>
+
+                    {{-- معاينة المحتوى المستخرج قبل التوليد --}}
+                    <template x-if="gen.source === 'file' && srcKind">
+                        <div class="col-12">
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                <label class="form-label mb-0">المحتوى المستخرج</label>
+                                <span class="badge bg-secondary" x-show="srcPageCount" x-cloak>
+                                    <span x-text="srcPageCount"></span> صفحة
+                                </span>
+                                <span class="badge bg-secondary" x-show="srcKind === 'text'" x-cloak>
+                                    <span x-text="srcText.length"></span> حرف
+                                </span>
+                                <span class="badge bg-info" x-show="srcKind === 'images'" x-cloak>
+                                    تحليل بصري — <span x-text="srcImagesCount"></span> صورة
+                                </span>
+                                <span class="text-muted small" x-show="srcNotes" x-text="srcNotes" x-cloak></span>
+                            </div>
+                            <template x-if="srcKind === 'text'">
+                                <div>
+                                    <textarea class="form-control" rows="7" dir="auto" x-model="srcText"
+                                              placeholder="النص المستخرج من الملف…"></textarea>
+                                    <div class="form-text">يمكنك حذف الحشو (أرقام الصفحات، الترويسات) قبل التوليد لتحسين جودة الأسئلة.</div>
+                                </div>
+                            </template>
+                            <template x-if="srcKind === 'images'">
+                                <div class="alert alert-info py-2 mb-0 small">
+                                    لا يوجد نص قابل للقراءة في هذا الملف، لذا سيُحلّل بصرياً عبر نموذج يدعم الرؤية. اختر النموذج المناسب أدناه.
+                                </div>
+                            </template>
+                        </div>
+                    </template>
                     <div class="col-6 col-md-3">
                         <label class="form-label">عدد الأسئلة</label>
                         <input type="number" min="1" max="15" class="form-control" x-model.number="gen.count">
@@ -365,7 +438,7 @@
                         </div>
                     </div>
                     <div class="col-12 d-flex flex-wrap gap-2 align-items-center">
-                        <button type="button" class="ile-btn ile-btn--primary" @click="requestAiGenerate()" :disabled="genLoading || !gen.topic.trim() || !gen.types.length">
+                        <button type="button" class="ile-btn ile-btn--primary" @click="requestGenerate()" :disabled="genLoading || !canGenerate">
                             <span x-show="!genLoading"><i class="bi bi-stars"></i>توليد الأسئلة</span>
                             <span x-show="genLoading" x-cloak>جاري التوليد… قد يستغرق دقيقة</span>
                         </button>
@@ -497,6 +570,36 @@
                     <h6><i class="bi bi-diagram-3"></i>ربط بالمنهج</h6>
                 </div>
                 <div class="ile-panel__body">
+                    {{-- شرطا الظهور للطالب: مربوطة بمادة + منشورة --}}
+                    @if(empty($experience->subject_id))
+                        <div class="alert alert-warning d-flex align-items-start gap-2 py-2">
+                            <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+                            <div class="small">
+                                <strong>لن تظهر هذه التجربة لأي طالب.</strong>
+                                الظهور يتطلب ربطها بمادة <em>و</em> نشرها. اختر المادة أدناه ثم غيّر الحالة إلى «منشور».
+                            </div>
+                        </div>
+                    @elseif($experience->status !== \App\InteractiveLearning\Models\LearningExperience::STATUS_PUBLISHED)
+                        <div class="alert alert-info d-flex align-items-start gap-2 py-2">
+                            <i class="bi bi-info-circle-fill mt-1"></i>
+                            <div class="small">
+                                التجربة مربوطة بمادة لكن حالتها <strong>{{ $experience->status }}</strong> —
+                                لن يراها الطلاب حتى تصبح <strong>منشور</strong>.
+                            </div>
+                        </div>
+                    @endif
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">نسبة النجاح (%)</label>
+                            <input type="number" min="0" max="100" step="1" class="form-control"
+                                   name="passing_score"
+                                   value="{{ old('passing_score', $experience->passing_score ?? 50) }}">
+                            <div class="form-text">تُحدَّد بها حالة النجاح/الرسوب في نتائج الطالب وإحصائياته.</div>
+                            @error('passing_score')<div class="text-danger small">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+
                     @if(!empty($isFromLesson) && ($selectedLesson ?? null))
                         <div class="row g-3">
                             <div class="col-md-4">
@@ -684,12 +787,34 @@
                                 <input type="text" class="form-control" :value="(q.hints || [])[0] || ''" @input="q.hints = [$event.target.value].filter(Boolean)">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">رسالة النجاح</label>
-                                <input type="text" class="form-control" x-model="q.successMessage" placeholder="اختياري">
+                                <label class="form-label">رسالة النجاح <span class="text-muted fw-normal">(مع تسجيل صوتي)</span></label>
+                                <div class="input-group">
+                                    <select class="form-select" x-model="q.successMessage">
+                                        <template x-for="p in feedbackPhrases.success" :key="p.text">
+                                            <option :value="p.text" x-text="p.text"></option>
+                                        </template>
+                                    </select>
+                                    <button type="button" class="btn btn-outline-success"
+                                            @click="previewPhrase(q.successMessage, 'success')"
+                                            title="استمع للتسجيل">
+                                        <i class="bi bi-play-fill"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">رسالة الخطأ</label>
-                                <input type="text" class="form-control" x-model="q.errorMessage" placeholder="اختياري">
+                                <label class="form-label">رسالة الخطأ <span class="text-muted fw-normal">(مع تسجيل صوتي)</span></label>
+                                <div class="input-group">
+                                    <select class="form-select" x-model="q.errorMessage">
+                                        <template x-for="p in feedbackPhrases.fail" :key="p.text">
+                                            <option :value="p.text" x-text="p.text"></option>
+                                        </template>
+                                    </select>
+                                    <button type="button" class="btn btn-outline-danger"
+                                            @click="previewPhrase(q.errorMessage, 'fail')"
+                                            title="استمع للتسجيل">
+                                        <i class="bi bi-play-fill"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="col-12">
                                 <label class="form-label">الشرح بعد الإجابة</label>
@@ -1028,6 +1153,27 @@
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 <script>
 function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDynamicTemplates, dynamicInteractionTypes) {
+    /**
+     * عبارات التغذية الراجعة مع تسجيلاتها (من FeedbackPhrases::forPlayer).
+     * القائمة مغلقة: كل رسالة يختارها الإدمن لها تسجيل صوتي ينطقها حرفياً.
+     */
+    const feedbackPhrases = {
+        success: (urls.feedbackPhrases && urls.feedbackPhrases.success) || [],
+        fail: (urls.feedbackPhrases && urls.feedbackPhrases.fail) || [],
+    };
+    const phraseTexts = {
+        success: feedbackPhrases.success.map(p => p.text),
+        fail: feedbackPhrases.fail.map(p => p.text),
+    };
+
+    /** اضبط الرسالة على عبارة من القائمة — بالتناوب حسب ترتيب السؤال لتتنوّع. */
+    const snapPhrase = (value, kind, index) => {
+        const list = phraseTexts[kind] || [];
+        if (!list.length) return value || '';
+        if (list.includes(value)) return value;
+        return list[Math.abs(index || 0) % list.length];
+    };
+
     const ensure = (schema) => {
         schema = schema || {};
         const isDyn = schema.mode === 'dynamic' || schema.version === '2.0';
@@ -1048,7 +1194,10 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
             schema.assets = schema.assets || { libraries: ['katex', 'icons', 'stickers', 'lottie', 'tts'] };
         }
         schema.questions = Array.isArray(schema.questions) ? schema.questions : [];
-        schema.questions.forEach(q => {
+        schema.questions.forEach((q, qi) => {
+            // القائمة مغلقة: أي رسالة قديمة خارجها تُضبط على عبارة لها تسجيل صوتي
+            q.successMessage = snapPhrase(q.successMessage, 'success', qi);
+            q.errorMessage = snapPhrase(q.errorMessage, 'fail', qi);
             if (isDyn) {
                 q.interaction = q.interaction || { type: 'single_choice', payload: {} };
                 q.type = q.interaction.type || q.type || 'single_choice';
@@ -1117,7 +1266,20 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
         dynamicInteractionTypes: dynamicInteractionTypes || [],
         urls,
         aiModels: aiModels || [],
+        feedbackPhrases,
         description: @js($experience->description ?? ''),
+        /** استمع لتسجيل العبارة المختارة للتأكد من تطابق النص مع الصوت. */
+        previewPhrase(text, kind) {
+            const row = (this.feedbackPhrases[kind] || []).find(p => p.text === text);
+            if (!row || !row.url) return;
+            if (this._phraseAudio) {
+                try { this._phraseAudio.pause(); } catch (e) {}
+            }
+            this._phraseAudio = new Audio(row.url);
+            const p = this._phraseAudio.play();
+            if (p && p.catch) p.catch(() => {});
+        },
+        _phraseAudio: null,
         get isDynamic() {
             return this.schema.mode === 'dynamic' || this.schema.version === '2.0';
         },
@@ -1173,6 +1335,7 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
         genModel: '',
         genQuestions: [],
         gen: {
+            source: 'topic',
             topic: '',
             objectives: '',
             count: 5,
@@ -1180,6 +1343,118 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
             mode: 'replace',
             modelId: '',
             types: (types || []).map(t => t.type),
+        },
+
+        // حالة التوليد من ملف (PDF / صورة)
+        srcFile: null,
+        srcLoading: false,
+        srcError: '',
+        srcKind: '',        // '' | 'text' | 'images'
+        srcText: '',
+        srcToken: '',
+        srcPageCount: 0,
+        srcImagesCount: 0,
+        srcNotes: '',
+
+        get canGenerate() {
+            if (!this.gen.types.length) return false;
+            if (this.gen.source === 'file') {
+                return this.srcKind === 'images'
+                    ? Boolean(this.srcToken)
+                    : Boolean(this.srcText.trim());
+            }
+            return Boolean(this.gen.topic.trim());
+        },
+
+        resetSourceState() {
+            this.srcKind = '';
+            this.srcText = '';
+            this.srcToken = '';
+            this.srcPageCount = 0;
+            this.srcImagesCount = 0;
+            this.srcNotes = '';
+            this.srcError = '';
+        },
+
+        onSourceFileChange(event) {
+            this.srcFile = event.target.files?.[0] || null;
+            this.resetSourceState();
+        },
+
+        /** الخطوة 1: رفع الملف واستخراج محتواه للمعاينة. */
+        async extractSourceFile() {
+            if (!this.srcFile) return;
+            this.srcLoading = true;
+            this.resetSourceState();
+            try {
+                const fd = new FormData();
+                fd.append('file', this.srcFile);
+                const res = await fetch(this.urls.sourceExtractUrl, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this.urls.csrf },
+                    body: fd,
+                });
+                const data = await res.json();
+                if (!data.ok) throw new Error(data.message || 'فشل تحليل الملف');
+                this.srcKind = data.kind || '';
+                this.srcText = data.text || '';
+                this.srcToken = data.token || '';
+                this.srcPageCount = data.pageCount || 0;
+                this.srcImagesCount = data.imagesCount || 0;
+                this.srcNotes = data.notes || '';
+            } catch (e) {
+                this.srcError = e.message || 'فشل تحليل الملف';
+            } finally {
+                this.srcLoading = false;
+            }
+        },
+
+        /** يوجّه لمسار التوليد الصحيح حسب المصدر المختار. */
+        requestGenerate() {
+            return this.gen.source === 'file'
+                ? this.requestAiGenerateFromSource()
+                : this.requestAiGenerate();
+        },
+
+        /** الخطوة 2: توليد الأسئلة من المحتوى المستخرج (نص مُعاين أو صور). */
+        async requestAiGenerateFromSource() {
+            this.genLoading = true;
+            this.genError = '';
+            try {
+                const body = {
+                    objectives: this.gen.objectives || '',
+                    count: this.gen.count || 5,
+                    difficulty: this.gen.difficulty || 'medium',
+                    types: this.gen.types,
+                    mode: this.gen.mode || 'replace',
+                };
+                if (this.srcKind === 'images') body.token = this.srcToken;
+                else body.text = this.srcText;
+                if (this.gen.modelId) body.model_id = parseInt(this.gen.modelId, 10);
+
+                const res = await fetch(this.urls.sourceGenerateUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': this.urls.csrf,
+                    },
+                    body: JSON.stringify(body),
+                });
+                const data = await res.json();
+                if (!data.ok) throw new Error(data.message || 'فشل التوليد');
+
+                this.genSummary = data.summary || '';
+                this.genModel = data.model || '';
+                this.genQuestions = (data.questions || []).map(q => ({ ...q, _selected: true }));
+                // الملف المؤقّت يُحذف على الخادم بعد التوليد، فالرمز لم يعد صالحاً
+                if (this.srcKind === 'images') this.srcToken = '';
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('ileGenerateModal')).show();
+            } catch (e) {
+                this.genError = e.message || 'فشل التوليد';
+            } finally {
+                this.genLoading = false;
+            }
         },
 
         typeMeta(type) { return this.types.find(t => t.type === type); },

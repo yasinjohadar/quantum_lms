@@ -44,6 +44,13 @@
 }
 </style>
 
+<!-- إبقاء أيقونة الإشعارات ظاهرة على الجوال (الثيم الأساسي يخفيها تحت 575.98px) -->
+<style>
+@media (max-width: 575.98px) {
+    .notifications-dropdown { display: flex !important; }
+}
+</style>
+
 {{-- جوال: السايدبار تحت الناف + بوردر أساسي علوي (بعد كل أنماط الثيم) --}}
 <style>
 @media (max-width: 991.98px) {

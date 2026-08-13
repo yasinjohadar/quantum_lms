@@ -3,9 +3,10 @@
     $color = getNotificationColor($notification->type);
 @endphp
 
-<div class="notification-item student-notif-card {{ !$notification->is_read ? 'student-notif-card--unread' : '' }}"
+<div class="notification-item student-notif-card {{ !$notification->is_read ? 'student-notif-card--unread' : '' }} {{ $notification->action_url ? 'student-notif-card--clickable' : '' }}"
      data-notification-id="{{ $notification->id }}"
-     data-is-read="{{ $notification->is_read ? 'true' : 'false' }}">
+     data-is-read="{{ $notification->is_read ? 'true' : 'false' }}"
+     @if($notification->action_url) data-action-url="{{ $notification->action_url }}" @endif>
     <span class="student-notif-card__accent" aria-hidden="true"></span>
 
     <div class="student-notif-card__icon bg-{{ $color }}-transparent">

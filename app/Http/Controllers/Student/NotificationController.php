@@ -10,6 +10,21 @@ use Illuminate\Support\Facades\Auth;
 
 class NotificationController extends Controller
 {
+    /**
+     * أنواع خاصة بمراجعة المحتوى بين الطاقم الإداري/المراجعين فقط، لا تصل للطالب أبداً.
+     */
+    private const STAFF_ONLY_TYPES = [
+        'lesson_review_submitted',
+        'lesson_review_approved',
+        'lesson_review_rejected',
+        'lesson_review_submit_ack',
+        'quiz_review_submitted',
+        'quiz_review_approved',
+        'quiz_review_rejected',
+        'quiz_review_submit_ack',
+        'staff_review',
+    ];
+
     public function __construct(
         private GamificationNotificationService $notificationService
     ) {}
@@ -35,6 +50,7 @@ class NotificationController extends Controller
                         'type' => $notif->type,
                         'title' => $notif->title,
                         'message' => $notif->message,
+                        'action_url' => $notif->action_url,
                         'created_at' => $notif->created_at->toIso8601String(),
                         'is_read' => $notif->is_read,
                     ];
@@ -74,9 +90,12 @@ class NotificationController extends Controller
             'read' => GamificationNotification::where('user_id', $user->id)->where('is_read', true)->count(),
         ];
         
-        // إحصائيات حسب النوع
+        // إحصائيات حسب النوع (باستثناء أنواع مراجعة المحتوى الخاصة بالطاقم الإداري)
         $typeStats = [];
         foreach (GamificationNotification::TYPES as $typeKey => $typeName) {
+            if (in_array($typeKey, self::STAFF_ONLY_TYPES, true)) {
+                continue;
+            }
             $typeStats[$typeKey] = [
                 'name' => $typeName,
                 'total' => GamificationNotification::where('user_id', $user->id)
@@ -121,7 +140,7 @@ class NotificationController extends Controller
             'typeStats' => $typeStats,
             'currentType' => $type,
             'currentStatus' => $status,
-            'types' => array_merge(GamificationNotification::TYPES, $additionalTypes),
+            'types' => array_diff_key(array_merge(GamificationNotification::TYPES, $additionalTypes), array_flip(self::STAFF_ONLY_TYPES)),
         ]);
     }
 

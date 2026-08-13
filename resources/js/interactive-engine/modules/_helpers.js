@@ -50,6 +50,42 @@ export function bindSpeakers(root, playFn) {
     });
 }
 
+/**
+ * كشف الإجابة بعد التحقق: تلوين الخيار الصحيح، وتلوين الخيار الخاطئ الذي
+ * اختاره الطالب فقط (باقي الخيارات تبقى محيّدة حتى لا تتحول الشاشة لفوضى ألوان).
+ *
+ * هوية الخيار تُقرأ من data-id (بطاقات .ile-dyn-opt) أو من قيمة input الداخلي
+ * (.ile-option) — فتعمل مع النمطين بلا أي تغيير في الـ HTML.
+ *
+ * @param {HTMLElement} root
+ * @param {{correctIds?: Array, chosenIds?: Array, selector?: string}} opts
+ */
+export function revealChoice(root, { correctIds = [], chosenIds = [], selector = '.ile-option' } = {}) {
+    if (!root) return;
+
+    const correct = new Set(correctIds.filter((v) => v != null).map(String));
+    const chosen = new Set(chosenIds.filter((v) => v != null).map(String));
+
+    root.querySelectorAll(selector).forEach((el) => {
+        const id = el.getAttribute('data-id') ?? el.querySelector('input')?.value;
+        if (id == null) return;
+        const key = String(id);
+
+        if (correct.has(key)) {
+            el.classList.add('is-correct');
+        } else if (chosen.has(key)) {
+            el.classList.add('is-wrong');
+        }
+    });
+}
+
+/** يمنع تغيير الإجابة بعد كشفها. */
+export function lockChoice(root, selector = '.ile-option') {
+    root?.querySelectorAll(`${selector} input`).forEach((input) => {
+        input.disabled = true;
+    });
+}
+
 export function optionLabelHtml(opt) {
     const latex = opt?.latex || opt?.math;
     if (latex || isMathyLabel(opt?.label)) return renderMathLabel(latex || opt.label, { displayMode: false });
@@ -74,7 +110,7 @@ export function optionButtons(options, { multiple = false, name = 'opt' } = {}) 
     return options
         .map(
             (opt) => `
-        <label class="ile-option">
+        <label class="ile-option" data-id="${escapeAttr(opt.id)}">
             <input type="${multiple ? 'checkbox' : 'radio'}" name="${name}" value="${escapeAttr(opt.id)}">
             <span class="ile-option__media">${mediaVisualHtml(opt)}</span>
             <span class="ile-option__label">${optionLabelHtml(opt)}</span>

@@ -39,6 +39,7 @@
         schemaVersion: @json($schemaVersion),
         engineVersion: @json($engineVersion),
         isPreview: @json($isPreview),
+        feedbackPhrases: @json($feedbackPhrases),
     };
 </script>
 </body>

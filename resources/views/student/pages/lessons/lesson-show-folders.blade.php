@@ -31,7 +31,7 @@
 
         <div class="col-12">
             <!-- الفيديو في الأعلى -->
-            <div class="card mb-4">
+            <div class="card mb-4 lesson-video-card">
                 <div class="card-body">
                     @if($lesson->embed_url)
                         @php $actualType = $lesson->actual_video_type; @endphp
@@ -64,7 +64,7 @@
             </div>
 
             <!-- أوكورديون تحت الفيديو -->
-            <div class="accordion" id="lessonFoldersAccordion">
+            <div class="accordion lesson-content-accordion" id="lessonFoldersAccordion">
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="headingContent">
                         <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseContent" aria-expanded="true">
@@ -306,6 +306,29 @@
 [data-theme-mode="dark"] .content-tree-flat .list-group-item.list-group-item-action.current-lesson:hover .text-white,
 [data-theme-mode="dark"] .content-tree-flat .list-group-item.list-group-item-action.current-lesson:hover .text-muted,
 [data-theme-mode="dark"] .content-tree-flat .list-group-item.list-group-item-action.current-lesson:hover i { color: #fff !important; }
+
+/* جعل الفيديو fixed في الأعلى على الجوال */
+@media (max-width: 768px) {
+    .lesson-video-card {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        z-index: 1050;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        margin: 0 !important;
+        border-radius: 0;
+        max-height: 50vh;
+        overflow: hidden;
+    }
+
+    .lesson-content-accordion {
+        margin-top: calc(50vh + 1rem) !important;
+        position: relative;
+        z-index: 99;
+    }
+}
 </style>
 @stop
 

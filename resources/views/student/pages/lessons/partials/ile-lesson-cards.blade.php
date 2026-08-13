@@ -16,7 +16,7 @@
                     @php
                         $attempt = ($ileAttempts ?? collect())->get($experience->id);
                         $hasAttempt = $attempt !== null;
-                        $passed = $hasAttempt && (float) $attempt->percentage >= 50;
+                        $passed = $hasAttempt && (bool) $attempt->passed;
                         $qCount = $experience->questionsCount();
                     @endphp
                     <div class="col-md-6 mb-3">

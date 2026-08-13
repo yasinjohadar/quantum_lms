@@ -330,5 +330,14 @@ class SchoolClass extends Model
             ->where('subscription_ends_at', '<=', now())
             ->whereNull('subscription_revoked_at');
     }
+
+    public function getFreeSubjectsCount(): int
+    {
+        return $this->subjects()
+            ->where('is_active', true)
+            ->get()
+            ->filter(fn (Subject $subject) => $subject->isEffectivelyFree())
+            ->count();
+    }
 }
 

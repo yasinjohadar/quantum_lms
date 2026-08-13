@@ -9,7 +9,9 @@ use App\InteractiveLearning\Services\AiPatchService;
 use App\InteractiveLearning\Services\AiSessionGenerationService;
 use App\InteractiveLearning\Services\ExperienceQuestionImportException;
 use App\InteractiveLearning\Services\ExperienceQuestionImportService;
+use App\InteractiveLearning\Services\ExperienceSourceExtractionService;
 use App\InteractiveLearning\Services\SchemaValidator;
+use App\InteractiveLearning\Support\FeedbackPhrases;
 use App\InteractiveLearning\Support\QuestionTypeRegistry;
 use App\Models\AIModel;
 use App\Models\Lesson;
@@ -19,6 +21,8 @@ use App\Models\Unit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -28,7 +32,8 @@ class LearningExperienceController extends Controller
         protected SchemaValidator $schemaValidator,
         protected AiPatchService $aiPatchService,
         protected AiSessionGenerationService $aiSessionGenerationService,
-        protected ExperienceQuestionImportService $experienceQuestionImportService
+        protected ExperienceQuestionImportService $experienceQuestionImportService,
+        protected ExperienceSourceExtractionService $sourceExtractionService
     ) {}
 
     public function index(Request $request): View
@@ -194,6 +199,7 @@ class LearningExperienceController extends Controller
             'recentAttempts' => $recentAttempts,
             'attemptsCount' => $attemptsCount,
             'attemptsAvg' => $attemptsAvg,
+            'feedbackPhrases' => FeedbackPhrases::forPlayer(),
         ]);
     }
 
@@ -206,6 +212,7 @@ class LearningExperienceController extends Controller
             'subject_id' => ['nullable', 'integer', 'exists:subjects,id'],
             'unit_id' => ['nullable', 'integer', 'exists:units,id'],
             'lesson_id' => ['nullable', 'integer', 'exists:lessons,id'],
+            'passing_score' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
 
         $schema = json_decode($data['schema_json'], true);
@@ -214,6 +221,8 @@ class LearningExperienceController extends Controller
         }
 
         $schema['meta']['title'] = $data['title'];
+        // ضمان أن كل رسالة محفوظة لها تسجيل صوتي مطابق حتى لو تجاوز الطلب واجهة القوائم
+        $schema = FeedbackPhrases::snapSchema($schema)['schema'];
         $result = $this->schemaValidator->validate($schema);
         if (! $result['valid']) {
             return back()->withInput()->withErrors(['schema_json' => implode(' ', $result['errors'])]);
@@ -236,7 +245,13 @@ class LearningExperienceController extends Controller
             'subject_id' => $links['subject_id'],
             'unit_id' => $links['unit_id'],
             'lesson_id' => $links['lesson_id'],
+            'passing_score' => isset($data['passing_score']) ? (float) $data['passing_score'] : 50,
         ]);
+
+        // التجربة بلا مادة لا يمكن أن تظهر لأي طالب — نُنبّه بدل الصمت
+        if (empty($links['subject_id'])) {
+            return back()->with('warning', 'تم الحفظ، لكن التجربة غير مرتبطة بمادة فلن تظهر لأي طالب. اربطها بمادة ثم انشرها.');
+        }
 
         return back()->with('success', 'تم حفظ الاختبار التفاعلي.');
     }
@@ -521,6 +536,203 @@ class LearningExperienceController extends Controller
                 'ok' => false,
                 'message' => $e->getMessage(),
             ], 422);
+        }
+    }
+
+    /**
+     * الخطوة 1: تحليل ملف مرفوع (PDF أو صورة) وإرجاع النص المستخرج للمعاينة.
+     *
+     * النص يعود للمتصفح ولا يُخزَّن شيء على الخادم. أما الصور (صورة مرفوعة أو
+     * PDF ممسوح ضوئياً) فلا نص لها، فيُحفظ الملف مؤقتاً ويُعاد رمز مرتبط بالجلسة.
+     */
+    public function aiSourceExtract(Request $request, LearningExperience $learningExperience): JsonResponse
+    {
+        $pdfMaxKb = (int) config('ai.question_generation_pdf.max_size_kb', 15360);
+        $imageMaxKb = (int) config('ai.question_generation_pdf.image_max_size_kb', 8192);
+
+        $request->validate([
+            'file' => [
+                'required',
+                'file',
+                'mimes:pdf,jpeg,jpg,png,webp,gif',
+                'max:'.max($pdfMaxKb, $imageMaxKb),
+            ],
+        ], [
+            'file.required' => 'يجب اختيار ملف.',
+            'file.mimes' => 'يُقبل ملف PDF أو صورة (JPEG, PNG, WebP, GIF) فقط.',
+            'file.max' => 'حجم الملف أكبر من المسموح.',
+        ]);
+
+        $file = $request->file('file');
+
+        try {
+            $extracted = $this->sourceExtractionService->extract($file);
+
+            if ($extracted['kind'] === ExperienceSourceExtractionService::KIND_TEXT) {
+                return response()->json([
+                    'ok' => true,
+                    'kind' => 'text',
+                    'text' => $extracted['text'],
+                    'pageCount' => $extracted['pageCount'],
+                    'charCount' => $extracted['charCount'],
+                    'imagesCount' => 0,
+                    'notes' => $extracted['notes'],
+                ]);
+            }
+
+            // مسار الصور: نحتاج بقاء الملف حتى طلب التوليد
+            $this->pruneStaleSourceFiles();
+            $path = $file->store('ile_ai_sources', 'local');
+            $token = (string) Str::uuid();
+
+            $request->session()->put($this->sourceSessionKey($token), [
+                'path' => $path,
+                'experience_id' => $learningExperience->id,
+                'user_id' => $request->user()?->id,
+            ]);
+
+            return response()->json([
+                'ok' => true,
+                'kind' => 'images',
+                'text' => '',
+                'pageCount' => $extracted['pageCount'],
+                'charCount' => 0,
+                'imagesCount' => count($extracted['images']),
+                'notes' => $extracted['notes'],
+                'token' => $token,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'ok' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * الخطوة 2: توليد الأسئلة من النص المُعاين (أو من صور الملف المؤقّت).
+     * تُرجع نفس شكل aiGenerate() ليعمل نفس مسار المعاينة والإضافة بلا تعديل.
+     */
+    public function aiGenerateFromSource(Request $request, LearningExperience $learningExperience): JsonResponse
+    {
+        $data = $request->validate([
+            'text' => ['nullable', 'string'],
+            'token' => ['nullable', 'string', 'max:64'],
+            'objectives' => ['nullable', 'string', 'max:1000'],
+            'count' => ['nullable', 'integer', 'min:1', 'max:15'],
+            'difficulty' => ['nullable', 'string', 'in:easy,medium,hard'],
+            'types' => ['nullable', 'array'],
+            'types.*' => ['string'],
+            'model_id' => ['nullable', 'integer', 'exists:ai_models,id'],
+            'mode' => ['nullable', 'string', 'in:replace,append'],
+        ]);
+
+        $token = (string) ($data['token'] ?? '');
+        $sessionKey = $token !== '' ? $this->sourceSessionKey($token) : null;
+        $storedPath = null;
+
+        try {
+            if ($token !== '') {
+                $entry = $request->session()->get($sessionKey);
+
+                // المسار يُقرأ من الجلسة فقط — لا يُقبل مسار من الطلب
+                if (! is_array($entry)
+                    || (int) ($entry['experience_id'] ?? 0) !== (int) $learningExperience->id
+                    || (int) ($entry['user_id'] ?? 0) !== (int) $request->user()?->id) {
+                    return response()->json([
+                        'ok' => false,
+                        'message' => 'انتهت صلاحية الملف المرفوع. أعد تحليل الملف من جديد.',
+                    ], 422);
+                }
+
+                $storedPath = (string) $entry['path'];
+                if (! Storage::disk('local')->exists($storedPath)) {
+                    return response()->json([
+                        'ok' => false,
+                        'message' => 'الملف المؤقّت غير موجود. أعد تحليل الملف من جديد.',
+                    ], 422);
+                }
+
+                $source = $this->sourceExtractionService->extractFromStoredPath(
+                    Storage::disk('local')->path($storedPath)
+                );
+            } else {
+                $text = trim((string) ($data['text'] ?? ''));
+                if ($text === '') {
+                    return response()->json([
+                        'ok' => false,
+                        'message' => 'لا يوجد نص لتوليد الأسئلة منه. حلّل ملفاً أولاً.',
+                    ], 422);
+                }
+
+                $source = [
+                    'kind' => ExperienceSourceExtractionService::KIND_TEXT,
+                    'text' => $text,
+                    'images' => [],
+                ];
+            }
+
+            $generated = $this->aiSessionGenerationService->generateFromSource(
+                source: $source,
+                types: $data['types'] ?? QuestionTypeRegistry::types(),
+                count: (int) ($data['count'] ?? 5),
+                difficulty: $data['difficulty'] ?? 'medium',
+                objectives: (string) ($data['objectives'] ?? ''),
+                modelId: isset($data['model_id']) ? (int) $data['model_id'] : null,
+                experienceMode: $this->schemaValidator->resolveMode(
+                    is_array($learningExperience->schema_json) ? $learningExperience->schema_json : []
+                ),
+            );
+
+            return response()->json([
+                'ok' => true,
+                'summary' => $generated['summary'],
+                'model' => $generated['model'],
+                'questions' => $generated['questions'],
+                'mode' => $data['mode'] ?? 'replace',
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'ok' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } finally {
+            // الملف المؤقّت يُحذف نجاحاً أو فشلاً
+            if ($storedPath !== null) {
+                Storage::disk('local')->delete($storedPath);
+            }
+            if ($sessionKey !== null) {
+                $request->session()->forget($sessionKey);
+            }
+        }
+    }
+
+    protected function sourceSessionKey(string $token): string
+    {
+        return 'ile_ai_source.'.$token;
+    }
+
+    /**
+     * حذف ملفات المصدر المؤقّتة المهجورة (رُفعت ثم لم يُطلب التوليد منها).
+     * تنظيف انتهازي عند كل رفع جديد — بلا اعتماد على المُجدول.
+     */
+    protected function pruneStaleSourceFiles(int $maxAgeMinutes = 120): void
+    {
+        try {
+            $disk = Storage::disk('local');
+            if (! $disk->exists('ile_ai_sources')) {
+                return;
+            }
+
+            $cutoff = now()->subMinutes($maxAgeMinutes)->getTimestamp();
+            foreach ($disk->files('ile_ai_sources') as $file) {
+                if ($disk->lastModified($file) < $cutoff) {
+                    $disk->delete($file);
+                }
+            }
+        } catch (\Throwable $e) {
+            // التنظيف مساعد لا حرج في فشله — لا يجوز أن يُفشل رفع الملف
+            report($e);
         }
     }
 

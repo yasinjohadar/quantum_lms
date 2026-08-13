@@ -126,6 +126,32 @@ class GamificationService
     }
 
     /**
+     * معالجة إكمال تجربة تفاعلية (اختبار تفاعلي).
+     *
+     * نُعيد استخدام نوع الحدث 'quiz_completed' نفسه حتى تسري تلقائياً إعدادات
+     * النقاط والمهام والشارات والإنجازات والمستويات وشاشة «النقاط حسب النوع»
+     * بلا أي إعداد إضافي.
+     *
+     * ملاحظة: لا نُطلق حدث QuizCompleted لأنه مقيّد بنوع Quiz ولا يوجد Quiz هنا،
+     * لذا لا يظهر إشعار «أكملت اختباراً» الفوري للتجارب التفاعلية.
+     */
+    public function processInteractiveExperienceCompletion(\App\InteractiveLearning\Models\LearningExperienceAttempt $attempt): void
+    {
+        $user = $attempt->user;
+        if (! $user) {
+            return;
+        }
+
+        $this->processEvent($user, 'quiz_completed', [
+            'learning_experience_id' => $attempt->learning_experience_id,
+            'attempt_id' => $attempt->id,
+            'score' => $attempt->score,
+            'percentage' => $attempt->percentage,
+            'kind' => 'interactive',
+        ], $attempt);
+    }
+
+    /**
      * معالجة إكمال سؤال
      */
     public function processQuestionCompletion(QuestionAttempt $attempt): void

@@ -19,10 +19,23 @@
     color: var(--ile-text);
     position: relative;
     font-family: var(--ile-font);
+    display: flex;
+    flex-direction: column;
 }
 
+/*
+ * التوسيط الرأسي بالهوامش التلقائية لا بـ justify-content:center — الهوامش
+ * التلقائية تتلاشى وحدها عند ضيق المساحة، أما justify-content:center فيقطع
+ * أعلى المحتوى الطويل ويجعله غير قابل للوصول بالتمرير.
+ */
 .ile-header {
     margin-bottom: 1.25rem;
+    margin-top: auto;
+}
+
+.ile-footer,
+#ile-results:not([hidden]) {
+    margin-bottom: auto;
 }
 
 .ile-header__title {
@@ -1536,3 +1549,220 @@
   }
 }
 
+
+/* ===== تحسينات التفاعل للأطفال ===== */
+
+/* --- شاشات واسعة: بطاقات أكبر وأسهل نقراً (أول min-width في الملف) --- */
+@media (min-width: 900px) {
+  .ile-app,
+  .ile-app[data-theme-id='kids'] {
+    max-width: 1100px;
+  }
+
+  .ile-dyn--equation_grid .ile-dyn__grid,
+  .ile-dyn--poster_cards .ile-dyn__grid,
+  .ile-dyn--scene_tiles .ile-dyn__grid,
+  .ile-dyn--listen_stage .ile-dyn__grid,
+  .ile-dyn--chip_multi .ile-dyn__grid {
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 1.1rem;
+  }
+
+  .ile-dyn-opt {
+    min-height: 150px;
+  }
+
+  .ile-dyn-opt__text {
+    font-size: 1.35rem;
+  }
+
+  .ile-dyn-opt__emoji {
+    font-size: 2.6rem;
+  }
+
+  .ile-app[data-theme-id='kids'] .ile-stem {
+    font-size: 1.45rem;
+  }
+}
+
+/* --- شارة الحرف تتبع لون السمة بدل البنفسجي الثابت --- */
+.ile-dyn-opt__badge {
+  background: var(--ile-accent);
+}
+
+/* --- تفاعل النقر: نبضة عند الضغط + إطار تركيز واضح للكيبورد --- */
+.ile-dyn-opt:active,
+.ile-app[data-theme-id='kids'] .ile-option:active,
+.ile-dyn-truth:active,
+.ile-tf__btn:active {
+  transform: scale(0.97);
+}
+
+.ile-dyn-opt:focus-visible,
+.ile-option:focus-within,
+.ile-dyn-truth:focus-visible,
+.ile-tf__btn:focus-visible,
+.ile-speak:focus-visible {
+  outline: 3px solid var(--ile-accent);
+  outline-offset: 3px;
+}
+
+/* --- كشف الإجابة بعد التحقق --- */
+.ile-dyn-opt.is-correct,
+.ile-app[data-theme-id='kids'] .ile-option.is-correct,
+.ile-dyn-truth.is-correct,
+.ile-tf__btn.is-correct {
+  border-color: var(--ile-ok);
+  background: linear-gradient(180deg, #dcfce7, #fff);
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.25);
+}
+
+.ile-dyn-opt.is-wrong,
+.ile-app[data-theme-id='kids'] .ile-option.is-wrong,
+.ile-dyn-truth.is-wrong,
+.ile-tf__btn.is-wrong {
+  border-color: var(--ile-bad);
+  background: linear-gradient(180deg, #fef3c7, #fff);
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.25);
+}
+
+/* علامة ✓ / ✕ تُضاف بعد الكشف — لا تعتمد على اللون وحده */
+.ile-dyn-opt.is-correct::after,
+.ile-option.is-correct::after,
+.ile-dyn-truth.is-correct::after,
+.ile-tf__btn.is-correct::after,
+.ile-dyn-opt.is-wrong::after,
+.ile-option.is-wrong::after,
+.ile-dyn-truth.is-wrong::after,
+.ile-tf__btn.is-wrong::after {
+  position: absolute;
+  top: 0.45rem;
+  inset-inline-end: 0.5rem;
+  font-size: 1.15rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.ile-dyn-opt.is-correct::after,
+.ile-option.is-correct::after,
+.ile-dyn-truth.is-correct::after,
+.ile-tf__btn.is-correct::after {
+  content: '✓';
+  color: var(--ile-ok);
+}
+
+.ile-dyn-opt.is-wrong::after,
+.ile-option.is-wrong::after,
+.ile-dyn-truth.is-wrong::after,
+.ile-tf__btn.is-wrong::after {
+  content: '✕';
+  color: var(--ile-bad);
+}
+
+/* البطاقة الصحيحة تلفت النظر بنبضة واحدة (keyframe موجود) */
+.ile-dyn-opt.is-correct,
+.ile-option.is-correct {
+  animation: ilePop 0.35s ease;
+}
+
+/* بعد الكشف تتوقف الاستجابة البصرية للمرور */
+.ile-dyn-opt.is-correct,
+.ile-dyn-opt.is-wrong {
+  cursor: default;
+}
+
+.ile-dyn-opt.is-correct:hover,
+.ile-dyn-opt.is-wrong:hover {
+  transform: none;
+}
+
+/* الخيارات تحتاج position ليعمل ::after ولتثبيت الشارة */
+.ile-option,
+.ile-dyn-truth,
+.ile-tf__btn {
+  position: relative;
+}
+
+/* --- رقاقات النجوم والسلسلة في الرأس --- */
+
+/* أربعة عناصر في الصف الآن: السؤال + النجوم + السلسلة + الكتم */
+.ile-header__meta {
+    flex-wrap: wrap;
+    row-gap: 0.4rem;
+}
+
+.ile-mute {
+    margin-inline-start: auto;
+}
+
+.ile-hud {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.9rem;
+  background: #fff;
+  border: 2px solid #e5e7eb;
+  color: var(--ile-text);
+  line-height: 1.6;
+}
+
+.ile-hud--score {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.ile-hud--streak {
+  border-color: #fecaca;
+  background: #fff1f2;
+  color: #9f1239;
+}
+
+.ile-hud[hidden] {
+  display: none;
+}
+
+.ile-hud--bump {
+  animation: ilePop 0.4s ease;
+}
+
+/* --- احترام تقليل الحركة من إعدادات النظام (لم يكن محترماً قبلاً) --- */
+@media (prefers-reduced-motion: reduce) {
+  .ile-hud--bump,
+  .ile-dyn-opt.is-correct,
+  .ile-option.is-correct,
+  .ile-btn--next,
+  .ile-feedback,
+  .ile-feedback--pop,
+  .ile-results__emoji,
+  .ile-cheer__word,
+  .ile-clap,
+  .ile-clap__hands,
+  .ile-shake {
+    animation: none !important;
+  }
+
+  .ile-dyn-opt,
+  .ile-option,
+  .ile-dyn-truth,
+  .ile-tf__btn,
+  .ile-speak {
+    transition: none !important;
+  }
+
+  .ile-dyn-opt:active,
+  .ile-option:active,
+  .ile-dyn-truth:active,
+  .ile-tf__btn:active,
+  .ile-dyn-opt:hover,
+  .ile-speak:hover {
+    transform: none !important;
+  }
+
+  .ile-progress__bar {
+    transition: none !important;
+  }
+}

@@ -38,13 +38,37 @@ class LearningExperience extends Model
         'subject_id',
         'unit_id',
         'lesson_id',
+        'passing_score',
     ];
 
     protected function casts(): array
     {
         return [
             'schema_json' => 'array',
+            'passing_score' => 'float',
         ];
+    }
+
+    /**
+     * التجارب المنشورة فقط — الفلتر كان مكرّراً يدوياً في أكثر من سبعة مواضع،
+     * وأي موضع يُنسى يعني تسريب مسوّدة للطالب.
+     */
+    public function scopePublished($query)
+    {
+        return $query->where('status', self::STATUS_PUBLISHED);
+    }
+
+    /**
+     * ما يجوز للطالب رؤيته: منشورة ومربوطة بإحدى مواده.
+     * التجربة بلا subject_id لا تظهر لأي طالب إطلاقاً.
+     *
+     * @param  array<int, int>  $subjectIds
+     */
+    public function scopeForStudentSubjects($query, array $subjectIds)
+    {
+        return $query->published()
+            ->whereNotNull('subject_id')
+            ->whereIn('subject_id', $subjectIds);
     }
 
     public function creator(): BelongsTo
