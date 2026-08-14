@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Lesson;
 use App\Models\Quiz;
+use App\Models\Subject;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
@@ -24,6 +25,48 @@ class StudentContentNotificationService
         return $quiz->is_active
             && $quiz->is_published
             && $quiz->review_status === Quiz::REVIEW_STATUS_APPROVED;
+    }
+
+    /**
+     * رابط فتح الدرس للطالب: صفحة الوحدة داخل المادة، لا صفحة الدرس المفردة.
+     *
+     * الطالب يتنقّل عبر شجرة المادة (مادة ← قسم ← وحدة) فيرى الدرس في سياقه
+     * مع بقية دروس الوحدة، بدل القفز إلى مشغّل درس منفصل.
+     *
+     * التسلسل: درس ← وحدة ← قسم، ولو كان الدرس معلّقاً على قسم بلا وحدة
+     * (114 درساً في البيانات الحالية) نرجع لصفحة القسم، ثم لصفحة المادة.
+     */
+    public function lessonBrowseUrl(Lesson $lesson, ?Subject $subject = null): string
+    {
+        $lesson->loadMissing('unit.section', 'section');
+
+        $unit = $lesson->unit;
+        $section = $unit?->section ?? $lesson->section;
+        $subject = $subject
+            ?? $unit?->section?->subject
+            ?? $lesson->section?->subject;
+
+        if ($subject && $section && $unit) {
+            return route('student.subjects.folders.unit', [
+                'subject' => $subject->id,
+                'section' => $section->id,
+                'unit' => $unit->id,
+            ]);
+        }
+
+        if ($subject && $section) {
+            return route('student.subjects.folders.section', [
+                'subject' => $subject->id,
+                'section' => $section->id,
+            ]);
+        }
+
+        if ($subject) {
+            return route('student.subjects.folders', ['subject' => $subject->id]);
+        }
+
+        // آخر الاحتياطات: صفحة الدرس المفردة
+        return route('student.lessons.show', $lesson);
     }
 
     public function notifyIfLessonBecameVisible(?Lesson $before, Lesson $after, ?User $actor): void
@@ -49,7 +92,7 @@ class StudentContentNotificationService
 
             $title = 'درس جديد متاح';
             $message = "أصبح درس «{$after->title}» متاحاً في مادة {$subject->name}.";
-            $actionUrl = route('student.lessons.show', $after);
+            $actionUrl = $this->lessonBrowseUrl($after, $subject);
 
             foreach ($students as $student) {
                 $this->notificationService->sendNotification(
@@ -80,6 +123,45 @@ class StudentContentNotificationService
         }
     }
 
+    /**
+     * رابط فتح الاختبار للطالب: صفحة الوحدة داخل المادة.
+     *
+     * حرج: لا يجوز أن يشير الإشعار إلى student.quizzes.start لأن ذلك المسار
+     * **يُنشئ محاولة فوراً** عند فتحه بـ GET، فمجرّد نقرة على الإشعار كانت
+     * تستهلك محاولة من max_attempts قبل أن يقرأ الطالب السؤال الأول.
+     * الطالب يبدأ الاختبار بإرادته من صفحة الوحدة.
+     */
+    public function quizBrowseUrl(Quiz $quiz, ?Subject $subject = null): string
+    {
+        $quiz->loadMissing('unit.section', 'section', 'subject');
+
+        $unit = $quiz->unit;
+        $section = $unit?->section ?? $quiz->section;
+        $subject = $subject ?? $quiz->subject;
+
+        if ($subject && $section && $unit) {
+            return route('student.subjects.folders.unit', [
+                'subject' => $subject->id,
+                'section' => $section->id,
+                'unit' => $unit->id,
+            ]);
+        }
+
+        if ($subject && $section) {
+            return route('student.subjects.folders.section', [
+                'subject' => $subject->id,
+                'section' => $section->id,
+            ]);
+        }
+
+        if ($subject) {
+            return route('student.subjects.folders', ['subject' => $subject->id]);
+        }
+
+        // قائمة الاختبارات — وليس بدء الاختبار
+        return route('student.quizzes.index');
+    }
+
     public function notifyIfQuizBecameVisible(?Quiz $before, Quiz $after, ?User $actor): void
     {
         $visibleBefore = $before && $this->quizVisibleToStudents($before);
@@ -103,7 +185,7 @@ class StudentContentNotificationService
 
             $title = 'اختبار جديد متاح';
             $message = "أصبح اختبار «{$after->title}» متاحاً في مادة {$subject->name}.";
-            $actionUrl = route('student.quizzes.start', $after);
+            $actionUrl = $this->quizBrowseUrl($after, $subject);
 
             foreach ($students as $student) {
                 $this->notificationService->sendNotification(
