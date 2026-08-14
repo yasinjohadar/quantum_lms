@@ -509,6 +509,24 @@ function updateRealtimeStatusUI(state, extra = {}) {
         actions.classList.remove('d-none');
     }
 
+    /**
+     * توقف مؤقت بعد فشل متكرر (علم في sessionStorage لخمس دقائق).
+     * يجب إظهاره صراحةً مع زر «تشغيل» — وإلا بقيت الشارة على نصها الابتدائي
+     * («جاري التحميل…») ولم يجد المستخدم أي وسيلة لإعادة المحاولة.
+     */
+    if (state === 'cooldown') {
+        el.textContent = 'توقف مؤقت بعد تعذّر الاتصال — أعد المحاولة';
+        el.className = 'badge rounded-pill bg-danger-transparent text-danger border';
+        if (btnOn) {
+            btnOn.classList.remove('d-none');
+            btnOn.disabled = false;
+        }
+        if (btnOff) {
+            btnOff.classList.add('d-none');
+        }
+        return;
+    }
+
     const paused = state === 'paused' || isEchoRealtimePausedByUser();
 
     if (paused) {
@@ -722,7 +740,14 @@ if (!echoNotificationsEnabled) {
     whenDomReady(() => updateRealtimeStatusUI('polling', { mode: 'polling' }));
 } else if (typeof window.currentUserId !== 'undefined') {
     if (isWsTemporarilyDisabled()) {
+        // لا نتخطّى بصمت: نُبقي التحديث الدوري للعدد، ونُظهر الحالة مع زر «تشغيل»
+        // حتى يستطيع المستخدم الاستئناف فوراً بدل انتظار انتهاء المهلة.
+        console.warn(
+            '[Echo] الاتصال الفوري متوقف مؤقتاً بعد فشل سابق. اضغط «تشغيل» للاستئناف، ' +
+            'أو نفّذ: sessionStorage.removeItem("lms_echo_ws_give_up_until")'
+        );
         startPollingFallback();
+        whenDomReady(() => updateRealtimeStatusUI('cooldown', { mode: 'web' }));
     } else {
         scheduleIdleTask(() => {
             if (isEchoRealtimePausedByUser()) {
