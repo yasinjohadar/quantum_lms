@@ -67,7 +67,7 @@ STICKERS;
         $prompt = $experienceMode === 'dynamic'
             ? $this->buildDynamicPrompt($topic, $types, $count, $difficulty, $objectives)
             : $this->buildPrompt($topic, $types, $count, $difficulty, $objectives);
-        $maxTokens = min(max(2500, $count * 700), $model->max_tokens ?: 8000);
+        $maxTokens = $this->resolveMaxTokens($model, $count);
 
         $response = $provider->generateText($prompt, [
             'max_tokens' => $maxTokens,
@@ -166,7 +166,7 @@ STICKERS;
 
         $prompt .= "\n\n".$this->sourceConstraintBlock($kind, $sourceText);
 
-        $maxTokens = min(max(2500, $count * 700), $model->max_tokens ?: 8000);
+        $maxTokens = $this->resolveMaxTokens($model, $count);
         $options = ['max_tokens' => $maxTokens, 'temperature' => 0.55];
 
         if ($kind === ExperienceSourceExtractionService::KIND_IMAGES) {
@@ -224,6 +224,19 @@ RULES;
         }
 
         return $rules."\n\n--- محتوى الملف ---\n".$sourceText;
+    }
+
+    /**
+     * ميزانية التوليد: نص الأسئلة + هامش لرموز التفكير.
+     * نماذج التفكير (GLM مثلاً) تستهلك آلاف رموز reasoning من نفس السقف حتى مع
+     * thinking=disabled، والحساب القديم (count * 700) كان يقطع الرد فيفسد الـ JSON.
+     */
+    protected function resolveMaxTokens(AIModel $model, int $count): int
+    {
+        $needed = 3000 + ($count * 1400);
+        $ceiling = ((int) $model->max_tokens) > 0 ? (int) $model->max_tokens : 16000;
+
+        return max(2500, min($needed, $ceiling));
     }
 
     protected function resolveModel(?int $modelId): AIModel
@@ -407,23 +420,135 @@ PROMPT;
      */
     protected function parseQuestions(string $response): array
     {
-        $raw = trim($response);
-        if (preg_match('/\{.*\}/s', $raw, $m)) {
-            $raw = $m[0];
+        $raw = $this->stripCodeFences(trim($response));
+
+        $candidate = preg_match('/\{.*\}/s', $raw, $m) ? $m[0] : $raw;
+        $decoded = json_decode($candidate, true);
+
+        if (is_array($decoded)) {
+            $questions = $decoded['questions'] ?? null;
+            if (! is_array($questions)) {
+                return [];
+            }
+
+            return array_values(array_filter($questions, 'is_array'));
         }
 
-        $decoded = json_decode($raw, true);
-        if (! is_array($decoded)) {
-            Log::warning('AiSessionGenerationService: invalid JSON', ['snippet' => mb_substr($response, 0, 500)]);
-            throw new RuntimeException('تعذر قراءة رد الذكاء الاصطناعي كـ JSON.');
+        // الرد غالباً مقطوع عند سقف max_tokens: أنقذ الأسئلة المكتملة قبل نقطة القطع
+        $salvaged = $this->salvageQuestions($raw);
+        if ($salvaged !== []) {
+            Log::info('AiSessionGenerationService: salvaged questions from truncated JSON', [
+                'count' => count($salvaged),
+                'length' => mb_strlen($response),
+            ]);
+
+            return $salvaged;
         }
 
-        $questions = $decoded['questions'] ?? null;
-        if (! is_array($questions)) {
+        Log::warning('AiSessionGenerationService: invalid JSON', [
+            'length' => mb_strlen($response),
+            'snippet' => mb_substr($response, 0, 500),
+            'tail' => mb_substr($response, -300),
+        ]);
+
+        throw new RuntimeException(
+            'تعذر قراءة رد الذكاء الاصطناعي كـ JSON — يبدو أن الرد انقطع قبل اكتماله. '
+            .'جرّب تقليل عدد الأسئلة أو تقليل حجم المحتوى المصدر، أو اختر نموذجاً آخر.'
+        );
+    }
+
+    /**
+     * إزالة أسوار ```json المحيطة بالرد إن وُجدت.
+     */
+    protected function stripCodeFences(string $raw): string
+    {
+        if (! str_starts_with($raw, '```')) {
+            return $raw;
+        }
+
+        $raw = (string) preg_replace('/^```[a-zA-Z]*\s*/', '', $raw);
+
+        return trim((string) preg_replace('/```\s*$/', '', $raw));
+    }
+
+    /**
+     * استخراج كائنات الأسئلة المكتملة من JSON مقطوع، بمسح الأقواس المتوازنة
+     * داخل مصفوفة "questions" وتجاهل الكائن الأخير غير المكتمل.
+     *
+     * @return list<array<string, mixed>>
+     */
+    protected function salvageQuestions(string $raw): array
+    {
+        $keyPos = strpos($raw, '"questions"');
+        if ($keyPos === false) {
             return [];
         }
 
-        return array_values(array_filter($questions, 'is_array'));
+        $arrayPos = strpos($raw, '[', $keyPos);
+        if ($arrayPos === false) {
+            return [];
+        }
+
+        $questions = [];
+        $depth = 0;
+        $objectStart = null;
+        $inString = false;
+        $escaped = false;
+        $length = strlen($raw);
+
+        // مسح بايتي آمن مع UTF-8: بايتات العربية المتتابعة ≥ 0x80 ولا تساوي أي محرف ASCII هنا
+        for ($i = $arrayPos + 1; $i < $length; $i++) {
+            $char = $raw[$i];
+
+            if ($inString) {
+                if ($escaped) {
+                    $escaped = false;
+                } elseif ($char === '\\') {
+                    $escaped = true;
+                } elseif ($char === '"') {
+                    $inString = false;
+                }
+
+                continue;
+            }
+
+            if ($char === '"') {
+                $inString = true;
+
+                continue;
+            }
+
+            if ($char === '{') {
+                if ($depth === 0) {
+                    $objectStart = $i;
+                }
+                $depth++;
+
+                continue;
+            }
+
+            if ($char === '}') {
+                $depth--;
+                if ($depth < 0) {
+                    break;
+                }
+                if ($depth === 0 && $objectStart !== null) {
+                    $decoded = json_decode(substr($raw, $objectStart, $i - $objectStart + 1), true);
+                    if (is_array($decoded)) {
+                        $questions[] = $decoded;
+                    }
+                    $objectStart = null;
+                }
+
+                continue;
+            }
+
+            if ($char === ']' && $depth === 0) {
+                break;
+            }
+        }
+
+        return $questions;
     }
 
     /**
@@ -484,8 +609,9 @@ PROMPT;
             $normalized['payload']['correct'] = (bool) ($payload['correct'] ?? true);
         }
         if ($type === 'single_choice') {
-            $normalized['payload']['options'] = array_values(array_map(function ($opt) use ($blank) {
+            $normalized['payload']['options'] = array_values(array_map(function ($opt) {
                 $opt = is_array($opt) ? $opt : [];
+
                 return [
                     'id' => (string) ($opt['id'] ?? 'a'),
                     'label' => (string) ($opt['label'] ?? 'خيار'),
@@ -499,6 +625,7 @@ PROMPT;
         if ($type === 'multiple_choice') {
             $normalized['payload']['options'] = array_values(array_map(function ($opt) {
                 $opt = is_array($opt) ? $opt : [];
+
                 return [
                     'id' => (string) ($opt['id'] ?? 'a'),
                     'label' => (string) ($opt['label'] ?? 'خيار'),

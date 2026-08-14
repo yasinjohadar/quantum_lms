@@ -427,7 +427,12 @@
                         </select>
                     </div>
                     <div class="col-12">
-                        <label class="form-label d-block mb-2">أنواع الأسئلة</label>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                            <label class="form-label mb-0">أنواع الأسئلة</label>
+                            <span class="text-muted small">(اختر نوعاً واحداً على الأقل)</span>
+                            <button type="button" class="btn btn-link btn-sm p-0 ms-auto" @click="toggleAllGenTypes()"
+                                x-text="gen.types.length === types.length ? 'إلغاء تحديد الكل' : 'تحديد الكل'"></button>
+                        </div>
                         <div class="ile-type-pills">
                             <template x-for="t in types" :key="'gen-'+t.type">
                                 <label class="ile-type-pill">
@@ -1342,7 +1347,8 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
             difficulty: 'medium',
             mode: 'replace',
             modelId: '',
-            types: (types || []).map(t => t.type),
+            // لا تحديد افتراضي — يختار المستخدم الأنواع المطلوبة بنفسه
+            types: [],
         },
 
         // حالة التوليد من ملف (PDF / صورة)
@@ -1364,6 +1370,11 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
                     : Boolean(this.srcText.trim());
             }
             return Boolean(this.gen.topic.trim());
+        },
+
+        toggleAllGenTypes() {
+            const all = this.types || [];
+            this.gen.types = this.gen.types.length === all.length ? [] : all.map(t => t.type);
         },
 
         resetSourceState() {
