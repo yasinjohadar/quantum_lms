@@ -29,19 +29,47 @@ const echoNotificationsEnabled =
 
 const keyFromEnv = runtimeCfg?.app_key || import.meta.env.VITE_REVERB_APP_KEY;
 const key = echoNotificationsEnabled ? keyFromEnv : null;
-const wsHost =
-    normalizeReverbHost(runtimeCfg?.host ?? import.meta.env.VITE_REVERB_HOST) ||
-    window.location.hostname;
-const port = (() => {
-    const p = runtimeCfg?.port ?? import.meta.env.VITE_REVERB_PORT;
-    if (p !== undefined && p !== null && p !== '') {
-        const n = parseInt(String(p), 10);
-        return Number.isFinite(n) ? n : 8080;
-    }
-    return 8080;
-})();
-const scheme = runtimeCfg?.scheme ?? import.meta.env.VITE_REVERB_SCHEME ?? 'http';
-const forceTLS = scheme === 'https';
+
+/**
+ * قيم import.meta.env تُخبَز وقت البناء. لو بُنيت الحزمة على جهاز تطوير ثم
+ * رُفعت للإنتاج، فهي تحمل localhost ومفتاح تطوير. لذا لا يجوز استخدامها
+ * كاحتياط على صفحة إنتاج — الاحتياط الآمن هو نطاق الصفحة نفسها.
+ */
+const pageHost = typeof window !== 'undefined' ? window.location.hostname : '';
+const pageIsSecure = typeof window !== 'undefined' && window.location.protocol === 'https:';
+const isLoopback = (h) => h === 'localhost' || h === '127.0.0.1' || h === '::1';
+
+if (runtimeCfg == null && !isLoopback(pageHost)) {
+    console.warn(
+        '[Echo] window.__echoReverbConfig غير موجود — تحقّق من config/echo-client.php ومن ' +
+        'php artisan config:cache. سيتم الاعتماد على نطاق الصفحة بدل قيم البناء المخزّنة.'
+    );
+}
+
+const bakedHost = normalizeReverbHost(import.meta.env.VITE_REVERB_HOST);
+const cfgHost = normalizeReverbHost(runtimeCfg?.host);
+
+/**
+ * قيم البناء تُقبل أو تُرفض ككتلة واحدة: لو رفضنا مضيفاً loopback على صفحة
+ * إنتاج، فرفض منفذه معه واجب — وإلا نتج wss://example.com:8080 وهو خطأ آخر.
+ */
+const bakedUsable = Boolean(bakedHost) && !(isLoopback(bakedHost) && !isLoopback(pageHost));
+const wsHost = cfgHost || (bakedUsable ? bakedHost : pageHost);
+
+/** المنفذ الصالح موجب فقط؛ 0 أو نص غير رقمي يعني إعداداً معطوباً لا يُمرَّر لـ Echo. */
+const toPort = (raw) => {
+    const n = parseInt(String(raw ?? ''), 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+};
+const port =
+    toPort(runtimeCfg?.port) ??
+    (bakedUsable ? toPort(import.meta.env.VITE_REVERB_PORT) : null) ??
+    (pageIsSecure ? 443 : 8080);
+
+// صفحة HTTPS لا يجوز أن تفتح ws:// (يُحجب كمحتوى مختلط)، فنفرض https عندها
+const scheme =
+    runtimeCfg?.scheme || import.meta.env.VITE_REVERB_SCHEME || (pageIsSecure ? 'https' : 'http');
+const forceTLS = pageIsSecure || scheme === 'https';
 
 function escapeHtml(text) {
     const div = document.createElement('div');
@@ -583,6 +611,11 @@ function wireEchoConnectionUi() {
             wsFailCount = 0;
         }
         if (states.current === 'failed' || states.current === 'unavailable') {
+            // بدل بقاء الشارة على «جاري الاتصال…» بلا تفسير، نطبع الوجهة الفعلية
+            console.warn(
+                `[Echo] تعذّر الاتصال (${states.previous} → ${states.current}). الوجهة: ` +
+                `${forceTLS ? 'wss' : 'ws'}://${wsHost}:${port}/app/${key}`
+            );
             wsFailCount += 1;
             if (wsFailCount >= WS_MAX_FAILS) {
                 giveUpWebSocket();
@@ -595,7 +628,8 @@ function wireEchoConnectionUi() {
             updateRealtimeStatusUI(states.current, { mode: 'web' });
         }
     });
-    conn.bind('error', () => {
+    conn.bind('error', (err) => {
+        console.warn('[Echo] خطأ في الاتصال:', err?.error?.data ?? err);
         wsFailCount += 1;
         if (wsFailCount >= WS_MAX_FAILS) {
             giveUpWebSocket();
@@ -704,7 +738,16 @@ if (!echoNotificationsEnabled) {
                 wsPort: port,
                 wssPort: port,
                 forceTLS,
-                enabledTransports: forceTLS ? ['wss'] : ['ws'],
+                /**
+                 * pusher-js يُعرّف ثلاث وسائط فقط: ws و xhr_streaming و xhr_polling.
+                 * لا يوجد وسيط اسمه 'wss' — وسيط ws هو من يتولّى wss:// أيضاً،
+                 * والتشفير يُحدَّد بـ forceTLS أعلاه.
+                 *
+                 * كان هنا: forceTLS ? ['wss'] : ['ws'] — فعلى HTTPS تصبح قائمة
+                 * الوسائط المفعّلة بلا أي وسيط صالح، فيفشل الاتصال فوراً بحالة
+                 * 'failed' دون أن يُفتح سوكيت أصلاً (ولا يظهر شيء في Network).
+                 */
+                enabledTransports: ['ws', 'wss'],
                 disableStats: true,
                 authEndpoint: '/broadcasting/auth',
                 auth: {
