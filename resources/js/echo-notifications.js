@@ -436,8 +436,14 @@ function getEchoPusher() {
 
 const ECHO_REALTIME_STORAGE_KEY = 'lms_echo_realtime';
 const WS_GIVE_UP_STORAGE_KEY = 'lms_echo_ws_give_up_until';
-const WS_GIVE_UP_COOLDOWN_MS = 5 * 60 * 1000;
-const WS_MAX_FAILS = 2;
+/**
+ * التطبيق صفحات كاملة (لا SPA)، فكل تنقّل يبني اتصالاً جديداً. لذا يجب أن يكون
+ * التحمّل سخياً: انقطاع لحظي واحد لا يجوز أن يُسكِت الإشعارات في كل الصفحات.
+ * (كانت: فشلان ومهلة 5 دقائق — قاسية جداً وتُخزَّن في sessionStorage فتعبر
+ *  كل التنقّلات، فيبدو النظام معطّلاً بسبب عارض واحد.)
+ */
+const WS_GIVE_UP_COOLDOWN_MS = 60 * 1000;
+const WS_MAX_FAILS = 3;
 
 let pollingIntervalId = null;
 
@@ -456,6 +462,13 @@ function markWsGiveUp() {
     } catch (_) {}
 }
 
+/** أي اتصال ناجح يُلغي عقوبة الفشل السابق فوراً بدل انتظار انتهاء المهلة. */
+function clearWsGiveUp() {
+    try {
+        sessionStorage.removeItem(WS_GIVE_UP_STORAGE_KEY);
+    } catch (_) {}
+}
+
 function startPollingFallback(silent = true) {
     prefetchUnreadCount();
     if (!pollingIntervalId) {
@@ -466,9 +479,14 @@ function startPollingFallback(silent = true) {
     }
 }
 
-function scheduleIdleTask(fn, fallbackMs = 400) {
+/**
+ * مهلة 2500ms كانت تُبقي الشارة على «جاري التحميل…» ثانيتين ونصف في كل صفحة،
+ * فيبدو الاتصال متعطّلاً. 700ms تكفي لعدم مزاحمة رسم الصفحة الأول مع بقاء
+ * الاتصال شبه فوري.
+ */
+function scheduleIdleTask(fn, fallbackMs = 300) {
     if (typeof window.requestIdleCallback === 'function') {
-        window.requestIdleCallback(fn, { timeout: 2500 });
+        window.requestIdleCallback(fn, { timeout: 700 });
     } else {
         window.setTimeout(fn, fallbackMs);
     }
@@ -627,6 +645,7 @@ function wireEchoConnectionUi() {
     conn.bind('state_change', (states) => {
         if (states.current === 'connected') {
             wsFailCount = 0;
+            clearWsGiveUp();
         }
         if (states.current === 'failed' || states.current === 'unavailable') {
             // بدل بقاء الشارة على «جاري الاتصال…» بلا تفسير، نطبع الوجهة الفعلية
