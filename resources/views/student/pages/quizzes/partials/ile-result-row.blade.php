@@ -21,9 +21,9 @@
                 <span class="student-quiz-result-row__badge student-quiz-result-row__badge--info">تفاعلي</span>
                 <span class="student-quiz-result-row__badge student-quiz-result-row__badge--success">مكتمل</span>
                 @if($passed)
-                    <span class="student-quiz-result-row__badge student-quiz-result-row__badge--passed">ناجح</span>
+                    <span class="student-quiz-result-row__badge student-quiz-result-row__badge--passed">ناجح ({{ $scorePct }}%)</span>
                 @else
-                    <span class="student-quiz-result-row__badge student-quiz-result-row__badge--failed">راسب</span>
+                    <span class="student-quiz-result-row__badge student-quiz-result-row__badge--failed">راسب ({{ $scorePct }}%)</span>
                 @endif
             </div>
         </div>
@@ -46,7 +46,7 @@
         @if($attempt->experience)
             <a href="{{ route('learning-experiences.show', $attempt->experience) }}"
                class="btn btn-success btn-sm">
-                <i class="bi bi-joystick me-1"></i>إعادة اللعب
+                <i class="bi bi-joystick me-1"></i>إعادة الاختبار
             </a>
         @endif
     </div>

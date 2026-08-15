@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\InteractiveLearning\Models\LearningExperience;
 use App\Models\Lesson;
 use App\Models\Quiz;
 use App\Models\SchoolClass;
@@ -23,6 +24,7 @@ class ReviewQueueController extends Controller
         $this->middleware(['permission:review-queue-list'])->only('index');
         $this->middleware(['permission:review-queue-lessons'])->only('lessons');
         $this->middleware(['permission:review-queue-quizzes'])->only('quizzes');
+        $this->middleware(['permission:review-queue-learning-experiences'])->only('learningExperiences');
         $this->middleware(['permission:lesson-approve-review'])->only('bulkApproveLessons');
         $this->middleware(['permission:quiz-approve-review'])->only('bulkApproveQuizzes');
     }
@@ -51,10 +53,12 @@ class ReviewQueueController extends Controller
     {
         $lessonsQuery = Lesson::query();
         $quizzesQuery = Quiz::query();
+        $experiencesQuery = LearningExperience::query();
 
         if ($isSupervisor) {
             $lessonsQuery->forSupervisor($user->id);
             $quizzesQuery->forSupervisor($user->id);
+            $experiencesQuery->forSupervisor($user->id);
         }
 
         return [
@@ -67,6 +71,11 @@ class ReviewQueueController extends Controller
                 'pending' => (clone $quizzesQuery)->pendingReview()->count(),
                 'approved' => (clone $quizzesQuery)->approved()->count(),
                 'rejected' => (clone $quizzesQuery)->rejected()->count(),
+            ],
+            'learning_experiences' => [
+                'pending' => (clone $experiencesQuery)->pendingReview()->count(),
+                'approved' => (clone $experiencesQuery)->published()->count(),
+                'rejected' => (clone $experiencesQuery)->rejectedReview()->count(),
             ],
         ];
     }
@@ -84,18 +93,7 @@ class ReviewQueueController extends Controller
             $quizzesQuery->forSupervisor($user->id);
         }
 
-        $stats = [
-            'lessons' => [
-                'pending' => (clone $lessonsQuery)->pendingReview()->count(),
-                'approved' => (clone $lessonsQuery)->approved()->count(),
-                'rejected' => (clone $lessonsQuery)->rejected()->count(),
-            ],
-            'quizzes' => [
-                'pending' => (clone $quizzesQuery)->pendingReview()->count(),
-                'approved' => (clone $quizzesQuery)->approved()->count(),
-                'rejected' => (clone $quizzesQuery)->rejected()->count(),
-            ],
-        ];
+        $stats = $this->buildReviewStats($user, $isSupervisor);
 
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -301,6 +299,68 @@ class ReviewQueueController extends Controller
         }
 
         return view('admin.pages.review-queue.quizzes', compact('quizzes', 'classes', 'subjects', 'stats'));
+    }
+
+    public function learningExperiences(Request $request)
+    {
+        $user = auth()->user();
+        $isSupervisor = $user->usesSupervisorAssignmentScope();
+
+        $query = LearningExperience::with(['subject.schoolClass.stage', 'creator', 'reviewer']);
+
+        if ($isSupervisor) {
+            $query->forSupervisor($user->id);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where('title', 'like', "%{$search}%");
+        }
+
+        $query->pendingReview();
+
+        if ($request->filled('class_id')) {
+            $query->whereHas('subject', function ($q) use ($request) {
+                $q->where('class_id', $request->input('class_id'));
+            });
+        }
+
+        if ($request->filled('subject_id')) {
+            $query->where('subject_id', $request->input('subject_id'));
+        }
+
+        $experiences = $query->orderBy('submitted_for_review_at', 'desc')->paginate(20);
+        $stats = $this->buildReviewStats($user, $isSupervisor);
+
+        if ($isSupervisor) {
+            $classIds = $user->assignedClassesAsSupervisor()->pluck('classes.id');
+            $subjectIds = $user->assignedSubjectsAsSupervisor()->pluck('subjects.id');
+
+            $classes = SchoolClass::with('stage')
+                ->active()
+                ->ordered()
+                ->when($classIds->isNotEmpty(), function ($q) use ($classIds) {
+                    $q->whereIn('id', $classIds);
+                }, function ($q) {
+                    $q->whereRaw('1 = 0');
+                })
+                ->get();
+
+            $subjects = Subject::with('schoolClass.stage')
+                ->active()
+                ->ordered()
+                ->when($subjectIds->isNotEmpty(), function ($q) use ($subjectIds) {
+                    $q->whereIn('id', $subjectIds);
+                }, function ($q) {
+                    $q->whereRaw('1 = 0');
+                })
+                ->get();
+        } else {
+            $classes = SchoolClass::with('stage')->active()->ordered()->get();
+            $subjects = Subject::with('schoolClass.stage')->active()->ordered()->get();
+        }
+
+        return view('admin.pages.review-queue.learning-experiences', compact('experiences', 'classes', 'subjects', 'stats'));
     }
 
     public function bulkApproveLessons(Request $request): RedirectResponse

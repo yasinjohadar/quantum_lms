@@ -476,20 +476,6 @@
     gap: 0.65rem;
 }
 
-.ile-mute {
-    border: 0;
-    background: transparent;
-    font-size: 1.1rem;
-    cursor: pointer;
-    line-height: 1;
-    padding: 0.2rem;
-    opacity: 0.85;
-}
-
-.ile-mute:hover {
-    opacity: 1;
-}
-
 .ile-feedback--pop {
     animation: ilePop 0.35s ease, ileGlow 0.7s ease;
 }
@@ -1689,10 +1675,6 @@
 .ile-header__meta {
     flex-wrap: wrap;
     row-gap: 0.4rem;
-}
-
-.ile-mute {
-    margin-inline-start: auto;
 }
 
 .ile-hud {

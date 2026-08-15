@@ -772,10 +772,13 @@ class User extends Authenticatable
             'review-queue-list',
             'review-queue-lessons',
             'review-queue-quizzes',
+            'review-queue-learning-experiences',
             'lesson-approve-review',
             'lesson-reject-review',
             'quiz-approve-review',
             'quiz-reject-review',
+            'learning-experience-approve-review',
+            'learning-experience-reject-review',
         ]);
     }
 

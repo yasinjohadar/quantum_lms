@@ -474,22 +474,55 @@
             </ul>
         </div>
 
+        @php
+            $ileIsContentUploader = auth()->user()->shouldSubmitContentForReview();
+            $ileCanReview = auth()->user()->canReviewContent();
+        @endphp
+
         <div class="ile-panel">
             <div class="ile-panel__head">
                 <h6><i class="bi bi-broadcast-pin"></i>حالة النشر</h6>
             </div>
             <div class="ile-panel__body">
-                <div class="ile-status-bar">
-                    @foreach(['draft' => 'مسودة', 'review' => 'مراجعة', 'published' => 'نشر', 'archived' => 'أرشفة'] as $st => $label)
-                        @if($experience->canTransitionTo($st) || $experience->status === $st)
-                            <form method="POST" action="{{ route('admin.learning-experiences.transition', $experience) }}">
-                                @csrf
-                                <input type="hidden" name="status" value="{{ $st }}">
-                                <button class="btn btn-sm {{ $experience->status === $st ? 'btn-primary' : 'btn-outline-primary' }}" {{ $experience->status === $st ? 'disabled' : '' }}>{{ $label }}</button>
-                            </form>
-                        @endif
-                    @endforeach
-                </div>
+                @include('admin.pages.learning-experiences.partials.learning-experience-review-fields', [
+                    'fieldId' => 'ileReviewEdit',
+                    'isEdit' => true,
+                    'experience' => $experience,
+                ])
+
+                @if($ileIsContentUploader)
+                    @if($experience->status === \App\InteractiveLearning\Models\LearningExperience::STATUS_DRAFT)
+                        <form method="POST" action="{{ route('admin.learning-experiences.submit-for-review', $experience) }}" class="mt-2">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn-warning">
+                                <i class="bi bi-send me-1"></i> إرسال للمراجعة
+                            </button>
+                        </form>
+                    @endif
+                @else
+                    <div class="ile-status-bar mt-2">
+                        @foreach(['draft' => 'مسودة', 'review' => 'مراجعة', 'published' => 'نشر', 'archived' => 'أرشفة'] as $st => $label)
+                            @if($experience->canTransitionTo($st) || $experience->status === $st)
+                                <form method="POST" action="{{ route('admin.learning-experiences.transition', $experience) }}">
+                                    @csrf
+                                    <input type="hidden" name="status" value="{{ $st }}">
+                                    <button class="btn btn-sm {{ $experience->status === $st ? 'btn-primary' : 'btn-outline-primary' }}" {{ $experience->status === $st ? 'disabled' : '' }}>{{ $label }}</button>
+                                </form>
+                            @endif
+                        @endforeach
+                    </div>
+                @endif
+
+                @if($ileCanReview && $experience->status === \App\InteractiveLearning\Models\LearningExperience::STATUS_REVIEW)
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#ileApproveModal">
+                            <i class="bi bi-check2-circle me-1"></i> موافقة ونشر
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#ileRejectModal">
+                            <i class="bi bi-x-circle me-1"></i> رفض
+                        </button>
+                    </div>
+                @endif
             </div>
         </div>
 
@@ -602,6 +635,14 @@
                                    value="{{ old('passing_score', $experience->passing_score ?? 50) }}">
                             <div class="form-text">تُحدَّد بها حالة النجاح/الرسوب في نتائج الطالب وإحصائياته.</div>
                             @error('passing_score')<div class="text-danger small">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">الحد الأقصى للمحاولات</label>
+                            <input type="number" min="0" step="1" class="form-control"
+                                   name="max_attempts"
+                                   value="{{ old('max_attempts', $experience->max_attempts ?? 0) }}">
+                            <div class="form-text">0 = غير محدود. يمنع الطالب من إعادة المحاولة بعد بلوغ العدد.</div>
+                            @error('max_attempts')<div class="text-danger small">{{ $message }}</div>@enderror
                         </div>
                     </div>
 
@@ -1142,6 +1183,53 @@
         </div>
     </div>
 </div>
+
+@if(auth()->user()->canReviewContent() && $experience->status === \App\InteractiveLearning\Models\LearningExperience::STATUS_REVIEW)
+<div class="modal fade" id="ileApproveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('admin.learning-experiences.approve-review', $experience) }}">
+                @csrf
+                <div class="modal-header">
+                    <h6 class="modal-title">الموافقة على نشر الاختبار التفاعلي</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label small">ملاحظات (اختياري)</label>
+                    <textarea name="review_notes" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-success">موافقة ونشر</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="ileRejectModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('admin.learning-experiences.reject-review', $experience) }}">
+                @csrf
+                <div class="modal-header">
+                    <h6 class="modal-title">رفض نشر الاختبار التفاعلي</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label small">ملاحظات <span class="text-danger">*</span></label>
+                    <textarea name="review_notes" class="form-control" rows="3" required></textarea>
+                    <small class="text-muted d-block mt-1">يجب إضافة ملاحظات توضح سبب الرفض.</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-danger">رفض</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
 @endsection
 
 @push('scripts')

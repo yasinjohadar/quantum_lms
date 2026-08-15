@@ -419,6 +419,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('review-queue.lessons');
         Route::get('review-queue/quizzes', [\App\Http\Controllers\Admin\ReviewQueueController::class, 'quizzes'])
             ->name('review-queue.quizzes');
+        Route::get('review-queue/learning-experiences', [\App\Http\Controllers\Admin\ReviewQueueController::class, 'learningExperiences'])
+            ->name('review-queue.learning-experiences');
         Route::post('review-queue/lessons/bulk-approve', [\App\Http\Controllers\Admin\ReviewQueueController::class, 'bulkApproveLessons'])
             ->name('review-queue.lessons.bulk-approve');
         Route::post('review-queue/quizzes/bulk-approve', [\App\Http\Controllers\Admin\ReviewQueueController::class, 'bulkApproveQuizzes'])
@@ -705,6 +707,12 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
         // ===============================================
         Route::post('learning-experiences/{learning_experience}/transition', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'transition'])
             ->name('learning-experiences.transition');
+        Route::post('learning-experiences/{learning_experience}/submit-for-review', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'submitForReview'])
+            ->name('learning-experiences.submit-for-review');
+        Route::post('learning-experiences/{learning_experience}/approve-review', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'approveReview'])
+            ->name('learning-experiences.approve-review');
+        Route::post('learning-experiences/{learning_experience}/reject-review', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'rejectReview'])
+            ->name('learning-experiences.reject-review');
         Route::post('learning-experiences/{learning_experience}/questions', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'addQuestion'])
             ->name('learning-experiences.questions.add');
         Route::post('learning-experiences/{learning_experience}/ai/patch', [\App\InteractiveLearning\Http\Controllers\Admin\LearningExperienceController::class, 'aiPatch'])

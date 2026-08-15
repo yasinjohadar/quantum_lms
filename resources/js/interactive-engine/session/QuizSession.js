@@ -34,6 +34,7 @@ export class QuizSession {
         this.currentModule = null;
         this.root = null;
         this.attemptsUsed = {};
+        this.backUrl = config.backUrl || '';
         this.fx = new FeedbackFx({
             motion: schema.theme?.motion || 'full',
             passThreshold: config.passThreshold ?? 50,
@@ -76,7 +77,6 @@ export class QuizSession {
                         <span id="ile-step"></span>
                         <span class="ile-hud ile-hud--score" id="ile-score" title="نجومك">⭐ <strong id="ile-score-value">0</strong></span>
                         <span class="ile-hud ile-hud--streak" id="ile-streak" title="إجابات صحيحة متتالية" hidden>🔥 <strong id="ile-streak-value">0</strong></span>
-                        <button type="button" class="ile-mute" id="ile-mute" title="${this.fx.muted ? 'تشغيل الصوت' : 'كتم الصوت'}" aria-label="الصوت"><i class="bi ${this.fx.muted ? 'bi-volume-mute-fill' : 'bi-volume-up-fill'}" aria-hidden="true"></i></button>
                     </div>
                 </header>
                 <main class="ile-main">
@@ -110,15 +110,6 @@ export class QuizSession {
         this.root.querySelector('#ile-instructions')?.addEventListener('click', () => {
             this.fx.unlock();
             this.fx.playInstructions(this.schema);
-        });
-        this.root.querySelector('#ile-mute')?.addEventListener('click', () => {
-            const muted = this.fx.toggleMute();
-            const btn = this.root.querySelector('#ile-mute');
-            if (btn) {
-                btn.innerHTML = `<i class="bi ${muted ? 'bi-volume-mute-fill' : 'bi-volume-up-fill'}" aria-hidden="true"></i>`;
-                btn.title = muted ? 'تشغيل الصوت' : 'كتم الصوت';
-            }
-            if (!muted) this.fx.playVoice('success');
         });
         this.root.addEventListener('pointerdown', () => this.fx.unlock(), { once: true });
     }
@@ -444,6 +435,7 @@ export class QuizSession {
                 <div class="ile-results__actions">
                     <button type="button" class="ile-btn ile-btn--primary" id="ile-retry">${passed ? 'العب مرة ثانية!' : 'يلا نعيد!'}</button>
                     <button type="button" class="ile-btn ile-btn--ghost" id="ile-review">شوف إجاباتك</button>
+                    ${this.backUrl ? `<button type="button" class="ile-btn ile-btn--ghost" id="ile-back-to-subject">العودة لمحتوى المادة</button>` : ''}
                 </div>
                 <div class="ile-review" id="ile-review-box" hidden></div>
             </div>`;
@@ -453,6 +445,9 @@ export class QuizSession {
         if (encourageEl) encourageEl.textContent = encourage;
 
         results.querySelector('#ile-retry')?.addEventListener('click', () => window.location.reload());
+        results.querySelector('#ile-back-to-subject')?.addEventListener('click', () => {
+            window.location.href = this.backUrl;
+        });
         results.querySelector('#ile-review')?.addEventListener('click', () => {
             const box = results.querySelector('#ile-review-box');
             box.hidden = false;

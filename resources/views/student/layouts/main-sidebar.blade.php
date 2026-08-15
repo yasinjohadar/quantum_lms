@@ -92,17 +92,6 @@
                             </a>
                         </li>
 
-                        <!-- الاختبارات المتاحة -->
-                        <li class="slide slide-icon slide-icon--indigo {{ request()->is('student/quizzes') && !request()->is('student/quizzes/*') ? 'active' : '' }}">
-                            <a href="{{ route('student.quizzes.index') }}" class="side-menu__item {{ request()->is('student/quizzes') && !request()->is('student/quizzes/*') ? 'active' : '' }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
-                                    <path d="M0 0h24v24H0z" fill="none"/>
-                                    <path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l4.59-4.58L18 11l-6 6z"/>
-                                </svg>
-                                <span class="side-menu__label">الاختبارات المتاحة</span>
-                            </a>
-                        </li>
-
                         <!-- نتائج الاختبارات -->
                         <li class="slide slide-icon slide-icon--purple {{ request()->is('student/quizzes/results') ? 'active' : '' }}">
                             <a href="{{ route('student.quizzes.results') }}" class="side-menu__item {{ request()->is('student/quizzes/results') ? 'active' : '' }}">

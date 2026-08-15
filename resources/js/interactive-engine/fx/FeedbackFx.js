@@ -16,7 +16,8 @@ export class FeedbackFx {
         this.passThreshold = Number(options.passThreshold ?? 50);
         this.voiceEnabled = options.voice !== false;
         this.ttsUrl = options.ttsUrl || '';
-        this.muted = this.readMuted();
+        // الصوت مفعّل دوماً بلا خيار كتم — لا يُقرأ ولا يُحفظ أي تفضيل كتم سابق.
+        this.muted = false;
         this._audio = null;
         this._cache = new Map();
         this._lottie = null;
@@ -38,7 +39,7 @@ export class FeedbackFx {
             wrong: failPool,
             pass: successPool, // نهاية الاختبار بنجاح تعيد استخدام تسجيلات النجاح
             retry: failPool, // ونهايته برسوب تعيد استخدام تسجيلات الفشل
-            continue: [], // زر «يلا نكمّل» بلا تسجيل — صامت
+            continue: [], // زر «يلا نكمّل» بلا تسجيل حقيقي بعد — يُنطق آلياً (انظر ttsFallbackKinds)
         };
 
         const successIndex = buildPhraseIndex(successPool);
@@ -51,8 +52,12 @@ export class FeedbackFx {
             continue: new Map(),
         };
 
-        /** أنواع لا يُشغَّل لها صوت إطلاقاً. */
-        this.silentKinds = new Set(['continue']);
+        /**
+         * أنواع بلا تسجيلات صوتية حقيقية بعد — تُنطق آلياً (TTS) كحل مؤقت
+         * إلى حين تسجيل مقاطع صوتية حقيقية لها. لا يشمل success/wrong: النطق
+         * الآلي ممنوع صراحة في تغذية الإجابة (انظر playPhrase أدناه).
+         */
+        this.ttsFallbackKinds = new Set(['continue']);
 
         /** نص احتياطي يُستخدم فقط إذا لم تصل خريطة العبارات من السيرفر. */
         this.phrases = {
@@ -88,36 +93,6 @@ export class FeedbackFx {
             ],
         };
         this.preload();
-    }
-
-    readMuted() {
-        try {
-            return localStorage.getItem('ile_fx_muted') === '1';
-        } catch {
-            return false;
-        }
-    }
-
-    setMuted(muted) {
-        this.muted = Boolean(muted);
-        try {
-            localStorage.setItem('ile_fx_muted', this.muted ? '1' : '0');
-        } catch {
-            /* ignore */
-        }
-        if (this.muted) this.stopVoice();
-        if (window.speechSynthesis) {
-            try {
-                window.speechSynthesis.cancel();
-            } catch {
-                /* ignore */
-            }
-        }
-    }
-
-    toggleMute() {
-        this.setMuted(!this.muted);
-        return this.muted;
     }
 
     unlock() {
@@ -229,8 +204,6 @@ export class FeedbackFx {
      * @returns {string} النص المطابق للصوت
      */
     playPhrase(kind, authoredText = '') {
-        if (this.silentKinds.has(kind)) return '';
-
         const { text, url } = this.resolvePhrase(kind, authoredText);
 
         if (!this.voiceEnabled || this.muted) return text;
@@ -238,10 +211,25 @@ export class FeedbackFx {
         this.unlock();
         this.stopVoice();
 
-        // لا تسجيل مطابق → صمت. ممنوع النطق الآلي (TTS) في تغذية الإجابة:
-        // المسموع عند الصواب والخطأ يجب أن يكون من التسجيلات العشرين فقط.
-        if (!url) return text;
+        if (!url) {
+            // لا تسجيل مطابق: success/wrong يبقيان صامتين عمداً — ممنوع النطق
+            // الآلي في تغذية الإجابة، فالمسموع عندهما يجب أن يكون من
+            // التسجيلات العشرين فقط. الأنواع الأخرى (كـ continue، بلا
+            // تسجيلات بعد) تُنطق آلياً كحل مؤقت بدل البقاء صامتة دوماً.
+            if (this.ttsFallbackKinds.has(kind)) this.speakLabel(text);
+            return text;
+        }
 
+        this.playRecordedAudio(url);
+        return text;
+    }
+
+    /**
+     * تشغيل تسجيل بمسار الصوت المحدَّد، مع إعادة محاولة واحدة عند الفشل
+     * (كإلغاء التشغيل بسبب تداخل مقطع سابق لم ينتهِ) بدل الاستسلام صامتاً
+     * من أول فشل — يقلّل حالات "أحياناً لا نسمع الصوت" رغم وجود التسجيل.
+     */
+    playRecordedAudio(url, isRetry = false) {
         let audio = this._cache.get(url);
         if (!audio) {
             audio = new Audio(url);
@@ -255,9 +243,13 @@ export class FeedbackFx {
         }
         audio.volume = 1;
         const play = audio.play();
-        // فشل/إلغاء التشغيل (AbortError عند التشغيل السريع المتتالي مثلاً) → صمت لا صوت بديل
-        if (play?.catch) play.catch(() => {});
-        return text;
+        if (play?.catch) {
+            play.catch(() => {
+                if (!isRetry) {
+                    setTimeout(() => this.playRecordedAudio(url, true), 120);
+                }
+            });
+        }
     }
 
     /**

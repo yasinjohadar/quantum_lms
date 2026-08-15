@@ -199,9 +199,9 @@
                                     col-class="col-xl-2 col-lg-4 col-md-4 col-sm-6"
                                 />
                                 <x-dashboard-shortcut
-                                    href="{{ route('student.quizzes.index') }}"
+                                    href="{{ route('student.quizzes.results') }}"
                                     icon="fas fa-clipboard-check"
-                                    title="الاختبارات"
+                                    title="نتائج الاختبارات"
                                     subtitle="نتائج وتقارير الاختبارات"
                                     accent="success"
                                     col-class="col-xl-2 col-lg-4 col-md-4 col-sm-6"

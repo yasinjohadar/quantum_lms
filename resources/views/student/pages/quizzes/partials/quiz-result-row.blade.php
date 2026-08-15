@@ -36,9 +36,9 @@
                 @endif
                 @if($attempt->passed !== null)
                     @if($attempt->passed)
-                        <span class="student-quiz-result-row__badge student-quiz-result-row__badge--passed">ناجح</span>
+                        <span class="student-quiz-result-row__badge student-quiz-result-row__badge--passed">ناجح{{ $scorePct !== null ? " ({$scorePct}%)" : '' }}</span>
                     @else
-                        <span class="student-quiz-result-row__badge student-quiz-result-row__badge--failed">راسب</span>
+                        <span class="student-quiz-result-row__badge student-quiz-result-row__badge--failed">راسب{{ $scorePct !== null ? " ({$scorePct}%)" : '' }}</span>
                     @endif
                 @endif
             </div>

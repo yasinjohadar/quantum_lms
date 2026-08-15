@@ -274,7 +274,7 @@
     ]
   },
   "resources/js/interactive-engine/index.js": {
-    "file": "assets/index-DcDi3tV1.js",
+    "file": "assets/index-BCvx2hYg.js",
     "name": "index",
     "src": "resources/js/interactive-engine/index.js",
     "isEntry": true,
@@ -285,7 +285,7 @@
       "node_modules/katex/dist/katex.mjs"
     ],
     "css": [
-      "assets/index-C6GrD_IW.css"
+      "assets/index-BmNM4Brl.css"
     ]
   }
 }

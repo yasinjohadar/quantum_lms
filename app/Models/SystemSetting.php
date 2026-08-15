@@ -138,6 +138,12 @@ class SystemSetting extends Model
         return self::booleanSetting('content_quiz_mandatory_review', false);
     }
 
+    /** هل مراجعة الاختبارات التفاعلية إلزامية للمعلمين قبل النشر؟ */
+    public static function learningExperienceMandatoryReviewEnabled(): bool
+    {
+        return self::booleanSetting('content_learning_experience_mandatory_review', false);
+    }
+
     private static function booleanSetting(string $key, bool $default = false): bool
     {
         $value = self::byKey($key)->where('group', 'general')->first()?->value ?? self::get($key, $default);

@@ -4,12 +4,15 @@ namespace App\InteractiveLearning\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\InteractiveLearning\Models\LearningExperience;
+use App\InteractiveLearning\Models\LearningExperienceAttempt;
 use App\InteractiveLearning\Services\ArabicTtsService;
 use App\InteractiveLearning\Services\AttemptService;
 use App\InteractiveLearning\Services\SchemaValidator;
 use App\InteractiveLearning\Support\FeedbackPhrases;
 use App\Models\User;
+use App\Services\StudentContentNotificationService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
@@ -20,10 +23,11 @@ class LearningExperiencePlayController extends Controller
     public function __construct(
         protected AttemptService $attemptService,
         protected SchemaValidator $schemaValidator,
-        protected ArabicTtsService $ttsService
+        protected ArabicTtsService $ttsService,
+        protected StudentContentNotificationService $studentContentNotificationService
     ) {}
 
-    public function show(LearningExperience $learningExperience): View
+    public function show(LearningExperience $learningExperience): View|RedirectResponse
     {
         $user = auth()->user();
         $isPreview = $user && method_exists($user, 'hasRole') && (
@@ -37,6 +41,20 @@ class LearningExperiencePlayController extends Controller
 
         $this->authorizeAccess($learningExperience, $user, $isPreview);
 
+        $backUrl = $this->studentContentNotificationService->learningExperienceBrowseUrl($learningExperience);
+
+        // منع فتح المشغّل أصلاً بعد استنفاد الحد الأقصى للمحاولات (0 = غير محدود).
+        // المعاينة (أدمن/معلم/مشرف/منشئ التجربة) لا تخضع لهذا الحد.
+        if (! $isPreview && $user && $learningExperience->max_attempts > 0) {
+            $attemptsUsed = LearningExperienceAttempt::where('learning_experience_id', $learningExperience->id)
+                ->where('user_id', $user->id)
+                ->count();
+
+            if ($attemptsUsed >= $learningExperience->max_attempts) {
+                return redirect($backUrl)->with('error', 'لقد استنفدت جميع محاولاتك المسموحة لهذا الاختبار التفاعلي.');
+            }
+        }
+
         $validation = $this->schemaValidator->validate($learningExperience->schema_json ?? []);
         if (! $validation['valid'] && ! $isPreview) {
             abort(422, 'Schema غير صالح.');
@@ -48,6 +66,7 @@ class LearningExperiencePlayController extends Controller
             'engineVersion' => SchemaValidator::ENGINE_VERSION,
             'schemaVersion' => $learningExperience->schema_version ?: SchemaValidator::SCHEMA_VERSION,
             'feedbackPhrases' => FeedbackPhrases::forPlayer(),
+            'backUrl' => $backUrl,
         ]);
     }
 

@@ -3,12 +3,14 @@
 namespace App\InteractiveLearning\Models;
 
 use App\Models\Lesson;
+use App\Models\ReviewComment;
 use App\Models\Subject;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class LearningExperience extends Model
 {
@@ -39,6 +41,11 @@ class LearningExperience extends Model
         'unit_id',
         'lesson_id',
         'passing_score',
+        'max_attempts',
+        'review_notes',
+        'reviewed_by',
+        'reviewed_at',
+        'submitted_for_review_at',
     ];
 
     protected function casts(): array
@@ -46,6 +53,9 @@ class LearningExperience extends Model
         return [
             'schema_json' => 'array',
             'passing_score' => 'float',
+            'max_attempts' => 'integer',
+            'reviewed_at' => 'datetime',
+            'submitted_for_review_at' => 'datetime',
         ];
     }
 
@@ -56,6 +66,21 @@ class LearningExperience extends Model
     public function scopePublished($query)
     {
         return $query->where('status', self::STATUS_PUBLISHED);
+    }
+
+    public function scopePendingReview($query)
+    {
+        return $query->where('status', self::STATUS_REVIEW);
+    }
+
+    /**
+     * لا يوجد عمود حالة "مرفوض" منفصل — انظر LearningExperience::isRejected().
+     */
+    public function scopeRejectedReview($query)
+    {
+        return $query->where('status', self::STATUS_DRAFT)
+            ->whereNotNull('review_notes')
+            ->whereNotNull('reviewed_at');
     }
 
     /**
@@ -71,9 +96,51 @@ class LearningExperience extends Model
             ->whereIn('subject_id', $subjectIds);
     }
 
+    /**
+     * ما يجوز لمشرف مراجعته: مقيّد بالصفوف/المواد المخصصة له.
+     * مطابقة لـ Quiz::scopeForSupervisor.
+     */
+    public function scopeForSupervisor($query, $supervisorId)
+    {
+        $supervisor = User::find($supervisorId);
+
+        if (! $supervisor || ! $supervisor->hasSupervisorStaffIdentity()) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $classIds = $supervisor->assignedClassesAsSupervisor()->pluck('classes.id');
+        $subjectIds = $supervisor->assignedSubjectsAsSupervisor()->pluck('subjects.id');
+
+        return $query->whereHas('subject', function ($subjectQuery) use ($classIds, $subjectIds) {
+            if ($classIds->isNotEmpty()) {
+                $subjectQuery->whereIn('class_id', $classIds);
+            }
+            if ($subjectIds->isNotEmpty()) {
+                if ($classIds->isNotEmpty()) {
+                    $subjectQuery->orWhereIn('id', $subjectIds);
+                } else {
+                    $subjectQuery->whereIn('id', $subjectIds);
+                }
+            }
+            if ($classIds->isEmpty() && $subjectIds->isEmpty()) {
+                $subjectQuery->whereRaw('1 = 0');
+            }
+        });
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function reviewComments(): MorphMany
+    {
+        return $this->morphMany(ReviewComment::class, 'reviewable')->orderBy('created_at', 'asc');
     }
 
     public function subject(): BelongsTo
@@ -104,6 +171,32 @@ class LearningExperience extends Model
     public function isPublished(): bool
     {
         return $this->status === self::STATUS_PUBLISHED;
+    }
+
+    public function isPendingReview(): bool
+    {
+        return $this->status === self::STATUS_REVIEW;
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->status === self::STATUS_PUBLISHED;
+    }
+
+    public function isDraft(): bool
+    {
+        return $this->status === self::STATUS_DRAFT;
+    }
+
+    /**
+     * لا يوجد عمود حالة "مرفوض" منفصل — الرفض يُمثَّل بالعودة إلى STATUS_DRAFT
+     * مع تعبئة review_notes وreviewed_at، فنميّزه هنا عن مسودة لم تُراجَع قط.
+     */
+    public function isRejected(): bool
+    {
+        return $this->status === self::STATUS_DRAFT
+            && ! empty($this->review_notes)
+            && $this->reviewed_at !== null;
     }
 
     public function questionsCount(): int

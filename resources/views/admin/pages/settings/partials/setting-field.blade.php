@@ -9,6 +9,7 @@
     $meta = [
         'content_lesson_mandatory_review' => ['bi-clipboard-check', 'warning', 'إلزام مراجعة الدروس قبل النشر', 'عند التفعيل: كل حفظ من المعلم يُرسل تلقائياً للمشرف المسؤول عن الصف والمادة. عند الإلغاء: يعود الإرسال الاختياري.', true],
         'content_quiz_mandatory_review' => ['bi-clipboard-check', 'warning', 'إلزام مراجعة الاختبارات قبل النشر', 'عند التفعيل: كل حفظ من المعلم يُرسل الاختبار تلقائياً للمشرف المسؤول عن الصف والمادة. عند الإلغاء: يعود الإرسال الاختياري.', true],
+        'content_learning_experience_mandatory_review' => ['bi-joystick', 'warning', 'إلزام مراجعة الاختبارات التفاعلية قبل النشر', 'عند التفعيل: كل إنشاء/حفظ من المعلم يُرسل الاختبار التفاعلي تلقائياً للمشرف المسؤول عن الصف والمادة. عند الإلغاء: يعود الإرسال الاختياري.', true],
         'phone_verification_enabled' => ['bi-phone', 'primary', 'تفعيل التحقق من رقم الهاتف عند التسجيل', null, false],
         'otp_expires_minutes' => ['bi-clock-history', 'warning', 'مدة صلاحية كود التحقق (دقائق)', null, false],
         'otp_message_template' => ['bi-chat-left-text', 'info', 'نص رسالة كود التحقق', 'استخدم {code} للرمز و {expires_in} لوقت الصلاحية بالدقائق', false],

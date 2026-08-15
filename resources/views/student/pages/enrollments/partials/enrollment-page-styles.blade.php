@@ -286,6 +286,40 @@
             cursor: not-allowed;
         }
 
+        /* على الجوال: عدّاد المواد والزر في سطر واحد بدل التفاف سطرين */
+        @media (max-width: 575.98px) {
+            .enrollment-class-card__actions {
+                flex-wrap: nowrap;
+                gap: 0.35rem;
+                padding: 0.6rem 0.65rem 0.85rem;
+            }
+
+            .enrollment-class-card__meta {
+                padding: 0.3rem 0.45rem;
+                font-size: 0.68rem;
+                gap: 0.25rem;
+                white-space: nowrap;
+            }
+
+            .enrollment-class-card__meta i {
+                display: none;
+            }
+
+            .enrollment-class-card__btn-join {
+                padding: 8px 12px !important;
+                font-size: 0.78rem !important;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+
+            .enrollment-class-card__btn-pending {
+                padding: 0.4rem 0.6rem;
+                font-size: 0.75rem;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+        }
+
         .enrollment-class-card__footer {
             padding: 0.7rem 1rem;
             border-top: 1px solid var(--default-border);

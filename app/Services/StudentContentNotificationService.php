@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\InteractiveLearning\Models\LearningExperience;
 use App\Models\Lesson;
 use App\Models\Quiz;
 use App\Models\Subject;
@@ -25,6 +26,11 @@ class StudentContentNotificationService
         return $quiz->is_active
             && $quiz->is_published
             && $quiz->review_status === Quiz::REVIEW_STATUS_APPROVED;
+    }
+
+    public function learningExperienceVisibleToStudents(LearningExperience $experience): bool
+    {
+        return $experience->status === LearningExperience::STATUS_PUBLISHED;
     }
 
     /**
@@ -162,6 +168,29 @@ class StudentContentNotificationService
         return route('student.quizzes.index');
     }
 
+    public function learningExperienceBrowseUrl(LearningExperience $experience, ?Subject $subject = null): string
+    {
+        $experience->loadMissing('unit.section', 'subject');
+
+        $unit = $experience->unit;
+        $section = $unit?->section;
+        $subject = $subject ?? $experience->subject;
+
+        if ($subject && $section && $unit) {
+            return route('student.subjects.folders.unit', [
+                'subject' => $subject->id,
+                'section' => $section->id,
+                'unit' => $unit->id,
+            ]);
+        }
+
+        if ($subject) {
+            return route('student.subjects.folders', ['subject' => $subject->id]);
+        }
+
+        return route('student.classes');
+    }
+
     public function notifyIfQuizBecameVisible(?Quiz $before, Quiz $after, ?User $actor): void
     {
         $visibleBefore = $before && $this->quizVisibleToStudents($before);
@@ -211,6 +240,60 @@ class StudentContentNotificationService
         } catch (\Exception $e) {
             Log::error('Student quiz availability notification failed: '.$e->getMessage(), [
                 'quiz_id' => $after->id,
+                'exception' => $e,
+            ]);
+        }
+    }
+
+    public function notifyIfLearningExperienceBecameVisible(?LearningExperience $before, LearningExperience $after, ?User $actor): void
+    {
+        $visibleBefore = $before && $this->learningExperienceVisibleToStudents($before);
+        $visibleAfter = $this->learningExperienceVisibleToStudents($after);
+
+        if ($visibleBefore || ! $visibleAfter) {
+            return;
+        }
+
+        try {
+            $after->loadMissing('subject');
+            $subject = $after->subject;
+            if (! $subject) {
+                return;
+            }
+
+            $students = $subject->students()->wherePivot('status', 'active')->get();
+            if ($students->isEmpty()) {
+                return;
+            }
+
+            $title = 'اختبار تفاعلي جديد متاح';
+            $message = "أصبح اختبار تفاعلي «{$after->title}» متاحاً في مادة {$subject->name}.";
+            $actionUrl = $this->learningExperienceBrowseUrl($after, $subject);
+
+            foreach ($students as $student) {
+                $this->notificationService->sendNotification(
+                    $student,
+                    'student_learning_experience_available',
+                    $title,
+                    $message,
+                    [
+                        'learning_experience_id' => $after->id,
+                        'learning_experience_title' => $after->title,
+                        'subject_id' => $subject->id,
+                        'subject_name' => $subject->name,
+                        'url' => $actionUrl,
+                        'icon' => 'fe fe-zap',
+                        'color' => 'success',
+                    ],
+                    false,
+                    null,
+                    $actionUrl,
+                    true,
+                );
+            }
+        } catch (\Exception $e) {
+            Log::error('Student learning experience availability notification failed: '.$e->getMessage(), [
+                'learning_experience_id' => $after->id,
                 'exception' => $e,
             ]);
         }

@@ -257,6 +257,12 @@
                             <label class="form-label" for="ileDescription">الوصف</label>
                             <textarea name="description" id="ileDescription" class="form-control" rows="3" placeholder="وصف مختصر يظهر في المكتبة (اختياري)">{{ old('description') }}</textarea>
                         </div>
+                        <div class="col-12">
+                            @include('admin.pages.learning-experiences.partials.learning-experience-review-fields', [
+                                'fieldId' => 'ileReviewCreate',
+                                'isEdit' => false,
+                            ])
+                        </div>
                     </div>
                 </div>
             </div>

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\InteractiveLearning\Models\LearningExperience;
 use App\Models\ClassEnrollment;
 use App\Models\Lesson;
 use App\Models\Quiz;
@@ -249,6 +250,100 @@ class StaffNotificationService
         ];
 
         $type = $approved ? 'quiz_review_approved' : 'quiz_review_rejected';
+
+        $this->notificationService->sendBulkNotification(
+            $recipients,
+            $type,
+            $title,
+            $messageAdmin,
+            $data,
+            $reviewer,
+            $url,
+            $messageOthers
+        );
+    }
+
+    public function notifyLearningExperienceSubmittedForReview(LearningExperience $experience, User $submitter): void
+    {
+        $experience->loadMissing('subject');
+        $subject = $experience->subject;
+        if (! $subject) {
+            return;
+        }
+
+        $recipients = array_values(array_unique(array_merge(
+            $this->recipientIdsForSubjectScope($subject),
+            $this->teacherIdsForSubjectAndClass($subject)
+        )));
+        $recipients = array_values(array_diff($recipients, [$submitter->id]));
+
+        $title = 'اختبار تفاعلي قيد المراجعة';
+        $messageAdmin = $submitter->name.' أرسل الاختبار التفاعلي «'.$experience->title.'» للمراجعة في مادة «'.$subject->name.'».';
+        $messageOthers = 'تم إرسال الاختبار التفاعلي «'.$experience->title.'» للمراجعة في مادة «'.$subject->name.'».';
+        $url = URL::route('admin.subjects.show', $subject->id);
+
+        $data = [
+            'icon' => 'fe fe-edit-3',
+            'color' => 'warning',
+            'entity_type' => 'learning_experience',
+            'entity_id' => $experience->id,
+            'subject_id' => $subject->id,
+        ];
+
+        $this->notificationService->sendBulkNotification(
+            $recipients,
+            'learning_experience_review_submitted',
+            $title,
+            $messageAdmin,
+            $data,
+            $submitter,
+            $url,
+            $messageOthers
+        );
+
+        $this->notificationService->sendNotification(
+            $submitter,
+            'learning_experience_review_submit_ack',
+            'تم إرسال الاختبار التفاعلي للمراجعة',
+            'تم إرسال اختبارك التفاعلي «'.$experience->title.'» للمراجعة في مادة «'.$subject->name.'».',
+            $data,
+            false,
+            null,
+            $url,
+            true
+        );
+    }
+
+    public function notifyLearningExperienceReviewOutcome(LearningExperience $experience, User $reviewer, bool $approved): void
+    {
+        $experience->loadMissing('subject');
+        $subject = $experience->subject;
+        if (! $subject) {
+            return;
+        }
+
+        $recipients = array_values(array_unique(array_merge(
+            $this->recipientIdsForSubjectScope($subject),
+            $this->teacherIdsForSubjectAndClass($subject)
+        )));
+        $recipients = array_values(array_diff($recipients, [$reviewer->id]));
+
+        $title = $approved ? 'تم قبول مراجعة الاختبار التفاعلي' : 'تم رفض مراجعة الاختبار التفاعلي';
+        $notesSuffix = $experience->review_notes ? ' الملاحظات: '.$experience->review_notes : '';
+        $messageAdmin = $reviewer->name.' '.($approved ? 'وافق على نشر' : 'رفض نشر').' الاختبار التفاعلي «'.$experience->title.'» في مادة «'.$subject->name.'».'.$notesSuffix;
+        $messageOthers = ($approved ? 'تم قبول نشر الاختبار التفاعلي «' : 'تم رفض نشر الاختبار التفاعلي «').$experience->title.'» في مادة «'.$subject->name.'».'.$notesSuffix;
+
+        $url = URL::route('admin.subjects.show', $subject->id);
+
+        $data = [
+            'icon' => $approved ? 'fe fe-check-circle' : 'fe fe-x-circle',
+            'color' => $approved ? 'success' : 'danger',
+            'entity_type' => 'learning_experience',
+            'entity_id' => $experience->id,
+            'subject_id' => $subject->id,
+        ];
+
+        $type = $approved ? 'learning_experience_review_approved' : 'learning_experience_review_rejected';
 
         $this->notificationService->sendBulkNotification(
             $recipients,

@@ -34,6 +34,21 @@ class AttemptService
             ]);
         }
 
+        // شبكة أمان: الحجب الأساسي يحدث قبل عرض المشغّل أصلاً
+        // (LearningExperiencePlayController::show())، وهذا يغطي حالات نادرة
+        // كفتح تبويبين أو تأخر الإرسال حتى بعد استنفاد المحاولات.
+        if ($experience->max_attempts > 0) {
+            $attemptsUsed = LearningExperienceAttempt::where('learning_experience_id', $experience->id)
+                ->where('user_id', $user->id)
+                ->count();
+
+            if ($attemptsUsed >= $experience->max_attempts) {
+                throw ValidationException::withMessages([
+                    'experience' => 'لقد استنفدت جميع محاولاتك المسموحة لهذا الاختبار التفاعلي.',
+                ]);
+            }
+        }
+
         $answers = $payload['answers'] ?? [];
         if (! is_array($answers)) {
             $answers = [];

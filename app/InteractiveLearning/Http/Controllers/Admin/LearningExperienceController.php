@@ -17,10 +17,14 @@ use App\Models\AIModel;
 use App\Models\Lesson;
 use App\Models\Stage;
 use App\Models\Subject;
+use App\Models\SystemSetting;
 use App\Models\Unit;
+use App\Services\StaffNotificationService;
+use App\Services\StudentContentNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -33,8 +37,13 @@ class LearningExperienceController extends Controller
         protected AiPatchService $aiPatchService,
         protected AiSessionGenerationService $aiSessionGenerationService,
         protected ExperienceQuestionImportService $experienceQuestionImportService,
-        protected ExperienceSourceExtractionService $sourceExtractionService
-    ) {}
+        protected ExperienceSourceExtractionService $sourceExtractionService,
+        protected StaffNotificationService $staffNotificationService
+    ) {
+        $this->middleware(['permission:learning-experience-approve-review'])->only('approveReview');
+        $this->middleware(['permission:learning-experience-reject-review'])->only('rejectReview');
+        $this->middleware(['permission:learning-experience-submit-for-review'])->only('submitForReview');
+    }
 
     public function index(Request $request): View
     {
@@ -118,7 +127,11 @@ class LearningExperienceController extends Controller
             $data['lesson_id'] ?? null
         );
 
-        $experience = LearningExperience::create([
+        $user = $request->user();
+        $requiresReview = $user->shouldSubmitContentForReview();
+        $mandatoryReview = SystemSetting::learningExperienceMandatoryReviewEnabled();
+
+        $attributes = [
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
             'status' => LearningExperience::STATUS_DRAFT,
@@ -127,15 +140,274 @@ class LearningExperienceController extends Controller
                 ? SchemaValidator::SCHEMA_VERSION_DYNAMIC
                 : SchemaValidator::SCHEMA_VERSION,
             'engine_version' => SchemaValidator::ENGINE_VERSION,
-            'created_by' => $request->user()->id,
+            'created_by' => $user->id,
             'subject_id' => $links['subject_id'],
             'unit_id' => $links['unit_id'],
             'lesson_id' => $links['lesson_id'],
-        ]);
+        ];
+
+        $submitForReview = $requiresReview && ($mandatoryReview || $request->boolean('submit_for_review'));
+
+        if ($submitForReview) {
+            $attributes['status'] = LearningExperience::STATUS_REVIEW;
+            $attributes['submitted_for_review_at'] = now();
+        }
+
+        $experience = LearningExperience::create($attributes);
+
+        if ($submitForReview) {
+            $this->dispatchNotificationSafely(
+                fn () => $this->staffNotificationService->notifyLearningExperienceSubmittedForReview($experience->fresh(), $user),
+                'learning_experience_submitted_for_review',
+                $experience->id
+            );
+
+            return redirect()
+                ->route('admin.learning-experiences.edit', $experience)
+                ->with('success', 'تم إنشاء الاختبار التفاعلي وإرساله للمراجعة. لن يظهر للطلاب حتى تتم الموافقة.');
+        }
+
+        if ($requiresReview) {
+            // معلم/مشرف بمراجعة اختيارية اختار عدم الإرسال الآن — يبقى مسودة.
+            return redirect()
+                ->route('admin.learning-experiences.edit', $experience)
+                ->with('success', 'تم إنشاء الاختبار التفاعلي كمسودة. أكمل الأسئلة ثم أرسله للمراجعة.');
+        }
+
+        // أدمن كامل اختار عدم التفعيل — يبقى مسودة (مطابقة لسلوك الاختبار العادي عند إلغاء تحديد "تفعيل الاختبار").
+        if (! $request->has('is_active')) {
+            return redirect()
+                ->route('admin.learning-experiences.edit', $experience)
+                ->with('success', 'تم إنشاء الاختبار التفاعلي كمسودة. أكمل الأسئلة ثم انشر.');
+        }
+
+        // أدمن كامل: محاولة نشر فوري (مطابقة لسلوك الاختبار العادي).
+        $validation = $this->schemaValidator->validate($schema);
+
+        if ($validation['valid']) {
+            $experienceBeforePublish = clone $experience;
+
+            $experience->update(['status' => LearningExperience::STATUS_PUBLISHED]);
+
+            $this->dispatchNotificationSafely(
+                fn () => app(StudentContentNotificationService::class)->notifyIfLearningExperienceBecameVisible(
+                    $experienceBeforePublish,
+                    $experience->fresh(),
+                    $user
+                ),
+                'learning_experience_became_visible',
+                $experience->id
+            );
+
+            return redirect()
+                ->route('admin.learning-experiences.edit', $experience)
+                ->with('success', 'تم إنشاء الاختبار التفاعلي ونشره تلقائياً. يمكنك تعديل الأسئلة في أي وقت.');
+        }
 
         return redirect()
             ->route('admin.learning-experiences.edit', $experience)
             ->with('success', 'تم إنشاء الاختبار التفاعلي. أكمل الأسئلة ثم انشر.');
+    }
+
+    /**
+     * إرسال الاختبار التفاعلي للمراجعة.
+     */
+    public function submitForReview(LearningExperience $learningExperience): RedirectResponse
+    {
+        try {
+            $user = auth()->user();
+
+            if (! $user->shouldSubmitContentForReview()) {
+                abort(403, 'غير مصرح لك بإرسال الاختبار التفاعلي للمراجعة');
+            }
+
+            if ($learningExperience->status === LearningExperience::STATUS_PUBLISHED) {
+                return redirect()->back()->with('error', 'الاختبار التفاعلي منشور بالفعل.');
+            }
+
+            if ($learningExperience->questionsCount() === 0) {
+                return redirect()->back()->with('error', 'لا يمكن إرسال اختبار تفاعلي بدون أسئلة للمراجعة');
+            }
+
+            $this->assertTeacherCanAccessExperience($learningExperience);
+
+            $learningExperience->update([
+                'status' => LearningExperience::STATUS_REVIEW,
+                'submitted_for_review_at' => now(),
+                'review_notes' => null,
+            ]);
+
+            $this->dispatchNotificationSafely(
+                fn () => $this->staffNotificationService->notifyLearningExperienceSubmittedForReview($learningExperience->fresh(), $user),
+                'learning_experience_submitted_for_review',
+                $learningExperience->id
+            );
+
+            return redirect()->back()->with('success', 'تم إرسال الاختبار التفاعلي للمراجعة بنجاح. سيتم مراجعته من قبل المشرف/الأدمن.');
+        } catch (\Exception $e) {
+            Log::error('Error submitting learning experience for review: '.$e->getMessage());
+
+            return redirect()->back()->with('error', 'حدث خطأ أثناء إرسال الاختبار التفاعلي للمراجعة');
+        }
+    }
+
+    /**
+     * الموافقة على نشر الاختبار التفاعلي.
+     */
+    public function approveReview(Request $request, LearningExperience $learningExperience): RedirectResponse
+    {
+        $request->validate([
+            'review_notes' => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            $experienceBeforeApprove = clone $learningExperience;
+
+            $user = auth()->user();
+            if (! $user->canReviewContent()) {
+                abort(403, 'غير مصرح لك بالموافقة على نشر الاختبار التفاعلي');
+            }
+
+            $this->assertSupervisorCanReviewExperience($learningExperience);
+
+            if ($learningExperience->status !== LearningExperience::STATUS_REVIEW) {
+                return redirect()->back()->with('error', 'لا يمكن الموافقة على اختبار تفاعلي ليس قيد المراجعة.');
+            }
+
+            if ($learningExperience->questionsCount() === 0) {
+                return redirect()->back()->with('error', 'لا يمكن الموافقة على نشر اختبار تفاعلي بدون أسئلة');
+            }
+
+            $validation = $this->schemaValidator->validate($learningExperience->schema_json ?? []);
+            if (! $validation['valid']) {
+                return redirect()->back()->with('error', 'لا يمكن نشر الاختبار التفاعلي قبل تصحيح أخطاء البنية: '.implode(' - ', $validation['errors']));
+            }
+
+            $learningExperience->update([
+                'status' => LearningExperience::STATUS_PUBLISHED,
+                'review_notes' => $request->input('review_notes'),
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+            ]);
+
+            $this->dispatchNotificationSafely(
+                fn () => $this->staffNotificationService->notifyLearningExperienceReviewOutcome($learningExperience->fresh(), $user, true),
+                'learning_experience_review_outcome',
+                $learningExperience->id
+            );
+
+            $this->dispatchNotificationSafely(
+                fn () => app(StudentContentNotificationService::class)->notifyIfLearningExperienceBecameVisible(
+                    $experienceBeforeApprove,
+                    $learningExperience->fresh(),
+                    $user
+                ),
+                'learning_experience_became_visible',
+                $learningExperience->id
+            );
+
+            return redirect()
+                ->route('admin.review-queue.index')
+                ->with('success', 'تم الموافقة على نشر الاختبار التفاعلي بنجاح.');
+        } catch (\Exception $e) {
+            Log::error('Error approving learning experience review: '.$e->getMessage());
+
+            return redirect()->back()->with('error', 'حدث خطأ أثناء الموافقة على نشر الاختبار التفاعلي');
+        }
+    }
+
+    /**
+     * رفض نشر الاختبار التفاعلي مع ملاحظات.
+     */
+    public function rejectReview(Request $request, LearningExperience $learningExperience): RedirectResponse
+    {
+        $request->validate([
+            'review_notes' => 'required|string|max:1000',
+        ]);
+
+        try {
+            $user = auth()->user();
+            if (! $user->canReviewContent()) {
+                abort(403, 'غير مصرح لك برفض نشر الاختبار التفاعلي');
+            }
+
+            $this->assertSupervisorCanReviewExperience($learningExperience);
+
+            if ($learningExperience->status !== LearningExperience::STATUS_REVIEW) {
+                return redirect()->back()->with('error', 'لا يمكن رفض اختبار تفاعلي ليس قيد المراجعة.');
+            }
+
+            $learningExperience->update([
+                'status' => LearningExperience::STATUS_DRAFT,
+                'review_notes' => $request->input('review_notes'),
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+            ]);
+
+            $this->dispatchNotificationSafely(
+                fn () => $this->staffNotificationService->notifyLearningExperienceReviewOutcome($learningExperience->fresh(), $user, false),
+                'learning_experience_review_outcome',
+                $learningExperience->id
+            );
+
+            return redirect()
+                ->route('admin.review-queue.index')
+                ->with('success', 'تم رفض نشر الاختبار التفاعلي وتم إرسال الملاحظات للمعلم.');
+        } catch (\Exception $e) {
+            Log::error('Error rejecting learning experience review: '.$e->getMessage());
+
+            return redirect()->back()->with('error', 'حدث خطأ أثناء رفض نشر الاختبار التفاعلي');
+        }
+    }
+
+    protected function assertTeacherCanAccessExperience(LearningExperience $learningExperience): void
+    {
+        $user = auth()->user();
+
+        if (! $user->usesTeacherAssignmentScope() || ! $learningExperience->subject_id) {
+            return;
+        }
+
+        $classId = $learningExperience->subject?->class_id;
+
+        if (! $user->isAssignedToSubject($learningExperience->subject_id) &&
+            (! $classId || ! $user->isAssignedToClass($classId))) {
+            abort(403, 'غير مصرح لك بالوصول إلى هذا الاختبار التفاعلي');
+        }
+    }
+
+    protected function assertSupervisorCanReviewExperience(LearningExperience $learningExperience): void
+    {
+        $user = auth()->user();
+
+        if ($user->isPlatformAdmin() || ! $user->usesSupervisorAssignmentScope()) {
+            return;
+        }
+
+        if (! $learningExperience->subject_id) {
+            abort(403, 'غير مصرح لك بمراجعة هذا الاختبار التفاعلي');
+        }
+
+        $allowed = LearningExperience::query()
+            ->forSupervisor($user->id)
+            ->where('id', $learningExperience->id)
+            ->exists();
+
+        if (! $allowed) {
+            abort(403, 'غير مصرح لك بمراجعة هذا الاختبار التفاعلي');
+        }
+    }
+
+    private function dispatchNotificationSafely(callable $callback, string $context, int $experienceId): void
+    {
+        try {
+            $callback();
+        } catch (\Throwable $e) {
+            Log::error('Learning experience notification dispatch failed: '.$e->getMessage(), [
+                'context' => $context,
+                'learning_experience_id' => $experienceId,
+            ]);
+        }
     }
 
     public function edit(LearningExperience $learningExperience): View
@@ -213,6 +485,7 @@ class LearningExperienceController extends Controller
             'unit_id' => ['nullable', 'integer', 'exists:units,id'],
             'lesson_id' => ['nullable', 'integer', 'exists:lessons,id'],
             'passing_score' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'max_attempts' => ['nullable', 'integer', 'min:0', 'max:100'],
         ]);
 
         $schema = json_decode($data['schema_json'], true);
@@ -246,6 +519,7 @@ class LearningExperienceController extends Controller
             'unit_id' => $links['unit_id'],
             'lesson_id' => $links['lesson_id'],
             'passing_score' => isset($data['passing_score']) ? (float) $data['passing_score'] : 50,
+            'max_attempts' => isset($data['max_attempts']) ? (int) $data['max_attempts'] : 0,
         ]);
 
         // التجربة بلا مادة لا يمكن أن تظهر لأي طالب — نُنبّه بدل الصمت
@@ -408,6 +682,13 @@ class LearningExperienceController extends Controller
         }
 
         if ($data['status'] === LearningExperience::STATUS_PUBLISHED) {
+            $user = $request->user();
+
+            // منشئ محتوى يخضع لمسار المراجعة لا يمكنه النشر مباشرة — يجب إرساله للمراجعة أولاً.
+            if ($user->shouldSubmitContentForReview() && ! $user->canReviewContent()) {
+                return back()->withErrors(['status' => 'لا يمكنك نشر الاختبار التفاعلي مباشرة. أرسله للمراجعة أولاً.']);
+            }
+
             $result = $this->schemaValidator->validate($learningExperience->schema_json ?? []);
             if (! $result['valid']) {
                 return back()->withErrors(['status' => 'لا يمكن النشر: '.implode(' ', $result['errors'])]);

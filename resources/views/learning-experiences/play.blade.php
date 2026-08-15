@@ -40,6 +40,7 @@
         engineVersion: @json($engineVersion),
         isPreview: @json($isPreview),
         feedbackPhrases: @json($feedbackPhrases),
+        backUrl: @json($backUrl),
     };
 </script>
 </body>
