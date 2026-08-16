@@ -179,11 +179,7 @@
                     <div class="header-element headerProfile-dropdown">
                         <!-- Start::header-link|dropdown-toggle -->
                         <a href="javascript:void(0);" class="header-link dropdown-toggle" id="mainHeaderProfile" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                            @if(Auth::user()?->photo)
-                                <img src="{{ media_public_url(Auth::user()->photo) }}" alt="صورة المستخدم" width="37" height="37" class="rounded-circle">
-                            @else
-                                <img src="{{ asset('assets/images/faces/default-avatar.jpg') }}" alt="صورة المستخدم" width="37" height="37" class="rounded-circle">
-                            @endif
+                            <img src="{{ asset('frontend/images/logo.png') }}" alt="أكاديمية كوانتم" width="37" height="37" class="rounded-circle" style="object-fit: contain; background: #000; padding: 3px;">
                         </a>
                         <!-- End::header-link|dropdown-toggle -->
                         <ul class="main-header-dropdown dropdown-menu pt-0 header-profile-dropdown dropdown-menu-end main-profile-menu" aria-labelledby="mainHeaderProfile">
