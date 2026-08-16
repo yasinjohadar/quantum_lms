@@ -359,6 +359,14 @@
             box-shadow: var(--enrollment-shadow-hover);
         }
 
+        /* 5 كاردات بالصف على الكمبيوتر، 2 على الجوال/التابلت */
+        @media (min-width: 992px) {
+            .enrollment-subject-card-col {
+                flex: 0 0 20%;
+                max-width: 20%;
+            }
+        }
+
         .enrollment-subject-card__media {
             overflow: hidden;
         }

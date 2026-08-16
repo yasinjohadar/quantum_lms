@@ -110,7 +110,7 @@
                         $pendingPurchaseId = $pendingSubjectPurchaseIds[$subject->id] ?? null;
                     @endphp
 
-                    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-3 mb-md-4">
+                    <div class="col-6 enrollment-subject-card-col mb-3 mb-md-4">
                         <article class="enrollment-subject-card">
                             <div class="enrollment-subject-card__media">
                                 @if($subject->image)
