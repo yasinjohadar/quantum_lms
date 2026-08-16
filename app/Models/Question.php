@@ -146,19 +146,10 @@ class Question extends Model
             $relative = $storageMatch[1];
         }
 
-        $fromTinymce = tinymce_public_image_url($relative);
-        if ($fromTinymce !== '') {
-            if (preg_match('#^https?://#i', $fromTinymce)) {
-                return $fromTinymce;
-            }
-            if (str_starts_with($fromTinymce, '/')) {
-                return url($fromTinymce);
-            }
-
-            return url('/'.ltrim($fromTinymce, '/'));
-        }
-
-        return url('/storage/'.$relative);
+        // رابط تحويل ثابت لا ينتهي أبداً (بعكس الرابط السحابي المُوقَّع المباشر الذي
+        // كان يُخبَّز هنا سابقاً وينتهي خلال 7 أيام): يُعيد MediaRedirectController توليد
+        // رابط صالح حديثاً عبر media_public_url() في كل طلب فعلي للصورة.
+        return url('/media/'.$relative);
     }
 
     /**

@@ -58,6 +58,12 @@ Route::middleware(['auth', 'check.user.active'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // تحويل ثابت لروابط الوسائط المضمَّنة داخل محتوى الأسئلة (لا تنتهي صلاحيته أبداً،
+    // بعكس الرابط السحابي المُوقَّع الذي يُنشئه لحظياً في كل طلب)
+    Route::get('/media/{path}', [\App\Http\Controllers\MediaRedirectController::class, 'show'])
+        ->where('path', '.*')
+        ->name('media.redirect');
 });
 
 // Profile route للطالب - يمكن الوصول من routes/student.php أيضاً

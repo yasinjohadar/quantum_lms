@@ -199,6 +199,8 @@ class QuestionMarkupFormatter
      */
     private static function normalizeForRender(string $text): string
     {
+        [$text, $protectedTags] = self::protectHtmlTags($text);
+
         $text = self::repairBrokenMathDelimiters($text);
         $text = self::convertMathBackticks($text);
         $text = self::convertBraceWrappedMathOutsideDelimiters($text);
@@ -211,7 +213,49 @@ class QuestionMarkupFormatter
         $text = self::mergeAdjacentInlineMath($text);
         $text = self::repairUnbalancedDollarSigns($text);
 
-        return $text;
+        return self::restoreHtmlTags($text, $protectedTags);
+    }
+
+    /**
+     * يحمي وسوم HTML (بما فيها قيم خصائصها) من كواشف شبه-الرياضيات في normalizeForRender()
+     * عبر استبدالها بعلامات نائبة مؤقتة قبل تشغيل السلسلة، واستعادتها بعدها. بدون هذا،
+     * رابط صورة سحابي طويل داخل src="..." (مليء بـ=/&) قد يُعتبَر "رياضيات محتملة" فيُلَفّ
+     * بـ$...$ وتُستبدَل علاماته < و> بـ\lt \gt، فيتحوّل وسم <img> بأكمله لنص خامل قبل الحفظ.
+     *
+     * @return array{0: string, 1: list<string>}
+     */
+    private static function protectHtmlTags(string $text): array
+    {
+        if (! str_contains($text, '<')) {
+            return [$text, []];
+        }
+
+        $tags = [];
+        $pattern = '/<[a-zA-Z\/!][^>]*(?:(?:"[^"]*"|\'[^\']*\')[^>]*)*>/su';
+
+        $protected = preg_replace_callback($pattern, static function (array $m) use (&$tags): string {
+            $tags[] = $m[0];
+
+            return "\x1E".(count($tags) - 1)."\x1F";
+        }, $text) ?? $text;
+
+        return [$protected, $tags];
+    }
+
+    /**
+     * يستعيد وسوم HTML التي حجبتها protectHtmlTags() بعد انتهاء سلسلة معالجة الرياضيات.
+     *
+     * @param  list<string>  $tags
+     */
+    private static function restoreHtmlTags(string $text, array $tags): string
+    {
+        if ($tags === []) {
+            return $text;
+        }
+
+        return preg_replace_callback('/\x1E(\d+)\x1F/', static function (array $m) use ($tags): string {
+            return $tags[(int) $m[1]] ?? $m[0];
+        }, $text) ?? $text;
     }
 
     /**
@@ -1057,6 +1101,11 @@ class QuestionMarkupFormatter
 
         // نص عربي مختلط — لا نلفّ الجملة كاملة كـ LaTeX
         if (preg_match('/[\x{0600}-\x{06FF}]/u', $text)) {
+            return false;
+        }
+
+        // بقايا وسم HTML (مثلاً بعد فساد قديم لم يُصلَح بعد) — ليست لاتكس عارياً أبداً
+        if (str_contains($trimmed, '<')) {
             return false;
         }
 

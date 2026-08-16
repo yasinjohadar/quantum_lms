@@ -876,12 +876,10 @@ class QuestionController extends Controller
             ], 500);
         }
 
-        $url = tinymce_public_image_url($path);
+        $url = Question::absoluteImageUrlForDisplay($path);
         if ($url === '' || $url === '/') {
             return response()->json(['error' => 'تعذّر إنشاء رابط للصورة بعد الرفع'], 500);
         }
-
-        $url = Question::absoluteImageUrlForDisplay($url);
 
         Log::info('TinyMCE question image uploaded', [
             'path' => $path,

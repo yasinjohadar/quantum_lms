@@ -854,3 +854,43 @@ test('hasSuspiciousBareLatex ignores bare command words already safely handled i
 
     expect(QuestionMarkupFormatter::hasSuspiciousBareLatex($html))->toBeFalse();
 });
+
+test('normalize for storage does not corrupt an img tag whose src is a long presigned cloud url (question #10355 regression)', function () {
+    // انحدار حقيقي من الإنتاج: سؤال محتواه صورة فقط أُدرجت عبر TinyMCE، رابطها رابط
+    // S3/iDrive موقَّع مليء بـ=/&/أرقام. BARE_MATH_RUN_PATTERN كان يعتبر جزءاً من هذا
+    // الرابط "رياضيات محتملة"، فيُلَفّ بـ$...$ ثم تُستبدَل علاماته < و> بـ\lt \gt، فيتحوّل
+    // وسم <img> بأكمله لنص خامل قبل الحفظ (السؤال يظهر فارغاً تماماً، 0 كلمات، بلا صورة).
+    $original = '<p><img src="https://quantum.s3.eu-west-3.idrivee2.com/questions/images/file_{6a440a76afee98}.55283440.png?X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=bPJbplQ1C6PRoZ3UVC6j%2F20260630%2Feu-west-3%2Fs3%2Faws4_request&X-Amz-Date=20260630T182702Z&X-Amz-SignedHeaders=host&X-Amz-Expires=604800&X-Amz-Signature=0ed3c134adce18d8f8fd426fce1dd1c0f8a7afe825c1d38b42f374ee121daee9"></p>';
+
+    $stored = QuestionMarkupFormatter::normalizeForStorage($original);
+
+    expect($stored)
+        ->toBe($original)
+        ->toContain('<img src="https://quantum.s3.eu-west-3.idrivee2.com/questions/images/file_{6a440a76afee98}.55283440.png?')
+        ->not->toContain('\lt')
+        ->not->toContain('\gt')
+        ->not->toContain('$');
+});
+
+test('normalize for storage preserves an img tag with a greater-than sign inside a quoted attribute value', function () {
+    $original = '<p><img src="https://example.com/x.png" alt="1 > 2"></p>';
+
+    $stored = QuestionMarkupFormatter::normalizeForStorage($original);
+
+    expect($stored)
+        ->toBe($original)
+        ->not->toContain('\gt')
+        ->not->toContain('\lt');
+});
+
+test('normalize for storage still wraps real math that appears alongside an img tag with a long url', function () {
+    $original = 'ليكن $f(x) = \\sqrt{x^{2} + 4x + 5}$ ثم انظر إلى الشكل <img src="https://quantum.s3.eu-west-3.idrivee2.com/questions/images/file_abc.png?X-Amz-Signature=0ed3c134adce18d8f8fd426fce1dd1c0f8a7afe825c1d38b42f374ee121daee9">.';
+
+    $stored = QuestionMarkupFormatter::normalizeForStorage($original);
+
+    expect($stored)
+        ->toContain('$f(x) = \\sqrt{x^{2} + 4x + 5}$')
+        ->toContain('<img src="https://quantum.s3.eu-west-3.idrivee2.com/questions/images/file_abc.png?X-Amz-Signature=0ed3c134adce18d8f8fd426fce1dd1c0f8a7afe825c1d38b42f374ee121daee9">')
+        ->not->toContain('\lt')
+        ->not->toContain('\gt');
+});
