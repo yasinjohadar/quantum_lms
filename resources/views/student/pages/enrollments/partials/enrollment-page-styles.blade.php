@@ -360,19 +360,18 @@
         }
 
         .enrollment-subject-card__media {
-            height: 140px;
             overflow: hidden;
         }
 
         .enrollment-subject-card__media img {
+            display: block;
             width: 100%;
-            height: 100%;
-            object-fit: cover;
+            height: auto;
         }
 
         .enrollment-subject-card__media-placeholder {
             width: 100%;
-            height: 100%;
+            height: 140px;
             display: flex;
             align-items: center;
             justify-content: center;

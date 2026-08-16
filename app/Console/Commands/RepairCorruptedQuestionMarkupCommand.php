@@ -206,6 +206,14 @@ class RepairCorruptedQuestionMarkupCommand extends Command
             return ['status' => 'needs_review', 'reason' => 'عدد وسوم HTML تغيّر بين إعادة البناء وإعادة التطبيع'];
         }
 
+        // شبكة أمان أخيرة: لا نكتب أبداً نتيجة فارغة/بيضاء طالما القيمة الأصلية لم تكن كذلك،
+        // حتى لو اجتازت الفحوصات السابقة بطريقة غير متوقعة — فقدان المحتوى أسوأ من تركه فاسداً.
+        if (trim($repaired) === '') {
+            $this->needsReview++;
+
+            return ['status' => 'needs_review', 'reason' => 'النتيجة النهائية فارغة تماماً بعد إعادة التطبيع رغم أن الأصل لم يكن فارغاً — لن تُكتَب'];
+        }
+
         return ['status' => 'repaired', 'value' => $repaired];
     }
 
