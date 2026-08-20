@@ -28,6 +28,7 @@ class SubjectController extends Controller
         $this->middleware(['permission:subject-delete'])->only('destroy');
         $this->middleware(['permission:subject-enrolled-students'])->only('enrolledStudents');
         $this->middleware(['permission:subject-toggle-status'])->only('toggleStatus');
+        $this->middleware(['permission:subject-edit'])->only('toggleFreeOverride');
         $this->middleware(['permission:subject-edit'])->only('reorder');
         $this->middleware(['permission:subject-show|lesson-edit|quiz-edit|lesson-list'])->only([
             'linkableSubjectsByClass',
@@ -711,6 +712,40 @@ class SubjectController extends Controller
             return redirect()
                 ->back()
                 ->with('error', 'فشل تحديث حالة المادة');
+        }
+    }
+
+    /**
+     * تبديل «مجانية دائماً» (is_free_override) عبر الأجاكس من قائمة المواد مباشرة.
+     */
+    public function toggleFreeOverride(Subject $subject)
+    {
+        try {
+            $subject->is_free_override = ! $subject->is_free_override;
+            $subject->save();
+
+            // تبديل «مجانية دائماً» يغيّر وضع التسعير الفعلي، فنفرّغ كاش المادة وصفّها
+            try {
+                app(\App\Services\Pricing\PricingCacheManager::class)
+                    ->invalidateOnPricingModeChange($subject);
+            } catch (\Exception $e) {
+                Log::warning('Failed to invalidate pricing cache: ' . $e->getMessage());
+            }
+
+            return response()->json([
+                'success' => true,
+                'is_free_override' => $subject->is_free_override,
+                'message' => $subject->is_free_override
+                    ? 'أصبحت المادة مجانية دائماً'
+                    : 'أصبحت المادة مدفوعة',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error toggling subject free override: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل تحديث حالة المادة',
+            ], 500);
         }
     }
 

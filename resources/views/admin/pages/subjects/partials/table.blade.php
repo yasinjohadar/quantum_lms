@@ -41,6 +41,25 @@
             @endcan
         </td>
         <td>
+            @can('subject-edit')
+                <div class="form-check form-switch mb-0">
+                    <input type="checkbox"
+                           class="form-check-input sb-free-override-toggle"
+                           role="switch"
+                           data-url="{{ route('admin.subjects.toggle-free-override', $subject->id) }}"
+                           id="freeOverride{{ $subject->id }}"
+                           {{ $subject->is_free_override ? 'checked' : '' }}>
+                    <label class="form-check-label small text-muted" for="freeOverride{{ $subject->id }}">
+                        {{ $subject->is_free_override ? 'مجانية' : 'مدفوعة' }}
+                    </label>
+                </div>
+            @else
+                <span class="sb-status-badge {{ $subject->is_free_override ? 'sb-status-badge--active' : 'sb-status-badge--inactive' }}">
+                    {{ $subject->is_free_override ? 'مجانية دائماً' : 'مدفوعة' }}
+                </span>
+            @endcan
+        </td>
+        <td>
             <div class="row-action-bar">
                 @can('question-list')
                     <a href="{{ route('admin.subjects.questions.index', $subject->id) }}"
@@ -92,7 +111,7 @@
     </tr>
 @empty
     <tr>
-        <td colspan="6">
+        <td colspan="7">
             <div class="subjects-empty">
                 <i class="bi bi-journal-bookmark"></i>
                 <p class="mb-0 fw-semibold">لا توجد مواد مطابقة للفلاتر</p>

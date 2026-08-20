@@ -149,6 +149,7 @@
                                         <th>المادة</th>
                                         <th>الصف</th>
                                         <th>الحالة</th>
+                                        <th style="width: 130px;">مجانية دائماً</th>
                                         <th style="min-width: 180px;">العمليات</th>
                                     </tr>
                                     </thead>
@@ -187,6 +188,39 @@ document.addEventListener('DOMContentLoaded', function() {
     const csrfToken = '{{ csrf_token() }}';
     const filterUrl = '{{ route("admin.subjects.index") }}';
     const reorderUrl = '{{ route("admin.subjects.reorder") }}';
+
+    // تفويض الحدث على tbody الثابت حتى يستمر عمله بعد إعادة رسم الصفوف (فلترة/ترقيم/ترتيب)
+    subjectsTableBody.addEventListener('change', function(e) {
+        const toggle = e.target.closest('.sb-free-override-toggle');
+        if (!toggle) return;
+
+        const url = toggle.dataset.url;
+        const label = toggle.closest('.form-check')?.querySelector('.form-check-label');
+        const previousChecked = !toggle.checked;
+        toggle.disabled = true;
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+            },
+        })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (!data.success) throw new Error(data.message || 'فشل التحديث');
+                toggle.checked = data.is_free_override;
+                if (label) label.textContent = data.is_free_override ? 'مجانية' : 'مدفوعة';
+            })
+            .catch(function(err) {
+                toggle.checked = previousChecked;
+                alert(err.message || 'فشل تحديث حالة المادة');
+            })
+            .finally(function() {
+                toggle.disabled = false;
+            });
+    });
 
     function getPerPageSelect() { return document.getElementById('perPageSelect'); }
     function getPerPageCustomWrap() { return document.getElementById('perPageCustomWrap'); }
@@ -323,7 +357,7 @@ document.addEventListener('DOMContentLoaded', function() {
             sortableInstance = null;
         }
         subjectsTableBody.innerHTML = `
-            <tr><td colspan="6" class="text-center py-4">
+            <tr><td colspan="7" class="text-center py-4">
                 <div class="alert alert-danger mb-0">${message}</div>
             </td></tr>`;
         paginationContainer.innerHTML = '';

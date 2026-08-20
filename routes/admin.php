@@ -64,6 +64,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('subjects.enrolled-students');
         Route::post('subjects/{subject}/toggle-status', [SubjectController::class, 'toggleStatus'])
             ->name('subjects.toggle-status');
+        Route::post('subjects/{subject}/toggle-free-override', [SubjectController::class, 'toggleFreeOverride'])
+            ->name('subjects.toggle-free-override');
         Route::post('subjects/reorder', [SubjectController::class, 'reorder'])
             ->name('subjects.reorder');
 
