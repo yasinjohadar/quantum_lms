@@ -272,6 +272,47 @@
         overflow: hidden;
     }
 
+    .class-subject-card__free {
+        padding: 0.4rem 1rem 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+
+    .class-subject-card__free-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--cs-muted);
+    }
+
+    .class-subject-card__free .form-check {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding-inline-start: 0;
+        min-height: auto;
+    }
+
+    .class-subject-card__free .form-check-input {
+        margin: 0;
+        float: none;
+        cursor: pointer;
+    }
+
+    .class-subject-card__free .form-check-input:disabled {
+        cursor: progress;
+        opacity: 0.55;
+    }
+
+    .class-subject-card__free-state {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--cs-muted);
+        cursor: pointer;
+        margin-bottom: 0;
+    }
+
     .class-subject-card__footer {
         padding: 0.65rem 1rem 0.85rem;
         display: flex;

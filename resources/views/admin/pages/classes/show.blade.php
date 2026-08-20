@@ -160,6 +160,28 @@
                                         <h6 class="class-subject-card__name">{{ $subject->name }}</h6>
                                     </div>
 
+                                    <div class="class-subject-card__free">
+                                        <span class="class-subject-card__free-label">مجانية دائماً</span>
+                                        @can('subject-edit')
+                                            <div class="form-check form-switch mb-0">
+                                                <input type="checkbox"
+                                                       class="form-check-input cs-free-override-toggle"
+                                                       role="switch"
+                                                       data-url="{{ route('admin.subjects.toggle-free-override', $subject->id) }}"
+                                                       id="classFreeOverride{{ $subject->id }}"
+                                                       {{ $subject->is_free_override ? 'checked' : '' }}>
+                                                <label class="form-check-label class-subject-card__free-state"
+                                                       for="classFreeOverride{{ $subject->id }}">
+                                                    {{ $subject->is_free_override ? 'مجانية' : 'مدفوعة' }}
+                                                </label>
+                                            </div>
+                                        @else
+                                            <span class="class-subject-card__status {{ $subject->is_free_override ? 'class-subject-card__status--active' : 'class-subject-card__status--inactive' }}">
+                                                {{ $subject->is_free_override ? 'مجانية' : 'مدفوعة' }}
+                                            </span>
+                                        @endcan
+                                    </div>
+
                                     <div class="class-subject-card__footer">
                                         @if ($subject->is_active)
                                             <span class="class-subject-card__status class-subject-card__status--active">نشطة</span>
@@ -194,3 +216,45 @@
         </div>
     </div>
 @stop
+
+@push('scripts')
+    <script>
+        (function () {
+            const grid = document.querySelector('.class-subject-grid');
+            if (!grid) return;
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+            grid.addEventListener('change', function (e) {
+                const toggle = e.target.closest('.cs-free-override-toggle');
+                if (!toggle) return;
+
+                const label = toggle.closest('.form-check')?.querySelector('.form-check-label');
+                const previousChecked = !toggle.checked;
+                toggle.disabled = true;
+
+                fetch(toggle.dataset.url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                })
+                    .then(function (res) { return res.json(); })
+                    .then(function (data) {
+                        if (!data.success) throw new Error(data.message || 'فشل التحديث');
+                        toggle.checked = data.is_free_override;
+                        if (label) label.textContent = data.is_free_override ? 'مجانية' : 'مدفوعة';
+                    })
+                    .catch(function (err) {
+                        toggle.checked = previousChecked;
+                        alert(err.message || 'فشل تحديث حالة المادة');
+                    })
+                    .finally(function () {
+                        toggle.disabled = false;
+                    });
+            });
+        })();
+    </script>
+@endpush
