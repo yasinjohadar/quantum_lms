@@ -340,10 +340,39 @@ class Subject extends Model
 
     /**
      * هل المادة مجانية فعلياً؟
+     *
+     * تشمل حالات مشتقّة من السعر: وضع HIDDEN، أو سعر فعّال = 0 (مادة داخل صف مجاني، أو مادة
+     * بلا سعر مضبوط). تُستعمل في التحقق من الوصول فلا يجوز تضييقها.
+     * للعدّ والعرض استخدم isDeclaredFree() التي تعتمد على قرار الأدمن وحده.
      */
     public function isEffectivelyFree(): bool
     {
         return app(\App\Services\Pricing\SubjectPricingResolver::class)->isEffectivelyFree($this);
+    }
+
+    /**
+     * هل أعلن الأدمن هذه المادة مجانية صراحةً؟
+     *
+     * مصدرها خيار «مجانية دائماً» (is_free_override) — وهو الخيار الوحيد الظاهر في لوحة
+     * الأدمن — أو pricing_mode = free الذي يضبطه ذلك الخيار نفسه. السعر لا يدخل في الحساب:
+     * مادة سعرها صفر لأن صفّها مجاني ليست «مادة مجانية» بقرار الأدمن.
+     */
+    public function isDeclaredFree(): bool
+    {
+        return (bool) ($this->is_free_override ?? false)
+            || ($this->pricing_mode ?? null) === 'free';
+    }
+
+    /**
+     * نفس شرط isDeclaredFree() على مستوى الاستعلام، ليُعدّ في قاعدة البيانات بدل تحميل كل
+     * المواد إلى الذاكرة.
+     */
+    public function scopeDeclaredFree($query)
+    {
+        return $query->where(function ($builder) {
+            $builder->where('is_free_override', true)
+                ->orWhere('pricing_mode', 'free');
+        });
     }
 
     /**
@@ -420,7 +449,8 @@ class Subject extends Model
      */
     public function gatesFreeEnrollmentUntilApproved(): bool
     {
-        if (! ($this->is_free_override || $this->pricing_mode === 'free')) {
+        // نفس شرط isDeclaredFree() كان مكتوباً هنا يدوياً؛ توحيده يمنع تفرّع المفهومين.
+        if (! $this->isDeclaredFree()) {
             return false;
         }
 

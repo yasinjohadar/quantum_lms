@@ -2,7 +2,9 @@
     $isPending = isset($pendingClassIdSet[$class->id]);
     $joinableCount = $class->joinable_subjects_count ?? $class->subjects()->where('is_active', true)->count();
     $isPaid = $class->classJoinRequiresPayment();
-    $freeCount = $class->getFreeSubjectsCount();
+    // العدد محسوب مسبقاً في الـcontroller من نفس استعلام المواد؛ والدالة احتياط لأي
+    // موضع يُصيّر الكارد بلا تلك التهيئة.
+    $freeCount = $class->free_subjects_count ?? $class->getFreeSubjectsCount();
 @endphp
 <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-3 mb-md-4">
     <article class="enrollment-class-card">

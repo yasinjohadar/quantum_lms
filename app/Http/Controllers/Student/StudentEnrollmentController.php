@@ -3,15 +3,14 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
-use App\Models\SchoolClass;
-use App\Models\Subject;
+use App\Models\ClassEnrollment;
 use App\Models\Enrollment;
-use App\Models\Stage;
-use App\Models\Payment;
 use App\Models\Purchase;
+use App\Models\SchoolClass;
+use App\Models\Stage;
+use App\Models\Subject;
 use App\Models\SystemSetting;
 use App\Models\User;
-use App\Models\ClassEnrollment;
 use App\Services\Pricing\PricingResolver;
 use App\Services\Pricing\SubjectPricingResolver;
 use App\Services\PurchaseService;
@@ -19,7 +18,6 @@ use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class StudentEnrollmentController extends Controller
 {
@@ -27,8 +25,8 @@ class StudentEnrollmentController extends Controller
         protected PurchaseService $purchaseService,
         protected PricingResolver $pricingResolver,
         protected SubjectPricingResolver $subjectPricingResolver,
-    ) {
-    }
+    ) {}
+
     /**
      * عرض جميع الصفوف والمواد المتاحة للانضمام
      */
@@ -41,14 +39,14 @@ class StudentEnrollmentController extends Controller
         $supervisorWhatsappDigits = SystemSetting::supervisorWhatsappDigits();
 
         // الحصول على جميع المراحل مع الصفوف فقط (بدون تحميل المواد)
-        $stages = Stage::with(['classes' => function($query) {
+        $stages = Stage::with(['classes' => function ($query) {
             $query->where('is_active', true)->orderBy('order');
         }])
-        ->whereHas('classes', function($query) {
-            $query->where('is_active', true);
-        })
-        ->orderBy('order')
-        ->get();
+            ->whereHas('classes', function ($query) {
+                $query->where('is_active', true);
+            })
+            ->orderBy('order')
+            ->get();
 
         $this->filterStagesForJoinableClasses($user, $stages);
 
@@ -61,21 +59,21 @@ class StudentEnrollmentController extends Controller
             array_merge(compact('stages', 'pendingClassEnrollmentIds', 'pendingPurchases', 'supervisorWhatsappDigits'), $stats)
         );
     }
-    
+
     /**
      * عرض مواد صف معين
      */
     public function showClass($classId)
     {
         $user = Auth::user();
-        
+
         // الحصول على الصف مع المواد
-        $class = SchoolClass::with(['subjects' => function($query) {
+        $class = SchoolClass::with(['subjects' => function ($query) {
             $query->where('is_active', true)->orderBy('order');
         }, 'stage'])
-        ->where('is_active', true)
-        ->findOrFail($classId);
-        
+            ->where('is_active', true)
+            ->findOrFail($classId);
+
         $activeEnrolledSubjectIds = $user->enrollments()
             ->where('status', 'active')
             ->pluck('subject_id');
@@ -169,7 +167,9 @@ class StudentEnrollmentController extends Controller
         $activeSubjectsByClass = Subject::query()
             ->whereIn('class_id', $classIds)
             ->where('is_active', true)
-            ->get(['id', 'class_id'])
+            // الحقلان مطلوبان لعدّ المواد المجانية من نفس الاستعلام، فلا يُطلق كل كارد
+            // استعلاماً خاصاً به.
+            ->get(['id', 'class_id', 'is_free_override', 'pricing_mode'])
             ->groupBy('class_id');
 
         foreach ($stages as $stage) {
@@ -204,9 +204,14 @@ class StudentEnrollmentController extends Controller
             $stage->setRelation('classes', $filtered);
 
             foreach ($filtered as $class) {
-                $subjectIds = $activeSubjectsByClass->get($class->id, collect())->pluck('id');
+                $classSubjects = $activeSubjectsByClass->get($class->id, collect());
+                $subjectIds = $classSubjects->pluck('id');
                 $joinable = $subjectIds->filter(fn ($id) => ! isset($userActiveSubjectIdSet[$id]))->count();
                 $class->setAttribute('joinable_subjects_count', $joinable);
+                $class->setAttribute(
+                    'free_subjects_count',
+                    $classSubjects->filter(fn (Subject $subject) => $subject->isDeclaredFree())->count()
+                );
             }
         }
     }
@@ -237,7 +242,7 @@ class StudentEnrollmentController extends Controller
             'assigned_subjects_total' => (int) $assignedSubjectsTotal,
         ];
     }
-    
+
     /**
      * طلب الانضمام إلى مادة
      */
@@ -277,18 +282,18 @@ class StudentEnrollmentController extends Controller
                     ->where('status', 'completed')
                     ->first();
 
-            if ($classPurchase) {
-                $includedInClassBundle = $this->subjectPricingResolver
-                    ->isIncludedInClassBundle($subject);
-                if ($includedInClassBundle) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'أنت مسجل في هذه المادة من خلال شراء الصف كاملاً',
-                    ], 400);
+                if ($classPurchase) {
+                    $includedInClassBundle = $this->subjectPricingResolver
+                        ->isIncludedInClassBundle($subject);
+                    if ($includedInClassBundle) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'أنت مسجل في هذه المادة من خلال شراء الصف كاملاً',
+                        ], 400);
+                    }
                 }
-            }
 
-            // مواد تُباع منفردة فقط لا تُغطى بشراء الصف؛ يُسمح بمتابعة طلب شراء المادة.
+                // مواد تُباع منفردة فقط لا تُغطى بشراء الصف؛ يُسمح بمتابعة طلب شراء المادة.
                 $pendingClassJoin = ClassEnrollment::query()
                     ->where('user_id', $user->id)
                     ->where('class_id', $class->id)
@@ -384,34 +389,34 @@ class StudentEnrollmentController extends Controller
             ], 500);
         }
     }
-    
+
     /**
      * إلغاء طلب الانضمام
      */
     public function cancelRequest($subjectId)
     {
         $user = Auth::user();
-        
+
         $enrollment = Enrollment::where('user_id', $user->id)
             ->where('subject_id', $subjectId)
             ->pending()
             ->firstOrFail();
-        
+
         try {
             $enrollment->delete();
-            
+
             return response()->json([
                 'success' => true,
-                'message' => 'تم إلغاء طلب الانضمام بنجاح'
+                'message' => 'تم إلغاء طلب الانضمام بنجاح',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ أثناء إلغاء الطلب'
+                'message' => 'حدث خطأ أثناء إلغاء الطلب',
             ], 500);
         }
     }
-    
+
     /**
      * طلب الانضمام لصف كامل (جميع المواد في الصف)
      */

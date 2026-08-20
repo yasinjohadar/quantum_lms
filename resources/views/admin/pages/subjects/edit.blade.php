@@ -203,10 +203,18 @@
                             <div class="col-lg-5">
                                 <div class="subject-form-field">
                                     <label for="default_currency_id" class="form-label">العملة الافتراضية</label>
+                                    @php
+                                        // عملة النظام الافتراضية (الليرة السورية) تُنتقى مسبقاً للمواد التي لم
+                                        // تُضبط لها عملة، فلا يبقى الحقل فارغاً بالسهو.
+                                        $preselectedCurrencyId = old(
+                                            'default_currency_id',
+                                            $subject->default_currency_id ?: \App\Models\Currency::getDefault()?->id
+                                        );
+                                    @endphp
                                     <select name="default_currency_id" id="default_currency_id" class="form-select @error('default_currency_id') is-invalid @enderror">
                                         <option value="">اختر العملة الافتراضية</option>
                                         @foreach(\App\Models\Currency::active()->ordered()->get() as $currency)
-                                            <option value="{{ $currency->id }}" {{ old('default_currency_id', $subject->default_currency_id) == $currency->id ? 'selected' : '' }}>
+                                            <option value="{{ $currency->id }}" {{ (string) $preselectedCurrencyId === (string) $currency->id ? 'selected' : '' }}>
                                                 {{ $currency->code }} - {{ $currency->name }}
                                             </option>
                                         @endforeach
@@ -232,7 +240,7 @@
                                             <tr>
                                                 <th>العملة</th>
                                                 <th style="width: 200px;">السعر</th>
-                                                <th style="width: 100px;">الحالة</th>
+                                                <th style="width: 120px;">تفعيل السعر</th>
                                             </tr>
                                         </thead>
                                         <tbody id="pricesTableBody">
@@ -244,13 +252,15 @@
                                                         <span class="text-muted small">({{ $currency->name }})</span>
                                                     </td>
                                                     <td>
+                                                        {{-- readonly حتى يُشغّل مفتاح «تفعيل السعر»؛ يُزامنه السكربت في أسفل الصفحة. --}}
                                                         <input type="number"
                                                                class="form-control form-control-sm price-input"
                                                                name="prices[{{ $currency->id }}][price]"
                                                                value="{{ $price ? $price->price : 0 }}"
                                                                step="0.01"
                                                                min="0"
-                                                               data-currency-id="{{ $currency->id }}">
+                                                               data-currency-id="{{ $currency->id }}"
+                                                               @if(! ($price && $price->is_active)) readonly @endif>
                                                         <input type="hidden" name="prices[{{ $currency->id }}][currency_id]" value="{{ $currency->id }}">
                                                         @if($price)
                                                             <input type="hidden" name="prices[{{ $currency->id }}][id]" value="{{ $price->id }}">
@@ -273,7 +283,7 @@
                                 </div>
                                 <div class="subject-form-hint mt-2">
                                     <i class="bi bi-table"></i>
-                                    <span>حدّث السعر لكل عملة؛ عمود الحالة يفعّل أو يوقف بيع المادة بتلك العملة.</span>
+                                    <span>شغّل <strong>تفعيل السعر</strong> أولاً ليصبح حقل السعر قابلاً للتعديل؛ إيقافه يوقف البيع بتلك العملة ويحفظ السعر كما هو.</span>
                                 </div>
                             </div>
                         </div>
@@ -538,4 +548,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+@include('admin.pages.subjects.partials.price-activation-script')
 @stop

@@ -4,6 +4,16 @@
 @section('brand-subtitle', 'بوابة الدخول')
 
 @section('content')
+    @php
+        $devLoginEnabled = \App\Support\DevLogin::enabled();
+        $devAccounts = $devLoginEnabled ? \App\Support\DevLogin::accounts() : [];
+        $devDefaultAccount = null;
+        foreach ($devAccounts as $devAccount) {
+            if ($devAccount['key'] === 'admin') { $devDefaultAccount = $devAccount; break; }
+        }
+        $devDefaultAccount = $devDefaultAccount ?: ($devAccounts[0] ?? null);
+    @endphp
+
     <div class="auth-heading">
         <div class="auth-badge">صفحة دخول المشرفين والمعلمين</div>
         <h1>صفحة دخول المشرفين والمعلمين</h1>
@@ -40,7 +50,7 @@
         <div class="auth-field js-admin-email-wrap">
             <label class="auth-label" for="login">البريد الإلكتروني</label>
             <div class="auth-control">
-                <input id="login" class="auth-input @error('login') invalid @enderror" type="text" name="login" value="{{ old('login') }}" autocomplete="username" autofocus placeholder="name@example.com">
+                <input id="login" class="auth-input @error('login') invalid @enderror" type="text" name="login" value="{{ old('login', $devLoginEnabled ? ($devDefaultAccount['email'] ?? '') : '') }}" autocomplete="username" autofocus placeholder="name@example.com">
                 <span class="auth-icon">✉</span>
             </div>
             @error('login') <div class="auth-error">{{ $message }}</div> @enderror
@@ -62,7 +72,7 @@
         <div class="auth-field">
             <label class="auth-label" for="password">كلمة المرور</label>
             <div class="auth-control auth-control--toggle-start">
-                <input id="password" class="auth-input @error('password') invalid @enderror" type="password" name="password" required autocomplete="current-password" placeholder="أدخل كلمة المرور">
+                <input id="password" class="auth-input @error('password') invalid @enderror" type="password" name="password" value="{{ $devLoginEnabled ? ($devDefaultAccount['password'] ?? '') : '' }}" required autocomplete="current-password" placeholder="أدخل كلمة المرور">
                 <button type="button" class="password-toggle" data-target="password" aria-label="إظهار أو إخفاء كلمة المرور">👁</button>
             </div>
             @error('password') <div class="auth-error">{{ $message }}</div> @enderror
@@ -89,10 +99,90 @@
             @endif
         </div>
     </form>
+
+    @if ($devLoginEnabled)
+        <div class="dev-quick">
+            <div class="dev-quick-head">
+                <span class="dev-quick-badge">بيئة التطوير</span>
+                <span>دخول سريع للمطورين (لا يظهر في الإنتاج)</span>
+            </div>
+
+            <div class="dev-quick-grid">
+                @foreach ($devAccounts as $devAccount)
+                    <div class="dev-quick-row">
+                        <a class="dev-quick-go" href="{{ route('dev.login.as', $devAccount['key']) }}" title="دخول فوري بدون كلمة مرور">
+                            {{ $devAccount['label'] }}
+                        </a>
+                        <button type="button" class="dev-quick-fill js-dev-fill"
+                                data-email="{{ $devAccount['email'] }}"
+                                data-password="{{ $devAccount['password'] }}"
+                                title="تعبئة الحقول بهذه البيانات">تعبئة الحقول</button>
+                        <span class="dev-quick-mail">{{ $devAccount['email'] }}</span>
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="dev-quick-foot">
+                كلمة المرور الموحدة: <code>{{ \App\Support\DevLogin::password() }}</code>
+                <br>
+                <a class="auth-link" href="{{ route('dev.login') }}">لوحة حسابات التطوير الكاملة ←</a>
+            </div>
+        </div>
+    @endif
 @endsection
+
+@if ($devLoginEnabled)
+@push('styles')
+<style>
+    .dev-quick {
+        margin-top: 20px; padding: 14px 16px; border-radius: 16px;
+        background: rgba(99, 102, 241, 0.10); border: 1px dashed rgba(99, 102, 241, 0.45);
+    }
+    .dev-quick-head { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text-muted); }
+    .dev-quick-badge {
+        font-size: 11px; padding: 2px 8px; border-radius: 999px; color: #0b1020;
+        background: linear-gradient(135deg, var(--gold-1), var(--gold-3));
+    }
+    .dev-quick-grid { display: grid; gap: 8px; margin-top: 12px; }
+    .dev-quick-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .dev-quick-go {
+        text-decoration: none; font-weight: 700; font-size: 13px; padding: 7px 14px; border-radius: 10px;
+        color: #0b1020; background: linear-gradient(135deg, var(--gold-1), var(--gold-3));
+    }
+    .dev-quick-fill {
+        font-family: inherit; cursor: pointer; font-size: 12px; padding: 7px 12px; border-radius: 10px;
+        color: var(--text-main); background: var(--input-bg); border: 1px solid var(--input-border);
+    }
+    .dev-quick-fill:hover { border-color: var(--primary); }
+    .dev-quick-mail { font-size: 12px; color: var(--text-muted); direction: ltr; }
+    .dev-quick-foot { margin-top: 12px; font-size: 12px; color: var(--text-muted); line-height: 2; }
+    .dev-quick-foot code { background: rgba(148, 163, 184, 0.16); padding: 2px 6px; border-radius: 6px; direction: ltr; display: inline-block; }
+</style>
+@endpush
+@endif
 
 @push('scripts')
 <script>
+    // بيئة التطوير: تعبئة بيانات الدخول تلقائياً بضغطة واحدة
+    document.querySelectorAll('.js-dev-fill').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const emailRadio = document.getElementById('admin_auth_mode_email');
+            if (emailRadio && !emailRadio.checked) {
+                emailRadio.checked = true;
+                emailRadio.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            const loginInput = document.getElementById('login');
+            const passwordInput = document.getElementById('password');
+            if (loginInput) loginInput.value = btn.getAttribute('data-email') || '';
+            if (passwordInput) passwordInput.value = btn.getAttribute('data-password') || '';
+
+            const original = btn.textContent;
+            btn.textContent = '✔ تم';
+            setTimeout(function () { btn.textContent = original; }, 1200);
+        });
+    });
+
     document.querySelectorAll('.password-toggle').forEach(function (btn) {
         btn.addEventListener('click', function () {
             const target = document.getElementById(btn.getAttribute('data-target'));

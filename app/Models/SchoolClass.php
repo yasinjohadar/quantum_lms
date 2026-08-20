@@ -69,13 +69,13 @@ class SchoolClass extends Model
 
         static::creating(function (SchoolClass $class) {
             if (empty($class->slug)) {
-                $class->slug = Str::slug($class->name . '-' . ($class->stage_id ?? ''));
+                $class->slug = Str::slug($class->name.'-'.($class->stage_id ?? ''));
             }
         });
 
         static::updating(function (SchoolClass $class) {
             if (empty($class->slug)) {
-                $class->slug = Str::slug($class->name . '-' . ($class->stage_id ?? ''));
+                $class->slug = Str::slug($class->name.'-'.($class->stage_id ?? ''));
             }
         });
     }
@@ -130,10 +130,10 @@ class SchoolClass extends Model
         }
 
         return $query->where(function ($q) use ($search) {
-            $q->where('name', 'like', '%' . $search . '%')
-              ->orWhere('description', 'like', '%' . $search . '%')
-              ->orWhere('meta_title', 'like', '%' . $search . '%')
-              ->orWhere('meta_description', 'like', '%' . $search . '%');
+            $q->where('name', 'like', '%'.$search.'%')
+                ->orWhere('description', 'like', '%'.$search.'%')
+                ->orWhere('meta_title', 'like', '%'.$search.'%')
+                ->orWhere('meta_description', 'like', '%'.$search.'%');
         });
     }
 
@@ -183,13 +183,13 @@ class SchoolClass extends Model
             return 0;
         }
 
-        if (!$currencyId) {
+        if (! $currencyId) {
             $currencyId = $this->default_currency_id ?? Currency::getDefault()->id;
         }
 
         // البحث أولاً في جدول prices
         $price = $this->prices()->active()->forCurrency($currencyId)->first();
-        
+
         // إذا وجد سعر في جدول prices، إرجاعه
         if ($price) {
             return $price->price;
@@ -218,8 +218,8 @@ class SchoolClass extends Model
     public function assignedTeachers()
     {
         return $this->belongsToMany(User::class, 'teacher_classes', 'class_id', 'teacher_id')
-                    ->withPivot(['assigned_by', 'assigned_at', 'notes'])
-                    ->withTimestamps();
+            ->withPivot(['assigned_by', 'assigned_at', 'notes'])
+            ->withTimestamps();
     }
 
     /**
@@ -239,7 +239,7 @@ class SchoolClass extends Model
             return true;
         }
 
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
@@ -331,13 +331,20 @@ class SchoolClass extends Model
             ->whereNull('subscription_revoked_at');
     }
 
+    /**
+     * عدد مواد الصف التي أعلنها الأدمن مجانية.
+     *
+     * كان يعتمد على isEffectivelyFree()، وهي تُرجع true أيضاً عندما يكون السعر الفعّال صفراً
+     * أو الوضع HIDDEN — فكان الصف المدفوع يظهر وكل مواده «مجانية» لأن أسعار المواد المفردة
+     * غير مضبوطة. المرجع الآن خيار «مجانية دائماً» في لوحة الأدمن وحده.
+     *
+     * ويُعدّ في قاعدة البيانات بدل تحميل كل المواد إلى الذاكرة لكل كارد.
+     */
     public function getFreeSubjectsCount(): int
     {
         return $this->subjects()
             ->where('is_active', true)
-            ->get()
-            ->filter(fn (Subject $subject) => $subject->isEffectivelyFree())
+            ->declaredFree()
             ->count();
     }
 }
-

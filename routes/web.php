@@ -110,3 +110,5 @@ require __DIR__.'/ai-html-quizzes.php';
 require __DIR__.'/student.php';
 require __DIR__.'/teacher.php';
 require __DIR__.'/frontend.php';
+// مسارات بيئة التطوير فقط (بوابة الدخول السريع) — تُتجاهل تلقائياً في الإنتاج
+require __DIR__.'/dev.php';

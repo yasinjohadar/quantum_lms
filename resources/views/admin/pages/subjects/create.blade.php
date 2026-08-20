@@ -186,10 +186,14 @@
                             <div class="col-lg-5">
                                 <div class="subject-form-field">
                                     <label for="default_currency_id" class="form-label">العملة الافتراضية</label>
+                                    @php
+                                        // عملة النظام الافتراضية (الليرة السورية) مُنتقاة مسبقاً لمادة جديدة.
+                                        $preselectedCurrencyId = old('default_currency_id', \App\Models\Currency::getDefault()?->id);
+                                    @endphp
                                     <select name="default_currency_id" id="default_currency_id" class="form-select @error('default_currency_id') is-invalid @enderror">
                                         <option value="">اختر العملة الافتراضية</option>
                                         @foreach(\App\Models\Currency::active()->ordered()->get() as $currency)
-                                            <option value="{{ $currency->id }}" {{ old('default_currency_id') == $currency->id ? 'selected' : '' }}>
+                                            <option value="{{ $currency->id }}" {{ (string) $preselectedCurrencyId === (string) $currency->id ? 'selected' : '' }}>
                                                 {{ $currency->code }} - {{ $currency->name }}
                                             </option>
                                         @endforeach
@@ -211,7 +215,7 @@
                                             <tr>
                                                 <th>العملة</th>
                                                 <th style="width: 200px;">السعر</th>
-                                                <th style="width: 100px;">الحالة</th>
+                                                <th style="width: 120px;">تفعيل السعر</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -222,21 +226,26 @@
                                                         <span class="text-muted small">({{ $currency->name }})</span>
                                                     </td>
                                                     <td>
+                                                        @php $priceActive = (bool) old('prices.'.$currency->id.'.is_active', true); @endphp
+                                                        {{-- readonly حتى يُشغّل مفتاح «تفعيل السعر»؛ يُزامنه السكربت في أسفل الصفحة. --}}
                                                         <input type="number"
-                                                               class="form-control form-control-sm"
+                                                               class="form-control form-control-sm price-input"
                                                                name="prices[{{ $currency->id }}][price]"
                                                                value="{{ old('prices.' . $currency->id . '.price', 0) }}"
                                                                step="0.01"
-                                                               min="0">
+                                                               min="0"
+                                                               data-currency-id="{{ $currency->id }}"
+                                                               @if(! $priceActive) readonly @endif>
                                                         <input type="hidden" name="prices[{{ $currency->id }}][currency_id]" value="{{ $currency->id }}">
                                                     </td>
                                                     <td>
                                                         <div class="form-check form-switch mb-0">
-                                                            <input class="form-check-input"
+                                                            <input class="form-check-input price-active"
                                                                    type="checkbox"
                                                                    name="prices[{{ $currency->id }}][is_active]"
                                                                    value="1"
-                                                                   {{ old('prices.' . $currency->id . '.is_active', true) ? 'checked' : '' }}>
+                                                                   data-currency-id="{{ $currency->id }}"
+                                                                   {{ $priceActive ? 'checked' : '' }}>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -246,7 +255,7 @@
                                 </div>
                                 <div class="subject-form-hint mt-2">
                                     <i class="bi bi-table"></i>
-                                    <span><strong>السعر:</strong> المبلغ بهذه العملة. <strong>الحالة:</strong> تفعيل أو إيقاف بيع المادة بهذه العملة.</span>
+                                    <span>شغّل <strong>تفعيل السعر</strong> أولاً ليصبح حقل السعر قابلاً للتعديل؛ إيقافه يوقف البيع بتلك العملة ويحفظ السعر كما هو.</span>
                                 </div>
                             </div>
                         </div>
@@ -505,4 +514,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+@include('admin.pages.subjects.partials.price-activation-script')
 @stop

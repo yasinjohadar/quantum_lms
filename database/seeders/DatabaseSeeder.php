@@ -31,6 +31,11 @@ class DatabaseSeeder extends Seeder
             // AnalyticsEventsSeeder::class, // Check if needed
         ]);
 
+        // حسابات الدخول السريع لبيئة التطوير فقط (لا تُنشأ في الإنتاج)
+        if (! app()->isProduction()) {
+            $this->call(DevAccountsSeeder::class);
+        }
+
         // إنشاء مستخدم تجريبي إضافي (إن لم يكن موجوداً)
         User::firstOrCreate(
             ['email' => 'user@example.com'],
