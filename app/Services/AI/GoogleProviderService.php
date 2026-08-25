@@ -59,11 +59,20 @@ class GoogleProviderService extends AIProviderService
             }
         }
 
+        // نماذج Gemini 2.5 تستهلك جزءاً غير مرئياً من maxOutputTokens كـ"تفكير"
+        // داخلي (thinking) لا يظهر في النص النهائي ولا في candidatesTokenCount —
+        // فيقطع الرد قبل اكتمال الإخراج حتى مع سقف tokens مرتفع. نُعطّله
+        // بالافتراضي لأن كل استخدامات هذا المزوّد هنا توليد محتوى مُهيكل
+        // (أسئلة/HTML/JSON) لا يستفيد من تفكير مخفي، مع إمكانية تفعيله صريحاً
+        // عبر thinking_budget عند الحاجة.
         $payload = [
             'contents' => $contents,
             'generationConfig' => [
                 'maxOutputTokens' => $options['max_tokens'] ?? $this->model->max_tokens,
                 'temperature' => $options['temperature'] ?? $this->model->temperature,
+                'thinkingConfig' => [
+                    'thinkingBudget' => $options['thinking_budget'] ?? 0,
+                ],
             ],
         ];
 

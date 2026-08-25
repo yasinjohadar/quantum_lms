@@ -10,6 +10,16 @@
     if (! is_array($selectedTypes)) {
         $selectedTypes = ['single_choice'];
     }
+    $selectedLibs = $meta['libs'] ?? [];
+    if (! is_array($selectedLibs)) {
+        $selectedLibs = [];
+    }
+    $libsCatalog = [
+        'chart' => 'رسوم بيانية (Chart.js)',
+        'confetti' => 'احتفال بالإجابة الصحيحة (confetti)',
+        'katex' => 'معادلات رياضية (KaTeX)',
+        'mermaid' => 'مخططات/تسلسلات (Mermaid)',
+    ];
     $statusLabels = [
         'draft' => 'مسودة',
         'review' => 'مراجعة',
@@ -171,6 +181,23 @@
                                 <label class="form-label">الوصف</label>
                                 <textarea name="description" class="form-control" rows="2">{{ old('description', $quiz->description) }}</textarea>
                             </div>
+                            <div class="mb-2">
+                                <label class="form-label">المكتبات المحلية المفعّلة</label>
+                                <div class="row g-1">
+                                    @foreach($libsCatalog as $libKey => $libLabel)
+                                        <div class="col-12 col-sm-6">
+                                            <label class="small d-flex gap-2 align-items-start mb-1">
+                                                <input type="checkbox" class="form-check-input mt-1 ai-libs-cb" name="libs[]" value="{{ $libKey }}"
+                                                       @checked(in_array($libKey, $selectedLibs, true))>
+                                                <span>{{ $libLabel }}</span>
+                                            </label>
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <div class="form-text">
+                                    مكتبات محلية فقط (بلا CDN) — الذكاء الاصطناعي يختار منها حسب الموضوع تلقائياً عند التوليد، ويمكنك تعديل الاختيار هنا يدوياً ثم الحفظ.
+                                </div>
+                            </div>
                             <input type="hidden" name="topic" id="field-topic" value="{{ $meta['topic'] ?? '' }}">
                             <input type="hidden" name="objectives" id="field-objectives" value="{{ $meta['objectives'] ?? '' }}">
                             <input type="hidden" name="question_count" id="field-count" value="{{ $meta['question_count'] ?? 5 }}">
@@ -263,6 +290,19 @@
         });
     }
 
+    function selectedLibs() {
+        return Array.from(document.querySelectorAll('.ai-libs-cb:checked')).map(function (el) {
+            return el.value;
+        });
+    }
+
+    function setLibsCheckboxes(libs) {
+        var chosen = Array.isArray(libs) ? libs : [];
+        document.querySelectorAll('.ai-libs-cb').forEach(function (el) {
+            el.checked = chosen.indexOf(el.value) !== -1;
+        });
+    }
+
     function fillBundleFields(bundle) {
         pendingBundle = bundle;
         document.getElementById('field-html').value = bundle.html || '';
@@ -270,6 +310,9 @@
         document.getElementById('field-js').value = bundle.js || '';
         if (bundle.title) {
             document.getElementById('field-title').value = bundle.title;
+        }
+        if (Array.isArray(bundle.libs)) {
+            setLibsCheckboxes(bundle.libs);
         }
         summaryEl.textContent = bundle.summary || '';
         applyBtn.disabled = false;
@@ -308,6 +351,7 @@
             question_types: questionTypes,
             interaction_hints: document.getElementById('ai-hints').value,
             ai_model_id: document.getElementById('ai-model').value || null,
+            available_libs: selectedLibs(),
         };
 
         try {
@@ -363,6 +407,8 @@
                     css: css,
                     js: js,
                     ai_model_id: document.getElementById('ai-model').value || null,
+                    libs: selectedLibs(),
+                    available_libs: selectedLibs(),
                 }),
             });
             const data = await res.json();
@@ -407,6 +453,7 @@
                         interaction_hints: document.getElementById('ai-hints').value,
                         last_refine_prompt: document.getElementById('ai-refine-prompt').value,
                         ai_model_id: document.getElementById('ai-model').value || null,
+                        libs: (pendingBundle && Array.isArray(pendingBundle.libs)) ? pendingBundle.libs : selectedLibs(),
                     },
                 }),
             });

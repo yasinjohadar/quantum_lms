@@ -145,9 +145,14 @@ class ExperienceSourceExtractionService
         $extracted = $this->pdfTextExtraction->extractFromPath($path);
         $text = (string) $extracted['text'];
         $pageCount = (int) $extracted['pageCount'];
+        $uniquePageTexts = (int) ($extracted['uniquePageTexts'] ?? $pageCount);
+
+        // نص متطابق على كل الصفحات (علامة مائية/ترويسة فقط) ليس محتوى حقيقياً،
+        // حتى لو تجاوز الحد الأدنى لعدد الحروف — الملف غالباً صور بلا طبقة نص فعلية.
+        $isWatermarkOnly = $pageCount > 1 && $uniquePageTexts <= 1;
 
         // المسار الأساسي: ملف PDF فيه طبقة نص حقيقية
-        if ($this->pdfTextExtraction->isTextSufficient($text, $pageCount)) {
+        if (! $isWatermarkOnly && $this->pdfTextExtraction->isTextSufficient($text, $pageCount)) {
             $truncated = $this->pdfTextExtraction->truncateForPrompt($text);
             $wasTruncated = mb_strlen($truncated) < mb_strlen($text);
 
@@ -161,10 +166,12 @@ class ExperienceSourceExtractionService
             ];
         }
 
-        // ملف ممسوح ضوئياً: لا طبقة نص — يُحوَّل لصور ويُحلّل بصرياً
+        // ملف ممسوح ضوئياً (أو محتواه الحقيقي صور فقط): لا طبقة نص فعلية — يُحوَّل لصور ويُحلّل بصرياً
         if (! $this->pdfPageImage->isAvailable()) {
             throw new RuntimeException(
-                'ملف PDF يبدو ممسوحاً ضوئياً (لا يحتوي نصاً قابلاً للقراءة). '
+                ($isWatermarkOnly
+                    ? 'ملف PDF لا يحتوي إلا نصاً متكرراً (كعلامة مائية) على كل صفحاته — محتواه الفعلي صور. '
+                    : 'ملف PDF يبدو ممسوحاً ضوئياً (لا يحتوي نصاً قابلاً للقراءة). ')
                 .'تحويل صفحاته إلى صور يتطلب تفعيل PHP Imagick وتثبيت Ghostscript على الخادم. '
                 .'الحلول: ارفع صور الصفحات مباشرة، أو استخدم ملف PDF نصياً، أو فعّل Imagick + Ghostscript.'
             );
@@ -173,7 +180,9 @@ class ExperienceSourceExtractionService
         $maxPages = (int) config('ai.question_generation_pdf.max_pages_vision', 10);
         $images = $this->pdfPageImage->renderPages($path, $maxPages);
 
-        $notes = 'ملف PDF ممسوح ضوئياً — سيتم تحليل صور الصفحات بصرياً.';
+        $notes = $isWatermarkOnly
+            ? 'النص المستخرج كان متكرراً فقط (علامة مائية) — تم اعتماد التحليل البصري لصور الصفحات.'
+            : 'ملف PDF ممسوح ضوئياً — سيتم تحليل صور الصفحات بصرياً.';
         if ($pageCount > count($images)) {
             $notes .= ' (سيتم تحليل أول '.count($images).' صفحة من '.$pageCount.')';
         }

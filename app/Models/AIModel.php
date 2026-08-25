@@ -64,6 +64,7 @@ class AIModel extends Model
         'chat' => 'محادثة',
         'question_generation' => 'توليد أسئلة',
         'question_solving' => 'حل أسئلة',
+        'vision' => 'تحليل الصور (رؤية)',
         'all' => 'جميع القدرات',
     ];
 
@@ -206,6 +207,16 @@ class AIModel extends Model
 
         $capabilities = $this->capabilities ?? [];
         return in_array($capability, $capabilities) || in_array('all', $capabilities);
+    }
+
+    /**
+     * دعم تحليل الصور (رؤية) — لا يُستدل عليه من 'all' كباقي القدرات، لأن معظم
+     * الموديلات النشطة حالياً مُعلَّمة 'all' دون أن تكون فعلياً متعددة الوسائط.
+     * يجب تفعيل 'vision' صراحةً لكل موديل يدعمها بالفعل.
+     */
+    public function supportsVision(): bool
+    {
+        return in_array('vision', $this->capabilities ?? [], true);
     }
 
     /**

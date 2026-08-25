@@ -428,7 +428,7 @@ class LearningExperienceController extends Controller
             ->active()
             ->orderByDesc('is_default')
             ->orderByDesc('priority')
-            ->get(['id', 'name', 'provider', 'is_default']);
+            ->get(['id', 'name', 'provider', 'is_default', 'capabilities']);
 
         $lockedFromCurriculum = (bool) ($learningExperience->subject_id || $learningExperience->unit_id || $learningExperience->lesson_id);
 
@@ -828,6 +828,9 @@ class LearningExperienceController extends Controller
      */
     public function aiSourceExtract(Request $request, LearningExperience $learningExperience): JsonResponse
     {
+        // زيادة وقت التنفيذ: تحليل PDF/الصور قد يستغرق وقتاً أطول من الحد الافتراضي
+        set_time_limit(180);
+
         $pdfMaxKb = (int) config('ai.question_generation_pdf.max_size_kb', 15360);
         $imageMaxKb = (int) config('ai.question_generation_pdf.image_max_size_kb', 8192);
 
@@ -883,6 +886,13 @@ class LearningExperienceController extends Controller
                 'token' => $token,
             ]);
         } catch (\Throwable $e) {
+            Log::error('Error extracting AI source file for learning experience: '.$e->getMessage(), [
+                'experience_id' => $learningExperience->id,
+                'file_name' => $file?->getClientOriginalName(),
+                'file_size' => $file?->getSize(),
+                'file_mime' => $file?->getMimeType(),
+            ]);
+
             return response()->json([
                 'ok' => false,
                 'message' => $e->getMessage(),
@@ -896,6 +906,9 @@ class LearningExperienceController extends Controller
      */
     public function aiGenerateFromSource(Request $request, LearningExperience $learningExperience): JsonResponse
     {
+        // زيادة وقت التنفيذ: طلبات الذكاء الاصطناعي (خصوصاً الرؤية) قد تستغرق دقائق
+        set_time_limit(180);
+
         $data = $request->validate([
             'text' => ['nullable', 'string'],
             'token' => ['nullable', 'string', 'max:64'],
@@ -973,6 +986,13 @@ class LearningExperienceController extends Controller
                 'mode' => $data['mode'] ?? 'replace',
             ]);
         } catch (\Throwable $e) {
+            Log::error('Error generating AI questions from source for learning experience: '.$e->getMessage(), [
+                'experience_id' => $learningExperience->id,
+                'has_token' => $token !== '',
+                'text_length' => isset($data['text']) ? mb_strlen((string) $data['text']) : 0,
+                'model_id' => $data['model_id'] ?? null,
+            ]);
+
             return response()->json([
                 'ok' => false,
                 'message' => $e->getMessage(),

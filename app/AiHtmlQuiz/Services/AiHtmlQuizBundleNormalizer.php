@@ -10,8 +10,15 @@ class AiHtmlQuizBundleNormalizer
     public const RESULT_MESSAGE_TYPE = 'ile-html-quiz-result';
 
     /**
-     * @param  array{title?: mixed, html?: mixed, css?: mixed, js?: mixed, summary?: mixed, answer_key?: mixed}  $raw
-     * @return array{title: string, html: string, css: string, js: string, summary: string, answer_key: array|null}
+     * المكتبات المحلية الموثوقة الوحيدة التي يمكن للذكاء الاصطناعي طلب تضمينها —
+     * لا CDN ولا روابط خارجية على الإطلاق؛ فقط أسماء مفاتيح تُطابق ملفات محلية
+     * ثابتة يتحكم بها الخادم (انظر AiHtmlQuizBundleAssembler::LIB_ASSETS).
+     */
+    public const AVAILABLE_LIBS = ['chart', 'confetti', 'katex', 'mermaid'];
+
+    /**
+     * @param  array{title?: mixed, html?: mixed, css?: mixed, js?: mixed, summary?: mixed, answer_key?: mixed, libs?: mixed}  $raw
+     * @return array{title: string, html: string, css: string, js: string, summary: string, answer_key: array|null, libs: list<string>}
      */
     public function normalize(array $raw): array
     {
@@ -21,6 +28,15 @@ class AiHtmlQuizBundleNormalizer
 
         if (trim($html) === '' && trim($css) === '' && trim($js) === '') {
             throw new \InvalidArgumentException('الحزمة فارغة: يلزم html أو css أو js.');
+        }
+
+        if (trim($html) !== '' && trim($js) === '') {
+            // اختبار تفاعلي بلا أي JS يعني واجهة ميتة بلا منطق أسئلة/إجابات على
+            // الإطلاق — هذا يحدث دوماً بسبب انقطاع رد AI قبل كتابة السكربت، لا
+            // بسبب اختبار "بلا تفاعل" شرعي (لا يوجد مثل هذا في هذه الميزة).
+            throw new \InvalidArgumentException(
+                'السكربت (JS) فارغ تماماً — لا يمكن أن يعمل اختبار تفاعلي بدونه (رد AI انقطع قبل كتابة أي منطق). أعد التوليد (لا التحسين فقط) بنموذج ذو حد tokens أعلى أو عدد أسئلة أقل.'
+            );
         }
 
         if ($this->looksTruncatedJs($js)) {
@@ -56,7 +72,28 @@ class AiHtmlQuizBundleNormalizer
             'js' => $js,
             'summary' => trim((string) ($raw['summary'] ?? '')),
             'answer_key' => $answerKey,
+            'libs' => $this->filterLibs($raw['libs'] ?? []),
         ];
+    }
+
+    /**
+     * يقبل مصفوفة أو نصاً مفصولاً بفواصل/مسافات، ويُبقي فقط المفاتيح المسموحة
+     * في AVAILABLE_LIBS — أي قيمة أخرى (بما فيها "none" أو نص عشوائي) تُتجاهل بصمت.
+     */
+    public function filterLibs(mixed $libs): array
+    {
+        if (is_string($libs)) {
+            $libs = preg_split('/[\s,]+/', trim($libs)) ?: [];
+        }
+
+        if (! is_array($libs)) {
+            return [];
+        }
+
+        $libs = array_map(static fn ($lib) => strtolower(trim((string) $lib)), $libs);
+        $libs = array_filter($libs, static fn ($lib) => in_array($lib, self::AVAILABLE_LIBS, true));
+
+        return array_values(array_unique($libs));
     }
 
     public function sanitizeHtml(string $html): string

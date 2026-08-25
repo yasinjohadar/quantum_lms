@@ -15,6 +15,11 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
 
+/**
+ * ملاحظة على "libs": هذه لا تسمح بأي مكتبة CDN أو رابط خارجي — هي فقط أسماء
+ * مفاتيح تُطابق ملفات محلية ثابتة (انظر AiHtmlQuizBundleAssembler::LIB_ASSETS)،
+ * ومصفوفة AiHtmlQuizBundleNormalizer::AVAILABLE_LIBS هي الحارس الوحيد لما يُقبل.
+ */
 class AiHtmlQuizController extends Controller
 {
     public function __construct(
@@ -95,6 +100,7 @@ class AiHtmlQuizController extends Controller
                 'question_types' => $questionTypes,
                 'interaction_hints' => $data['interaction_hints'] ?? '',
                 'ai_model_id' => $data['ai_model_id'] ?? null,
+                'libs' => [],
             ],
         ]);
 
@@ -138,6 +144,8 @@ class AiHtmlQuizController extends Controller
             'question_types.*' => ['string', 'in:'.$typeKeys],
             'interaction_hints' => ['nullable', 'string', 'max:2000'],
             'ai_model_id' => ['nullable', 'integer', 'exists:ai_models,id'],
+            'libs' => ['nullable', 'array'],
+            'libs.*' => ['string', 'in:'.implode(',', AiHtmlQuizBundleNormalizer::AVAILABLE_LIBS)],
         ]);
 
         $meta = $aiHtmlQuiz->prompt_meta ?? [];
@@ -154,6 +162,7 @@ class AiHtmlQuizController extends Controller
         if (array_key_exists('ai_model_id', $data)) {
             $meta['ai_model_id'] = $data['ai_model_id'];
         }
+        $meta['libs'] = $this->normalizer->filterLibs($data['libs'] ?? ($meta['libs'] ?? []));
 
         $html = (string) ($data['bundle_html'] ?? $aiHtmlQuiz->bundle_html ?? '');
         $css = (string) ($data['bundle_css'] ?? $aiHtmlQuiz->bundle_css ?? '');
@@ -242,6 +251,8 @@ class AiHtmlQuizController extends Controller
             'question_types.*' => ['string', 'in:'.$typeKeys],
             'interaction_hints' => ['nullable', 'string', 'max:2000'],
             'ai_model_id' => ['nullable', 'integer', 'exists:ai_models,id'],
+            'available_libs' => ['nullable', 'array'],
+            'available_libs.*' => ['string', 'in:'.implode(',', AiHtmlQuizBundleNormalizer::AVAILABLE_LIBS)],
         ]);
 
         $meta = $aiHtmlQuiz->prompt_meta ?? [];
@@ -259,6 +270,9 @@ class AiHtmlQuizController extends Controller
         $modelId = isset($data['ai_model_id'])
             ? (int) $data['ai_model_id']
             : (isset($meta['ai_model_id']) ? (int) $meta['ai_model_id'] : null);
+        $availableLibs = array_key_exists('available_libs', $data)
+            ? $this->normalizer->filterLibs($data['available_libs'] ?? [])
+            : AiHtmlQuizBundleNormalizer::AVAILABLE_LIBS;
 
         $aiHtmlQuiz->update([
             'prompt_meta' => array_merge($meta, [
@@ -280,7 +294,8 @@ class AiHtmlQuizController extends Controller
                 $difficulty,
                 $hints,
                 $modelId,
-                $questionTypes
+                $questionTypes,
+                $availableLibs
             );
         } catch (\Throwable $e) {
             return response()->json([
@@ -298,6 +313,7 @@ class AiHtmlQuizController extends Controller
                 'js' => $bundle['js'],
                 'summary' => $bundle['summary'],
                 'answer_key' => $bundle['answer_key'],
+                'libs' => $bundle['libs'],
             ],
             'model' => $bundle['model'],
             'summary' => $bundle['summary'],
@@ -313,6 +329,10 @@ class AiHtmlQuizController extends Controller
             'css' => ['nullable', 'string'],
             'js' => ['nullable', 'string'],
             'ai_model_id' => ['nullable', 'integer', 'exists:ai_models,id'],
+            'libs' => ['nullable', 'array'],
+            'libs.*' => ['string', 'in:'.implode(',', AiHtmlQuizBundleNormalizer::AVAILABLE_LIBS)],
+            'available_libs' => ['nullable', 'array'],
+            'available_libs.*' => ['string', 'in:'.implode(',', AiHtmlQuizBundleNormalizer::AVAILABLE_LIBS)],
         ]);
 
         $html = (string) ($data['html'] ?? $aiHtmlQuiz->bundle_html ?? '');
@@ -326,6 +346,12 @@ class AiHtmlQuizController extends Controller
         if ($modelId) {
             $meta['ai_model_id'] = $modelId;
         }
+        $currentLibs = array_key_exists('libs', $data)
+            ? $this->normalizer->filterLibs($data['libs'] ?? [])
+            : $this->normalizer->filterLibs($meta['libs'] ?? []);
+        $availableLibs = array_key_exists('available_libs', $data)
+            ? $this->normalizer->filterLibs($data['available_libs'] ?? [])
+            : AiHtmlQuizBundleNormalizer::AVAILABLE_LIBS;
         $aiHtmlQuiz->update(['prompt_meta' => $meta]);
 
         try {
@@ -335,7 +361,9 @@ class AiHtmlQuizController extends Controller
                 $css,
                 $js,
                 $title,
-                $modelId ?: (isset($meta['ai_model_id']) ? (int) $meta['ai_model_id'] : null)
+                $modelId ?: (isset($meta['ai_model_id']) ? (int) $meta['ai_model_id'] : null),
+                $currentLibs,
+                $availableLibs
             );
         } catch (\Throwable $e) {
             return response()->json([
@@ -353,6 +381,7 @@ class AiHtmlQuizController extends Controller
                 'js' => $bundle['js'],
                 'summary' => $bundle['summary'],
                 'answer_key' => $bundle['answer_key'],
+                'libs' => $bundle['libs'],
             ],
             'model' => $bundle['model'],
             'summary' => $bundle['summary'],
@@ -395,6 +424,7 @@ class AiHtmlQuizController extends Controller
         if (! empty($data['summary'])) {
             $meta['last_summary'] = $data['summary'];
         }
+        $meta['libs'] = $this->normalizer->filterLibs($meta['libs'] ?? []);
 
         $aiHtmlQuiz->update([
             'title' => $normalized['title'] ?: $aiHtmlQuiz->title,

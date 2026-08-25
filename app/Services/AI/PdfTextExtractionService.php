@@ -2,6 +2,7 @@
 
 namespace App\Services\AI;
 
+use Smalot\PdfParser\Config;
 use Smalot\PdfParser\Parser;
 
 class PdfTextExtractionService
@@ -12,7 +13,12 @@ class PdfTextExtractionService
             throw new \InvalidArgumentException('ملف PDF غير قابل للقراءة.');
         }
 
-        $parser = new Parser;
+        // تعطيل الاحتفاظ بمحتوى الصور: نحتاج النص فقط، وفكّ الصور المضمّنة
+        // هو سبب التعلّق/البطء الشديد مع ملفات PDF الغنية بالرسومات (كالشرائح).
+        $config = new Config;
+        $config->setRetainImageContent(false);
+
+        $parser = new Parser([], $config);
         $pdf = $parser->parseFile($absolutePath);
         $pages = $pdf->getPages();
         $pageCount = max(1, count($pages));
@@ -24,9 +30,15 @@ class PdfTextExtractionService
 
         $text = $this->normalizeText(implode("\n\n", $chunks));
 
+        // نص متطابق على كل الصفحات (كعلامة مائية) لا يمثل محتوى حقيقياً حتى لو
+        // كان عدد حروفه كافياً — نحسب عدد الصفحات ذات نص مختلف فعلياً.
+        $normalizedChunks = array_filter(array_map(fn ($c) => $this->normalizeText($c), $chunks), fn ($c) => $c !== '');
+        $uniquePageTexts = count(array_unique($normalizedChunks));
+
         return [
             'text' => $text,
             'pageCount' => $pageCount,
+            'uniquePageTexts' => $uniquePageTexts,
         ];
     }
 

@@ -29,7 +29,8 @@ class AiHtmlQuizGenerationService
         string $difficulty = 'medium',
         string $interactionHints = '',
         ?int $modelId = null,
-        array $questionTypes = []
+        array $questionTypes = [],
+        array $availableLibs = AiHtmlQuizBundleNormalizer::AVAILABLE_LIBS
     ): array {
         $topic = trim($topic);
         if ($topic === '') {
@@ -39,12 +40,13 @@ class AiHtmlQuizGenerationService
         $questionCount = max(3, min(8, $questionCount));
         $difficulty = in_array($difficulty, ['easy', 'medium', 'hard'], true) ? $difficulty : 'medium';
         $questionTypes = AiHtmlQuizQuestionTypes::filterValid($questionTypes);
+        $availableLibs = $this->normalizer->filterLibs($availableLibs);
 
         $model = $this->resolveModel($modelId);
         $provider = AIProviderFactory::create($model);
 
-        $prompt = $this->buildPrompt($topic, $objectives, $questionCount, $difficulty, $interactionHints, $questionTypes);
-        $maxTokens = min(max(4000, $questionCount * 900), $model->max_tokens ?: 12000);
+        $prompt = $this->buildPrompt($topic, $objectives, $questionCount, $difficulty, $interactionHints, $questionTypes, $availableLibs);
+        $maxTokens = $this->resolveMaxTokens($questionCount, $model);
 
         $response = $provider->generateText($prompt, [
             'max_tokens' => $maxTokens,
@@ -83,7 +85,9 @@ class AiHtmlQuizGenerationService
         string $css,
         string $js,
         string $title = '',
-        ?int $modelId = null
+        ?int $modelId = null,
+        array $currentLibs = [],
+        array $availableLibs = AiHtmlQuizBundleNormalizer::AVAILABLE_LIBS
     ): array {
         $refinePrompt = trim($refinePrompt);
         if ($refinePrompt === '') {
@@ -94,11 +98,14 @@ class AiHtmlQuizGenerationService
             throw new RuntimeException('لا توجد حزمة حالية للتحسين. ولّد أولاً أو احفظ HTML/CSS/JS.');
         }
 
+        $currentLibs = $this->normalizer->filterLibs($currentLibs);
+        $availableLibs = $this->normalizer->filterLibs($availableLibs);
+
         $model = $this->resolveModel($modelId);
         $provider = AIProviderFactory::create($model);
 
-        $prompt = $this->buildRefinePrompt($refinePrompt, $html, $css, $js, $title);
-        $maxTokens = min(max(6000, 10000), $model->max_tokens ?: 16000);
+        $prompt = $this->buildRefinePrompt($refinePrompt, $html, $css, $js, $title, $currentLibs, $availableLibs);
+        $maxTokens = min(12000, $model->max_tokens ?: 16000);
 
         $response = $provider->generateText($prompt, [
             'max_tokens' => $maxTokens,
@@ -126,7 +133,7 @@ class AiHtmlQuizGenerationService
             $parsed = $this->parseBundle($repair);
         }
 
-        $parsed = $this->applyKeepMarkers($parsed, $title, $html, $css, $js);
+        $parsed = $this->applyKeepMarkers($parsed, $title, $html, $css, $js, $currentLibs);
 
         if ($this->normalizer->hasDisallowedExternalScripts(
             (string) ($parsed['html'] ?? ''),
@@ -141,6 +148,20 @@ class AiHtmlQuizGenerationService
             ...$normalized,
             'model' => $model->name ?? $model->model_id ?? (string) $model->id,
         ];
+    }
+
+    /**
+     * ميزانية توليد صفحة اختبار HTML+CSS+JS كاملة — أثقل بكثير من توليد أسئلة
+     * كنص/JSON فقط: تصميم CSS كامل + HTML لكل نوع تفاعل + منطق JS للأسئلة
+     * والتحقق والانتقال والنتيجة. سقف منخفض هنا هو السبب الأكيد لانقطاع الرد
+     * قبل كتابة JS إطلاقاً (حزمة "ميتة" بلا أي تفاعل).
+     */
+    protected function resolveMaxTokens(int $questionCount, AIModel $model): int
+    {
+        $needed = 6000 + ($questionCount * 1800);
+        $ceiling = ((int) $model->max_tokens) > 0 ? (int) $model->max_tokens : 20000;
+
+        return max(8000, min($needed, $ceiling));
     }
 
     protected function resolveModel(?int $modelId): AIModel
@@ -171,7 +192,8 @@ class AiHtmlQuizGenerationService
         int $questionCount,
         string $difficulty,
         string $interactionHints,
-        array $questionTypes = []
+        array $questionTypes = [],
+        array $availableLibs = AiHtmlQuizBundleNormalizer::AVAILABLE_LIBS
     ): string {
         $objectives = trim($objectives) !== '' ? trim($objectives) : 'تعزيز الفهم والتفاعل حول الموضوع المحدد بدقة';
         $hints = trim($interactionHints);
@@ -183,6 +205,8 @@ class AiHtmlQuizGenerationService
         $hintsLine = $hints !== ''
             ? $hints
             : 'لا تلميحات إضافية — التزم بأنواع الأسئلة المختارة والموضوع فقط.';
+
+        $libsBlock = $this->availableLibsBlock($availableLibs);
 
         $soundPaths = implode("\n", [
             '- /sounds/ai-html-quiz/success-01.mp3 (إجابة صحيحة)',
@@ -217,6 +241,8 @@ class AiHtmlQuizGenerationService
 
 تلميحات تفاعل إضافية (اختيارية): {$hintsLine}
 
+{$libsBlock}
+
 متطلبات إلزامية:
 1) الواجهة عربية (dir=rtl)، جذابة، ملونة، مناسبة للأطفال/الطلاب — بدون مكتبات CDN وبدون روابط خارجية (خط Alexandria يُحقن تلقائياً من النظام؛ استخدم font-family: "Alexandria", sans-serif في css).
 2) اجعل التصميم قوياً: تدرجات خلفية، بطاقة مركزية بظل واضح، أزرار كبيرة بوزن خط 700–800، شريط تقدّم، وحركات بسيطة (hover/انتقال). لا تعتمد على قوالب أسئلة ثابتة جاهزة من محركات أخرى؛ ابنِ الواجهة بحرية لكن وفق أنواع الأسئلة أعلاه والموضوع الدقيق.
@@ -236,18 +262,48 @@ class AiHtmlQuizGenerationService
      }
    }, "*");
 6) لا تُضمّن <html>/<head>/<body> في html — أعطِ محتوى الجسم فقط. ضع الأنماط في css والسكربت في js.
-7) امنع fetch/XHR لأي مصدر خارجي. لا script src خارجي.
+7) امنع fetch/XHR لأي مصدر خارجي. لا script src خارجي — المكتبات المحلية أعلاه فقط عبر اختيارها بالاسم في AHQ_LIBS، لا عبر script src.
 
 {$format}
 PROMPT;
     }
 
+    /**
+     * @param  list<string>  $availableLibs
+     */
+    protected function availableLibsBlock(array $availableLibs): string
+    {
+        if ($availableLibs === []) {
+            return "## مكتبات محلية متاحة\nلا توجد مكتبات متاحة لهذا الاختبار — لا تطلب أي مكتبة، واكتب AHQ_LIBS بقيمة none.";
+        }
+
+        $catalog = [
+            'chart' => 'chart — Chart.js (متاح كـ Chart عالمياً). للرسوم البيانية/الإحصاءات/الأعداد المقارنة: new Chart(ctx, {type:"bar"|"line"|"pie", data:{...}}).',
+            'confetti' => 'confetti — canvas-confetti (متاح كـ confetti عالمياً). احتفال بصري بسيط عند نجاح/انتهاء الاختبار: confetti().',
+            'katex' => 'katex — KaTeX (متاح كـ katex عالمياً). لعرض معادلات/رموز رياضية بشكل جميل: katex.render("x^2+1", element).',
+            'mermaid' => 'mermaid — Mermaid (متاح كـ mermaid عالمياً). لرسم مخططات/تسلسلات/خطوات عملية: ضع كود المخطط داخل <div class="mermaid">...</div> ثم نادِ mermaid.initialize({startOnLoad:true}) أو mermaid.run().',
+        ];
+
+        $lines = array_map(fn ($key) => '- '.$catalog[$key], $availableLibs);
+
+        return "## مكتبات محلية متاحة (اختيارية — اختر منها فقط ما يخدم الموضوع فعلياً، لا تفرضها تعسفاً)\n"
+            .implode("\n", $lines)
+            ."\n\nهذه المكتبات تُحمَّل تلقائياً من الخادم (محلية بالكامل، بلا أي طلب شبكة خارجي) إن ذكرت مفتاحها في AHQ_LIBS فقط. "
+            ."لا تكتب أنت أي <script src> أو <link> لتحميلها — أي محاولة كهذه سيتم حذفها/رفضها، والطريقة الوحيدة الفعّالة هي ذكر المفتاح في AHQ_LIBS ثم استخدام الكائن العالمي مباشرة في js.";
+    }
+
+    /**
+     * @param  list<string>  $currentLibs
+     * @param  list<string>  $availableLibs
+     */
     protected function buildRefinePrompt(
         string $refinePrompt,
         string $html,
         string $css,
         string $js,
-        string $title
+        string $title,
+        array $currentLibs = [],
+        array $availableLibs = AiHtmlQuizBundleNormalizer::AVAILABLE_LIBS
     ): string {
         $title = trim($title) !== '' ? trim($title) : 'اختبار تفاعلي';
         $html = mb_substr($html, 0, 24000);
@@ -255,6 +311,8 @@ PROMPT;
         $js = mb_substr($js, 0, 24000);
         $keep = self::KEEP_MARKER;
         $format = $this->bundleOutputFormatInstructions(true);
+        $libsBlock = $this->availableLibsBlock($availableLibs);
+        $currentLibsLine = $currentLibs === [] ? 'لا توجد مكتبة مُفعّلة حالياً.' : implode(', ', $currentLibs);
 
         return <<<PROMPT
 أنت مطوّر واجهات تعليمية عربي. حسّن حزمة اختبار HTML/CSS/JS موجودة حسب طلب الأدمن بدقة.
@@ -268,6 +326,11 @@ PROMPT;
 - حافظ على منطق الإجابات و postMessage من نوع ile-html-quiz-result.
 - الأصوات فقط تحت /sounds/ai-html-quiz/
 - لا تُرجع <html>/<head>/<body> داخل html.
+
+{$libsBlock}
+
+المكتبات المُفعّلة حالياً لهذا الاختبار: {$currentLibsLine}
+إن لم يطلب التحسين تغييرها، ضع بالضبط {$keep} في AHQ_LIBS لإبقائها كما هي؛ وإلا اكتب القائمة الجديدة الكاملة.
 
 ## مهم لتوفير الحجم
 - إن لم يتغير قسم معيّن، ضع بالضبط: {$keep}
@@ -323,11 +386,13 @@ PROMPT;
 الأنماط
 <<<AHQ_JS>>>
 السكربت
+<<<AHQ_LIBS>>>
+قائمة مفصولة بفواصل من المفاتيح المستخدمة فقط (مثل: chart,confetti) أو none إن لم تُستخدم أي مكتبة
 <<<AHQ_SUMMARY>>>
 ملخص قصير
 <<<AHQ_END>>>
 {$keepNote}
-بديل مقبول: JSON واحد صالح بالمفاتيح title,html,css,js,summary — مع تهريب صحيح للعلامات المزدوجة.
+بديل مقبول: JSON واحد صالح بالمفاتيح title,html,css,js,libs,summary — مع تهريب صحيح للعلامات المزدوجة.
 FORMAT;
     }
 
@@ -335,12 +400,18 @@ FORMAT;
      * @param  array<string, mixed>  $parsed
      * @return array{title: mixed, html: mixed, css: mixed, js: mixed, summary?: mixed, answer_key?: mixed}
      */
-    protected function applyKeepMarkers(array $parsed, string $title, string $html, string $css, string $js): array
+    protected function applyKeepMarkers(array $parsed, string $title, string $html, string $css, string $js, array $currentLibs = []): array
     {
         $parsed['title'] = $this->resolveKeep((string) ($parsed['title'] ?? ''), $title !== '' ? $title : 'اختبار تفاعلي');
         $parsed['html'] = $this->resolveKeep((string) ($parsed['html'] ?? ''), $html);
         $parsed['css'] = $this->resolveKeep((string) ($parsed['css'] ?? ''), $css);
         $parsed['js'] = $this->resolveKeep((string) ($parsed['js'] ?? ''), $js);
+
+        $rawLibs = $parsed['libs'] ?? '';
+        $libsValue = is_array($rawLibs) ? implode(',', $rawLibs) : (string) $rawLibs;
+        $parsed['libs'] = trim($libsValue) === '' || trim($libsValue) === self::KEEP_MARKER
+            ? $currentLibs
+            : $rawLibs;
 
         return $parsed;
     }
@@ -401,7 +472,7 @@ FORMAT;
     {
         if (! str_contains($raw, '<<<AHQ_') && ! str_contains($raw, '<<<AHQ_HTML>>>')) {
             // still try if any marker exists
-            if (! preg_match('/<<<\s*AHQ_(TITLE|HTML|CSS|JS|SUMMARY)\s*>>>/i', $raw)) {
+            if (! preg_match('/<<<\s*AHQ_(TITLE|HTML|CSS|JS|LIBS|SUMMARY)\s*>>>/i', $raw)) {
                 return null;
             }
         }
@@ -428,6 +499,7 @@ FORMAT;
             'html' => $html ?? '',
             'css' => $css ?? '',
             'js' => $js ?? '',
+            'libs' => $get('LIBS') ?? '',
             'summary' => $get('SUMMARY') ?? '',
         ];
     }

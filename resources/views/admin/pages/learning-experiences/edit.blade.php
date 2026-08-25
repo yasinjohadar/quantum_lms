@@ -18,6 +18,17 @@
         --ile-radius: 18px;
         --ile-shadow: 0 10px 30px rgba(15, 28, 46, .06);
     }
+    [data-theme-mode=dark] .ile-edit-page {
+        --ile-ink: rgba(255, 255, 255, .9);
+        --ile-muted: rgba(255, 255, 255, .6);
+        --ile-line: rgba(255, 255, 255, .1);
+        --ile-surface: #141a26;
+        --ile-soft: rgba(255, 255, 255, .05);
+        --ile-accent: #17b89b;
+        --ile-accent-2: #e8a838;
+        --ile-danger: #ef6a6a;
+        --ile-shadow: 0 10px 30px rgba(0, 0, 0, .3);
+    }
     .ile-edit-page .container-fluid { max-width: 1180px; }
 
     .ile-hero {
@@ -79,7 +90,7 @@
     }
     .ile-btn--accent:hover { color: #1a1408; filter: brightness(1.04); }
     .ile-btn--solid {
-        background: #fff; color: var(--ile-ink);
+        background: var(--ile-surface); color: var(--ile-ink);
     }
     .ile-btn--solid:hover { color: var(--ile-ink); }
     .ile-btn--ghost {
@@ -93,11 +104,11 @@
     .ile-btn--primary:hover { color: #fff; filter: brightness(1.05); }
     .ile-btn--primary:disabled { opacity: .55; transform: none; box-shadow: none; }
     .ile-btn--line {
-        background: #fff; color: var(--ile-ink); border-color: var(--ile-line);
+        background: var(--ile-surface); color: var(--ile-ink); border-color: var(--ile-line);
     }
     .ile-btn--line:hover { border-color: rgba(13,143,122,.35); color: var(--ile-accent); }
     .ile-btn--danger-line {
-        background: #fff; color: var(--ile-danger); border-color: rgba(214,69,69,.25);
+        background: var(--ile-surface); color: var(--ile-danger); border-color: rgba(214,69,69,.25);
     }
 
     .ile-panel {
@@ -112,7 +123,7 @@
         display: flex; align-items: center; justify-content: space-between; gap: .75rem;
         padding: 1rem 1.15rem;
         border-bottom: 1px solid var(--ile-line);
-        background: linear-gradient(180deg, #fafcfd, #fff);
+        background: linear-gradient(180deg, rgba(255,255,255,.03), var(--ile-surface));
     }
     .ile-panel__head h6 {
         margin: 0; font-size: 1rem; font-weight: 800; color: var(--ile-ink);
@@ -135,10 +146,11 @@
     .ile-edit-page .form-label {
         font-weight: 700; font-size: .8rem; color: #334155; margin-bottom: .35rem;
     }
+    [data-theme-mode=dark] .ile-edit-page .form-label { color: var(--ile-ink); }
     .ile-edit-page .form-control,
     .ile-edit-page .form-select {
         border-radius: 12px;
-        border-color: rgba(15,28,46,.12);
+        border-color: var(--ile-line);
         padding: .6rem .8rem;
         box-shadow: none;
     }
@@ -182,7 +194,7 @@
         width: 100%; text-align: start;
         border-radius: 14px;
         border: 1px solid var(--ile-line);
-        background: linear-gradient(180deg, #fff, #f8fafb);
+        background: linear-gradient(180deg, var(--ile-surface), var(--ile-soft));
         padding: .9rem .95rem .85rem;
         overflow: hidden;
         transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
@@ -223,7 +235,7 @@
     .ile-q-card__head {
         display: flex; align-items: center; justify-content: space-between; gap: .75rem;
         padding: .9rem 1rem;
-        background: linear-gradient(180deg, #fbfcfd, #f5f7fa);
+        background: linear-gradient(180deg, var(--ile-surface), var(--ile-soft));
         border-bottom: 1px solid transparent;
         cursor: pointer; user-select: none;
     }
@@ -242,7 +254,7 @@
     .ile-sticky-actions {
         position: sticky; bottom: 0; z-index: 20;
         display: flex; flex-wrap: wrap; gap: .55rem; align-items: center;
-        background: rgba(255,255,255,.88);
+        background: color-mix(in srgb, var(--ile-surface) 88%, transparent);
         backdrop-filter: blur(12px);
         border: 1px solid var(--ile-line);
         border-radius: 16px 16px 0 0;
@@ -282,7 +294,7 @@
         importApplyUrl: @js(route('admin.learning-experiences.import.apply', $experience)),
         csrf: @js(csrf_token()),
         feedbackPhrases: @js($feedbackPhrases),
-     },@js($aiModels->map(fn ($m) => ['id' => $m->id, 'name' => $m->name, 'provider' => $m->provider, 'is_default' => (bool) $m->is_default])->values()), @js($blankDynamicTemplates), @js($dynamicInteractionTypes))">
+     },@js($aiModels->map(fn ($m) => ['id' => $m->id, 'name' => $m->name, 'provider' => $m->provider, 'is_default' => (bool) $m->is_default, 'supports_vision' => $m->supportsVision()])->values()), @js($blankDynamicTemplates), @js($dynamicInteractionTypes))">
     <div class="container-fluid">
 
         <div class="ile-hero">
@@ -420,11 +432,15 @@
                     <div class="col-md-3">
                         <label class="form-label">نموذج AI</label>
                         <select class="form-select" x-model="gen.modelId">
-                            <option value="">الافتراضي / الأفضل</option>
+                            <option value="" :disabled="needsVisionModel">الافتراضي / الأفضل</option>
                             <template x-for="m in aiModels" :key="m.id">
-                                <option :value="String(m.id)" x-text="m.name + (m.is_default ? ' (افتراضي)' : '') + ' — ' + m.provider"></option>
+                                <option :value="String(m.id)" :disabled="needsVisionModel && !m.supports_vision"
+                                        x-text="m.name + (m.is_default ? ' (افتراضي)' : '') + ' — ' + m.provider + (needsVisionModel && !m.supports_vision ? ' (لا يدعم الرؤية)' : '')"></option>
                             </template>
                         </select>
+                        <div class="form-text text-warning" x-show="needsVisionModel" x-cloak>
+                            هذا الملف يحتاج تحليلاً بصرياً — اختر نموذجاً يدعم الرؤية.
+                        </div>
                     </div>
                     <div class="col-12">
                         <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
@@ -932,23 +948,32 @@
                                     <template x-for="left in q.payload.left" :key="left.id">
                                         <div class="row g-2 mb-2 align-items-center">
                                             <div class="col-md-5">
-                                                <input type="text" class="form-control" placeholder="العنصر" x-model="left.label">
+                                                <input type="text" class="form-control" placeholder="العنصر" x-model="left.label" dir="auto">
                                             </div>
                                             <div class="col-md-2 text-center text-muted">↔</div>
-                                            <div class="col-md-5">
+                                            <div class="col-md-4">
                                                 <select class="form-select" x-model="q.payload.pairs[left.id]">
                                                     <template x-for="right in q.payload.right" :key="right.id">
                                                         <option :value="right.id" x-text="right.label"></option>
                                                     </template>
                                                 </select>
                                             </div>
+                                            <div class="col-md-1">
+                                                <button type="button" class="btn btn-outline-danger w-100" @click="removeMatchingLeft(q, left.id)">×</button>
+                                            </div>
                                         </div>
                                     </template>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" @click="addMatchingLeft(q)">+ عنصر</button>
+
                                     <div class="mt-3">
                                         <label class="form-label">تسميات العمود الأيمن</label>
                                         <template x-for="right in q.payload.right" :key="right.id">
-                                            <input type="text" class="form-control mb-2" x-model="right.label">
+                                            <div class="input-group mb-2">
+                                                <input type="text" class="form-control" x-model="right.label" dir="auto">
+                                                <button type="button" class="btn btn-outline-danger" @click="removeMatchingRight(q, right.id)">×</button>
+                                            </div>
                                         </template>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" @click="addMatchingRight(q)">+ قيمة</button>
                                     </div>
                                 </div>
                             </template>
@@ -960,7 +985,7 @@
                                         <div class="input-group mb-2">
                                             <span class="input-group-text" x-text="ii+1"></span>
                                             <input type="text" class="form-control" style="max-width:4.5rem" x-model="it.icon" placeholder="🔢">
-                                            <input type="text" class="form-control" x-model="it.label">
+                                            <input type="text" class="form-control" x-model="it.label" dir="auto">
                                         </div>
                                     </template>
                                     <p class="small text-muted mb-0">الترتيب الحالي يُحفظ كـ correctOrder تلقائياً عند الحفظ عبر محرر الـ payload.</p>
@@ -1001,22 +1026,27 @@
                                     <label class="form-label">العناصر</label>
                                     <template x-for="it in q.payload.items" :key="it.id">
                                         <div class="input-group mb-2">
-                                            <input type="text" class="form-control" style="max-width:4.5rem" x-model="it.icon">
-                                            <input type="text" class="form-control" x-model="it.label">
+                                            <input type="text" class="form-control" style="max-width:4.5rem" x-model="it.icon" placeholder="🔢">
+                                            <input type="text" class="form-control" x-model="it.label" placeholder="نص العنصر" dir="auto">
                                             <select class="form-select" x-model="q.payload.correct[it.id]">
                                                 <template x-for="cat in q.payload.categories" :key="cat.id">
                                                     <option :value="cat.id" x-text="cat.label"></option>
                                                 </template>
                                             </select>
+                                            <button type="button" class="btn btn-outline-danger" @click="removeCategorizeItem(q, it.id)">×</button>
                                         </div>
                                     </template>
-                                    <label class="form-label mt-2">التصنيفات</label>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" @click="addCategorizeItem(q)">+ عنصر</button>
+
+                                    <label class="form-label mt-3">التصنيفات</label>
                                     <template x-for="cat in q.payload.categories" :key="cat.id">
                                         <div class="input-group mb-2">
-                                            <input type="text" class="form-control" style="max-width:4.5rem" x-model="cat.icon">
-                                            <input type="text" class="form-control" x-model="cat.label">
+                                            <input type="text" class="form-control" style="max-width:4.5rem" x-model="cat.icon" placeholder="🏷️">
+                                            <input type="text" class="form-control" x-model="cat.label" placeholder="نص التصنيف" dir="auto">
+                                            <button type="button" class="btn btn-outline-danger" @click="removeCategorizeCategory(q, cat.id)">×</button>
                                         </div>
                                     </template>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" @click="addCategorizeCategory(q)">+ تصنيف</button>
                                 </div>
                             </template>
 
@@ -1039,17 +1069,32 @@
                                     <label class="form-label mb-2">أزواج التوصيل/الذاكرة</label>
                                     <template x-for="left in q.payload.left" :key="left.id">
                                         <div class="row g-2 mb-2 align-items-center">
-                                            <div class="col-md-5"><input type="text" class="form-control" x-model="left.label" :placeholder="left.icon || ''"></div>
+                                            <div class="col-md-5"><input type="text" class="form-control" x-model="left.label" :placeholder="left.icon || ''" dir="auto"></div>
                                             <div class="col-md-2 text-center">↔</div>
-                                            <div class="col-md-5">
+                                            <div class="col-md-4">
                                                 <select class="form-select" x-model="q.payload.pairs[left.id]">
                                                     <template x-for="right in q.payload.right" :key="right.id">
                                                         <option :value="right.id" x-text="right.label"></option>
                                                     </template>
                                                 </select>
                                             </div>
+                                            <div class="col-md-1">
+                                                <button type="button" class="btn btn-outline-danger w-100" @click="removeMatchingLeft(q, left.id)">×</button>
+                                            </div>
                                         </div>
                                     </template>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" @click="addMatchingLeft(q)">+ عنصر</button>
+
+                                    <div class="mt-3">
+                                        <label class="form-label">تسميات العمود الأيمن</label>
+                                        <template x-for="right in q.payload.right" :key="right.id">
+                                            <div class="input-group mb-2">
+                                                <input type="text" class="form-control" x-model="right.label" dir="auto">
+                                                <button type="button" class="btn btn-outline-danger" @click="removeMatchingRight(q, right.id)">×</button>
+                                            </div>
+                                        </template>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" @click="addMatchingRight(q)">+ قيمة</button>
+                                    </div>
                                 </div>
                             </template>
 
@@ -1450,12 +1495,23 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
         srcImagesCount: 0,
         srcNotes: '',
 
+        get needsVisionModel() {
+            return this.gen.source === 'file' && this.srcKind === 'images';
+        },
+
+        get selectedModelSupportsVision() {
+            if (!this.gen.modelId) return false;
+            const m = this.aiModels.find(m => String(m.id) === String(this.gen.modelId));
+            return Boolean(m && m.supports_vision);
+        },
+
         get canGenerate() {
             if (!this.gen.types.length) return false;
             if (this.gen.source === 'file') {
-                return this.srcKind === 'images'
-                    ? Boolean(this.srcToken)
-                    : Boolean(this.srcText.trim());
+                if (this.srcKind === 'images') {
+                    return Boolean(this.srcToken) && this.selectedModelSupportsVision;
+                }
+                return Boolean(this.srcText.trim());
             }
             return Boolean(this.gen.topic.trim());
         },
@@ -1485,6 +1541,8 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
             if (!this.srcFile) return;
             this.srcLoading = true;
             this.resetSourceState();
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 170000);
             try {
                 const fd = new FormData();
                 fd.append('file', this.srcFile);
@@ -1492,6 +1550,7 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
                     method: 'POST',
                     headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this.urls.csrf },
                     body: fd,
+                    signal: controller.signal,
                 });
                 const data = await res.json();
                 if (!data.ok) throw new Error(data.message || 'فشل تحليل الملف');
@@ -1501,9 +1560,19 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
                 this.srcPageCount = data.pageCount || 0;
                 this.srcImagesCount = data.imagesCount || 0;
                 this.srcNotes = data.notes || '';
+
+                // الملف يحتاج نموذجاً يدعم الرؤية — إن كان المختار حالياً لا يدعمها فنبدّله تلقائياً
+                if (this.srcKind === 'images' && !this.selectedModelSupportsVision) {
+                    const visionModel = this.aiModels.find(m => m.supports_vision && m.is_default)
+                        || this.aiModels.find(m => m.supports_vision);
+                    this.gen.modelId = visionModel ? String(visionModel.id) : '';
+                }
             } catch (e) {
-                this.srcError = e.message || 'فشل تحليل الملف';
+                this.srcError = e.name === 'AbortError'
+                    ? 'استغرق التحليل وقتاً أطول من المتوقع. جرّب ملفاً أصغر أو تحقق من الاتصال.'
+                    : (e.message || 'فشل تحليل الملف');
             } finally {
+                clearTimeout(timeoutId);
                 this.srcLoading = false;
             }
         },
@@ -1519,6 +1588,8 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
         async requestAiGenerateFromSource() {
             this.genLoading = true;
             this.genError = '';
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 170000);
             try {
                 const body = {
                     objectives: this.gen.objectives || '',
@@ -1539,6 +1610,7 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
                         'X-CSRF-TOKEN': this.urls.csrf,
                     },
                     body: JSON.stringify(body),
+                    signal: controller.signal,
                 });
                 const data = await res.json();
                 if (!data.ok) throw new Error(data.message || 'فشل التوليد');
@@ -1550,8 +1622,11 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
                 if (this.srcKind === 'images') this.srcToken = '';
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('ileGenerateModal')).show();
             } catch (e) {
-                this.genError = e.message || 'فشل التوليد';
+                this.genError = e.name === 'AbortError'
+                    ? 'استغرق التوليد وقتاً أطول من المتوقع. جرّب عدد أسئلة أقل أو نموذجاً أسرع.'
+                    : (e.message || 'فشل التوليد');
             } finally {
+                clearTimeout(timeoutId);
                 this.genLoading = false;
             }
         },
@@ -1600,6 +1675,66 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
         addDragZone(q) {
             const id = 'z' + (q.payload.zones.length + 1);
             q.payload.zones.push({ id, label: 'منطقة' });
+        },
+        addCategorizeItem(q) {
+            q.payload.items = q.payload.items || [];
+            q.payload.categories = q.payload.categories || [];
+            q.payload.correct = q.payload.correct || {};
+            let n = q.payload.items.length + 1;
+            let id = 'i' + n;
+            while (q.payload.items.some(it => it.id === id)) { n += 1; id = 'i' + n; }
+            q.payload.items.push({ id, label: 'عنصر جديد', icon: '' });
+            q.payload.correct[id] = q.payload.categories[0]?.id || '';
+        },
+        removeCategorizeItem(q, itemId) {
+            q.payload.items = (q.payload.items || []).filter(it => it.id !== itemId);
+            if (q.payload.correct) delete q.payload.correct[itemId];
+        },
+        addCategorizeCategory(q) {
+            q.payload.categories = q.payload.categories || [];
+            let n = q.payload.categories.length + 1;
+            let id = 'c' + n;
+            while (q.payload.categories.some(cat => cat.id === id)) { n += 1; id = 'c' + n; }
+            q.payload.categories.push({ id, label: 'تصنيف جديد', icon: '' });
+        },
+        removeCategorizeCategory(q, categoryId) {
+            q.payload.categories = (q.payload.categories || []).filter(cat => cat.id !== categoryId);
+            const fallback = q.payload.categories[0]?.id || '';
+            if (q.payload.correct) {
+                Object.keys(q.payload.correct).forEach(itemId => {
+                    if (q.payload.correct[itemId] === categoryId) q.payload.correct[itemId] = fallback;
+                });
+            }
+        },
+        addMatchingLeft(q) {
+            q.payload.left = q.payload.left || [];
+            q.payload.right = q.payload.right || [];
+            q.payload.pairs = q.payload.pairs || {};
+            let n = q.payload.left.length + 1;
+            let id = 'l' + n;
+            while (q.payload.left.some(l => l.id === id)) { n += 1; id = 'l' + n; }
+            q.payload.left.push({ id, label: 'عنصر جديد' });
+            q.payload.pairs[id] = q.payload.right[0]?.id || '';
+        },
+        removeMatchingLeft(q, leftId) {
+            q.payload.left = (q.payload.left || []).filter(l => l.id !== leftId);
+            if (q.payload.pairs) delete q.payload.pairs[leftId];
+        },
+        addMatchingRight(q) {
+            q.payload.right = q.payload.right || [];
+            let n = q.payload.right.length + 1;
+            let id = 'r' + n;
+            while (q.payload.right.some(r => r.id === id)) { n += 1; id = 'r' + n; }
+            q.payload.right.push({ id, label: 'قيمة جديدة' });
+        },
+        removeMatchingRight(q, rightId) {
+            q.payload.right = (q.payload.right || []).filter(r => r.id !== rightId);
+            const fallback = q.payload.right[0]?.id || '';
+            if (q.payload.pairs) {
+                Object.keys(q.payload.pairs).forEach(leftId => {
+                    if (q.payload.pairs[leftId] === rightId) q.payload.pairs[leftId] = fallback;
+                });
+            }
         },
         validateLive() {
             const errors = [];
