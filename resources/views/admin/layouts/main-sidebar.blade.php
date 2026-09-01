@@ -1,6 +1,51 @@
         <!-- Start::app-sidebar -->
         <aside class="app-sidebar sticky" id="sidebar">
 
+<style>
+    /* تحسين حالة hover/active لعناصر القائمة الجانبية — بنفس سلوك مشروع
+       Hr-System (خلفية الصف تتلوّن بالأزرق الأساسي دائماً بغضّ النظر عن لون
+       أيقونة القسم، والنص يصبح غامقاً عريضاً)، مع الإبقاء على نظام الألوان
+       الحالي الجيد لكل قسم (slide-icon--{color} في custom.css المشترك مع
+       لوحة الطالب) دون المساس به. هذا الملف admin-only فالتخصيص هنا آمن. */
+    .main-menu > li.slide[class*="slide-icon--"] > .side-menu__item:not(.active):hover {
+        background-color: rgba(var(--primary-rgb), 0.06) !important;
+    }
+    .main-menu > li.slide[class*="slide-icon--"].active > .side-menu__item,
+    .main-menu > li.slide[class*="slide-icon--"] > .side-menu__item.active {
+        background-color: rgba(var(--primary-rgb), 0.1) !important;
+    }
+    .main-menu > li.slide[class*="slide-icon--"] .slide-menu li.slide[class*="slide-icon--"] > .side-menu__item:not(.active):hover {
+        background-color: rgba(var(--primary-rgb), 0.06) !important;
+    }
+    .main-menu > li.slide[class*="slide-icon--"] .slide-menu li.slide[class*="slide-icon--"].active > .side-menu__item,
+    .main-menu > li.slide[class*="slide-icon--"] .slide-menu li.slide[class*="slide-icon--"] > .side-menu__item.active {
+        background-color: rgba(var(--primary-rgb), 0.1) !important;
+    }
+
+    .main-menu > li.slide[class*="slide-icon--"] > .side-menu__item.active .side-menu__label,
+    .main-menu > li.slide[class*="slide-icon--"] > .side-menu__item.active .side-menu__angle,
+    .main-menu > li.slide[class*="slide-icon--"] .slide-menu li.slide[class*="slide-icon--"] > .side-menu__item.active .side-menu__label {
+        color: rgb(var(--primary-rgb)) !important;
+    }
+
+    .side-menu__item, .side-menu__label { font-weight: 700 !important; }
+    .main-menu > li.slide > .side-menu__item.active,
+    .main-menu > li.slide > .side-menu__item.active .side-menu__label,
+    .slide-menu .side-menu__item.active,
+    .slide-menu .side-menu__item.active .side-menu__label {
+        font-weight: 800 !important;
+    }
+
+    [data-theme-mode="dark"] .main-menu > li.slide[class*="slide-icon--"].active > .side-menu__item,
+    [data-theme-mode="dark"] .main-menu > li.slide[class*="slide-icon--"] > .side-menu__item.active {
+        background-color: rgba(var(--primary-rgb), 0.16) !important;
+    }
+    [data-theme-mode="dark"] .main-menu > li.slide[class*="slide-icon--"] > .side-menu__item.active .side-menu__label,
+    [data-theme-mode="dark"] .main-menu > li.slide[class*="slide-icon--"] > .side-menu__item.active .side-menu__angle {
+        color: #93c5fd !important;
+    }
+</style>
+
             <!-- Start::main-sidebar-header -->
             <div class="main-sidebar-header">
                 <a href="{{ route('admin.dashboard') }}" class="header-logo sidebar-brand">

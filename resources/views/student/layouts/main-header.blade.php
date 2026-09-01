@@ -23,11 +23,21 @@
                     <!-- Start::header-element -->
                     <div class="header-element">
                         <!-- Start::header-link -->
-                        <a aria-label="Hide Sidebar" class="sidemenu-toggle header-link animated-arrow hor-toggle horizontal-navtoggle" data-bs-toggle="sidebar" href="javascript:void(0);">
-                            <i class="header-icon fe fe-align-left"></i>
+                        <a aria-label="طيّ الشريط الجانبي" class="sidemenu-toggle header-link hr-navtoggle" data-bs-toggle="sidebar" href="javascript:void(0);">
+                            <span class="hr-navtoggle__box" aria-hidden="true">
+                                <span class="hr-navtoggle__bar"></span>
+                                <span class="hr-navtoggle__bar"></span>
+                                <span class="hr-navtoggle__bar"></span>
+                            </span>
                         </a>
-                        <div class="main-header-center d-none d-lg-block">
-                            <input class="form-control" placeholder="إكتب للبحث..." type="search"> <button class="btn"><i class="fa fa-search d-none d-md-block"></i></button>
+                        <div class="main-header-center hr-search d-none d-lg-block">
+                            <input class="form-control hr-search__input" placeholder="إكتب للبحث..." type="search" autocomplete="off" aria-label="بحث">
+                            <button class="btn hr-search__btn" type="button" aria-label="بحث">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="hr-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                                </svg>
+                            </button>
+                            <span class="hr-search__underline" aria-hidden="true"></span>
                         </div>
                         <!-- End::header-link -->
                     </div>
@@ -396,3 +406,239 @@
 
         </header>
         <!-- /app-header -->
+
+<style>
+    /* شريط البحث وأيقونة طيّ الشريط الجانبي — بنفس ستايل Hr-System (بصرياً فقط
+       هنا، بدون بحث حيّ خلفي كما في لوحة الأدمن، لأن الطلب كان عن الستايل). */
+    .hr-search { position: relative; }
+
+    .hr-search .hr-search__input {
+        border-radius: 3px !important;
+        height: 40px;
+        padding-inline: 1.15rem 2.75rem;
+        border: 1px solid var(--default-border);
+        background: var(--default-body-bg-color);
+        color: var(--default-text-color);
+        transition: width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+                    border-color 0.22s ease,
+                    background 0.22s ease,
+                    box-shadow 0.22s ease;
+    }
+    .hr-search .hr-search__input::placeholder {
+        color: var(--text-muted);
+        transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .hr-search:hover .hr-search__input:not(:focus) {
+        border-color: rgba(var(--primary-rgb), 0.35);
+    }
+    .hr-search .hr-search__input:focus {
+        width: 420px;
+        border-color: rgb(var(--primary-rgb));
+        background: var(--custom-white);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.14);
+        outline: 0;
+    }
+    .hr-search .hr-search__input:focus::placeholder { opacity: 0.55; transform: translateX(-4px); }
+    .hr-search .hr-search__btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        height: 40px; padding: 0; padding-inline: 0.75rem;
+        border: 0 !important; background-color: transparent;
+        color: var(--text-muted); transition: color 0.22s ease;
+    }
+    .hr-search .hr-search__icon {
+        width: 1.125rem; height: 1.125rem; fill: none; stroke: currentColor;
+        transition: transform 0.28s cubic-bezier(0.34, 1.5, 0.64, 1), color 0.22s ease;
+    }
+    .hr-search:focus-within .hr-search__btn,
+    .hr-search .hr-search__btn:hover { color: rgb(var(--primary-rgb)); }
+    .hr-search:focus-within .hr-search__icon { transform: scale(1.12) rotate(-8deg); }
+    .hr-search .hr-search__btn:active .hr-search__icon { transform: scale(0.92); }
+    .hr-search .hr-search__underline {
+        position: absolute; inset-block-end: -1px; inset-inline-start: 0;
+        width: 350px; height: 2px; border-radius: 2px;
+        background: rgb(var(--primary-rgb));
+        transform: scaleX(0); transform-origin: center; opacity: 0; pointer-events: none;
+        transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+                    opacity 0.22s ease, width 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .hr-search:focus-within .hr-search__underline { width: 420px; transform: scaleX(1); opacity: 1; }
+    @media (max-width: 1400px) {
+        .hr-search .hr-search__input:focus,
+        .hr-search:focus-within .hr-search__underline { width: 350px; }
+    }
+
+    .hr-navtoggle {
+        display: inline-flex; align-items: center; justify-content: center;
+        padding: 0; border: 0; background: none; line-height: 0;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .hr-navtoggle__box {
+        position: relative; display: flex; flex-direction: column;
+        align-items: flex-start; justify-content: center; gap: 4px;
+        width: 2.375rem; height: 2.375rem; padding: 0.6875rem 0.625rem;
+        border: 1px solid rgba(var(--primary-rgb), 0.16);
+        border-radius: 0.75rem;
+        background: rgba(var(--primary-rgb), 0.08);
+        box-sizing: border-box;
+        transition: background 0.25s ease, border-color 0.25s ease,
+                    transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.25s ease;
+    }
+    .hr-navtoggle__bar {
+        display: block; height: 2px; border-radius: 2px;
+        background: rgb(var(--primary-rgb));
+        transition: width 0.28s cubic-bezier(0.34, 1.4, 0.64, 1), background 0.25s ease;
+    }
+    .hr-navtoggle__bar:nth-child(1) { width: 100%; transition-delay: 0s; }
+    .hr-navtoggle__bar:nth-child(2) { width: 58%; transition-delay: 0.04s; }
+    .hr-navtoggle__bar:nth-child(3) { width: 78%; transition-delay: 0.08s; }
+    .hr-navtoggle:hover .hr-navtoggle__box {
+        border-color: rgba(var(--primary-rgb), 0.32);
+        background: rgba(var(--primary-rgb), 0.14);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.18);
+    }
+    .hr-navtoggle:hover .hr-navtoggle__bar:nth-child(2),
+    .hr-navtoggle:hover .hr-navtoggle__bar:nth-child(3) { width: 100%; }
+    .hr-navtoggle:active .hr-navtoggle__box { transform: translateY(0) scale(0.96); box-shadow: none; }
+    .hr-navtoggle:focus-visible .hr-navtoggle__box {
+        outline: 2px solid rgba(var(--primary-rgb), 0.55); outline-offset: 2px;
+    }
+    [data-toggled="icon-overlay-close"] .hr-navtoggle__box,
+    [data-toggled="close-menu-close"] .hr-navtoggle__box,
+    [data-toggled="icon-text-close"] .hr-navtoggle__box,
+    [data-toggled="double-menu-close"] .hr-navtoggle__box,
+    [data-toggled="icon-click-closed"] .hr-navtoggle__box,
+    [data-toggled="icon-hover-closed"] .hr-navtoggle__box,
+    [data-toggled="detached-close"] .hr-navtoggle__box {
+        border-color: transparent;
+        background: rgb(var(--primary-rgb));
+        box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.35);
+    }
+    [data-toggled="icon-overlay-close"] .hr-navtoggle__bar,
+    [data-toggled="close-menu-close"] .hr-navtoggle__bar,
+    [data-toggled="icon-text-close"] .hr-navtoggle__bar,
+    [data-toggled="double-menu-close"] .hr-navtoggle__bar,
+    [data-toggled="icon-click-closed"] .hr-navtoggle__bar,
+    [data-toggled="icon-hover-closed"] .hr-navtoggle__bar,
+    [data-toggled="detached-close"] .hr-navtoggle__bar { background: #fff; }
+    [data-toggled="icon-overlay-close"] .hr-navtoggle__bar:nth-child(2),
+    [data-toggled="close-menu-close"] .hr-navtoggle__bar:nth-child(2),
+    [data-toggled="icon-text-close"] .hr-navtoggle__bar:nth-child(2),
+    [data-toggled="double-menu-close"] .hr-navtoggle__bar:nth-child(2),
+    [data-toggled="icon-click-closed"] .hr-navtoggle__bar:nth-child(2),
+    [data-toggled="icon-hover-closed"] .hr-navtoggle__bar:nth-child(2),
+    [data-toggled="detached-close"] .hr-navtoggle__bar:nth-child(2) { width: 78%; }
+    [data-toggled="icon-overlay-close"] .hr-navtoggle__bar:nth-child(3),
+    [data-toggled="close-menu-close"] .hr-navtoggle__bar:nth-child(3),
+    [data-toggled="icon-text-close"] .hr-navtoggle__bar:nth-child(3),
+    [data-toggled="double-menu-close"] .hr-navtoggle__bar:nth-child(3),
+    [data-toggled="icon-click-closed"] .hr-navtoggle__bar:nth-child(3),
+    [data-toggled="icon-hover-closed"] .hr-navtoggle__bar:nth-child(3),
+    [data-toggled="detached-close"] .hr-navtoggle__bar:nth-child(3) { width: 58%; }
+
+    /* أيقونات الهيدر الأخرى (الوضع الليلي، الرسائل، الإشعارات، ملء الشاشة،
+       القائمة الجانبية اليمنى، السويتشر) — دائرة تفاعل ملوّنة موحّدة عند
+       المرور/التركيز، بنفس روح Hr-System، دون استبدال رسومات الأيقونات نفسها. */
+    .header-content-right .header-element .header-link {
+        position: relative;
+        isolation: isolate;
+        border-radius: 50%;
+        transition: color 0.2s ease;
+    }
+    .header-content-right .header-element .header-link::before {
+        content: '';
+        position: absolute;
+        inset: 50% auto auto 50%;
+        transform: translate(-50%, -50%) scale(0.6);
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: 50%;
+        background: rgba(var(--primary-rgb), 0.12);
+        opacity: 0;
+        z-index: -1;
+        pointer-events: none;
+        transition: opacity 0.22s ease, transform 0.26s cubic-bezier(0.34, 1.45, 0.64, 1);
+    }
+    .header-content-right .header-element .header-link:hover::before,
+    .header-content-right .header-element .header-link.show::before {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    .header-content-right .header-element .header-link .header-link-icon {
+        transition: transform 0.26s cubic-bezier(0.34, 1.45, 0.64, 1), color 0.2s ease;
+    }
+    .header-content-right .header-element .header-link:hover .header-link-icon,
+    .header-content-right .header-element .header-link.show .header-link-icon {
+        color: rgb(var(--primary-rgb));
+        transform: translateY(-1px);
+    }
+    .header-content-right .header-element .header-link:active .header-link-icon {
+        transform: scale(0.9);
+    }
+    .header-content-right .header-element .header-link:focus-visible {
+        outline: 2px solid rgba(var(--primary-rgb), 0.55);
+        outline-offset: -2px;
+    }
+
+    @keyframes hr-bell-swing {
+        0%, 100% { transform: rotate(0deg); }
+        20% { transform: rotate(-12deg); }
+        45% { transform: rotate(9deg); }
+        70% { transform: rotate(-5deg); }
+    }
+    .notifications-dropdown .header-link:hover .header-link-icon,
+    .messages-dropdown .header-link:hover .header-link-icon {
+        animation: hr-bell-swing 0.6s ease;
+    }
+
+    .switcher-icon .header-link-icon { animation: none !important; }
+    .switcher-icon:hover .header-link-icon { transform: rotate(90deg); }
+
+    .headerProfile-dropdown .header-link img {
+        border: 2px solid transparent;
+        transition: border-color 0.22s ease, transform 0.26s cubic-bezier(0.34, 1.45, 0.64, 1);
+    }
+    .headerProfile-dropdown .header-link:hover img,
+    .headerProfile-dropdown .header-link.show img {
+        border-color: rgb(var(--primary-rgb));
+        transform: scale(1.04);
+    }
+
+    [data-header-styles="dark"] .header-content-right .header-element .header-link::before,
+    [data-header-styles="color"] .header-content-right .header-element .header-link::before,
+    [data-header-styles="gradient"] .header-content-right .header-element .header-link::before {
+        background: rgba(255, 255, 255, 0.14);
+    }
+    [data-header-styles="dark"] .header-content-right .header-element .header-link:hover .header-link-icon,
+    [data-header-styles="color"] .header-content-right .header-element .header-link:hover .header-link-icon,
+    [data-header-styles="gradient"] .header-content-right .header-element .header-link:hover .header-link-icon {
+        color: #fff;
+    }
+    [data-header-styles="dark"] .hr-navtoggle__box,
+    [data-header-styles="color"] .hr-navtoggle__box,
+    [data-header-styles="gradient"] .hr-navtoggle__box {
+        border-color: rgba(255, 255, 255, 0.22);
+        background: rgba(255, 255, 255, 0.12);
+    }
+    [data-header-styles="dark"] .hr-navtoggle__bar,
+    [data-header-styles="color"] .hr-navtoggle__bar,
+    [data-header-styles="gradient"] .hr-navtoggle__bar { background: #fff; }
+
+    @media (prefers-reduced-motion: reduce) {
+        .hr-navtoggle__box, .hr-navtoggle__bar,
+        .header-content-right .header-element .header-link::before,
+        .header-content-right .header-element .header-link .header-link-icon,
+        .headerProfile-dropdown .header-link img {
+            transition: none !important;
+        }
+        .hr-navtoggle:hover .hr-navtoggle__box,
+        .hr-navtoggle:active .hr-navtoggle__box,
+        .header-content-right .header-element .header-link:hover .header-link-icon,
+        .notifications-dropdown .header-link:hover .header-link-icon,
+        .messages-dropdown .header-link:hover .header-link-icon,
+        .switcher-icon:hover .header-link-icon {
+            transform: none;
+            animation: none !important;
+        }
+    }
+</style>

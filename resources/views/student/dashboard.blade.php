@@ -90,12 +90,11 @@
             }
         }
 
-        /* دون 576px تصبح البطاقات عموداً واحداً، فنعكسها عمودياً بدل أفقياً */
-        @media (max-width: 575.98px) {
-            .dashboard-shortcuts-grid {
-                flex-direction: column-reverse;
-            }
-        }
+        /* ملاحظة: لا نستخدم flex-direction: column-reverse دون 576px — كانت تُلغي
+           التفاف Bootstrap (col-6 يصبح بلا تأثير عملياً مع flex-direction: column)
+           فتصير كل بطاقة اختصار وحدها في صفّها بدل بطاقتين جنباً إلى جنب.
+           row-reverse من القاعدة أعلاه يكفي وحده لعكس الترتيب مع إبقاء بطاقتين
+           في كل صف كما يقتضي col-6. */
     </style>
 @endpush
 
@@ -114,65 +113,101 @@
                 $subjectsTotal = $subjectsCount ?? $subjectsCollection->count();
             @endphp
 
-            <div class="row mb-4 dashboard-stats-row">
-                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
-                    <div class="dashboard-stat-card dashboard-stat-card--enrollments h-100">
-                        <div class="dashboard-stat-card__body">
-                            <div class="dashboard-stat-card__content">
-                                <div class="dashboard-stat-card__label">إجمالي النقاط</div>
-                                <div class="dashboard-stat-card__value">{{ number_format($totalPoints ?? 0) }}</div>
-                                <p class="dashboard-stat-card__meta">
-                                    @if($currentLevel ?? null)
-                                        المستوى {{ $currentLevel->name }}
-                                    @else
-                                        استمر في التعلم لكسب المزيد
-                                    @endif
-                                </p>
-                            </div>
-                            <div class="dashboard-stat-card__icon">
-                                <i class="fas fa-star"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
-                    <div class="dashboard-stat-card dashboard-stat-card--subjects h-100">
-                        <div class="dashboard-stat-card__body">
-                            <div class="dashboard-stat-card__content">
-                                <div class="dashboard-stat-card__label">متوسط التقدم</div>
-                                <div class="dashboard-stat-card__value">{{ number_format($overallAverage ?? 0, 1) }}%</div>
-                                <p class="dashboard-stat-card__meta">في جميع موادك</p>
-                            </div>
-                            <div class="dashboard-stat-card__icon">
-                                <i class="fas fa-chart-line"></i>
+            <div class="row g-3 mb-4 dashboard-stats-row">
+                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
+                    <div class="dsc-link" style="--card-delay: 0s">
+                        <div class="dsc-card dsc-card--gold">
+                            <div class="dsc-shine"></div>
+                            <div class="dsc-mesh"></div>
+                            <div class="dsc-bubble dsc-bubble-1"></div>
+                            <div class="dsc-bubble dsc-bubble-2"></div>
+                            <div class="dsc-bubble dsc-bubble-3"></div>
+                            <div class="dsc-glow"></div>
+                            <div class="dsc-body">
+                                <div class="dsc-content">
+                                    <span class="dsc-label">إجمالي النقاط</span>
+                                    <span class="dsc-value" data-count="{{ (int) ($totalPoints ?? 0) }}">0</span>
+                                    <span class="dsc-subtext">
+                                        @if($currentLevel ?? null)
+                                            المستوى {{ $currentLevel->name }}
+                                        @else
+                                            استمر لتكسب المزيد
+                                        @endif
+                                    </span>
+                                </div>
+                                <div class="dsc-icon-wrap">
+                                    <span class="dsc-icon-ring"></span>
+                                    <span class="dsc-icon-circle"><i class="fas fa-star"></i></span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
-                    <div class="dashboard-stat-card dashboard-stat-card--quizzes h-100">
-                        <div class="dashboard-stat-card__body">
-                            <div class="dashboard-stat-card__content">
-                                <div class="dashboard-stat-card__label">الشارات</div>
-                                <div class="dashboard-stat-card__value">{{ number_format($badgesCount ?? 0) }}</div>
-                                <p class="dashboard-stat-card__meta">{{ $achievementsCount ?? 0 }} إنجاز مكتمل</p>
-                            </div>
-                            <div class="dashboard-stat-card__icon">
-                                <i class="fas fa-award"></i>
+                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
+                    <div class="dsc-link" style="--card-delay: 0.1s">
+                        <div class="dsc-card dsc-card--green">
+                            <div class="dsc-shine"></div>
+                            <div class="dsc-mesh"></div>
+                            <div class="dsc-bubble dsc-bubble-1"></div>
+                            <div class="dsc-bubble dsc-bubble-2"></div>
+                            <div class="dsc-bubble dsc-bubble-3"></div>
+                            <div class="dsc-glow"></div>
+                            <div class="dsc-body">
+                                <div class="dsc-content">
+                                    <span class="dsc-label">متوسط التقدم</span>
+                                    <span class="dsc-value" data-count="{{ (int) round($overallAverage ?? 0) }}" data-suffix="%">0</span>
+                                    <span class="dsc-subtext">في جميع موادك</span>
+                                </div>
+                                <div class="dsc-icon-wrap">
+                                    <span class="dsc-icon-ring"></span>
+                                    <span class="dsc-icon-circle"><i class="fas fa-chart-line"></i></span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3 mb-xl-0">
-                    <div class="dashboard-stat-card dashboard-stat-card--students h-100">
-                        <div class="dashboard-stat-card__body">
-                            <div class="dashboard-stat-card__content">
-                                <div class="dashboard-stat-card__label">المواد النشطة</div>
-                                <div class="dashboard-stat-card__value">{{ number_format($subjectsTotal) }}</div>
-                                <p class="dashboard-stat-card__meta">كورسات قيد المتابعة</p>
+                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
+                    <div class="dsc-link" style="--card-delay: 0.2s">
+                        <div class="dsc-card dsc-card--purple">
+                            <div class="dsc-shine"></div>
+                            <div class="dsc-mesh"></div>
+                            <div class="dsc-bubble dsc-bubble-1"></div>
+                            <div class="dsc-bubble dsc-bubble-2"></div>
+                            <div class="dsc-bubble dsc-bubble-3"></div>
+                            <div class="dsc-glow"></div>
+                            <div class="dsc-body">
+                                <div class="dsc-content">
+                                    <span class="dsc-label">الشارات</span>
+                                    <span class="dsc-value" data-count="{{ (int) ($badgesCount ?? 0) }}">0</span>
+                                    <span class="dsc-subtext">{{ $achievementsCount ?? 0 }} إنجاز مكتمل</span>
+                                </div>
+                                <div class="dsc-icon-wrap">
+                                    <span class="dsc-icon-ring"></span>
+                                    <span class="dsc-icon-circle"><i class="fas fa-award"></i></span>
+                                </div>
                             </div>
-                            <div class="dashboard-stat-card__icon">
-                                <i class="fas fa-book-open"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
+                    <div class="dsc-link" style="--card-delay: 0.3s">
+                        <div class="dsc-card dsc-card--blue">
+                            <div class="dsc-shine"></div>
+                            <div class="dsc-mesh"></div>
+                            <div class="dsc-bubble dsc-bubble-1"></div>
+                            <div class="dsc-bubble dsc-bubble-2"></div>
+                            <div class="dsc-bubble dsc-bubble-3"></div>
+                            <div class="dsc-glow"></div>
+                            <div class="dsc-body">
+                                <div class="dsc-content">
+                                    <span class="dsc-label">المواد النشطة</span>
+                                    <span class="dsc-value" data-count="{{ (int) $subjectsTotal }}">0</span>
+                                    <span class="dsc-subtext">كورسات قيد المتابعة</span>
+                                </div>
+                                <div class="dsc-icon-wrap">
+                                    <span class="dsc-icon-ring"></span>
+                                    <span class="dsc-icon-circle"><i class="fas fa-book-open"></i></span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -189,47 +224,35 @@
                             <p class="fs-12 text-muted mb-0">الوصول السريع لأهم أقسام منصتك</p>
                         </div>
                         <div class="card-body">
-                            <div class="row g-3 dashboard-shortcuts-grid">
-                                <x-dashboard-shortcut
-                                    href="{{ route('student.classes') }}"
-                                    icon="fas fa-layer-group"
-                                    title="صفوفي"
-                                    subtitle="الصفوف والمواد"
-                                    accent="primary"
-                                    col-class="col-xl-2 col-lg-4 col-md-4 col-sm-6"
-                                />
-                                <x-dashboard-shortcut
-                                    href="{{ route('student.quizzes.results') }}"
-                                    icon="fas fa-clipboard-check"
-                                    title="نتائج الاختبارات"
-                                    subtitle="نتائج وتقارير الاختبارات"
-                                    accent="success"
-                                    col-class="col-xl-2 col-lg-4 col-md-4 col-sm-6"
-                                />
-                                <x-dashboard-shortcut
-                                    href="{{ route('student.progress.index') }}"
-                                    icon="fas fa-chart-line"
-                                    title="تقدمي"
-                                    subtitle="متابعة التقدم في المواد"
-                                    accent="info"
-                                    col-class="col-xl-2 col-lg-4 col-md-4 col-sm-6"
-                                />
-                                <x-dashboard-shortcut
-                                    href="{{ route('student.gamification.badges') }}"
-                                    icon="fas fa-medal"
-                                    title="شاراتي"
-                                    subtitle="جميع الشارات المكتسبة"
-                                    accent="warning"
-                                    col-class="col-xl-2 col-lg-4 col-md-4 col-sm-6"
-                                />
-                                <x-dashboard-shortcut
-                                    href="{{ route('student.gamification.leaderboard') }}"
-                                    icon="fas fa-ranking-star"
-                                    title="لوحة المتصدرين"
-                                    subtitle="ترتيبك بين الطلاب"
-                                    accent="purple"
-                                    col-class="col-xl-2 col-lg-4 col-md-4 col-sm-6"
-                                />
+                            @php
+                                $studentShortcuts = [
+                                    ['href' => route('student.classes'), 'icon' => 'fas fa-layer-group', 'title' => 'صفوفي', 'desc' => 'الصفوف والمواد', 'theme' => 'blue'],
+                                    ['href' => route('student.quizzes.results'), 'icon' => 'fas fa-clipboard-check', 'title' => 'نتائج الاختبارات', 'desc' => 'نتائج وتقارير الاختبارات', 'theme' => 'green'],
+                                    ['href' => route('student.progress.index'), 'icon' => 'fas fa-chart-line', 'title' => 'تقدمي', 'desc' => 'متابعة التقدم في المواد', 'theme' => 'cyan'],
+                                    ['href' => route('student.gamification.badges'), 'icon' => 'fas fa-medal', 'title' => 'شاراتي', 'desc' => 'جميع الشارات المكتسبة', 'theme' => 'gold'],
+                                    ['href' => route('student.gamification.leaderboard'), 'icon' => 'fas fa-ranking-star', 'title' => 'لوحة المتصدرين', 'desc' => 'ترتيبك بين الطلاب', 'theme' => 'purple'],
+                                ];
+                            @endphp
+                            <div class="row g-3 shortcuts-grid dashboard-shortcuts-grid">
+                                @foreach ($studentShortcuts as $index => $shortcut)
+                                    <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 col-6">
+                                        <a href="{{ $shortcut['href'] }}"
+                                           class="shortcut-card shortcut-theme-{{ $shortcut['theme'] }}"
+                                           style="--shortcut-delay: {{ $index * 0.05 }}s">
+                                            <span class="shortcut-shine"></span>
+                                            <span class="shortcut-accent"></span>
+                                            <span class="shortcut-icon-wrap">
+                                                <span class="shortcut-icon-ring"></span>
+                                                <span class="shortcut-icon">
+                                                    <i class="{{ $shortcut['icon'] }}"></i>
+                                                </span>
+                                            </span>
+                                            <span class="shortcut-title">{{ $shortcut['title'] }}</span>
+                                            <span class="shortcut-desc">{{ $shortcut['desc'] }}</span>
+                                            <span class="shortcut-arrow"><i class="fas fa-chevron-left"></i></span>
+                                        </a>
+                                    </div>
+                                @endforeach
                             </div>
                         </div>
                     </div>
@@ -397,3 +420,57 @@
         </div>
     </div>
 @stop
+
+@push('scripts')
+<script>
+(function () {
+    // عدّاد تصاعدي لبطاقات لوحة التحكم الملوّنة — نفس حركة Hr-System (easeOutExpo، 1400ms)
+    function easeOutExpo(t) {
+        return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+    }
+
+    function animateCount(el) {
+        const target = parseInt(el.getAttribute('data-count'), 10) || 0;
+        const suffix = el.getAttribute('data-suffix') || '';
+        const duration = 1400;
+        const start = performance.now();
+
+        function tick(now) {
+            const progress = Math.min((now - start) / duration, 1);
+            const eased = easeOutExpo(progress);
+            const current = Math.round(target * eased);
+            el.textContent = current.toLocaleString('en-US') + suffix;
+
+            if (progress < 1) {
+                requestAnimationFrame(tick);
+            } else {
+                el.textContent = target.toLocaleString('en-US') + suffix;
+                el.classList.add('dsc-value-done');
+            }
+        }
+
+        requestAnimationFrame(tick);
+    }
+
+    document.querySelectorAll('.dsc-value[data-count]').forEach(animateCount);
+})();
+</script>
+<script>
+(function () {
+    // تأثير نقر متموّج على بطاقات الاختصارات السريعة — نفس حركة Hr-System
+    document.querySelectorAll('.shortcut-card').forEach(function (card) {
+        card.addEventListener('click', function (e) {
+            const rect = card.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            const ripple = document.createElement('span');
+            ripple.className = 'shortcut-ripple';
+            ripple.style.width = ripple.style.height = size + 'px';
+            ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+            ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+            card.appendChild(ripple);
+            ripple.addEventListener('animationend', function () { ripple.remove(); });
+        });
+    });
+})();
+</script>
+@endpush

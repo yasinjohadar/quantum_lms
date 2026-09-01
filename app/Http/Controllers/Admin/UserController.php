@@ -60,7 +60,7 @@ class UserController extends Controller
         // الـ POST requests محمية بـ auth middleware في route definition
         $this->middleware('auth')->except(['impersonate']);
 
-        $this->middleware('permission:user-list')->only(['index', 'trashedIndex']);
+        $this->middleware('permission:user-list')->only(['index', 'trashedIndex', 'search']);
         $this->middleware('permission:user-create')->only(['create', 'store', 'storeQuickStudent']);
         $this->middleware('permission:user-edit')->only([
             'edit',
@@ -153,6 +153,47 @@ class UserController extends Controller
         }
 
         return view('admin.pages.users.index', compact('users', 'roles', 'classes', 'classesForAssign', 'selectedClassId', 'sort'));
+    }
+
+    /**
+     * بحث سريع في شريط البحث العلوي — بالاسم أو البريد أو الهاتف، عبر كل المستخدمين
+     * (وليس الطلاب فقط كما في index()). يُستخدم من admin.layouts.main-header.
+     */
+    public function search(Request $request): JsonResponse
+    {
+        $query = trim((string) $request->input('q', ''));
+
+        if (mb_strlen($query) < 2) {
+            return response()->json(['success' => true, 'results' => []]);
+        }
+
+        $users = User::query()
+            ->notArchived()
+            ->where(function ($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                    ->orWhere('email', 'like', "%{$query}%")
+                    ->orWhere('phone', 'like', "%{$query}%");
+            })
+            ->orderBy('name')
+            ->limit(8)
+            ->get();
+
+        $results = $users->map(function (User $user) {
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'role_label' => $user->primary_role_label,
+                // مبني على الدور الفعلي (primary_role_label) لا على hasRole('student') وحدها،
+                // لأن مستخدمين قد يملكون دور "طالب" إضافياً فوق دورهم الإداري الفعلي
+                'is_student' => $user->primary_role_label === 'طالب',
+                'photo_url' => $user->photo ? MediaStorageService::url($user->photo) : null,
+                'url' => route('users.show', $user->id),
+            ];
+        });
+
+        return response()->json(['success' => true, 'results' => $results]);
     }
 
     public function updateSubscriptionExpires(Request $request, User $user, PurchaseService $purchaseService): JsonResponse

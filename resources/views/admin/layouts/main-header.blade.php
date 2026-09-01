@@ -24,11 +24,26 @@
                     <!-- Start::header-element -->
                     <div class="header-element">
                         <!-- Start::header-link -->
-                        <a aria-label="Hide Sidebar" class="sidemenu-toggle header-link animated-arrow hor-toggle horizontal-navtoggle" data-bs-toggle="sidebar" href="javascript:void(0);">
-                            <i class="header-icon fe fe-align-left"></i>
+                        <a aria-label="طيّ الشريط الجانبي" class="sidemenu-toggle header-link hr-navtoggle" data-bs-toggle="sidebar" href="javascript:void(0);">
+                            <span class="hr-navtoggle__box" aria-hidden="true">
+                                <span class="hr-navtoggle__bar"></span>
+                                <span class="hr-navtoggle__bar"></span>
+                                <span class="hr-navtoggle__bar"></span>
+                            </span>
                         </a>
-                        <div class="main-header-center d-none d-lg-block">
-                            <input class="form-control" placeholder="إكتب للبحث..." type="search"> <button class="btn"><i class="fa fa-search d-none d-md-block"></i></button>
+                        <div class="main-header-center hr-search d-none d-lg-block"
+                             data-hr-search
+                             data-hr-search-url="{{ route('users.search') }}">
+                            <input class="form-control hr-search__input" placeholder="ابحث بالاسم أو البريد أو الهاتف..." type="search"
+                                   role="combobox" aria-expanded="false" aria-autocomplete="list"
+                                   aria-controls="hr-search-panel" autocomplete="off" aria-label="بحث عن مستخدم">
+                            <button class="btn hr-search__btn" type="button" aria-label="بحث">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="hr-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                                </svg>
+                            </button>
+                            <span class="hr-search__underline" aria-hidden="true"></span>
+                            <div class="hr-search__panel" id="hr-search-panel" role="listbox" aria-label="نتائج البحث" hidden></div>
                         </div>
                         <!-- End::header-link -->
                     </div>
@@ -258,3 +273,556 @@
 
         </header>
         <!-- /app-header -->
+
+<style>
+    /* شريط البحث العلوي — بنفس الستايل/الألوان/الحركات من مشروع Hr-System.
+       هذا الملف admin-only (لا يُستخدم في لوحة الطالب) فالأصناف هنا آمنة رغم
+       تشابه بعضها مع أصناف Bootstrap العامة (form-control/btn) — لن تُحمَّل
+       خارج صفحات الأدمن. */
+    .hr-search { position: relative; }
+
+    .hr-search .hr-search__input {
+        border-radius: 3px !important;
+        height: 40px;
+        padding-inline: 1.15rem 2.75rem;
+        border: 1px solid var(--default-border);
+        background: var(--default-body-bg-color);
+        color: var(--default-text-color);
+        transition: width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+                    border-color 0.22s ease,
+                    background 0.22s ease,
+                    box-shadow 0.22s ease;
+    }
+
+    .hr-search .hr-search__input::placeholder {
+        color: var(--text-muted);
+        transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .hr-search:hover .hr-search__input:not(:focus) {
+        border-color: rgba(var(--primary-rgb), 0.35);
+    }
+
+    .hr-search .hr-search__input:focus {
+        width: 420px;
+        border-color: rgb(var(--primary-rgb));
+        background: var(--custom-white);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.14);
+        outline: 0;
+    }
+
+    .hr-search .hr-search__input:focus::placeholder {
+        opacity: 0.55;
+        transform: translateX(-4px);
+    }
+
+    .hr-search .hr-search__btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 40px;
+        padding: 0;
+        padding-inline: 0.75rem;
+        border: 0 !important;
+        background-color: transparent;
+        color: var(--text-muted);
+        transition: color 0.22s ease;
+    }
+
+    .hr-search .hr-search__icon {
+        width: 1.125rem;
+        height: 1.125rem;
+        fill: none;
+        stroke: currentColor;
+        transition: transform 0.28s cubic-bezier(0.34, 1.5, 0.64, 1), color 0.22s ease;
+    }
+
+    .hr-search:focus-within .hr-search__btn,
+    .hr-search .hr-search__btn:hover {
+        color: rgb(var(--primary-rgb));
+    }
+
+    .hr-search:focus-within .hr-search__icon {
+        transform: scale(1.12) rotate(-8deg);
+    }
+
+    .hr-search .hr-search__btn:active .hr-search__icon {
+        transform: scale(0.92);
+    }
+
+    .hr-search .hr-search__underline {
+        position: absolute;
+        inset-block-end: -1px;
+        inset-inline-start: 0;
+        width: 350px;
+        height: 2px;
+        border-radius: 2px;
+        background: rgb(var(--primary-rgb));
+        transform: scaleX(0);
+        transform-origin: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+                    opacity 0.22s ease,
+                    width 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .hr-search:focus-within .hr-search__underline {
+        width: 420px;
+        transform: scaleX(1);
+        opacity: 1;
+    }
+
+    @media (max-width: 1400px) {
+        .hr-search .hr-search__input:focus,
+        .hr-search:focus-within .hr-search__underline { width: 350px; }
+    }
+
+    /* زر طيّ الشريط الجانبي — بنفس تصميم Hr-System بالضبط: أيقونة همبرغر
+       مخصّصة من 3 أشرطة بدل أيقونة fe-align-left الجاهزة، بصندوق ملوّن
+       متحرّك. أُبقي على صنف sidemenu-toggle لأنه الوحيد الذي يعتمد عليه
+       public/assets/js/defaultmenu.min.js (querySelector بلا فحص null)،
+       وأُزيلت أصناف القالب الأصلي (animated-arrow/hor-toggle/horizontal-navtoggle)
+       لأنها خاصة بتخطيط أفقي غير مستخدم هنا (النظام عمودي دائماً). */
+    .hr-navtoggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 0;
+        background: none;
+        line-height: 0;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .hr-navtoggle__box {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 4px;
+        width: 2.375rem;
+        height: 2.375rem;
+        padding: 0.6875rem 0.625rem;
+        border: 1px solid rgba(var(--primary-rgb), 0.16);
+        border-radius: 0.75rem;
+        background: rgba(var(--primary-rgb), 0.08);
+        box-sizing: border-box;
+        transition: background 0.25s ease, border-color 0.25s ease,
+                    transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1),
+                    box-shadow 0.25s ease;
+    }
+
+    .hr-navtoggle__bar {
+        display: block;
+        height: 2px;
+        border-radius: 2px;
+        background: rgb(var(--primary-rgb));
+        transition: width 0.28s cubic-bezier(0.34, 1.4, 0.64, 1),
+                    background 0.25s ease;
+    }
+    .hr-navtoggle__bar:nth-child(1) { width: 100%; transition-delay: 0s; }
+    .hr-navtoggle__bar:nth-child(2) { width: 58%;  transition-delay: 0.04s; }
+    .hr-navtoggle__bar:nth-child(3) { width: 78%;  transition-delay: 0.08s; }
+
+    .hr-navtoggle:hover .hr-navtoggle__box {
+        border-color: rgba(var(--primary-rgb), 0.32);
+        background: rgba(var(--primary-rgb), 0.14);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.18);
+    }
+    .hr-navtoggle:hover .hr-navtoggle__bar:nth-child(2),
+    .hr-navtoggle:hover .hr-navtoggle__bar:nth-child(3) { width: 100%; }
+
+    .hr-navtoggle:active .hr-navtoggle__box {
+        transform: translateY(0) scale(0.96);
+        box-shadow: none;
+    }
+
+    .hr-navtoggle:focus-visible .hr-navtoggle__box {
+        outline: 2px solid rgba(var(--primary-rgb), 0.55);
+        outline-offset: 2px;
+    }
+
+    /* حالة الشريط الجانبي المطويّ: صندوق مملوء بلون أساسي وأشرطة بيضاء */
+    [data-toggled="icon-overlay-close"] .hr-navtoggle__box,
+    [data-toggled="close-menu-close"] .hr-navtoggle__box,
+    [data-toggled="icon-text-close"] .hr-navtoggle__box,
+    [data-toggled="double-menu-close"] .hr-navtoggle__box,
+    [data-toggled="icon-click-closed"] .hr-navtoggle__box,
+    [data-toggled="icon-hover-closed"] .hr-navtoggle__box,
+    [data-toggled="detached-close"] .hr-navtoggle__box {
+        border-color: transparent;
+        background: rgb(var(--primary-rgb));
+        box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.35);
+    }
+    [data-toggled="icon-overlay-close"] .hr-navtoggle__bar,
+    [data-toggled="close-menu-close"] .hr-navtoggle__bar,
+    [data-toggled="icon-text-close"] .hr-navtoggle__bar,
+    [data-toggled="double-menu-close"] .hr-navtoggle__bar,
+    [data-toggled="icon-click-closed"] .hr-navtoggle__bar,
+    [data-toggled="icon-hover-closed"] .hr-navtoggle__bar,
+    [data-toggled="detached-close"] .hr-navtoggle__bar {
+        background: #fff;
+    }
+    [data-toggled="icon-overlay-close"] .hr-navtoggle__bar:nth-child(2),
+    [data-toggled="close-menu-close"] .hr-navtoggle__bar:nth-child(2),
+    [data-toggled="icon-text-close"] .hr-navtoggle__bar:nth-child(2),
+    [data-toggled="double-menu-close"] .hr-navtoggle__bar:nth-child(2),
+    [data-toggled="icon-click-closed"] .hr-navtoggle__bar:nth-child(2),
+    [data-toggled="icon-hover-closed"] .hr-navtoggle__bar:nth-child(2),
+    [data-toggled="detached-close"] .hr-navtoggle__bar:nth-child(2) { width: 78%; }
+    [data-toggled="icon-overlay-close"] .hr-navtoggle__bar:nth-child(3),
+    [data-toggled="close-menu-close"] .hr-navtoggle__bar:nth-child(3),
+    [data-toggled="icon-text-close"] .hr-navtoggle__bar:nth-child(3),
+    [data-toggled="double-menu-close"] .hr-navtoggle__bar:nth-child(3),
+    [data-toggled="icon-click-closed"] .hr-navtoggle__bar:nth-child(3),
+    [data-toggled="icon-hover-closed"] .hr-navtoggle__bar:nth-child(3),
+    [data-toggled="detached-close"] .hr-navtoggle__bar:nth-child(3) { width: 58%; }
+
+    [data-header-styles="dark"] .hr-navtoggle__box,
+    [data-header-styles="color"] .hr-navtoggle__box,
+    [data-header-styles="gradient"] .hr-navtoggle__box {
+        border-color: rgba(255, 255, 255, 0.22);
+        background: rgba(255, 255, 255, 0.12);
+    }
+    [data-header-styles="dark"] .hr-navtoggle__bar,
+    [data-header-styles="color"] .hr-navtoggle__bar,
+    [data-header-styles="gradient"] .hr-navtoggle__bar { background: #fff; }
+    [data-header-styles="dark"] .hr-navtoggle:hover .hr-navtoggle__box,
+    [data-header-styles="color"] .hr-navtoggle:hover .hr-navtoggle__box,
+    [data-header-styles="gradient"] .hr-navtoggle:hover .hr-navtoggle__box {
+        border-color: rgba(255, 255, 255, 0.4);
+        background: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .hr-navtoggle__box, .hr-navtoggle__bar {
+            transition: none !important;
+        }
+        .hr-navtoggle:hover .hr-navtoggle__box,
+        .hr-navtoggle:active .hr-navtoggle__box {
+            transform: none;
+        }
+    }
+
+    /* لوحة نتائج البحث الحيّ — بنفس تصميم Hr-System */
+    .hr-search__panel {
+        position: absolute;
+        inset-block-start: calc(100% + 6px);
+        inset-inline-start: 0;
+        z-index: 1050;
+        width: 420px;
+        max-width: calc(100vw - 2rem);
+        max-height: 26rem;
+        overflow-y: auto;
+        padding: 0.375rem;
+        border: 1px solid var(--default-border);
+        border-radius: 3px;
+        background: var(--custom-white);
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+        animation: hr-search-panel-in 0.18s ease-out;
+    }
+    @keyframes hr-search-panel-in {
+        from { opacity: 0; transform: translateY(-4px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .hr-search__group {
+        margin: 0.375rem 0.5rem 0.25rem;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        color: var(--text-muted);
+    }
+    .hr-search__group:first-child { margin-block-start: 0.125rem; }
+
+    .hr-search__item {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        padding: 0.5rem 0.5rem;
+        border-radius: 3px;
+        text-decoration: none !important;
+        color: var(--default-text-color);
+        transition: background 0.15s ease;
+        cursor: pointer;
+    }
+    .hr-search__item:hover,
+    .hr-search__item.is-active { background: rgba(var(--primary-rgb), 0.1); }
+    .hr-search__item.is-active { box-shadow: inset 2px 0 0 0 rgb(var(--primary-rgb)); }
+
+    .hr-search__avatar {
+        flex: 0 0 auto; width: 2.125rem; height: 2.125rem;
+        border-radius: 50%; object-fit: cover;
+    }
+    .hr-search__avatar--letter {
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 0.875rem; font-weight: 700;
+        color: rgb(var(--primary-rgb));
+        background: rgba(var(--primary-rgb), 0.14);
+    }
+
+    .hr-search__body { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; flex: 1 1 auto; }
+    .hr-search__title { font-size: 0.8125rem; font-weight: 600; line-height: 1.35; color: var(--default-text-color); }
+    .hr-search__meta {
+        font-size: 0.6875rem; line-height: 1.35; color: var(--text-muted);
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .hr-search__badge { flex: 0 0 auto; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.625rem; font-weight: 700; }
+    .hr-search__badge--student { color: #0e7490; background: rgba(6, 182, 212, 0.14); }
+    .hr-search__badge--staff   { color: #6d28d9; background: rgba(139, 92, 246, 0.14); }
+    [data-theme-mode="dark"] .hr-search__badge--student { color: #67e8f9; background: rgba(6, 182, 212, 0.2); }
+    [data-theme-mode="dark"] .hr-search__badge--staff   { color: #c4b5fd; background: rgba(139, 92, 246, 0.22); }
+
+    .hr-search__note { margin: 0; padding: 1.125rem 0.75rem; text-align: center; font-size: 0.8125rem; color: var(--text-muted); }
+    .hr-search__note--error { color: rgb(var(--danger-rgb)); }
+
+    .hr-search__loading { display: flex; align-items: center; justify-content: center; gap: 0.3rem; padding: 1.25rem 0.75rem; }
+    .hr-search__loading span { width: 0.4rem; height: 0.4rem; border-radius: 50%; background: rgb(var(--primary-rgb)); animation: hr-search-dot 1s ease-in-out infinite; }
+    .hr-search__loading span:nth-child(2) { animation-delay: 0.15s; }
+    .hr-search__loading span:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes hr-search-dot { 0%, 80%, 100% { opacity: 0.25; transform: scale(0.75); } 40% { opacity: 1; transform: scale(1); } }
+
+    /* أيقونات الهيدر الأخرى (الوضع الليلي، الإشعارات، ملء الشاشة، الملف
+       الشخصي، السويتشر) — دائرة تفاعل ملوّنة موحّدة عند المرور/التركيز،
+       بنفس روح Hr-System، دون استبدال رسومات الأيقونات نفسها. */
+    .header-content-right .header-element .header-link {
+        position: relative;
+        isolation: isolate;
+        border-radius: 50%;
+        transition: color 0.2s ease;
+    }
+    .header-content-right .header-element .header-link::before {
+        content: '';
+        position: absolute;
+        inset: 50% auto auto 50%;
+        transform: translate(-50%, -50%) scale(0.6);
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: 50%;
+        background: rgba(var(--primary-rgb), 0.12);
+        opacity: 0;
+        z-index: -1;
+        pointer-events: none;
+        transition: opacity 0.22s ease, transform 0.26s cubic-bezier(0.34, 1.45, 0.64, 1);
+    }
+    .header-content-right .header-element .header-link:hover::before,
+    .header-content-right .header-element .header-link.show::before {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    .header-content-right .header-element .header-link .header-link-icon {
+        transition: transform 0.26s cubic-bezier(0.34, 1.45, 0.64, 1), color 0.2s ease;
+    }
+    .header-content-right .header-element .header-link:hover .header-link-icon,
+    .header-content-right .header-element .header-link.show .header-link-icon {
+        color: rgb(var(--primary-rgb));
+        transform: translateY(-1px);
+    }
+    .header-content-right .header-element .header-link:active .header-link-icon {
+        transform: scale(0.9);
+    }
+    .header-content-right .header-element .header-link:focus-visible {
+        outline: 2px solid rgba(var(--primary-rgb), 0.55);
+        outline-offset: -2px;
+    }
+
+    @keyframes hr-bell-swing {
+        0%, 100% { transform: rotate(0deg); }
+        20% { transform: rotate(-12deg); }
+        45% { transform: rotate(9deg); }
+        70% { transform: rotate(-5deg); }
+    }
+    .notifications-dropdown .header-link:hover .header-link-icon {
+        animation: hr-bell-swing 0.6s ease;
+    }
+
+    .switcher-icon .header-link-icon { animation: none !important; }
+    .switcher-icon:hover .header-link-icon { transform: rotate(90deg); }
+
+    .headerProfile-dropdown .header-link img {
+        border: 2px solid transparent;
+        transition: border-color 0.22s ease, transform 0.26s cubic-bezier(0.34, 1.45, 0.64, 1);
+    }
+    .headerProfile-dropdown .header-link:hover img,
+    .headerProfile-dropdown .header-link.show img {
+        border-color: rgb(var(--primary-rgb));
+        transform: scale(1.04);
+    }
+
+    [data-header-styles="dark"] .header-content-right .header-element .header-link::before,
+    [data-header-styles="color"] .header-content-right .header-element .header-link::before,
+    [data-header-styles="gradient"] .header-content-right .header-element .header-link::before {
+        background: rgba(255, 255, 255, 0.14);
+    }
+    [data-header-styles="dark"] .header-content-right .header-element .header-link:hover .header-link-icon,
+    [data-header-styles="color"] .header-content-right .header-element .header-link:hover .header-link-icon,
+    [data-header-styles="gradient"] .header-content-right .header-element .header-link:hover .header-link-icon {
+        color: #fff;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .header-content-right .header-element .header-link::before,
+        .header-content-right .header-element .header-link .header-link-icon,
+        .headerProfile-dropdown .header-link img {
+            transition: none !important;
+        }
+        .header-content-right .header-element .header-link:hover .header-link-icon,
+        .notifications-dropdown .header-link:hover .header-link-icon,
+        .switcher-icon:hover .header-link-icon {
+            transform: none;
+            animation: none !important;
+        }
+    }
+</style>
+
+<script>
+(function () {
+    var wrap = document.querySelector('[data-hr-search]');
+    if (!wrap) return;
+
+    var input = wrap.querySelector('.hr-search__input');
+    var panel = wrap.querySelector('.hr-search__panel');
+    var url = wrap.getAttribute('data-hr-search-url');
+    var debounceTimer = null;
+    var activeIndex = -1;
+    var items = [];
+    var abortController = null;
+
+    function closePanel() {
+        panel.hidden = true;
+        panel.innerHTML = '';
+        input.setAttribute('aria-expanded', 'false');
+        activeIndex = -1;
+        items = [];
+    }
+
+    function openPanel() {
+        panel.hidden = false;
+        input.setAttribute('aria-expanded', 'true');
+    }
+
+    function escapeHtml(str) {
+        return String(str == null ? '' : str).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    function renderLoading() {
+        openPanel();
+        panel.innerHTML = '<div class="hr-search__loading"><span></span><span></span><span></span></div>';
+    }
+
+    function renderError() {
+        openPanel();
+        panel.innerHTML = '<p class="hr-search__note hr-search__note--error">تعذّر تحميل النتائج، حاول مجدداً.</p>';
+    }
+
+    function renderResults(results) {
+        activeIndex = -1;
+        if (!results || !results.length) {
+            openPanel();
+            panel.innerHTML = '<p class="hr-search__note">لا توجد نتائج مطابقة.</p>';
+            items = [];
+            return;
+        }
+
+        var students = results.filter(function (r) { return r.is_student; });
+        var staff = results.filter(function (r) { return !r.is_student; });
+        var html = '';
+
+        function renderGroup(label, list) {
+            if (!list.length) return;
+            html += '<div class="hr-search__group">' + escapeHtml(label) + '</div>';
+            list.forEach(function (r) {
+                var avatar = r.photo_url
+                    ? '<img class="hr-search__avatar" src="' + escapeHtml(r.photo_url) + '" alt="">'
+                    : '<span class="hr-search__avatar hr-search__avatar--letter">' + escapeHtml((r.name || '?').trim().charAt(0)) + '</span>';
+                var badgeClass = r.is_student ? 'hr-search__badge--student' : 'hr-search__badge--staff';
+                html += '' +
+                    '<a class="hr-search__item" href="' + escapeHtml(r.url) + '" role="option">' +
+                        avatar +
+                        '<span class="hr-search__body">' +
+                            '<span class="hr-search__title">' + escapeHtml(r.name) + '</span>' +
+                            '<span class="hr-search__meta">' + escapeHtml([r.email, r.phone].filter(Boolean).join(' · ')) + '</span>' +
+                        '</span>' +
+                        '<span class="hr-search__badge ' + badgeClass + '">' + escapeHtml(r.role_label || '') + '</span>' +
+                    '</a>';
+            });
+        }
+
+        renderGroup('الطلاب', students);
+        renderGroup('الإدارة والمعلمون', staff);
+
+        openPanel();
+        panel.innerHTML = html;
+        items = Array.prototype.slice.call(panel.querySelectorAll('.hr-search__item'));
+    }
+
+    function fetchResults(query) {
+        if (abortController) abortController.abort();
+        abortController = new AbortController();
+
+        renderLoading();
+
+        fetch(url + '?q=' + encodeURIComponent(query), {
+            headers: { 'Accept': 'application/json' },
+            signal: abortController.signal,
+        })
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                renderResults((data && data.results) || []);
+            })
+            .catch(function (err) {
+                if (err && err.name === 'AbortError') return;
+                renderError();
+            });
+    }
+
+    input.addEventListener('input', function () {
+        var query = input.value.trim();
+        clearTimeout(debounceTimer);
+
+        if (query.length < 2) {
+            closePanel();
+            return;
+        }
+
+        debounceTimer = setTimeout(function () {
+            fetchResults(query);
+        }, 300);
+    });
+
+    input.addEventListener('keydown', function (e) {
+        if (panel.hidden || !items.length) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            activeIndex = Math.min(activeIndex + 1, items.length - 1);
+            items.forEach(function (el, i) { el.classList.toggle('is-active', i === activeIndex); });
+            items[activeIndex].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            activeIndex = Math.max(activeIndex - 1, 0);
+            items.forEach(function (el, i) { el.classList.toggle('is-active', i === activeIndex); });
+            items[activeIndex].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter') {
+            if (activeIndex >= 0 && items[activeIndex]) {
+                e.preventDefault();
+                window.location.href = items[activeIndex].getAttribute('href');
+            }
+        } else if (e.key === 'Escape') {
+            closePanel();
+            input.blur();
+        }
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!wrap.contains(e.target)) closePanel();
+    });
+})();
+</script>
