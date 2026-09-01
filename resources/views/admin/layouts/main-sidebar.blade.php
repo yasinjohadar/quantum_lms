@@ -346,8 +346,8 @@
                         </li>
                         @endcanany
 
-                        @canany(['class-list', 'subject-list', 'lesson-list'])
-                        <li class="slide slide-icon slide-icon--cyan has-sub {{ request()->is('admin/classes*') || request()->is('admin/subjects*') || request()->routeIs('admin.lessons.index') || request()->is('admin/lessons*') ? 'open' : '' }}">
+                        @canany(['class-list', 'subject-list', 'lesson-list', 'library-item-list', 'library-category-list'])
+                        <li class="slide slide-icon slide-icon--cyan has-sub {{ request()->is('admin/classes*') || request()->is('admin/subjects*') || request()->routeIs('admin.lessons.index') || request()->is('admin/lessons*') || request()->is('admin/library*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -378,6 +378,20 @@
                                 <li class="slide {{ request()->routeIs('admin.lessons.index') || request()->is('admin/lessons*') ? 'active' : '' }}">
                                     <a href="{{ route('admin.lessons.index') }}" class="side-menu__item {{ request()->routeIs('admin.lessons.index') ? 'active' : '' }}">
                                         <span class="side-menu__label">جميع الدروس</span>
+                                    </a>
+                                </li>
+                                @endcan
+                                @can('library-item-list')
+                                <li class="slide {{ request()->is('admin/library/items*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.library.items.index') }}" class="side-menu__item {{ request()->is('admin/library/items*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">عناصر المكتبة</span>
+                                    </a>
+                                </li>
+                                @endcan
+                                @can('library-category-list')
+                                <li class="slide {{ request()->is('admin/library/categories*') ? 'active' : '' }}">
+                                    <a href="{{ route('admin.library.categories.index') }}" class="side-menu__item {{ request()->is('admin/library/categories*') ? 'active' : '' }}">
+                                        <span class="side-menu__label">تصنيفات المكتبة</span>
                                     </a>
                                 </li>
                                 @endcan

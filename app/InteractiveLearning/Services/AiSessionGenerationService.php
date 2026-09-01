@@ -174,6 +174,13 @@ STICKERS;
                 throw new RuntimeException('لا توجد صور للتحليل.');
             }
 
+            if (! $model->supportsVision()) {
+                throw new RuntimeException(
+                    'النموذج المختار ('.($model->name ?: $model->provider).') غير مُفعَّل لدعم تحليل الصور (Vision) في إعدادات النماذج. '
+                    .'اختر من القائمة نموذجاً مُفعَّلة عليه قدرة "تحليل الصور (رؤية)"، أو فعّلها لهذا النموذج من إعدادات AI.'
+                );
+            }
+
             if (! VisionQuestionGenerationSupport::providerSupportsVisionConversion((string) $model->provider)) {
                 throw new RuntimeException(
                     'النموذج المختار ('.($model->name ?: $model->provider).') لا يدعم تحليل الصور. '

@@ -43,7 +43,12 @@ class RoleSeeder extends Seeder
             
             // صلاحيات إدارة مرفقات الدروس
             'lesson-attachment-create', 'lesson-attachment-edit', 'lesson-attachment-delete',
-            
+
+            // صلاحيات إدارة المكتبة
+            'library-category-list', 'library-category-create', 'library-category-edit', 'library-category-delete',
+            'library-item-list', 'library-item-create', 'library-item-edit', 'library-item-delete',
+            'library-item-show', 'library-item-download',
+
             // صلاحيات إدارة الأسئلة
             'question-list', 'question-create', 'question-edit', 'question-delete', 'question-show',
             'question-duplicate', 'question-toggle-status', 'question-upload-image',
@@ -175,6 +180,11 @@ class RoleSeeder extends Seeder
             'lesson-attachment-create',
             'lesson-attachment-edit',
             'lesson-attachment-delete',
+            'library-item-list',
+            'library-item-create',
+            'library-item-edit',
+            'library-item-delete',
+            'library-item-show',
             'quiz-create',
             'quiz-edit',
             'quiz-delete',
@@ -224,6 +234,9 @@ class RoleSeeder extends Seeder
             'enrollment-show',
             'report-view',
             'dashboard-view',
+            'library-item-list',
+            'library-item-show',
+            'library-item-download',
         ]);
 
         $teacherQuizFollowupRole = Role::updateOrCreate(
@@ -244,7 +257,17 @@ class RoleSeeder extends Seeder
             'report-view',
             'dashboard-view',
         ]);
-        
+
+        // دور تشغيلي مرن يُضاف فوق دور المعلم/المشرف الأساسي (وليس بديلاً عنه) لمن يحتاج
+        // تفعيل/تعطيل الدرس مباشرة دون المرور بمسار المراجعة الإلزامي — يُمنح فردياً حسب الحاجة.
+        $lessonDirectPublisherRole = Role::firstOrCreate([
+            'name' => 'lesson-direct-publisher',
+            'guard_name' => 'web',
+        ]);
+        $lessonDirectPublisherRole->syncPermissions([
+            'lesson-toggle-status',
+        ]);
+
         // تحديث الأدوار الموجودة لتحديد نوع الواجهة (مع حماية في حال عدم وجود العمود)
         try {
             Role::where('name', 'admin')->update(['dashboard_type' => 'admin']);

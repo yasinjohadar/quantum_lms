@@ -784,10 +784,16 @@ class User extends Authenticatable
 
     /**
      * منشئ محتوى دروس يخضع لمسار المراجعة (معلم أو مشرف — ليس أدمن المنصة).
+     * استثناء: من يملك صلاحية lesson-toggle-status (تُمنح فردياً عبر دور
+     * lesson-direct-publisher الإضافي) يُعامَل كالأدمن هنا فينشر مباشرة دون مراجعة.
      */
     public function isLessonContentUploader(): bool
     {
         if ($this->isPlatformAdmin()) {
+            return false;
+        }
+
+        if ($this->can('lesson-toggle-status')) {
             return false;
         }
 
@@ -816,9 +822,20 @@ class User extends Authenticatable
         return $this->isLessonContentUploader();
     }
 
+    /**
+     * يخضع لمسار مراجعة الاختبارات التفاعلية (معلم أو مشرف — ليس أدمن المنصة).
+     * مستقلة عمداً عن isLessonContentUploader(): استثناء lesson-toggle-status
+     * خاص بتفعيل الدروس فقط ويجب ألا يُبيح نشر الاختبارات التفاعلية مباشرة أيضاً.
+     */
     public function shouldSubmitContentForReview(): bool
     {
-        return $this->shouldSubmitLessonForReview();
+        if ($this->isPlatformAdmin()) {
+            return false;
+        }
+
+        return $this->usesTeacherAssignmentScope()
+            || $this->usesSupervisorAssignmentScope()
+            || $this->can('lesson-create');
     }
 
     public function shouldSubmitQuizForReview(): bool

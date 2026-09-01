@@ -183,6 +183,38 @@
         border-radius: 999px; font-weight: 700; padding: .45rem 1rem;
     }
 
+    /* فصل كامل بين طرق توليد الأسئلة: من موضوع نصي، من ملف PDF، من صورة — تابات، كل واحدة بحقولها ونموذجها الخاص */
+    .ile-gen-tabs {
+        display: flex; flex-wrap: wrap; gap: .3rem;
+        border-bottom: 1px solid var(--ile-line);
+        margin-bottom: 1rem;
+    }
+    .ile-gen-tabs .nav-link {
+        display: inline-flex; align-items: center; gap: .45rem;
+        border: 1px solid transparent; border-bottom: none;
+        border-radius: 12px 12px 0 0;
+        padding: .6rem 1rem; margin-bottom: -1px;
+        font-size: .85rem; font-weight: 700;
+        color: var(--ile-muted); background: transparent;
+        transition: background .15s ease, color .15s ease;
+    }
+    .ile-gen-tabs .nav-link:hover { color: var(--ile-ink); }
+    .ile-gen-tabs .nav-link.active { color: var(--ile-ink); background: var(--ile-soft); border-color: var(--ile-line); }
+    .ile-gen-tabs .nav-link--topic.active i { color: var(--ile-accent); }
+    .ile-gen-tabs .nav-link--pdf.active i { color: var(--ile-accent-2); }
+    .ile-gen-tabs .nav-link--image.active i { color: #6366f1; }
+    .ile-gen-tabs .nav-link--import.active i { color: #0ea5e9; }
+    .ile-gen-section {
+        border: 1px solid var(--ile-line);
+        border-radius: 14px;
+        background: var(--ile-soft);
+        padding: 1rem;
+    }
+    .ile-gen-section__desc { color: var(--ile-muted); font-size: .78rem; margin: 0 0 .9rem; line-height: 1.5; }
+    .ile-gen-section--topic { border-color: rgba(13,143,122,.25); }
+    .ile-gen-section--pdf { border-color: rgba(232,168,56,.3); }
+    .ile-gen-section--image { border-color: rgba(99,102,241,.3); }
+
     .ile-type-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
@@ -326,151 +358,316 @@
 
         <div class="ile-panel ile-panel--ai" x-show="openGeneratePanel" x-cloak>
             <div class="ile-panel__head">
-                <h6><i class="bi bi-stars"></i>إنشاء أسئلة بالذكاء الاصطناعي</h6>
+                <h6><i class="bi bi-stars"></i>إضافة أسئلة</h6>
                 <button type="button" class="ile-btn ile-btn--line" style="padding:.35rem .7rem;font-size:.78rem" @click="openGeneratePanel = false">إخفاء</button>
             </div>
             <div class="ile-panel__body">
-                <p class="ile-hint">يُنشئ الذكاء الاصطناعي أسئلة من الأنواع المختارة عبر نماذج النظام، ثم تراجعها قبل الإضافة إلى التجربة.</p>
+                <p class="ile-hint">أنشئ أسئلة بالذكاء الاصطناعي من موضوع أو ملف، أو استورد أسئلة جاهزة من ملف — اختر الطريقة من التابات أدناه.</p>
 
-                {{-- مصدر التوليد: موضوع نصي أو ملف PDF/صورة --}}
-                <div class="btn-group mb-3" role="group" aria-label="مصدر التوليد">
-                    <button type="button" class="btn btn-sm"
-                            :class="gen.source === 'topic' ? 'btn-primary' : 'btn-outline-primary'"
-                            @click="gen.source = 'topic'">
-                        <i class="bi bi-pencil"></i> من موضوع
-                    </button>
-                    <button type="button" class="btn btn-sm"
-                            :class="gen.source === 'file' ? 'btn-primary' : 'btn-outline-primary'"
-                            @click="gen.source = 'file'">
-                        <i class="bi bi-file-earmark-arrow-up"></i> من ملف PDF أو صورة
-                    </button>
-                </div>
-
-                <div class="row g-3">
-                    <template x-if="gen.source === 'topic'">
-                        <div class="col-lg-6">
-                            <label class="form-label">الموضوع *</label>
-                            <input type="text" class="form-control" x-model="gen.topic" placeholder="مثال: أساسيات الطاقة الشمسية">
-                        </div>
-                    </template>
-
-                    <template x-if="gen.source === 'file'">
-                        <div class="col-lg-6">
-                            <label class="form-label">ملف المصدر *</label>
-                            <div class="input-group">
-                                <input type="file" class="form-control" accept=".pdf,image/jpeg,image/png,image/webp,image/gif"
-                                       @change="onSourceFileChange($event)">
-                                <button type="button" class="btn btn-outline-secondary"
-                                        @click="extractSourceFile()"
-                                        :disabled="srcLoading || !srcFile">
-                                    <span x-show="!srcLoading">تحليل الملف</span>
-                                    <span x-show="srcLoading" x-cloak>جاري التحليل…</span>
-                                </button>
-                            </div>
-                            <div class="form-text">
-                                ملف PDF نصي يعمل دائماً. الصور والـ PDF الممسوح ضوئياً يحتاجان نموذجاً يدعم الرؤية
-                                (OpenAI / OpenRouter / Anthropic / Google / Z.ai)، والممسوح يحتاج Imagick على الخادم.
-                            </div>
-                            <div class="text-danger small mt-1" x-show="srcError" x-text="srcError" x-cloak></div>
-                        </div>
-                    </template>
-
-                    <div class="col-lg-6">
-                        <label class="form-label">الأهداف (اختياري)</label>
-                        <input type="text" class="form-control" x-model="gen.objectives" placeholder="ما الذي يجب أن يتعلمه الطالب؟">
-                    </div>
-
-                    {{-- معاينة المحتوى المستخرج قبل التوليد --}}
-                    <template x-if="gen.source === 'file' && srcKind">
-                        <div class="col-12">
-                            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                                <label class="form-label mb-0">المحتوى المستخرج</label>
-                                <span class="badge bg-secondary" x-show="srcPageCount" x-cloak>
-                                    <span x-text="srcPageCount"></span> صفحة
-                                </span>
-                                <span class="badge bg-secondary" x-show="srcKind === 'text'" x-cloak>
-                                    <span x-text="srcText.length"></span> حرف
-                                </span>
-                                <span class="badge bg-info" x-show="srcKind === 'images'" x-cloak>
-                                    تحليل بصري — <span x-text="srcImagesCount"></span> صورة
-                                </span>
-                                <span class="text-muted small" x-show="srcNotes" x-text="srcNotes" x-cloak></span>
-                            </div>
-                            <template x-if="srcKind === 'text'">
-                                <div>
-                                    <textarea class="form-control" rows="7" dir="auto" x-model="srcText"
-                                              placeholder="النص المستخرج من الملف…"></textarea>
-                                    <div class="form-text">يمكنك حذف الحشو (أرقام الصفحات، الترويسات) قبل التوليد لتحسين جودة الأسئلة.</div>
-                                </div>
-                            </template>
-                            <template x-if="srcKind === 'images'">
-                                <div class="alert alert-info py-2 mb-0 small">
-                                    لا يوجد نص قابل للقراءة في هذا الملف، لذا سيُحلّل بصرياً عبر نموذج يدعم الرؤية. اختر النموذج المناسب أدناه.
-                                </div>
-                            </template>
-                        </div>
-                    </template>
-                    <div class="col-6 col-md-3">
-                        <label class="form-label">عدد الأسئلة</label>
-                        <input type="number" min="1" max="15" class="form-control" x-model.number="gen.count">
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <label class="form-label">الصعوبة</label>
-                        <select class="form-select" x-model="gen.difficulty">
-                            <option value="easy">سهل</option>
-                            <option value="medium">متوسط</option>
-                            <option value="hard">صعب</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">الوضع</label>
-                        <select class="form-select" x-model="gen.mode">
-                            <option value="replace">استبدال الأسئلة الحالية</option>
-                            <option value="append">إضافة للأسئلة الحالية</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">نموذج AI</label>
-                        <select class="form-select" x-model="gen.modelId">
-                            <option value="" :disabled="needsVisionModel">الافتراضي / الأفضل</option>
-                            <template x-for="m in aiModels" :key="m.id">
-                                <option :value="String(m.id)" :disabled="needsVisionModel && !m.supports_vision"
-                                        x-text="m.name + (m.is_default ? ' (افتراضي)' : '') + ' — ' + m.provider + (needsVisionModel && !m.supports_vision ? ' (لا يدعم الرؤية)' : '')"></option>
-                            </template>
-                        </select>
-                        <div class="form-text text-warning" x-show="needsVisionModel" x-cloak>
-                            هذا الملف يحتاج تحليلاً بصرياً — اختر نموذجاً يدعم الرؤية.
-                        </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                            <label class="form-label mb-0">أنواع الأسئلة</label>
-                            <span class="text-muted small">(اختر نوعاً واحداً على الأقل)</span>
-                            <button type="button" class="btn btn-link btn-sm p-0 ms-auto" @click="toggleAllGenTypes()"
-                                x-text="gen.types.length === types.length ? 'إلغاء تحديد الكل' : 'تحديد الكل'"></button>
-                        </div>
-                        <div class="ile-type-pills">
-                            <template x-for="t in types" :key="'gen-'+t.type">
-                                <label class="ile-type-pill">
-                                    <input class="form-check-input" type="checkbox" :value="t.type" x-model="gen.types">
-                                    <span x-text="t.name"></span>
-                                </label>
-                            </template>
-                        </div>
-                    </div>
-                    <div class="col-12 d-flex flex-wrap gap-2 align-items-center">
-                        <button type="button" class="ile-btn ile-btn--primary" @click="requestGenerate()" :disabled="genLoading || !canGenerate">
-                            <span x-show="!genLoading"><i class="bi bi-stars"></i>توليد الأسئلة</span>
-                            <span x-show="genLoading" x-cloak>جاري التوليد… قد يستغرق دقيقة</span>
+                {{-- تابات مستقلة بالكامل: كل طريقة توليد بحقولها ونموذجها وزر التوليد الخاص بها --}}
+                <ul class="ile-gen-tabs" role="tablist">
+                    <li>
+                        <button type="button" class="nav-link nav-link--topic" :class="activeGenTab === 'topic' ? 'active' : ''" @click="activeGenTab = 'topic'">
+                            <i class="bi bi-pencil-square"></i> من موضوع نصي
                         </button>
-                        <span class="text-danger small" x-show="genError" x-text="genError" x-cloak></span>
-                        <span class="text-muted small" x-show="!aiModels.length" x-cloak>لا توجد نماذج نشطة — أضف نموذجاً من إعدادات AI.</span>
+                    </li>
+                    <li>
+                        <button type="button" class="nav-link nav-link--pdf" :class="activeGenTab === 'pdf' ? 'active' : ''" @click="activeGenTab = 'pdf'">
+                            <i class="bi bi-file-earmark-pdf"></i> من ملف PDF
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="nav-link nav-link--image" :class="activeGenTab === 'image' ? 'active' : ''" @click="activeGenTab = 'image'">
+                            <i class="bi bi-image"></i> من صورة
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="nav-link nav-link--import" :class="activeGenTab === 'import' ? 'active' : ''" @click="activeGenTab = 'import'">
+                            <i class="bi bi-file-earmark-arrow-up"></i> استيراد من ملف
+                        </button>
+                    </li>
+                </ul>
+
+                <div>
+                    {{-- القسم الأول: توليد من موضوع نصي — يعمل مع أي نموذج نشط --}}
+                    <div class="ile-gen-section ile-gen-section--topic" x-show="activeGenTab === 'topic'" x-cloak>
+                        <p class="ile-gen-section__desc">يكتب الذكاء الاصطناعي الأسئلة اعتماداً على معرفته العامة بالموضوع. يعمل مع أي نموذج نشط، ولا يحتاج دعم رؤية.</p>
+
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label">الموضوع *</label>
+                                <input type="text" class="form-control" x-model="genTopic.topic" placeholder="مثال: أساسيات الطاقة الشمسية">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">الأهداف (اختياري)</label>
+                                <input type="text" class="form-control" x-model="genTopic.objectives" placeholder="ما الذي يجب أن يتعلمه الطالب؟">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">عدد الأسئلة</label>
+                                <input type="number" min="1" max="15" class="form-control" x-model.number="genTopic.count">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">الصعوبة</label>
+                                <select class="form-select" x-model="genTopic.difficulty">
+                                    <option value="easy">سهل</option>
+                                    <option value="medium">متوسط</option>
+                                    <option value="hard">صعب</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">الوضع</label>
+                                <select class="form-select" x-model="genTopic.mode">
+                                    <option value="replace">استبدال الأسئلة الحالية</option>
+                                    <option value="append">إضافة للأسئلة الحالية</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">نموذج AI</label>
+                                <select class="form-select" x-model="genTopic.modelId">
+                                    <option value="">الافتراضي / الأفضل</option>
+                                    <template x-for="m in aiModels" :key="m.id">
+                                        <option :value="String(m.id)"
+                                                x-text="m.name + (m.is_default ? ' (افتراضي)' : '') + ' — ' + m.provider"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                    <label class="form-label mb-0">أنواع الأسئلة</label>
+                                    <span class="text-muted small">(اختر نوعاً واحداً على الأقل)</span>
+                                    <button type="button" class="btn btn-link btn-sm p-0 ms-auto" @click="toggleAllGenTypes('topic')"
+                                        x-text="genTopic.types.length === types.length ? 'إلغاء تحديد الكل' : 'تحديد الكل'"></button>
+                                </div>
+                                <div class="ile-type-pills">
+                                    <template x-for="t in types" :key="'gen-topic-'+t.type">
+                                        <label class="ile-type-pill">
+                                            <input class="form-check-input" type="checkbox" :value="t.type" x-model="genTopic.types">
+                                            <span x-text="t.name"></span>
+                                        </label>
+                                    </template>
+                                </div>
+                            </div>
+                            <div class="col-12 d-flex flex-wrap gap-2 align-items-center">
+                                <button type="button" class="ile-btn ile-btn--primary" @click="requestAiGenerate()" :disabled="genTopicLoading || !canGenerateTopic">
+                                    <span x-show="!genTopicLoading"><i class="bi bi-stars"></i>توليد من الموضوع</span>
+                                    <span x-show="genTopicLoading" x-cloak>جاري التوليد… قد يستغرق دقيقة</span>
+                                </button>
+                                <span class="text-danger small" x-show="genTopicError" x-text="genTopicError" x-cloak></span>
+                                <span class="text-muted small" x-show="!aiModels.length" x-cloak>لا توجد نماذج نشطة — أضف نموذجاً من إعدادات AI.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- القسم الثاني: توليد من ملف PDF عادي — نص PDF عادي يعمل مع أي نموذج، وفقط الممسوح ضوئياً يحتاج نموذج رؤية --}}
+                    <div class="ile-gen-section ile-gen-section--pdf" x-show="activeGenTab === 'pdf'" x-cloak>
+                        <p class="ile-gen-section__desc">يستخرج نص ملف PDF ويولّد منه أسئلة. ملف PDF نصي عادي يعمل مع أي نموذج نشط؛ فقط إن كان الملف ممسوحاً ضوئياً (بلا نص) سيحتاج نموذجاً يدعم الرؤية، ويتطلب Imagick على الخادم.</p>
+
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label">ملف PDF *</label>
+                                <div class="input-group">
+                                    <input type="file" class="form-control" accept=".pdf,application/pdf"
+                                           @change="onPdfFileChange($event)">
+                                    <button type="button" class="btn btn-outline-secondary"
+                                            @click="extractPdfFile()"
+                                            :disabled="pdfLoading || !pdfFile">
+                                        <span x-show="!pdfLoading">تحليل الملف</span>
+                                        <span x-show="pdfLoading" x-cloak>جاري التحليل…</span>
+                                    </button>
+                                </div>
+                                <div class="text-danger small mt-1" x-show="pdfError" x-text="pdfError" x-cloak></div>
+                            </div>
+
+                            {{-- معاينة المحتوى المستخرج قبل التوليد --}}
+                            <template x-if="pdfKind">
+                                <div class="col-12">
+                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                        <label class="form-label mb-0">المحتوى المستخرج</label>
+                                        <span class="badge bg-secondary" x-show="pdfPageCount" x-cloak>
+                                            <span x-text="pdfPageCount"></span> صفحة
+                                        </span>
+                                        <span class="badge bg-secondary" x-show="pdfKind === 'text'" x-cloak>
+                                            <span x-text="pdfText.length"></span> حرف
+                                        </span>
+                                        <span class="badge bg-info" x-show="pdfKind === 'images'" x-cloak>
+                                            تحليل بصري — <span x-text="pdfImagesCount"></span> صفحة كصورة
+                                        </span>
+                                        <span class="text-muted small" x-show="pdfNotes" x-text="pdfNotes" x-cloak></span>
+                                    </div>
+                                    <template x-if="pdfKind === 'text'">
+                                        <div>
+                                            <textarea class="form-control" rows="6" dir="auto" x-model="pdfText"
+                                                      placeholder="النص المستخرج من الملف…"></textarea>
+                                            <div class="form-text">يمكنك حذف الحشو (أرقام الصفحات، الترويسات) قبل التوليد لتحسين جودة الأسئلة.</div>
+                                        </div>
+                                    </template>
+                                    <template x-if="pdfKind === 'images'">
+                                        <div class="alert alert-info py-2 mb-0 small">
+                                            هذا الملف ممسوح ضوئياً بلا طبقة نص، لذا سيُحلّل بصرياً عبر نموذج يدعم الرؤية. اختر النموذج المناسب أدناه.
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+
+                            <div class="col-12">
+                                <label class="form-label">الأهداف (اختياري)</label>
+                                <input type="text" class="form-control" x-model="genPdf.objectives" placeholder="ما الذي يجب أن يتعلمه الطالب؟">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">عدد الأسئلة</label>
+                                <input type="number" min="1" max="15" class="form-control" x-model.number="genPdf.count">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">الصعوبة</label>
+                                <select class="form-select" x-model="genPdf.difficulty">
+                                    <option value="easy">سهل</option>
+                                    <option value="medium">متوسط</option>
+                                    <option value="hard">صعب</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">الوضع</label>
+                                <select class="form-select" x-model="genPdf.mode">
+                                    <option value="replace">استبدال الأسئلة الحالية</option>
+                                    <option value="append">إضافة للأسئلة الحالية</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">نموذج AI (نص أو رؤية حسب الملف)</label>
+                                <select class="form-select" x-model="genPdf.modelId">
+                                    <option value="" :disabled="pdfNeedsVisionModel">الافتراضي / الأفضل</option>
+                                    <template x-for="m in aiModels" :key="m.id">
+                                        <option :value="String(m.id)" :disabled="pdfNeedsVisionModel && !m.supports_vision"
+                                                x-text="m.name + (m.is_default ? ' (افتراضي)' : '') + ' — ' + m.provider + (pdfNeedsVisionModel && !m.supports_vision ? ' (لا يدعم الرؤية)' : '')"></option>
+                                    </template>
+                                </select>
+                                <div class="form-text text-warning" x-show="pdfNeedsVisionModel" x-cloak>
+                                    هذا الملف ممسوح ضوئياً ويحتاج تحليلاً بصرياً — اختر نموذجاً يدعم الرؤية.
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                    <label class="form-label mb-0">أنواع الأسئلة</label>
+                                    <span class="text-muted small">(اختر نوعاً واحداً على الأقل)</span>
+                                    <button type="button" class="btn btn-link btn-sm p-0 ms-auto" @click="toggleAllGenTypes('pdf')"
+                                        x-text="genPdf.types.length === types.length ? 'إلغاء تحديد الكل' : 'تحديد الكل'"></button>
+                                </div>
+                                <div class="ile-type-pills">
+                                    <template x-for="t in types" :key="'gen-pdf-'+t.type">
+                                        <label class="ile-type-pill">
+                                            <input class="form-check-input" type="checkbox" :value="t.type" x-model="genPdf.types">
+                                            <span x-text="t.name"></span>
+                                        </label>
+                                    </template>
+                                </div>
+                            </div>
+                            <div class="col-12 d-flex flex-wrap gap-2 align-items-center">
+                                <button type="button" class="ile-btn ile-btn--primary" @click="requestPdfGenerate()" :disabled="genPdfLoading || !canGeneratePdf">
+                                    <span x-show="!genPdfLoading"><i class="bi bi-stars"></i>توليد من PDF</span>
+                                    <span x-show="genPdfLoading" x-cloak>جاري التوليد… قد يستغرق دقيقة</span>
+                                </button>
+                                <span class="text-danger small" x-show="genPdfError" x-text="genPdfError" x-cloak></span>
+                                <span class="text-muted small" x-show="!aiModels.length" x-cloak>لا توجد نماذج نشطة — أضف نموذجاً من إعدادات AI.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- القسم الثالث: توليد من صورة — دائماً تحليل بصري، نماذج الرؤية فقط --}}
+                    <div class="ile-gen-section ile-gen-section--image" x-show="activeGenTab === 'image'" x-cloak>
+                        <p class="ile-gen-section__desc">تُحلَّل الصورة بصرياً دائماً، لذا يظهر هنا نماذج الرؤية (Vision) فقط — OpenAI / OpenRouter / Anthropic / Google / Z.ai.</p>
+
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label">ملف الصورة *</label>
+                                <div class="input-group">
+                                    <input type="file" class="form-control" accept="image/jpeg,image/png,image/webp,image/gif"
+                                           @change="onImageFileChange($event)">
+                                    <button type="button" class="btn btn-outline-secondary"
+                                            @click="extractImageFile()"
+                                            :disabled="imgLoading || !imgFile">
+                                        <span x-show="!imgLoading">تحليل الملف</span>
+                                        <span x-show="imgLoading" x-cloak>جاري التحليل…</span>
+                                    </button>
+                                </div>
+                                <div class="text-danger small mt-1" x-show="imgError" x-text="imgError" x-cloak></div>
+                            </div>
+
+                            <template x-if="imgToken">
+                                <div class="col-12">
+                                    <div class="alert alert-info py-2 mb-0 small">
+                                        تم استلام الصورة، جاهزة للتحليل البصري. <span x-text="imgNotes"></span>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <div class="col-12">
+                                <label class="form-label">الأهداف (اختياري)</label>
+                                <input type="text" class="form-control" x-model="genImage.objectives" placeholder="ما الذي يجب أن يتعلمه الطالب؟">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">عدد الأسئلة</label>
+                                <input type="number" min="1" max="15" class="form-control" x-model.number="genImage.count">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">الصعوبة</label>
+                                <select class="form-select" x-model="genImage.difficulty">
+                                    <option value="easy">سهل</option>
+                                    <option value="medium">متوسط</option>
+                                    <option value="hard">صعب</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">الوضع</label>
+                                <select class="form-select" x-model="genImage.mode">
+                                    <option value="replace">استبدال الأسئلة الحالية</option>
+                                    <option value="append">إضافة للأسئلة الحالية</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">نموذج رؤية (Vision)</label>
+                                <select class="form-select" x-model="genImage.modelId">
+                                    <template x-for="m in visionModels" :key="m.id">
+                                        <option :value="String(m.id)"
+                                                x-text="m.name + (m.is_default ? ' (افتراضي)' : '') + ' — ' + m.provider"></option>
+                                    </template>
+                                </select>
+                                <div class="form-text text-warning" x-show="!visionModels.length" x-cloak>
+                                    لا توجد نماذج تدعم الرؤية — فعّل قدرة "تحليل الصور (رؤية)" لنموذج من إعدادات AI.
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                    <label class="form-label mb-0">أنواع الأسئلة</label>
+                                    <span class="text-muted small">(اختر نوعاً واحداً على الأقل)</span>
+                                    <button type="button" class="btn btn-link btn-sm p-0 ms-auto" @click="toggleAllGenTypes('image')"
+                                        x-text="genImage.types.length === types.length ? 'إلغاء تحديد الكل' : 'تحديد الكل'"></button>
+                                </div>
+                                <div class="ile-type-pills">
+                                    <template x-for="t in types" :key="'gen-image-'+t.type">
+                                        <label class="ile-type-pill">
+                                            <input class="form-check-input" type="checkbox" :value="t.type" x-model="genImage.types">
+                                            <span x-text="t.name"></span>
+                                        </label>
+                                    </template>
+                                </div>
+                            </div>
+                            <div class="col-12 d-flex flex-wrap gap-2 align-items-center">
+                                <button type="button" class="ile-btn ile-btn--primary" @click="requestImageGenerate()" :disabled="genImageLoading || !canGenerateImage">
+                                    <span x-show="!genImageLoading"><i class="bi bi-stars"></i>توليد من الصورة</span>
+                                    <span x-show="genImageLoading" x-cloak>جاري التوليد… قد يستغرق دقيقة</span>
+                                </button>
+                                <span class="text-danger small" x-show="genImageError" x-text="genImageError" x-cloak></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- القسم الرابع: استيراد أسئلة جاهزة من ملف CSV/MD/JSON — لا علاقة له بالذكاء الاصطناعي --}}
+                    <div x-show="activeGenTab === 'import'" x-cloak>
+                        @include('admin.pages.learning-experiences.partials.file-import-module')
                     </div>
                 </div>
             </div>
         </div>
-
-        @include('admin.pages.learning-experiences.partials.file-import-module')
 
         @if(session('success'))
             <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -1217,10 +1414,10 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
-                        <button type="button" class="btn btn-outline-primary" @click="requestAiGenerate()" :disabled="genLoading">إعادة التوليد</button>
+                        <button type="button" class="btn btn-outline-primary" @click="regenerateLast()" :disabled="genLoading">إعادة التوليد</button>
                         <button type="button" class="btn btn-primary" @click="applyGeneratedQuestions()" :disabled="genLoading || !selectedGenQuestions().length">
                             تطبيق المحدد
-                            <span x-text="gen.mode === 'append' ? '(إضافة)' : '(استبدال)'"></span>
+                            <span x-text="lastGenMode === 'append' ? '(إضافة)' : '(استبدال)'"></span>
                         </button>
                     </div>
                 </div>
@@ -1467,13 +1664,18 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
         openIndex: 0,
         openAll: false,
         openGeneratePanel: true,
+        // كل قسم توليد مستقل بالكامل بحالة تحميل/خطأ خاصة به، حتى لا يتقاطع أحدهما مع الآخر
         genLoading: false,
         genError: '',
         genSummary: '',
         genModel: '',
         genQuestions: [],
-        gen: {
-            source: 'topic',
+        lastGenSource: 'topic', // 'topic' | 'pdf' | 'image' — أي قسم أنتج الدفعة المعروضة حالياً في نافذة المراجعة
+        lastGenMode: 'replace',
+        activeGenTab: 'topic', // 'topic' | 'pdf' | 'image' — التاب الظاهر حالياً في لوحة التوليد
+
+        // قسم "من موضوع نصي" — يعمل مع أي نموذج نشط
+        genTopic: {
             topic: '',
             objectives: '',
             count: 5,
@@ -1483,69 +1685,133 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
             // لا تحديد افتراضي — يختار المستخدم الأنواع المطلوبة بنفسه
             types: [],
         },
+        genTopicLoading: false,
+        genTopicError: '',
 
-        // حالة التوليد من ملف (PDF / صورة)
-        srcFile: null,
-        srcLoading: false,
-        srcError: '',
-        srcKind: '',        // '' | 'text' | 'images'
-        srcText: '',
-        srcToken: '',
-        srcPageCount: 0,
-        srcImagesCount: 0,
-        srcNotes: '',
+        // قسم "من ملف PDF" — نص PDF عادي يعمل مع أي نموذج، والممسوح ضوئياً يحتاج نموذج رؤية
+        genPdf: {
+            objectives: '',
+            count: 5,
+            difficulty: 'medium',
+            mode: 'replace',
+            modelId: '',
+            types: [],
+        },
+        genPdfLoading: false,
+        genPdfError: '',
+        pdfFile: null,
+        pdfLoading: false,
+        pdfError: '',
+        pdfKind: '',        // '' | 'text' | 'images'
+        pdfText: '',
+        pdfToken: '',
+        pdfPageCount: 0,
+        pdfImagesCount: 0,
+        pdfNotes: '',
 
-        get needsVisionModel() {
-            return this.gen.source === 'file' && this.srcKind === 'images';
+        // قسم "من صورة" — دائماً تحليل بصري، نماذج الرؤية فقط
+        genImage: {
+            objectives: '',
+            count: 5,
+            difficulty: 'medium',
+            mode: 'replace',
+            modelId: '',
+            types: [],
+        },
+        genImageLoading: false,
+        genImageError: '',
+        imgFile: null,
+        imgLoading: false,
+        imgError: '',
+        imgToken: '',
+        imgNotes: '',
+
+        get pdfNeedsVisionModel() {
+            return this.pdfKind === 'images';
         },
 
-        get selectedModelSupportsVision() {
-            if (!this.gen.modelId) return false;
-            const m = this.aiModels.find(m => String(m.id) === String(this.gen.modelId));
+        get pdfSelectedModelSupportsVision() {
+            if (!this.genPdf.modelId) return false;
+            const m = this.aiModels.find(m => String(m.id) === String(this.genPdf.modelId));
             return Boolean(m && m.supports_vision);
         },
 
-        get canGenerate() {
-            if (!this.gen.types.length) return false;
-            if (this.gen.source === 'file') {
-                if (this.srcKind === 'images') {
-                    return Boolean(this.srcToken) && this.selectedModelSupportsVision;
-                }
-                return Boolean(this.srcText.trim());
+        get imgSelectedModelSupportsVision() {
+            if (!this.genImage.modelId) return false;
+            const m = this.aiModels.find(m => String(m.id) === String(this.genImage.modelId));
+            return Boolean(m && m.supports_vision);
+        },
+
+        get visionModels() {
+            return (this.aiModels || []).filter(m => m.supports_vision);
+        },
+
+        get canGenerateTopic() {
+            return Boolean(this.genTopic.types.length) && Boolean(this.genTopic.topic.trim());
+        },
+
+        get canGeneratePdf() {
+            if (!this.genPdf.types.length) return false;
+            if (this.pdfKind === 'images') {
+                return Boolean(this.pdfToken) && this.pdfSelectedModelSupportsVision;
             }
-            return Boolean(this.gen.topic.trim());
+            return Boolean(this.pdfText.trim());
         },
 
-        toggleAllGenTypes() {
+        get canGenerateImage() {
+            return Boolean(this.genImage.types.length) && Boolean(this.imgToken) && this.imgSelectedModelSupportsVision;
+        },
+
+        toggleAllGenTypes(section) {
             const all = this.types || [];
-            this.gen.types = this.gen.types.length === all.length ? [] : all.map(t => t.type);
+            const target = section === 'pdf' ? this.genPdf : section === 'image' ? this.genImage : this.genTopic;
+            target.types = target.types.length === all.length ? [] : all.map(t => t.type);
         },
 
-        resetSourceState() {
-            this.srcKind = '';
-            this.srcText = '';
-            this.srcToken = '';
-            this.srcPageCount = 0;
-            this.srcImagesCount = 0;
-            this.srcNotes = '';
-            this.srcError = '';
+        resetPdfState() {
+            this.pdfKind = '';
+            this.pdfText = '';
+            this.pdfToken = '';
+            this.pdfPageCount = 0;
+            this.pdfImagesCount = 0;
+            this.pdfNotes = '';
+            this.pdfError = '';
         },
 
-        onSourceFileChange(event) {
-            this.srcFile = event.target.files?.[0] || null;
-            this.resetSourceState();
+        onPdfFileChange(event) {
+            this.pdfFile = event.target.files?.[0] || null;
+            this.resetPdfState();
         },
 
-        /** الخطوة 1: رفع الملف واستخراج محتواه للمعاينة. */
-        async extractSourceFile() {
-            if (!this.srcFile) return;
-            this.srcLoading = true;
-            this.resetSourceState();
+        resetImageState() {
+            this.imgToken = '';
+            this.imgNotes = '';
+            this.imgError = '';
+        },
+
+        onImageFileChange(event) {
+            this.imgFile = event.target.files?.[0] || null;
+            this.resetImageState();
+        },
+
+        /** يختار أفضل نموذج رؤية متاح (الافتراضي إن كان يدعم الرؤية، وإلا أول نموذج رؤية نشط). */
+        pickDefaultVisionModelId() {
+            const visionModel = this.aiModels.find(m => m.supports_vision && m.is_default)
+                || this.aiModels.find(m => m.supports_vision);
+
+            return visionModel ? String(visionModel.id) : '';
+        },
+
+        /** الخطوة 1: رفع ملف PDF واستخراج محتواه للمعاينة (نص أو صور صفحات حسب الحاجة). */
+        async extractPdfFile() {
+            if (!this.pdfFile) return;
+            this.pdfLoading = true;
+            this.resetPdfState();
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 170000);
             try {
                 const fd = new FormData();
-                fd.append('file', this.srcFile);
+                fd.append('file', this.pdfFile);
                 const res = await fetch(this.urls.sourceExtractUrl, {
                     method: 'POST',
                     headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this.urls.csrf },
@@ -1554,53 +1820,91 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
                 });
                 const data = await res.json();
                 if (!data.ok) throw new Error(data.message || 'فشل تحليل الملف');
-                this.srcKind = data.kind || '';
-                this.srcText = data.text || '';
-                this.srcToken = data.token || '';
-                this.srcPageCount = data.pageCount || 0;
-                this.srcImagesCount = data.imagesCount || 0;
-                this.srcNotes = data.notes || '';
+                this.pdfKind = data.kind || '';
+                this.pdfText = data.text || '';
+                this.pdfToken = data.token || '';
+                this.pdfPageCount = data.pageCount || 0;
+                this.pdfImagesCount = data.imagesCount || 0;
+                this.pdfNotes = data.notes || '';
 
-                // الملف يحتاج نموذجاً يدعم الرؤية — إن كان المختار حالياً لا يدعمها فنبدّله تلقائياً
-                if (this.srcKind === 'images' && !this.selectedModelSupportsVision) {
-                    const visionModel = this.aiModels.find(m => m.supports_vision && m.is_default)
-                        || this.aiModels.find(m => m.supports_vision);
-                    this.gen.modelId = visionModel ? String(visionModel.id) : '';
+                // الملف ممسوح ضوئياً ويحتاج نموذجاً يدعم الرؤية — إن كان المختار حالياً لا يدعمها فنبدّله تلقائياً
+                if (this.pdfKind === 'images' && !this.pdfSelectedModelSupportsVision) {
+                    this.genPdf.modelId = this.pickDefaultVisionModelId();
                 }
             } catch (e) {
-                this.srcError = e.name === 'AbortError'
+                this.pdfError = e.name === 'AbortError'
                     ? 'استغرق التحليل وقتاً أطول من المتوقع. جرّب ملفاً أصغر أو تحقق من الاتصال.'
                     : (e.message || 'فشل تحليل الملف');
             } finally {
                 clearTimeout(timeoutId);
-                this.srcLoading = false;
+                this.pdfLoading = false;
             }
         },
 
-        /** يوجّه لمسار التوليد الصحيح حسب المصدر المختار. */
-        requestGenerate() {
-            return this.gen.source === 'file'
-                ? this.requestAiGenerateFromSource()
-                : this.requestAiGenerate();
-        },
-
-        /** الخطوة 2: توليد الأسئلة من المحتوى المستخرج (نص مُعاين أو صور). */
-        async requestAiGenerateFromSource() {
-            this.genLoading = true;
-            this.genError = '';
+        /** الخطوة 1: رفع صورة — تُقرأ فقط، تُحلّل بصرياً دائماً في خطوة التوليد. */
+        async extractImageFile() {
+            if (!this.imgFile) return;
+            this.imgLoading = true;
+            this.resetImageState();
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 170000);
             try {
+                const fd = new FormData();
+                fd.append('file', this.imgFile);
+                const res = await fetch(this.urls.sourceExtractUrl, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this.urls.csrf },
+                    body: fd,
+                    signal: controller.signal,
+                });
+                const data = await res.json();
+                if (!data.ok) throw new Error(data.message || 'فشل تحليل الملف');
+                this.imgToken = data.token || '';
+                this.imgNotes = data.notes || '';
+
+                if (!this.imgSelectedModelSupportsVision) {
+                    this.genImage.modelId = this.pickDefaultVisionModelId();
+                }
+            } catch (e) {
+                this.imgError = e.name === 'AbortError'
+                    ? 'استغرق التحليل وقتاً أطول من المتوقع. جرّب صورة أصغر أو تحقق من الاتصال.'
+                    : (e.message || 'فشل تحليل الملف');
+            } finally {
+                clearTimeout(timeoutId);
+                this.imgLoading = false;
+            }
+        },
+
+        /** يعيد تشغيل نفس مسار التوليد الذي أنتج الدفعة المعروضة حالياً في نافذة المراجعة. */
+        regenerateLast() {
+            if (this.lastGenSource === 'pdf') return this.requestPdfGenerate();
+            if (this.lastGenSource === 'image') return this.requestImageGenerate();
+
+            return this.requestAiGenerate();
+        },
+
+        /** منطق مشترك للخطوة 2 (توليد من مصدر مستخرج) بين قسمَي PDF والصورة، مع إبقاء حالة كل قسم مستقلة. */
+        async runSourceGeneration({ genState, isImageKind, token, text, sourceTag, setLoading, setError }) {
+            this.lastGenSource = sourceTag;
+            this.lastGenMode = genState.mode || 'replace';
+            setLoading(true);
+            this.genLoading = true;
+            setError('');
+            this.genError = '';
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 170000);
+            let ok = false;
+            try {
                 const body = {
-                    objectives: this.gen.objectives || '',
-                    count: this.gen.count || 5,
-                    difficulty: this.gen.difficulty || 'medium',
-                    types: this.gen.types,
-                    mode: this.gen.mode || 'replace',
+                    objectives: genState.objectives || '',
+                    count: genState.count || 5,
+                    difficulty: genState.difficulty || 'medium',
+                    types: genState.types,
+                    mode: genState.mode || 'replace',
                 };
-                if (this.srcKind === 'images') body.token = this.srcToken;
-                else body.text = this.srcText;
-                if (this.gen.modelId) body.model_id = parseInt(this.gen.modelId, 10);
+                if (isImageKind) body.token = token;
+                else body.text = text;
+                if (genState.modelId) body.model_id = parseInt(genState.modelId, 10);
 
                 const res = await fetch(this.urls.sourceGenerateUrl, {
                     method: 'POST',
@@ -1618,17 +1922,51 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
                 this.genSummary = data.summary || '';
                 this.genModel = data.model || '';
                 this.genQuestions = (data.questions || []).map(q => ({ ...q, _selected: true }));
-                // الملف المؤقّت يُحذف على الخادم بعد التوليد، فالرمز لم يعد صالحاً
-                if (this.srcKind === 'images') this.srcToken = '';
+                ok = true;
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('ileGenerateModal')).show();
             } catch (e) {
-                this.genError = e.name === 'AbortError'
+                const message = e.name === 'AbortError'
                     ? 'استغرق التوليد وقتاً أطول من المتوقع. جرّب عدد أسئلة أقل أو نموذجاً أسرع.'
                     : (e.message || 'فشل التوليد');
+                setError(message);
+                this.genError = message;
             } finally {
                 clearTimeout(timeoutId);
+                setLoading(false);
                 this.genLoading = false;
             }
+
+            return ok;
+        },
+
+        /** الخطوة 2 لقسم PDF: توليد من النص المستخرج، أو من صور الصفحات إن كان ممسوحاً ضوئياً. */
+        async requestPdfGenerate() {
+            const isImageKind = this.pdfKind === 'images';
+            const ok = await this.runSourceGeneration({
+                genState: this.genPdf,
+                isImageKind,
+                token: this.pdfToken,
+                text: this.pdfText,
+                sourceTag: 'pdf',
+                setLoading: v => { this.genPdfLoading = v; },
+                setError: v => { this.genPdfError = v; },
+            });
+            // الملف المؤقّت يُحذف على الخادم بعد التوليد، فالرمز لم يعد صالحاً
+            if (ok && isImageKind) this.pdfToken = '';
+        },
+
+        /** الخطوة 2 لقسم الصورة: تحليل بصري دائماً. */
+        async requestImageGenerate() {
+            const ok = await this.runSourceGeneration({
+                genState: this.genImage,
+                isImageKind: true,
+                token: this.imgToken,
+                text: '',
+                sourceTag: 'image',
+                setLoading: v => { this.genImageLoading = v; },
+                setError: v => { this.genImageError = v; },
+            });
+            if (ok) this.imgToken = '';
         },
 
         typeMeta(type) { return this.types.find(t => t.type === type); },
@@ -1828,18 +2166,21 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
             } finally { this.aiLoading = false; }
         },
         async requestAiGenerate() {
-            if (!this.gen.topic.trim() || !this.gen.types.length) return;
-            this.genLoading = true; this.genError = '';
+            if (!this.genTopic.topic.trim() || !this.genTopic.types.length) return;
+            this.lastGenSource = 'topic';
+            this.lastGenMode = this.genTopic.mode || 'replace';
+            this.genTopicLoading = this.genLoading = true;
+            this.genTopicError = this.genError = '';
             try {
                 const body = {
-                    topic: this.gen.topic.trim(),
-                    objectives: this.gen.objectives || '',
-                    count: this.gen.count || 5,
-                    difficulty: this.gen.difficulty || 'medium',
-                    types: this.gen.types,
-                    mode: this.gen.mode || 'replace',
+                    topic: this.genTopic.topic.trim(),
+                    objectives: this.genTopic.objectives || '',
+                    count: this.genTopic.count || 5,
+                    difficulty: this.genTopic.difficulty || 'medium',
+                    types: this.genTopic.types,
+                    mode: this.genTopic.mode || 'replace',
                 };
-                if (this.gen.modelId) body.model_id = parseInt(this.gen.modelId, 10);
+                if (this.genTopic.modelId) body.model_id = parseInt(this.genTopic.modelId, 10);
                 const res = await fetch(this.urls.generateUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this.urls.csrf },
@@ -1852,9 +2193,10 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
                 this.genQuestions = (data.questions || []).map(q => ({ ...q, _selected: true }));
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('ileGenerateModal')).show();
             } catch (e) {
-                this.genError = e.message || String(e);
-                alert(this.genError);
-            } finally { this.genLoading = false; }
+                const message = e.message || String(e);
+                this.genTopicError = this.genError = message;
+                alert(message);
+            } finally { this.genTopicLoading = this.genLoading = false; }
         },
         async applyGeneratedQuestions() {
             const questions = this.selectedGenQuestions().map(({ _selected, ...rest }) => rest);
@@ -1868,7 +2210,7 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
                     body: JSON.stringify({
                         questions,
                         schema_json: this.schema,
-                        mode: this.gen.mode || 'replace',
+                        mode: this.lastGenMode || 'replace',
                         persist: true,
                     }),
                 });
@@ -1908,7 +2250,11 @@ function ileEditor(initialSchema, types, blankTemplates, urls, aiModels, blankDy
             this.openIndex = 0;
             alert('تم استيراد ' + (data.count || questions.length) + ' سؤال إلى التجربة.');
         },
-        init() { this.validateLive(); }
+        init() {
+            this.validateLive();
+            // قسم "من صورة" يعرض نماذج الرؤية فقط، فنهيّئه بأفضلها مباشرة بدل ترك القائمة فارغة الاختيار
+            if (!this.genImage.modelId) this.genImage.modelId = this.pickDefaultVisionModelId();
+        }
     };
 }
 </script>

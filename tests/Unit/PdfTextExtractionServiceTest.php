@@ -55,6 +55,31 @@ it('extracts text from a generated pdf file', function () {
     }
 });
 
+it('counts non-empty pages separately from unique page texts for a normal document with a trailing blank page', function () {
+    if (! class_exists(\Smalot\PdfParser\Parser::class)) {
+        $this->markTestSkipped('smalot/pdfparser غير مثبت');
+    }
+
+    $path = sys_get_temp_dir().'/qlms-test-'.uniqid('', true).'.pdf';
+
+    Pdf::loadHTML(
+        '<html><body>'.
+        '<p>'.str_repeat('محتوى تجريبي لتوليد الأسئلة من ملف PDF نصي. ', 20).'</p>'.
+        '<div style="page-break-before: always;"></div>'.
+        '</body></html>'
+    )->save($path);
+
+    try {
+        $result = $this->service->extractFromPath($path);
+
+        // صفحة واحدة فقط فيها نص حقيقي، والباقي فارغ — هذا مستند عادي وليس علامة مائية.
+        expect($result['nonEmptyPageCount'])->toBe(1);
+        expect($result['uniquePageTexts'])->toBe(1);
+    } finally {
+        @unlink($path);
+    }
+});
+
 it('truncates long text for prompts', function () {
     config(['ai.question_generation_pdf.max_text_chars_for_prompt' => 100]);
 

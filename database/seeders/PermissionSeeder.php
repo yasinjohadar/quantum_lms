@@ -101,11 +101,26 @@ class PermissionSeeder extends Seeder
             ['name' => 'lesson-approve-review', 'description' => 'الموافقة على تفعيل الدرس'],
             ['name' => 'lesson-reject-review', 'description' => 'رفض تفعيل الدرس'],
             ['name' => 'lesson-submit-for-review', 'description' => 'إرسال الدرس للمراجعة'],
+            ['name' => 'lesson-toggle-status', 'description' => 'تفعيل/تعطيل الدرس مباشرة دون المرور بالمراجعة'],
 
             // صلاحيات إدارة مرفقات الدروس
             ['name' => 'lesson-attachment-create', 'description' => 'إضافة مرفق للدرس'],
             ['name' => 'lesson-attachment-edit', 'description' => 'تعديل مرفق الدرس'],
             ['name' => 'lesson-attachment-delete', 'description' => 'حذف مرفق الدرس'],
+
+            // صلاحيات إدارة تصنيفات المكتبة
+            ['name' => 'library-category-list', 'description' => 'عرض قائمة تصنيفات المكتبة'],
+            ['name' => 'library-category-create', 'description' => 'إنشاء تصنيف مكتبة جديد'],
+            ['name' => 'library-category-edit', 'description' => 'تعديل تصنيف المكتبة'],
+            ['name' => 'library-category-delete', 'description' => 'حذف تصنيف المكتبة'],
+
+            // صلاحيات إدارة عناصر المكتبة
+            ['name' => 'library-item-list', 'description' => 'عرض قائمة عناصر المكتبة'],
+            ['name' => 'library-item-create', 'description' => 'إنشاء عنصر مكتبة جديد'],
+            ['name' => 'library-item-edit', 'description' => 'تعديل عنصر المكتبة'],
+            ['name' => 'library-item-delete', 'description' => 'حذف عنصر المكتبة'],
+            ['name' => 'library-item-show', 'description' => 'عرض تفاصيل عنصر المكتبة'],
+            ['name' => 'library-item-download', 'description' => 'تحميل عنصر المكتبة (لوحة الإدارة)'],
 
             // صلاحيات إدارة الأسئلة
             ['name' => 'question-list', 'description' => 'عرض قائمة الأسئلة'],

@@ -34,11 +34,13 @@ class PdfTextExtractionService
         // كان عدد حروفه كافياً — نحسب عدد الصفحات ذات نص مختلف فعلياً.
         $normalizedChunks = array_filter(array_map(fn ($c) => $this->normalizeText($c), $chunks), fn ($c) => $c !== '');
         $uniquePageTexts = count(array_unique($normalizedChunks));
+        $nonEmptyPageCount = count($normalizedChunks);
 
         return [
             'text' => $text,
             'pageCount' => $pageCount,
             'uniquePageTexts' => $uniquePageTexts,
+            'nonEmptyPageCount' => $nonEmptyPageCount,
         ];
     }
 

@@ -146,10 +146,12 @@ class ExperienceSourceExtractionService
         $text = (string) $extracted['text'];
         $pageCount = (int) $extracted['pageCount'];
         $uniquePageTexts = (int) ($extracted['uniquePageTexts'] ?? $pageCount);
+        $nonEmptyPageCount = (int) ($extracted['nonEmptyPageCount'] ?? $pageCount);
 
-        // نص متطابق على كل الصفحات (علامة مائية/ترويسة فقط) ليس محتوى حقيقياً،
-        // حتى لو تجاوز الحد الأدنى لعدد الحروف — الملف غالباً صور بلا طبقة نص فعلية.
-        $isWatermarkOnly = $pageCount > 1 && $uniquePageTexts <= 1;
+        // علامة مائية حقيقية = نص متكرر عبر عدة صفحات فيها محتوى فعلي (لا صفحات فارغة).
+        // صفحة واحدة بها نص حقيقي مع صفحات فارغة تالية (شائع جداً) ليست علامة مائية —
+        // كانت هذه الحالة تُصنَّف خطأً فتُجبر ملفات PDF نصية عادية على مسار الرؤية.
+        $isWatermarkOnly = $nonEmptyPageCount > 1 && $uniquePageTexts <= 1;
 
         // المسار الأساسي: ملف PDF فيه طبقة نص حقيقية
         if (! $isWatermarkOnly && $this->pdfTextExtraction->isTextSufficient($text, $pageCount)) {

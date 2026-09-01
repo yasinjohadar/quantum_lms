@@ -103,6 +103,17 @@
                             </a>
                         </li>
 
+                        <!-- المكتبة -->
+                        <li class="slide slide-icon slide-icon--sky {{ request()->is('student/library*') ? 'active' : '' }}">
+                            <a href="{{ route('student.library.index') }}" class="side-menu__item {{ request()->is('student/library*') ? 'active' : '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M6 4h12v2H6zm0 4h12v2H6zm0 4h8v2H6zm0 4h8v2H6z"/>
+                                </svg>
+                                <span class="side-menu__label">المكتبة</span>
+                            </a>
+                        </li>
+
                         <!-- التحفيز والإنجازات -->
                         <li class="slide slide-icon slide-icon--orange has-sub {{ request()->is('student/gamification*') || request()->is('student/tasks*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">

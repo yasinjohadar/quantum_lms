@@ -101,6 +101,11 @@ Route::middleware(['auth', 'check.user.active', 'ensure.student.enrollment'])->p
     Route::get('/quizzes/{quiz}/start', [StudentQuizController::class, 'startQuiz'])->name('quizzes.start');
     Route::get('/quizzes/{quiz}/attempt/{attempt}', [StudentQuizController::class, 'showQuiz'])->name('quizzes.show');
 
+    // المكتبة
+    Route::get('/library', [\App\Http\Controllers\Student\StudentLibraryController::class, 'index'])->name('library.index');
+    Route::get('/library/{item}', [\App\Http\Controllers\Student\StudentLibraryController::class, 'show'])->name('library.show');
+    Route::post('/library/{item}/download', [\App\Http\Controllers\Student\StudentLibraryController::class, 'download'])->name('library.download');
+
     // AI Feedback
     Route::get('/ai-feedback', [\App\Http\Controllers\Student\AIStudentFeedbackController::class, 'index'])->name('ai-feedback.index');
     Route::get('/ai-feedback/{aiFeedback}', [\App\Http\Controllers\Student\AIStudentFeedbackController::class, 'show'])->name('ai-feedback.show');

@@ -7,6 +7,8 @@ use App\Http\Controllers\Admin\EnrollmentController;
 use App\Http\Controllers\Admin\HeroSlideController;
 use App\Http\Controllers\Admin\LessonAttachmentController;
 use App\Http\Controllers\Admin\LessonController;
+use App\Http\Controllers\Admin\LibraryCategoryController;
+use App\Http\Controllers\Admin\LibraryItemController;
 use App\Http\Controllers\Admin\LoginLogController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\NotificationPreferenceController as AdminNotificationPreferenceController;
@@ -87,6 +89,29 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('subjects.questions.export-word');
         Route::get('subjects/{subject}/questions/bulk-ids', [SubjectQuestionBankController::class, 'bulkSelectableIds'])
             ->name('subjects.questions.bulk-ids');
+
+        // المكتبة (تصنيفات وعناصر مرتبطة بصف/مادة)
+        Route::resource('library/categories', LibraryCategoryController::class)->except('show')->names([
+            'index' => 'library.categories.index',
+            'create' => 'library.categories.create',
+            'store' => 'library.categories.store',
+            'edit' => 'library.categories.edit',
+            'update' => 'library.categories.update',
+            'destroy' => 'library.categories.destroy',
+        ]);
+        Route::get('library/items/subjects-by-class', [LibraryItemController::class, 'getSubjectsByClass'])
+            ->name('library.items.subjects-by-class');
+        Route::resource('library/items', LibraryItemController::class)->names([
+            'index' => 'library.items.index',
+            'create' => 'library.items.create',
+            'store' => 'library.items.store',
+            'show' => 'library.items.show',
+            'edit' => 'library.items.edit',
+            'update' => 'library.items.update',
+            'destroy' => 'library.items.destroy',
+        ]);
+        Route::get('library/items/{item}/download', [LibraryItemController::class, 'download'])
+            ->name('library.items.download');
 
         // أقسام المواد (داخل كل مادة)
         Route::post('subjects/{subject}/sections', [SubjectSectionController::class, 'store'])
