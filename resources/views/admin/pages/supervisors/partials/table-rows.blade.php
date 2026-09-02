@@ -84,7 +84,7 @@
             </span>
         </td>
         <td>
-            @canany(['user-impersonate', 'supervisor-assignment-show', 'user-edit', 'user-delete'])
+            @canany(['user-impersonate', 'supervisor-assignment-show', 'user-edit', 'user-delete', 'supervisor-assignment-update'])
                 <div class="row-action-bar">
                     @can('user-impersonate')
                         <button type="button" class="row-action-btn row-action-btn--info"
@@ -115,6 +115,15 @@
                            title="تعديل">
                             <i class="bi bi-pencil"></i>
                         </a>
+                    @endcan
+
+                    @can('supervisor-assignment-update')
+                        <button type="button" class="row-action-btn row-action-btn--warning"
+                                data-bs-toggle="modal"
+                                data-bs-target="#resetSupervisorPassword{{ $supervisor->id }}"
+                                title="إعادة تعيين كلمة المرور وإرسالها عبر واتساب">
+                            <i class="bi bi-key"></i>
+                        </button>
                     @endcan
 
                     @can('user-delete')

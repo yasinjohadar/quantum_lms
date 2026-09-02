@@ -145,7 +145,7 @@
             @endif
         </td>
         <td>
-            @canany(['user-impersonate', 'teacher-assignment-show', 'teacher-progress-view', 'user-edit', 'user-delete'])
+            @canany(['user-impersonate', 'teacher-assignment-show', 'teacher-progress-view', 'user-edit', 'user-delete', 'teacher-assignment-update'])
                 <div class="row-action-bar">
                     @can('user-impersonate')
                         <button type="button" class="row-action-btn row-action-btn--info"
@@ -185,6 +185,15 @@
                         </a>
                     @endcan
 
+                    @can('teacher-assignment-update')
+                        <button type="button" class="row-action-btn row-action-btn--warning"
+                                data-bs-toggle="modal"
+                                data-bs-target="#resetTeacherPassword{{ $teacher->id }}"
+                                title="إعادة تعيين كلمة المرور وإرسالها عبر واتساب">
+                            <i class="bi bi-key"></i>
+                        </button>
+                    @endcan
+
                     @can('user-delete')
                         <span class="row-action-divider" aria-hidden="true"></span>
                         <button type="button" class="row-action-btn row-action-btn--danger"
@@ -205,5 +214,8 @@
     @endcan
     @can('user-delete')
         @include('admin.pages.users.delete', ['user' => $teacher])
+    @endcan
+    @can('teacher-assignment-update')
+        @include('admin.pages.teachers.partials.reset-password-modal', ['teacher' => $teacher])
     @endcan
 @endforeach

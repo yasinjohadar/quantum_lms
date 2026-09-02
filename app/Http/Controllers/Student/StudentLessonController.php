@@ -73,33 +73,21 @@ class StudentLessonController extends Controller
             ->unique()
             ->filter();
 
-        foreach ($approvedClassIds as $classId) {
-            if ($classes->has($classId)) {
-                continue;
-            }
-            $schoolClass = SchoolClass::with('stage')->find($classId);
-            if ($schoolClass) {
-                $classes->put($classId, [
-                    'class' => $schoolClass,
-                    'subjects' => collect(),
-                ]);
-            }
-        }
-
-        foreach ($approvedClassIds as $classId) {
-            if (!$classes->has($classId)) {
-                continue;
-            }
-            $row = $classes->get($classId);
-            $row['subjects'] = Subject::active()
-                ->byClass($classId)
-                ->ordered()
-                ->with([
-                    'schoolClass.stage',
-                    'enrollments' => fn ($q) => $q->where('user_id', $user->id),
-                ])
-                ->get();
-            $classes->put($classId, $row);
+        // نضيف فقط الصفوف الموافق عليها التي لا تحتوي بعد على أي مادة (الطالب لم
+        // يُسجَّل فرديًا بأي مادة ضمن هذا الصف بعد) كصف فارغ، بدفعة استعلام واحدة
+        // بدل استعلام SchoolClass::find() لكل صف — ولا نستبدل قوائم المواد الصحيحة
+        // المبنية أعلاه بكل مواد الصف (كانت تعرض مواد الطالب غير مسجَّل بها فعليًا).
+        $missingClassIds = $approvedClassIds->diff($classes->keys());
+        if ($missingClassIds->isNotEmpty()) {
+            SchoolClass::with('stage')
+                ->whereIn('id', $missingClassIds)
+                ->get()
+                ->each(function (SchoolClass $schoolClass) use ($classes) {
+                    $classes->put($schoolClass->id, [
+                        'class' => $schoolClass,
+                        'subjects' => collect(),
+                    ]);
+                });
         }
 
         // ترتيب الصفوف حسب order
@@ -181,8 +169,6 @@ class StudentLessonController extends Controller
                 },
             ])
             ->firstOrFail();
-
-        $section->loadMissing(['units.quizzes', 'units.linkedQuizzes', 'mirroredUnits.quizzes', 'mirroredUnits.linkedQuizzes']);
 
         $children = $section->children;
         $units = $section->rootUnitsForDisplay(onlyActive: true);
@@ -356,6 +342,18 @@ class StudentLessonController extends Controller
                 },
                 'units.lessons' => function ($query) {
                     $query->where('is_active', true)->orderBy('order');
+                },
+                'units.linkedLessons' => function ($query) {
+                    $query->orderBy('lessons.order');
+                },
+                'mirroredUnits' => function ($query) {
+                    $query->where('is_active', true)->orderByPivot('order');
+                },
+                'mirroredUnits.lessons' => function ($query) {
+                    $query->where('is_active', true)->orderBy('order');
+                },
+                'mirroredUnits.linkedLessons' => function ($query) {
+                    $query->orderBy('lessons.order');
                 },
             ])
             ->where('is_active', true)

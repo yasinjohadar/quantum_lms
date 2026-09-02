@@ -7,6 +7,7 @@ use App\Models\AppStorageConfig;
 use App\Models\StorageDiskMapping;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -256,7 +257,7 @@ class CloudFirstStorageRouter
                 }
                 try {
                     $disk = AppStorageFactory::create($storageConfig);
-                    if (!$disk->exists($path)) {
+                    if (!$this->existsCachedForUrl($disk, $storageConfig->id, $path)) {
                         continue;
                     }
 
@@ -297,6 +298,21 @@ class CloudFirstStorageRouter
         }
 
         return '';
+    }
+
+    /**
+     * فحص وجود ملف على قرص سحابي (مع كاش قصير) — يُستخدم فقط داخل url() لتفادي
+     * طلب شبكة حقيقي (مثل HEAD إلى S3) لكل صورة في كل تحميل صفحة. لا يُستخدم هذا
+     * الكاش في exists()/uploadToDisk() العامة لأن التحقق هناك يجب أن يبقى فوريًا
+     * ودقيقًا (مثلاً التحقق من نجاح الرفع مباشرة بعده).
+     */
+    private function existsCachedForUrl(Filesystem $disk, int $storageConfigId, string $path): bool
+    {
+        $cacheKey = 'storage_url_exists:' . $storageConfigId . ':' . md5($path);
+
+        return (bool) Cache::remember($cacheKey, now()->addMinutes(10), function () use ($disk, $path) {
+            return $disk->exists($path);
+        });
     }
 
     /**
@@ -582,6 +598,17 @@ class CloudFirstStorageRouter
     }
 
     private function resolveActiveMapping(string $diskName): ?StorageDiskMapping
+    {
+        // كاش قصير: mapping التخزين النشط لا يتغيّر إلا نادرًا (عبر إعدادات الأدمن)،
+        // بينما هذه الدالة كانت تُستدعى باستعلام DB منفصل لكل ملف/صورة في كل طلب.
+        $cacheKey = 'storage_disk_mapping:' . $diskName;
+
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($diskName) {
+            return $this->resolveActiveMappingUncached($diskName);
+        });
+    }
+
+    private function resolveActiveMappingUncached(string $diskName): ?StorageDiskMapping
     {
         $candidates = array_values(array_unique(array_filter(
             [$diskName, config('storage.default_cloud_disk')],

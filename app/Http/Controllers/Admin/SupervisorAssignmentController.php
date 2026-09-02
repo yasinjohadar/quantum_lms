@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Helpers\PhoneHelper;
 use App\Http\Controllers\Controller;
 use App\Models\LoginLog;
 use App\Models\Role;
@@ -9,7 +10,10 @@ use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\User;
 use App\Models\UserSession;
+use App\Models\WhatsAppMessage;
+use App\Services\WhatsApp\SendWhatsAppMessage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 
 class SupervisorAssignmentController extends Controller
@@ -18,7 +22,7 @@ class SupervisorAssignmentController extends Controller
     {
         $this->middleware(['permission:supervisor-assignment-list'])->only(['index', 'getSubjectsByClass', 'overview']);
         $this->middleware(['permission:supervisor-assignment-show'])->only('show');
-        $this->middleware(['permission:supervisor-assignment-update'])->only('update');
+        $this->middleware(['permission:supervisor-assignment-update'])->only(['update', 'resetPasswordAndNotify']);
     }
 
     /**
@@ -116,6 +120,7 @@ class SupervisorAssignmentController extends Controller
             $pagination = view('admin.pages.supervisors.partials.pagination', compact('supervisors'))->render();
             $modals = view('admin.pages.supervisors.partials.delete-modals', compact('supervisors'))->render();
             $impersonateModals = view('admin.pages.users.partials.impersonate-modals', ['users' => $supervisors])->render();
+            $resetPasswordModals = view('admin.pages.supervisors.partials.reset-password-modals', compact('supervisors'))->render();
 
             return response()->json([
                 'success' => true,
@@ -123,6 +128,7 @@ class SupervisorAssignmentController extends Controller
                 'pagination' => $pagination,
                 'modals' => $modals,
                 'impersonate_modals' => $impersonateModals,
+                'reset_password_modals' => $resetPasswordModals,
                 'count' => $supervisors->total(),
             ]);
         }
@@ -295,5 +301,62 @@ class SupervisorAssignmentController extends Controller
         }
 
         return redirect()->back()->with('success', 'تم تحديث تخصيصات المشرف بنجاح');
+    }
+
+    /**
+     * إعادة تعيين كلمة مرور المشرف وإرسالها (مع اسمه ورقم هاتفه) عبر واتساب إلى هاتفه.
+     */
+    public function resetPasswordAndNotify(Request $request, User $supervisor)
+    {
+        if (! $supervisor->hasSupervisorStaffIdentity()) {
+            return redirect()->back()->with('error', 'المستخدم المحدد ليس مشرف');
+        }
+
+        $request->validate([
+            'phone' => 'required|string|max:20',
+            'password' => 'required|string|min:8|confirmed',
+        ], [
+            'phone.required' => 'رقم الهاتف مطلوب لإرسال كلمة المرور عبر واتساب',
+            'password.required' => 'كلمة المرور مطلوبة',
+            'password.min' => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
+            'password.confirmed' => 'تأكيد كلمة المرور غير متطابق',
+        ]);
+
+        $normalizedPhone = PhoneHelper::normalize($request->input('phone'), config('app.phone_default_country_code', '966'));
+
+        if ($normalizedPhone === null) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'رقم الهاتف غير صحيح. يرجى إدخال رقم صالح لإرسال كلمة المرور عبر واتساب.');
+        }
+
+        if ($normalizedPhone !== $supervisor->phone) {
+            $supervisor->update(['phone' => $normalizedPhone]);
+        }
+
+        $plainPassword = $request->input('password');
+        $supervisor->update(['password' => Hash::make($plainPassword)]);
+
+        $message = "مرحبًا {$supervisor->name}،\n"
+            . "تم تحديث كلمة المرور الخاصة بحسابك في أكاديمية كوانتم.\n"
+            . "رقم الهاتف: {$normalizedPhone}\n"
+            . "كلمة المرور الجديدة: {$plainPassword}\n\n"
+            . 'يرجى الاحتفاظ بها بشكل آمن وعدم مشاركتها مع أي شخص.';
+
+        try {
+            app(SendWhatsAppMessage::class)->sendTextNow(
+                $normalizedPhone,
+                $message,
+                false,
+                WhatsAppMessage::CATEGORY_SYSTEM
+            );
+
+            return redirect()->back()->with('success', "تم تحديث كلمة مرور المشرف ({$supervisor->name}) وإرسالها عبر واتساب بنجاح");
+        } catch (\Throwable $e) {
+            return redirect()->back()->with(
+                'warning',
+                "تم تحديث كلمة المرور بنجاح، لكن تعذّر إرسالها عبر واتساب: {$e->getMessage()}. يرجى إبلاغ المشرف يدوياً."
+            );
+        }
     }
 }

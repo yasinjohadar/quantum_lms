@@ -52,6 +52,25 @@
                 </div>
             @endif
 
+            @if (session('warning'))
+                <div class="alert alert-warning alert-dismissible fade show">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ session('warning') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
+
+            @if ($errors->any())
+                <div class="alert alert-danger alert-dismissible fade show">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <ul class="mb-0 ps-3">
+                        @foreach ($errors->all() as $validationError)
+                            <li>{{ $validationError }}</li>
+                        @endforeach
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
+
             @if(isset($totalTeachers))
                 <div class="teachers-stats">
                     <div class="teachers-stat-card teachers-stat-card--total">
@@ -273,6 +292,76 @@ function copyLink(userId) {
     }, 2000);
 }
 </script>
+<script>
+// دوال عامة لمودال "إعادة تعيين كلمة مرور المعلم" — مُعرَّفة مرة واحدة هنا (وليس داخل
+// الجزئي المُضمَّن لكل معلم في الجدول) لأن هذا الجزء يتكرر بعدد المعلمين مع كل تحميل/تحديث
+// AJAX لجدول المعلمين، وتعريف الدوال هناك كان سيُعيد أحد المعلمين الكتابة فوق تعريف الآخر.
+function generateTeacherPassword(length = 10) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    let value = '';
+    for (let i = 0; i < length; i++) {
+        value += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return value;
+}
+
+function generateTeacherPasswordSuggestions(teacherId) {
+    const container = document.getElementById('resetPasswordSuggestions' + teacherId);
+    if (!container) return;
+    container.innerHTML = '';
+
+    for (let i = 0; i < 3; i++) {
+        const suggestion = generateTeacherPassword();
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'btn btn-sm btn-outline-primary font-monospace';
+        chip.textContent = suggestion;
+        chip.title = 'اضغط لاستخدام هذه الكلمة';
+        chip.addEventListener('click', function () {
+            const passwordInput = document.getElementById('resetPassword' + teacherId);
+            const confirmInput = document.getElementById('resetPasswordConfirm' + teacherId);
+            if (passwordInput) passwordInput.value = suggestion;
+            if (confirmInput) confirmInput.value = suggestion;
+        });
+        container.appendChild(chip);
+    }
+}
+
+function copyTeacherPassword(teacherId) {
+    const passwordInput = document.getElementById('resetPassword' + teacherId);
+    if (!passwordInput || !passwordInput.value) return;
+    passwordInput.select();
+    passwordInput.setSelectionRange(0, 99999);
+    document.execCommand('copy');
+    const button = event.target.closest('button');
+    if (!button) return;
+    const originalHtml = button.innerHTML;
+    button.innerHTML = '<i class="bi bi-check2"></i>';
+    setTimeout(() => { button.innerHTML = originalHtml; }, 1500);
+}
+
+// تفويض عام (delegated) على مستوى الصفحة كي يعمل مع كل مودالات إعادة تعيين كلمة المرور
+// حتى بعد استبدال جسم الجدول بمحتوى جديد عبر AJAX (تصفية/ترقيم صفحات).
+document.addEventListener('shown.bs.modal', function (evt) {
+    const modalEl = evt.target;
+    if (!modalEl.id || !modalEl.id.startsWith('resetTeacherPassword')) return;
+    const teacherId = modalEl.id.replace('resetTeacherPassword', '');
+    const container = document.getElementById('resetPasswordSuggestions' + teacherId);
+    if (container && container.children.length === 0) {
+        generateTeacherPasswordSuggestions(teacherId);
+    }
+});
+</script>
+@if ($errors->any() && old('teacher_id'))
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var failedModalEl = document.getElementById('resetTeacherPassword{{ old('teacher_id') }}');
+        if (failedModalEl && window.bootstrap) {
+            bootstrap.Modal.getOrCreateInstance(failedModalEl).show();
+        }
+    });
+    </script>
+@endif
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('teachersFiltersForm');

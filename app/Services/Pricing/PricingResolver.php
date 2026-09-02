@@ -61,12 +61,15 @@ class PricingResolver
         $isFree = $this->subjectPricingResolver->isEffectivelyFree($subject);
         $showPrice = $subject->show_price ?? true;
 
+        // نحسب hasSubjectAccess() مرة واحدة فقط ونمررها للدوال التالية بدل أن يعيد كل منها
+        // حسابها من جديد (كل حساب قد يُنفّذ عدة استعلامات) — نفس النتيجة لأنه لا توجد أي
+        // كتابة على بيانات الوصول بين هذه الاستدعاءات.
         $canAccess = $user ? $this->accessResolver->hasSubjectAccess($user, $subject) : $isFree;
-        $canPurchase = $user ? $this->accessResolver->canPurchaseSubject($user, $subject) : false;
+        $canPurchase = $user ? $this->accessResolver->canPurchaseSubject($user, $subject, $canAccess) : false;
         $canPurchaseSeparately = ($subject->can_purchase_separately ?? true)
             && $this->subjectPricingResolver->canPurchaseSeparately($subject);
-        $accessType = $user ? $this->accessResolver->getSubjectAccessType($user, $subject) : ($isFree ? 'free' : 'requires_purchase');
-        $badge = $this->accessResolver->getSubjectBadge($subject, $user);
+        $accessType = $user ? $this->accessResolver->getSubjectAccessType($user, $subject, $canAccess) : ($isFree ? 'free' : 'requires_purchase');
+        $badge = $this->accessResolver->getSubjectBadge($subject, $user, $user ? $canAccess : null);
 
         $pricePresentation = $subject->resolveFrontendPricePresentation($isFree, $price, $currency);
         $displayPrice = $this->displayPriceFromPresentation($pricePresentation);

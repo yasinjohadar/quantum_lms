@@ -52,6 +52,25 @@
                 </div>
             @endif
 
+            @if (session('warning'))
+                <div class="alert alert-warning alert-dismissible fade show">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ session('warning') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
+
+            @if ($errors->any())
+                <div class="alert alert-danger alert-dismissible fade show">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <ul class="mb-0 ps-3">
+                        @foreach ($errors->all() as $validationError)
+                            <li>{{ $validationError }}</li>
+                        @endforeach
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            @endif
+
             @if(isset($totalSupervisors))
                 <div class="supervisors-stats">
                     <div class="supervisors-stat-card supervisors-stat-card--total">
@@ -219,6 +238,10 @@
                 @include('admin.pages.users.partials.impersonate-modals', ['users' => $supervisors])
             </div>
 
+            <div id="supervisorResetPasswordModals">
+                @include('admin.pages.supervisors.partials.reset-password-modals', ['supervisors' => $supervisors])
+            </div>
+
         </div>
     </div>
 @stop
@@ -239,6 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const tableWrapper = document.getElementById('supervisorsTableWrapper');
     const modalsContainer = document.getElementById('supervisorDeleteModals');
     const impersonateModalsContainer = document.getElementById('supervisorImpersonateModals');
+    const resetPasswordModalsContainer = document.getElementById('supervisorResetPasswordModals');
     const perPageToolbarContainer = document.getElementById('perPageToolbarContainer');
 
     const tableHeadHtml = `
@@ -419,6 +443,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (impersonateModalsContainer && typeof data.impersonate_modals === 'string') {
                 impersonateModalsContainer.innerHTML = data.impersonate_modals;
             }
+            if (resetPasswordModalsContainer && typeof data.reset_password_modals === 'string') {
+                resetPasswordModalsContainer.innerHTML = data.reset_password_modals;
+            }
             if (data.html && data.html.trim() !== '') {
                 ensureTableShell();
                 if (supervisorsTableBody) supervisorsTableBody.innerHTML = data.html;
@@ -427,6 +454,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 showEmptyState();
                 if (impersonateModalsContainer) impersonateModalsContainer.innerHTML = '';
+                if (resetPasswordModalsContainer) resetPasswordModalsContainer.innerHTML = '';
             }
             window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
         })
@@ -509,5 +537,73 @@ function copyLink(userId) {
         button.classList.add('btn-secondary');
     }, 2000);
 }
+
+// دوال عامة لمودال "إعادة تعيين كلمة مرور المشرف" — مُعرَّفة مرة واحدة هنا (وليس داخل
+// جزئي يتكرر لكل مشرف)، لتفادي إعادة كتابة أحد المشرفين لتعريف الآخر.
+function generateSupervisorPassword(length = 10) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    let value = '';
+    for (let i = 0; i < length; i++) {
+        value += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return value;
+}
+
+function generateSupervisorPasswordSuggestions(supervisorId) {
+    const container = document.getElementById('resetSupervisorPasswordSuggestions' + supervisorId);
+    if (!container) return;
+    container.innerHTML = '';
+
+    for (let i = 0; i < 3; i++) {
+        const suggestion = generateSupervisorPassword();
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'btn btn-sm btn-outline-primary font-monospace';
+        chip.textContent = suggestion;
+        chip.title = 'اضغط لاستخدام هذه الكلمة';
+        chip.addEventListener('click', function () {
+            const passwordInput = document.getElementById('resetSupervisorPasswordField' + supervisorId);
+            const confirmInput = document.getElementById('resetSupervisorPasswordConfirm' + supervisorId);
+            if (passwordInput) passwordInput.value = suggestion;
+            if (confirmInput) confirmInput.value = suggestion;
+        });
+        container.appendChild(chip);
+    }
+}
+
+function copySupervisorPassword(supervisorId) {
+    const passwordInput = document.getElementById('resetSupervisorPasswordField' + supervisorId);
+    if (!passwordInput || !passwordInput.value) return;
+    passwordInput.select();
+    passwordInput.setSelectionRange(0, 99999);
+    document.execCommand('copy');
+    const button = event.target.closest('button');
+    if (!button) return;
+    const originalHtml = button.innerHTML;
+    button.innerHTML = '<i class="bi bi-check2"></i>';
+    setTimeout(() => { button.innerHTML = originalHtml; }, 1500);
+}
+
+// تفويض عام على مستوى الصفحة كي يعمل مع كل مودالات إعادة تعيين كلمة المرور حتى بعد
+// استبدال محتوى الجدول/المودالات عبر AJAX (تصفية/بحث/ترقيم صفحات).
+document.addEventListener('shown.bs.modal', function (evt) {
+    const modalEl = evt.target;
+    if (!modalEl.id || !modalEl.id.startsWith('resetSupervisorPassword')) return;
+    const supervisorId = modalEl.id.replace('resetSupervisorPassword', '');
+    const container = document.getElementById('resetSupervisorPasswordSuggestions' + supervisorId);
+    if (container && container.children.length === 0) {
+        generateSupervisorPasswordSuggestions(supervisorId);
+    }
+});
 </script>
+@if ($errors->any() && old('supervisor_id'))
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var failedModalEl = document.getElementById('resetSupervisorPassword{{ old('supervisor_id') }}');
+        if (failedModalEl && window.bootstrap) {
+            bootstrap.Modal.getOrCreateInstance(failedModalEl).show();
+        }
+    });
+    </script>
+@endif
 @stop

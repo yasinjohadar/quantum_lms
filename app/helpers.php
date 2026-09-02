@@ -37,9 +37,13 @@ if (! function_exists('question_content_differs_from_title')) {
 if (! function_exists('media_public_url')) {
     /**
      * رابط عام للملف المخزّن تحت مسار public storage (يفضّل السحابة عند توفر الملف هناك).
+     * نحتفظ بذاكرة تخزين مؤقت ضمن نفس الطلب فقط (نفس المسار يتكرر أحياناً عشرات المرات
+     * في صفحة واحدة، مثل صور المواد/الدروس داخل حلقات @foreach).
      */
     function media_public_url(?string $path): string
     {
+        static $requestCache = [];
+
         if ($path === null || $path === '') {
             return '';
         }
@@ -52,8 +56,16 @@ if (! function_exists('media_public_url')) {
 
         $normalized = ltrim(str_replace('\\', '/', $path), '/');
 
+        if ($normalized === '') {
+            return '';
+        }
+
+        if (array_key_exists($normalized, $requestCache)) {
+            return $requestCache[$normalized];
+        }
+
         try {
-            return \App\Services\Storage\MediaStorageService::url($normalized);
+            return $requestCache[$normalized] = \App\Services\Storage\MediaStorageService::url($normalized);
         } catch (\Throwable $e) {
             // Fallback to local URL only when the file exists locally
             try {
@@ -61,13 +73,13 @@ if (! function_exists('media_public_url')) {
                     config('storage.fallback_disk', 'public')
                 );
                 if ($disk->exists($normalized)) {
-                    return $disk->url($normalized);
+                    return $requestCache[$normalized] = $disk->url($normalized);
                 }
             } catch (\Throwable $inner) {
                 //
             }
 
-            return '';
+            return $requestCache[$normalized] = '';
         }
     }
 }

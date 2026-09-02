@@ -119,7 +119,11 @@ class StudentEnrollmentController extends Controller
             ->reject(fn (Subject $subject) => array_key_exists((int) $subject->id, $pendingSubjectPurchaseIds))
             ->values();
 
-        $subjectAccessById = $class->subjects->mapWithKeys(function (Subject $subject) use ($user) {
+        // نحسب بيانات الوصول فقط للمواد المعروضة فعلياً في الصفحة (subjectsToShow)، وليس كل
+        // مواد الصف — الحساب لكل مادة مكلف (عدة استعلامات)، وحساب المواد غير المعروضة
+        // (مثلاً حين يملك الطالب وصولاً كاملاً للصف فتكون subjectsToShow فارغة) كان يُهدر
+        // بالكامل دون أي استخدام في الـ view.
+        $subjectAccessById = $subjectsToShow->mapWithKeys(function (Subject $subject) use ($user) {
             return [
                 $subject->id => $this->pricingResolver->resolveSubjectAccessData($subject, $user, null)->toArray(),
             ];

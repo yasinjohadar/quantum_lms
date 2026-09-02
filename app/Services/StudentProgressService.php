@@ -13,6 +13,7 @@ use App\Models\Question;
 use App\Models\LessonCompletion;
 use App\Models\QuizAttempt;
 use App\Models\QuestionAttempt;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 
@@ -23,25 +24,37 @@ class StudentProgressService
      *
      * @return Collection<int, Unit>
      */
-    protected function unitsForSectionProgressTree(SubjectSection $section): Collection
+    protected function unitsForSectionProgressTree(SubjectSection $section, ?Collection $sectionsPool = null): Collection
     {
         $collected = collect();
         foreach ($section->rootUnitsForDisplay(onlyActive: true) as $root) {
             if (!$root->relationLoaded('section')) {
-                $root->load([
-                    'section.units' => fn ($q) => $q->where('is_active', true),
-                    'section.units.lessons',
-                    'section.units.quizzes',
-                    'section.units.questions',
-                ]);
-            } else {
-                $root->section->loadMissing([
-                    'units' => fn ($q) => $q->where('is_active', true),
-                    'units.lessons',
-                    'units.quizzes',
-                    'units.questions',
-                ]);
+                $homeSection = null;
+                if ((int) $root->section_id === (int) $section->id) {
+                    $homeSection = $section;
+                } elseif ($sectionsPool) {
+                    $homeSection = $sectionsPool->firstWhere('id', $root->section_id);
+                }
+
+                if ($homeSection) {
+                    $root->setRelation('section', $homeSection);
+                } else {
+                    $root->load([
+                        'section.units' => fn ($q) => $q->where('is_active', true),
+                        'section.units.lessons',
+                        'section.units.quizzes',
+                        'section.units.questions',
+                    ]);
+                }
             }
+
+            // إن كانت الوحدات محمّلة مسبقًا (من $section أو من مجمّع الأقسام) فلن يُنفَّذ أي استعلام هنا.
+            $root->section->loadMissing([
+                'units' => fn ($q) => $q->where('is_active', true),
+                'units.lessons',
+                'units.quizzes',
+                'units.questions',
+            ]);
 
             $homeUnits = $root->section?->units?->where('is_active', true);
             if ($homeUnits === null || $homeUnits->isEmpty()) {
@@ -88,23 +101,45 @@ class StudentProgressService
                 'percentage' => 0,
             ];
         }
-        
-        $completion = LessonCompletion::where('user_id', $userId)
-            ->where('lesson_id', $lessonId)
-            ->first();
-        
-        $isCompleted = $completion && $completion->status === 'completed';
-        $isAttended = $completion && $completion->status === 'attended';
-        
-        return [
-            'completed' => $isCompleted,
-            'attended' => $isAttended,
-            'status' => $completion ? $completion->status : null,
-            'percentage' => $isCompleted ? 100 : ($isAttended ? 50 : 0),
-            'marked_at' => $completion ? $completion->marked_at : null,
-        ];
+
+        return $this->batchLessonProgress($userId, collect([$lesson]))[$lesson->id];
     }
-    
+
+    /**
+     * حساب تقدم مجموعة من الدروس دفعة واحدة (استعلام LessonCompletion واحد بدل استعلام لكل درس).
+     *
+     * @param  Collection<int, Lesson>  $lessons
+     * @return array<int, array{completed: bool, attended: bool, status: ?string, percentage: int, marked_at: mixed}>
+     */
+    protected function batchLessonProgress(int $userId, Collection $lessons): array
+    {
+        $lessonIds = $lessons->pluck('id')->unique()->values();
+
+        $completions = $lessonIds->isEmpty()
+            ? collect()
+            : LessonCompletion::where('user_id', $userId)
+                ->whereIn('lesson_id', $lessonIds)
+                ->get()
+                ->keyBy('lesson_id');
+
+        $result = [];
+        foreach ($lessons as $lesson) {
+            $completion = $completions->get($lesson->id);
+            $isCompleted = $completion && $completion->status === 'completed';
+            $isAttended = $completion && $completion->status === 'attended';
+
+            $result[$lesson->id] = [
+                'completed' => $isCompleted,
+                'attended' => $isAttended,
+                'status' => $completion ? $completion->status : null,
+                'percentage' => $isCompleted ? 100 : ($isAttended ? 50 : 0),
+                'marked_at' => $completion ? $completion->marked_at : null,
+            ];
+        }
+
+        return $result;
+    }
+
     /**
      * حساب نسبة إكمال قسم معين
      */
@@ -159,15 +194,10 @@ class StudentProgressService
         
         // حساب الدروس المكتملة
         $lessonsTotal = $allLessons->count();
-        $lessonsCompleted = 0;
-        foreach ($allLessons as $lesson) {
-            $progress = $this->calculateLessonProgress($userId, $lesson->id);
-            if ($progress['completed']) {
-                $lessonsCompleted++;
-            }
-        }
+        $lessonProgressMap = $this->batchLessonProgress($userId, $allLessons);
+        $lessonsCompleted = collect($lessonProgressMap)->where('completed', true)->count();
         $lessonsPercentage = $lessonsTotal > 0 ? ($lessonsCompleted / $lessonsTotal) * 100 : 0;
-        
+
         // حساب الاختبارات المكتملة (عادية + تفاعلية)
         $regularQuizzesCompleted = $allQuizzes->isEmpty()
             ? 0
@@ -237,13 +267,13 @@ class StudentProgressService
             'sections.mirroredUnits.questions',
         ])
             ->findOrFail($subjectId);
-        
+
         // التحقق من أن الطالب مسجل في المادة
         $isEnrolled = $subject->students()
             ->where('users.id', $userId)
             ->where('enrollments.status', 'active')
             ->exists();
-        
+
         if (!$isEnrolled) {
             return [
                 'lessons_percentage' => 0,
@@ -258,15 +288,24 @@ class StudentProgressService
                 'questions_total' => 0,
             ];
         }
-        
+
+        return $this->calculateSubjectProgressForLoadedSubject($subject, $userId);
+    }
+
+    /**
+     * حساب نسبة إكمال كورس كامل لمادة محمّلة ومُتحقَّق من تسجيل الطالب فيها مسبقًا.
+     * يُستخدم لتفادي إعادة جلب المادة والتحقق من التسجيل عند الحساب لعدة مواد ضمن حلقة واحدة.
+     */
+    protected function calculateSubjectProgressForLoadedSubject(Subject $subject, $userId): array
+    {
         // جمع جميع الدروس والاختبارات والأسئلة في الكورس
         $allLessons = collect();
         $allQuizzes = collect();
         $allQuestions = collect();
-        
+
         $allInteractive = collect();
         foreach ($subject->sections as $section) {
-            $treeUnits = $this->unitsForSectionProgressTree($section);
+            $treeUnits = $this->unitsForSectionProgressTree($section, $subject->sections);
             foreach ($treeUnits as $unit) {
                 $allLessons = $allLessons->merge($unit->lessons->where('is_active', true));
                 $allQuizzes = $allQuizzes->merge($unit->quizzes->where('is_active', true)->where('is_published', true));
@@ -280,16 +319,11 @@ class StudentProgressService
         $allQuizzes = $allQuizzes->unique('id')->values();
         $allQuestions = $allQuestions->unique('id')->values();
         $allInteractive = $allInteractive->unique('id')->values();
-        
+
         // حساب الدروس المكتملة
         $lessonsTotal = $allLessons->count();
-        $lessonsCompleted = 0;
-        foreach ($allLessons as $lesson) {
-            $progress = $this->calculateLessonProgress($userId, $lesson->id);
-            if ($progress['completed']) {
-                $lessonsCompleted++;
-            }
-        }
+        $lessonProgressMap = $this->batchLessonProgress($userId, $allLessons);
+        $lessonsCompleted = collect($lessonProgressMap)->where('completed', true)->count();
         $lessonsPercentage = $lessonsTotal > 0 ? ($lessonsCompleted / $lessonsTotal) * 100 : 0;
         
         // حساب الاختبارات المكتملة (عادية + تفاعلية)
@@ -514,51 +548,64 @@ class StudentProgressService
      */
     public function getAllStudentProgress($userId): array
     {
-        $user = \App\Models\User::findOrFail($userId);
-        
-        $subjects = $user->subjects()
-            ->with(['schoolClass.stage'])
-            ->wherePivot('status', 'active')
-            ->get()
-            ->sort(function (Subject $a, Subject $b) {
-                $stageOrderA = (int) ($a->schoolClass?->stage?->order ?? 999999);
-                $stageOrderB = (int) ($b->schoolClass?->stage?->order ?? 999999);
-                if ($stageOrderA !== $stageOrderB) {
-                    return $stageOrderA <=> $stageOrderB;
-                }
+        return Cache::remember("student_progress_{$userId}", 60, function () use ($userId) {
+            $user = \App\Models\User::findOrFail($userId);
 
-                $stageIdA = (int) ($a->schoolClass?->stage?->id ?? 0);
-                $stageIdB = (int) ($b->schoolClass?->stage?->id ?? 0);
-                if ($stageIdA !== $stageIdB) {
-                    return $stageIdA <=> $stageIdB;
-                }
+            $subjects = $user->subjects()
+                ->with([
+                    'schoolClass.stage',
+                    'sections.units.lessons',
+                    'sections.units.quizzes',
+                    'sections.units.questions',
+                    'sections.mirroredUnits.lessons',
+                    'sections.mirroredUnits.quizzes',
+                    'sections.mirroredUnits.questions',
+                ])
+                ->wherePivot('status', 'active')
+                ->get()
+                ->sort(function (Subject $a, Subject $b) {
+                    $stageOrderA = (int) ($a->schoolClass?->stage?->order ?? 999999);
+                    $stageOrderB = (int) ($b->schoolClass?->stage?->order ?? 999999);
+                    if ($stageOrderA !== $stageOrderB) {
+                        return $stageOrderA <=> $stageOrderB;
+                    }
 
-                $classOrderA = (int) ($a->schoolClass?->order ?? 999999);
-                $classOrderB = (int) ($b->schoolClass?->order ?? 999999);
-                if ($classOrderA !== $classOrderB) {
-                    return $classOrderA <=> $classOrderB;
-                }
+                    $stageIdA = (int) ($a->schoolClass?->stage?->id ?? 0);
+                    $stageIdB = (int) ($b->schoolClass?->stage?->id ?? 0);
+                    if ($stageIdA !== $stageIdB) {
+                        return $stageIdA <=> $stageIdB;
+                    }
 
-                $classIdA = (int) ($a->schoolClass?->id ?? 0);
-                $classIdB = (int) ($b->schoolClass?->id ?? 0);
-                if ($classIdA !== $classIdB) {
-                    return $classIdA <=> $classIdB;
-                }
+                    $classOrderA = (int) ($a->schoolClass?->order ?? 999999);
+                    $classOrderB = (int) ($b->schoolClass?->order ?? 999999);
+                    if ($classOrderA !== $classOrderB) {
+                        return $classOrderA <=> $classOrderB;
+                    }
 
-                return strcmp((string) ($a->name ?? ''), (string) ($b->name ?? ''));
-            })
-            ->values();
-        
-        $progressList = [];
-        foreach ($subjects as $subject) {
-            $progress = $this->calculateSubjectProgress($userId, $subject->id);
-            $progressList[] = [
-                'subject' => $subject,
-                'progress' => $progress,
-            ];
-        }
-        
-        return $progressList;
+                    $classIdA = (int) ($a->schoolClass?->id ?? 0);
+                    $classIdB = (int) ($b->schoolClass?->id ?? 0);
+                    if ($classIdA !== $classIdB) {
+                        return $classIdA <=> $classIdB;
+                    }
+
+                    return strcmp((string) ($a->name ?? ''), (string) ($b->name ?? ''));
+                })
+                ->values();
+
+            $progressList = [];
+            foreach ($subjects as $subject) {
+                $progress = $this->calculateSubjectProgressForLoadedSubject($subject, $userId);
+                // نتخلص من شجرة الأقسام/الوحدات الثقيلة قبل التخزين/الكاش، فهي لم تعد مطلوبة
+                // بعد حساب التقدم، والعرض يحتاج فقط إلى schoolClass.stage.
+                $subject->unsetRelation('sections');
+                $progressList[] = [
+                    'subject' => $subject,
+                    'progress' => $progress,
+                ];
+            }
+
+            return $progressList;
+        });
     }
     
     /**
@@ -599,19 +646,26 @@ class StudentProgressService
         // تفاصيل الدروس
         $lessonsDetails = [];
         $seenLessonIds = [];
+        $lessonUnitPairs = [];
         foreach ($treeUnits as $unit) {
             foreach ($unit->lessons->where('is_active', true) as $lesson) {
                 if (isset($seenLessonIds[$lesson->id])) {
                     continue;
                 }
                 $seenLessonIds[$lesson->id] = true;
-                $lessonProgress = $this->calculateLessonProgress($userId, $lesson->id);
-                $lessonsDetails[] = [
-                    'lesson' => $lesson,
-                    'unit' => $unit,
-                    'progress' => $lessonProgress,
-                ];
+                $lessonUnitPairs[] = ['lesson' => $lesson, 'unit' => $unit];
             }
+        }
+        $lessonProgressMap = $this->batchLessonProgress(
+            $userId,
+            collect($lessonUnitPairs)->pluck('lesson')
+        );
+        foreach ($lessonUnitPairs as $pair) {
+            $lessonsDetails[] = [
+                'lesson' => $pair['lesson'],
+                'unit' => $pair['unit'],
+                'progress' => $lessonProgressMap[$pair['lesson']->id],
+            ];
         }
 
         // تفاصيل الاختبارات

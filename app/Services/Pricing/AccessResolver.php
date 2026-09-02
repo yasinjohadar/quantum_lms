@@ -71,20 +71,28 @@ class AccessResolver
         return false;
     }
 
-    public function canPurchaseSubject(User $user, Subject $subject): bool
+    /**
+     * @param  bool|null  $hasAccess  نتيجة hasSubjectAccess() جاهزة إن كانت محسوبة مسبقاً لنفس (user, subject)
+     *                                ضمن نفس العملية، لتفادي إعادة حسابها (عدة استعلامات) من جديد.
+     */
+    public function canPurchaseSubject(User $user, Subject $subject, ?bool $hasAccess = null): bool
     {
         if (! $this->subjectPricingResolver->canPurchaseSeparately($subject)) {
             return false;
         }
 
-        if ($this->hasSubjectAccess($user, $subject)) {
+        $hasAccess ??= $this->hasSubjectAccess($user, $subject);
+        if ($hasAccess) {
             return false;
         }
 
         return true;
     }
 
-    public function getSubjectAccessType(User $user, Subject $subject): string
+    /**
+     * @param  bool|null  $hasAccess  نتيجة hasSubjectAccess() جاهزة إن كانت محسوبة مسبقاً (انظر canPurchaseSubject)
+     */
+    public function getSubjectAccessType(User $user, Subject $subject, ?bool $hasAccess = null): string
     {
         $pricingMode = $this->resolveSubjectPricingMode($subject);
 
@@ -92,7 +100,8 @@ class AccessResolver
             return 'hidden';
         }
 
-        if ($this->hasSubjectAccess($user, $subject)) {
+        $hasAccess ??= $this->hasSubjectAccess($user, $subject);
+        if ($hasAccess) {
             if ($pricingMode === PricingMode::FREE || $this->isSubjectInherentlyFree($subject)) {
                 return 'free';
             }
@@ -156,7 +165,10 @@ class AccessResolver
         return 'purchasable';
     }
 
-    public function getSubjectBadge(Subject $subject, ?User $user = null): array
+    /**
+     * @param  bool|null  $hasAccess  نتيجة hasSubjectAccess() جاهزة إن كانت محسوبة مسبقاً (انظر canPurchaseSubject)
+     */
+    public function getSubjectBadge(Subject $subject, ?User $user = null, ?bool $hasAccess = null): array
     {
         $pricingMode = $this->resolveSubjectPricingMode($subject);
 
@@ -172,7 +184,7 @@ class AccessResolver
             return ['text' => 'مدفوع', 'class' => 'bg-warning', 'icon' => 'fa-lock'];
         }
 
-        $accessType = $this->getSubjectAccessType($user, $subject);
+        $accessType = $this->getSubjectAccessType($user, $subject, $hasAccess);
 
         return match ($accessType) {
             'free' => ['text' => 'مجاني', 'class' => 'bg-success', 'icon' => 'fa-check-circle'],

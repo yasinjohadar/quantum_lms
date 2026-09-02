@@ -2,19 +2,23 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Helpers\PhoneHelper;
 use App\Http\Controllers\Controller;
 use App\Models\LoginLog;
 use App\Models\Role;
 use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\User;
+use App\Models\WhatsAppMessage;
 use App\Services\AcademicWeekService;
 use App\Services\TeacherProgressService;
+use App\Services\WhatsApp\SendWhatsAppMessage;
 use App\Models\UserSession;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 
 class TeacherAssignmentController extends Controller
@@ -30,6 +34,7 @@ class TeacherAssignmentController extends Controller
             'attachSubject',
             'detachSubject',
             'patchSubjectRequiredPages',
+            'resetPasswordAndNotify',
         ]);
     }
 
@@ -353,6 +358,63 @@ class TeacherAssignmentController extends Controller
         }
 
         return redirect()->back()->with('success', 'تم تحديث تخصيصات المعلم بنجاح');
+    }
+
+    /**
+     * إعادة تعيين كلمة مرور المعلم وإرسالها (مع اسمه ورقم هاتفه) عبر واتساب إلى هاتفه.
+     */
+    public function resetPasswordAndNotify(Request $request, User $teacher)
+    {
+        if (! $teacher->matchesAdminTeacherListingCriteria()) {
+            return redirect()->back()->with('error', 'المستخدم المحدد ليس معلم');
+        }
+
+        $request->validate([
+            'phone' => 'required|string|max:20',
+            'password' => 'required|string|min:8|confirmed',
+        ], [
+            'phone.required' => 'رقم الهاتف مطلوب لإرسال كلمة المرور عبر واتساب',
+            'password.required' => 'كلمة المرور مطلوبة',
+            'password.min' => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
+            'password.confirmed' => 'تأكيد كلمة المرور غير متطابق',
+        ]);
+
+        $normalizedPhone = PhoneHelper::normalize($request->input('phone'), config('app.phone_default_country_code', '966'));
+
+        if ($normalizedPhone === null) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'رقم الهاتف غير صحيح. يرجى إدخال رقم صالح لإرسال كلمة المرور عبر واتساب.');
+        }
+
+        if ($normalizedPhone !== $teacher->phone) {
+            $teacher->update(['phone' => $normalizedPhone]);
+        }
+
+        $plainPassword = $request->input('password');
+        $teacher->update(['password' => Hash::make($plainPassword)]);
+
+        $message = "مرحبًا {$teacher->name}،\n"
+            . "تم تحديث كلمة المرور الخاصة بحسابك في أكاديمية كوانتم.\n"
+            . "رقم الهاتف: {$normalizedPhone}\n"
+            . "كلمة المرور الجديدة: {$plainPassword}\n\n"
+            . 'يرجى الاحتفاظ بها بشكل آمن وعدم مشاركتها مع أي شخص.';
+
+        try {
+            app(SendWhatsAppMessage::class)->sendTextNow(
+                $normalizedPhone,
+                $message,
+                false,
+                WhatsAppMessage::CATEGORY_SYSTEM
+            );
+
+            return redirect()->back()->with('success', "تم تحديث كلمة مرور المعلم ({$teacher->name}) وإرسالها عبر واتساب بنجاح");
+        } catch (\Throwable $e) {
+            return redirect()->back()->with(
+                'warning',
+                "تم تحديث كلمة المرور بنجاح، لكن تعذّر إرسالها عبر واتساب: {$e->getMessage()}. يرجى إبلاغ المعلم يدوياً."
+            );
+        }
     }
 
     /**

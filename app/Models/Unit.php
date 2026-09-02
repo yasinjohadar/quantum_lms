@@ -152,7 +152,11 @@ class Unit extends Model
      */
     public function allLessons()
     {
-        $primary = $this->lessons()->get();
+        if ($this->relationLoaded('lessons')) {
+            $primary = $this->lessons;
+        } else {
+            $primary = $this->lessons()->get();
+        }
         $primaryIds = $primary->pluck('id')->toArray();
         if ($this->relationLoaded('linkedLessons')) {
             $linked = $this->linkedLessons->whereNotIn('id', $primaryIds)->sortBy('order')->values();

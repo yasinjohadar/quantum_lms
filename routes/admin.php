@@ -681,6 +681,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('teachers.assignments.detach-subject');
         Route::patch('teachers/{teacher}/assignments/subjects/{subject}/required-pages', [\App\Http\Controllers\Admin\TeacherAssignmentController::class, 'patchSubjectRequiredPages'])
             ->name('teachers.assignments.subject-required-pages');
+        Route::put('teachers/{teacher}/reset-password', [\App\Http\Controllers\Admin\TeacherAssignmentController::class, 'resetPasswordAndNotify'])
+            ->name('teachers.reset-password');
 
         // تخصيص المشرفين
         Route::get('supervisors/assignments/subjects-by-class', [\App\Http\Controllers\Admin\SupervisorAssignmentController::class, 'getSubjectsByClass'])
@@ -693,6 +695,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('supervisors.assignments');
         Route::put('supervisors/{supervisor}/assignments', [\App\Http\Controllers\Admin\SupervisorAssignmentController::class, 'update'])
             ->name('supervisors.assignments.update');
+        Route::put('supervisors/{supervisor}/reset-password', [\App\Http\Controllers\Admin\SupervisorAssignmentController::class, 'resetPasswordAndNotify'])
+            ->name('supervisors.reset-password');
 
         // ===============================================
         // جلسات المستخدمين
