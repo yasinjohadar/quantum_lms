@@ -111,16 +111,20 @@ class StudentProgressService
      * @param  Collection<int, Lesson>  $lessons
      * @return array<int, array{completed: bool, attended: bool, status: ?string, percentage: int, marked_at: mixed}>
      */
-    protected function batchLessonProgress(int $userId, Collection $lessons): array
+    protected function batchLessonProgress(int $userId, Collection $lessons, ?Collection $preloadedCompletions = null): array
     {
         $lessonIds = $lessons->pluck('id')->unique()->values();
 
-        $completions = $lessonIds->isEmpty()
-            ? collect()
-            : LessonCompletion::where('user_id', $userId)
-                ->whereIn('lesson_id', $lessonIds)
-                ->get()
-                ->keyBy('lesson_id');
+        if ($preloadedCompletions !== null) {
+            $completions = $preloadedCompletions;
+        } else {
+            $completions = $lessonIds->isEmpty()
+                ? collect()
+                : LessonCompletion::where('user_id', $userId)
+                    ->whereIn('lesson_id', $lessonIds)
+                    ->get()
+                    ->keyBy('lesson_id');
+        }
 
         $result = [];
         foreach ($lessons as $lesson) {
@@ -293,17 +297,18 @@ class StudentProgressService
     }
 
     /**
-     * حساب نسبة إكمال كورس كامل لمادة محمّلة ومُتحقَّق من تسجيل الطالب فيها مسبقًا.
-     * يُستخدم لتفادي إعادة جلب المادة والتحقق من التسجيل عند الحساب لعدة مواد ضمن حلقة واحدة.
+     * تجميع دروس/اختبارات/أسئلة/اختبارات تفاعلية مادة كاملة (شجرة الأقسام) دون أي استعلام
+     * متعلق بتقدم الطالب — يُستخدم لتفادي إعادة حساب الشجرة عند تجميع بيانات عدة مواد دفعة واحدة.
+     *
+     * @return array{lessons: Collection, quizzes: Collection, questions: Collection, interactive: Collection}
      */
-    protected function calculateSubjectProgressForLoadedSubject(Subject $subject, $userId): array
+    protected function gatherSubjectProgressItems(Subject $subject): array
     {
-        // جمع جميع الدروس والاختبارات والأسئلة في الكورس
         $allLessons = collect();
         $allQuizzes = collect();
         $allQuestions = collect();
+        $allTreeUnits = collect();
 
-        $allInteractive = collect();
         foreach ($subject->sections as $section) {
             $treeUnits = $this->unitsForSectionProgressTree($section, $subject->sections);
             foreach ($treeUnits as $unit) {
@@ -311,46 +316,90 @@ class StudentProgressService
                 $allQuizzes = $allQuizzes->merge($unit->quizzes->where('is_active', true)->where('is_published', true));
                 $allQuestions = $allQuestions->merge($unit->questions->where('is_active', true));
             }
-            $allInteractive = $allInteractive->merge(
-                $this->publishedLearningExperiencesForUnits($treeUnits, $subject->id)
-            );
+            $allTreeUnits = $allTreeUnits->merge($treeUnits);
         }
+
         $allLessons = $allLessons->unique('id')->values();
         $allQuizzes = $allQuizzes->unique('id')->values();
         $allQuestions = $allQuestions->unique('id')->values();
-        $allInteractive = $allInteractive->unique('id')->values();
+        // استعلام واحد لكل مادة (بدل واحد لكل قسم) بتمرير شجرة الوحدات مجمّعة لكل الأقسام دفعة واحدة.
+        $allInteractive = $this->publishedLearningExperiencesForUnits($allTreeUnits->unique('id')->values(), $subject->id);
+
+        return [
+            'lessons' => $allLessons,
+            'quizzes' => $allQuizzes,
+            'questions' => $allQuestions,
+            'interactive' => $allInteractive,
+        ];
+    }
+
+    /**
+     * حساب نسبة إكمال كورس كامل لمادة محمّلة ومُتحقَّق من تسجيل الطالب فيها مسبقًا.
+     * يُستخدم لتفادي إعادة جلب المادة والتحقق من التسجيل عند الحساب لعدة مواد ضمن حلقة واحدة.
+     *
+     * يقبل بيانات مُجمَّعة مسبقًا (عناصر المادة، وحالات الإكمال) لتفادي تكرار استعلامات
+     * LessonCompletion/QuizAttempt/QuestionAttempt/LearningExperienceAttempt لكل مادة عند
+     * استدعائها ضمن حلقة على عدة مواد (انظر getAllStudentProgress).
+     */
+    protected function calculateSubjectProgressForLoadedSubject(
+        Subject $subject,
+        $userId,
+        ?array $preloadedItems = null,
+        ?Collection $preloadedLessonCompletions = null,
+        ?Collection $preloadedCompletedQuizIds = null,
+        ?Collection $preloadedCompletedQuestionIds = null,
+        ?Collection $preloadedCompletedInteractiveIds = null
+    ): array {
+        $items = $preloadedItems ?? $this->gatherSubjectProgressItems($subject);
+        $allLessons = $items['lessons'];
+        $allQuizzes = $items['quizzes'];
+        $allQuestions = $items['questions'];
+        $allInteractive = $items['interactive'];
 
         // حساب الدروس المكتملة
         $lessonsTotal = $allLessons->count();
-        $lessonProgressMap = $this->batchLessonProgress($userId, $allLessons);
+        $lessonProgressMap = $this->batchLessonProgress($userId, $allLessons, $preloadedLessonCompletions);
         $lessonsCompleted = collect($lessonProgressMap)->where('completed', true)->count();
         $lessonsPercentage = $lessonsTotal > 0 ? ($lessonsCompleted / $lessonsTotal) * 100 : 0;
-        
+
         // حساب الاختبارات المكتملة (عادية + تفاعلية)
-        $regularQuizzesCompleted = $allQuizzes->isEmpty()
-            ? 0
-            : QuizAttempt::where('user_id', $userId)
-                ->whereIn('quiz_id', $allQuizzes->pluck('id'))
-                ->whereIn('status', ['completed', 'timed_out'])
-                ->select('quiz_id')
-                ->distinct()
-                ->pluck('quiz_id')
-                ->count();
-        $interactiveCompleted = $this->countCompletedLearningExperiences((int) $userId, $allInteractive);
+        if ($preloadedCompletedQuizIds !== null) {
+            $regularQuizzesCompleted = $allQuizzes->isEmpty()
+                ? 0
+                : $allQuizzes->pluck('id')->intersect($preloadedCompletedQuizIds)->count();
+        } else {
+            $regularQuizzesCompleted = $allQuizzes->isEmpty()
+                ? 0
+                : QuizAttempt::where('user_id', $userId)
+                    ->whereIn('quiz_id', $allQuizzes->pluck('id'))
+                    ->whereIn('status', ['completed', 'timed_out'])
+                    ->select('quiz_id')
+                    ->distinct()
+                    ->pluck('quiz_id')
+                    ->count();
+        }
+        $interactiveCompleted = $preloadedCompletedInteractiveIds !== null
+            ? ($allInteractive->isEmpty() ? 0 : $allInteractive->pluck('id')->intersect($preloadedCompletedInteractiveIds)->count())
+            : $this->countCompletedLearningExperiences((int) $userId, $allInteractive);
         $quizzesTotal = $allQuizzes->count() + $allInteractive->count();
         $quizzesCompleted = $regularQuizzesCompleted + $interactiveCompleted;
         $quizzesPercentage = $quizzesTotal > 0 ? ($quizzesCompleted / $quizzesTotal) * 100 : 0;
-        
+
         // حساب الأسئلة المكتملة
         $questionsTotal = $allQuestions->count();
-        $questionsCompletedIds = QuestionAttempt::where('user_id', $userId)
-            ->whereIn('question_id', $allQuestions->pluck('id'))
-            ->whereIn('status', ['completed', 'timed_out'])
-            ->select('question_id')
-            ->distinct()
-            ->pluck('question_id')
-            ->count();
-        $questionsCompleted = $questionsCompletedIds;
+        if ($preloadedCompletedQuestionIds !== null) {
+            $questionsCompleted = $allQuestions->isEmpty()
+                ? 0
+                : $allQuestions->pluck('id')->intersect($preloadedCompletedQuestionIds)->count();
+        } else {
+            $questionsCompleted = QuestionAttempt::where('user_id', $userId)
+                ->whereIn('question_id', $allQuestions->pluck('id'))
+                ->whereIn('status', ['completed', 'timed_out'])
+                ->select('question_id')
+                ->distinct()
+                ->pluck('question_id')
+                ->count();
+        }
         $questionsPercentage = $questionsTotal > 0 ? ($questionsCompleted / $questionsTotal) * 100 : 0;
         
         // النسبة الإجمالية (متوسط النسب الموجودة فقط)
@@ -592,9 +641,71 @@ class StudentProgressService
                 })
                 ->values();
 
+            // تجميع عناصر كل مادة (دروس/اختبارات/أسئلة/تفاعلي) أولاً، ثم استعلام واحد لكل نوع
+            // عبر كل المواد دفعة واحدة بدل استعلامات متكررة لكل مادة ضمن الحلقة.
+            $itemsBySubject = [];
+            $allLessonIds = collect();
+            $allQuizIds = collect();
+            $allQuestionIds = collect();
+            $allInteractiveIds = collect();
+
+            foreach ($subjects as $subject) {
+                $items = $this->gatherSubjectProgressItems($subject);
+                $itemsBySubject[$subject->id] = $items;
+                $allLessonIds = $allLessonIds->merge($items['lessons']->pluck('id'));
+                $allQuizIds = $allQuizIds->merge($items['quizzes']->pluck('id'));
+                $allQuestionIds = $allQuestionIds->merge($items['questions']->pluck('id'));
+                $allInteractiveIds = $allInteractiveIds->merge($items['interactive']->pluck('id'));
+            }
+
+            $allLessonIds = $allLessonIds->unique()->values();
+            $allQuizIds = $allQuizIds->unique()->values();
+            $allQuestionIds = $allQuestionIds->unique()->values();
+            $allInteractiveIds = $allInteractiveIds->unique()->values();
+
+            $lessonCompletions = $allLessonIds->isEmpty()
+                ? collect()
+                : LessonCompletion::where('user_id', $userId)
+                    ->whereIn('lesson_id', $allLessonIds)
+                    ->get()
+                    ->keyBy('lesson_id');
+
+            $completedQuizIds = $allQuizIds->isEmpty()
+                ? collect()
+                : QuizAttempt::where('user_id', $userId)
+                    ->whereIn('quiz_id', $allQuizIds)
+                    ->whereIn('status', ['completed', 'timed_out'])
+                    ->select('quiz_id')
+                    ->distinct()
+                    ->pluck('quiz_id');
+
+            $completedQuestionIds = $allQuestionIds->isEmpty()
+                ? collect()
+                : QuestionAttempt::where('user_id', $userId)
+                    ->whereIn('question_id', $allQuestionIds)
+                    ->whereIn('status', ['completed', 'timed_out'])
+                    ->select('question_id')
+                    ->distinct()
+                    ->pluck('question_id');
+
+            $completedInteractiveIds = $allInteractiveIds->isEmpty()
+                ? collect()
+                : LearningExperienceAttempt::where('user_id', $userId)
+                    ->whereIn('learning_experience_id', $allInteractiveIds)
+                    ->distinct()
+                    ->pluck('learning_experience_id');
+
             $progressList = [];
             foreach ($subjects as $subject) {
-                $progress = $this->calculateSubjectProgressForLoadedSubject($subject, $userId);
+                $progress = $this->calculateSubjectProgressForLoadedSubject(
+                    $subject,
+                    $userId,
+                    $itemsBySubject[$subject->id],
+                    $lessonCompletions,
+                    $completedQuizIds,
+                    $completedQuestionIds,
+                    $completedInteractiveIds,
+                );
                 // نتخلص من شجرة الأقسام/الوحدات الثقيلة قبل التخزين/الكاش، فهي لم تعد مطلوبة
                 // بعد حساب التقدم، والعرض يحتاج فقط إلى schoolClass.stage.
                 $subject->unsetRelation('sections');

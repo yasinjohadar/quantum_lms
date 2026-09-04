@@ -19,11 +19,6 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
-        .dashboard-course-row:last-child {
-            border-bottom: none !important;
-            margin-bottom: 0 !important;
-            padding-bottom: 0 !important;
-        }
 
         .dashboard-welcome {
             margin: 1rem 0 1.25rem;
@@ -260,81 +255,8 @@
             </div>
 
             <div class="row dashboard-main-row">
-                <div class="col-xl-7 col-lg-12 mb-4">
+                <div class="col-xl-6 col-lg-12 mb-4">
                     <div class="card dashboard-panel h-100">
-                        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                            <div>
-                                <h4 class="card-title mb-0">
-                                    <i class="fe fe-book me-2"></i>
-                                    الكورسات قيد التقدم
-                                </h4>
-                                <p class="fs-12 text-muted mb-0">موادك الدراسية والتقدم فيها</p>
-                            </div>
-                            <a href="{{ route('student.classes') }}" class="btn btn-sm btn-primary">
-                                عرض الكل
-                            </a>
-                        </div>
-                        <div class="card-body">
-                            @if($subjectsCollection->isEmpty())
-                                <div class="text-center py-5">
-                                    <div class="mb-3">
-                                        <i class="fe fe-book-open fs-48 text-muted op-5"></i>
-                                    </div>
-                                    <h5 class="mb-2">لا توجد كورسات قيد التقدم</h5>
-                                    <p class="text-muted mb-3">ابدأ رحلتك التعليمية الآن</p>
-                                    <a href="{{ route('student.classes') }}" class="btn btn-primary">
-                                        <i class="fe fe-search me-1"></i>
-                                        تصفح الصفوف والمواد
-                                    </a>
-                                </div>
-                            @else
-                                @foreach($subjectsCollection as $item)
-                                    @php
-                                        $subject = $item['subject'] ?? null;
-                                        $p = $item['progress'] ?? [];
-                                    @endphp
-                                    @if($subject)
-                                        <div class="mb-4 pb-4 border-bottom dashboard-course-row">
-                                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                                <div class="flex-grow-1">
-                                                    <h6 class="mb-1">
-                                                        <a href="{{ route('student.subjects.show', $subject->id) }}" class="text-dark text-decoration-none">
-                                                            {{ $subject->name }}
-                                                        </a>
-                                                    </h6>
-                                                    <small class="text-muted">
-                                                        {{ $subject->schoolClass->name ?? '' }}
-                                                        @if(optional($subject->schoolClass)->stage)
-                                                            — {{ $subject->schoolClass->stage->name }}
-                                                        @endif
-                                                    </small>
-                                                </div>
-                                                <div class="text-end ms-3">
-                                                    <span class="badge bg-primary-transparent text-primary fs-12">
-                                                        {{ $p['overall_percentage'] ?? 0 }}%
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div class="progress progress-xs mb-2">
-                                                <div class="progress-bar bg-primary" role="progressbar"
-                                                     style="width: {{ min(100, $p['overall_percentage'] ?? 0) }}%;"
-                                                     aria-valuenow="{{ $p['overall_percentage'] ?? 0 }}"
-                                                     aria-valuemin="0" aria-valuemax="100"></div>
-                                            </div>
-                                            <div class="d-flex justify-content-between fs-11 text-muted flex-wrap gap-1">
-                                                <span><i class="fe fe-file-text me-1"></i> الدروس: {{ $p['lessons_completed'] ?? 0 }}/{{ $p['lessons_total'] ?? 0 }}</span>
-                                                <span><i class="fe fe-edit me-1"></i> الاختبارات: {{ $p['quizzes_completed'] ?? 0 }}/{{ $p['quizzes_total'] ?? 0 }}</span>
-                                            </div>
-                                        </div>
-                                    @endif
-                                @endforeach
-                            @endif
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-xl-5 col-lg-12">
-                    <div class="card dashboard-panel mb-3">
                         <div class="card-header">
                             <h4 class="card-title mb-0">
                                 <i class="fe fe-award me-2"></i>
@@ -376,8 +298,10 @@
                             @endif
                         </div>
                     </div>
+                </div>
 
-                    <div class="card dashboard-panel">
+                <div class="col-xl-6 col-lg-12 mb-4">
+                    <div class="card dashboard-panel h-100">
                         <div class="card-header">
                             <h4 class="card-title mb-0">
                                 <i class="fe fe-bar-chart-2 me-2"></i>
