@@ -30,4 +30,5 @@ return [
     ['iso2' => 'AT', 'name_ar' => 'النمسا', 'dial_code' => '43', 'flag_emoji' => '🇦🇹'],
     ['iso2' => 'NL', 'name_ar' => 'هولندا', 'dial_code' => '31', 'flag_emoji' => '🇳🇱'],
     ['iso2' => 'SE', 'name_ar' => 'السويد', 'dial_code' => '46', 'flag_emoji' => '🇸🇪'],
+    ['iso2' => 'MY', 'name_ar' => 'ماليزيا', 'dial_code' => '60', 'flag_emoji' => '🇲🇾'],
 ];
