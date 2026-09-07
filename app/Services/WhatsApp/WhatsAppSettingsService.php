@@ -54,6 +54,10 @@ class WhatsAppSettingsService
             // verification template above when left empty)
             'otp_whatsapp_password_reset_template_name' => $settings['otp_whatsapp_password_reset_template_name'] ?? '',
             'otp_whatsapp_password_reset_template_language' => $settings['otp_whatsapp_password_reset_template_language'] ?? 'ar',
+            // Custom API has no real Meta-approved-template concept, so its OTP
+            // messages are rendered from an admin-picked WhatsAppTemplate instead
+            // (falls back to the plain otp_message_template setting when unset).
+            'otp_whatsapp_custom_api_template_id' => $settings['otp_whatsapp_custom_api_template_id'] ?? '',
         ];
     }
 
@@ -126,6 +130,7 @@ class WhatsAppSettingsService
             'otp_whatsapp_template_language' => 'ar',
             'otp_whatsapp_password_reset_template_name' => '',
             'otp_whatsapp_password_reset_template_language' => 'ar',
+            'otp_whatsapp_custom_api_template_id' => '',
         ];
 
         foreach ($defaults as $key => $value) {

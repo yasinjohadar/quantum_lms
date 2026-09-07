@@ -266,6 +266,33 @@
                                     @enderror
                                 </div>
 
+                                <hr class="my-4">
+
+                                <h6 class="fw-bold mb-2"><i class="fas fa-comment-dots me-2 text-primary"></i>قالب رمز التحقق (OTP) الخاص بـ Custom API</h6>
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    خدمات مثل wasenderapi.com لا تملك مفهوم "قوالب معتمدة من Meta" — لذلك يُرسَل رمز التحقق دائماً كنص حر،
+                                    مبنياً من قالب تختاره هنا من نظام "قوالب الرسائل" الحالي (وليس قوالب Meta/Flaxxa).
+                                </div>
+                                <div class="mb-3">
+                                    <label for="otp_whatsapp_custom_api_template_id" class="form-label">قالب رمز التحقق</label>
+                                    <select class="form-select @error('otp_whatsapp_custom_api_template_id') is-invalid @enderror" id="otp_whatsapp_custom_api_template_id" name="otp_whatsapp_custom_api_template_id">
+                                        <option value="">بدون — استخدام النص الافتراضي البسيط</option>
+                                        @foreach($whatsappTemplates as $template)
+                                            <option value="{{ $template->id }}" {{ (string) old('otp_whatsapp_custom_api_template_id', $settings['otp_whatsapp_custom_api_template_id'] ?? '') === (string) $template->id ? 'selected' : '' }}>
+                                                {{ $template->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted">
+                                        اختر قالباً يحتوي المتغيّر @{{code}} ليستقبل رمز التحقق (اختياري: @{{expires_in}} لمدة الصلاحية بالدقائق).
+                                        يمكنك إنشاء/تعديل القوالب من <a href="{{ route('admin.whatsapp-templates.index') }}" target="_blank">صفحة قوالب الرسائل</a>.
+                                    </small>
+                                    @error('otp_whatsapp_custom_api_template_id')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
                                 <button type="button" id="test-connection-btn-custom_api" class="btn btn-info btn-sm">
                                     <i class="fas fa-plug me-2"></i>اختبار اتصال Custom API
                                 </button>
@@ -340,10 +367,11 @@
                             </div>
                             </div>
 
+                            <div id="otp-meta-flaxxa-settings">
                             <hr class="my-4">
 
                             <h6 class="fw-bold mb-3">
-                                <i class="fas fa-comment-dots me-2 text-primary"></i>إعدادات قالب رسالة التحقق (OTP)
+                                <i class="fas fa-comment-dots me-2 text-primary"></i>إعدادات قالب رسالة التحقق (OTP) — Meta / Flaxxa
                             </h6>
 
                             <div class="alert alert-warning">
@@ -432,6 +460,7 @@
                                         @enderror
                                     </div>
                                 </div>
+                            </div>
                             </div>
 
                             <hr class="my-4">
@@ -588,6 +617,28 @@ document.addEventListener('DOMContentLoaded', function() {
         radio.addEventListener('change', syncOtpModeWithProvider);
     });
     syncOtpModeWithProvider();
+
+    // The shared Meta/Flaxxa OTP section lives outside the tab-content markup
+    // (it isn't inside any single tab-pane), so it must track which tab is
+    // currently being BROWSED — not which provider's radio happens to be
+    // checked — otherwise it stays visible while looking at the Custom API
+    // tab (which has its own fully separate OTP section already).
+    const otpMetaFlaxxaSettings = document.getElementById('otp-meta-flaxxa-settings');
+    const providerTabLinks = document.querySelectorAll('.whatsapp-provider-tabs .nav-link[data-provider]');
+
+    function syncOtpSectionWithBrowsedTab(provider) {
+        if (!otpMetaFlaxxaSettings) return;
+        otpMetaFlaxxaSettings.style.display = provider === 'custom_api' ? 'none' : 'block';
+    }
+
+    providerTabLinks.forEach(function(link) {
+        link.addEventListener('shown.bs.tab', function(event) {
+            syncOtpSectionWithBrowsedTab(event.target.dataset.provider);
+        });
+    });
+
+    const initiallyActiveTabLink = document.querySelector('.whatsapp-provider-tabs .nav-link.active');
+    syncOtpSectionWithBrowsedTab(initiallyActiveTabLink ? initiallyActiveTabLink.dataset.provider : 'meta');
 
     // Count double-curly-brace variables (e.g. number 1, 2, ...) in a template's
     // BODY component text. Built from single-brace literals, not a double-brace
@@ -851,7 +902,13 @@ document.addEventListener('DOMContentLoaded', function() {
     function buildProviderFieldData(provider, formData) {
         if (provider === 'meta') {
             formData.append('phone_number_id', document.getElementById('phone_number_id').value);
-            formData.append('access_token', document.getElementById('access_token').value);
+            // Only send access_token if the admin actually typed one; an empty
+            // masked field means "keep the currently saved token" — the backend
+            // only falls back to it when the key is entirely absent from the request.
+            const accessTokenValue = document.getElementById('access_token').value;
+            if (accessTokenValue) {
+                formData.append('access_token', accessTokenValue);
+            }
             formData.append('api_version', document.getElementById('api_version').value);
         } else if (provider === 'flaxxa') {
             formData.append('flaxxa_base_url', document.getElementById('flaxxa_base_url').value);
@@ -861,7 +918,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } else {
             formData.append('custom_api_url', document.getElementById('custom_api_url').value);
-            formData.append('custom_api_key', document.getElementById('custom_api_key').value);
+            // Same "keep saved value" rule as above for this masked field.
+            const customApiKeyValue = document.getElementById('custom_api_key').value;
+            if (customApiKeyValue) {
+                formData.append('custom_api_key', customApiKeyValue);
+            }
             formData.append('custom_api_method', document.getElementById('custom_api_method').value);
             formData.append('custom_api_headers', document.getElementById('custom_api_headers').value);
         }

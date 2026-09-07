@@ -133,42 +133,67 @@ class OTPService
             try {
                 // OTP verification messages should be sent immediately (without queue)
                 // If it doesn't throw exception, consider it successful
-                $deliveryMode = SystemSetting::get('otp_whatsapp_delivery_mode', 'text');
+                $whatsappProvider = app(\App\Services\WhatsApp\WhatsAppSettingsService::class)
+                    ->getSettings()['whatsapp_provider'] ?? 'meta';
 
-                // Registration/verification and forgot-password can each use their own
-                // approved template; forgot-password falls back to the verification
-                // template when it hasn't been configured separately.
-                if ($otp->type === 'password_reset') {
-                    $templateName = SystemSetting::get('otp_whatsapp_password_reset_template_name', '')
-                        ?: SystemSetting::get('otp_whatsapp_template_name', '');
-                    $templateLanguage = SystemSetting::get('otp_whatsapp_password_reset_template_name', '')
-                        ? SystemSetting::get('otp_whatsapp_password_reset_template_language', 'ar')
-                        : SystemSetting::get('otp_whatsapp_template_language', 'ar');
-                } else {
-                    $templateName = SystemSetting::get('otp_whatsapp_template_name', '');
-                    $templateLanguage = SystemSetting::get('otp_whatsapp_template_language', 'ar');
-                }
+                if ($whatsappProvider === 'custom_api') {
+                    // Custom API (e.g. wasenderapi.com) has no real Meta-approved-template
+                    // concept — always send free text, rendered from an admin-picked
+                    // WhatsAppTemplate when configured (falls back to the plain
+                    // otp_message_template text otherwise). Never calls sendTemplate().
+                    $customTemplateId = SystemSetting::get('otp_whatsapp_custom_api_template_id', '');
+                    $customTemplate = $customTemplateId
+                        ? \App\Models\WhatsAppTemplate::active()->find($customTemplateId)
+                        : null;
 
-                if ($deliveryMode === 'template' && !empty($templateName)) {
-                    $whatsappMessage = $this->whatsappService->sendTemplateNow(
-                        $otp->phone,
-                        $templateName,
-                        $templateLanguage,
-                        [[
-                            'type' => 'body',
-                            'parameters' => [
-                                ['type' => 'text', 'text' => $otp->code],
-                            ],
-                        ]],
-                        \App\Models\WhatsAppMessage::CATEGORY_VERIFICATION
-                    );
-                } else {
+                    $textToSend = $customTemplate
+                        ? $customTemplate->render(['code' => $otp->code, 'expires_in' => $expiresInMinutes])
+                        : $message;
+
                     $whatsappMessage = $this->whatsappService->sendTextNow(
                         $otp->phone,
-                        $message,
+                        $textToSend,
                         false,
                         \App\Models\WhatsAppMessage::CATEGORY_VERIFICATION
                     );
+                } else {
+                    $deliveryMode = SystemSetting::get('otp_whatsapp_delivery_mode', 'text');
+
+                    // Registration/verification and forgot-password can each use their own
+                    // approved template; forgot-password falls back to the verification
+                    // template when it hasn't been configured separately.
+                    if ($otp->type === 'password_reset') {
+                        $templateName = SystemSetting::get('otp_whatsapp_password_reset_template_name', '')
+                            ?: SystemSetting::get('otp_whatsapp_template_name', '');
+                        $templateLanguage = SystemSetting::get('otp_whatsapp_password_reset_template_name', '')
+                            ? SystemSetting::get('otp_whatsapp_password_reset_template_language', 'ar')
+                            : SystemSetting::get('otp_whatsapp_template_language', 'ar');
+                    } else {
+                        $templateName = SystemSetting::get('otp_whatsapp_template_name', '');
+                        $templateLanguage = SystemSetting::get('otp_whatsapp_template_language', 'ar');
+                    }
+
+                    if ($deliveryMode === 'template' && !empty($templateName)) {
+                        $whatsappMessage = $this->whatsappService->sendTemplateNow(
+                            $otp->phone,
+                            $templateName,
+                            $templateLanguage,
+                            [[
+                                'type' => 'body',
+                                'parameters' => [
+                                    ['type' => 'text', 'text' => $otp->code],
+                                ],
+                            ]],
+                            \App\Models\WhatsAppMessage::CATEGORY_VERIFICATION
+                        );
+                    } else {
+                        $whatsappMessage = $this->whatsappService->sendTextNow(
+                            $otp->phone,
+                            $message,
+                            false,
+                            \App\Models\WhatsAppMessage::CATEGORY_VERIFICATION
+                        );
+                    }
                 }
 
                 Log::info('OTP sent via WhatsApp successfully', [

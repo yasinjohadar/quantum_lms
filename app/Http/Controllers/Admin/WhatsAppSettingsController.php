@@ -24,8 +24,9 @@ class WhatsAppSettingsController extends Controller
     {
         $this->settingsService->initializeDefaults();
         $settings = $this->settingsService->getSettings();
+        $whatsappTemplates = \App\Models\WhatsAppTemplate::active()->orderBy('name')->get();
 
-        return view('admin.pages.whatsapp-settings.index', compact('settings'));
+        return view('admin.pages.whatsapp-settings.index', compact('settings', 'whatsappTemplates'));
     }
 
     /**
@@ -63,6 +64,7 @@ class WhatsAppSettingsController extends Controller
             'otp_whatsapp_template_language' => 'nullable|string|max:10',
             'otp_whatsapp_password_reset_template_name' => 'nullable|string|max:255',
             'otp_whatsapp_password_reset_template_language' => 'nullable|string|max:10',
+            'otp_whatsapp_custom_api_template_id' => 'nullable|exists:whatsapp_templates,id',
         ], [
             'whatsapp_provider.required' => 'نوع المزود مطلوب',
             'whatsapp_provider.in' => 'نوع المزود غير صالح',

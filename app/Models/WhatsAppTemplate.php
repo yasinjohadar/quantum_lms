@@ -66,6 +66,11 @@ class WhatsAppTemplate extends Model
             'student_phone',
             'class_name',
             'subject_name',
+            // Used by templates chosen as the Custom API OTP message (see
+            // WhatsAppSettingsService/OTPService) — the verification code and
+            // its validity period in minutes.
+            'code',
+            'expires_in',
         ];
     }
 }
