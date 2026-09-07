@@ -87,12 +87,70 @@
                                 </tr>
                             @endif
                         </table>
+
+                        @if($message->direction === 'outbound' && $message->meta_message_id && is_numeric($message->meta_message_id))
+                            <button type="button" id="check-delivery-status-btn" class="btn btn-outline-info btn-sm">
+                                <i class="fas fa-sync me-1"></i>تحقق من حالة التسليم (Flaxxa)
+                            </button>
+                            <small class="text-muted d-block mt-1">
+                                قبول الطلب من Flaxxa لا يعني بالضرورة وصول الرسالة فعلياً على واتساب — هذا الزر يستعلم مباشرة عن الحالة الفعلية.
+                            </small>
+                            <div id="delivery-status-result" class="mt-3" style="display: none;"></div>
+                        @endif
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.getElementById('check-delivery-status-btn');
+    const resultDiv = document.getElementById('delivery-status-result');
+    if (!btn || !resultDiv) return;
+
+    btn.addEventListener('click', function() {
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>جاري التحقق...';
+
+        fetch('{{ route("admin.whatsapp-messages.check-delivery-status", $message) }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            resultDiv.style.display = 'block';
+            if (!data.success) {
+                resultDiv.innerHTML = '<div class="alert alert-danger mb-0">' + data.message + '</div>';
+                return;
+            }
+
+            const d = data.data || {};
+            const errorText = d.error || d.error_details;
+            if (errorText) {
+                resultDiv.innerHTML = '<div class="alert alert-danger mb-0"><strong>لم يتم التسليم فعلياً.</strong><br>خطأ Meta: ' + errorText + '</div>';
+            } else {
+                resultDiv.innerHTML = '<div class="alert alert-success mb-0">لا يوجد خطأ مسجّل من مزوّد الرسائل حتى الآن. القيمة: ' + (d.value || '-') + '</div>';
+            }
+        })
+        .catch(error => {
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="alert alert-danger mb-0">حدث خطأ: ' + error.message + '</div>';
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        });
+    });
+});
+</script>
+@endpush
 @stop
 
 

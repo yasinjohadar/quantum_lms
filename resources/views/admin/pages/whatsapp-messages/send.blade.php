@@ -193,6 +193,21 @@
                             </div>
 
                             <div class="mb-3" id="template-fields" style="display: none;">
+                                @if(($activeWhatsAppProvider ?? 'meta') === 'flaxxa')
+                                    <div class="mb-3">
+                                        <label for="flaxxa_template_picker" class="form-label">القوالب المعتمدة على Flaxxa</label>
+                                        <div class="input-group">
+                                            <select class="form-select" id="flaxxa_template_picker">
+                                                <option value="">اختر من القوالب المعتمدة (اختياري)</option>
+                                            </select>
+                                            <button type="button" class="btn btn-outline-success" id="fetch-flaxxa-templates-for-send-btn">
+                                                <i class="fas fa-sync me-1"></i>تحديث القائمة
+                                            </button>
+                                        </div>
+                                        <small class="text-muted">تُجلب من حساب Flaxxa المرتبط في إعدادات WhatsApp. اختيار قالب يملأ الحقلين أدناه تلقائياً.</small>
+                                        <div id="flaxxa-template-picker-error" class="text-danger small mt-1" style="display: none;"></div>
+                                    </div>
+                                @endif
                                 <div class="mb-3">
                                     <label for="template_name" class="form-label">اسم القالب <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control @error('template_name') is-invalid @enderror" id="template_name" name="template_name" value="{{ old('template_name') }}" placeholder="اسم القالب المعتمد في Meta">
@@ -213,6 +228,7 @@
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
+                                <div id="template-variables-container"></div>
                             </div>
 
                             <div class="d-flex gap-2">
@@ -260,6 +276,12 @@ $(document).ready(function() {
     const whatsappTemplateSelect = document.getElementById('whatsapp_template_id');
     const insertTemplateBtn = document.getElementById('insert-template-btn');
     const templateContentMap = @json($templates->pluck('content', 'id'));
+    const flaxxaTemplatePicker = document.getElementById('flaxxa_template_picker');
+    const fetchFlaxxaTemplatesBtn = document.getElementById('fetch-flaxxa-templates-for-send-btn');
+    const flaxxaTemplatePickerError = document.getElementById('flaxxa-template-picker-error');
+    const templateVariablesContainer = document.getElementById('template-variables-container');
+    let flaxxaTemplatesLoaded = false;
+    let flaxxaTemplatesByKey = {};
 
     // Initialize Select2 for student search using jQuery
     jQuery(studentSearch).select2({
@@ -362,6 +384,162 @@ $(document).ready(function() {
         }
     }
 
+    // Fetch Flaxxa's approved templates and let the admin pick one to
+    // auto-fill template_name/language, instead of typing them blind.
+    function loadFlaxxaTemplates() {
+        if (!flaxxaTemplatePicker) return;
+
+        if (fetchFlaxxaTemplatesBtn) {
+            fetchFlaxxaTemplatesBtn.disabled = true;
+        }
+        if (flaxxaTemplatePickerError) {
+            flaxxaTemplatePickerError.style.display = 'none';
+        }
+
+        const formData = new FormData();
+        formData.append('_token', '{{ csrf_token() }}');
+
+        fetch('{{ route("admin.whatsapp-settings.flaxxa-templates") }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            flaxxaTemplatePicker.innerHTML = '<option value="">اختر من القوالب المعتمدة (اختياري)</option>';
+
+            if (!data.success) {
+                if (flaxxaTemplatePickerError) {
+                    flaxxaTemplatePickerError.textContent = data.message || 'تعذر جلب القوالب';
+                    flaxxaTemplatePickerError.style.display = 'block';
+                }
+                return;
+            }
+
+            const approved = (data.templates || []).filter(tpl => tpl.status === 'APPROVED');
+            if (approved.length === 0 && flaxxaTemplatePickerError) {
+                flaxxaTemplatePickerError.textContent = 'لا توجد قوالب معتمدة (APPROVED) حالياً على Flaxxa';
+                flaxxaTemplatePickerError.style.display = 'block';
+            }
+
+            flaxxaTemplatesByKey = {};
+            approved.forEach(function(tpl) {
+                const key = (tpl.name || '') + '|' + (tpl.language || 'ar');
+                flaxxaTemplatesByKey[key] = tpl;
+
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = tpl.name + ' (' + (tpl.language || 'ar') + ')';
+                flaxxaTemplatePicker.appendChild(option);
+            });
+
+            flaxxaTemplatesLoaded = true;
+        })
+        .catch(error => {
+            if (flaxxaTemplatePickerError) {
+                flaxxaTemplatePickerError.textContent = 'حدث خطأ: ' + error.message;
+                flaxxaTemplatePickerError.style.display = 'block';
+            }
+        })
+        .finally(() => {
+            if (fetchFlaxxaTemplatesBtn) {
+                fetchFlaxxaTemplatesBtn.disabled = false;
+            }
+        });
+    }
+
+    // Render one text input per double-curly-brace placeholder (e.g. number 1, 2, ...)
+    // found in the template's BODY component, so the admin can fill real values
+    // instead of sending an empty components array (which Meta rejects with
+    // #132000 when the template actually needs parameters).
+    function renderTemplateVariableInputs(tpl) {
+        if (!templateVariablesContainer) return;
+        templateVariablesContainer.innerHTML = '';
+
+        if (!tpl || !tpl.components) return;
+
+        let components;
+        try {
+            components = typeof tpl.components === 'string' ? JSON.parse(tpl.components) : tpl.components;
+        } catch (e) {
+            return;
+        }
+        if (!Array.isArray(components)) return;
+
+        const bodyComponent = components.find(c => (c.type || '').toUpperCase() === 'BODY');
+        if (!bodyComponent || !bodyComponent.text) return;
+
+        const matches = [...bodyComponent.text.matchAll(/\{\{(\d+)\}\}/g)];
+        if (matches.length === 0) return;
+
+        const exampleValues = (bodyComponent.example && bodyComponent.example.body_text && bodyComponent.example.body_text[0]) || [];
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'mb-3';
+
+        const title = document.createElement('label');
+        title.className = 'form-label';
+        title.textContent = 'متغيّرات القالب';
+        wrapper.appendChild(title);
+
+        const preview = document.createElement('small');
+        preview.className = 'text-muted d-block mb-2';
+        preview.textContent = 'نص القالب: ' + bodyComponent.text;
+        wrapper.appendChild(preview);
+
+        matches.forEach(function(match, index) {
+            const varNumber = match[1];
+            const row = document.createElement('div');
+            row.className = 'input-group mb-2';
+
+            // Built from single-brace literals, not a double-brace pair,
+            // so Blade's compiler does not mistake this for one of its own echo tags.
+            const brace = '{';
+            const closeBrace = '}';
+            const label = document.createElement('span');
+            label.className = 'input-group-text';
+            label.textContent = brace + brace + varNumber + closeBrace + closeBrace;
+            row.appendChild(label);
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control';
+            input.name = 'template_body_params[]';
+            input.required = true;
+            input.placeholder = exampleValues[index] || '';
+            row.appendChild(input);
+
+            wrapper.appendChild(row);
+        });
+
+        templateVariablesContainer.appendChild(wrapper);
+    }
+
+    if (flaxxaTemplatePicker) {
+        flaxxaTemplatePicker.addEventListener('change', function() {
+            if (!this.value) {
+                if (templateVariablesContainer) templateVariablesContainer.innerHTML = '';
+                return;
+            }
+            const [name, language] = this.value.split('|');
+            templateNameInput.value = name;
+
+            let languageOption = Array.from(languageInput.options).find(opt => opt.value === language);
+            if (!languageOption) {
+                languageOption = document.createElement('option');
+                languageOption.value = language;
+                languageOption.textContent = language;
+                languageInput.appendChild(languageOption);
+            }
+            languageInput.value = language;
+
+            renderTemplateVariableInputs(flaxxaTemplatesByKey[this.value]);
+        });
+    }
+
+    if (fetchFlaxxaTemplatesBtn) {
+        fetchFlaxxaTemplatesBtn.addEventListener('click', loadFlaxxaTemplates);
+    }
+
     // Toggle between text and template fields
     function toggleMessageType() {
         if (typeSelect.value === 'template') {
@@ -370,6 +548,9 @@ $(document).ready(function() {
             messageInput.removeAttribute('required');
             templateNameInput.setAttribute('required', 'required');
             languageInput.setAttribute('required', 'required');
+            if (flaxxaTemplatePicker && !flaxxaTemplatesLoaded) {
+                loadFlaxxaTemplates();
+            }
         } else {
             messageField.style.display = 'block';
             templateFields.style.display = 'none';

@@ -828,6 +828,7 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             Route::get('/', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'index'])->name('index');
             Route::post('/', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'update'])->name('update');
             Route::post('/test-connection', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'testConnection'])->name('test-connection');
+            Route::post('/flaxxa-templates', [\App\Http\Controllers\Admin\WhatsAppSettingsController::class, 'flaxxaTemplates'])->name('flaxxa-templates');
         });
 
         // WhatsApp Messages Routes
@@ -841,6 +842,7 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             Route::get('/subjects-by-class', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'subjectsByClass'])->name('subjects-by-class');
             Route::delete('/destroy-multiple', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'destroyMultiple'])->name('destroy-multiple');
             Route::delete('/destroy-by-filter', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'destroyByFilter'])->name('destroy-by-filter');
+            Route::post('/{message}/check-delivery-status', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'checkDeliveryStatus'])->name('check-delivery-status');
             Route::get('/{message}', [\App\Http\Controllers\Admin\WhatsAppMessageController::class, 'show'])->name('show');
         });
 

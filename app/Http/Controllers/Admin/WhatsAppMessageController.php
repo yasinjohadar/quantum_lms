@@ -12,6 +12,7 @@ use App\Models\Enrollment;
 use App\Models\WhatsAppTemplate;
 use App\Services\WhatsApp\SendWhatsAppMessage;
 use App\Services\WhatsApp\BroadcastWhatsAppMessage;
+use App\Services\WhatsApp\WhatsAppSettingsService;
 use App\Jobs\BroadcastWhatsAppMessageJob;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,7 +23,8 @@ class WhatsAppMessageController extends Controller
 {
     public function __construct(
         private SendWhatsAppMessage $sendService,
-        private BroadcastWhatsAppMessage $broadcastService
+        private BroadcastWhatsAppMessage $broadcastService,
+        private WhatsAppSettingsService $whatsappSettingsService
     ) {}
 
     /**
@@ -93,6 +95,39 @@ class WhatsAppMessageController extends Controller
     }
 
     /**
+     * Check the real delivery status of a message sent via Flaxxa.
+     * Accepting a send request only means Flaxxa queued it — this calls
+     * Flaxxa's own status endpoint to see whether Meta actually delivered it.
+     */
+    public function checkDeliveryStatus(WhatsAppMessage $message)
+    {
+        if (empty($message->meta_message_id) || !is_numeric($message->meta_message_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لا يوجد معرف رسالة رقمي من Flaxxa لهذه الرسالة.',
+            ], 422);
+        }
+
+        $settings = $this->whatsappSettingsService->getSettings();
+        if (($settings['whatsapp_provider'] ?? 'meta') !== 'flaxxa') {
+            return response()->json([
+                'success' => false,
+                'message' => 'التحقق من حالة التسليم متاح فقط عندما يكون Flaxxa هو المزوّد النشط حالياً.',
+            ], 422);
+        }
+
+        try {
+            $config = $this->whatsappSettingsService->getProviderConfig();
+            $provider = new \App\Services\WhatsApp\Providers\FlaxxaProvider($config);
+            $status = $provider->getMessageStatus((int) $message->meta_message_id);
+
+            return response()->json(['success' => true, 'data' => $status]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * Display send message form
      */
     public function create()
@@ -100,8 +135,9 @@ class WhatsAppMessageController extends Controller
         $classes = SchoolClass::active()->ordered()->get();
         $subjects = Subject::active()->with('schoolClass')->orderBy('name')->get();
         $templates = WhatsAppTemplate::active()->orderBy('name')->get();
+        $activeWhatsAppProvider = $this->whatsappSettingsService->getSettings()['whatsapp_provider'] ?? 'meta';
 
-        return view('admin.pages.whatsapp-messages.send', compact('classes', 'subjects', 'templates'));
+        return view('admin.pages.whatsapp-messages.send', compact('classes', 'subjects', 'templates', 'activeWhatsAppProvider'));
     }
 
     /**
@@ -164,20 +200,26 @@ class WhatsAppMessageController extends Controller
      */
     public function send(Request $request)
     {
+        // "message" only matters for free-text sends — a template send is fully
+        // driven by template_name/language and must not require it.
+        $needsMessage = $request->input('type') !== 'template' && empty($request->input('whatsapp_template_id'));
+
         $validated = $request->validate([
             'student_id' => 'nullable|exists:users,id',
             'to' => 'required_without:student_id|string|regex:/^\+[1-9]\d{1,14}$/',
             'type' => 'required|in:text,template',
-            'message' => 'nullable|string|max:4096|required_without:whatsapp_template_id',
+            'message' => ['nullable', 'string', 'max:4096', Rule::requiredIf($needsMessage)],
             'whatsapp_template_id' => 'nullable|exists:whatsapp_templates,id',
             'template_name' => 'required_if:type,template|nullable|string|max:255',
             'language' => 'required_if:type,template|nullable|string|max:10',
+            'template_body_params' => 'nullable|array',
+            'template_body_params.*' => 'nullable|string|max:1000',
         ], [
             'student_id.exists' => 'الطالب المحدد غير موجود',
             'to.required_without' => 'رقم الهاتف مطلوب إذا لم يتم اختيار طالب',
             'to.regex' => 'رقم الهاتف يجب أن يبدأ بـ + متبوعاً برمز الدولة',
             'type.required' => 'نوع الرسالة مطلوب',
-            'message.required_without' => 'نص الرسالة أو القالب مطلوب',
+            'message.required' => 'نص الرسالة أو القالب مطلوب',
             'whatsapp_template_id.exists' => 'قالب WhatsApp المحدد غير موجود',
             'template_name.required_if' => 'اسم القالب مطلوب',
             'language.required_if' => 'اللغة مطلوبة',
@@ -217,15 +259,39 @@ class WhatsAppMessageController extends Controller
             }
 
             if ($validated['type'] === 'template') {
-                $message = $this->sendService->sendTemplate(
+                $components = [];
+                $bodyParams = array_values(array_filter(
+                    $validated['template_body_params'] ?? [],
+                    fn ($value) => $value !== null && $value !== ''
+                ));
+
+                if (!empty($bodyParams)) {
+                    $components[] = [
+                        'type' => 'body',
+                        'parameters' => array_map(
+                            fn ($value) => ['type' => 'text', 'text' => (string) $value],
+                            $bodyParams
+                        ),
+                    ];
+                }
+
+                $message = $this->sendService->sendTemplateNow(
                     $phone,
                     $validated['template_name'],
                     $validated['language'] ?? 'ar',
-                    []
+                    $components
                 );
+                $message->refresh();
+
+                if ($message->status === \App\Models\WhatsAppMessage::STATUS_FAILED) {
+                    $errorMessage = data_get($message->error, 'message', 'فشل الإرسال عبر مزود WhatsApp');
+
+                    return redirect()->route('admin.whatsapp-messages.show', $message)
+                        ->with('error', 'فشل إرسال القالب: '.$errorMessage);
+                }
 
                 return redirect()->route('admin.whatsapp-messages.show', $message)
-                    ->with('success', 'تم جدولة إرسال القالب. تأكد أن عامل الطابور (queue:work) يعمل.');
+                    ->with('success', 'تم إرسال القالب عبر مزود WhatsApp. ملاحظة: قبول الطلب لا يعني بالضرورة وصول الرسالة فعلياً — استخدم "تحقق من حالة التسليم" في تفاصيل الرسالة للتأكد.');
             }
 
             $message = $this->sendService->sendTextNow($phone, $messageText);
@@ -340,10 +406,14 @@ class WhatsAppMessageController extends Controller
      */
     public function broadcast(Request $request)
     {
+        // "message" only matters for free-text sends — a template send is fully
+        // driven by template_name/language and must not require it.
+        $needsMessage = $request->input('type') !== 'template' && empty($request->input('whatsapp_template_id'));
+
         $validated = $request->validate([
             'send_type' => 'required|in:individual,broadcast',
             'type' => 'required|in:text,template',
-            'message' => 'nullable|string|max:4096|required_without:whatsapp_template_id',
+            'message' => ['nullable', 'string', 'max:4096', Rule::requiredIf($needsMessage)],
             'whatsapp_template_id' => 'nullable|exists:whatsapp_templates,id',
             'template_name' => 'required_if:type,template|nullable|string|max:255',
             'language' => 'required_if:type,template|nullable|string|max:10',
@@ -355,7 +425,7 @@ class WhatsAppMessageController extends Controller
         ], [
             'send_type.required' => 'نوع الإرسال مطلوب',
             'type.required' => 'نوع الرسالة مطلوب',
-            'message.required_without' => 'نص الرسالة أو القالب مطلوب',
+            'message.required' => 'نص الرسالة أو القالب مطلوب',
             'whatsapp_template_id.exists' => 'قالب WhatsApp المحدد غير موجود',
             'class_id.required_if' => 'الصف الدراسي مطلوب للإرسال الجماعي',
             'class_id.exists' => 'الصف الدراسي المحدد غير موجود',

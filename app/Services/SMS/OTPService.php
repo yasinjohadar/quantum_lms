@@ -133,13 +133,44 @@ class OTPService
             try {
                 // OTP verification messages should be sent immediately (without queue)
                 // If it doesn't throw exception, consider it successful
-                $whatsappMessage = $this->whatsappService->sendTextNow(
-                    $otp->phone,
-                    $message,
-                    false,
-                    \App\Models\WhatsAppMessage::CATEGORY_VERIFICATION
-                );
-                
+                $deliveryMode = SystemSetting::get('otp_whatsapp_delivery_mode', 'text');
+
+                // Registration/verification and forgot-password can each use their own
+                // approved template; forgot-password falls back to the verification
+                // template when it hasn't been configured separately.
+                if ($otp->type === 'password_reset') {
+                    $templateName = SystemSetting::get('otp_whatsapp_password_reset_template_name', '')
+                        ?: SystemSetting::get('otp_whatsapp_template_name', '');
+                    $templateLanguage = SystemSetting::get('otp_whatsapp_password_reset_template_name', '')
+                        ? SystemSetting::get('otp_whatsapp_password_reset_template_language', 'ar')
+                        : SystemSetting::get('otp_whatsapp_template_language', 'ar');
+                } else {
+                    $templateName = SystemSetting::get('otp_whatsapp_template_name', '');
+                    $templateLanguage = SystemSetting::get('otp_whatsapp_template_language', 'ar');
+                }
+
+                if ($deliveryMode === 'template' && !empty($templateName)) {
+                    $whatsappMessage = $this->whatsappService->sendTemplateNow(
+                        $otp->phone,
+                        $templateName,
+                        $templateLanguage,
+                        [[
+                            'type' => 'body',
+                            'parameters' => [
+                                ['type' => 'text', 'text' => $otp->code],
+                            ],
+                        ]],
+                        \App\Models\WhatsAppMessage::CATEGORY_VERIFICATION
+                    );
+                } else {
+                    $whatsappMessage = $this->whatsappService->sendTextNow(
+                        $otp->phone,
+                        $message,
+                        false,
+                        \App\Models\WhatsAppMessage::CATEGORY_VERIFICATION
+                    );
+                }
+
                 Log::info('OTP sent via WhatsApp successfully', [
                     'otp_id' => $otp->id,
                     'phone' => $otp->phone,

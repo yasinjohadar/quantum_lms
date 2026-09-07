@@ -3,6 +3,7 @@
 namespace App\Services\WhatsApp;
 
 use App\Services\WhatsApp\Providers\CustomApiProvider;
+use App\Services\WhatsApp\Providers\FlaxxaProvider;
 use App\Services\WhatsApp\Providers\MetaProvider;
 use InvalidArgumentException;
 
@@ -11,7 +12,7 @@ class WhatsAppProviderFactory
     /**
      * Create WhatsApp provider instance
      *
-     * @param string $provider Provider type (meta, custom_api)
+     * @param string $provider Provider type (meta, custom_api, flaxxa)
      * @param array $config Provider configuration
      * @return WhatsAppProviderService
      */
@@ -20,6 +21,7 @@ class WhatsAppProviderFactory
         return match ($provider) {
             'meta' => new MetaProvider($config),
             'custom_api' => new CustomApiProvider($config),
+            'flaxxa' => new FlaxxaProvider($config),
             default => throw new InvalidArgumentException("Unsupported WhatsApp provider: {$provider}"),
         };
     }
@@ -34,6 +36,7 @@ class WhatsAppProviderFactory
         return [
             'meta' => 'Meta WhatsApp Cloud API',
             'custom_api' => 'Custom API Provider',
+            'flaxxa' => 'Flaxxa Wapi',
         ];
     }
 }

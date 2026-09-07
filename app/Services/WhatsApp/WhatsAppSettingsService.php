@@ -42,6 +42,18 @@ class WhatsAppSettingsService
             'custom_api_key' => $this->decryptIfEncrypted($settings['custom_api_key'] ?? ''),
             'custom_api_method' => $settings['custom_api_method'] ?? 'POST',
             'custom_api_headers' => $this->parseHeaders($settings['custom_api_headers'] ?? '{}'),
+            // Flaxxa Wapi settings
+            'flaxxa_base_url' => $settings['flaxxa_base_url'] ?? 'https://wapi.flaxxa.com',
+            'flaxxa_token' => $this->decryptIfEncrypted($settings['flaxxa_token'] ?? ''),
+            // OTP delivery mode (applies regardless of active provider)
+            'otp_whatsapp_delivery_mode' => $settings['otp_whatsapp_delivery_mode'] ?? 'text',
+            // Template used for account activation / new registration OTPs
+            'otp_whatsapp_template_name' => $settings['otp_whatsapp_template_name'] ?? '',
+            'otp_whatsapp_template_language' => $settings['otp_whatsapp_template_language'] ?? 'ar',
+            // Template used for forgot-password OTPs (falls back to the
+            // verification template above when left empty)
+            'otp_whatsapp_password_reset_template_name' => $settings['otp_whatsapp_password_reset_template_name'] ?? '',
+            'otp_whatsapp_password_reset_template_language' => $settings['otp_whatsapp_password_reset_template_language'] ?? 'ar',
         ];
     }
 
@@ -52,7 +64,7 @@ class WhatsAppSettingsService
     {
         foreach ($newSettings as $key => $value) {
             // Encrypt sensitive fields
-            if (in_array($key, ['access_token', 'app_secret', 'custom_api_key']) && !empty($value)) {
+            if (in_array($key, ['access_token', 'app_secret', 'custom_api_key', 'flaxxa_token']) && !empty($value)) {
                 $value = Crypt::encryptString($value);
             }
 
@@ -107,6 +119,13 @@ class WhatsAppSettingsService
             'custom_api_key' => '',
             'custom_api_method' => 'POST',
             'custom_api_headers' => '{}',
+            'flaxxa_base_url' => 'https://wapi.flaxxa.com',
+            'flaxxa_token' => '',
+            'otp_whatsapp_delivery_mode' => 'text',
+            'otp_whatsapp_template_name' => '',
+            'otp_whatsapp_template_language' => 'ar',
+            'otp_whatsapp_password_reset_template_name' => '',
+            'otp_whatsapp_password_reset_template_language' => 'ar',
         ];
 
         foreach ($defaults as $key => $value) {
@@ -130,6 +149,14 @@ class WhatsAppSettingsService
                 'api_key' => $settings['custom_api_key'],
                 'api_method' => $settings['custom_api_method'],
                 'headers' => $settings['custom_api_headers'],
+            ];
+        }
+
+        if ($provider === 'flaxxa') {
+            return [
+                'api_url' => $settings['flaxxa_base_url'],
+                'token' => $settings['flaxxa_token'],
+                'timeout' => $settings['timeout'],
             ];
         }
 
