@@ -33,6 +33,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'user-toggle-status', 'description' => 'تبديل حالة المستخدم'],
             ['name' => 'user-login-logs', 'description' => 'عرض سجلات تسجيل الدخول'],
             ['name' => 'user-send-verification-otp', 'description' => 'إرسال رمز التحقق للمستخدم'],
+            ['name' => 'activity-log-list', 'description' => 'عرض سجل النشاطات (الإضافة/التعديل/الحذف)'],
 
             // صلاحيات إدارة تخصيصات المشرفين
             ['name' => 'supervisor-assignment-list', 'description' => 'عرض قائمة تخصيصات المشرفين'],

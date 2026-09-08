@@ -10,16 +10,22 @@ function formatBytesHelper($bytes) {
 
 @extends('admin.layouts.master')
 
-@section('title', 'الملفات اليتيمة')
-
-@section('breadcrumb-title', 'الملفات اليتيمة')
-
-@section('breadcrumb-items')
-    <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
-    <li class="breadcrumb-item active">الملفات اليتيمة</li>
-@endsection
+@section('page-title', 'الملفات اليتيمة')
 
 @section('content')
+<div class="main-content app-content">
+    <div class="container-fluid">
+        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
+            <div class="my-auto">
+                <h5 class="page-title fs-21 mb-1">الملفات اليتيمة</h5>
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">الملفات اليتيمة</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
 <div class="row">
     {{-- Stats --}}
     <div class="col-12 mb-3">
@@ -112,6 +118,8 @@ function formatBytesHelper($bytes) {
             <div class="card-footer">{{ $orphans->links() }}</div>
             @endif
         </div>
+    </div>
+</div>
     </div>
 </div>
 @endsection

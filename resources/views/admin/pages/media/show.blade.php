@@ -1,16 +1,22 @@
 @extends('admin.layouts.master')
 
-@section('title', 'تفاصيل الملف')
-
-@section('breadcrumb-title', 'تفاصيل الملف')
-
-@section('breadcrumb-items')
-    <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
-    <li class="breadcrumb-item"><a href="{{ route('admin.media.index') }}">الملفات</a></li>
-    <li class="breadcrumb-item active">{{ $medium->id }}</li>
-@endsection
+@section('page-title', 'تفاصيل الملف')
 
 @section('content')
+<div class="main-content app-content">
+    <div class="container-fluid">
+        <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
+            <div class="my-auto">
+                <h5 class="page-title fs-21 mb-1">تفاصيل الملف</h5>
+                <nav>
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">لوحة التحكم</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('admin.media.index') }}">الملفات</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">{{ $medium->id }}</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
 <div class="row">
     {{-- File Info --}}
     <div class="col-lg-4 mb-3">
@@ -123,6 +129,8 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
     </div>
 </div>
 @endsection

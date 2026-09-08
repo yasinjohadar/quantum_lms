@@ -792,8 +792,8 @@
                         </li>
                         @endcanany
 
-                        @canany(['settings-manage', 'question-create', 'quiz-attempt-needs-grading', 'user-login-logs', 'class-list'])
-                        <li class="slide slide-icon slide-icon--slate has-sub {{ request()->is('admin/settings*') || request()->is('admin/currencies*') || request()->is('admin/exchange-rates*') || request()->is('admin/sms-*') || request()->is('admin/email-*') || request()->is('admin/app-storage*') || request()->is('admin/storage-disk-mappings*') || request()->is('admin/storage-migration*') || request()->is('admin/backup*') || request()->is('admin/ai*') || request()->is('admin/quiz-attempts/needs-grading*') || request()->is('admin/login-logs*') || request()->is('admin/user-sessions*') || request()->is('admin/stages*') ? 'open' : '' }}">
+                        @canany(['settings-manage', 'question-create', 'quiz-attempt-needs-grading', 'user-login-logs', 'activity-log-list', 'class-list'])
+                        <li class="slide slide-icon slide-icon--slate has-sub {{ request()->is('admin/settings*') || request()->is('admin/currencies*') || request()->is('admin/exchange-rates*') || request()->is('admin/sms-*') || request()->is('admin/email-*') || request()->is('admin/app-storage*') || request()->is('admin/storage-disk-mappings*') || request()->is('admin/storage-migration*') || request()->is('admin/backup*') || request()->is('admin/ai*') || request()->is('admin/quiz-attempts/needs-grading*') || request()->is('admin/login-logs*') || request()->is('admin/user-sessions*') || request()->is('admin/activity-log*') || request()->is('admin/stages*') ? 'open' : '' }}">
                             <a href="javascript:void(0);" class="side-menu__item">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="side-menu__icon" viewBox="0 0 24 24">
                                     <path d="M0 0h24v24H0z" fill="none"/>
@@ -880,13 +880,14 @@
                                 @endcan
 
                                 {{-- المراقبة والأمان --}}
-                                @can('user-login-logs')
-                                <li class="slide has-sub {{ request()->is('admin/login-logs*') || request()->is('admin/user-sessions*') ? 'open' : '' }}">
+                                @canany(['user-login-logs', 'activity-log-list'])
+                                <li class="slide has-sub {{ request()->is('admin/login-logs*') || request()->is('admin/user-sessions*') || request()->is('admin/activity-log*') ? 'open' : '' }}">
                                     <a href="javascript:void(0);" class="side-menu__item">
                                         <span class="side-menu__label">المراقبة والأمان</span>
                                         <i class="fe fe-chevron-right side-menu__angle"></i>
                                     </a>
                                     <ul class="slide-menu child1 settings-sub">
+                                        @can('user-login-logs')
                                         <li class="slide {{ request()->is('admin/login-logs*') ? 'active' : '' }}">
                                             <a href="{{ route('admin.login-logs.index') }}" class="side-menu__item {{ request()->is('admin/login-logs*') ? 'active' : '' }}">
                                                 <span class="side-menu__label">سجلات الدخول</span>
@@ -897,9 +898,17 @@
                                                 <span class="side-menu__label">جلسات المستخدمين</span>
                                             </a>
                                         </li>
+                                        @endcan
+                                        @can('activity-log-list')
+                                        <li class="slide {{ request()->is('admin/activity-log*') ? 'active' : '' }}">
+                                            <a href="{{ route('admin.activity-log.index') }}" class="side-menu__item {{ request()->is('admin/activity-log*') ? 'active' : '' }}">
+                                                <span class="side-menu__label">سجل النشاطات</span>
+                                            </a>
+                                        </li>
+                                        @endcan
                                     </ul>
                                 </li>
-                                @endcan
+                                @endcanany
 
                                 {{-- العملات --}}
                                 @can('settings-manage')

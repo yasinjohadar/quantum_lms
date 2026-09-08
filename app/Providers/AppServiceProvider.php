@@ -25,11 +25,15 @@ use App\Events\RewardClaimed;
 use App\Events\CustomNotificationSent;
 use App\Listeners\SendRealTimeNotification;
 use App\Models\Lesson;
+use App\Models\Question;
 use App\Models\Quiz;
 use App\Models\SchoolClass;
+use App\Models\Stage;
+use App\Models\Subject;
 use App\Models\SubjectSection;
 use App\Models\SystemSetting;
 use App\Models\Unit;
+use App\Observers\AuditableObserver;
 use App\Observers\CurriculumEntitySyncObserver;
 use Illuminate\Pagination\Paginator;
 
@@ -186,5 +190,14 @@ class AppServiceProvider extends ServiceProvider
         Unit::observe(CurriculumEntitySyncObserver::class);
         Lesson::observe(CurriculumEntitySyncObserver::class);
         Quiz::observe(CurriculumEntitySyncObserver::class);
+
+        Stage::observe(AuditableObserver::class);
+        SchoolClass::observe(AuditableObserver::class);
+        Subject::observe(AuditableObserver::class);
+        SubjectSection::observe(AuditableObserver::class);
+        Unit::observe(AuditableObserver::class);
+        Lesson::observe(AuditableObserver::class);
+        Question::observe(AuditableObserver::class);
+        Quiz::observe(AuditableObserver::class);
     }
 }

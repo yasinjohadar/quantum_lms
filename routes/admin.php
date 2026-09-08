@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\AnalyticsDashboardController;
 use App\Http\Controllers\Admin\ClassController;
 use App\Http\Controllers\Admin\DistinguishedStudentController;
@@ -602,6 +603,16 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('login-logs.destroy');
         Route::post('login-logs/clear-old', [LoginLogController::class, 'clearOld'])
             ->name('login-logs.clear-old');
+
+        // ===============================================
+        // سجل النشاطات (Activity Log)
+        // ===============================================
+        Route::middleware('permission:activity-log-list')->group(function () {
+            Route::get('activity-log', [ActivityLogController::class, 'index'])
+                ->name('activity-log.index');
+            Route::get('activity-log/{activityLog}', [ActivityLogController::class, 'show'])
+                ->name('activity-log.show');
+        });
 
         // ===============================================
         // الأرشيف (Archived Users)
