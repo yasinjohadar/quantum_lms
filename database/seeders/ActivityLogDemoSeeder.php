@@ -56,6 +56,15 @@ class ActivityLogDemoSeeder extends Seeder
     /** إنشاء/تعديل أكثر شيوعاً من الحذف/الاستعادة */
     private const EVENT_WEIGHTS = ['created' => 4, 'updated' => 5, 'deleted' => 1, 'restored' => 1];
 
+    /** أزواج (صف/مادة) تجريبية تُستخدم لملء عمود "الصف / المادة" في المعاينة */
+    private const DEMO_CLASS_SUBJECT_PAIRS = [
+        ['class' => 'الصف الأول الابتدائي', 'subject' => 'الرياضيات'],
+        ['class' => 'الصف الثالث الإعدادي', 'subject' => 'اللغة العربية'],
+        ['class' => 'الصف الثاني الثانوي', 'subject' => 'الفيزياء'],
+        ['class' => 'الصف السادس الابتدائي', 'subject' => 'العلوم'],
+        ['class' => 'الصف الأول الثانوي', 'subject' => 'الكيمياء'],
+    ];
+
     public function run(AuditLogService $auditLog): void
     {
         $users = User::role(['admin', 'teacher', 'supervisor'])->get();
@@ -76,21 +85,48 @@ class ActivityLogDemoSeeder extends Seeder
 
             [$modelClass, $field] = self::MODEL_MAP[$subjectKey];
             $label = self::TITLE_POOLS[$subjectKey][array_rand(self::TITLE_POOLS[$subjectKey])];
+            $modelId = random_int(1, 500);
 
             $model = new $modelClass([$field => $label]);
-            $model->setAttribute('id', random_int(1, 500));
+            $model->setAttribute('id', $modelId);
 
             [$old, $new] = $this->buildValues($event, $field, $label);
+
+            $pair = self::DEMO_CLASS_SUBJECT_PAIRS[array_rand(self::DEMO_CLASS_SUBJECT_PAIRS)];
+            $context = $this->demoContext($subjectKey, $modelId, $label, $pair);
 
             $occurredAt = Carbon::now()
                 ->subDays(random_int(0, 20))
                 ->subMinutes(random_int(0, 1439));
 
-            $log = $auditLog->logModelEvent($user, $event, $model, $subjectKey, $old, $new, $occurredAt);
+            $log = $auditLog->logModelEvent($user, $event, $model, $subjectKey, $old, $new, $occurredAt, $context);
             $log->update(['metadata' => ['seeded' => true]]);
         }
 
         $this->command?->info('تم توليد 80 نشاطاً تجريبياً في سجل النشاطات (يمكن حذفها لاحقاً عبر AuditLog::whereJsonContains(\'metadata->seeded\', true)->delete()).');
+    }
+
+    /**
+     * @param array{class: string, subject: string} $pair
+     */
+    private function demoContext(string $subjectKey, int $modelId, string $label, array $pair): array
+    {
+        return match ($subjectKey) {
+            'class' => ['class_id' => $modelId, 'class_name' => $label],
+            'subject' => [
+                'curriculum_subject_id' => $modelId,
+                'curriculum_subject_name' => $label,
+                'class_id' => random_int(1, 200),
+                'class_name' => $pair['class'],
+            ],
+            'subject_section', 'unit', 'lesson', 'question', 'quiz' => [
+                'class_id' => random_int(1, 200),
+                'class_name' => $pair['class'],
+                'curriculum_subject_id' => random_int(1, 200),
+                'curriculum_subject_name' => $pair['subject'],
+            ],
+            default => [], // stage: لا صف/مادة أعلى منها
+        };
     }
 
     /**

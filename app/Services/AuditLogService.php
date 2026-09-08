@@ -35,6 +35,10 @@ class AuditLogService
     /**
      * تسجيل حدث إنشاء/تعديل/حذف/استعادة على أحد نماذج المحتوى (المنهج/الأسئلة/الاختبارات).
      */
+    /**
+     * @param array $context لقطة "الصف/المادة" اللذين ينتمي إليهما العنصر (من CurriculumContextResolver):
+     *                       class_id, class_name, curriculum_subject_id, curriculum_subject_name
+     */
     public function logModelEvent(
         ?User $user,
         string $event,
@@ -42,7 +46,8 @@ class AuditLogService
         string $subjectKey,
         array $old = [],
         array $new = [],
-        ?\DateTimeInterface $occurredAt = null
+        ?\DateTimeInterface $occurredAt = null,
+        array $context = []
     ): AuditLog {
         $label = $model->title ?? $model->name ?? ('#' . $model->getKey());
 
@@ -57,6 +62,10 @@ class AuditLogService
             'subject_type' => $subjectKey,
             'subject_id' => $model->getKey(),
             'subject_label' => $label,
+            'class_id' => $context['class_id'] ?? null,
+            'class_name' => $context['class_name'] ?? null,
+            'curriculum_subject_id' => $context['curriculum_subject_id'] ?? null,
+            'curriculum_subject_name' => $context['curriculum_subject_name'] ?? null,
             'old_values' => $old ? $this->truncateValues($old) : null,
             'new_values' => $new ? $this->truncateValues($new) : null,
             'occurred_at' => $occurredAt ?? now(),

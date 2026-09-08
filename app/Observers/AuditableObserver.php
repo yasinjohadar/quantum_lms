@@ -11,13 +11,15 @@ use App\Models\Subject;
 use App\Models\SubjectSection;
 use App\Models\Unit;
 use App\Services\AuditLogService;
+use App\Support\CurriculumContextResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
 class AuditableObserver
 {
     public function __construct(
-        protected AuditLogService $auditLog
+        protected AuditLogService $auditLog,
+        protected CurriculumContextResolver $contextResolver
     ) {}
 
     public function created(Model $model): void
@@ -62,7 +64,9 @@ class AuditableObserver
             return;
         }
 
-        $this->auditLog->logModelEvent(Auth::user(), $event, $model, $subjectKey, $old ?? [], $new ?? []);
+        $context = $this->contextResolver->resolve($model, $subjectKey);
+
+        $this->auditLog->logModelEvent(Auth::user(), $event, $model, $subjectKey, $old ?? [], $new ?? [], null, $context);
     }
 
     private function updateDiff(Model $model): array

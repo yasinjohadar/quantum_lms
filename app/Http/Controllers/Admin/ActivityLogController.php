@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
+use App\Models\SchoolClass;
+use App\Models\Subject;
 use Illuminate\Http\Request;
 
 class ActivityLogController extends Controller
@@ -40,6 +42,14 @@ class ActivityLogController extends Controller
 
         if ($request->filled('event')) {
             $logsQuery->where('event_type', 'like', '%.' . $request->input('event'));
+        }
+
+        if ($request->filled('class_id')) {
+            $logsQuery->where('class_id', $request->input('class_id'));
+        }
+
+        if ($request->filled('curriculum_subject_id')) {
+            $logsQuery->where('curriculum_subject_id', $request->input('curriculum_subject_id'));
         }
 
         if ($request->filled('search')) {
@@ -85,7 +95,10 @@ class ActivityLogController extends Controller
                 ->count(),
         ];
 
-        return view('admin.pages.activity-log.index', compact('logs', 'stats', 'subjectLabels', 'eventLabels'));
+        $classes = SchoolClass::orderBy('name')->get(['id', 'name']);
+        $subjects = Subject::orderBy('name')->get(['id', 'name', 'class_id']);
+
+        return view('admin.pages.activity-log.index', compact('logs', 'stats', 'subjectLabels', 'eventLabels', 'classes', 'subjects'));
     }
 
     /**

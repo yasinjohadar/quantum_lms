@@ -36,6 +36,8 @@
                             <tr><td class="text-muted">نوع العنصر</td><td>{{ $subjectLabels[$log->subject_type] ?? $log->subject_type }}</td></tr>
                             <tr><td class="text-muted">العنصر</td><td>{{ $log->subject_label }}</td></tr>
                             <tr><td class="text-muted">رقم العنصر</td><td><code>{{ $log->subject_id }}</code></td></tr>
+                            <tr><td class="text-muted">الصف</td><td>{{ $log->class_name ?? '-' }}</td></tr>
+                            <tr><td class="text-muted">المادة</td><td>{{ $log->curriculum_subject_name ?? '-' }}</td></tr>
                             <tr><td class="text-muted">الإجراء</td><td>{{ $eventLabels[$eventKey] ?? $eventKey }}</td></tr>
                             <tr><td class="text-muted">الوقت</td><td>{{ $log->occurred_at->format('Y-m-d H:i:s') }}</td></tr>
                             <tr><td class="text-muted">IP</td><td><code>{{ $log->ip_address ?? '-' }}</code></td></tr>

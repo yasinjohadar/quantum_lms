@@ -22,6 +22,14 @@
         <td><span class="ui-class-pill ui-class-pill--approved">{{ $subjectLabels[$log->subject_type] ?? $log->subject_type }}</span></td>
         <td class="fw-semibold">{{ $log->subject_label }}</td>
         <td>
+            @if($log->class_name || $log->curriculum_subject_name)
+                @if($log->class_name)<div class="small">{{ $log->class_name }}</div>@endif
+                @if($log->curriculum_subject_name)<div class="text-muted small">{{ $log->curriculum_subject_name }}</div>@endif
+            @else
+                <span class="text-muted">-</span>
+            @endif
+        </td>
+        <td>
             <span class="ui-status-badge ui-status-badge--{{ $eventColors[$eventKey] ?? 'inactive' }}">
                 {{ $eventLabels[$eventKey] ?? $eventKey }}
             </span>
@@ -35,7 +43,7 @@
     </tr>
 @empty
     <tr>
-        <td colspan="7">
+        <td colspan="8">
             <div class="activity-log-empty">
                 <i class="bi bi-inboxes"></i>
                 لا توجد نشاطات مطابقة

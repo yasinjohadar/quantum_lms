@@ -106,10 +106,28 @@
                             </select>
                         </div>
                         <div class="col-md-6 col-lg-2">
+                            <label class="form-label">الصف</label>
+                            <select name="class_id" id="activityLogClassId" class="form-select">
+                                <option value="">كل الصفوف</option>
+                                @foreach($classes as $class)
+                                    <option value="{{ $class->id }}" {{ (string) request('class_id') === (string) $class->id ? 'selected' : '' }}>{{ $class->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6 col-lg-2">
+                            <label class="form-label">المادة</label>
+                            <select name="curriculum_subject_id" id="activityLogSubjectId" class="form-select">
+                                <option value="">كل المواد</option>
+                                @foreach($subjects as $subject)
+                                    <option value="{{ $subject->id }}" data-class-id="{{ $subject->class_id }}" {{ (string) request('curriculum_subject_id') === (string) $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6 col-lg-3">
                             <label class="form-label">من تاريخ</label>
                             <input type="date" name="date_from" id="activityLogDateFrom" class="form-control" value="{{ request('date_from') }}">
                         </div>
-                        <div class="col-md-6 col-lg-2">
+                        <div class="col-md-6 col-lg-3">
                             <label class="form-label">إلى تاريخ</label>
                             <input type="date" name="date_to" id="activityLogDateTo" class="form-control" value="{{ request('date_to') }}">
                         </div>
@@ -135,6 +153,7 @@
                                     <th>المستخدم</th>
                                     <th>نوع العنصر</th>
                                     <th>العنصر</th>
+                                    <th>الصف / المادة</th>
                                     <th>الإجراء</th>
                                     <th>الوقت</th>
                                     <th>التفاصيل</th>
@@ -165,17 +184,35 @@
         const searchInput = document.getElementById('activityLogSearchInput');
         const subjectTypeSelect = document.getElementById('activityLogSubjectType');
         const eventSelect = document.getElementById('activityLogEvent');
+        const classSelect = document.getElementById('activityLogClassId');
+        const subjectSelect = document.getElementById('activityLogSubjectId');
         const dateFrom = document.getElementById('activityLogDateFrom');
         const dateTo = document.getElementById('activityLogDateTo');
         const fetchUrl = '{{ route("admin.activity-log.index") }}';
 
         let debounceTimer = null;
 
+        // إظهار المواد التابعة للصف المختار فقط (تصفية من جانب المتصفح، بلا طلب إضافي)
+        function filterSubjectOptions() {
+            if (!classSelect || !subjectSelect) return;
+            const classId = classSelect.value;
+            Array.from(subjectSelect.options).forEach(function (opt) {
+                if (!opt.value) return;
+                opt.hidden = !!classId && opt.dataset.classId !== classId;
+            });
+            if (subjectSelect.selectedOptions[0]?.hidden) {
+                subjectSelect.value = '';
+            }
+        }
+        filterSubjectOptions();
+
         function buildFetchParams(page) {
             const params = new URLSearchParams();
             if (searchInput.value.trim()) params.set('search', searchInput.value.trim());
             if (subjectTypeSelect.value) params.set('subject_type', subjectTypeSelect.value);
             if (eventSelect.value) params.set('event', eventSelect.value);
+            if (classSelect && classSelect.value) params.set('class_id', classSelect.value);
+            if (subjectSelect && subjectSelect.value) params.set('curriculum_subject_id', subjectSelect.value);
             if (dateFrom.value) params.set('date_from', dateFrom.value);
             if (dateTo.value) params.set('date_to', dateTo.value);
             params.set('page', page || 1);
@@ -210,9 +247,16 @@
             });
         }
 
-        [subjectTypeSelect, eventSelect, dateFrom, dateTo].forEach(function (el) {
+        [subjectTypeSelect, eventSelect, subjectSelect, dateFrom, dateTo].forEach(function (el) {
             if (el) el.addEventListener('change', function () { fetchLogs(1); });
         });
+
+        if (classSelect) {
+            classSelect.addEventListener('change', function () {
+                filterSubjectOptions();
+                fetchLogs(1);
+            });
+        }
 
         if (searchInput) {
             searchInput.addEventListener('input', function () {
