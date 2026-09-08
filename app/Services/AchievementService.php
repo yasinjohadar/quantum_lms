@@ -7,13 +7,15 @@ use App\Models\User;
 use App\Models\UserAchievement;
 use App\Services\PointService;
 use App\Services\GamificationNotificationService;
+use App\Services\Gamification\CriteriaProgressCalculator;
 use App\Events\AchievementUnlocked;
 use App\Support\SafeEvent;
 
 class AchievementService
 {
     public function __construct(
-        private PointService $pointService
+        private PointService $pointService,
+        private CriteriaProgressCalculator $criteriaCalculator
     ) {}
 
     /**
@@ -63,78 +65,13 @@ class AchievementService
     }
 
     /**
-     * حساب التقدم نحو الإنجاز
+     * حساب التقدم نحو الإنجاز — يُفوَّض لـ CriteriaProgressCalculator الذي يقرأ
+     * مفتاح 'type' الفعلي داخل criteria (وليس عمود achievements.type الأعمّ)،
+     * فيغطي كل الأنواع الفرعية (quiz_completed/quiz_score/perfect_scores...) بدقة.
      */
     private function calculateProgress(User $user, Achievement $achievement, ?string $eventType): int
     {
-        $criteria = $achievement->criteria ?? [];
-        $type = $achievement->type;
-        $progress = 0;
-
-        switch ($type) {
-            case 'attendance':
-                $target = $criteria['lessons_attended'] ?? 0;
-                $current = $user->lessonCompletions()
-                    ->where('status', 'attended')
-                    ->count();
-                $progress = $target > 0 ? min(100, ($current / $target) * 100) : 0;
-                break;
-
-            case 'quiz':
-                $target = $criteria['quizzes_completed'] ?? 0;
-                // العادية + التفاعلية
-                $current = $user->completedQuizAttemptsCount();
-                $progress = $target > 0 ? min(100, ($current / $target) * 100) : 0;
-                break;
-
-            case 'course':
-                $target = $criteria['courses_completed'] ?? 0;
-                $current = $user->subjects()
-                    ->wherePivot('status', 'completed')
-                    ->count();
-                $progress = $target > 0 ? min(100, ($current / $target) * 100) : 0;
-                break;
-
-            case 'streak':
-                $target = $criteria['days'] ?? 0;
-                $current = $this->calculateStreak($user);
-                $progress = $target > 0 ? min(100, ($current / $target) * 100) : 0;
-                break;
-        }
-
-        return (int) $progress;
-    }
-
-    /**
-     * حساب سلسلة الحضور
-     */
-    private function calculateStreak(User $user): int
-    {
-        // حساب أيام الحضور المتتالية
-        $completions = $user->lessonCompletions()
-            ->orderBy('marked_at', 'desc')
-            ->get()
-            ->groupBy(function($item) {
-                return $item->marked_at->format('Y-m-d');
-            });
-
-        $streak = 0;
-        $currentDate = now()->startOfDay();
-
-        foreach ($completions as $date => $items) {
-            $dateObj = \Carbon\Carbon::parse($date)->startOfDay();
-            // Carbon 3 يُرجع diffInDays كقيمة عشرية موقّعة (float)، فالمقارنة الصارمة
-            // «1.0 === 1» تفشل وتنكسر السلسلة فوراً. نحوّلها لعدد صحيح مطلق.
-            $diff = (int) abs($currentDate->diffInDays($dateObj));
-
-            if ($diff === $streak) {
-                $streak++;
-            } else {
-                break;
-            }
-        }
-
-        return $streak;
+        return $this->criteriaCalculator->progress($user, $achievement->criteria ?? []);
     }
 
     /**

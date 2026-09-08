@@ -8,13 +8,15 @@ use App\Models\UserBadge;
 use App\Models\SystemSetting;
 use App\Services\PointService;
 use App\Services\GamificationNotificationService;
+use App\Services\Gamification\CriteriaProgressCalculator;
 use App\Events\BadgeEarned;
 use App\Support\SafeEvent;
 
 class BadgeService
 {
     public function __construct(
-        private PointService $pointService
+        private PointService $pointService,
+        private CriteriaProgressCalculator $criteriaCalculator
     ) {}
 
     /**
@@ -46,53 +48,12 @@ class BadgeService
     }
 
     /**
-     * فحص معايير الشارة
+     * فحص معايير الشارة — يُفوَّض لـ CriteriaProgressCalculator الذي يقرأ الشكل
+     * الفعلي المزروع في badges.criteria (مفتاح 'type' + count/percentage/total/days).
      */
     private function checkCriteria(User $user, Badge $badge): bool
     {
-        $criteria = $badge->criteria ?? [];
-
-        // فحص النقاط المطلوبة
-        if (isset($criteria['points_required'])) {
-            $totalPoints = $this->pointService->getUserTotalPoints($user);
-            if ($totalPoints < $criteria['points_required']) {
-                return false;
-            }
-        }
-
-        // فحص عدد الدروس المكتملة
-        if (isset($criteria['lessons_completed'])) {
-            $lessonsCompleted = $user->lessonCompletions()
-                ->where('status', 'completed')
-                ->count();
-            if ($lessonsCompleted < $criteria['lessons_completed']) {
-                return false;
-            }
-        }
-
-        // فحص عدد الاختبارات المكتملة
-        if (isset($criteria['quizzes_completed'])) {
-            // العادية + التفاعلية
-            $quizzesCompleted = $user->completedQuizAttemptsCount();
-            if ($quizzesCompleted < $criteria['quizzes_completed']) {
-                return false;
-            }
-        }
-
-        // فحص عدد الأسئلة الصحيحة
-        if (isset($criteria['questions_correct'])) {
-            $questionsCorrect = $user->questionAttempts()
-                ->completed()
-                ->whereHas('answer', function($q) {
-                    $q->where('is_correct', true);
-                })
-                ->count();
-            if ($questionsCorrect < $criteria['questions_correct']) {
-                return false;
-            }
-        }
-
-        return true;
+        return $this->criteriaCalculator->isMet($user, $badge->criteria ?? []);
     }
 
     /**
