@@ -27,7 +27,7 @@ class EnrollmentController extends Controller
     ) {
         $this->middleware('auth');
         $this->middleware(['permission:enrollment-list'])->only('index');
-        $this->middleware(['permission:enrollment-create'])->only(['create', 'store', 'assignClassToUser']);
+        $this->middleware(['permission:enrollment-create'])->only(['create', 'store', 'assignClassToUser', 'resyncSubjectEnrollmentsForUser']);
         $this->middleware(['permission:enrollment-delete'])->only('destroy', 'destroyMultiple', 'enrollmentsByClass', 'destroyByClass', 'destroyBySubject', 'countByClass', 'countBySubject');
         $this->middleware(['permission:enrollment-pending-requests'])->only('pendingRequests');
         $this->middleware(['permission:enrollment-approve'])->only('approve');
@@ -1029,6 +1029,53 @@ class EnrollmentController extends Controller
 
             return $this->redirectAfterClassAssign($request)
                 ->with('error', 'تعذر إتمام ربط الصف: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * إعادة مزامنة اشتراكات مواد طالب واحد عبر كل صفوفه المنضم إليها فعلاً (approved) —
+     * تُصلح اشتراكات مواد أُلغيت (يدوياً أو تلقائياً) بينما بقي انضمامه للصف سليماً،
+     * دون أي تأثير على حالة انضمامه للصف نفسها أو على أي طالب/صف/مادة أخرى.
+     */
+    public function resyncSubjectEnrollmentsForUser(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|integer|exists:users,id',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator);
+        }
+
+        $userId = $request->integer('user_id');
+
+        try {
+            DB::beginTransaction();
+
+            $result = $this->adminStudentEnrollmentService->resyncAllSubjectEnrollmentsForUser(
+                $userId,
+                auth()->id()
+            );
+
+            DB::commit();
+
+            $message = "تمت مراجعة {$result['classes_processed']} صف للطالب، وإعادة تفعيل {$result['created']} اشتراك مادة";
+            if ($result['skipped'] > 0) {
+                $message .= " (تم تخطي {$result['skipped']} مادة مفعّلة مسبقاً)";
+            }
+            $message .= '.';
+
+            return redirect()->back()->with('success', $message);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error resyncing subject enrollments for user', [
+                'user_id' => $userId,
+                'message' => $e->getMessage(),
+                'exception' => $e,
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'تعذر إتمام إعادة مزامنة اشتراكات المواد: '.$e->getMessage());
         }
     }
 

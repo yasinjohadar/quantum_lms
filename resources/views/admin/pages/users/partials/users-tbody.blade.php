@@ -113,6 +113,17 @@
                             title="ربط بمواد">
                         <i class="bi bi-journal-bookmark"></i>
                     </button>
+
+                    @if ($user->classEnrollments->where('status', 'approved')->isNotEmpty())
+                        <form method="post" action="{{ route('admin.enrollments.resync-subject-enrollments') }}" class="d-inline"
+                              onsubmit="return confirm('سيُعاد تفعيل انضمام هذا الطالب لكل مواد كل صف هو منضم إليه فقط — دون أي تأثير على طلاب آخرين. متابعة؟');">
+                            @csrf
+                            <input type="hidden" name="user_id" value="{{ $user->id }}">
+                            <button type="submit" class="row-action-btn row-action-btn--warning" title="إعادة مزامنة اشتراكات المواد">
+                                <i class="bi bi-arrow-repeat"></i>
+                            </button>
+                        </form>
+                    @endif
                 @endcan
 
                 <a class="row-action-btn row-action-btn--primary"

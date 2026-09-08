@@ -9,6 +9,16 @@ use App\Services\Pricing\SubjectPricingResolver;
 
 class AdminStudentEnrollmentService
 {
+    /**
+     * نصوص الملاحظات التي تكتبها آليات الإلغاء التلقائي الحقيقية (انتهاء اشتراك فعلي) —
+     * وجود إحداها على تسجيل غير نشط يعني أنه أُلغي بحق ولا يجب إعادة تفعيله تلقائياً
+     * ضمن إصلاح جماعي (على عكس حذف يدوي بالخطأ، الذي لا يترك أي ملاحظة كهذه).
+     */
+    private const LEGITIMATE_EXPIRATION_NOTES = [
+        'انتهت صلاحية الاشتراك تلقائياً',
+        'انتهت مدة اشتراك الصف تلقائياً',
+    ];
+
     public function __construct(
         protected SubjectPricingResolver $subjectPricingResolver,
     ) {
@@ -60,16 +70,28 @@ class AdminStudentEnrollmentService
     }
 
     /**
-     * @return array{created: int, skipped: int}
+     * @param  bool  $skipLegitimateExpirations  إن كان true، يتخطّى (لا يعيد تفعيل) أي تسجيل يحمل
+     *                                            ملاحظة إلغاء تلقائي حقيقي (انتهاء اشتراك فعلي) —
+     *                                            يُستخدم في الإصلاح الجماعي لتفادي إعادة منح وصول
+     *                                            مجاني لطالب انتهى اشتراكه فعلاً.
+     * @param  bool  $dryRun  إن كان true، لا يُنشئ/يحذف أي شيء فعلياً، فقط يحسب ما كان سيحدث.
+     * @return array{created: int, skipped: int, skipped_expired: int}
      */
-    public function provisionSubjectEnrollmentsForApprovedClass(int $userId, SchoolClass $class, string $enrollmentNotes, int $enrolledBy): array
-    {
+    public function provisionSubjectEnrollmentsForApprovedClass(
+        int $userId,
+        SchoolClass $class,
+        string $enrollmentNotes,
+        int $enrolledBy,
+        bool $skipLegitimateExpirations = false,
+        bool $dryRun = false
+    ): array {
         $class->loadMissing(['subjects' => function ($query) {
             $query->where('is_active', true);
         }]);
 
         $createdCount = 0;
         $skippedCount = 0;
+        $skippedExpiredCount = 0;
 
         foreach ($class->subjects as $subject) {
             if (! $this->subjectPricingResolver->isIncludedInClassBundle($subject)) {
@@ -81,27 +103,138 @@ class AdminStudentEnrollmentService
                 ->first();
 
             if ($existingEnrollment) {
-                if ($existingEnrollment->status === 'active') {
+                // تسجيل "active" لكنه محذوف ناعماً (عبر إجراء فصل يدوي سابق) يجب اعتباره
+                // غير فعّال وإعادة إنشائه، لا تخطّيه.
+                if ($existingEnrollment->status === 'active' && ! $existingEnrollment->trashed()) {
                     $skippedCount++;
                     continue;
                 }
-                if (in_array($existingEnrollment->status, ['pending', 'suspended', 'completed'], true)) {
+
+                if ($skipLegitimateExpirations && $this->hasLegitimateExpirationNote($existingEnrollment->notes)) {
+                    $skippedExpiredCount++;
+                    continue;
+                }
+
+                if (! $dryRun) {
                     $existingEnrollment->forceDelete();
                 }
             }
 
-            Enrollment::create([
-                'user_id' => $userId,
-                'subject_id' => $subject->id,
-                'enrolled_by' => $enrolledBy,
-                'enrolled_at' => now(),
-                'status' => 'active',
-                'notes' => $enrollmentNotes,
-            ]);
+            if (! $dryRun) {
+                Enrollment::create([
+                    'user_id' => $userId,
+                    'subject_id' => $subject->id,
+                    'enrolled_by' => $enrolledBy,
+                    'enrolled_at' => now(),
+                    'status' => 'active',
+                    'notes' => $enrollmentNotes,
+                ]);
+            }
             $createdCount++;
         }
 
-        return ['created' => $createdCount, 'skipped' => $skippedCount];
+        return ['created' => $createdCount, 'skipped' => $skippedCount, 'skipped_expired' => $skippedExpiredCount];
+    }
+
+    private function hasLegitimateExpirationNote(?string $notes): bool
+    {
+        if (! $notes) {
+            return false;
+        }
+
+        foreach (self::LEGITIMATE_EXPIRATION_NOTES as $marker) {
+            if (str_contains($notes, $marker)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * إعادة تفعيل انضمام طالب واحد لكل مواد كل صف هو منضم إليه فعلاً (ClassEnrollment
+     * بحالة 'approved') — دون لمس حالة انضمامه للصف نفسها، ودون أي أثر على طلاب آخرين
+     * أو صفوف/مواد أخرى غير صفوفه. يُستخدم لإصلاح اشتراكات مواد أُلغيت (يدوياً أو تلقائياً
+     * عبر انتهاء اشتراك) بينما بقي الطالب منضماً للصف.
+     *
+     * @return array{classes_processed: int, created: int, skipped: int}
+     */
+    public function resyncAllSubjectEnrollmentsForUser(int $userId, int $enrolledBy): array
+    {
+        $classIds = ClassEnrollment::query()
+            ->where('user_id', $userId)
+            ->where('status', 'approved')
+            ->pluck('class_id');
+
+        $classes = SchoolClass::with(['subjects' => function ($query) {
+            $query->where('is_active', true);
+        }])->whereIn('id', $classIds)->get();
+
+        $totalCreated = 0;
+        $totalSkipped = 0;
+
+        foreach ($classes as $class) {
+            $result = $this->provisionSubjectEnrollmentsForApprovedClass(
+                $userId,
+                $class,
+                'إعادة مزامنة اشتراكات مواد الصف: '.$class->name,
+                $enrolledBy
+            );
+            $totalCreated += $result['created'];
+            $totalSkipped += $result['skipped'];
+        }
+
+        return [
+            'classes_processed' => $classes->count(),
+            'created' => $totalCreated,
+            'skipped' => $totalSkipped,
+        ];
+    }
+
+    /**
+     * إصلاح جماعي آمن لكل الطلاب دفعة واحدة: يعيد فقط الاشتراكات الناقصة/الملغاة بالخطأ
+     * (بلا ملاحظة انتهاء تلقائي حقيقي)، ويتخطّى أي تسجيل يحمل ملاحظة انتهاء اشتراك فعلي —
+     * حتى لا يُعاد منح وصول مجاني لطالب انتهى اشتراكه بحق. لا يلمس ClassEnrollment إطلاقاً.
+     *
+     * @return array{students_processed: int, created: int, skipped: int, skipped_expired: int}
+     */
+    public function bulkResyncMissingSubjectEnrollments(int $enrolledBy, bool $dryRun = false): array
+    {
+        $userIds = ClassEnrollment::query()
+            ->where('status', 'approved')
+            ->distinct()
+            ->pluck('user_id');
+
+        $totals = ['students_processed' => 0, 'created' => 0, 'skipped' => 0, 'skipped_expired' => 0];
+
+        foreach ($userIds as $userId) {
+            $classIds = ClassEnrollment::query()
+                ->where('user_id', $userId)
+                ->where('status', 'approved')
+                ->pluck('class_id');
+
+            $classes = SchoolClass::with(['subjects' => function ($query) {
+                $query->where('is_active', true);
+            }])->whereIn('id', $classIds)->get();
+
+            foreach ($classes as $class) {
+                $result = $this->provisionSubjectEnrollmentsForApprovedClass(
+                    $userId,
+                    $class,
+                    'إصلاح جماعي لاشتراكات مواد الصف: '.$class->name,
+                    $enrolledBy,
+                    skipLegitimateExpirations: true,
+                    dryRun: $dryRun
+                );
+                $totals['created'] += $result['created'];
+                $totals['skipped'] += $result['skipped'];
+                $totals['skipped_expired'] += $result['skipped_expired'];
+            }
+
+            $totals['students_processed']++;
+        }
+
+        return $totals;
     }
 
     /**

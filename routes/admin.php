@@ -542,6 +542,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('enrollments.get-subjects-by-class');
         Route::post('enrollments/assign-class-to-user', [EnrollmentController::class, 'assignClassToUser'])
             ->name('enrollments.assign-class-to-user');
+        Route::post('enrollments/resync-subject-enrollments', [EnrollmentController::class, 'resyncSubjectEnrollmentsForUser'])
+            ->name('enrollments.resync-subject-enrollments');
         Route::get('enrollments/pending', [EnrollmentController::class, 'pendingRequests'])
             ->name('enrollments.pending');
         Route::post('enrollments/{enrollment}/approve', [EnrollmentController::class, 'approve'])
