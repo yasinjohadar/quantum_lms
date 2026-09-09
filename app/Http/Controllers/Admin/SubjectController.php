@@ -206,8 +206,7 @@ class SubjectController extends Controller
             if ($request->hasFile('image')) {
                 try {
                     $image = $request->file('image');
-                    $imageName = time() . '_' . $image->getClientOriginalName();
-                    $uploadResult = MediaStorageService::uploadImage($image, 'subjects/images', $imageName);
+                    $uploadResult = MediaStorageService::uploadImage($image, 'subjects/images');
                     $data['image'] = $uploadResult['path'];
                 } catch (\Exception $e) {
                     return back()
@@ -531,16 +530,16 @@ class SubjectController extends Controller
             $data = $request->validated();
 
             // صورة المادة
+            // لا نحذف الصورة القديمة إلا بعد تأكيد نجاح رفع الجديدة وحفظ مسارها في قاعدة البيانات،
+            // حتى لا تبقى subjects.image مشيرة لملف محذوف إن فشل الرفع أو الحفظ لاحقاً.
+            $oldImagePath = $subject->image;
+            $newImagePath = null;
             if ($request->hasFile('image')) {
                 try {
-                    if ($subject->image) {
-                        MediaStorageService::delete($subject->image);
-                    }
-
                     $image = $request->file('image');
-                    $imageName = time() . '_' . $image->getClientOriginalName();
-                    $uploadResult = MediaStorageService::uploadImage($image, 'subjects/images', $imageName);
-                    $data['image'] = $uploadResult['path'];
+                    $uploadResult = MediaStorageService::uploadImage($image, 'subjects/images');
+                    $newImagePath = $uploadResult['path'];
+                    $data['image'] = $newImagePath;
                 } catch (\Exception $e) {
                     return back()
                         ->withInput()
@@ -570,6 +569,18 @@ class SubjectController extends Controller
             $data['default_currency_id'] = $request->input('default_currency_id');
 
             $subject->update($data);
+
+            // حذف الصورة القديمة الآن فقط، بعد تأكيد نجاح حفظ المسار الجديد في قاعدة البيانات.
+            if ($newImagePath && $oldImagePath && $oldImagePath !== $newImagePath) {
+                try {
+                    MediaStorageService::delete($oldImagePath);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to delete old subject image: ' . $e->getMessage(), [
+                        'subject_id' => $subject->id,
+                        'old_image' => $oldImagePath,
+                    ]);
+                }
+            }
 
             // Invalidate pricing cache
             try {

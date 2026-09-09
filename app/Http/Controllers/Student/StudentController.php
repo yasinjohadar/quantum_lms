@@ -7,7 +7,6 @@ use App\Services\StudentProgressService;
 use App\Services\PointService;
 use App\Services\LevelService;
 use App\Services\BadgeService;
-use App\Models\UserBadge;
 use Illuminate\Support\Facades\Auth;
 
 class StudentController extends Controller
@@ -56,18 +55,10 @@ class StudentController extends Controller
         // إحصائيات Gamification الأساسية
         $totalPoints = $this->pointService->getUserTotalPoints($user);
         $currentLevel = $this->levelService->getUserLevel($user);
-        $levelProgress = $this->levelService->getLevelProgress($user);
         $badgesCount = $user->badges()->count();
         $achievementsCount = $user->achievements()
             ->wherePivot('completed_at', '!=', null)
             ->count();
-
-        // آخر الشارات (5 أحدث)
-        $latestBadges = UserBadge::where('user_id', $user->id)
-            ->with('badge')
-            ->latest('earned_at')
-            ->limit(5)
-            ->get();
 
         return view('student.dashboard', [
             'user' => $user,
@@ -77,10 +68,8 @@ class StudentController extends Controller
             'upcomingEvents' => collect(),
             'totalPoints' => $totalPoints,
             'currentLevel' => $currentLevel,
-            'levelProgress' => $levelProgress,
             'badgesCount' => $badgesCount,
             'achievementsCount' => $achievementsCount,
-            'latestBadges' => $latestBadges,
         ]);
     }
 }

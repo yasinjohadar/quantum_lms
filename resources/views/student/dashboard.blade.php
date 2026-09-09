@@ -8,18 +8,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@600;700;800&display=swap" rel="stylesheet">
     @include('student.partials.dashboard-widget-styles')
     <style>
-        .dashboard-badge-item {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            min-width: 88px;
-            border-radius: 10px;
-            border: 1px solid var(--default-border);
-            background: var(--custom-card-bg, var(--default-background));
-        }
-        .dashboard-badge-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        }
-
         .dashboard-welcome {
             margin: 1rem 0 1.25rem;
             min-width: 0;
@@ -78,7 +66,6 @@
             .main-content.app-content > .container-fluid > .dashboard-welcome { order: 0; }
             .main-content.app-content > .container-fluid > .dashboard-shortcuts-row { order: 1; }
             .main-content.app-content > .container-fluid > .dashboard-stats-row { order: 2; }
-            .main-content.app-content > .container-fluid > .dashboard-main-row { order: 3; }
 
             .dashboard-shortcuts-grid {
                 flex-direction: row-reverse;
@@ -249,94 +236,6 @@
                                     </div>
                                 @endforeach
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row dashboard-main-row">
-                <div class="col-xl-6 col-lg-12 mb-4">
-                    <div class="card dashboard-panel h-100">
-                        <div class="card-header">
-                            <h4 class="card-title mb-0">
-                                <i class="fe fe-award me-2"></i>
-                                آخر الشارات
-                            </h4>
-                        </div>
-                        <div class="card-body">
-                            @if(($latestBadges ?? collect())->isEmpty())
-                                <div class="text-center py-4">
-                                    <i class="fe fe-award fs-32 text-muted op-5 mb-2 d-block"></i>
-                                    <p class="text-muted mb-0">لم تحصل على شارات بعد</p>
-                                    <a href="{{ route('student.gamification.badges') }}" class="btn btn-sm btn-outline-primary mt-3">
-                                        عرض الشارات
-                                    </a>
-                                </div>
-                            @else
-                                <div class="d-flex flex-wrap gap-2 justify-content-center">
-                                    @foreach($latestBadges as $userBadge)
-                                        @if($userBadge->badge)
-                                            <div class="dashboard-badge-item text-center p-2">
-                                                <div class="mb-1">
-                                                    @if($userBadge->badge->icon)
-                                                        <i class="{{ $userBadge->badge->icon }} fs-24 text-warning"></i>
-                                                    @else
-                                                        <i class="fe fe-award fs-24 text-warning"></i>
-                                                    @endif
-                                                </div>
-                                                <div class="fs-11 fw-semibold">{{ $userBadge->badge->name }}</div>
-                                                <div class="fs-10 text-muted">{{ $userBadge->earned_at->diffForHumans() }}</div>
-                                            </div>
-                                        @endif
-                                    @endforeach
-                                </div>
-                                <div class="mt-3 text-center">
-                                    <a href="{{ route('student.gamification.badges') }}" class="btn btn-sm btn-outline-primary">
-                                        عرض جميع الشارات
-                                    </a>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-xl-6 col-lg-12 mb-4">
-                    <div class="card dashboard-panel h-100">
-                        <div class="card-header">
-                            <h4 class="card-title mb-0">
-                                <i class="fe fe-bar-chart-2 me-2"></i>
-                                إحصائيات سريعة
-                            </h4>
-                        </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="fs-13 text-muted">متوسط التقدم</span>
-                                    <span class="fw-bold">{{ number_format($overallAverage ?? 0, 1) }}%</span>
-                                </div>
-                                <div class="progress progress-sm">
-                                    <div class="progress-bar bg-success" style="width: {{ min(100, $overallAverage ?? 0) }}%;" role="progressbar"></div>
-                                </div>
-                            </div>
-                            @if(isset($levelProgress) && is_array($levelProgress))
-                                <div class="mb-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <span class="fs-13 text-muted">تقدم المستوى</span>
-                                        <span class="fw-bold">{{ number_format($levelProgress['progress_percentage'] ?? 0, 0) }}%</span>
-                                    </div>
-                                    <div class="progress progress-sm">
-                                        <div class="progress-bar bg-warning" style="width: {{ min(100, $levelProgress['progress_percentage'] ?? 0) }}%;" role="progressbar"></div>
-                                    </div>
-                                </div>
-                            @endif
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="fs-13 text-muted">إجمالي النقاط</span>
-                                <span class="fw-bold text-success">{{ number_format($totalPoints ?? 0) }}</span>
-                            </div>
-                            <a href="{{ route('student.reports.index') }}" class="btn btn-sm btn-primary w-100">
-                                <i class="fe fe-file-text me-1"></i>
-                                عرض التقارير التفصيلية
-                            </a>
                         </div>
                     </div>
                 </div>
