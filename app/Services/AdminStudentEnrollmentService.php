@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ClassEnrollment;
 use App\Models\Enrollment;
 use App\Models\SchoolClass;
+use App\Models\Subject;
 use App\Services\Pricing\SubjectPricingResolver;
 
 class AdminStudentEnrollmentService
@@ -291,5 +292,57 @@ class AdminStudentEnrollmentService
             'reactivated' => $reactivated,
             'skipped' => $skipped,
         ];
+    }
+
+    /**
+     * تسجيل الطلاب المنضمين فعلياً (class_enrollments.status = approved) في صف المادة
+     * الجديدة، بشكل إضافي بحت: لا يلمس أي Enrollment موجود مسبقاً (نشط أو محذوف ناعماً)
+     * إطلاقاً — فقط يُنشئ سجلاً جديداً لمن لا يملك أي سجل على الإطلاق لهذه المادة.
+     * يُستدعى فقط من SubjectController::store() لحظة إنشاء مادة جديدة.
+     *
+     * @return array{created: int, skipped: int}
+     */
+    public function provisionSubjectForAlreadyEnrolledClassStudents(Subject $subject, int $enrolledBy): array
+    {
+        if (! $subject->class_id || ! $subject->is_active) {
+            return ['created' => 0, 'skipped' => 0];
+        }
+
+        if (! $this->subjectPricingResolver->isIncludedInClassBundle($subject)) {
+            return ['created' => 0, 'skipped' => 0];
+        }
+
+        $userIds = ClassEnrollment::query()
+            ->where('class_id', $subject->class_id)
+            ->where('status', 'approved')
+            ->pluck('user_id')
+            ->unique();
+
+        $createdCount = 0;
+        $skippedCount = 0;
+
+        foreach ($userIds as $userId) {
+            $alreadyHasEnrollment = Enrollment::withTrashed()
+                ->where('user_id', $userId)
+                ->where('subject_id', $subject->id)
+                ->exists();
+
+            if ($alreadyHasEnrollment) {
+                $skippedCount++;
+                continue;
+            }
+
+            Enrollment::create([
+                'user_id' => $userId,
+                'subject_id' => $subject->id,
+                'enrolled_by' => $enrolledBy,
+                'enrolled_at' => now(),
+                'status' => 'active',
+                'notes' => 'تسجيل تلقائي عند إضافة المادة للصف: '.$subject->name,
+            ]);
+            $createdCount++;
+        }
+
+        return ['created' => $createdCount, 'skipped' => $skippedCount];
     }
 }

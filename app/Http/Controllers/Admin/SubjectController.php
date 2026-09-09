@@ -21,8 +21,9 @@ class SubjectController extends Controller
 {
     use ProvidesLinkableCurriculum;
 
-    public function __construct()
-    {
+    public function __construct(
+        private \App\Services\AdminStudentEnrollmentService $adminStudentEnrollmentService
+    ) {
         $this->middleware(['permission:subject-create'])->only(['create', 'store']);
         $this->middleware(['permission:subject-edit'])->only(['edit', 'update']);
         $this->middleware(['permission:subject-delete'])->only('destroy');
@@ -235,6 +236,18 @@ class SubjectController extends Controller
             $data['default_currency_id'] = $request->input('default_currency_id');
 
             $subject = Subject::create($data);
+
+            try {
+                $this->adminStudentEnrollmentService->provisionSubjectForAlreadyEnrolledClassStudents(
+                    $subject,
+                    auth()->id()
+                );
+            } catch (\Exception $e) {
+                Log::error('Error provisioning existing class students for new subject: '.$e->getMessage(), [
+                    'subject_id' => $subject->id,
+                    'class_id' => $subject->class_id,
+                ]);
+            }
 
             // Invalidate pricing cache
             try {
