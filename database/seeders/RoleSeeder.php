@@ -31,16 +31,16 @@ class RoleSeeder extends Seeder
             'subject-enrolled-students', 'subject-toggle-status',
 
             // صلاحيات إدارة أقسام المواد
-            'subject-section-create', 'subject-section-edit', 'subject-section-delete',
-            
+            'subject-section-create', 'subject-section-edit', 'subject-section-delete', 'subject-section-move',
+
             // صلاحيات إدارة الوحدات
             'unit-create', 'unit-edit', 'unit-delete', 'unit-questions',
-            'unit-attach-questions', 'unit-detach-question', 'unit-available-questions',
-            
+            'unit-attach-questions', 'unit-detach-question', 'unit-available-questions', 'unit-move',
+
             // صلاحيات إدارة الدروس
             'lesson-list', 'lesson-create', 'lesson-edit', 'lesson-delete', 'lesson-show',
-            'lesson-approve-review', 'lesson-reject-review',
-            
+            'lesson-approve-review', 'lesson-reject-review', 'lesson-move',
+
             // صلاحيات إدارة مرفقات الدروس
             'lesson-attachment-create', 'lesson-attachment-edit', 'lesson-attachment-delete',
 

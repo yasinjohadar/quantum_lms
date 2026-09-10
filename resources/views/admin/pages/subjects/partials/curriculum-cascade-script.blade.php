@@ -432,6 +432,85 @@
             });
         }
 
+        var sectionMoveClass = document.getElementById('sectionMoveClassSelect');
+        var sectionMoveSubject = document.getElementById('sectionMoveSubjectSelect');
+        if (sectionMoveClass && sectionMoveSubject) {
+            registerPicker('section-move', {
+                classSelect: sectionMoveClass,
+                subjectSelect: sectionMoveSubject,
+                excludeSubjectIds: function () {
+                    var form = document.getElementById('moveSectionForm');
+                    var currentId = form ? form.getAttribute('data-current-subject-id') : '';
+                    return currentId ? [currentId] : [];
+                },
+                onSubjectChange: function (subjectId) {
+                    var placementWrap = document.getElementById('sectionMovePlacementWrap');
+                    var submitBtn = document.getElementById('moveSectionSubmitBtn');
+                    var placementRoot = document.getElementById('sectionMovePlacementRoot');
+                    var placementChild = document.getElementById('sectionMovePlacementChild');
+                    if (!subjectId) {
+                        if (placementWrap) {
+                            placementWrap.style.display = 'none';
+                        }
+                        if (typeof window.syncMoveSectionSubmitState === 'function') {
+                            window.syncMoveSectionSubmitState();
+                        }
+                        return;
+                    }
+                    if (placementWrap) {
+                        placementWrap.style.display = '';
+                    }
+                    if (placementRoot) {
+                        placementRoot.checked = true;
+                    }
+                    if (placementChild) {
+                        placementChild.checked = false;
+                    }
+                    if (typeof window.syncSectionMovePlacementUI === 'function') {
+                        window.syncSectionMovePlacementUI();
+                    }
+                    if (typeof window.populateSectionMoveParentSelect === 'function') {
+                        window.populateSectionMoveParentSelect(subjectId);
+                    }
+                    if (typeof window.syncMoveSectionSubmitState === 'function') {
+                        window.syncMoveSectionSubmitState();
+                    }
+                },
+            });
+        }
+
+        var unitMoveClass = document.getElementById('unitMoveClassSelect');
+        var unitMoveSubject = document.getElementById('unitMoveSubjectSelect');
+        if (unitMoveClass && unitMoveSubject) {
+            registerPicker('unit-move', {
+                classSelect: unitMoveClass,
+                subjectSelect: unitMoveSubject,
+                sectionSelect: document.getElementById('unitMoveSectionSelect'),
+                unitSelect: document.getElementById('unitMoveUnitSelect'),
+                onSectionChange: function () {
+                    if (typeof window.syncMoveUnitSubmitState === 'function') {
+                        window.syncMoveUnitSubmitState();
+                    }
+                },
+            });
+        }
+
+        var lessonMoveClass = document.getElementById('lessonMoveClassSelect');
+        var lessonMoveSubject = document.getElementById('lessonMoveSubjectSelect');
+        if (lessonMoveClass && lessonMoveSubject) {
+            registerPicker('lesson-move', {
+                classSelect: lessonMoveClass,
+                subjectSelect: lessonMoveSubject,
+                sectionSelect: document.getElementById('lessonMoveSectionSelect'),
+                unitSelect: document.getElementById('lessonMoveUnitSelect'),
+                onSectionChange: function () {
+                    if (typeof window.syncMoveLessonSubmitState === 'function') {
+                        window.syncMoveLessonSubmitState();
+                    }
+                },
+            });
+        }
+
         document.querySelectorAll('.unit-mirror-class-select').forEach(function (classSelect, index) {
             var row = classSelect.closest('[data-current-subject-id]');
             var subjectSelect = row ? row.querySelector('.unit-mirror-subject-select') : null;

@@ -147,6 +147,21 @@
             </button>
             @endif
             @endcan
+            @can('subject-section-move')
+            @if(!$isSyncMirror && !$isLinkedSection)
+            <button type="button"
+                    class="btn btn-sm btn-icon btn-warning-transparent move-section-subject-btn"
+                    data-bs-toggle="modal"
+                    data-bs-target="#moveSectionModal"
+                    data-section-id="{{ $section->id }}"
+                    data-section-title="{{ e($section->title) }}"
+                    data-section-subject-id="{{ $section->subject_id }}"
+                    data-section-subject-name="{{ e($subject->name) }}"
+                    title="نقل القسم لمادة أخرى">
+                <i class="bi bi-arrow-left-right"></i>
+            </button>
+            @endif
+            @endcan
             @if(!$isLinkedSection)
             @can('subject-section-edit')
             <button type="button"
@@ -241,7 +256,7 @@
                                     </div>
                                     <div class="d-flex align-items-center gap-1 flex-shrink-0">
                                         @can('lesson-show')
-                                            <a href="{{ route('admin.lessons.show', $lesson->id) }}" class="btn btn-sm btn-icon btn-success-transparent" title="مشاهدة"><i class="bi bi-play-fill"></i></a>
+                                            <a href="{{ route('admin.lessons.show', $lesson->id) }}" class="btn btn-sm btn-icon btn-success-transparent lesson-play-btn" data-lesson-id="{{ $lesson->id }}" title="مشاهدة"><i class="bi bi-play-fill"></i></a>
                                         @endcan
                                         @can('lesson-show')
                                             @if($lesson->embed_url || $lesson->video_url)
@@ -315,6 +330,20 @@
                                             </button>
                                             @endif
                                             <button type="button" class="btn btn-sm btn-icon btn-primary-transparent" data-bs-toggle="modal" data-bs-target="#editLesson{{ $lesson->id }}" title="تعديل"><i class="bi bi-pencil"></i></button>
+                                        @endcan
+                                        @can('lesson-move')
+                                            @if(!$lesson->isSyncMirror())
+                                            <button type="button"
+                                                    class="btn btn-sm btn-icon btn-warning-transparent move-lesson-btn"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#moveLessonModal"
+                                                    data-lesson-id="{{ $lesson->id }}"
+                                                    data-lesson-title="{{ e($lesson->title) }}"
+                                                    data-lesson-subject-name="{{ e($subject->name ?? '') }}"
+                                                    title="نقل الدرس لوحدة/قسم آخر">
+                                                <i class="bi bi-arrow-left-right"></i>
+                                            </button>
+                                            @endif
                                         @endcan
                                         @can('lesson-delete')
                                             <button type="button" class="btn btn-sm btn-icon btn-danger-transparent" data-bs-toggle="modal" data-bs-target="#deleteLesson{{ $lesson->id }}" title="حذف"><i class="bi bi-trash"></i></button>

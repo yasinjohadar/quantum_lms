@@ -122,6 +122,21 @@
                 <i class="bi bi-trash"></i>
             </button>
             @endcan
+            @can('unit-move')
+            @if(!$isUnitSyncMirror)
+            <button type="button"
+                    class="btn btn-sm btn-icon btn-warning-transparent move-unit-btn"
+                    data-bs-toggle="modal"
+                    data-bs-target="#moveUnitModal"
+                    data-unit-id="{{ $unit->id }}"
+                    data-unit-title="{{ e($unit->title) }}"
+                    data-unit-section-id="{{ $unit->section_id }}"
+                    data-unit-subject-name="{{ e($unit->section->subject->name ?? '') }}"
+                    title="نقل الوحدة لقسم آخر">
+                <i class="bi bi-arrow-left-right"></i>
+            </button>
+            @endif
+            @endcan
         </div>
     </h2>
     <div id="unitCollapse{{ $unit->id }}"

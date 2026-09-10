@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\UpdateSubjectSectionRequest;
 use App\Models\Subject;
 use App\Models\SubjectSection;
 use App\Services\Curriculum\SectionCloneService;
+use App\Services\Curriculum\SectionMoveService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -15,11 +16,13 @@ use Illuminate\Support\Facades\Log;
 class SubjectSectionController extends Controller
 {
     public function __construct(
-        protected SectionCloneService $cloneService
+        protected SectionCloneService $cloneService,
+        protected SectionMoveService $moveService
     ) {
         $this->middleware(['permission:subject-section-create'])->only('store');
         $this->middleware(['permission:subject-section-edit'])->only(['update', 'reorder', 'getLinkedSubjects', 'linkSubjects']);
         $this->middleware(['permission:subject-section-delete'])->only('destroy');
+        $this->middleware(['permission:subject-section-move'])->only('move');
     }
 
     /**
@@ -364,6 +367,64 @@ class SubjectSectionController extends Controller
         return redirect()
             ->back()
             ->with('success', $message);
+    }
+
+    /**
+     * نقل قسم بالكامل (وكل ما تحته من وحدات ودروس واختبارات) إلى مادة أخرى،
+     * إما كقسم رئيسي فيها أو تحت قسم أب محدد ضمنها. هذا نقل فعلي (ليس نسخاً/ربطاً):
+     * لا يُنشئ أي صفوف جديدة، فقط يُعيد ربط القسم وكل شجرته بالمادة الهدف.
+     */
+    public function move(Request $request, SubjectSection $section)
+    {
+        $request->validate([
+            'target_subject_id' => ['required', 'integer', 'exists:subjects,id'],
+            'target_parent_section_id' => ['nullable', 'integer', 'exists:subject_sections,id'],
+            'confirm' => ['accepted'],
+        ]);
+
+        $originSubjectId = $section->subject_id;
+        $targetSubject = Subject::findOrFail($request->input('target_subject_id'));
+        $targetParentSectionId = $request->filled('target_parent_section_id')
+            ? (int) $request->input('target_parent_section_id')
+            : null;
+
+        try {
+            $this->moveService->assertMovable($section);
+
+            $movedSection = $this->moveService->moveSectionToSubject(
+                $section,
+                $targetSubject,
+                $targetParentSectionId
+            );
+        } catch (\InvalidArgumentException $e) {
+            return redirect()
+                ->route('admin.subjects.show', $originSubjectId)
+                ->with('error', $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('خطأ في نقل القسم: '.$e->getMessage(), [
+                'section_id' => $section->id,
+                'origin_subject_id' => $originSubjectId,
+                'target_subject_id' => $targetSubject->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()
+                ->route('admin.subjects.show', $originSubjectId)
+                ->with('error', 'حدث خطأ أثناء نقل القسم: '.$e->getMessage());
+        }
+
+        Log::info(sprintf(
+            'تم نقل القسم #%d ("%s") من المادة #%d إلى المادة #%d ("%s")',
+            $section->id,
+            $section->title,
+            $originSubjectId,
+            $targetSubject->id,
+            $targetSubject->name
+        ));
+
+        return redirect()
+            ->route('admin.subjects.show', $targetSubject->id)
+            ->with('success', 'تم نقل القسم "'.$movedSection->title.'" إلى مادة "'.$targetSubject->name.'" بنجاح.');
     }
 
     /**

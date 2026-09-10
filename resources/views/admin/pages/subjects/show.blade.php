@@ -394,8 +394,215 @@
     </div>
     @endcan
 
+    {{-- مودال نقل القسم لمادة أخرى --}}
+    @can('subject-section-move')
+    <div class="modal fade" id="moveSectionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 rounded-4">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold" id="moveSectionModalTitle">نقل القسم لمادة أخرى</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                </div>
+                <form id="moveSectionForm" method="POST" action="">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="alert alert-danger small mb-3" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                            هذا <strong>نقل فعلي</strong> للقسم بالكامل (وحداته، دروسه، اختباراته) إلى مادة أخرى —
+                            وليس نسخاً. سيختفي القسم من مادته الحالية (<span id="moveSectionCurrentSubjectName" class="fw-semibold"></span>)،
+                            وسيفقد الطلاب المسجّلون فيها الوصول إليه فوراً، بينما يكتسبه الطلاب المسجّلون في المادة الهدف.
+                        </div>
+                        <div class="row g-2 align-items-end mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label small">الصف</label>
+                                <select class="form-select form-select-sm" id="sectionMoveClassSelect">
+                                    <option value="">-- اختر الصف --</option>
+                                    @if(isset($linkableClasses))
+                                        @foreach($linkableClasses as $cls)
+                                            <option value="{{ $cls['id'] }}">{{ !empty($cls['stage_name'] ?? null) ? $cls['stage_name'].' / ' : '' }}{{ $cls['name'] }}</option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">المادة الهدف</label>
+                                <select class="form-select form-select-sm" id="sectionMoveSubjectSelect" name="target_subject_id" disabled required>
+                                    <option value="">-- اختر المادة --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4" id="sectionMovePlacementWrap" style="display: none;">
+                                <label class="form-label small d-block">مكان القسم في المادة الهدف</label>
+                                <div class="form-check form-check-inline mb-1">
+                                    <input class="form-check-input" type="radio" name="section_move_placement" id="sectionMovePlacementRoot" value="root" checked>
+                                    <label class="form-check-label small" for="sectionMovePlacementRoot">قسم رئيسي</label>
+                                </div>
+                                <div class="form-check form-check-inline mb-1">
+                                    <input class="form-check-input" type="radio" name="section_move_placement" id="sectionMovePlacementChild" value="child">
+                                    <label class="form-check-label small" for="sectionMovePlacementChild">تحت قسم</label>
+                                </div>
+                                <select class="form-select form-select-sm mt-1 d-none" id="sectionMoveParentSelect" name="target_parent_section_id" disabled>
+                                    <option value="">-- اختر القسم الأب --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="confirm" id="sectionMoveConfirmCheck" required>
+                            <label class="form-check-label small" for="sectionMoveConfirmCheck">
+                                أؤكد أنني أدرك أن هذا سينقل صلاحية وصول الطلاب لهذا القسم فوراً بين المادتين.
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-danger" id="moveSectionSubmitBtn" disabled>
+                            <i class="bi bi-arrow-left-right me-1"></i> نقل القسم
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endcan
+
     {{-- مودال ربط الدرس بوحدات إضافية --}}
     @include('admin.pages.lessons.partials.link-units-modal')
+
+    {{-- مودال نقل الوحدة لقسم آخر --}}
+    @can('unit-move')
+    <div class="modal fade" id="moveUnitModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 rounded-4">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold" id="moveUnitModalTitle">نقل الوحدة لقسم آخر</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                </div>
+                <form id="moveUnitForm" method="POST" action="">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="alert alert-danger small mb-3" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                            هذا <strong>نقل فعلي</strong> للوحدة بالكامل (دروسها واختباراتها) إلى قسم آخر —
+                            وليس نسخاً. ستختفي الوحدة من قسمها/مادتها الحالية (<span id="moveUnitCurrentSubjectName" class="fw-semibold"></span>)،
+                            وقد يتغيّر وصول الطلاب إليها فوراً إن انتقلت لمادة مختلفة.
+                        </div>
+                        <div class="row g-2 align-items-end mb-3">
+                            <div class="col-md-3">
+                                <label class="form-label small">الصف</label>
+                                <select class="form-select form-select-sm" id="unitMoveClassSelect">
+                                    <option value="">-- اختر الصف --</option>
+                                    @if(isset($linkableClasses))
+                                        @foreach($linkableClasses as $cls)
+                                            <option value="{{ $cls['id'] }}">{{ !empty($cls['stage_name'] ?? null) ? $cls['stage_name'].' / ' : '' }}{{ $cls['name'] }}</option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small">المادة</label>
+                                <select class="form-select form-select-sm" id="unitMoveSubjectSelect" disabled>
+                                    <option value="">-- اختر المادة --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small">القسم الهدف</label>
+                                <select class="form-select form-select-sm" id="unitMoveSectionSelect" name="target_section_id" disabled required>
+                                    <option value="">-- اختر القسم --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small">تحت وحدة (اختياري)</label>
+                                <select class="form-select form-select-sm" id="unitMoveUnitSelect" name="target_parent_unit_id" disabled>
+                                    <option value="">-- وحدة رئيسية --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="confirm" id="unitMoveConfirmCheck" required>
+                            <label class="form-check-label small" for="unitMoveConfirmCheck">
+                                أؤكد أنني أدرك تأثير هذا النقل على وصول الطلاب لهذه الوحدة.
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-danger" id="moveUnitSubmitBtn" disabled>
+                            <i class="bi bi-arrow-left-right me-1"></i> نقل الوحدة
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endcan
+
+    {{-- مودال نقل الدرس لوحدة/قسم آخر --}}
+    @can('lesson-move')
+    <div class="modal fade" id="moveLessonModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 rounded-4">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold" id="moveLessonModalTitle">نقل الدرس لوحدة/قسم آخر</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                </div>
+                <form id="moveLessonForm" method="POST" action="">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="alert alert-danger small mb-3" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                            هذا <strong>نقل فعلي</strong> للدرس (واختباراته) إلى وحدة أو قسم آخر — وليس نسخاً.
+                            سيختفي الدرس من مكانه الحالي (<span id="moveLessonCurrentSubjectName" class="fw-semibold"></span>)،
+                            وقد يتغيّر وصول الطلاب إليه فوراً إن انتقل لمادة مختلفة. اترك "الوحدة" بدون اختيار
+                            ليصبح الدرس درساً مباشراً في القسم الهدف.
+                        </div>
+                        <div class="row g-2 align-items-end mb-3">
+                            <div class="col-md-3">
+                                <label class="form-label small">الصف</label>
+                                <select class="form-select form-select-sm" id="lessonMoveClassSelect">
+                                    <option value="">-- اختر الصف --</option>
+                                    @if(isset($linkableClasses))
+                                        @foreach($linkableClasses as $cls)
+                                            <option value="{{ $cls['id'] }}">{{ !empty($cls['stage_name'] ?? null) ? $cls['stage_name'].' / ' : '' }}{{ $cls['name'] }}</option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small">المادة</label>
+                                <select class="form-select form-select-sm" id="lessonMoveSubjectSelect" disabled>
+                                    <option value="">-- اختر المادة --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small">القسم الهدف</label>
+                                <select class="form-select form-select-sm" id="lessonMoveSectionSelect" name="target_section_id" disabled required>
+                                    <option value="">-- اختر القسم --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small">الوحدة (اختياري)</label>
+                                <select class="form-select form-select-sm" id="lessonMoveUnitSelect" name="target_unit_id" disabled>
+                                    <option value="">-- درس مباشر بالقسم --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="confirm" id="lessonMoveConfirmCheck" required>
+                            <label class="form-check-label small" for="lessonMoveConfirmCheck">
+                                أؤكد أنني أدرك تأثير هذا النقل على وصول الطلاب لهذا الدرس.
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-danger" id="moveLessonSubmitBtn" disabled>
+                            <i class="bi bi-arrow-left-right me-1"></i> نقل الدرس
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endcan
 
     {{-- مودال إنشاء قسم جديد --}}
     @can('subject-section-create')
@@ -1778,6 +1985,8 @@ window.curriculumCascadeRoutes = {
 };
 window.adminQuizzesLinkUnitsBase = "{{ url('admin/quizzes') }}";
 window.adminSectionsLinkSubjectsBase = "{{ url('admin/sections') }}";
+window.adminSubjectSectionsMoveBase = "{{ url('admin/subject-sections') }}";
+window.adminUnitsMoveBase = "{{ url('admin/units') }}";
 window.adminLessonsLinkUnitsBase = "{{ url('admin/lessons') }}";
 window.formatLinkedUnitBadge = function(u) {
     if (!u) return '';
@@ -2235,6 +2444,293 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!confirm('سيتم إزالة كل الروابط الحالية لهذا القسم من المواد الأخرى. متابعة؟')) {
                     e.preventDefault();
                 }
+            }
+        });
+    }
+
+    // مودال نقل القسم لمادة أخرى
+    function populateSectionMoveParentSelect(subjectId) {
+        var parentSelect = document.getElementById('sectionMoveParentSelect');
+        var subjectSelect = document.getElementById('sectionMoveSubjectSelect');
+        if (!parentSelect) return;
+        parentSelect.innerHTML = '<option value="">-- اختر القسم الأب --</option>';
+        var sections = [];
+        if (subjectSelect && subjectSelect.dataset.sectionsCache) {
+            try {
+                sections = JSON.parse(subjectSelect.dataset.sectionsCache);
+            } catch (err) {
+                sections = [];
+            }
+        }
+        sections.forEach(function(sec) {
+            var opt = document.createElement('option');
+            opt.value = sec.id;
+            opt.textContent = sec.path_title || sec.title || ('#' + sec.id);
+            parentSelect.appendChild(opt);
+        });
+    }
+    window.populateSectionMoveParentSelect = populateSectionMoveParentSelect;
+
+    function syncSectionMovePlacementUI() {
+        var placementChild = document.getElementById('sectionMovePlacementChild');
+        var parentSelect = document.getElementById('sectionMoveParentSelect');
+        if (!parentSelect) return;
+        var isChild = placementChild && placementChild.checked;
+        parentSelect.classList.toggle('d-none', !isChild);
+        parentSelect.disabled = !isChild;
+        if (!isChild) parentSelect.value = '';
+    }
+    window.syncSectionMovePlacementUI = syncSectionMovePlacementUI;
+
+    function syncMoveSectionSubmitState() {
+        var submitBtn = document.getElementById('moveSectionSubmitBtn');
+        var subjectSelect = document.getElementById('sectionMoveSubjectSelect');
+        var confirmCheck = document.getElementById('sectionMoveConfirmCheck');
+        if (!submitBtn) return;
+        var hasSubject = !!(subjectSelect && subjectSelect.value);
+        var isConfirmed = !!(confirmCheck && confirmCheck.checked);
+        submitBtn.disabled = !(hasSubject && isConfirmed);
+    }
+    window.syncMoveSectionSubmitState = syncMoveSectionSubmitState;
+
+    function resetSectionMovePicker() {
+        var classSelect = document.getElementById('sectionMoveClassSelect');
+        var subjectSelect = document.getElementById('sectionMoveSubjectSelect');
+        var placementWrap = document.getElementById('sectionMovePlacementWrap');
+        var parentSelect = document.getElementById('sectionMoveParentSelect');
+        var placementRoot = document.getElementById('sectionMovePlacementRoot');
+        var placementChild = document.getElementById('sectionMovePlacementChild');
+        var confirmCheck = document.getElementById('sectionMoveConfirmCheck');
+        if (classSelect) classSelect.value = '';
+        if (subjectSelect) {
+            subjectSelect.innerHTML = '<option value="">-- اختر المادة --</option>';
+            subjectSelect.disabled = true;
+        }
+        if (placementWrap) placementWrap.style.display = 'none';
+        if (parentSelect) {
+            parentSelect.innerHTML = '<option value="">-- اختر القسم الأب --</option>';
+            parentSelect.classList.add('d-none');
+            parentSelect.disabled = true;
+        }
+        if (placementRoot) placementRoot.checked = true;
+        if (placementChild) placementChild.checked = false;
+        if (confirmCheck) confirmCheck.checked = false;
+        syncMoveSectionSubmitState();
+    }
+
+    document.querySelectorAll('input[name="section_move_placement"]').forEach(function(radio) {
+        radio.addEventListener('change', syncSectionMovePlacementUI);
+    });
+    var sectionMoveSubjectSelectEl = document.getElementById('sectionMoveSubjectSelect');
+    if (sectionMoveSubjectSelectEl) {
+        sectionMoveSubjectSelectEl.addEventListener('change', syncMoveSectionSubmitState);
+    }
+    var sectionMoveConfirmCheckEl = document.getElementById('sectionMoveConfirmCheck');
+    if (sectionMoveConfirmCheckEl) {
+        sectionMoveConfirmCheckEl.addEventListener('change', syncMoveSectionSubmitState);
+    }
+
+    var moveSectionModalEl = document.getElementById('moveSectionModal');
+    if (moveSectionModalEl && window.adminSubjectSectionsMoveBase) {
+        moveSectionModalEl.addEventListener('show.bs.modal', function(e) {
+            var form = document.getElementById('moveSectionForm');
+            var titleEl = document.getElementById('moveSectionModalTitle');
+            var currentSubjectNameEl = document.getElementById('moveSectionCurrentSubjectName');
+            var trigger = e.relatedTarget;
+            if (!form || !titleEl) return;
+            var sectionId = trigger && trigger.getAttribute('data-section-id');
+            var sectionTitle = trigger && trigger.getAttribute('data-section-title') || '';
+            var currentSubjectId = trigger && trigger.getAttribute('data-section-subject-id') || '';
+            var currentSubjectName = trigger && trigger.getAttribute('data-section-subject-name') || '';
+            if (sectionId) {
+                form.action = window.adminSubjectSectionsMoveBase + '/' + sectionId + '/move';
+                form.setAttribute('data-current-subject-id', currentSubjectId);
+                titleEl.textContent = 'نقل القسم لمادة أخرى' + (sectionTitle ? ': ' + sectionTitle : '');
+            }
+            if (currentSubjectNameEl) currentSubjectNameEl.textContent = currentSubjectName;
+            resetSectionMovePicker();
+        });
+    }
+
+    var moveSectionForm = document.getElementById('moveSectionForm');
+    if (moveSectionForm) {
+        moveSectionForm.addEventListener('submit', function(e) {
+            var subjectSelect = document.getElementById('sectionMoveSubjectSelect');
+            var confirmCheck = document.getElementById('sectionMoveConfirmCheck');
+            if (!subjectSelect || !subjectSelect.value) {
+                e.preventDefault();
+                alert('يرجى اختيار الصف ثم المادة الهدف.');
+                return;
+            }
+            if (!confirmCheck || !confirmCheck.checked) {
+                e.preventDefault();
+                alert('يرجى تأكيد إدراكك لتأثير هذا النقل على وصول الطلاب.');
+                return;
+            }
+            if (!confirm('هل أنت متأكد من نقل هذا القسم؟ هذا إجراء ينقل المحتوى فعلياً بين المادتين.')) {
+                e.preventDefault();
+            }
+        });
+    }
+
+    // مودال نقل الوحدة لقسم آخر
+    function syncMoveUnitSubmitState() {
+        var submitBtn = document.getElementById('moveUnitSubmitBtn');
+        var sectionSelect = document.getElementById('unitMoveSectionSelect');
+        var confirmCheck = document.getElementById('unitMoveConfirmCheck');
+        if (!submitBtn) return;
+        var hasSection = !!(sectionSelect && sectionSelect.value);
+        var isConfirmed = !!(confirmCheck && confirmCheck.checked);
+        submitBtn.disabled = !(hasSection && isConfirmed);
+    }
+    window.syncMoveUnitSubmitState = syncMoveUnitSubmitState;
+
+    function resetUnitMovePicker() {
+        var classSelect = document.getElementById('unitMoveClassSelect');
+        var subjectSelect = document.getElementById('unitMoveSubjectSelect');
+        var sectionSelect = document.getElementById('unitMoveSectionSelect');
+        var unitSelect = document.getElementById('unitMoveUnitSelect');
+        var confirmCheck = document.getElementById('unitMoveConfirmCheck');
+        if (classSelect) classSelect.value = '';
+        if (subjectSelect) {
+            subjectSelect.innerHTML = '<option value="">-- اختر المادة --</option>';
+            subjectSelect.disabled = true;
+        }
+        if (sectionSelect) {
+            sectionSelect.innerHTML = '<option value="">-- اختر القسم --</option>';
+            sectionSelect.disabled = true;
+        }
+        if (unitSelect) {
+            unitSelect.innerHTML = '<option value="">-- وحدة رئيسية --</option>';
+            unitSelect.disabled = true;
+        }
+        if (confirmCheck) confirmCheck.checked = false;
+        syncMoveUnitSubmitState();
+    }
+
+    var unitMoveSectionSelectEl = document.getElementById('unitMoveSectionSelect');
+    if (unitMoveSectionSelectEl) unitMoveSectionSelectEl.addEventListener('change', syncMoveUnitSubmitState);
+    var unitMoveConfirmCheckEl = document.getElementById('unitMoveConfirmCheck');
+    if (unitMoveConfirmCheckEl) unitMoveConfirmCheckEl.addEventListener('change', syncMoveUnitSubmitState);
+
+    var moveUnitModalEl = document.getElementById('moveUnitModal');
+    if (moveUnitModalEl && window.adminUnitsMoveBase) {
+        moveUnitModalEl.addEventListener('show.bs.modal', function(e) {
+            var form = document.getElementById('moveUnitForm');
+            var titleEl = document.getElementById('moveUnitModalTitle');
+            var currentSubjectNameEl = document.getElementById('moveUnitCurrentSubjectName');
+            var trigger = e.relatedTarget;
+            if (!form || !titleEl) return;
+            var unitId = trigger && trigger.getAttribute('data-unit-id');
+            var unitTitle = trigger && trigger.getAttribute('data-unit-title') || '';
+            var currentSubjectName = trigger && trigger.getAttribute('data-unit-subject-name') || '';
+            if (unitId) {
+                form.action = window.adminUnitsMoveBase + '/' + unitId + '/move';
+                titleEl.textContent = 'نقل الوحدة لقسم آخر' + (unitTitle ? ': ' + unitTitle : '');
+            }
+            if (currentSubjectNameEl) currentSubjectNameEl.textContent = currentSubjectName;
+            resetUnitMovePicker();
+        });
+    }
+
+    var moveUnitForm = document.getElementById('moveUnitForm');
+    if (moveUnitForm) {
+        moveUnitForm.addEventListener('submit', function(e) {
+            var sectionSelect = document.getElementById('unitMoveSectionSelect');
+            var confirmCheck = document.getElementById('unitMoveConfirmCheck');
+            if (!sectionSelect || !sectionSelect.value) {
+                e.preventDefault();
+                alert('يرجى اختيار الصف ثم المادة ثم القسم الهدف.');
+                return;
+            }
+            if (!confirmCheck || !confirmCheck.checked) {
+                e.preventDefault();
+                alert('يرجى تأكيد إدراكك لتأثير هذا النقل على وصول الطلاب.');
+                return;
+            }
+            if (!confirm('هل أنت متأكد من نقل هذه الوحدة؟ هذا إجراء ينقل المحتوى فعلياً.')) {
+                e.preventDefault();
+            }
+        });
+    }
+
+    // مودال نقل الدرس لوحدة/قسم آخر
+    function syncMoveLessonSubmitState() {
+        var submitBtn = document.getElementById('moveLessonSubmitBtn');
+        var sectionSelect = document.getElementById('lessonMoveSectionSelect');
+        var confirmCheck = document.getElementById('lessonMoveConfirmCheck');
+        if (!submitBtn) return;
+        var hasSection = !!(sectionSelect && sectionSelect.value);
+        var isConfirmed = !!(confirmCheck && confirmCheck.checked);
+        submitBtn.disabled = !(hasSection && isConfirmed);
+    }
+    window.syncMoveLessonSubmitState = syncMoveLessonSubmitState;
+
+    function resetLessonMovePicker() {
+        var classSelect = document.getElementById('lessonMoveClassSelect');
+        var subjectSelect = document.getElementById('lessonMoveSubjectSelect');
+        var sectionSelect = document.getElementById('lessonMoveSectionSelect');
+        var unitSelect = document.getElementById('lessonMoveUnitSelect');
+        var confirmCheck = document.getElementById('lessonMoveConfirmCheck');
+        if (classSelect) classSelect.value = '';
+        if (subjectSelect) {
+            subjectSelect.innerHTML = '<option value="">-- اختر المادة --</option>';
+            subjectSelect.disabled = true;
+        }
+        if (sectionSelect) {
+            sectionSelect.innerHTML = '<option value="">-- اختر القسم --</option>';
+            sectionSelect.disabled = true;
+        }
+        if (unitSelect) {
+            unitSelect.innerHTML = '<option value="">-- درس مباشر بالقسم --</option>';
+            unitSelect.disabled = true;
+        }
+        if (confirmCheck) confirmCheck.checked = false;
+        syncMoveLessonSubmitState();
+    }
+
+    var lessonMoveSectionSelectEl = document.getElementById('lessonMoveSectionSelect');
+    if (lessonMoveSectionSelectEl) lessonMoveSectionSelectEl.addEventListener('change', syncMoveLessonSubmitState);
+    var lessonMoveConfirmCheckEl = document.getElementById('lessonMoveConfirmCheck');
+    if (lessonMoveConfirmCheckEl) lessonMoveConfirmCheckEl.addEventListener('change', syncMoveLessonSubmitState);
+
+    var moveLessonModalEl = document.getElementById('moveLessonModal');
+    if (moveLessonModalEl && window.adminLessonsLinkUnitsBase) {
+        moveLessonModalEl.addEventListener('show.bs.modal', function(e) {
+            var form = document.getElementById('moveLessonForm');
+            var titleEl = document.getElementById('moveLessonModalTitle');
+            var currentSubjectNameEl = document.getElementById('moveLessonCurrentSubjectName');
+            var trigger = e.relatedTarget;
+            if (!form || !titleEl) return;
+            var lessonId = trigger && trigger.getAttribute('data-lesson-id');
+            var lessonTitle = trigger && trigger.getAttribute('data-lesson-title') || '';
+            var currentSubjectName = trigger && trigger.getAttribute('data-lesson-subject-name') || '';
+            if (lessonId) {
+                form.action = window.adminLessonsLinkUnitsBase + '/' + lessonId + '/move';
+                titleEl.textContent = 'نقل الدرس لوحدة/قسم آخر' + (lessonTitle ? ': ' + lessonTitle : '');
+            }
+            if (currentSubjectNameEl) currentSubjectNameEl.textContent = currentSubjectName;
+            resetLessonMovePicker();
+        });
+    }
+
+    var moveLessonForm = document.getElementById('moveLessonForm');
+    if (moveLessonForm) {
+        moveLessonForm.addEventListener('submit', function(e) {
+            var sectionSelect = document.getElementById('lessonMoveSectionSelect');
+            var confirmCheck = document.getElementById('lessonMoveConfirmCheck');
+            if (!sectionSelect || !sectionSelect.value) {
+                e.preventDefault();
+                alert('يرجى اختيار الصف ثم المادة ثم القسم الهدف.');
+                return;
+            }
+            if (!confirmCheck || !confirmCheck.checked) {
+                e.preventDefault();
+                alert('يرجى تأكيد إدراكك لتأثير هذا النقل على وصول الطلاب.');
+                return;
+            }
+            if (!confirm('هل أنت متأكد من نقل هذا الدرس؟ هذا إجراء ينقل المحتوى فعلياً.')) {
+                e.preventDefault();
             }
         });
     }
@@ -2820,5 +3316,44 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 @include('admin.pages.lessons.partials.attachment-modals-script')
 @include('admin.pages.lessons.partials.lesson-create-attachments-script')
+
+<script>
+(function() {
+    var STORAGE_KEY = 'admin_last_opened_lesson_id';
+
+    function highlightLastOpenedLessonBtn() {
+        var lastId;
+        try {
+            lastId = localStorage.getItem(STORAGE_KEY);
+        } catch (err) {
+            return;
+        }
+        document.querySelectorAll('.lesson-play-btn.last-opened-lesson-btn').forEach(function(btn) {
+            btn.classList.remove('last-opened-lesson-btn');
+        });
+        if (!lastId) return;
+        var btn = document.querySelector('.lesson-play-btn[data-lesson-id="' + lastId + '"]');
+        if (btn) {
+            btn.classList.add('last-opened-lesson-btn');
+        }
+    }
+
+    // تخزين رقم آخر درس تم الضغط على زر تشغيله، ليتم تمييزه عند العودة لهذه الصفحة
+    document.addEventListener('click', function(e) {
+        var link = e.target.closest('.lesson-play-btn');
+        if (link && link.dataset.lessonId) {
+            try {
+                localStorage.setItem(STORAGE_KEY, link.dataset.lessonId);
+            } catch (err) {}
+        }
+    });
+
+    highlightLastOpenedLessonBtn();
+
+    // إعادة التمييز بعد أي تحديث جزئي (AJAX) لمحتوى الوحدات/الأقسام
+    var lessonHighlightObserver = new MutationObserver(highlightLastOpenedLessonBtn);
+    lessonHighlightObserver.observe(document.body, { childList: true, subtree: true });
+})();
+</script>
 @stop
 

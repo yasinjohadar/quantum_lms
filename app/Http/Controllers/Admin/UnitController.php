@@ -9,6 +9,7 @@ use App\Models\SubjectSection;
 use App\Models\Unit;
 use App\Models\Question;
 use App\Services\Curriculum\UnitCloneService;
+use App\Services\Curriculum\UnitMoveService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +17,8 @@ use Illuminate\Support\Facades\Log;
 class UnitController extends Controller
 {
     public function __construct(
-        protected UnitCloneService $cloneService
+        protected UnitCloneService $cloneService,
+        protected UnitMoveService $moveService
     ) {
         $this->middleware(['permission:unit-create'])->only('store');
         $this->middleware(['permission:unit-edit'])->only(['update', 'reorder']);
@@ -25,6 +27,7 @@ class UnitController extends Controller
         $this->middleware(['permission:unit-attach-questions'])->only('attachQuestions');
         $this->middleware(['permission:unit-detach-question'])->only('detachQuestion');
         $this->middleware(['permission:unit-available-questions'])->only('availableQuestions');
+        $this->middleware(['permission:unit-move'])->only('move');
     }
 
     /**
@@ -177,6 +180,62 @@ class UnitController extends Controller
                 ->route('admin.subjects.show', $unit->section->subject_id)
                 ->with('error', 'حدث خطأ أثناء تحديث الوحدة: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * نقل وحدة بالكامل (وكل ما تحتها من وحدات فرعية ودروس واختبارات) إلى قسم آخر،
+     * إما كوحدة رئيسية فيه أو تحت وحدة أب محددة ضمنه. هذا نقل فعلي (ليس نسخاً/ربطاً).
+     */
+    public function move(Request $request, Unit $unit)
+    {
+        $request->validate([
+            'target_section_id' => ['required', 'integer', 'exists:subject_sections,id'],
+            'target_parent_unit_id' => ['nullable', 'integer', 'exists:units,id'],
+            'confirm' => ['accepted'],
+        ]);
+
+        $originSubjectId = $unit->section->subject_id;
+        $targetSection = SubjectSection::findOrFail($request->input('target_section_id'));
+        $targetParentUnitId = $request->filled('target_parent_unit_id')
+            ? (int) $request->input('target_parent_unit_id')
+            : null;
+
+        try {
+            $this->moveService->assertMovable($unit);
+
+            $movedUnit = $this->moveService->moveUnitToSection(
+                $unit,
+                $targetSection,
+                $targetParentUnitId
+            );
+        } catch (\InvalidArgumentException $e) {
+            return redirect()
+                ->route('admin.subjects.show', $originSubjectId)
+                ->with('error', $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('خطأ في نقل الوحدة: '.$e->getMessage(), [
+                'unit_id' => $unit->id,
+                'origin_subject_id' => $originSubjectId,
+                'target_section_id' => $targetSection->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()
+                ->route('admin.subjects.show', $originSubjectId)
+                ->with('error', 'حدث خطأ أثناء نقل الوحدة: '.$e->getMessage());
+        }
+
+        Log::info(sprintf(
+            'تم نقل الوحدة #%d ("%s") إلى القسم #%d ضمن المادة #%d',
+            $unit->id,
+            $unit->title,
+            $targetSection->id,
+            $targetSection->subject_id
+        ));
+
+        return redirect()
+            ->route('admin.subjects.show', $targetSection->subject_id)
+            ->with('success', 'تم نقل الوحدة "'.$movedUnit->title.'" إلى القسم "'.$targetSection->title.'" بنجاح.');
     }
 
     /**

@@ -14,6 +14,7 @@ use App\Models\SubjectSection;
 use App\Models\SystemSetting;
 use App\Models\Unit;
 use App\Services\Curriculum\LessonCloneService;
+use App\Services\Curriculum\LessonMoveService;
 use App\Services\VimeoService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -32,7 +33,8 @@ class LessonController extends Controller
 
     public function __construct(
         protected LessonCloneService $cloneService,
-        protected LessonAttachmentService $attachmentService
+        protected LessonAttachmentService $attachmentService,
+        protected LessonMoveService $moveService
     ) {
         $this->middleware(['permission:lesson-list'])->only('index');
         $this->middleware(['permission:lesson-create'])->only('store');
@@ -41,6 +43,7 @@ class LessonController extends Controller
         $this->middleware(['permission:lesson-show'])->only('show');
         $this->middleware(['permission:lesson-approve-review'])->only('approveReview');
         $this->middleware(['permission:lesson-reject-review'])->only('rejectReview');
+        $this->middleware(['permission:lesson-move'])->only('move');
     }
 
     public function index(Request $request)
@@ -562,8 +565,20 @@ class LessonController extends Controller
                 ->with('user')
                 ->orderBy('updated_at', 'desc')
                 ->get();
-        
-        return view('admin.pages.lessons.show', compact('lesson', 'lessonCompletions'));
+
+        $siblingLessonsQuery = $lesson->unit_id
+            ? Lesson::query()->where('unit_id', $lesson->unit_id)
+            : Lesson::query()->where('section_id', $lesson->section_id)->whereNull('unit_id');
+        $siblingLessonIds = $siblingLessonsQuery->orderBy('order')->orderBy('id')->pluck('id');
+        $currentLessonIndex = $siblingLessonIds->search($lesson->id);
+        $previousLesson = ($currentLessonIndex !== false && $currentLessonIndex > 0)
+            ? Lesson::find($siblingLessonIds[$currentLessonIndex - 1])
+            : null;
+        $nextLesson = ($currentLessonIndex !== false && $currentLessonIndex < $siblingLessonIds->count() - 1)
+            ? Lesson::find($siblingLessonIds[$currentLessonIndex + 1])
+            : null;
+
+        return view('admin.pages.lessons.show', compact('lesson', 'lessonCompletions', 'previousLesson', 'nextLesson'));
     }
 
     /**
@@ -1034,6 +1049,63 @@ class LessonController extends Controller
         }
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * نقل درس بالكامل (وكل اختباراته) إلى وحدة/قسم آخر (قد يكون في مادة مختلفة).
+     * إن لم تُحدَّد وحدة هدف، يصبح الدرس درساً مباشراً في القسم الهدف. هذا نقل فعلي
+     * (ليس نسخاً/ربطاً).
+     */
+    public function move(Request $request, Lesson $lesson)
+    {
+        $request->validate([
+            'target_section_id' => ['required', 'integer', 'exists:subject_sections,id'],
+            'target_unit_id' => ['nullable', 'integer', 'exists:units,id'],
+            'confirm' => ['accepted'],
+        ]);
+
+        $originSubjectId = $this->resolveSubjectFromLesson($lesson)?->id;
+        $targetSection = SubjectSection::findOrFail($request->input('target_section_id'));
+        $targetUnit = $request->filled('target_unit_id')
+            ? Unit::findOrFail($request->input('target_unit_id'))
+            : null;
+
+        try {
+            $this->moveService->assertMovable($lesson);
+
+            $movedLesson = $this->moveService->moveLessonTo(
+                $lesson,
+                $targetSection,
+                $targetUnit
+            );
+        } catch (\InvalidArgumentException $e) {
+            return redirect()
+                ->route('admin.subjects.show', $originSubjectId)
+                ->with('error', $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('خطأ في نقل الدرس: '.$e->getMessage(), [
+                'lesson_id' => $lesson->id,
+                'origin_subject_id' => $originSubjectId,
+                'target_section_id' => $targetSection->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()
+                ->route('admin.subjects.show', $originSubjectId)
+                ->with('error', 'حدث خطأ أثناء نقل الدرس: '.$e->getMessage());
+        }
+
+        Log::info(sprintf(
+            'تم نقل الدرس #%d ("%s") إلى القسم #%d ضمن المادة #%d',
+            $lesson->id,
+            $lesson->title,
+            $targetSection->id,
+            $targetSection->subject_id
+        ));
+
+        return redirect()
+            ->route('admin.subjects.show', $targetSection->subject_id)
+            ->with('success', 'تم نقل الدرس "'.$movedLesson->title.'" بنجاح.');
     }
 
     /**

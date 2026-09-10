@@ -83,6 +83,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'subject-section-create', 'description' => 'إنشاء قسم للمادة'],
             ['name' => 'subject-section-edit', 'description' => 'تعديل قسم المادة'],
             ['name' => 'subject-section-delete', 'description' => 'حذف قسم المادة'],
+            ['name' => 'subject-section-move', 'description' => 'نقل قسم المادة إلى مادة أخرى'],
 
             // صلاحيات إدارة الوحدات
             ['name' => 'unit-create', 'description' => 'إنشاء وحدة جديدة'],
@@ -92,6 +93,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'unit-attach-questions', 'description' => 'ربط أسئلة بالوحدة'],
             ['name' => 'unit-detach-question', 'description' => 'فك ربط سؤال من الوحدة'],
             ['name' => 'unit-available-questions', 'description' => 'عرض الأسئلة المتاحة للربط'],
+            ['name' => 'unit-move', 'description' => 'نقل الوحدة إلى قسم آخر'],
 
             // صلاحيات إدارة الدروس
             ['name' => 'lesson-list', 'description' => 'عرض قائمة الدروس'],
@@ -103,6 +105,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'lesson-reject-review', 'description' => 'رفض تفعيل الدرس'],
             ['name' => 'lesson-submit-for-review', 'description' => 'إرسال الدرس للمراجعة'],
             ['name' => 'lesson-toggle-status', 'description' => 'تفعيل/تعطيل الدرس مباشرة دون المرور بالمراجعة'],
+            ['name' => 'lesson-move', 'description' => 'نقل الدرس إلى وحدة/قسم آخر'],
 
             // صلاحيات إدارة مرفقات الدروس
             ['name' => 'lesson-attachment-create', 'description' => 'إضافة مرفق للدرس'],

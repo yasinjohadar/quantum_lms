@@ -504,4 +504,17 @@
 }
 .accordion.accordion-secondary .accordion-item.unit-item-child > .accordion-header .accordion-button:hover { background-color: rgba(var(--bs-info-rgb), 0.17) !important; }
 .accordion.accordion-secondary .accordion-item.unit-item-child > .accordion-header .accordion-button:focus { background-color: rgba(var(--bs-info-rgb), 0.15) !important; box-shadow: 0 0 0 0.2rem rgba(var(--bs-info-rgb), 0.2) !important; }
+
+.lesson-play-btn.last-opened-lesson-btn {
+    position: relative;
+    background-color: rgba(var(--bs-success-rgb), 0.9) !important;
+    color: #fff !important;
+    box-shadow: 0 0 0 0.15rem rgba(var(--bs-success-rgb), 0.35);
+    animation: lastOpenedLessonPulse 1.8s ease-in-out infinite;
+}
+.lesson-play-btn.last-opened-lesson-btn i { color: #fff !important; }
+@keyframes lastOpenedLessonPulse {
+    0%, 100% { box-shadow: 0 0 0 0.15rem rgba(var(--bs-success-rgb), 0.35); }
+    50% { box-shadow: 0 0 0 0.3rem rgba(var(--bs-success-rgb), 0.15); }
+}
 </style>

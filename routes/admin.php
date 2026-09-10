@@ -123,6 +123,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('subject-sections.update');
         Route::delete('subject-sections/{section}', [SubjectSectionController::class, 'destroy'])
             ->name('subject-sections.destroy');
+        Route::post('subject-sections/{section}/move', [SubjectSectionController::class, 'move'])
+            ->name('subject-sections.move');
         Route::get('sections/{section}/linked-subjects', [SubjectSectionController::class, 'getLinkedSubjects'])
             ->name('sections.linked-subjects');
         Route::post('sections/{section}/link-subjects', [SubjectSectionController::class, 'linkSubjects'])
@@ -137,6 +139,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('units.update');
         Route::delete('units/{unit}', [UnitController::class, 'destroy'])
             ->name('units.destroy');
+        Route::post('units/{unit}/move', [UnitController::class, 'move'])
+            ->name('units.move');
 
         // الدروس
         Route::get('lessons', [LessonController::class, 'index'])
@@ -159,6 +163,8 @@ Route::middleware(['auth', 'check.user.active', 'admin'])
             ->name('lessons.link-units');
         Route::delete('lessons/{lesson}', [LessonController::class, 'destroy'])
             ->name('lessons.destroy');
+        Route::post('lessons/{lesson}/move', [LessonController::class, 'move'])
+            ->name('lessons.move');
         // مراجعة الدروس
         Route::post('lessons/{lesson}/approve-review', [LessonController::class, 'approveReview'])
             ->name('lessons.approve-review');

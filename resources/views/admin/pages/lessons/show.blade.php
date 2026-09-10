@@ -65,6 +65,12 @@
                             @if($lessonSubject)
                                 <li class="breadcrumb-item"><a href="{{ route('admin.subjects.show', $lessonSubject->id) }}">{{ $lessonSubject->name }}</a></li>
                             @endif
+                            @if($lessonSection)
+                                <li class="breadcrumb-item text-muted">{{ $lessonSection->title }}</li>
+                            @endif
+                            @if($lesson->unit)
+                                <li class="breadcrumb-item text-muted">{{ $lesson->unit->title }}</li>
+                            @endif
                             <li class="breadcrumb-item active" aria-current="page">معاينة الدرس</li>
                         </ol>
                     </nav>
@@ -99,6 +105,26 @@
                     </div>
                 </div>
                 <div class="ls-hero__actions">
+                    <div class="btn-group btn-group-sm" role="group" aria-label="التنقل بين الدروس">
+                        @if($previousLesson)
+                            <a href="{{ route('admin.lessons.show', $previousLesson->id) }}" class="btn btn-outline-secondary btn-sm" title="{{ $previousLesson->title }}">
+                                <i class="bi bi-chevron-right me-1"></i> الدرس السابق
+                            </a>
+                        @else
+                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="bi bi-chevron-right me-1"></i> الدرس السابق
+                            </button>
+                        @endif
+                        @if($nextLesson)
+                            <a href="{{ route('admin.lessons.show', $nextLesson->id) }}" class="btn btn-outline-secondary btn-sm" title="{{ $nextLesson->title }}">
+                                الدرس التالي <i class="bi bi-chevron-left ms-1"></i>
+                            </a>
+                        @else
+                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
+                                الدرس التالي <i class="bi bi-chevron-left ms-1"></i>
+                            </button>
+                        @endif
+                    </div>
                     @can('lesson-edit')
                         <a href="{{ route('admin.lessons.edit', $lesson) }}" class="btn btn-primary btn-sm">
                             <i class="bi bi-pencil-square me-1"></i> تعديل الدرس
