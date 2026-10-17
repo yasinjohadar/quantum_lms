@@ -46,13 +46,19 @@
             </div>
         </div>
 
+        @if($notification->class_name)
+            <span class="badge bg-primary-transparent text-primary text-wrap text-start mb-2">
+                <i class="fe fe-layers me-1"></i>الصف: {{ $notification->class_name }}
+            </span>
+        @endif
+
         <p class="student-notif-card__message">{{ $notification->message }}</p>
 
         <div class="student-notif-card__meta">
             <span><i class="fe fe-tag"></i>{{ $types[$notification->type] ?? $notification->type }}</span>
-            <span><i class="fe fe-clock"></i>{{ $notification->created_at->diffForHumans() }}</span>
+            <span><i class="fe fe-clock"></i><span dir="ltr">{{ $notification->created_at->format('Y/m/d - H:i') }}</span></span>
             @if($notification->is_read && $notification->read_at)
-                <span><i class="fe fe-check-circle"></i>قرأت {{ $notification->read_at->diffForHumans() }}</span>
+                <span><i class="fe fe-check-circle"></i>قرأت <span dir="ltr">{{ $notification->read_at->format('Y/m/d - H:i') }}</span></span>
             @endif
         </div>
 

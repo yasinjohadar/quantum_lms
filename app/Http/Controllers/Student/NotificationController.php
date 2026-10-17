@@ -51,6 +51,7 @@ class NotificationController extends Controller
                         'title' => $notif->title,
                         'message' => $notif->message,
                         'action_url' => $notif->action_url,
+                        'class_name' => $notif->class_name,
                         'created_at' => $notif->created_at->toIso8601String(),
                         'is_read' => $notif->is_read,
                     ];
@@ -238,6 +239,7 @@ class NotificationController extends Controller
                 'message' => $notif->message,
                 'icon' => $notif->icon ?? 'fe fe-bell',
                 'color' => $notif->color ?? 'primary',
+                'class_name' => $notif->class_name,
                 'created_at' => $notif->created_at->toIso8601String(),
                 'timestamp' => $notif->created_at->toIso8601String(),
             ];

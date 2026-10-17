@@ -11,6 +11,7 @@ use App\Events\LessonCompleted;
 use App\Events\QuizCompleted;
 use App\Events\QuestionAnswered;
 use App\Events\PointsAwarded;
+use App\Services\Gamification\NotificationClassContext;
 use App\Support\SafeEvent;
 
 class GamificationService
@@ -26,7 +27,7 @@ class GamificationService
     /**
      * معالجة حدث
      */
-    public function processEvent(User $user, string $eventType, array $metadata = [], $source = null): void
+    private function handleEvent(User $user, string $eventType, array $metadata = [], $source = null): void
     {
         // منح النقاط
         $points = $this->pointService->calculatePoints($eventType, $metadata);
@@ -59,7 +60,7 @@ class GamificationService
     /**
      * معالجة حضور درس
      */
-    public function processLessonAttendance(LessonCompletion $completion): void
+    private function handleLessonAttendance(LessonCompletion $completion): void
     {
         $user = $completion->user;
         $lesson = $completion->lesson;
@@ -71,13 +72,13 @@ class GamificationService
             'completion_id' => $completion->id,
         ]));
 
-        $this->processEvent($user, 'lesson_attended', ['lesson_id' => $completion->lesson_id], $completion);
+        $this->handleEvent($user, 'lesson_attended', ['lesson_id' => $completion->lesson_id], $completion);
     }
 
     /**
      * معالجة إكمال درس
      */
-    public function processLessonCompletion(LessonCompletion $completion): void
+    private function handleLessonCompletion(LessonCompletion $completion): void
     {
         $user = $completion->user;
         $lesson = $completion->lesson;
@@ -89,13 +90,13 @@ class GamificationService
             'completion_id' => $completion->id,
         ]));
 
-        $this->processEvent($user, 'lesson_completed', ['lesson_id' => $completion->lesson_id], $completion);
+        $this->handleEvent($user, 'lesson_completed', ['lesson_id' => $completion->lesson_id], $completion);
     }
 
     /**
      * معالجة إكمال اختبار
      */
-    public function processQuizCompletion(QuizAttempt $attempt): void
+    private function handleQuizCompletion(QuizAttempt $attempt): void
     {
         if ($attempt->status !== 'completed') {
             return;
@@ -117,7 +118,7 @@ class GamificationService
             'attempt_id' => $attempt->id,
         ]));
 
-        $this->processEvent($user, 'quiz_completed', [
+        $this->handleEvent($user, 'quiz_completed', [
             'quiz_id' => $attempt->quiz_id,
             'attempt_id' => $attempt->id,
             'score' => $attempt->score,
@@ -135,14 +136,14 @@ class GamificationService
      * ملاحظة: لا نُطلق حدث QuizCompleted لأنه مقيّد بنوع Quiz ولا يوجد Quiz هنا،
      * لذا لا يظهر إشعار «أكملت اختباراً» الفوري للتجارب التفاعلية.
      */
-    public function processInteractiveExperienceCompletion(\App\InteractiveLearning\Models\LearningExperienceAttempt $attempt): void
+    private function handleInteractiveExperienceCompletion(\App\InteractiveLearning\Models\LearningExperienceAttempt $attempt): void
     {
         $user = $attempt->user;
         if (! $user) {
             return;
         }
 
-        $this->processEvent($user, 'quiz_completed', [
+        $this->handleEvent($user, 'quiz_completed', [
             'learning_experience_id' => $attempt->learning_experience_id,
             'attempt_id' => $attempt->id,
             'score' => $attempt->score,
@@ -154,7 +155,7 @@ class GamificationService
     /**
      * معالجة إكمال سؤال
      */
-    public function processQuestionCompletion(QuestionAttempt $attempt): void
+    private function handleQuestionCompletion(QuestionAttempt $attempt): void
     {
         if ($attempt->status !== 'completed') {
             return;
@@ -175,11 +176,54 @@ class GamificationService
             'attempt_id' => $attempt->id,
         ]));
 
-        $this->processEvent($user, 'question_answered', [
+        $this->handleEvent($user, 'question_answered', [
             'question_id' => $attempt->question_id,
             'attempt_id' => $attempt->id,
             'score' => $attempt->score,
             'is_correct' => $attempt->is_correct,
         ], $attempt);
+    }
+
+    /**
+     * تشغيل المعالجة داخل سياق صف المصدر حتى تحمل كل الإشعارات الناتجة اسم الصف.
+     */
+    private function inClassContext(?User $user, $source, \Closure $callback): void
+    {
+        $context = app(NotificationClassContext::class);
+        $resolved = $context->current() ?? ($user ? $context->forSource($user, $source) : null);
+        $context->run($resolved, $callback);
+    }
+
+    /**
+     * معالجة حدث
+     */
+    public function processEvent(User $user, string $eventType, array $metadata = [], $source = null): void
+    {
+        $this->inClassContext($user, $source, fn () => $this->handleEvent($user, $eventType, $metadata, $source));
+    }
+
+    public function processLessonAttendance(LessonCompletion $completion): void
+    {
+        $this->inClassContext($completion->user, $completion, fn () => $this->handleLessonAttendance($completion));
+    }
+
+    public function processLessonCompletion(LessonCompletion $completion): void
+    {
+        $this->inClassContext($completion->user, $completion, fn () => $this->handleLessonCompletion($completion));
+    }
+
+    public function processQuizCompletion(QuizAttempt $attempt): void
+    {
+        $this->inClassContext($attempt->user, $attempt, fn () => $this->handleQuizCompletion($attempt));
+    }
+
+    public function processInteractiveExperienceCompletion(\App\InteractiveLearning\Models\LearningExperienceAttempt $attempt): void
+    {
+        $this->inClassContext($attempt->user, $attempt, fn () => $this->handleInteractiveExperienceCompletion($attempt));
+    }
+
+    public function processQuestionCompletion(QuestionAttempt $attempt): void
+    {
+        $this->inClassContext($attempt->user, $attempt, fn () => $this->handleQuestionCompletion($attempt));
     }
 }

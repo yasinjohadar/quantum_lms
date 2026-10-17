@@ -388,6 +388,8 @@ class StaffNotificationService
             'color' => $approved ? 'success' : 'danger',
             'entity_type' => 'class_enrollment',
             'entity_id' => $classEnrollment->id,
+            'class_id' => $class->id,
+            'class_name' => $class->name,
         ];
 
         $url = $subject

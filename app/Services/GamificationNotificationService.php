@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Events\UserNotificationPushed;
 use App\Models\GamificationNotification;
 use App\Models\User;
+use App\Services\Gamification\NotificationClassContext;
 use Illuminate\Support\Facades\Log;
 
 class GamificationNotificationService
@@ -68,6 +69,9 @@ class GamificationNotificationService
         bool $broadcastPush = false,
     ): GamificationNotification {
         $prefType = $this->resolvePreferenceType($type);
+
+        // ربط الإشعار بالصف (الطالب قد يكون مشتركاً بأكثر من صف)
+        $data = app(NotificationClassContext::class)->enrich($data, $user);
 
         if (!$this->preferenceService->isAllowed($user, $prefType, 'database')) {
             return new GamificationNotification([

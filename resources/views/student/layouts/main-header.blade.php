@@ -235,6 +235,7 @@
                                                         </div>
                                                         <div class="flex-grow-1">
                                                             <h6 class="mb-1 fw-semibold">${escapeHtml(notif.title)}</h6>
+                                                            ${notif.class_name ? `<span class="badge bg-primary-transparent text-primary text-wrap text-start mb-1"><i class="fe fe-layers me-1"></i>الصف: ${escapeHtml(notif.class_name)}</span>` : ''}
                                                             <p class="mb-1 text-muted small">${escapeHtml(notif.message)}</p>
                                                             <small class="text-muted">${formatTime(notif.created_at)}</small>
                                                         </div>
@@ -485,7 +486,8 @@
     }
     .hr-navtoggle__bar {
         display: block; height: 2px; border-radius: 2px;
-        background: rgb(var(--primary-rgb));
+        /* كحلي داكن قريب من خلفية الشعار */
+        background: #0b1426;
         transition: width 0.28s cubic-bezier(0.34, 1.4, 0.64, 1), background 0.25s ease;
     }
     .hr-navtoggle__bar:nth-child(1) { width: 100%; transition-delay: 0s; }
@@ -622,7 +624,8 @@
     }
     [data-header-styles="dark"] .hr-navtoggle__bar,
     [data-header-styles="color"] .hr-navtoggle__bar,
-    [data-header-styles="gradient"] .hr-navtoggle__bar { background: #fff; }
+    [data-header-styles="gradient"] .hr-navtoggle__bar,
+    [data-theme-mode="dark"] .hr-navtoggle__bar { background: #fff; }
 
     @media (prefers-reduced-motion: reduce) {
         .hr-navtoggle__box, .hr-navtoggle__bar,

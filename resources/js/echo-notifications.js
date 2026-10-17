@@ -288,6 +288,9 @@ function showToastNotification(data) {
             `<div class="echo-toast-meta">من: ${escapeHtml(data.actor_name)}${data.actor_role ? ' — ' + escapeHtml(data.actor_role) : ''}</div>`
         :   '';
 
+    const className = data.class_name || data.data?.class_name || '';
+    const classLine = className ? `<div class="echo-toast-meta">الصف: ${escapeHtml(className)}</div>` : '';
+
     const hint = href ? `<div class="echo-toast-hint">اضغط للانتقال إلى التفاصيل</div>` : '';
 
     wrap.innerHTML = `
@@ -299,6 +302,7 @@ function showToastNotification(data) {
             <div class="echo-toast-text flex-grow-1 min-w-0">
                 <div class="echo-toast-label">إشعار جديد</div>
                 <div class="echo-toast-title">${escapeHtml(data.title)}</div>
+                ${classLine}
                 <p class="echo-toast-body">${escapeHtml(data.message)}</p>
                 ${actorLine}
                 ${hint}
@@ -385,6 +389,7 @@ function addNotificationToDropdown(data) {
     };
     const icon = data.icon || 'fe fe-bell';
     const color = data.color || 'primary';
+    const className = data.class_name || data.data?.class_name || '';
     item.innerHTML = `
         <div class="d-flex align-items-start">
             <div class="avatar avatar-sm me-3 flex-shrink-0">
@@ -394,6 +399,7 @@ function addNotificationToDropdown(data) {
             </div>
             <div class="flex-grow-1">
                 <h6 class="mb-1 fw-semibold">${escapeHtml(data.title)}</h6>
+                ${className ? `<span class="badge bg-primary-transparent text-primary text-wrap text-start mb-1"><i class="fe fe-layers me-1"></i>الصف: ${escapeHtml(className)}</span>` : ''}
                 <p class="mb-1 text-muted small">${escapeHtml(data.message)}</p>
                 ${data.actor_name ? `<small class="text-muted d-block">من: ${escapeHtml(data.actor_name)}${data.actor_role ? ' (' + escapeHtml(data.actor_role) + ')' : ''}</small>` : ''}
             </div>

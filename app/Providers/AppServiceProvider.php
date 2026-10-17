@@ -45,6 +45,9 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         require_once app_path('helpers.php');
+
+        // سياق الصف للإشعارات يجب أن يكون نسخة واحدة طوال الطلب/المهمة
+        $this->app->scoped(\App\Services\Gamification\NotificationClassContext::class);
     }
 
     /**

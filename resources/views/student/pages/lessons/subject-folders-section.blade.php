@@ -93,6 +93,57 @@
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
     }
+    /* العنوان الطويل يلتف على أكثر من سطر بدل أن يُقص (خصوصاً على الجوال) */
+    .lesson-row-card__head {
+        flex: 0 1 auto;
+        min-width: 0;
+    }
+    .lesson-row-card__num,
+    .lesson-row-card__play {
+        flex-shrink: 0;
+    }
+    .lesson-row-card__title {
+        min-width: 0;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        line-height: 1.5;
+    }
+    /* الكرت كامل قابل للضغط */
+    .lesson-row-card {
+        cursor: pointer;
+    }
+    /* الدرس الفعّال */
+    .lesson-row-card.is-active {
+        border: 2px solid #0d6efd;
+        background: linear-gradient(145deg, #e7f0ff 0%, #d4e4ff 100%);
+        box-shadow: 0 6px 22px rgba(13, 110, 253, 0.28);
+    }
+    .lesson-row-card.is-active .lesson-row-card__inner::before {
+        width: 6px;
+        background: linear-gradient(180deg, #ff9f1c 0%, #ffbf69 100%);
+    }
+    .lesson-row-card.is-active .lesson-row-card__num {
+        background: linear-gradient(145deg, #ff9f1c 0%, #ffbf69 100%);
+        box-shadow: 0 2px 8px rgba(255, 159, 28, 0.45);
+    }
+    .lesson-row-card.is-active .lesson-row-card__title {
+        color: #0a3d91;
+        font-weight: 700;
+    }
+    .lesson-row-card.is-active .lesson-row-card__actions {
+        background: rgba(255, 255, 255, 0.45) !important;
+    }
+    [data-theme-mode="dark"] .lesson-row-card.is-active {
+        border-color: #6ea8fe;
+        background: linear-gradient(145deg, rgba(13, 110, 253, 0.32) 0%, rgba(13, 110, 253, 0.18) 100%);
+        box-shadow: 0 6px 22px rgba(13, 110, 253, 0.35);
+    }
+    [data-theme-mode="dark"] .lesson-row-card.is-active .lesson-row-card__title {
+        color: #fff;
+    }
+    [data-theme-mode="dark"] .lesson-row-card.is-active .lesson-row-card__actions {
+        background: rgba(22, 25, 32, 0.4) !important;
+    }
     [data-theme-mode="dark"] .lesson-row-card {
         background: linear-gradient(145deg, rgba(28, 31, 40, 0.98) 0%, rgba(18, 20, 26, 1) 100%);
         border-color: rgba(255, 255, 255, 0.1);
@@ -230,7 +281,7 @@
                                         data-video-type="{{ e($actualType) }}"
                                         data-iframe-url="{{ $hasVideo && in_array($actualType, ['youtube', 'vimeo']) ? e($iframeUrl) : '' }}"
                                         data-poster="{{ e($posterUrl) }}">
-                                        <span class="d-inline-flex align-items-center flex-shrink-0">
+                                        <span class="lesson-row-card__head d-flex align-items-center">
                                             <span class="lesson-row-card__num">{{ $loop->iteration }}</span>
                                             <i class="bi bi-play-circle-fill lesson-row-card__play me-2 text-primary"></i>
                                             <span class="lesson-row-card__title">{{ $lesson->title }}</span>
@@ -248,7 +299,7 @@
                                             </span>
                                         @endif
                                     </button>
-                                    <div class="lesson-row-card__actions d-flex align-items-center gap-1 px-2 flex-shrink-0 border-start border-secondary border-opacity-25" onclick="event.stopPropagation()">
+                                    <div class="lesson-row-card__actions d-flex align-items-center gap-1 px-2 flex-shrink-0 border-start border-secondary border-opacity-25">
                                         <a href="{{ route('student.lessons.show.folders', $lesson) }}" class="btn btn-sm btn-link p-1 text-secondary" title="صفحة الدرس" aria-label="صفحة الدرس">
                                             <i class="bi bi-box-arrow-up-left fs-6"></i>
                                         </a>
@@ -434,11 +485,16 @@
         }
 
         lessonsList.querySelectorAll('.section-lesson-video-btn').forEach(function(b) { b.classList.remove('active'); });
+        lessonsList.querySelectorAll('.lesson-row-card.is-active').forEach(function(c) { c.classList.remove('is-active'); });
         btn.classList.add('active');
+        var card = btn.closest('.lesson-row-card');
+        if (card) card.classList.add('is-active');
     }
 
     lessonsList.addEventListener('click', function(e) {
-        var btn = e.target.closest('.section-lesson-video-btn');
+        if (e.target.closest('a')) return;
+        var card = e.target.closest('.lesson-row-card');
+        var btn = card ? card.querySelector('.section-lesson-video-btn') : null;
         if (!btn) return;
         e.preventDefault();
         try {

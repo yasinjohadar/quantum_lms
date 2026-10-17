@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Gamification\NotificationClassContext;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -86,6 +87,7 @@ class GamificationNotification extends Model
             'actor_name' => $this->actor_name,
             'actor_role' => $this->actor_role,
             'action_url' => $this->action_url,
+            'class_name' => $this->class_name,
             'icon' => $data['icon'] ?? 'fe fe-bell',
             'color' => $data['color'] ?? 'primary',
             'timestamp' => $this->created_at?->toIso8601String(),
@@ -138,6 +140,38 @@ class GamificationNotification extends Model
     public function getTypeNameAttribute(): string
     {
         return self::TYPES[$this->type] ?? $this->type;
+    }
+
+    /**
+     * اسم الصف المرتبط بالإشعار؛ للإشعارات القديمة يُستنتج من subject_id إن وُجد،
+     * وإلا من صف المستخدم إن كان منتسباً لصف واحد فقط.
+     */
+    public function getClassNameAttribute(): ?string
+    {
+        $data = $this->data ?? [];
+        if (! empty($data['class_name'])) {
+            return $data['class_name'];
+        }
+
+        static $bySubject = [];
+        static $byUser = [];
+
+        if (! empty($data['subject_id'])) {
+            $subjectId = (int) $data['subject_id'];
+            if (! array_key_exists($subjectId, $bySubject)) {
+                $bySubject[$subjectId] = Subject::with('schoolClass')->find($subjectId)?->schoolClass?->name;
+            }
+            if ($bySubject[$subjectId]) {
+                return $bySubject[$subjectId];
+            }
+        }
+
+        $userId = (int) $this->user_id;
+        if (! array_key_exists($userId, $byUser)) {
+            $byUser[$userId] = NotificationClassContext::singleClassForUser($userId)['class_name'] ?? null;
+        }
+
+        return $byUser[$userId];
     }
 }
 
