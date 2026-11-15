@@ -224,17 +224,7 @@ class UserController extends Controller
                     ->whereNull('access_revoked_at')
                     ->firstOrFail();
 
-                $purchase->loadMissing('purchasable');
-
-                if ($purchase->purchasable instanceof SchoolClass && $purchase->purchasable->subscription_ends_at) {
-                    if ($newExpiresAt->gt($purchase->purchasable->subscription_ends_at)) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'لا يمكن أن يتجاوز تاريخ الطالب نهاية اشتراك الصف ('.$purchase->purchasable->subscription_ends_at->format('Y-m-d').')',
-                        ], 422);
-                    }
-                }
-
+                // يُسمح بتاريخ فردي للطالب يتجاوز نهاية اشتراك الصف (تمديد استثنائي من الأدمن)
                 $purchase->update([
                     'expires_at' => $newExpiresAt,
                     'access_revoked_at' => $newExpiresAt->isFuture() ? null : $purchase->access_revoked_at,

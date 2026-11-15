@@ -56,7 +56,6 @@ class StudentSubscriptionExpiryResolver
                 'settable' => false,
                 'multiple' => ! $classId && $withExpiry->count() > 1,
                 'multiple_count' => $withExpiry->count(),
-                'max_expires_at' => $class?->subscription_ends_at?->format('Y-m-d'),
                 'source' => 'purchase',
             ];
         }
@@ -80,7 +79,6 @@ class StudentSubscriptionExpiryResolver
                 'settable' => true,
                 'multiple' => ! $classId && $withoutExpiry->count() > 1,
                 'multiple_count' => $withoutExpiry->count(),
-                'max_expires_at' => $class?->subscription_ends_at?->format('Y-m-d'),
                 'source' => 'purchase',
             ];
         }
@@ -103,8 +101,9 @@ class StudentSubscriptionExpiryResolver
                 'expires_at' => $schoolClass->subscription_ends_at,
                 'expires_at_input' => $schoolClass->subscription_ends_at->format('Y-m-d'),
                 'class_name' => $schoolClass->name,
-                'editable' => false,
-                'settable' => false,
+                // يُعرض تاريخ الصف افتراضياً، ويمكن للأدمن تعيين تاريخ فردي للطالب (حتى لو تجاوز نهاية الصف)
+                'editable' => true,
+                'settable' => true,
                 'source' => 'class',
             ];
         }
@@ -118,7 +117,6 @@ class StudentSubscriptionExpiryResolver
                 'class_name' => $schoolClass?->name,
                 'editable' => true,
                 'settable' => true,
-                'max_expires_at' => $schoolClass?->subscription_ends_at?->format('Y-m-d'),
                 'source' => 'enrollment',
             ];
         }

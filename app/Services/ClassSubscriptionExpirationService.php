@@ -50,9 +50,23 @@ class ClassSubscriptionExpirationService
 
             $revocationNote = 'انتهت مدة اشتراك الصف تلقائياً في ' . now()->format('Y-m-d');
 
+            // طلاب لديهم تاريخ فردي يتجاوز نهاية الصف (تمديد استثنائي من الأدمن):
+            // لا يُلغى وصولهم هنا، بل عند انتهاء تاريخهم الفردي عبر purchases:expire-access
+            $extendedUserIds = Purchase::query()
+                ->completed()
+                ->whereNull('access_revoked_at')
+                ->where('purchasable_type', SchoolClass::class)
+                ->where('purchasable_id', $class->id)
+                ->whereNotNull('expires_at')
+                ->where('expires_at', '>', now())
+                ->pluck('user_id')
+                ->unique()
+                ->all();
+
             $approvedClassEnrollments = ClassEnrollment::query()
                 ->where('class_id', $class->id)
                 ->where('status', 'approved')
+                ->when($extendedUserIds !== [], fn ($query) => $query->whereNotIn('user_id', $extendedUserIds))
                 ->get();
 
             $userIds = $approvedClassEnrollments->pluck('user_id')->unique()->values()->all();

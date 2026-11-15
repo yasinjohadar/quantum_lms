@@ -711,13 +711,8 @@ class PurchaseService
      */
     public function assignClassSubscriptionExpiry(User $user, SchoolClass $class, \DateTimeInterface $expiresAt): Purchase
     {
+        // يُسمح بتاريخ فردي للطالب يتجاوز نهاية اشتراك الصف (تمديد استثنائي من الأدمن)
         $resolvedExpiresAt = \Carbon\Carbon::parse($expiresAt)->endOfDay();
-
-        if ($class->subscription_ends_at && $resolvedExpiresAt->gt($class->subscription_ends_at)) {
-            throw new \InvalidArgumentException(
-                'لا يمكن أن يتجاوز تاريخ الطالب نهاية اشتراك الصف ('.$class->subscription_ends_at->format('Y-m-d').')'
-            );
-        }
 
         $hasApprovedEnrollment = \App\Models\ClassEnrollment::query()
             ->where('user_id', $user->id)
