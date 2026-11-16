@@ -898,7 +898,10 @@ class EnrollmentController extends Controller
      */
     public function classPendingRequests(Request $request)
     {
+        // تجاهل الطلبات اليتيمة (طالب أو صف محذوف) لتفادي أخطاء null في العرض
         $classEnrollmentsQuery = ClassEnrollment::with(['user', 'schoolClass.stage', 'enrolledBy'])
+            ->whereHas('user')
+            ->whereHas('schoolClass')
             ->pending();
         $pendingClassPurchaseRequests = Purchase::query()
             ->with([
@@ -910,7 +913,9 @@ class EnrollmentController extends Controller
                 },
             ])
             ->pendingDirectApproval()
-            ->where('purchase_type', 'class');
+            ->where('purchase_type', 'class')
+            ->whereHas('user')
+            ->whereHasMorph('purchasable', [SchoolClass::class]);
 
         // فلترة حسب البحث
         if ($request->filled('search')) {
@@ -952,7 +957,9 @@ class EnrollmentController extends Controller
         }
 
         // إحصائيات
-        $pendingCount = ClassEnrollment::pending()->count() + Purchase::query()->pendingDirectApproval()->where('purchase_type', 'class')->count();
+        $pendingCount = ClassEnrollment::pending()->whereHas('user')->whereHas('schoolClass')->count()
+            + Purchase::query()->pendingDirectApproval()->where('purchase_type', 'class')
+                ->whereHas('user')->whereHasMorph('purchasable', [SchoolClass::class])->count();
         $approvedCount = ClassEnrollment::approved()->count();
 
         return view('admin.pages.enrollments.class-pending', compact('classEnrollments', 'pendingClassPurchaseRequests', 'classes', 'users', 'pendingCount', 'approvedCount'));
