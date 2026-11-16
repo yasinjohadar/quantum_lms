@@ -95,6 +95,17 @@ class Purchase extends Model
             ->whereDoesntHave('payment');
     }
 
+    /**
+     * طلبات الصفوف المدفوعة المعلّقة (بدون سجلات يتيمة) — نفس ما تعرضه صفحة طلبات الصف المعلقة.
+     */
+    public function scopePendingClassDirectApproval($query)
+    {
+        return $query->pendingDirectApproval()
+            ->where('purchase_type', 'class')
+            ->whereHas('user')
+            ->whereHasMorph('purchasable', [SchoolClass::class]);
+    }
+
     public function isPendingDirectApproval(): bool
     {
         if ($this->status !== 'pending') {

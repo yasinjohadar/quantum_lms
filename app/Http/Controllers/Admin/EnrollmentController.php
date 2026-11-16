@@ -900,8 +900,7 @@ class EnrollmentController extends Controller
     {
         // تجاهل الطلبات اليتيمة (طالب أو صف محذوف) لتفادي أخطاء null في العرض
         $classEnrollmentsQuery = ClassEnrollment::with(['user', 'schoolClass.stage', 'enrolledBy'])
-            ->whereHas('user')
-            ->whereHas('schoolClass')
+            ->withExistingRelations()
             ->pending();
         $pendingClassPurchaseRequests = Purchase::query()
             ->with([
@@ -912,10 +911,15 @@ class EnrollmentController extends Controller
                     ]);
                 },
             ])
-            ->pendingDirectApproval()
-            ->where('purchase_type', 'class')
-            ->whereHas('user')
-            ->whereHasMorph('purchasable', [SchoolClass::class]);
+            ->pendingClassDirectApproval();
+
+        // طريقة العرض (بطاقات / جدول) — تُحفظ في الجلسة
+        $viewMode = $request->input('view');
+        if (in_array($viewMode, ['cards', 'table'], true)) {
+            session(['class_pending_view' => $viewMode]);
+        } else {
+            $viewMode = session('class_pending_view', 'cards');
+        }
 
         // فلترة حسب البحث
         if ($request->filled('search')) {
@@ -943,8 +947,14 @@ class EnrollmentController extends Controller
             $pendingClassPurchaseRequests->where('purchasable_id', $request->input('class_id'));
         }
 
-        $classEnrollments = $classEnrollmentsQuery->latest('created_at')->paginate(20);
-        $pendingClassPurchaseRequests = $pendingClassPurchaseRequests->latest('created_at')->get();
+        $classEnrollments = $classEnrollmentsQuery->latest('created_at')
+            ->paginate(20)
+            ->withQueryString()
+            ->fragment('class-enrollments');
+        $pendingClassPurchaseRequests = $pendingClassPurchaseRequests->latest('created_at')
+            ->paginate(24, ['*'], 'purchases_page')
+            ->withQueryString()
+            ->fragment('class-purchases');
         
         $classes = SchoolClass::with('stage')->active()->ordered()->get();
         
@@ -957,12 +967,15 @@ class EnrollmentController extends Controller
         }
 
         // إحصائيات
-        $pendingCount = ClassEnrollment::pending()->whereHas('user')->whereHas('schoolClass')->count()
-            + Purchase::query()->pendingDirectApproval()->where('purchase_type', 'class')
-                ->whereHas('user')->whereHasMorph('purchasable', [SchoolClass::class])->count();
+        $pendingEnrollmentsCount = ClassEnrollment::pending()->withExistingRelations()->count();
+        $pendingPurchasesCount = Purchase::query()->pendingClassDirectApproval()->count();
+        $pendingCount = $pendingEnrollmentsCount + $pendingPurchasesCount;
         $approvedCount = ClassEnrollment::approved()->count();
 
-        return view('admin.pages.enrollments.class-pending', compact('classEnrollments', 'pendingClassPurchaseRequests', 'classes', 'users', 'pendingCount', 'approvedCount'));
+        return view('admin.pages.enrollments.class-pending', compact(
+            'classEnrollments', 'pendingClassPurchaseRequests', 'classes', 'users',
+            'pendingCount', 'pendingEnrollmentsCount', 'pendingPurchasesCount', 'approvedCount', 'viewMode'
+        ));
     }
 
     /**

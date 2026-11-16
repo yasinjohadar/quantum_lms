@@ -120,27 +120,68 @@
             </div>
         </div>
 
-        <div class="enrollments-index-card">
+        {{-- روابط سريعة للقسمين --}}
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <a href="#class-purchases" class="btn btn-sm btn-outline-warning">
+                <i class="bi bi-cash-coin me-1"></i> طلبات مدفوعة
+                <span class="badge bg-warning text-dark ms-1">{{ number_format($pendingPurchasesCount) }}</span>
+            </a>
+            <a href="#class-enrollments" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-person-plus me-1"></i> طلبات انضمام
+                <span class="badge bg-primary ms-1">{{ number_format($pendingEnrollmentsCount) }}</span>
+            </a>
+        </div>
+
+        <div class="enrollments-index-card" id="class-purchases">
             <div class="enrollments-index-card__header">
                 <div class="d-flex align-items-center gap-2">
-                    <span class="enrollments-index-card__header-icon"><i class="bi bi-table"></i></span>
+                    <span class="enrollments-index-card__header-icon"><i class="bi bi-cash-coin"></i></span>
                     طلبات الصفوف المدفوعة المعلقة
-                </div>
-                @if(!empty($pendingClassPurchaseRequests) && $pendingClassPurchaseRequests->count() > 0)
                     <span class="badge bg-warning-transparent text-warning">
-                        {{ $pendingClassPurchaseRequests->count() }} طلب
+                        {{ number_format($pendingClassPurchaseRequests->total()) }} طلب
                     </span>
-                @endif
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    @if($pendingClassPurchaseRequests->hasPages())
+                        <span class="badge bg-primary-transparent text-primary">
+                            صفحة {{ $pendingClassPurchaseRequests->currentPage() }} من {{ $pendingClassPurchaseRequests->lastPage() }}
+                        </span>
+                    @endif
+                    <div class="btn-group btn-group-sm" role="group" aria-label="طريقة العرض">
+                        <a href="{{ request()->fullUrlWithQuery(['view' => 'cards']) }}#class-purchases"
+                           class="btn {{ $viewMode === 'cards' ? 'btn-primary' : 'btn-outline-primary' }}"
+                           title="عرض كبطاقات">
+                            <i class="bi bi-grid-3x3-gap"></i> <span class="d-none d-sm-inline">بطاقات</span>
+                        </a>
+                        <a href="{{ request()->fullUrlWithQuery(['view' => 'table']) }}#class-purchases"
+                           class="btn {{ $viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary' }}"
+                           title="عرض كجدول">
+                            <i class="bi bi-list-ul"></i> <span class="d-none d-sm-inline">جدول</span>
+                        </a>
+                    </div>
+                </div>
             </div>
             <div class="enrollments-index-card__body">
-                @if(!empty($pendingClassPurchaseRequests) && $pendingClassPurchaseRequests->count() > 0)
-                    <div class="row g-3">
-                        @foreach($pendingClassPurchaseRequests as $purchase)
-                            @include('admin.pages.enrollments.partials.class-pending-purchase-card', [
-                                'purchase' => $purchase,
-                            ])
-                        @endforeach
-                    </div>
+                @if($pendingClassPurchaseRequests->count() > 0)
+                    @if($viewMode === 'table')
+                        @include('admin.pages.enrollments.partials.class-pending-purchase-table', [
+                            'purchases' => $pendingClassPurchaseRequests,
+                        ])
+                    @else
+                        <div class="row g-3">
+                            @foreach($pendingClassPurchaseRequests as $purchase)
+                                @include('admin.pages.enrollments.partials.class-pending-purchase-card', [
+                                    'purchase' => $purchase,
+                                ])
+                            @endforeach
+                        </div>
+                    @endif
+
+                    @if($pendingClassPurchaseRequests->hasPages())
+                        <div class="enrollments-index-pagination px-0">
+                            {{ $pendingClassPurchaseRequests->links() }}
+                        </div>
+                    @endif
                 @else
                     <div class="enrollments-index-empty py-4">
                         <i class="bi bi-cash-coin"></i>
@@ -150,11 +191,14 @@
             </div>
         </div>
 
-        <div class="enrollments-index-card">
+        <div class="enrollments-index-card" id="class-enrollments">
             <div class="enrollments-index-card__header">
                 <div class="d-flex align-items-center gap-2">
                     <span class="enrollments-index-card__header-icon"><i class="bi bi-table"></i></span>
-                    قائمة الطلبات المعلقة
+                    طلبات الانضمام المعلقة
+                    <span class="badge bg-primary-transparent text-primary">
+                        {{ number_format($classEnrollments->total()) }} طلب
+                    </span>
                 </div>
                 @if($classEnrollments instanceof \Illuminate\Pagination\LengthAwarePaginator && $classEnrollments->hasPages())
                     <span class="badge bg-primary-transparent text-primary">
@@ -282,7 +326,7 @@
                     </div>
 
                     <div class="enrollments-index-pagination">
-                        {{ $classEnrollments->withQueryString()->links() }}
+                        {{ $classEnrollments->links() }}
                     </div>
                 @else
                     <div class="enrollments-index-empty py-5">

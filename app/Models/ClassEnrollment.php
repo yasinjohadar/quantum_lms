@@ -55,6 +55,14 @@ class ClassEnrollment extends Model
         return $query->where('status', 'pending');
     }
 
+    /**
+     * يستبعد السجلات اليتيمة (طالب أو صف محذوف).
+     */
+    public function scopeWithExistingRelations($query)
+    {
+        return $query->whereHas('user')->whereHas('schoolClass');
+    }
+
     public function scopeApproved($query)
     {
         return $query->where('status', 'approved');

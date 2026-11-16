@@ -325,7 +325,9 @@
                                         <span class="side-menu__label">طلبات الصف المعلقة</span>
                                         @php
                                             try {
-                                                $classPendingCount = \App\Models\ClassEnrollment::pending()->count();
+                                                // نفس العدّ المعروض في صفحة طلبات الصف المعلقة
+                                                $classPendingCount = \App\Models\ClassEnrollment::pending()->withExistingRelations()->count()
+                                                    + \App\Models\Purchase::pendingClassDirectApproval()->count();
                                             } catch (\Exception $e) {
                                                 $classPendingCount = 0;
                                             }
